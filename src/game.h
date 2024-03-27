@@ -500,6 +500,9 @@ class Game
 		std::unordered_set<Tile*> getTilesToClean() const {
 			return tilesToClean;
 		}
+		bool isTileInCleanList(Tile* tile) { 
+			return tilesToClean.find(tile) != tilesToClean.end(); 
+		}
 		void addTileToClean(Tile* tile) {
 			tilesToClean.emplace(tile);
 		}
