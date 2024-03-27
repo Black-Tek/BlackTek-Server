@@ -14,74 +14,74 @@ MonsterType.register = function(self, mask)
 end
 
 registerMonsterType.name = function(mtype, mask)
-	if mask.name then
+	if mask.name ~= nil then
 		mtype:name(mask.name)
 	end
 end
 registerMonsterType.description = function(mtype, mask)
-	if mask.description then
+	if mask.description ~= nil then
 		mtype:nameDescription(mask.description)
 	end
 end
 registerMonsterType.experience = function(mtype, mask)
-	if mask.experience then
+	if mask.experience ~= nil then
 		mtype:experience(mask.experience)
 	end
 end
 registerMonsterType.skull = function(mtype, mask)
-	if mask.skull then
+	if mask.skull ~= nil then
 		mtype:skull(mask.skull)
 	end
 end
 registerMonsterType.outfit = function(mtype, mask)
-	if mask.outfit then
+	if mask.outfit ~= nil then
 		mtype:outfit(mask.outfit)
 	end
 end
 registerMonsterType.maxHealth = function(mtype, mask)
-	if mask.maxHealth then
+	if mask.maxHealth ~= nil then
 		mtype:maxHealth(mask.maxHealth)
 		mtype:health(math.min(mtype:health(), mask.maxHealth))
 	end
 end
 registerMonsterType.health = function(mtype, mask)
-	if mask.health then
+	if mask.health ~= nil then
 		mtype:health(mask.health)
 		mtype:maxHealth(math.max(mask.health, mtype:maxHealth()))
 	end
 end
 registerMonsterType.runHealth = function(mtype, mask)
-	if mask.runHealth then
+	if mask.runHealth ~= nil then
 		mtype:runHealth(mask.runHealth)
 	end
 end
 registerMonsterType.maxSummons = function(mtype, mask)
-	if mask.maxSummons then
+	if mask.maxSummons ~= nil then
 		mtype:maxSummons(mask.maxSummons)
 	end
 end
 registerMonsterType.race = function(mtype, mask)
-	if mask.race then
+	if mask.race ~= nil then
 		mtype:race(mask.race)
 	end
 end
 registerMonsterType.manaCost = function(mtype, mask)
-	if mask.manaCost then
+	if mask.manaCost ~= nil then
 		mtype:manaCost(mask.manaCost)
 	end
 end
 registerMonsterType.speed = function(mtype, mask)
-	if mask.speed then
+	if mask.speed ~= nil then
 		mtype:baseSpeed(mask.speed)
 	end
 end
 registerMonsterType.corpse = function(mtype, mask)
-	if mask.corpse then
+	if mask.corpse ~= nil then
 		mtype:corpseId(mask.corpse)
 	end
 end
 registerMonsterType.flags = function(mtype, mask)
-	if mask.flags then
+	if mask.flags ~= nil then
 		if mask.flags.attackable ~= nil then
 			mtype:isAttackable(mask.flags.attackable)
 		end
@@ -120,13 +120,13 @@ registerMonsterType.flags = function(mtype, mask)
 		end
 		-- if a monster can push creatures,
 		-- it should not be pushable
-		if mask.flags.canPushCreatures then
+		if mask.flags.canPushCreatures ~= nil then
 			mtype:isPushable(false)
 		end
-		if mask.flags.targetDistance then
+		if mask.flags.targetDistance ~= nil then
 			mtype:targetDistance(mask.flags.targetDistance)
 		end
-		if mask.flags.staticAttackChance then
+		if mask.flags.staticAttackChance ~= nil then
 			mtype:staticAttackChance(mask.flags.staticAttackChance)
 		end
 		if mask.flags.canWalkOnEnergy ~= nil then
@@ -141,16 +141,16 @@ registerMonsterType.flags = function(mtype, mask)
 	end
 end
 registerMonsterType.light = function(mtype, mask)
-	if mask.light then
+	if mask.light ~= nil then
 		mtype:light(mask.light.color or 0, mask.light.level or 0)
 	end
 end
 registerMonsterType.changeTarget = function(mtype, mask)
-	if mask.changeTarget then
+	if mask.changeTarget ~= nil then
 		if mask.changeTarget.chance then
 			mtype:changeTargetChance(mask.changeTarget.chance)
 		end
-		if mask.changeTarget.interval then
+		if mask.changeTarget.interval ~= nil then
 			mtype:changeTargetSpeed(mask.changeTarget.interval)
 		end
 	end
@@ -158,10 +158,10 @@ end
 registerMonsterType.voices = function(mtype, mask)
 	if type(mask.voices) == "table" then
 		local interval, chance
-		if mask.voices.interval then
+		if mask.voices.interval ~= nil then
 			interval = mask.voices.interval
 		end
-		if mask.voices.chance then
+		if mask.voices.chance ~= nil then
 			chance = mask.voices.chance
 		end
 		for k, v in pairs(mask.voices) do
@@ -387,10 +387,10 @@ registerMonsterType.attacks = function(mtype, mask)
 end
 registerMonsterType.defenses = function(mtype, mask)
 	if type(mask.defenses) == "table" then
-		if mask.defenses.defense then
+		if mask.defenses.defense ~= nil then
 			mtype:defense(mask.defenses.defense)
 		end
-		if mask.defenses.armor then
+		if mask.defenses.armor ~= nil then
 			mtype:armor(mask.defenses.armor)
 		end
 		for _, defense in pairs(mask.defenses) do
