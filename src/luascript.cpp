@@ -10724,6 +10724,7 @@ int LuaScriptInterface::luaNpcSetSpeechBubble(lua_State* L)
 	Npc* npc = getUserdata<Npc>(L, 1);
 	if (npc) {
 		npc->setSpeechBubble(getNumber<uint8_t>(L, 2));
+		pushBoolean(L, true);
 	}
 	return 0;
 }
