@@ -5,8 +5,6 @@ function logCommand(player, words, param)
 	if not file then
 		return
 	end
-
-	io.output(file)
-	io.write(logFormat:format(os.date("%d/%m/%Y %H:%M"), words, param):trim() .. "\n")
-	io.close(file)
+	file:write(logFormat:format(os.date("%d/%m/%Y %H:%M"), words, param):trim() .. "\n")
+	file:close(file)
 end
