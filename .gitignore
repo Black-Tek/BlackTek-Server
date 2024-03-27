@@ -1,0 +1,10 @@
+# Visual Studio
+/.vs
+**.sln
+**.vcxproj
+**.vcxproj.user
+
+# Build Output
+/build
+
+
