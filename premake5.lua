@@ -49,6 +49,7 @@ workspace "Titan"
 
       filter "toolset:gcc"
          buildoptions { "-fno-strict-aliasing" }
+         buildoptions {"-std=c++20"}
       filter {}
 
       filter "toolset:clang"
