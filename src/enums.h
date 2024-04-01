@@ -1,8 +1,8 @@
 // Copyright 2022 The Forgotten Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_ENUMS_H_003445999FEE4A67BCECBE918B0124CE
-#define FS_ENUMS_H_003445999FEE4A67BCECBE918B0124CE
+#ifndef FS_ENUMS_H_
+#define FS_ENUMS_H_
 
 enum RuleViolationType_t : uint8_t {
 	REPORT_TYPE_NAME = 0,
@@ -456,6 +456,7 @@ enum SpeechBubble_t
 	SPEECHBUBBLE_TRADE = 2,
 	SPEECHBUBBLE_QUEST = 3,
 	SPEECHBUBBLE_QUESTTRADER = 4,
+	SPEECHBUBBLE_LAST = SPEECHBUBBLE_QUESTTRADER
 };
 
 enum MapMark_t
@@ -600,4 +601,4 @@ enum MonstersEvent_t : uint8_t {
 	MONSTERS_EVENT_SAY = 5,
 };
 
-#endif
+#endif // FS_ENUMS_H_
