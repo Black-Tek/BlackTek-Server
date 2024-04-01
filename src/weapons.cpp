@@ -8,6 +8,7 @@
 #include "game.h"
 #include "pugicast.h"
 #include "weapons.h"
+#include "luavariant.h"
 
 extern Game g_game;
 extern Vocations g_vocations;
@@ -361,8 +362,7 @@ void Weapon::internalUseWeapon(Player* player, Item* item, Creature* target, int
 {
 	if (scripted) {
 		LuaVariant var;
-		var.type = VARIANT_NUMBER;
-		var.number = target->getID();
+		var.setNumber(target->getID());
 		executeUseWeapon(player, var);
 	} else {
 		CombatDamage damage;
@@ -386,8 +386,7 @@ void Weapon::internalUseWeapon(Player* player, Item* item, Tile* tile) const
 {
 	if (scripted) {
 		LuaVariant var;
-		var.type = VARIANT_TARGETPOSITION;
-		var.pos = tile->getPosition();
+		var.setTargetPosition(tile->getPosition());
 		executeUseWeapon(player, var);
 	} else {
 		Combat::postCombatEffects(player, tile->getPosition(), params);
