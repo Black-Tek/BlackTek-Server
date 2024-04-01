@@ -39,12 +39,13 @@ workspace "Titan"
       filter {}
 
       filter "system:not windows"
-         buildoptions { "-Wall", "-Wextra", "-Wnon-virtual-dtor", "-Wold-style-cast", "-pedantic", "-Werror", "-pipe", "-fvisibility=hidden" }
+         buildoptions { "-Wall", "-Wextra", "-pedantic", "-pipe", "-fvisibility=hidden" }
       filter {}
 
       filter "system:windows"
          openmp "On"
          characterset "MBCS"
+         linkoptions {"/IGNORE:4099"}
       filter {}
 
       filter "toolset:gcc"
@@ -61,8 +62,6 @@ workspace "Titan"
       filter {}
 
       conan_setup()
-      linkoptions {"/IGNORE:4099"}
-      --characterset "MBCS"
       intrinsics   "On"
 
 
