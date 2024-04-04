@@ -45,6 +45,8 @@ workspace "Titan"
       filter "system:windows"
          openmp "On"
          characterset "MBCS"
+         debugformat "c7"
+         flags {"NoIncrementalLink"}
          linkoptions {"/IGNORE:4099"}
       filter {}
 
