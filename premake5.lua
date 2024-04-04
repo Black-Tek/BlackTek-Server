@@ -39,7 +39,7 @@ workspace "Titan"
       filter {}
 
       filter "system:not windows"
-         buildoptions { "-Wall", "-Wextra", "-pedantic", "-pipe", "-fvisibility=hidden" }
+         buildoptions { "-Wall", "-Wextra", "-pedantic", "-pipe", "-fvisibility=hidden", "-Wno-unused-local-typedefs" }
       filter {}
 
       filter "system:windows"
