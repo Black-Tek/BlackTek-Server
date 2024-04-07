@@ -3106,8 +3106,7 @@ void Player::postRemoveNotification(Thing* thing, const Cylinder* newParent, int
 				} else if (const Inbox* inboxContainer = dynamic_cast<const Inbox*>(topContainer)) {
 					if (inboxContainer == inbox) {
 						onSendContainer(container);
-					}
-					else {
+					} else {
 						autoCloseContainers(container);
 					}
 				} else {
