@@ -2537,6 +2537,12 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "getFightMode", LuaScriptInterface::luaPlayerGetFightMode);
 
 	registerMethod("Player", "getStoreInbox", LuaScriptInterface::luaPlayerGetStoreInbox);
+	registerMethod("Player", "isNearDepotBox", LuaScriptInterface::luaPlayerIsNearDepotBox);
+
+	registerMethod("Player", "getIdleTime", LuaScriptInterface::luaPlayerGetIdleTime);
+	registerMethod("Player", "resetIdleTime", LuaScriptInterface::luaPlayerResetIdleTime);
+
+	registerMethod("Player", "sendCreatureSquare", LuaScriptInterface::luaPlayerSendCreatureSquare);
 
 	// Monster
 	registerClass("Monster", "Creature", LuaScriptInterface::luaMonsterCreate);
@@ -10399,6 +10405,62 @@ int LuaScriptInterface::luaPlayerGetStoreInbox(lua_State* L)
 
 	pushUserdata<Container>(L, storeInbox);
 	setMetatable(L, -1, "Container");
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerIsNearDepotBox(lua_State* L)
+{
+	// player:isNearDepotBox()
+	const Player* const player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	pushBoolean(L, player->isNearDepotBox());
+	return 1;
+}
+int LuaScriptInterface::luaPlayerGetIdleTime(lua_State* L)
+{
+	// player:getIdleTime()
+	const Player* const player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushnumber(L, player->getIdleTime());
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerResetIdleTime(lua_State* L)
+{
+	// player:resetIdleTime()
+	Player* player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	player->resetIdleTime();
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerSendCreatureSquare(lua_State* L)
+{
+	// player:sendCreatureSquare(creature, color)
+	Player* player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	auto creature = getCreature(L, 2);
+	if (!creature) {
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
+		pushBoolean(L, false);
+		return 1;
+	}
+	player->sendCreatureSquare(creature, getNumber<SquareColor_t>(L, 3));
+	pushBoolean(L, true);
 	return 1;
 }
 
