@@ -113,6 +113,8 @@ class Vocation
 		bool allowPvp = true;
 };
 
+using VocationMap = std::map<uint16_t, Vocation>;
+
 class Vocations
 {
 	public:
@@ -121,9 +123,10 @@ class Vocations
 		Vocation* getVocation(uint16_t id);
 		int32_t getVocationId(const std::string& name) const;
 		uint16_t getPromotedVocation(uint16_t vocationId) const;
+		const VocationMap& getVocations() const { return vocationsMap; }
 
 	private:
-		std::map<uint16_t, Vocation> vocationsMap;
+		VocationMap vocationsMap;
 };
 
 #endif
