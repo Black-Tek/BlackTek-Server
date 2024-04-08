@@ -1,8 +1,8 @@
 // Copyright 2022 The Forgotten Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_CONFIGMANAGER_H_6BDD23BD0B8344F4B7C40E8BE6AF6F39
-#define FS_CONFIGMANAGER_H_6BDD23BD0B8344F4B7C40E8BE6AF6F39
+#ifndef FS_CONFIGMANAGER_H
+#define FS_CONFIGMANAGER_H
 
 #include <utility>
 #include <vector>
@@ -130,7 +130,7 @@ class ConfigManager
 		bool getBoolean(boolean_config_t what) const;
 		float getExperienceStage(uint32_t level) const;
 
-		bool setString(string_config_t what, const std::string& value);
+		bool setString(string_config_t what, std::string_view value);
 		bool setNumber(integer_config_t what, int32_t value);
 		bool setBoolean(boolean_config_t what, bool value);
 

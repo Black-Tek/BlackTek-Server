@@ -1,8 +1,8 @@
 // Copyright 2022 The Forgotten Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_SPELLS_H_D78A7CCB7080406E8CAA6B1D31D3DA71
-#define FS_SPELLS_H_D78A7CCB7080406E8CAA6B1D31D3DA71
+#ifndef FS_SPELLS_H
+#define FS_SPELLS_H
 
 #include "player.h"
 #include "actions.h"
@@ -37,7 +37,7 @@ class Spells final : public BaseEvents
 		TalkActionResult_t playerSaySpell(Player* player, std::string& words);
 
 		static Position getCasterPosition(Creature* creature, Direction dir);
-		std::string getScriptBaseName() const override;
+		std::string_view getScriptBaseName() const override { return "spells"; }
 
 		const std::map<std::string, InstantSpell>& getInstantSpells() const {
 			return instants;
@@ -94,9 +94,7 @@ class CombatSpell final : public Event, public BaseSpell
 		}
 
 	private:
-		std::string getScriptEventName() const override {
-			return "onCastSpell";
-		}
+		std::string_view getScriptEventName() const override { return "onCastSpell"; }
 
 		Combat_ptr combat;
 
@@ -366,7 +364,7 @@ class InstantSpell final : public TalkAction, public Spell
 		bool canThrowSpell(const Creature* creature, const Creature* target) const;
 
 	private:
-		std::string getScriptEventName() const override;
+		std::string_view getScriptEventName() const override { return "onCastSpell"; }
 
 		bool internalCastSpell(Creature* creature, const LuaVariant& var);
 
@@ -420,7 +418,7 @@ class RuneSpell final : public Action, public Spell
 		}
 
 	private:
-		std::string getScriptEventName() const override;
+		std::string_view getScriptEventName() const override { return "onCastSpell"; }
 
 		bool internalCastSpell(Creature* creature, const LuaVariant& var, bool isHotkey);
 

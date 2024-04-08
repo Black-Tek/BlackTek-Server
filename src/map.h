@@ -271,8 +271,8 @@ class Map
 
 		QTreeNode root;
 
-		std::string spawnfile;
-		std::string housefile;
+		std::filesystem::path spawnfile;
+		std::filesystem::path housefile;
 
 		uint32_t width = 0;
 		uint32_t height = 0;

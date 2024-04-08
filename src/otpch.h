@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <forward_list>
 #include <functional>
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <list>
@@ -22,7 +23,7 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
-
+#include <boost/algorithm/string.hpp>
 #include <boost/asio.hpp>
 
 #include <pugixml.hpp>

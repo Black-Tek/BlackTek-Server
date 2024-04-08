@@ -36,11 +36,6 @@ LuaScriptInterface& TalkActions::getScriptInterface()
 	return scriptInterface;
 }
 
-std::string TalkActions::getScriptBaseName() const
-{
-	return "talkactions";
-}
-
 Event_ptr TalkActions::getEvent(const std::string& nodeName)
 {
 	if (!caseInsensitiveEqual(nodeName, "talkaction")) {
@@ -149,11 +144,6 @@ bool TalkAction::configureEvent(const pugi::xml_node& node)
 		setWords(word);
 	}
 	return true;
-}
-
-std::string TalkAction::getScriptEventName() const
-{
-	return "onSay";
 }
 
 bool TalkAction::executeSay(Player* player, const std::string& words, const std::string& param, SpeakClasses type) const

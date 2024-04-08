@@ -1,8 +1,8 @@
 // Copyright 2022 The Forgotten Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_ACTIONS_H_87F60C5F587E4B84948F304A6451E6E6
-#define FS_ACTIONS_H_87F60C5F587E4B84948F304A6451E6E6
+#ifndef FS_ACTIONS_H
+#define FS_ACTIONS_H
 
 #include "baseevents.h"
 #include "enums.h"
@@ -84,7 +84,7 @@ class Action : public Event
 		ActionFunction function;
 
 	private:
-		std::string getScriptEventName() const override;
+		std::string_view getScriptEventName() const override { return "onUse"; }
 
 		bool allowFarUse = false;
 		bool checkFloor = true;
@@ -118,7 +118,7 @@ class Actions final : public BaseEvents
 		ReturnValue internalUseItem(Player* player, const Position& pos, uint8_t index, Item* item, bool isHotkey);
 
 		LuaScriptInterface& getScriptInterface() override;
-		std::string getScriptBaseName() const override;
+		std::string_view getScriptBaseName() const override { return "actions"; }
 		Event_ptr getEvent(const std::string& nodeName) override;
 		bool registerEvent(Event_ptr event, const pugi::xml_node& node) override;
 

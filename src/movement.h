@@ -62,7 +62,7 @@ class MoveEvents final : public BaseEvents
 		void clearPosMap(MovePosListMap& map, bool fromLua);
 
 		LuaScriptInterface& getScriptInterface() override;
-		std::string getScriptBaseName() const override;
+		std::string_view getScriptBaseName() const override { return "movements"; }
 		Event_ptr getEvent(const std::string& nodeName) override;
 		bool registerEvent(Event_ptr event, const pugi::xml_node& node) override;
 
@@ -223,7 +223,7 @@ class MoveEvent final : public Event
 		EquipFunction equipFunction;
 
 	private:
-		std::string getScriptEventName() const override;
+		std::string_view getScriptEventName() const override;
 
 		uint32_t slot = SLOTP_WHEREEVER;
 

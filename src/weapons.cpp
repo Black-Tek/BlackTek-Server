@@ -56,11 +56,6 @@ LuaScriptInterface& Weapons::getScriptInterface()
 	return scriptInterface;
 }
 
-std::string Weapons::getScriptBaseName() const
-{
-	return "weapons";
-}
-
 void Weapons::loadDefaults()
 {
 	for (size_t i = 100, size = Item::items.size(); i < size; ++i) {
@@ -257,11 +252,6 @@ bool Weapon::configureEvent(const pugi::xml_node& node)
 void Weapon::configureWeapon(const ItemType& it)
 {
 	id = it.id;
-}
-
-std::string Weapon::getScriptEventName() const
-{
-	return "onUseWeapon";
 }
 
 int32_t Weapon::playerWeaponCheck(Player* player, Creature* target, uint8_t shootRange) const

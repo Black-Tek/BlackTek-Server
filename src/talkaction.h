@@ -30,9 +30,9 @@ class TalkAction : public Event
 		const std::vector<std::string>& getWordsMap() const {
 			return wordsMap;
 		}
-		void setWords(std::string word) {
+		void setWords(std::string_view word) {
 			words = word;
-			wordsMap.push_back(word);
+			wordsMap.emplace_back(word);
 		}
 		std::string getSeparator() const {
 			return separator;
@@ -61,7 +61,7 @@ class TalkAction : public Event
 		}
 
 	private:
-		std::string getScriptEventName() const override;
+		std::string_view getScriptEventName() const override { return "onSay"; }
 
 		std::string words;
 		std::vector<std::string> wordsMap;
@@ -87,7 +87,7 @@ class TalkActions final : public BaseEvents
 
 	private:
 		LuaScriptInterface& getScriptInterface() override;
-		std::string getScriptBaseName() const override;
+		std::string_view getScriptBaseName() const override { return "talkactions"; }
 		Event_ptr getEvent(const std::string& nodeName) override;
 		bool registerEvent(Event_ptr event, const pugi::xml_node& node) override;
 

@@ -206,7 +206,7 @@ class ScriptEvent final : public RaidEvent, public Event
 		bool executeEvent() override;
 
 	private:
-		std::string getScriptEventName() const override;
+		std::string_view getScriptEventName() const override { return "onRaid"; }
 };
 
 #endif

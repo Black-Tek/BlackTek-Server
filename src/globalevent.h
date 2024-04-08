@@ -1,8 +1,8 @@
 // Copyright 2022 The Forgotten Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_GLOBALEVENT_H_B3FB9B848EA3474B9AFC326873947E3C
-#define FS_GLOBALEVENT_H_B3FB9B848EA3474B9AFC326873947E3C
+#ifndef FS_GLOBALEVENT_H
+#define FS_GLOBALEVENT_H
 #include "baseevents.h"
 
 #include "const.h"
@@ -43,9 +43,7 @@ class GlobalEvents final : public BaseEvents
 		void clear(bool fromLua) override final;
 
 	private:
-		std::string getScriptBaseName() const override {
-			return "globalevents";
-		}
+		std::string_view getScriptBaseName() const override { return "globalevents"; }
 
 		Event_ptr getEvent(const std::string& nodeName) override;
 		bool registerEvent(Event_ptr event, const pugi::xml_node& node) override;
@@ -100,7 +98,7 @@ class GlobalEvent final : public Event
 	private:
 		GlobalEvent_t eventType = GLOBALEVENT_NONE;
 
-		std::string getScriptEventName() const override;
+		std::string_view getScriptEventName() const override;
 
 		std::string name;
 		int64_t nextExecution = 0;

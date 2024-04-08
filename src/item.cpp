@@ -395,8 +395,8 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		}
 
 		case ATTR_TEXT: {
-			std::string text;
-			if (!propStream.readString(text)) {
+			auto [text, ok] = propStream.readString();
+			if (!ok) {
 				return ATTR_READ_ERROR;
 			}
 
@@ -415,8 +415,8 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		}
 
 		case ATTR_WRITTENBY: {
-			std::string writer;
-			if (!propStream.readString(writer)) {
+			auto [writer, ok] = propStream.readString();
+			if (!ok) {
 				return ATTR_READ_ERROR;
 			}
 
@@ -425,8 +425,8 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		}
 
 		case ATTR_DESC: {
-			std::string text;
-			if (!propStream.readString(text)) {
+			auto [text, ok] = propStream.readString();
+			if (!ok) {
 				return ATTR_READ_ERROR;
 			}
 
@@ -467,8 +467,8 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		}
 
 		case ATTR_NAME: {
-			std::string name;
-			if (!propStream.readString(name)) {
+			auto [name, ok] = propStream.readString();
+			if (!ok) {
 				return ATTR_READ_ERROR;
 			}
 
@@ -477,8 +477,8 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		}
 
 		case ATTR_ARTICLE: {
-			std::string article;
-			if (!propStream.readString(article)) {
+			auto [article, ok] = propStream.readString();
+			if (!ok) {
 				return ATTR_READ_ERROR;
 			}
 
@@ -487,8 +487,8 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		}
 
 		case ATTR_PLURALNAME: {
-			std::string pluralName;
-			if (!propStream.readString(pluralName)) {
+			auto [pluralName, ok] = propStream.readString();
+			if (!ok) {
 				return ATTR_READ_ERROR;
 			}
 
@@ -678,8 +678,8 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 
 			for (uint64_t i = 0; i < size; i++) {
 				// Unserialize key type and value
-				std::string key;
-				if (!propStream.readString(key)) {
+				auto [key, ok] = propStream.readString();
+				if (!ok) {
 					return ATTR_READ_ERROR;
 				};
 
@@ -1682,7 +1682,7 @@ const std::string& ItemAttributes::getStrAttr(itemAttrTypes type) const
 	return *attr->value.string;
 }
 
-void ItemAttributes::setStrAttr(itemAttrTypes type, const std::string& value)
+void ItemAttributes::setStrAttr(itemAttrTypes type, std::string_view value)
 {
 	if (!isStrAttrType(type)) {
 		return;

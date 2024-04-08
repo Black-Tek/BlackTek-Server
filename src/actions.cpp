@@ -53,11 +53,6 @@ LuaScriptInterface& Actions::getScriptInterface()
 	return scriptInterface;
 }
 
-std::string Actions::getScriptBaseName() const
-{
-	return "actions";
-}
-
 Event_ptr Actions::getEvent(const std::string& nodeName)
 {
 	if (!caseInsensitiveEqual(nodeName, "action")) {
@@ -529,11 +524,6 @@ bool Action::loadFunction(const pugi::xml_attribute& attr, bool isScripted)
 		scripted = false;
 	}
 	return true;
-}
-
-std::string Action::getScriptEventName() const
-{
-	return "onUse";
 }
 
 ReturnValue Action::canExecuteAction(const Player* player, const Position& toPos)

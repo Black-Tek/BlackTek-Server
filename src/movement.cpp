@@ -70,11 +70,6 @@ LuaScriptInterface& MoveEvents::getScriptInterface()
 	return scriptInterface;
 }
 
-std::string MoveEvents::getScriptBaseName() const
-{
-	return "movements";
-}
-
 Event_ptr MoveEvents::getEvent(const std::string& nodeName)
 {
 	if (!caseInsensitiveEqual(nodeName, "movevent")) {
@@ -520,7 +515,7 @@ uint32_t MoveEvents::onItemMove(Item* item, Tile* tile, bool isAdd)
 
 MoveEvent::MoveEvent(LuaScriptInterface* interface) : Event(interface) {}
 
-std::string MoveEvent::getScriptEventName() const
+std::string_view MoveEvent::getScriptEventName() const
 {
 	switch (eventType) {
 		case MOVE_EVENT_STEP_IN: return "onStepIn";
@@ -531,7 +526,7 @@ std::string MoveEvent::getScriptEventName() const
 		case MOVE_EVENT_REMOVE_ITEM: return "onRemoveItem";
 		default:
 			std::cout << "[Error - MoveEvent::getScriptEventName] Invalid event type" << std::endl;
-			return std::string();
+			return "";
 	}
 }
 

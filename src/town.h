@@ -21,8 +21,8 @@ class Town
 		void setTemplePos(Position pos) {
 			templePosition = pos;
 		}
-		void setName(std::string name) {
-			this->name = std::move(name);
+		void setName(std::string_view name) {
+			this->name = name; 
 		}
 		uint32_t getID() const {
 			return id;

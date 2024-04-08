@@ -334,20 +334,19 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 
 	msg.skipBytes(1); // gamemaster flag
 
-	std::string sessionKey = msg.getString();
-
-	auto sessionArgs = explodeString(sessionKey, "\n", 4);
+	// acc name or email, password, token, timestamp divided by 30
+	auto sessionArgs = explodeString(msg.getString(), "\n", 4);
 	if (sessionArgs.size() != 4) {
 		disconnect();
 		return;
 	}
 
-	std::string& accountName = sessionArgs[0];
-	std::string& password = sessionArgs[1];
-	std::string& token = sessionArgs[2];
+	auto accountName = sessionArgs[0];
+	auto password = sessionArgs[1];
+	std::string_view token = sessionArgs[2];
 	uint32_t tokenTime = 0;
 	try {
-		tokenTime = std::stoul(sessionArgs[3]);
+		tokenTime = std::stoul(sessionArgs[3].data());
 	} catch (const std::invalid_argument&) {
 		disconnectClient("Malformed token packet.");
 		return;
@@ -361,7 +360,7 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 		return;
 	}
 
-	std::string characterName = msg.getString();
+	auto characterName = msg.getString();
 
 	uint32_t timeStamp = msg.get<uint32_t>();
 	uint8_t randNumber = msg.getByte();
@@ -395,13 +394,14 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 		return;
 	}
 
-	uint32_t accountId = IOLoginData::gameworldAuthentication(accountName, password, characterName, token, tokenTime);
+	uint32_t accountId;
+	std::tie(accountId, characterName) = IOLoginData::gameworldAuthentication(accountName, password, characterName, token, tokenTime);
 	if (accountId == 0) {
 		disconnectClient("Account name or password is not correct.");
 		return;
 	}
 
-	addGameTask([=, thisPtr = getThis(), characterName = std::move(characterName)]() { thisPtr->login(characterName, accountId, operatingSystem); });
+	addGameTask([=, thisPtr = getThis(), characterName = std::string{ characterName }]() { thisPtr->login(characterName, accountId, operatingSystem); });
 }
 
 void ProtocolGame::onConnect()
@@ -754,14 +754,14 @@ bool ProtocolGame::canSee(int32_t x, int32_t y, int32_t z) const
 // Parse methods
 void ProtocolGame::parseChannelInvite(NetworkMessage& msg)
 {
-	std::string name = msg.getString();
-	addGameTask([playerID = player->getID(), name = std::move(name)]() { g_game.playerChannelInvite(playerID, name); });
+	auto name = msg.getString();
+	addGameTask([playerID = player->getID(), name = std::string{ name }]() { g_game.playerChannelInvite(playerID, name); });
 }
 
 void ProtocolGame::parseChannelExclude(NetworkMessage& msg)
 {
-	std::string name = msg.getString();
-	addGameTask([=, playerID = player->getID(), name = std::move(name)]() { g_game.playerChannelExclude(playerID, name); });
+	auto name = msg.getString();
+	addGameTask([=, playerID = player->getID(), name = std::string{ name }]() { g_game.playerChannelExclude(playerID, name); });
 }
 
 void ProtocolGame::parseOpenChannel(NetworkMessage& msg)
@@ -778,8 +778,8 @@ void ProtocolGame::parseCloseChannel(NetworkMessage& msg)
 
 void ProtocolGame::parseOpenPrivateChannel(NetworkMessage& msg)
 {
-	std::string receiver = msg.getString();
-	addGameTask([playerID = player->getID(), receiver = std::move(receiver)]() { g_game.playerOpenPrivateChannel(playerID, receiver); });
+	auto receiver = msg.getString();
+	addGameTask([playerID = player->getID(), receiver = std::string{ receiver }]() { g_game.playerOpenPrivateChannel(playerID, receiver); });
 }
 
 void ProtocolGame::parseAutoWalk(NetworkMessage& msg)
@@ -918,7 +918,7 @@ void ProtocolGame::parseLookInBattleList(NetworkMessage& msg)
 
 void ProtocolGame::parseSay(NetworkMessage& msg)
 {
-	std::string receiver;
+	std::string_view receiver;
 	uint16_t channelId;
 
 	SpeakClasses type = static_cast<SpeakClasses>(msg.getByte());
@@ -939,12 +939,12 @@ void ProtocolGame::parseSay(NetworkMessage& msg)
 			break;
 	}
 
-	std::string text = msg.getString();
+	auto text = msg.getString();
 	if (text.length() > 255) {
 		return;
 	}
 
-	addGameTask([=, playerID = player->getID(), receiver = std::move(receiver), text = std::move(text)]() {
+	addGameTask([=, playerID = player->getID(), receiver = std::string{ receiver }, text = std::string{ text }]() {
 		g_game.playerSay(playerID, channelId, type, receiver, text);
 		});
 }
@@ -993,16 +993,16 @@ void ProtocolGame::parseEquipObject(NetworkMessage& msg)
 void ProtocolGame::parseTextWindow(NetworkMessage& msg)
 {
 	uint32_t windowTextID = msg.get<uint32_t>();
-	std::string newText = msg.getString();
-	addGameTask([playerID = player->getID(), windowTextID, newText = std::move(newText)]() { g_game.playerWriteItem(playerID, windowTextID, newText); });
+	auto newText = msg.getString();
+	addGameTask([playerID = player->getID(), windowTextID, newText = std::string{ newText }]() { g_game.playerWriteItem(playerID, windowTextID, newText); });
 }
 
 void ProtocolGame::parseHouseWindow(NetworkMessage& msg)
 {
 	uint8_t doorId = msg.getByte();
 	uint32_t id = msg.get<uint32_t>();
-	const std::string text = msg.getString();
-	addGameTask([=, playerID = player->getID()]() { g_game.playerUpdateHouseWindow(playerID, doorId, id, text); });
+	auto text = msg.getString();
+	addGameTask([=, playerID = player->getID(), text = std::string{ text }]() { g_game.playerUpdateHouseWindow(playerID, doorId, id, text); });
 }
 
 void ProtocolGame::parseWrapItem(NetworkMessage& msg)
@@ -1059,8 +1059,8 @@ void ProtocolGame::parseLookInTrade(NetworkMessage& msg)
 
 void ProtocolGame::parseAddVip(NetworkMessage& msg)
 {
-	std::string name = msg.getString();
-	addGameTask([playerID = player->getID(), name = std::move(name)]() { g_game.playerRequestAddVip(playerID, name); });
+	auto name = msg.getString();
+	addGameTask([playerID = player->getID(), name = std::string{ name }]() { g_game.playerRequestAddVip(playerID, name); });
 }
 
 void ProtocolGame::parseRemoveVip(NetworkMessage& msg)
@@ -1072,10 +1072,10 @@ void ProtocolGame::parseRemoveVip(NetworkMessage& msg)
 void ProtocolGame::parseEditVip(NetworkMessage& msg)
 {
 	uint32_t guid = msg.get<uint32_t>();
-	std::string description = msg.getString();
+	auto description = msg.getString();
 	uint32_t icon = std::min<uint32_t>(10, msg.get<uint32_t>()); // 10 is max icon in 9.63
 	bool notify = msg.getByte() != 0;
-	addGameTask([=, playerID = player->getID(), description = std::move(description)]() { g_game.playerRequestEditVip(playerID, guid, description, icon, notify); });
+	addGameTask([=, playerID = player->getID(), description = std::string{ description }]() { g_game.playerRequestEditVip(playerID, guid, description, icon, notify); });
 }
 
 void ProtocolGame::parseRotateItem(NetworkMessage& msg)
@@ -1090,17 +1090,18 @@ void ProtocolGame::parseRuleViolationReport(NetworkMessage& msg)
 {
 	uint8_t reportType = msg.getByte();
 	uint8_t reportReason = msg.getByte();
-	std::string targetName = msg.getString();
-	std::string comment = msg.getString();
-	std::string translation;
+	auto targetName = msg.getString();
+	auto comment = msg.getString();
+	std::string_view translation;
 	if (reportType == REPORT_TYPE_NAME) {
 		translation = msg.getString();
-	} else if (reportType == REPORT_TYPE_STATEMENT) {
+	}
+	else if (reportType == REPORT_TYPE_STATEMENT) {
 		translation = msg.getString();
 		msg.get<uint32_t>(); // statement id, used to get whatever player have said, we don't log that.
 	}
 
-	addGameTask([=, playerID = player->getID(), targetName = std::move(targetName), comment = std::move(comment), translation = std::move(translation)]() {
+	addGameTask([=, playerID = player->getID(), targetName = std::string{ targetName }, comment = std::string{ comment }, translation = std::string{ translation }]() {
 		g_game.playerReportRuleViolation(playerID, targetName, reportType, reportReason, comment, translation);
 		});
 }
@@ -1108,14 +1109,14 @@ void ProtocolGame::parseRuleViolationReport(NetworkMessage& msg)
 void ProtocolGame::parseBugReport(NetworkMessage& msg)
 {
 	uint8_t category = msg.getByte();
-	std::string message = msg.getString();
+	auto message = msg.getString();
 
 	Position position;
 	if (category == BUG_CATEGORY_MAP) {
 		position = msg.getPosition();
 	}
 
-	addGameTask([=, playerID = player->getID(), message = std::move(message)]() { g_game.playerReportBug(playerID, message, position, category); });
+	addGameTask([=, playerID = player->getID(), message = std::string{ message }]() { g_game.playerReportBug(playerID, message, position, category); });
 }
 
 void ProtocolGame::parseDebugAssert(NetworkMessage& msg)
@@ -1126,11 +1127,11 @@ void ProtocolGame::parseDebugAssert(NetworkMessage& msg)
 
 	debugAssertSent = true;
 
-	std::string assertLine = msg.getString();
-	std::string date = msg.getString();
-	std::string description = msg.getString();
-	std::string comment = msg.getString();
-	addGameTask([playerID = player->getID(), assertLine = std::move(assertLine), date = std::move(date), description = std::move(description), comment = std::move(comment)]() {
+	auto assertLine = msg.getString();
+	auto date = msg.getString();
+	auto description = msg.getString();
+	auto comment = msg.getString();
+	addGameTask([playerID = player->getID(), assertLine = std::string{ assertLine }, date = std::string{ date }, description = std::string{ description }, comment = std::string{ comment }]() {
 		g_game.playerDebugAssert(playerID, assertLine, date, description, comment);
 		});
 }
@@ -2812,8 +2813,7 @@ void ProtocolGame::sendOutfitWindow()
 
 	std::vector<ProtocolOutfit> protocolOutfits;
 	if (player->isAccessPlayer()) {
-		static const std::string gamemasterOutfitName = "Gamemaster";
-		protocolOutfits.emplace_back(gamemasterOutfitName, 75, 0);
+		protocolOutfits.emplace_back("Gamemaster", 75, 0);
 	}
 
 	for (const Outfit& outfit : outfits) {
@@ -3231,8 +3231,8 @@ void ProtocolGame::AddShopItem(NetworkMessage& msg, const ShopInfo& item)
 void ProtocolGame::parseExtendedOpcode(NetworkMessage& msg)
 {
 	uint8_t opcode = msg.getByte();
-	std::string buffer = msg.getString();
+	auto buffer = msg.getString();
 
 	// process additional opcodes via lua script event
-	addGameTask([=, playerID = player->getID(), buffer = std::move(buffer)]() { g_game.parsePlayerExtendedOpcode(playerID, opcode, buffer); });
+	addGameTask([=, playerID = player->getID(), buffer = std::string{ buffer }]() { g_game.parsePlayerExtendedOpcode(playerID, opcode, buffer); });
 }

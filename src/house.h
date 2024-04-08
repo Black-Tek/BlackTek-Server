@@ -1,8 +1,8 @@
 // Copyright 2022 The Forgotten Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_HOUSE_H_EB9732E7771A438F9CD0EFA8CB4C58C4
-#define FS_HOUSE_H_EB9732E7771A438F9CD0EFA8CB4C58C4
+#ifndef FS_HOUSE_H
+#define FS_HOUSE_H
 
 #include <set>
 #include <unordered_set>
@@ -18,7 +18,7 @@ class Player;
 class AccessList
 {
 	public:
-		void parseList(const std::string& list);
+		void parseList(std::string_view list);
 		void addPlayer(const std::string& name);
 		void addGuild(const std::string& name);
 		void addGuildRank(const std::string& name, const std::string& rankName);
@@ -67,7 +67,7 @@ class Door final : public Item
 
 		bool canUse(const Player* player);
 
-		void setAccessList(const std::string& textlist);
+		void setAccessList(std::string_view textlist);
 		bool getAccessList(std::string& list) const;
 
 		void onRemoved() override;
@@ -123,7 +123,7 @@ class House
 		// listId special values:
 		// GUEST_LIST	 guest list
 		// SUBOWNER_LIST subowner list
-		void setAccessList(uint32_t listId, const std::string& textlist);
+		void setAccessList(uint32_t listId, std::string_view textlist);
 		bool getAccessList(uint32_t listId, std::string& list) const;
 
 		bool isInvited(const Player* player) const;

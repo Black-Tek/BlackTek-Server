@@ -1,8 +1,8 @@
 // Copyright 2022 The Forgotten Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_NETWORKMESSAGE_H_B853CFED58D1413A87ACED07B2926E03
-#define FS_NETWORKMESSAGE_H_B853CFED58D1413A87ACED07B2926E03
+#ifndef FS_NETWORKMESSAGE_H
+#define FS_NETWORKMESSAGE_H
 
 #include "const.h"
 
@@ -58,7 +58,7 @@ class NetworkMessage
 			return v;
 		}
 
-		std::string getString(uint16_t stringLen = 0);
+		std::string_view getString(uint16_t stringLen = 0);
 		Position getPosition();
 
 		// skips count unknown/unused bytes in an incoming message
@@ -90,7 +90,7 @@ class NetworkMessage
 		void addBytes(const char* bytes, size_t size);
 		void addPaddingBytes(size_t n);
 
-		void addString(const std::string& value);
+		void addString(std::string_view value);
 
 		void addDouble(double value, uint8_t precision = 2);
 

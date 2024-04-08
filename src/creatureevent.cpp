@@ -38,11 +38,6 @@ LuaScriptInterface& CreatureEvents::getScriptInterface()
 	return scriptInterface;
 }
 
-std::string CreatureEvents::getScriptBaseName() const
-{
-	return "creaturescripts";
-}
-
 Event_ptr CreatureEvents::getEvent(const std::string& nodeName)
 {
 	if (!caseInsensitiveEqual(nodeName, "event")) {
@@ -206,7 +201,7 @@ bool CreatureEvent::configureEvent(const pugi::xml_node& node)
 	return true;
 }
 
-std::string CreatureEvent::getScriptEventName() const
+std::string_view CreatureEvent::getScriptEventName() const
 {
 	//Depending on the type script event name is different
 	switch (type) {
@@ -248,7 +243,7 @@ std::string CreatureEvent::getScriptEventName() const
 
 		case CREATURE_EVENT_NONE:
 		default:
-			return std::string();
+			return "";
 	}
 }
 

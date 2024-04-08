@@ -40,7 +40,7 @@ class Weapons final : public BaseEvents
 
 	private:
 		LuaScriptInterface& getScriptInterface() override;
-		std::string getScriptBaseName() const override;
+		std::string_view getScriptBaseName() const override { return "weapons"; }
 		Event_ptr getEvent(const std::string& nodeName) override;
 		bool registerEvent(Event_ptr event, const pugi::xml_node& node) override;
 
@@ -209,7 +209,7 @@ class Weapon : public Event
 		bool wieldUnproperly = false;
 		std::string vocationString = "";
 
-		std::string getScriptEventName() const override final;
+		std::string_view getScriptEventName() const override final { return "onUseWeapon"; }
 
 		bool executeUseWeapon(Player* player, const LuaVariant& var) const;
 		void onUsedWeapon(Player* player, Item* item, Tile* destTile) const;
