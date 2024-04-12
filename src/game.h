@@ -1,8 +1,8 @@
 // Copyright 2022 The Forgotten Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_GAME_H_3EC96D67DD024E6093B3BAC29B7A6D7F
-#define FS_GAME_H_3EC96D67DD024E6093B3BAC29B7A6D7F
+#ifndef FS_GAME_H
+#define FS_GAME_H
 
 #include "account.h"
 #include "combat.h"
@@ -193,8 +193,11 @@ class Game
 		  * \param pos The position to place the creature
 		  * \param extendedPos If true, the creature will in first-hand be placed 2 tiles away
 		  * \param force If true, placing the creature will not fail because of obstacles (creatures/items)
+		  * \param MagicEffect the magic effect that appears with creature when placed.
 		  */
-		bool placeCreature(Creature* creature, const Position& pos, bool extendedPos = false, bool forced = false);
+		bool placeCreature(Creature* creature, const Position& pos, bool extendedPos = false, bool forced = false, MagicEffectClasses magicEffect = CONST_ME_TELEPORT);
+
+
 
 		/**
 		  * Remove Creature from the map.

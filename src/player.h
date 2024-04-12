@@ -1,8 +1,8 @@
 // Copyright 2022 The Forgotten Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_PLAYER_H_4083D3D3A05B4EDE891B31BB720CD06F
-#define FS_PLAYER_H_4083D3D3A05B4EDE891B31BB720CD06F
+#ifndef FS_PLAYER_H
+#define FS_PLAYER_H
 
 #include "creature.h"
 #include "container.h"
@@ -740,9 +740,9 @@ class Player final : public Creature, public Cylinder
 				client->sendChannelEvent(channelId, playerName, channelEvent);
 			}
 		}
-		void sendCreatureAppear(const Creature* creature, const Position& pos, bool isLogin) {
+		void sendCreatureAppear(const Creature* creature, const Position& pos, MagicEffectClasses magicEffect = CONST_ME_NONE) {
 			if (client) {
-				client->sendAddCreature(creature, pos, creature->getTile()->getClientIndexOfCreature(this, creature), isLogin);
+				client->sendAddCreature(creature, pos, creature->getTile()->getClientIndexOfCreature(this, creature), magicEffect);
 			}
 		}
 		void sendCreatureMove(const Creature* creature, const Position& newPos, int32_t newStackPos, const Position& oldPos, int32_t oldStackPos, bool teleport) {
@@ -799,7 +799,7 @@ class Player final : public Creature, public Cylinder
 				}
 
 				if (visible) {
-					client->sendAddCreature(creature, creature->getPosition(), stackpos, false);
+					client->sendAddCreature(creature, creature->getPosition(), stackpos);
 				} else {
 					client->sendRemoveTileCreature(creature, creature->getPosition(), stackpos);
 				}
