@@ -107,7 +107,8 @@ void Npc::reload()
 	SpectatorVec players;
 	g_game.map.getSpectators(players, getPosition(), true, true);
 	for (const auto& player : players) {
-		spectators.insert(player->getPlayer());
+		assert(dynamic_cast<Player*>(player) != nullptr);
+		spectators.insert(static_cast<Player*>(player));
 	}
 
 	const bool hasSpectators = !spectators.empty();
@@ -252,7 +253,8 @@ void Npc::onCreatureAppear(Creature* creature, bool isLogin)
 		SpectatorVec players;
 		g_game.map.getSpectators(players, getPosition(), true, true);
 		for (const auto& player : players) {
-			spectators.insert(player->getPlayer());
+			assert(dynamic_cast<Player*>(player) != nullptr);
+			spectators.insert(static_cast<Player*>(player));
 		}
 
 		const bool hasSpectators = !spectators.empty();
