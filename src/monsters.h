@@ -1,8 +1,8 @@
 // Copyright 2022 The Forgotten Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_MONSTERS_H_776E8327BCE2450EB7C4A260785E6C0D
-#define FS_MONSTERS_H_776E8327BCE2450EB7C4A260785E6C0D
+#ifndef FS_MONSTERS_H
+#define FS_MONSTERS_H
 
 #include "creature.h"
 
@@ -45,6 +45,8 @@ struct summonBlock_t {
 	uint32_t chance;
 	uint32_t speed;
 	uint32_t max;
+	MagicEffectClasses effect = CONST_ME_TELEPORT;
+	MagicEffectClasses masterEffect = CONST_ME_NONE;
 	bool force = false;
 };
 
