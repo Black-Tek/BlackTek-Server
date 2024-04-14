@@ -1,8 +1,8 @@
 // Copyright 2022 The Forgotten Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_LUASCRIPT_H_5344B2BC907E46E3943EA78574A212D8
-#define FS_LUASCRIPT_H_5344B2BC907E46E3943EA78574A212D8
+#ifndef FS_LUASCRIPT_H
+#define FS_LUASCRIPT_H
 
 #if __has_include("luajit/lua.hpp")
 #include <luajit/lua.hpp>
@@ -1095,6 +1095,8 @@ class LuaScriptInterface
 
 		static int luaNpcGetSpeechBubble(lua_State* L);
 		static int luaNpcSetSpeechBubble(lua_State* L);
+
+		static int luaNpcGetSpectators(lua_State* L);
 
 		// Guild
 		static int luaGuildCreate(lua_State* L);
