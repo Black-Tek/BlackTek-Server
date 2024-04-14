@@ -14607,8 +14607,7 @@ int LuaScriptInterface::luaLootAddChildLoot(lua_State* L)
 		if (childLoot) {
 			loot->lootBlock.childLoot.push_back(childLoot->lootBlock);
 			pushBoolean(L, true);
-		}
-		else {
+		} else {
 			pushBoolean(L, false);
 		}
 	} else {
