@@ -468,15 +468,10 @@ class LuaScriptInterface
 		static int luaIsMoveable(lua_State* L);
 		static int luaIsValidUID(lua_State* L);
 
-		//container
-		static int luaDoAddContainerItem(lua_State* L);
-
-		//
+		//combat stuff
 		static int luaCreateCombatArea(lua_State* L);
-
 		static int luaDoAreaCombat(lua_State* L);
 		static int luaDoTargetCombat(lua_State* L);
-
 		static int luaDoChallengeCreature(lua_State* L);
 
 		static int luaDebugPrint(lua_State* L);
