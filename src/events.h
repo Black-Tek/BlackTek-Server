@@ -1,8 +1,8 @@
 // Copyright 2022 The Forgotten Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_EVENTS_H_BD444CC0EE167E5777E4C90C766B36DC
-#define FS_EVENTS_H_BD444CC0EE167E5777E4C90C766B36DC
+#ifndef FS_EVENTS_H
+#define FS_EVENTS_H
 
 #include "luascript.h"
 #include "const.h"
@@ -30,6 +30,9 @@ class Events
 		int32_t partyOnLeave = -1;
 		int32_t partyOnDisband = -1;
 		int32_t partyOnShareExperience = -1;
+		int32_t partyOnInvite = -1;
+		int32_t partyOnRevokeInvitation = -1;
+		int32_t partyOnPassLeadership = -1;
 
 		// Player
 		int32_t playerOnBrowseField = -1;
@@ -73,6 +76,9 @@ class Events
 		bool eventPartyOnLeave(Party* party, Player* player);
 		bool eventPartyOnDisband(Party* party);
 		void eventPartyOnShareExperience(Party* party, uint64_t& exp);
+		bool eventPartyOnInvite(Party* party, Player* player);
+		bool eventPartyOnRevokeInvitation(Party* party, Player* player);
+		bool eventPartyOnPassLeadership(Party* party, Player* player);
 
 		// Player
 		bool eventPlayerOnBrowseField(Player* player, const Position& position);

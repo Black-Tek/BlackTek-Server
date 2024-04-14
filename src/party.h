@@ -1,8 +1,8 @@
 // Copyright 2022 The Forgotten Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_PARTY_H_41D4D7CF417C4CC99FAE94D552255044
-#define FS_PARTY_H_41D4D7CF417C4CC99FAE94D552255044
+#ifndef FS_PARTY_H
+#define FS_PARTY_H
 
 #include "player.h"
 #include "monsters.h"
@@ -48,7 +48,7 @@ class Party
 		bool invitePlayer(Player& player);
 		bool joinParty(Player& player);
 		void revokeInvitation(Player& player);
-		bool passPartyLeadership(Player* player);
+		bool passPartyLeadership(Player* player, bool forceRemove = false);
 		bool leaveParty(Player* player, bool forceRemove = false);
 
 		bool removeInvite(Player& player, bool removeFromPlayer = true);
