@@ -1,8 +1,8 @@
 // Copyright 2022 The Forgotten Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_ENUMS_H_
-#define FS_ENUMS_H_
+#ifndef FS_ENUMS_H
+#define FS_ENUMS_H
 
 enum RuleViolationType_t : uint8_t {
 	REPORT_TYPE_NAME = 0,
@@ -77,6 +77,8 @@ enum itemAttrTypes : uint32_t {
 	ITEM_ATTRIBUTE_WRAPID = 1 << 24,
 	ITEM_ATTRIBUTE_STOREITEM = 1 << 25,
 	ITEM_ATTRIBUTE_ATTACK_SPEED = 1 << 26,
+	ITEM_ATTRIBUTE_CLASSIFICATION = 1 << 27,
+	ITEM_ATTRIBUTE_TIER = 1 << 28,
 
 	ITEM_ATTRIBUTE_CUSTOM = 1U << 31
 };

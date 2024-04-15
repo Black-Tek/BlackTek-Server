@@ -1498,6 +1498,9 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(ITEM_ATTRIBUTE_PLURALNAME)
 	registerEnum(ITEM_ATTRIBUTE_WEIGHT)
 	registerEnum(ITEM_ATTRIBUTE_ATTACK)
+	registerEnum(ITEM_ATTRIBUTE_ATTACK_SPEED)
+	registerEnum(ITEM_ATTRIBUTE_CLASSIFICATION)
+	registerEnum(ITEM_ATTRIBUTE_TIER)
 	registerEnum(ITEM_ATTRIBUTE_DEFENSE)
 	registerEnum(ITEM_ATTRIBUTE_EXTRADEFENSE)
 	registerEnum(ITEM_ATTRIBUTE_ARMOR)
@@ -2741,6 +2744,8 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("ItemType", "getAttack", LuaScriptInterface::luaItemTypeGetAttack);
 	registerMethod("ItemType", "getAttackSpeed", LuaScriptInterface::luaItemTypeGetAttackSpeed);
+	registerMethod("ItemType", "getClassification", LuaScriptInterface::luaItemTypeGetClassification);
+	registerMethod("ItemType", "getTier", LuaScriptInterface::luaItemTypeGetTier);
 	registerMethod("ItemType", "getDefense", LuaScriptInterface::luaItemTypeGetDefense);
 	registerMethod("ItemType", "getExtraDefense", LuaScriptInterface::luaItemTypeGetExtraDefense);
 	registerMethod("ItemType", "getArmor", LuaScriptInterface::luaItemTypeGetArmor);
@@ -12472,6 +12477,32 @@ int LuaScriptInterface::luaItemTypeGetAttackSpeed(lua_State* L)
 	if (itemType) {
 		lua_pushnumber(L, itemType->attackSpeed);
 	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemTypeGetClassification(lua_State* L)
+{
+	// itemType:getClassification()
+	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
+	if (itemType) {
+		lua_pushnumber(L, itemType->classification);
+	}
+	else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemTypeGetTier(lua_State* L)
+{
+	// itemType:getTier()
+	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
+	if (itemType) {
+		lua_pushnumber(L, itemType->tier);
+	}
+	else {
 		lua_pushnil(L);
 	}
 	return 1;
