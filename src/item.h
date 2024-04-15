@@ -199,6 +199,7 @@ class ItemAttributes
 		void setDecaying(ItemDecayState_t decayState) {
 			setIntAttr(ITEM_ATTRIBUTE_DECAYSTATE, decayState);
 		}
+
 		ItemDecayState_t getDecaying() const {
 			return static_cast<ItemDecayState_t>(getIntAttr(ITEM_ATTRIBUTE_DECAYSTATE));
 		}
@@ -798,6 +799,13 @@ class Item : virtual public Thing
 				return DECAYING_FALSE;
 			}
 			return static_cast<ItemDecayState_t>(getIntAttr(ITEM_ATTRIBUTE_DECAYSTATE));
+		}
+
+		int32_t getDecayTime() const {
+			if (hasAttribute(ITEM_ATTRIBUTE_DURATION)) {
+				return getIntAttr(ITEM_ATTRIBUTE_DURATION);
+			}
+			return items[id].decayTime;
 		}
 
 		void setDecayTo(int32_t decayTo) {
