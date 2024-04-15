@@ -48,3 +48,27 @@ function Party:onShareExperience(exp)
 	local onShareExperience = EventCallback.onShareExperience
 	return onShareExperience and onShareExperience(self, exp, rawExp) or exp
 end
+
+function Party:onInvite(player)
+	local onInvite = EventCallback.onInvite
+	if onInvite then
+		return onInvite(self, player)
+	end
+	return true
+end
+
+function Party:onRevokeInvitation(player)
+	local onRevokeInvitation = EventCallback.onRevokeInvitation
+	if onRevokeInvitation then
+		return onRevokeInvitation(self, player)
+	end
+	return true
+end
+
+function Party:onPassLeadership(player)
+	local onPassLeadership = EventCallback.onPassLeadership
+	if onPassLeadership then
+		return onPassLeadership(self, player)
+	end
+	return true
+end
