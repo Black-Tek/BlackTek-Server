@@ -54,6 +54,12 @@ bool Events::load()
 				info.creatureOnTargetCombat = event;
 			} else if (methodName == "onHear") {
 				info.creatureOnHear = event;
+			} else if (methodName == "onAttack") {
+				info.creatureOnAttack = event;
+			} else if (methodName == "onMissedAttack") {
+				info.creatureOnMissedAttack = event;
+			} else if (methodName == "onBlockedAttack") {
+				info.creatureOnBlockedAttack = event;
 			} else {
 				std::cout << "[Warning - Events::load] Unknown creature method: " << methodName << std::endl;
 			}
@@ -297,6 +303,106 @@ void Events::eventCreatureOnHear(Creature* creature, Creature* speaker, const st
 
 	LuaScriptInterface::pushString(L, words);
 	lua_pushnumber(L, type);
+
+	scriptInterface.callVoidFunction(4);
+}
+
+int32_t Events::eventCreatureOnAttack(Creature* creature, Creature* target, CombatOrigin origin, int32_t hitChance)
+{
+	// Creature:onAttack(target, origin, hitChance)
+	if (info.creatureOnAttack == -1) {
+		return -1;
+	}
+
+	if (!scriptInterface.reserveScriptEnv()) {
+		std::cout << "[Error - Events::eventCreatureOnAttack] Call stack overflow" << std::endl;
+		return -1;
+	}
+
+	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+	env->setScriptId(info.creatureOnAttack, &scriptInterface);
+
+	lua_State* L = scriptInterface.getLuaState();
+	scriptInterface.pushFunction(info.creatureOnAttack);
+
+	LuaScriptInterface::pushUserdata<Creature>(L, creature);
+	LuaScriptInterface::setCreatureMetatable(L, -1, creature);
+
+	LuaScriptInterface::pushUserdata<Creature>(L, target);
+	LuaScriptInterface::setCreatureMetatable(L, -1, target);
+
+	lua_pushnumber(L, origin);
+	lua_pushnumber(L, hitChance);
+
+	int32_t result = -1;
+
+	if (scriptInterface.protectedCall(L, 4, 1) != 0) {
+		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
+	}
+	else {
+		result = LuaScriptInterface::getNumber<int32_t>(L, -1);
+		lua_pop(L, 1);
+	}
+
+	scriptInterface.resetScriptEnv();
+	return result;
+}
+
+void Events::eventCreatureOnMissedAttack(Creature* creature, Creature* target, CombatType_t combatType)
+{
+	// Creature:onMissedAttack(target, combatType)
+	if (info.creatureOnMissedAttack == -1) {
+		return;
+	}
+
+	if (!scriptInterface.reserveScriptEnv()) {
+		std::cout << "[Error - Events::eventCreatureOnMissedAttack] Call stack overflow" << std::endl;
+		return;
+	}
+
+	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+	env->setScriptId(info.creatureOnMissedAttack, &scriptInterface);
+
+	lua_State* L = scriptInterface.getLuaState();
+	scriptInterface.pushFunction(info.creatureOnMissedAttack);
+
+	LuaScriptInterface::pushUserdata<Creature>(L, creature);
+	LuaScriptInterface::setCreatureMetatable(L, -1, creature);
+
+	LuaScriptInterface::pushUserdata<Creature>(L, target);
+	LuaScriptInterface::setCreatureMetatable(L, -1, target);
+
+	lua_pushnumber(L, combatType);
+
+	scriptInterface.callVoidFunction(3);
+}
+
+void Events::eventCreatureOnBlockedAttack(Creature* creature, Creature* target, CombatOrigin origin, CombatType_t combatType)
+{
+	// Creature:onBlockedAttack(target, origin, combatType)
+	if (info.creatureOnBlockedAttack == -1) {
+		return;
+	}
+
+	if (!scriptInterface.reserveScriptEnv()) {
+		std::cout << "[Error - Events::eventCreatureOnBlockedAttack] Call stack overflow" << std::endl;
+		return;
+	}
+
+	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+	env->setScriptId(info.creatureOnBlockedAttack, &scriptInterface);
+
+	lua_State* L = scriptInterface.getLuaState();
+	scriptInterface.pushFunction(info.creatureOnBlockedAttack);
+
+	LuaScriptInterface::pushUserdata<Creature>(L, creature);
+	LuaScriptInterface::setCreatureMetatable(L, -1, creature);
+
+	LuaScriptInterface::pushUserdata<Creature>(L, target);
+	LuaScriptInterface::setCreatureMetatable(L, -1, target);
+
+	lua_pushnumber(L, origin);
+	lua_pushnumber(L, combatType);
 
 	scriptInterface.callVoidFunction(4);
 }

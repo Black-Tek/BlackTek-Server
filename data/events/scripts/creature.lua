@@ -34,3 +34,25 @@ function Creature:onHear(speaker, words, type)
 		onHear(self, speaker, words, type)
 	end
 end
+
+function Creature:onAttack(target, origin, hitchance)
+	local onAttack = EventCallback.onAttack
+	if onAttack then
+		return onAtack(self, target, origin, hitchance)
+	end
+	if hitChance == -1 then return 1 end
+end
+
+function Creature:onMissedAttack(target, combatType)
+	local onMissedAttack = EventCallback.onMissedAttack
+	if onMissedAttack then
+		onMissedAttack(self, target, combatType)
+	end
+end
+
+function Creature:onBlockedAttack(target, origin, combatType)
+	local onBlockedAttack = EventCallback.onBlockedAttack
+	if onBlockedAttack then
+		onBlockedAttack(self, target, origin, combatType)
+	end
+end

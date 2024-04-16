@@ -28,7 +28,10 @@ ec.onChangeMount = {}
 ec.onAreaCombat = {returnValue=true}
 ec.onTargetCombat = {returnValue=true}
 ec.onHear = {}
-ec.onChangeZone = {}
+ec.onAttack = {}
+ec.onMissedAttack = {}
+ec.onBlockedAttack = {}
+-- ec.onChangeZone = {} // todo: missing event from main.
 -- Party
 ec.onJoin = {}
 ec.onLeave = {}

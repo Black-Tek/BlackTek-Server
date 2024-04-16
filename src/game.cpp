@@ -3861,6 +3861,14 @@ bool Game::combatBlockHit(CombatDamage& damage, Creature* attacker, Creature* ta
 		damage.primary.value = -damage.primary.value;
 		primaryBlockType = target->blockHit(attacker, damage.primary.type, damage.primary.value, checkDefense, checkArmor, field, ignoreResistances);
 
+		if (primaryBlockType == BLOCK_DEFENSE || primaryBlockType == BLOCK_ARMOR || primaryBlockType == BLOCK_IMMUNITY) {
+			g_events->eventCreatureOnBlockedAttack(target, attacker, damage.origin, damage.primary.type);
+		}
+
+		if (primaryBlockType == BLOCK_DEFENSE) {
+			g_events->eventCreatureOnMissedAttack(target, attacker, damage.primary.type);
+		}
+
 		damage.primary.value = -damage.primary.value;
 		sendBlockEffect(primaryBlockType, damage.primary.type, target->getPosition());
 	} else {
@@ -3870,6 +3878,15 @@ bool Game::combatBlockHit(CombatDamage& damage, Creature* attacker, Creature* ta
 	if (damage.secondary.type != COMBAT_NONE) {
 		damage.secondary.value = -damage.secondary.value;
 		secondaryBlockType = target->blockHit(attacker, damage.secondary.type, damage.secondary.value, false, false, field, ignoreResistances);
+
+		if (secondaryBlockType == BLOCK_DEFENSE || secondaryBlockType == BLOCK_ARMOR || secondaryBlockType == BLOCK_IMMUNITY) {
+			g_events->eventCreatureOnBlockedAttack(target, attacker, damage.origin, damage.primary.type);
+		}
+
+		if (secondaryBlockType == BLOCK_DEFENSE) {
+			g_events->eventCreatureOnMissedAttack(target, attacker, damage.primary.type);
+		}
+
 		damage.secondary.value = -damage.secondary.value;
 		sendBlockEffect(secondaryBlockType, damage.secondary.type, target->getPosition());
 	} else {

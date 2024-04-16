@@ -24,6 +24,9 @@ class Events
 		int32_t creatureOnAreaCombat = -1;
 		int32_t creatureOnTargetCombat = -1;
 		int32_t creatureOnHear = -1;
+		int32_t creatureOnAttack = -1;
+		int32_t creatureOnMissedAttack = -1;
+		int32_t creatureOnBlockedAttack = -1;
 
 		// Party
 		int32_t partyOnJoin = -1;
@@ -70,6 +73,9 @@ class Events
 		ReturnValue eventCreatureOnAreaCombat(Creature* creature, Tile* tile, bool aggressive);
 		ReturnValue eventCreatureOnTargetCombat(Creature* creature, Creature* target);
 		void eventCreatureOnHear(Creature* creature, Creature* speaker, const std::string& words, SpeakClasses type);
+		int32_t eventCreatureOnAttack(Creature* creature, Creature* target, CombatOrigin origin, int32_t hitChance);
+		void eventCreatureOnMissedAttack(Creature* creature, Creature* target, CombatType_t combatType);
+		void eventCreatureOnBlockedAttack(Creature* creature, Creature* target, CombatOrigin origin, CombatType_t combatType);
 
 		// Party
 		bool eventPartyOnJoin(Party* party, Player* player);
