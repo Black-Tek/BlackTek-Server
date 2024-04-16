@@ -233,3 +233,11 @@ function Player:onInventoryUpdate(item, slot, equip)
 		onInventoryUpdate(self, item, slot, equip)
 	end
 end
+
+function Player:onRotateItem(item)
+	local onRotateItem = EventCallback.onRotateItem
+	if onRotateItem then
+		return onRotateItem(self, item)
+	end
+	return true
+end
