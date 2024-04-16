@@ -38,7 +38,7 @@ end
 function Creature:onAttack(target, origin, hitchance)
 	local onAttack = EventCallback.onAttack
 	if onAttack then
-		return onAtack(self, target, origin, hitchance)
+		return onAttack(self, target, origin, hitchance)
 	end
 	if hitChance == -1 then return 1 end
 end
