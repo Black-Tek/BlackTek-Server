@@ -6,6 +6,7 @@
 #include <boost/range/adaptor/reversed.hpp>
 #include <fmt/format.h>
 
+#include "matrixarea.h"
 #include "luascript.h"
 #include "chat.h"
 #include "player.h"

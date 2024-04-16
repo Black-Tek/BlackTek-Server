@@ -10,7 +10,7 @@
 #include "weapons.h"
 #include "configmanager.h"
 #include "game.h"
-
+#include "matrixarea.h"
 #include "pugicast.h"
 
 extern Game g_game;
