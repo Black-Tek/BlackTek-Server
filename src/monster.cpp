@@ -1180,8 +1180,8 @@ void Monster::pushCreatures(Tile* tile)
 
 bool Monster::getNextStep(Direction& direction, uint32_t& flags)
 {
-	if (!walkingToSpawn && (isIdle || getHealth() <= 0)) {
-		//we don't have anyone watching, might as well stop walking
+	if (!walkingToSpawn && (isIdle || isDead())) {
+		// we don't have anyone watching, might as well stop walking
 		eventWalk = 0;
 		return false;
 	}
@@ -1190,25 +1190,34 @@ bool Monster::getNextStep(Direction& direction, uint32_t& flags)
 	if (!walkingToSpawn && (!followCreature || !hasFollowPath) && (!isSummon() || !isMasterInRange)) {
 		if (getTimeSinceLastMove() >= 1000) {
 			randomStepping = true;
-			//choose a random direction
+			// choose a random direction
 			result = getRandomStep(getPosition(), direction);
 		}
-	} else if ((isSummon() && isMasterInRange) || followCreature || walkingToSpawn) {
-		randomStepping = false;
-		result = Creature::getNextStep(direction, flags);
-		if (result) {
-			flags |= FLAG_PATHFINDING;
-		} else {
-			if (ignoreFieldDamage) {
-				ignoreFieldDamage = false;
-				updateMapCache();
+	}
+	else if ((isSummon() && isMasterInRange) || followCreature || walkingToSpawn) {
+		if (!hasFollowPath && getMaster() && !getMaster()->getPlayer()) {
+			randomStepping = true;
+			result = getRandomStep(getPosition(), direction);
+		}
+		else {
+			randomStepping = false;
+			result = Creature::getNextStep(direction, flags);
+			if (result) {
+				flags |= FLAG_PATHFINDING;
 			}
-			//target dancing
-			if (attackedCreature && attackedCreature == followCreature) {
-				if (isFleeing()) {
-					result = getDanceStep(getPosition(), direction, false, false);
-				} else if (mType->info.staticAttackChance < static_cast<uint32_t>(uniform_random(1, 100))) {
-					result = getDanceStep(getPosition(), direction);
+			else {
+				if (ignoreFieldDamage) {
+					ignoreFieldDamage = false;
+					updateMapCache();
+				}
+				// target dancing
+				if (attackedCreature && attackedCreature == followCreature) {
+					if (isFleeing()) {
+						result = getDanceStep(getPosition(), direction, false, false);
+					}
+					else if (mType->info.staticAttackChance < static_cast<uint32_t>(uniform_random(1, 100))) {
+						result = getDanceStep(getPosition(), direction);
+					}
 				}
 			}
 		}
