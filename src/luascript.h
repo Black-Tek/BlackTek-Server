@@ -40,6 +40,7 @@ class Condition;
 class Npc;
 class Monster;
 class InstantSpell;
+class Spell;
 
 enum {
 	EVENT_ID_LOADING = 1,
@@ -390,6 +391,7 @@ class LuaScriptInterface
 		static void pushCombatDamage(lua_State* L, const CombatDamage& damage);
 		static void pushInstantSpell(lua_State* L, const InstantSpell& spell);
 		static void pushPosition(lua_State* L, const Position& position, int32_t stackpos = 0);
+		static void pushSpell(lua_State* L, const Spell& spell);
 		static void pushOutfit(lua_State* L, const Outfit_t& outfit);
 		static void pushOutfit(lua_State* L, const Outfit* outfit);
 		static void pushMount(lua_State* L, const Mount* mount);

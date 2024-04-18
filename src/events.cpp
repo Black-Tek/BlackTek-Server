@@ -122,6 +122,8 @@ bool Events::load()
 				info.playerOnInventoryUpdate = event;
 			} else if (methodName == "onRotateItem") {
 				info.playerOnRotateItem = event;
+			} else if (methodName == "onSpellTry") {
+				info.playerOnSpellTry = event;
 			} else {
 				std::cout << "[Warning - Events::load] Unknown player method: " << methodName << std::endl;
 			}
@@ -1240,6 +1242,32 @@ void Events::eventPlayerOnRotateItem(Player* player, Item* item)
 	LuaScriptInterface::setItemMetatable(L, -1, item);
 
 	scriptInterface.callFunction(2);
+}
+
+bool Events::eventPlayerOnSpellTry(Player* player, const Spell* spell, SpellType_t spellType)
+{
+	// Player:onSpellTry(spell, spellType)
+	if (info.playerOnSpellTry == -1) {
+		return true;
+	}
+
+	if (!scriptInterface.reserveScriptEnv()) {
+		std::cout << "[Error - Events::eventPlayerOnSpellTry] Call stack overflow" << std::endl;
+		return false;
+	}
+
+	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+	env->setScriptId(info.playerOnSpellTry, &scriptInterface);
+
+	lua_State* L = scriptInterface.getLuaState();
+	scriptInterface.pushFunction(info.playerOnSpellTry);
+
+	LuaScriptInterface::pushUserdata<Player>(L, player);
+	LuaScriptInterface::setMetatable(L, -1, "Player");
+
+	LuaScriptInterface::pushSpell(L, *spell);
+
+	return scriptInterface.callFunction(2);
 }
 
 

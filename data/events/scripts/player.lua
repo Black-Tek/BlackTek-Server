@@ -241,3 +241,11 @@ function Player:onRotateItem(item)
 	end
 	return true
 end
+
+function Player:onSpellTry(spell, spellType)
+	local onSpellTry = EventCallback.onSpellTry
+	if onSpellTry then
+		return onSpellTry(self, spell, spellType)
+	end
+	return true
+end

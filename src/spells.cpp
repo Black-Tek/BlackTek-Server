@@ -2,7 +2,7 @@
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
 #include "otpch.h"
-
+#include "events.h"
 #include "combat.h"
 #include "configmanager.h"
 #include "game.h"
@@ -17,6 +17,7 @@ extern Monsters g_monsters;
 extern Vocations g_vocations;
 extern ConfigManager g_config;
 extern LuaEnvironment g_luaEnvironment;
+extern Events* g_events;
 
 Spells::Spells()
 {
@@ -678,6 +679,10 @@ bool Spell::playerInstantSpellCheck(Player* player, const Position& toPos)
 		return false;
 	}
 
+	if (!g_events->eventPlayerOnSpellTry(player, this, SPELL_INSTANT)) {
+		return false;
+	}
+
 	return true;
 }
 
@@ -747,6 +752,11 @@ bool Spell::playerRuneSpellCheck(Player* player, const Position& toPos)
 			return false;
 		}
 	}
+
+	if (!g_events->eventPlayerOnSpellTry(player, this, SPELL_RUNE)) {
+		return false;
+	}
+
 	return true;
 }
 

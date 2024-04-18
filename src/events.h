@@ -11,6 +11,7 @@
 class Party;
 class ItemType;
 class Tile;
+class Spell;
 
 enum class EventInfoId {
 	CREATURE_ONHEAR
@@ -58,6 +59,7 @@ class Events
 		int32_t playerOnWrapItem = -1;
 		int32_t playerOnInventoryUpdate = -1;
 		int32_t playerOnRotateItem = -1;
+		int32_t playerOnSpellTry = -1;
 
 		// Monster
 		int32_t monsterOnDropLoot = -1;
@@ -108,6 +110,7 @@ class Events
 		void eventPlayerOnWrapItem(Player* player, Item* item);
 		void eventPlayerOnInventoryUpdate(Player* player, Item* item, slots_t slot, bool equip);
 		void eventPlayerOnRotateItem(Player* player, Item* item);
+		bool eventPlayerOnSpellTry(Player* player, const Spell* spell, SpellType_t spellType);
 
 		// Monster
 		void eventMonsterOnDropLoot(Monster* monster, Container* corpse);

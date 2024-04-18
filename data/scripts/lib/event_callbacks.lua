@@ -62,6 +62,7 @@ ec.onGainSkillTries = {[3] = 1}
 ec.onWrapItem = {}
 ec.onInventoryUpdate = {}
 ec.onRotateItem = {}
+ec.onSpellTry = {}
 -- Monster
 ec.onDropLoot = {}
 ec.onSpawn = {}
