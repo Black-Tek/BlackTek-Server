@@ -60,6 +60,13 @@ void printXMLError(const std::string& where, const std::string& fileName, const 
 	std::cout << '^' << std::endl;
 }
 
+const std::vector<Direction>& getShuffleDirections()
+{
+	static std::vector<Direction> dirList{ DIRECTION_NORTH, DIRECTION_WEST, DIRECTION_EAST, DIRECTION_SOUTH };
+	std::shuffle(dirList.begin(), dirList.end(), getRandomGenerator());
+	return dirList;
+}
+
 static uint32_t circularShift(int bits, uint32_t value)
 {
 	return (value << bits) | (value >> (32 - bits));
