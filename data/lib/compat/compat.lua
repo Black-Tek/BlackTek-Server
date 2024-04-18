@@ -1517,3 +1517,9 @@ function table.maxn(t)
 	end
 	return max
 end
+
+do
+	local getmetatable = getmetatable
+
+	function isClass(obj, class) return getmetatable(obj) == class end
+end
