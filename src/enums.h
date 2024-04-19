@@ -610,7 +610,7 @@ struct Reflect {
 
 	Reflect& operator+=(const Reflect& other) {
 		percent += other.percent;
-		chance = std::min(100, chance + other.chance);
+		chance = static_cast<uint16_t>(std::min(100, chance + other.chance));
 		return *this;
 	}
 
