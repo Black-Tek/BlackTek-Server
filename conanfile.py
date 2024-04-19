@@ -1,6 +1,6 @@
 from conan import ConanFile
 
-class TitanSDK(ConanFile):
+class BlackTekServerSDK(ConanFile):
     settings = ("os", "compiler", "build_type", "arch")
     generators = ("PremakeDeps")
 

@@ -1,16 +1,16 @@
 include "packages/conandeps.premake5.lua"
 
-workspace "Titan"
+workspace "Black-Tek-Server"
    configurations { "Debug", "Release"}
    platforms { "64", "32"}
    location "./projectfiles"
    editorintegration "On"
 
-   project        "Titan"
+   project        "Black-Tek-Server"
       kind        "ConsoleApp"
       language    "C++"
       cppdialect  "C++20"
-      targetdir   "build/%{cfg.buildcfg}/bin"
+      targetdir   "%{wks.location}"
       objdir      "build/%{cfg.buildcfg}/obj"
       location    "./projectfiles"
       files { "src/**.cpp", "src/**.h" }
@@ -65,5 +65,3 @@ workspace "Titan"
 
       conan_setup()
       intrinsics   "On"
-
-
