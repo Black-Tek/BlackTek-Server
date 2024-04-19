@@ -25,11 +25,11 @@ loginProtocolPort = 7171
 gameProtocolPort = 7172
 statusProtocolPort = 7171
 maxPlayers = 0
-motd = "Welcome to The Forgotten Server!"
+motd = "Welcome to The Black Tek Server!"
 onePlayerOnlinePerAccount = true
 allowClones = false
 allowWalkthrough = true
-serverName = "Forgotten"
+serverName = "Black Tek"
 statusTimeout = 5000
 replaceKickOnLogin = true
 maxPacketsPerSecond = 25
@@ -67,9 +67,9 @@ maxMarketOffersAtATimePerPlayer = 100
 
 -- MySQL
 mysqlHost = "127.0.0.1"
-mysqlUser = "forgottenserver"
+mysqlUser = "blacktekserver"
 mysqlPass = ""
-mysqlDatabase = "forgottenserver"
+mysqlDatabase = "blacktekserver"
 mysqlPort = 3306
 mysqlSock = ""
 
@@ -163,5 +163,5 @@ startupDatabaseOptimization = false
 -- Status Server Information
 ownerName = ""
 ownerEmail = ""
-url = "https://otland.net/"
-location = "Sweden"
+url = ""
+location = ""
