@@ -1,18 +1,24 @@
-forgottenserver [![Build Status](https://github.com/otland/forgottenserver/actions/workflows/build-vcpkg.yml/badge.svg?branch=master)](https://github.com/otland/forgottenserver/actions/workflows/build-vcpkg.yml "vcpkg build status") [![Build Status](https://github.com/otland/forgottenserver/actions/workflows/docker-image.yml/badge.svg?branch=master)](https://github.com/otland/forgottenserver/actions/workflows/docker-image.yml "Docker image build status")
+Black Tek Server
 ===============
 
-The Forgotten Server is a free and open-source MMORPG server emulator written in C++. It is a fork of the [OpenTibia Server](https://github.com/opentibia/server) project. To connect to the server, you can use [OTClient](https://github.com/edubart/otclient).
+Black Tek Server is a free and open-source MMORPG server emulator written in C++. It is a fork of the [TheForgottenServer](https://github.com/otland/forgottenserver) project. To connect to the server, you can use [OTClient Redemption](https://github.com/mehah/otclient).
 
 ### Getting Started
+If you don't want to bother with source code or compiling. You can download from our release sections the binaries with everything needed ready to go.
 
-* [Compiling](https://github.com/otland/forgottenserver/wiki/Compiling), alternatively download [releases](https://github.com/otland/forgottenserver/releases)
-* [Scripting Reference](https://github.com/otland/forgottenserver/wiki/Script-Interface)
-* [Contributing](https://github.com/otland/forgottenserver/wiki/Contributing)
+#### Compiling 
+To compile using the [default build system](https://premake.github.io/) and [package manager](https://conan.io/) you will need [python](https://www.python.org/) at least version [3.10.14](https://www.python.org/downloads/release/python-31014/) installed. Once you have installed python successfully, you need to run the following command to install Conan the package manager:
+
+    pip install conan
+
+You need to make sure you have full rights in the terminal while executing the command.
+Window's users should run as administrator.
+Linux users need to sudo.
+
+If you are having issues with linux please check our troubleshooting guide [here](). 
+
+Once you have successfully installed Conan, you can now run the script "setup_build.py" and wait for it to finish its process. Once it has closed, you will have your project files (in windows they are in folder "projectfiles") for use in compiling. If you are using visual studio, you can open your solution, select your preferred configuration, and build. 
+For linux users, your makefile's are ready to be used via terminal or your favorite IDE. 
 
 ### Support
-
-If you need help, please visit the [support forum on OTLand](https://otland.net/forums/support.16/). Our issue tracker is not a support forum, and using it as one will result in your issue being closed. If you were unable to get assistance in the support forum, you should consider [becoming a premium user on OTLand](https://otland.net/account/upgrades) which grants you access to the premium support forum and supports OTLand financially.
-
 ### Issues
-
-We use the [issue tracker on GitHub](https://github.com/otland/forgottenserver/issues). Keep in mind that everyone who is watching the repository gets notified by e-mail when there is activity, so be thoughtful and avoid writing comments that aren't meaningful for an issue (e.g. "+1"). If you'd like for an issue to be fixed faster, you should either fix it yourself and submit a pull request, or place a bounty on the issue.
