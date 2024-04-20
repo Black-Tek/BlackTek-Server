@@ -816,13 +816,9 @@ void Monster::doAttacking(uint32_t interval)
 				}
 
 				if (spellBlock.isMelee) {
-					if (g_events->eventCreatureOnAttack(this, attackedCreature, ORIGIN_MELEE, -1) == -1) {
-						continue;
-					}
+					g_events->eventCreatureOnAttack(this, attackedCreature, ORIGIN_MELEE);
 				} else {
-					if (g_events->eventCreatureOnAttack(this, attackedCreature, ORIGIN_SPELL, -1) == -1) {
-						continue;
-					}
+					g_events->eventCreatureOnAttack(this, attackedCreature, ORIGIN_SPELL);
 				}
 
 				minCombatValue = spellBlock.minCombatValue;

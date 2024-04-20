@@ -311,16 +311,16 @@ void Events::eventCreatureOnHear(Creature* creature, Creature* speaker, const st
 	scriptInterface.callVoidFunction(4);
 }
 
-int32_t Events::eventCreatureOnAttack(Creature* creature, Creature* target, CombatOrigin origin, int32_t hitChance)
+void Events::eventCreatureOnAttack(Creature* creature, Creature* target, CombatOrigin origin)
 {
 	// Creature:onAttack(target, origin, hitChance)
 	if (info.creatureOnAttack == -1) {
-		return -1;
+		return;
 	}
 
 	if (!scriptInterface.reserveScriptEnv()) {
 		std::cout << "[Error - Events::eventCreatureOnAttack] Call stack overflow" << std::endl;
-		return -1;
+		return;
 	}
 
 	ScriptEnvironment* env = scriptInterface.getScriptEnv();
@@ -336,20 +336,8 @@ int32_t Events::eventCreatureOnAttack(Creature* creature, Creature* target, Comb
 	LuaScriptInterface::setCreatureMetatable(L, -1, target);
 
 	lua_pushnumber(L, origin);
-	lua_pushnumber(L, hitChance);
 
-	int32_t result = -1;
-
-	if (scriptInterface.protectedCall(L, 4, 1) != 0) {
-		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
-	}
-	else {
-		result = LuaScriptInterface::getNumber<int32_t>(L, -1);
-		lua_pop(L, 1);
-	}
-
-	scriptInterface.resetScriptEnv();
-	return result;
+	scriptInterface.callVoidFunction(3);
 }
 
 void Events::eventCreatureOnMissedAttack(Creature* creature, Creature* target, CombatType_t combatType)

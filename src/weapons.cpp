@@ -527,7 +527,7 @@ bool WeaponMelee::useWeapon(Player* player, Item* item, Creature* target) const
 	if (damageModifier == 0) {
 		return false;
 	}
-	g_events->eventCreatureOnAttack(player, target, ORIGIN_MELEE, -1);
+	g_events->eventCreatureOnAttack(player, target, ORIGIN_MELEE);
 	internalUseWeapon(player, item, target, damageModifier);
 	return true;
 }
@@ -743,9 +743,9 @@ bool WeaponDistance::useWeapon(Player* player, Item* item, Creature* target) con
 			chance += bow->getHitChance();
 		}
 	}
-	if (g_events->eventCreatureOnAttack(player, target, ORIGIN_RANGED, chance) == -1) {
-		chance = 0;
-	}
+	g_events->eventCreatureOnAttack(player, target, ORIGIN_RANGED);
+
+
 	if (chance >= uniform_random(1, 100)) {
 		Weapon::internalUseWeapon(player, item, target, damageModifier);
 	} else {

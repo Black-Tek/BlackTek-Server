@@ -35,12 +35,11 @@ function Creature:onHear(speaker, words, type)
 	end
 end
 
-function Creature:onAttack(target, origin, hitchance)
+function Creature:onAttack(target, origin)
 	local onAttack = EventCallback.onAttack
 	if onAttack then
-		return onAttack(self, target, origin, hitchance)
+		onAttack(self, target, origin)
 	end
-	if hitChance == -1 then return 1 end
 end
 
 function Creature:onMissedAttack(target, combatType)

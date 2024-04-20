@@ -80,7 +80,7 @@ class Events
 		ReturnValue eventCreatureOnAreaCombat(Creature* creature, Tile* tile, bool aggressive);
 		ReturnValue eventCreatureOnTargetCombat(Creature* creature, Creature* target);
 		void eventCreatureOnHear(Creature* creature, Creature* speaker, const std::string& words, SpeakClasses type);
-		int32_t eventCreatureOnAttack(Creature* creature, Creature* target, CombatOrigin origin, int32_t hitChance);
+		void eventCreatureOnAttack(Creature* creature, Creature* target, CombatOrigin origin);
 		void eventCreatureOnMissedAttack(Creature* creature, Creature* target, CombatType_t combatType);
 		void eventCreatureOnBlockedAttack(Creature* creature, Creature* target, CombatOrigin origin, CombatType_t combatType);
 
