@@ -9,6 +9,7 @@
 #include "items.h"
 #include "luascript.h"
 #include "tools.h"
+#include "imbuement.h"
 #include <typeinfo>
 
 #include <boost/variant.hpp>
@@ -94,6 +95,8 @@ enum AttrTypes_t {
 	ATTR_BOOST = 40,
 	ATTR_CLASSIFICATION = 41,
 	ATTR_TIER = 42,
+	ATTR_IMBUESLOTS = 43,
+	ATTR_IMBUEMENTS
 };
 
 enum Attr_ReadValue {
@@ -818,6 +821,15 @@ class Item : virtual public Thing
 			return items[id].decayTo;
 		}
 
+		bool isEquipped() const {
+			return equipped;
+		}
+		void setEquipped(bool status) {
+			equipped = status;
+		}
+
+		void decayImbuements(bool infight);
+
 		static std::string getDescription(const ItemType& it, int32_t lookDistance, const Item* item = nullptr, int32_t subType = -1, bool addArticle = true);
 		static std::string getNameDescription(const ItemType& it, const Item* item = nullptr, int32_t subType = -1, bool addArticle = true);
 		static std::string getWeightDescription(const ItemType& it, uint32_t weight, uint32_t count = 1);
@@ -1086,6 +1098,18 @@ class Item : virtual public Thing
 			return !parent || parent->isRemoved();
 		}
 
+		uint16_t getImbuementSlots() const;
+		uint16_t getFreeImbuementSlots() const;
+		bool canImbue() const;
+		bool addImbuementSlots(const uint16_t amount);
+		bool removeImbuementSlots(const uint16_t amount, const bool destroyImbues = false);
+		bool hasImbuementType(const ImbuementType imbuetype) const;
+		bool hasImbuement(Imbuement* imbuement) const;
+		bool hasImbuements() const; /// change to isImbued();
+		bool addImbuement(Imbuement* imbuement);
+		bool removeImbuement(Imbuement* imbuement);
+		std::vector<Imbuement*> getImbuements();
+
 	protected:
 		Cylinder* parent = nullptr;
 
@@ -1096,10 +1120,13 @@ class Item : virtual public Thing
 
 		std::unique_ptr<ItemAttributes> attributes;
 
+		uint16_t imbuementSlots = 0;
+		std::vector<Imbuement*> imbuements;
+
 		uint32_t referenceCounter = 0;
 
 		uint8_t count = 1; // number of stacked items
-
+		bool equipped = false;
 		bool loadedFromMap = false;
 
 		//Don't add variables here, use the ItemAttribute class.

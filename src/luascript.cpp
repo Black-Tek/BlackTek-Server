@@ -1957,6 +1957,37 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(DECAYING_FALSE)
 	registerEnum(DECAYING_TRUE)
 	registerEnum(DECAYING_PENDING)
+	
+	// Imbuements
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_NONE);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_FIRE_DAMAGE);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_EARTH_DAMAGE);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_ICE_DAMAGE);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_ENERGY_DAMAGE);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_DEATH_DAMAGE);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_HOLY_DAMAGE);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_LIFE_LEECH);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_MANA_LEECH);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_CRITICAL_CHANCE);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_CRITICAL_AMOUNT);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_FIRE_RESIST);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_EARTH_RESIST);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_ICE_RESIST);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_ENERGY_RESIST);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_HOLY_RESIST);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_DEATH_RESIST);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_PARALYSIS_DEFLECTION);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_SPEED_BOOST);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_CAPACITY_BOOST);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_FIST_SKILL);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_AXE_SKILL);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_SWORD_SKILL);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_CLUB_SKILL);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_DISTANCE_SKILL);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_FISHING_SKILL);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_SHIELD_SKILL);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_MAGIC_LEVEL);
+	registerEnum(ImbuementType::IMBUEMENT_TYPE_LAST);
 
 	// _G
 	registerGlobalVariable("INDEX_WHEREEVER", INDEX_WHEREEVER);
@@ -2303,6 +2334,37 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("Item", "setBoostPercent", LuaScriptInterface::luaItemSetBoostPercent);
 	registerMethod("Item", "getBoostPercent", LuaScriptInterface::luaItemGetBoostPercent);
+
+	registerMethod("Item", "getImbuementSlots", LuaScriptInterface::luaItemGetImbuementSlots);
+	registerMethod("Item", "getFreeImbuementSlots", LuaScriptInterface::luaItemGetFreeImbuementSlots);
+	registerMethod("Item", "canImbue", LuaScriptInterface::luaItemCanImbue);
+	registerMethod("Item", "addImbuementSlots", LuaScriptInterface::luaItemAddImbuementSlots);
+	registerMethod("Item", "removeImbuementSlots", LuaScriptInterface::luaItemRemoveImbuementSlots);
+	registerMethod("Item", "hasImbuementType", LuaScriptInterface::luaItemHasImbuementType);
+	registerMethod("Item", "hasImbuements", LuaScriptInterface::luaItemHasImbuements); // change to isImbued
+	registerMethod("Item", "addImbuement", LuaScriptInterface::luaItemAddImbuement);
+	registerMethod("Item", "removeImbuement", LuaScriptInterface::luaItemRemoveImbuement);
+	registerMethod("Item", "getImbuements", LuaScriptInterface::luaItemGetImbuements);
+
+	// Imbuement
+	registerClass("Imbuement", "", LuaScriptInterface::luaImbuementCreate);
+	registerMetaMethod("Imbuement", "__gc", LuaScriptInterface::luaDeleteImbuement);
+	registerMetaMethod("Imbuement", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMethod("Imbuement", "delete", LuaScriptInterface::luaDeleteImbuement);
+	registerMethod("Imbuement", "getType", LuaScriptInterface::luaImbuementGetType);
+	registerMethod("Imbuement", "isSkill", LuaScriptInterface::luaImbuementIsSkill);
+	registerMethod("Imbuement", "isSpecialSkill", LuaScriptInterface::luaImbuementIsSpecialSkill);
+	registerMethod("Imbuement", "isStat", LuaScriptInterface::luaImbuementIsStat);
+	registerMethod("Imbuement", "isDamage", LuaScriptInterface::luaImbuementIsDamage);
+	registerMethod("Imbuement", "isResist", LuaScriptInterface::luaImbuementIsResist);
+	registerMethod("Imbuement", "getValue", LuaScriptInterface::luaImbuementGetValue);
+	registerMethod("Imbuement", "setValue", LuaScriptInterface::luaImbuementSetValue);
+	registerMethod("Imbuement", "getDuration", LuaScriptInterface::luaImbuementGetDuration);
+	registerMethod("Imbuement", "setDuration", LuaScriptInterface::luaImbuementSetDuration);
+	registerMethod("Imbuement", "makeEquipDecayed", LuaScriptInterface::luaImbuementSetEquipDecay);
+	registerMethod("Imbuement", "makeInfightDecayed", LuaScriptInterface::luaImbuementSetInfightDecay);
+	registerMethod("Imbuement", "isEquipDecayed", LuaScriptInterface::luaImbuementIsEquipDecay);
+	registerMethod("Imbuement", "isInfightDecayed", LuaScriptInterface::luaImbuementIsInfightDecay);
 
 	// Container
 	registerClass("Container", "Item", LuaScriptInterface::luaContainerCreate);
@@ -7130,6 +7192,368 @@ int LuaScriptInterface::luaItemGetBoostPercent(lua_State* L)
 		lua_pushnumber(L, item->getBoostPercent(getNumber<CombatType_t>(L, 2), getBoolean(L, 3, true)));
 	}
 	else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemGetImbuementSlots(lua_State* L)
+{
+	// item:getImbuementSlots() -- returns how many total slots
+	Item* item = getUserdata<Item>(L, 1);
+	if (item)
+	{
+		lua_pushnumber(L, item->getImbuementSlots());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemGetFreeImbuementSlots(lua_State* L)
+{
+	// item:getFreeImbuementSlots() -- returns how many slots are available for use
+	Item* item = getUserdata<Item>(L, 1);
+	if (item)
+	{
+		lua_pushnumber(L, item->getFreeImbuementSlots());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemCanImbue(lua_State* L)
+{
+	// item:canImbue(amount) -- returns true if item has slots that are free
+	Item* item = getUserdata<Item>(L, 1);
+	if (item)
+	{
+		pushBoolean(L, item->canImbue());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemAddImbuementSlots(lua_State* L)
+{
+	// item:addImbuementSlots(amount) -- tries to add imbuement slot(s), returns true if successful
+	Item* item = getUserdata<Item>(L, 1);
+	if (item)
+	{
+		pushBoolean(L, item->addImbuementSlots(getNumber<uint32_t>(L, 2)));
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemRemoveImbuementSlots(lua_State* L)
+{
+	// item:removeImbuementSlots(amount, destroy) -- tries to remove imbuement slot(s), returns true if successful
+	Item* item = getUserdata<Item>(L, 1);
+	if (item)
+	{
+		pushBoolean(L, item->removeImbuementSlots(getNumber<uint32_t>(L, 2), getBoolean(L, 5, false)));
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemHasImbuementType(lua_State* L)
+{
+	// item:hasImbuementType(type)
+	Item* item = getUserdata<Item>(L, 1);
+	if (item)
+	{
+		pushBoolean(L, item->hasImbuementType(getNumber<ImbuementType>(L, 2, ImbuementType::IMBUEMENT_TYPE_NONE)));
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemHasImbuement(lua_State* L)
+{
+	// item:hasImbuement(imbueType, amount, duration, realtime)
+	Item* item = getUserdata<Item>(L, 1);
+	if (item)
+	{
+		Imbuement* imbue = getUserdata<Imbuement>(L, 2);
+		if (imbue) {
+			pushBoolean(L, item->hasImbuement(imbue));
+		} else {
+			lua_pushnil(L);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemHasImbuements(lua_State* L)
+{
+	// item:hasImbuements() -- returns true if item has any imbuements
+	Item* item = getUserdata<Item>(L, 1);
+	if (item)
+	{
+		pushBoolean(L, item->hasImbuements());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemAddImbuement(lua_State* L)
+{
+	// item:addImbuement(imbuement) -- returns true if it successfully adds the imbuement
+	Item* item = getUserdata<Item>(L, 1);
+	if (item)
+	{
+		Imbuement* imbue = getUserdata<Imbuement>(L, 2);
+		if (imbue) {
+			pushBoolean(L, item->addImbuement(imbue));
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemRemoveImbuement(lua_State* L)
+{
+	// item:removeImbuement(imbuement)
+	Item* item = getUserdata<Item>(L, 1);
+	if (item)
+	{
+		Imbuement* imbue = getUserdata<Imbuement>(L, 2);
+		if (imbue) {
+			pushBoolean(L, item->removeImbuement(imbue));
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+
+int LuaScriptInterface::luaItemGetImbuements(lua_State* L)
+{
+	// item:getImbuements() -- returns a table that contains values that are imbuement userdata?
+	Item* item = getUserdata<Item>(L, 1);
+	if (!item) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	std::vector<Imbuement*> imbuements = item->getImbuements();
+	lua_createtable(L, imbuements.size(), 0);
+
+	int index = 0;
+	for (auto imbuement : imbuements) {
+		pushUserdata<Imbuement>(L, imbuement);
+		setMetatable(L, -1, "Imbuement");
+		lua_rawseti(L, -2, ++index);
+	}
+	return 1;
+}
+
+// Imbuement
+
+int LuaScriptInterface::luaImbuementCreate(lua_State* L)
+{
+	// Imbuement(type, amount, duration, decayType = IMBUE_DECAY_EQUIPPED)
+	ImbuementType imbueType = getNumber<ImbuementType>(L, 2, ImbuementType::IMBUEMENT_TYPE_NONE);
+	uint32_t amount = getNumber<uint32_t>(L, 3);
+	uint32_t duration = getNumber<uint32_t>(L, 4);
+	ImbuementDecayType decayType = getNumber<ImbuementDecayType>(L, 5, ImbuementDecayType::IMBUEMENT_DECAY_EQUIPPED);
+	pushUserdata<Imbuement>(L, new Imbuement(imbueType, amount, duration, decayType));
+	setMetatable(L, -1, "Imbuement");
+	return 1;
+}
+
+int LuaScriptInterface::luaDeleteImbuement(lua_State* L)
+{
+	// imbuement:delete() imbuement:__gc()
+	Imbuement** imbuePtr = getRawUserdata<Imbuement>(L, 1);
+	if (imbuePtr && *imbuePtr) {
+		delete* imbuePtr;
+		*imbuePtr = nullptr;
+	}
+	return 0;
+}
+
+int LuaScriptInterface::luaImbuementGetType(lua_State* L)
+{
+	// imbuement:getType()
+	Imbuement* imbue = getUserdata<Imbuement>(L, 1);
+	if (imbue) {
+		lua_pushnumber(L, static_cast<uint8_t>(imbue->imbuetype));
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaImbuementGetValue(lua_State* L)
+{
+	// imbuement:getValue()
+	Imbuement* imbue = getUserdata<Imbuement>(L, 1);
+	if (imbue) {
+		lua_pushnumber(L, imbue->value);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+
+int LuaScriptInterface::luaImbuementGetDuration(lua_State* L)
+{
+	// imbuement:getDuration()
+	Imbuement* imbue = getUserdata<Imbuement>(L, 1);
+	if (imbue) {
+		lua_pushnumber(L, static_cast<uint8_t>(imbue->duration));
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaImbuementIsSkill(lua_State* L)
+{
+	// imbuement:isSkill()
+	Imbuement* imbue = getUserdata<Imbuement>(L, 1);
+	if (imbue) {
+		lua_pushnumber(L, imbue->isSkill());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaImbuementIsSpecialSkill(lua_State* L)
+{
+	// imbuement:isSpecialSkill()
+	Imbuement* imbue = getUserdata<Imbuement>(L, 1);
+	if (imbue) {
+		lua_pushnumber(L, imbue->isSpecialSkill());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaImbuementIsDamage(lua_State* L)
+{
+	// imbuement:isDamage()
+	Imbuement* imbue = getUserdata<Imbuement>(L, 1);
+	if (imbue) {
+		lua_pushnumber(L, imbue->isDamage());
+	}
+	else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaImbuementIsResist(lua_State* L)
+{
+	// imbuement:isResist()
+	Imbuement* imbue = getUserdata<Imbuement>(L, 1);
+	if (imbue) {
+		lua_pushnumber(L, imbue->isResist());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaImbuementIsStat(lua_State* L)
+{
+	// imbuement:isStat()
+	Imbuement* imbue = getUserdata<Imbuement>(L, 1);
+	if (imbue) {
+		lua_pushnumber(L, imbue->isStat());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaImbuementSetValue(lua_State* L)
+{
+	// imbuement:setAmount(amount)
+	Imbuement* imbue = getUserdata<Imbuement>(L, 1);
+	if (imbue) {
+		imbue->value = getNumber<uint32_t>(L, 2);
+		pushBoolean(L, true);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaImbuementSetDuration(lua_State* L)
+{
+	// imbuement:setDuration(duration)
+	Imbuement* imbue = getUserdata<Imbuement>(L, 1);
+	if (imbue) {
+		imbue->duration = getNumber<uint32_t>(L, 2);
+		pushBoolean(L, true);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaImbuementSetEquipDecay(lua_State* L)
+{
+	// imbuement:makeEquipDecayed()
+	Imbuement* imbue = getUserdata<Imbuement>(L, 1);
+	if (imbue) {
+		imbue->decaytype = ImbuementDecayType::IMBUEMENT_DECAY_EQUIPPED;
+		pushBoolean(L, true);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaImbuementSetInfightDecay(lua_State* L)
+{
+	// imbuement:makeInfightDecayed()
+	Imbuement* imbue = getUserdata<Imbuement>(L, 1);
+	if (imbue) {
+		imbue->decaytype = ImbuementDecayType::IMBUEMENT_DECAY_INFIGHT;
+		pushBoolean(L, true);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaImbuementIsEquipDecay(lua_State* L)
+{
+	// imbuement:isEquipDecayed()
+	Imbuement* imbue = getUserdata<Imbuement>(L, 1);
+	if (imbue) {
+		pushBoolean(L, imbue->decaytype == ImbuementDecayType::IMBUEMENT_DECAY_EQUIPPED);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaImbuementIsInfightDecay(lua_State* L)
+{
+	// imbuement:isInfightDecayed()
+	Imbuement* imbue = getUserdata<Imbuement>(L, 1);
+	if (imbue) {
+		pushBoolean(L, imbue->decaytype == ImbuementDecayType::IMBUEMENT_DECAY_INFIGHT);
+	} else {
 		lua_pushnil(L);
 	}
 	return 1;

@@ -184,6 +184,7 @@ const std::unordered_map<std::string, ItemParseAttributes_t> ItemParseAttributes
 	{"blocking", ITEM_PARSE_BLOCKING},
 	{"allowdistread", ITEM_PARSE_ALLOWDISTREAD},
 	{"storeitem", ITEM_PARSE_STOREITEM},
+	{"imbuementslots", 	ITEM_PARSE_IMBUEMENT_SLOT},
 };
 
 const std::unordered_map<std::string, ItemTypes_t> ItemTypesMap = {

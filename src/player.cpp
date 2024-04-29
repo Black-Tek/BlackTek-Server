@@ -179,6 +179,19 @@ Item* Player::getInventoryItem(slots_t slot) const
 	return inventory[slot];
 }
 
+Item* Player::getInventoryItem(uint32_t slot) const
+{
+	if (slot < CONST_SLOT_FIRST || slot > CONST_SLOT_LAST) {
+		return nullptr;
+	}
+	return inventory[slot];
+}
+
+bool Player::isInventorySlot(slots_t slot) const
+{
+	return slot >= CONST_SLOT_FIRST && slot <= CONST_SLOT_LAST;
+}	
+
 void Player::addConditionSuppressions(uint32_t conditions)
 {
 	conditionSuppressions |= conditions;
@@ -1481,6 +1494,15 @@ void Player::onThink(uint32_t interval)
 		}
 	}
 
+	if (isImbued()) {
+		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+			Item* item = inventory[slot];
+			if (item && item->hasImbuements()) {
+				item->decayImbuements(hasCondition(CONDITION_INFIGHT));
+			}
+		}
+	}
+
 	if (g_game.getWorldType() != WORLD_TYPE_PVP_ENFORCED) {
 		checkSkullTicks(interval / 1000);
 	}
@@ -1952,6 +1974,44 @@ BlockType_t Player::blockHit(Creature* attacker, CombatType_t combatType, int32_
 					}
 				}
 			}
+
+			if (item->hasImbuements()) {
+				for (auto imbuement : item->getImbuements()) {
+					switch (imbuement->imbuetype) {
+						case ImbuementType::IMBUEMENT_TYPE_FIRE_RESIST:
+							if (combatType == COMBAT_FIREDAMAGE) {
+								damage -= std::round(damage * (imbuement->value / 100.));
+							}
+							break;
+						case ImbuementType::IMBUEMENT_TYPE_EARTH_RESIST:
+							if (combatType == COMBAT_EARTHDAMAGE) {
+								damage -= std::round(damage * (imbuement->value / 100.));
+							}
+							break;
+						case ImbuementType::IMBUEMENT_TYPE_ICE_DAMAGE:
+							if (combatType == COMBAT_ICEDAMAGE) {
+								damage -= std::round(damage * (imbuement->value / 100.));
+							}
+							break;
+						case ImbuementType::IMBUEMENT_TYPE_ENERGY_RESIST:
+							if (combatType == COMBAT_ENERGYDAMAGE) {
+								damage -= std::round(damage * (imbuement->value / 100.));
+							}
+							break;
+						case ImbuementType::IMBUEMENT_TYPE_DEATH_RESIST:
+							if (combatType == COMBAT_DEATHDAMAGE) {
+								damage -= std::round(damage * (imbuement->value / 100.));
+							}
+							break;
+						case ImbuementType::IMBUEMENT_TYPE_HOLY_RESIST:
+							if (combatType == COMBAT_HOLYDAMAGE) {
+								damage -= std::round(damage * (imbuement->value / 100.));
+							}
+							break;
+					}
+				}
+			}
+
 		}
 
 		if (attacker && reflect.chance > 0 && reflect.percent != 0 && uniform_random(1, 100) <= reflect.chance) {
@@ -3006,6 +3066,10 @@ void Player::postAddNotification(Thing* thing, const Cylinder* oldParent, int32_
 		//calling movement scripts
 		g_moveEvents->onPlayerEquip(this, thing->getItem(), static_cast<slots_t>(index), false);
 		g_events->eventPlayerOnInventoryUpdate(this, thing->getItem(), static_cast<slots_t>(index), true);
+		if (isInventorySlot(static_cast<slots_t>(index))) {
+			thing->getItem()->setEquipped(true);
+			addItemImbuements(thing->getItem());
+		}
 	}
 
 	bool requireListUpdate = false;
@@ -3061,6 +3125,10 @@ void Player::postRemoveNotification(Thing* thing, const Cylinder* newParent, int
 		//calling movement scripts
 		g_moveEvents->onPlayerDeEquip(this, thing->getItem(), static_cast<slots_t>(index));
 		g_events->eventPlayerOnInventoryUpdate(this, thing->getItem(), static_cast<slots_t>(index), false);
+		if (isInventorySlot(static_cast<slots_t>(index))) {
+			thing->getItem()->setEquipped(false);
+			removeItemImbuements(thing->getItem());
+		}
 	}
 
 	bool requireListUpdate = false;
@@ -4628,4 +4696,136 @@ void Player::updateRegeneration()
 		condition->setParam(CONDITION_PARAM_MANAGAIN, vocation->getManaGainAmount());
 		condition->setParam(CONDITION_PARAM_MANATICKS, vocation->getManaGainTicks() * 1000);
 	}
+}
+
+void Player::addItemImbuements(Item * item) {
+	if (item->hasImbuements()) {
+		const std::vector<Imbuement*> imbuementList = item->getImbuements();
+		for (auto imbue : imbuementList) {
+			if (imbue->isSkill()) {
+				switch (imbue->imbuetype) {
+					case ImbuementType::IMBUEMENT_TYPE_FIST_SKILL:
+						setVarSkill(SKILL_FIST, static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_CLUB_SKILL:
+						setVarSkill(SKILL_CLUB, static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_SWORD_SKILL:
+						setVarSkill(SKILL_SWORD, static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_AXE_SKILL:
+						setVarSkill(SKILL_AXE, static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_DISTANCE_SKILL:
+						setVarSkill(SKILL_DISTANCE, static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_SHIELD_SKILL:
+						setVarSkill(SKILL_SHIELD, static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_FISHING_SKILL:
+						setVarSkill(SKILL_FISHING, static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_MAGIC_LEVEL:
+						setVarSkill(SKILL_MAGLEVEL, static_cast<int32_t>(imbue->value));
+						break;
+				}
+			}
+
+			if (imbue->isSpecialSkill()) {
+				switch (imbue->imbuetype) {
+					case ImbuementType::IMBUEMENT_TYPE_MANA_LEECH:
+						setVarSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT, static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_LIFE_LEECH:
+						setVarSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT, static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_CRITICAL_CHANCE:
+						setVarSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE, static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_CRITICAL_AMOUNT:
+						setVarSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT, static_cast<int32_t>(imbue->value));
+						break;
+				}
+			}
+
+			if (imbue->isStat()) {
+				switch (imbue->imbuetype) {
+					case ImbuementType::IMBUEMENT_TYPE_CAPACITY_BOOST:
+						capacity += imbue->value;
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_SPEED_BOOST:
+						g_game.changeSpeed(this, static_cast<int32_t>(imbue->value));
+						break;
+				}
+			}
+		}
+	}
+	sendSkills();
+	sendStats();
+}
+
+void Player::removeItemImbuements(Item* item) {
+	if (item->hasImbuements()) {
+		const std::vector<Imbuement*> imbuementList = item->getImbuements();
+		for (auto imbue : imbuementList) {
+			if (imbue->isSkill()) {
+				switch (imbue->imbuetype) {
+					case ImbuementType::IMBUEMENT_TYPE_FIST_SKILL:
+						setVarSkill(SKILL_FIST, -static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_CLUB_SKILL:
+						setVarSkill(SKILL_CLUB, -static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_SWORD_SKILL:
+						setVarSkill(SKILL_SWORD, -static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_AXE_SKILL:
+						setVarSkill(SKILL_AXE, -static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_DISTANCE_SKILL:
+						setVarSkill(SKILL_DISTANCE, -static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_SHIELD_SKILL:
+						setVarSkill(SKILL_SHIELD, -static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_FISHING_SKILL:
+						setVarSkill(SKILL_FISHING, -static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_MAGIC_LEVEL:
+						setVarSkill(SKILL_MAGLEVEL, -static_cast<int32_t>(imbue->value));
+						break;
+				}
+			}
+
+			if (imbue->isSpecialSkill()) {
+				switch (imbue->imbuetype) {
+					case ImbuementType::IMBUEMENT_TYPE_MANA_LEECH:
+						setVarSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT, -static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_LIFE_LEECH:
+						setVarSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT, -static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_CRITICAL_CHANCE:
+						setVarSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE, -static_cast<int32_t>(imbue->value));
+						break;
+					case ImbuementType::IMBUEMENT_TYPE_CRITICAL_AMOUNT:
+						setVarSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT, -static_cast<int32_t>(imbue->value));
+						break;
+				}
+			}
+
+			if (imbue->isStat()) {
+				switch (imbue->imbuetype) {
+				case ImbuementType::IMBUEMENT_TYPE_CAPACITY_BOOST:
+					capacity -= imbue->value;
+					break;
+				case ImbuementType::IMBUEMENT_TYPE_SPEED_BOOST:
+					g_game.changeSpeed(this, -static_cast<int32_t>(imbue->value));
+					break;
+				}
+			}
+		}
+	}
+	sendSkills();
+	sendStats();
 }

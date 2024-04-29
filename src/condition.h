@@ -115,6 +115,7 @@ class Condition
 
 	private:
 		ConditionId_t id;
+		Creature* source = nullptr;
 };
 
 class ConditionGeneric : public Condition

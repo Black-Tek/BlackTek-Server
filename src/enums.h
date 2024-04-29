@@ -576,6 +576,7 @@ enum CombatOrigin
 	ORIGIN_MELEE,
 	ORIGIN_RANGED,
 	ORIGIN_REFLECT,
+	ORIGIN_IMBUEMENT,
 };
 
 struct CombatDamage

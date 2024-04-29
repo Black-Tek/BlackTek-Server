@@ -50,6 +50,16 @@ ec.onLook = function(self, thing, position, distance, description)
 			end
 		end
 	end
+
+	if thing:isItem() then
+		description = string.format("%s\nImbuement Slots : %d", description, thing:getFreeImbuementSlots())
+		if thing:hasImbuements() then
+			for each, imbuement in thing:getImbuements() do
+				description = string.format("%s\n Imbuement Type : %d", description, imbuement:getType())
+			end
+		end
+	end
+
 	return description
 end
 

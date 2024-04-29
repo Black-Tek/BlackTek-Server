@@ -1369,7 +1369,6 @@ ReturnValue Game::internalAddItem(Cylinder* toCylinder, Item* item, int32_t inde
 		item->setDecaying(DECAYING_TRUE);
 		toDecayItems.push_front(item);
 	}
-
 	return RETURNVALUE_NOERROR;
 }
 

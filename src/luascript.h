@@ -772,6 +772,37 @@ class LuaScriptInterface
 		static int luaItemSetBoostPercent(lua_State* L);
 		static int luaItemGetBoostPercent(lua_State* L);
 
+		static int luaItemGetImbuementSlots(lua_State* L);
+		static int luaItemGetFreeImbuementSlots(lua_State* L);
+		static int luaItemCanImbue(lua_State* L);
+		static int luaItemAddImbuementSlots(lua_State* L);
+		static int luaItemRemoveImbuementSlots(lua_State* L);
+		static int luaItemHasImbuementType(lua_State* L);
+		static int luaItemHasImbuement(lua_State* L);
+		static int luaItemHasImbuements(lua_State* L); /// change to isImbued();
+		static int luaItemAddImbuement(lua_State* L);
+		static int luaItemRemoveImbuement(lua_State* L);
+		static int luaItemGetImbuements(lua_State* L);
+
+		// Imbuement
+
+		static int luaImbuementCreate(lua_State* L);
+		static int luaDeleteImbuement(lua_State* L);
+		static int luaImbuementGetType(lua_State* L);
+		static int luaImbuementIsSkill(lua_State* L);
+		static int luaImbuementIsSpecialSkill(lua_State* L);
+		static int luaImbuementIsStat(lua_State* L);
+		static int luaImbuementIsDamage(lua_State* L);
+		static int luaImbuementIsResist(lua_State* L);
+		static int luaImbuementGetValue(lua_State* L);
+		static int luaImbuementSetValue(lua_State* L);
+		static int luaImbuementGetDuration(lua_State* L);
+		static int luaImbuementSetDuration(lua_State* L);
+		static int luaImbuementSetEquipDecay(lua_State* L);
+		static int luaImbuementSetInfightDecay(lua_State* L);
+		static int luaImbuementIsEquipDecay(lua_State* L);
+		static int luaImbuementIsInfightDecay(lua_State* L);
+
 		// Container
 		static int luaContainerCreate(lua_State* L);
 
