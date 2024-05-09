@@ -4,7 +4,6 @@
 #include "otpch.h"
 
 #include "combat.h"
-#include "matrixarea.h"
 #include "game.h"
 #include "weapons.h"
 #include "configmanager.h"

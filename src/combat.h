@@ -9,14 +9,13 @@
 #include "map.h"
 #include "baseevents.h"
 #include "tools.h"
+#include "matrixarea.h"
 
 #include <utility>
-#include <valarray>
 
 class Condition;
 class Creature;
 class Item;
-class MatrixArea;
 struct Position;
 
 //for luascript callback

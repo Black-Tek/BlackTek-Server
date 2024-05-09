@@ -1,6 +1,8 @@
 #ifndef BTS_MATRIXAREA
 #define BTS_MATRIXAREA
 
+#include <valarray>
+
 class MatrixArea
 {
 	using Center = std::pair<uint32_t, uint32_t>;
