@@ -787,7 +787,6 @@ class LuaScriptInterface
 		// Imbuement
 
 		static int luaImbuementCreate(lua_State* L);
-		static int luaDeleteImbuement(lua_State* L);
 		static int luaImbuementGetType(lua_State* L);
 		static int luaImbuementIsSkill(lua_State* L);
 		static int luaImbuementIsSpecialSkill(lua_State* L);

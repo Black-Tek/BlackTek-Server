@@ -1104,11 +1104,11 @@ class Item : virtual public Thing
 		bool addImbuementSlots(const uint16_t amount);
 		bool removeImbuementSlots(const uint16_t amount, const bool destroyImbues = false);
 		bool hasImbuementType(const ImbuementType imbuetype) const;
-		bool hasImbuement(Imbuement* imbuement) const;
+		bool hasImbuement(std::shared_ptr<Imbuement> imbuement) const;
 		bool hasImbuements() const; /// change to isImbued();
-		bool addImbuement(Imbuement* imbuement);
-		bool removeImbuement(Imbuement* imbuement);
-		std::vector<Imbuement*> getImbuements();
+		bool addImbuement(std::shared_ptr<Imbuement> imbuement);
+		bool removeImbuement(std::shared_ptr<Imbuement> imbuement);
+		std::vector<std::shared_ptr<Imbuement>> getImbuements();
 
 	protected:
 		Cylinder* parent = nullptr;
@@ -1121,7 +1121,7 @@ class Item : virtual public Thing
 		std::unique_ptr<ItemAttributes> attributes;
 
 		uint16_t imbuementSlots = 0;
-		std::vector<Imbuement*> imbuements;
+		std::vector<std::shared_ptr<Imbuement>> imbuements;
 
 		uint32_t referenceCounter = 0;
 

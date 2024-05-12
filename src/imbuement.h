@@ -5,6 +5,8 @@
 #include "fileloader.h"
 #include "scheduler.h"
 
+#include <memory>
+
 enum ImbuementType : uint8_t {
 	IMBUEMENT_TYPE_NONE,
 	IMBUEMENT_TYPE_FIRE_DAMAGE,
@@ -44,7 +46,7 @@ enum ImbuementDecayType : uint8_t {
 	IMBUEMENT_DECAY_LAST
 };
 
-struct Imbuement {
+struct Imbuement : std::enable_shared_from_this<Imbuement> {
 	Imbuement() = default;
 	Imbuement(ImbuementType imbuetype, uint32_t value, uint32_t duration, ImbuementDecayType decayType = ImbuementDecayType::IMBUEMENT_DECAY_NONE) : imbuetype{ imbuetype }, value{ value }, duration{ duration }, decaytype{ decayType } {};
 
