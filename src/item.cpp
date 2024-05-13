@@ -2393,10 +2393,10 @@ bool Item::hasImbuementType(const ImbuementType imbuetype) const
 		});
 }
 
-bool Item::hasImbuement(std::shared_ptr<Imbuement> imbuement) const
+bool Item::hasImbuement(const std::shared_ptr<Imbuement>& imbuement) const
 {
 	// item:hasImbuement(imbuement)
-	return std::any_of(imbuements.begin(), imbuements.end(), [&imbuement](std::shared_ptr<Imbuement> elem) {
+	return std::any_of(imbuements.begin(), imbuements.end(), [&imbuement](const std::shared_ptr<Imbuement>& elem) {
 		return elem == imbuement;
 		});
 }
@@ -2429,12 +2429,12 @@ bool Item::removeImbuement(std::shared_ptr<Imbuement> imbuement)
 	return erased > 0;
 }
 
-std::vector<std::shared_ptr<Imbuement>> Item::getImbuements(){
+std::vector<std::shared_ptr<Imbuement>>& Item::getImbuements(){
 	return imbuements;
 }
 
 void Item::decayImbuements(bool infight) {
-	for (auto imbue : imbuements) {
+	for (const auto& imbue : imbuements) {
 		if (imbue->isEquipDecay()) {
 			imbue->duration -= 1;
 			if (imbue->duration <= 0) {
