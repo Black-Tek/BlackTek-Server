@@ -124,8 +124,8 @@ class Player final : public Creature, public Cylinder
 		const std::string& getName() const override {
 			return name;
 		}
-		void setName(const std::string& name) {
-			this->name = name;
+		void setName(std::string_view name) {
+			this->name = name; 
 		}
 		const std::string& getNameDescription() const override {
 			return name;
