@@ -1,8 +1,8 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_CONNECTION_H_FC8E1B4392D24D27A2F129D8B93A6348
-#define FS_CONNECTION_H_FC8E1B4392D24D27A2F129D8B93A6348
+#ifndef FS_CONNECTION_H
+#define FS_CONNECTION_H
 
 #include <unordered_set>
 
@@ -32,7 +32,7 @@ class ConnectionManager
 			return instance;
 		}
 
-		Connection_ptr createConnection(boost::asio::io_service& io_service, ConstServicePort_ptr servicePort);
+		Connection_ptr createConnection(boost::asio::io_context& io_context, ConstServicePort_ptr servicePort);
 		void releaseConnection(const Connection_ptr& connection);
 		void closeAll();
 
@@ -52,12 +52,12 @@ class Connection : public std::enable_shared_from_this<Connection>
 
 		enum { FORCE_CLOSE = true };
 
-		Connection(boost::asio::io_service& io_service,
+		Connection(boost::asio::io_context& io_context,
 		ConstServicePort_ptr service_port) :
-			readTimer(io_service),
-			writeTimer(io_service),
+			readTimer(io_context),
+			writeTimer(io_context),
 			service_port(std::move(service_port)),
-			socket(io_service),
+			socket(io_context),
 			timeConnected(time(nullptr)) {}
 		~Connection();
 

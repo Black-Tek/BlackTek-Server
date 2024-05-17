@@ -46,7 +46,7 @@ class Service final : public ServiceBase
 class ServicePort : public std::enable_shared_from_this<ServicePort>
 {
 	public:
-		explicit ServicePort(boost::asio::io_service& io_service) : io_service(io_service) {}
+		explicit ServicePort(boost::asio::io_context& io_context) : io_context(io_context) {}
 		~ServicePort();
 
 		// non-copyable
@@ -68,7 +68,7 @@ class ServicePort : public std::enable_shared_from_this<ServicePort>
 	private:
 		void accept();
 
-		boost::asio::io_service& io_service;
+		boost::asio::io_context& io_context;
 		std::unique_ptr<boost::asio::ip::tcp::acceptor> acceptor;
 		std::vector<Service_ptr> services;
 
@@ -101,9 +101,9 @@ class ServiceManager
 
 		std::unordered_map<uint16_t, ServicePort_ptr> acceptors;
 
-		boost::asio::io_service io_service;
-		Signals signals{io_service};
-		boost::asio::steady_timer death_timer { io_service };
+		boost::asio::io_context io_context;
+		Signals signals{io_context};
+		boost::asio::steady_timer death_timer { io_context };
 		bool running = false;
 };
 
@@ -120,7 +120,7 @@ bool ServiceManager::add(uint16_t port)
 	auto foundServicePort = acceptors.find(port);
 
 	if (foundServicePort == acceptors.end()) {
-		service_port = std::make_shared<ServicePort>(io_service);
+		service_port = std::make_shared<ServicePort>(io_context);
 		service_port->open(port);
 		acceptors[port] = service_port;
 	} else {

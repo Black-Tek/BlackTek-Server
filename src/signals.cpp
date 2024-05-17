@@ -169,7 +169,7 @@ void dispatchSignalHandler(int signal)
 
 }
 
-Signals::Signals(boost::asio::io_service& service): set(service)
+Signals::Signals(boost::asio::io_context& context): set(context)
 {
 	set.add(SIGINT);
 	set.add(SIGTERM);

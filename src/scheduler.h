@@ -1,8 +1,8 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_SCHEDULER_H_2905B3D5EAB34B4BA8830167262D2DC1
-#define FS_SCHEDULER_H_2905B3D5EAB34B4BA8830167262D2DC1
+#ifndef FS_SCHEDULER_H
+#define FS_SCHEDULER_H
 
 #include "tasks.h"
 #include <unordered_map>
@@ -48,7 +48,7 @@ class Scheduler : public ThreadHolder<Scheduler>
 		std::atomic<uint32_t> lastEventId{0};
 		std::unordered_map<uint32_t, boost::asio::steady_timer> eventIdTimerMap;
 		boost::asio::io_context io_context;
-		boost::asio::io_context::work work{io_context};
+		boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work{ io_context.get_executor() };
 };
 
 extern Scheduler g_scheduler;
