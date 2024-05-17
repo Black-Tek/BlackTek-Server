@@ -864,36 +864,39 @@ BlockType_t Creature::blockHit(Creature* attacker, CombatType_t combatType, int3
 			onBlockHit();
 		}
 	}
+	
+	if (attacker)
+	{
+		Player* attackerPlayer = attacker->getPlayer();
+		if (attackerPlayer) {
+			for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
 
-	if (Player* attackerPlayer = attacker->getPlayer()) {
-		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+				Item* item = attackerPlayer->getInventoryItem(static_cast<slots_t>(slot));
+				if (!item) {
+					continue;
+				}
 
-			Item* item = attackerPlayer->getInventoryItem(static_cast<slots_t>(slot));
-			if (!item) {
-				continue;
-			}
+				const uint16_t boostPercent = item->getBoostPercent(combatType);
+				if (boostPercent != 0) {
+					damage += std::round(damage * (boostPercent / 100.));
+				}
 
-			const uint16_t boostPercent = item->getBoostPercent(combatType);
-			if (boostPercent != 0) {
-				damage += std::round(damage * (boostPercent / 100.));
-			}
-
-			if (item->hasImbuements() && blockType == BLOCK_NONE) {
-				Combat imbueCombat;
-				CombatParams imbueParams;
-				CombatDamage imbueDamage;
-				imbueParams.aggressive = true;
-				imbueParams.ignoreResistances = false;
-				imbueParams.blockedByArmor = false;
-				imbueParams.blockedByShield = false;
-				imbueDamage.blockType = BLOCK_NONE;
-				imbueDamage.origin = ORIGIN_IMBUEMENT;
-				int32_t conversionAmount = 0;
-				for (auto imbuement : item->getImbuements()) {
-					conversionAmount = std::round(damage * (imbuement->value / 100.));
-					imbueDamage.primary.value = conversionAmount;
-					int32_t damageDifference = 0;
-					switch (imbuement->imbuetype) {
+				if (item->hasImbuements() && blockType == BLOCK_NONE) {
+					Combat imbueCombat;
+					CombatParams imbueParams;
+					CombatDamage imbueDamage;
+					imbueParams.aggressive = true;
+					imbueParams.ignoreResistances = false;
+					imbueParams.blockedByArmor = false;
+					imbueParams.blockedByShield = false;
+					imbueDamage.blockType = BLOCK_NONE;
+					imbueDamage.origin = ORIGIN_IMBUEMENT;
+					int32_t conversionAmount = 0;
+					for (auto imbuement : item->getImbuements()) {
+						conversionAmount = std::round(damage * (imbuement->value / 100.));
+						imbueDamage.primary.value = conversionAmount;
+						int32_t damageDifference = 0;
+						switch (imbuement->imbuetype) {
 						case IMBUEMENT_TYPE_FIRE_DAMAGE:
 							imbueParams.combatType = COMBAT_FIREDAMAGE;
 							imbueDamage.primary.type = COMBAT_FIREDAMAGE;
@@ -920,18 +923,19 @@ BlockType_t Creature::blockHit(Creature* attacker, CombatType_t combatType, int3
 							break;
 						default:
 							break;
-					}
-
-					if (conversionAmount > 0) {
-						imbueDamage.primary.value = conversionAmount;
-						imbueCombat.doTargetCombat(attacker, this, imbueDamage, imbueParams);
-						imbueDamage.primary.value = 0;
-						imbueDamage.primary.type = COMBAT_NONE;
-						damageDifference = damage - conversionAmount;
-						if (damageDifference < 0) {
-							damage = (-conversionAmount);
 						}
-						damageDifference = 0;
+
+						if (conversionAmount > 0) {
+							imbueDamage.primary.value = conversionAmount;
+							imbueCombat.doTargetCombat(attacker, this, imbueDamage, imbueParams);
+							imbueDamage.primary.value = 0;
+							imbueDamage.primary.type = COMBAT_NONE;
+							damageDifference = damage - conversionAmount;
+							if (damageDifference < 0) {
+								damage = (-conversionAmount);
+							}
+							damageDifference = 0;
+						}
 					}
 				}
 			}
