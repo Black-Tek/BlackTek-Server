@@ -570,59 +570,35 @@ bool Map::checkSightLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uin
 
 bool Map::isSightClear(const Position& fromPos, const Position& toPos, bool sameFloor /*= false*/) const
 {
-	//target is on the same floor
-	if (fromPos.z == toPos.z) {
-		//skip checks if toPos is next to us
-		if (Position::getDistanceX(fromPos, toPos) < 2 && Position::getDistanceY(fromPos, toPos) < 2) {
-			return true;
-		}
+	// Check if fromPos and toPos are the same
+	if (fromPos == toPos)
+		return true;
 
-		//sight is clear or sameFloor is enabled
+	// Calculate distance between fromPos and toPos
+	int dx = std::abs(fromPos.x - toPos.x);
+	int dy = std::abs(fromPos.y - toPos.y);
+	int dz = std::abs(fromPos.z - toPos.z);
+
+	// Check for same floor or skip if they are next to each other
+	if (dz == 0 && (dx < 2 && dy < 2)) {
+		// Sight is clear or sameFloor is enabled
 		bool sightClear = checkSightLine(fromPos.x, fromPos.y, toPos.x, toPos.y, fromPos.z);
-		if (sightClear || sameFloor) {
-			return sightClear;
-		}
-
-		//no obstacles above floor 0 so we can throw above the obstacle
-		if (fromPos.z == 0) {
-			return true;
-		}
-
-		//check if tiles above us and the target are clear and check for a clear sight between them
-		uint8_t newZ = fromPos.z - 1;
-		return isTileClear(fromPos.x, fromPos.y, newZ, true) && isTileClear(toPos.x, toPos.y, newZ, true) && checkSightLine(fromPos.x, fromPos.y, toPos.x, toPos.y, newZ);
+		return sightClear || sameFloor || (fromPos.z == 0);
 	}
 
-	//target is on a different floor
-	if (sameFloor) {
+	// Check if fromPos and toPos cross the ground floor
+	if ((fromPos.z < 8 && toPos.z > 7) || (fromPos.z > 7 && toPos.z < 8))
 		return false;
-	}
 
-	//skip checks for sight line in case fromPos and toPos cross the ground floor
-	if (fromPos.z < 8 && toPos.z > 7 || fromPos.z > 7 && toPos.z < 8) {
-		return false;
-	}
-
-	//target is above us
-	if (fromPos.z > toPos.z) {
-		if (Position::getDistanceZ(fromPos, toPos) > 1) {
+	// Check if tiles above or below the target are clear
+	uint8_t startZ = std::min(fromPos.z, toPos.z);
+	uint8_t endZ = std::max(fromPos.z, toPos.z);
+	for (uint8_t z = startZ; z < endZ; ++z) {
+		if (!isTileClear(toPos.x, toPos.y, z, true))
 			return false;
-		}
-
-		//check a tile above us and the path to the target
-		uint8_t newZ = fromPos.z - 1;
-		return isTileClear(fromPos.x, fromPos.y, newZ, true) && checkSightLine(fromPos.x, fromPos.y, toPos.x, toPos.y, newZ);
 	}
 
-	//target is below us
-	//check if tiles above the target are clear
-	for (uint8_t z = fromPos.z; z < toPos.z; ++z) {
-		if (!isTileClear(toPos.x, toPos.y, z, true)) {
-			return false;
-		}
-	}
-
-	//check if we can throw to the tile above the target
+	// Check if we can throw to the tile above the target
 	return checkSightLine(fromPos.x, fromPos.y, toPos.x, toPos.y, fromPos.z);
 }
 
