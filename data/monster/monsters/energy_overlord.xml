@@ -43,6 +43,5 @@
 	<loot>
 		<item name="gold coin" countmax="64" chance="100000" />
 		<item name="platinum coin" countmax="2" chance="25000" />
-		<item name="pure energy" chance="100000" />
 	</loot>
 </monster>

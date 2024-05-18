@@ -65,7 +65,7 @@
 		<voice sentence="He he he!" />
 	</voices>
 	<loot>
-		<item id="2050" chance="15000" /><!-- torch -->
+		<item name="torch" id="2050" chance="15000" />
 		<item name="gold coin" countmax="79" chance="100000" />
 		<item name="small amethyst" chance="8888" />
 		<item name="stealth ring" chance="4555" />
@@ -76,11 +76,10 @@
 		<item name="brass armor" chance="6577" />
 		<item name="pitchfork" chance="20000" />
 		<item name="soul orb" chance="5666" />
-		<item id="6300" chance="999" /><!-- death ring -->
+		<item name="death ring" id="6300" chance="999" />
 		<item name="demonic essence" chance="7777" />
 		<item name="infernal bolt" countmax="5" chance="5000" />
 		<item name="the Imperor's trident" chance="100000" />
-		<item name="concentrated demonic blood" chance="2222" />
 		<item name="magma boots" chance="2000" />
 		<item name="magma coat" chance="2000" />
 		<item name="magma monocle" chance="2000" />
