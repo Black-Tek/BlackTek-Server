@@ -9048,10 +9048,10 @@ int LuaScriptInterface::luaPlayerGetDepotChest(lua_State* L)
 	}
 
 	uint32_t depotId = getNumber<uint32_t>(L, 2);
-	bool autoCreate = getBoolean(L, 3, false);
+	bool autoCreate = getBoolean(L, 3, true);
 	DepotChest* depotChest = player->getDepotChest(depotId, autoCreate);
+	
 	if (depotChest) {
-		player->setLastDepotId(depotId); // FIXME: workaround for #2251
 		pushUserdata<Item>(L, depotChest);
 		setItemMetatable(L, -1, depotChest);
 	} else {

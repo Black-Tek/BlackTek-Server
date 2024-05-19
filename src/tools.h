@@ -56,6 +56,7 @@ std::string convertIPToString(uint32_t ip);
 
 void trimString(std::string& str);
 
+uint16_t getDepotBoxId(uint16_t index);
 MagicEffectClasses getMagicEffect(const std::string& strValue);
 ShootType_t getShootType(const std::string& strValue);
 Ammo_t getAmmoType(const std::string& strValue);
