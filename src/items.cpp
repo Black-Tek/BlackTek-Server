@@ -701,6 +701,11 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 					break;
 				}
 
+				case ITEM_PARSE_IMBUEMENT_SLOT: {
+					it.imbuementslots = pugi::cast<int16_t>(valueAttribute.value());
+					break;
+				}
+
 				case ITEM_PARSE_ROTATETO: {
 					it.rotateTo = pugi::cast<int32_t>(valueAttribute.value());
 					break;
