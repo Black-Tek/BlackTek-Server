@@ -2157,7 +2157,6 @@
         <attribute key="armor" value="0" />
         <attribute key="slotType" value="head" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2140" article="a" name="holy scarab">
         <attribute key="weight" value="870" />
@@ -2429,7 +2428,6 @@
         <attribute key="slotType" value="feet" />
         <attribute key="speed" value="40" />
         <attribute key="showattributes" value="1" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="2196" article="a" name="broken amulet">
@@ -3839,7 +3837,6 @@
         <attribute key="armor" value="6" />
         <attribute key="slotType" value="body" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2465" article="a" name="brass armor">
         <attribute key="weight" value="8000" />
@@ -3850,7 +3847,6 @@
         <attribute key="weight" value="8000" />
         <attribute key="armor" value="14" />
         <attribute key="slotType" value="body" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2467" article="a" name="leather armor">
@@ -3879,13 +3875,11 @@
         <attribute key="armor" value="12" />
         <attribute key="slotType" value="head" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2472" article="a" name="magic plate armor">
         <attribute key="weight" value="8500" />
         <attribute key="armor" value="17" />
         <attribute key="slotType" value="body" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2473" article="a" name="viking helmet">
@@ -3904,13 +3898,11 @@
         <attribute key="armor" value="8" />
         <attribute key="slotType" value="head" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2476" article="a" name="knight armor">
         <attribute key="weight" value="12000" />
         <attribute key="armor" value="12" />
         <attribute key="slotType" value="body" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2477" name="knight legs">
@@ -3963,13 +3955,11 @@
         <attribute key="armor" value="11" />
         <attribute key="slotType" value="body" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2487" article="a" name="crown armor">
         <attribute key="weight" value="9900" />
         <attribute key="armor" value="13" />
         <attribute key="slotType" value="body" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="2488" name="crown legs">
@@ -3992,13 +3982,11 @@
         <attribute key="armor" value="7" />
         <attribute key="slotType" value="head" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2492" article="a" name="dragon scale mail">
         <attribute key="weight" value="11400" />
         <attribute key="armor" value="15" />
         <attribute key="slotType" value="body" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="2493" article="a" name="demon helmet">
@@ -4007,13 +3995,11 @@
         <attribute key="armor" value="10" />
         <attribute key="slotType" value="head" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2494" article="a" name="demon armor">
         <attribute key="weight" value="8000" />
         <attribute key="armor" value="16" />
         <attribute key="slotType" value="body" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2495" name="demon legs">
@@ -4031,7 +4017,6 @@
         <attribute key="armor" value="8" />
         <attribute key="slotType" value="head" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2498" article="a" name="royal helmet">
         <attribute key="description" value="An excellent masterpiece of a smith." />
@@ -4039,13 +4024,11 @@
         <attribute key="armor" value="9" />
         <attribute key="slotType" value="head" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2499" article="an" name="amazon helmet">
         <attribute key="weight" value="2950" />
         <attribute key="armor" value="7" />
         <attribute key="slotType" value="head" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2500" article="an" name="amazon armor">
@@ -4053,7 +4036,6 @@
         <attribute key="armor" value="13" />
         <attribute key="skillDist" value="3" />
         <attribute key="slotType" value="body" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2501" article="a" name="ceremonial mask">
@@ -4067,14 +4049,12 @@
         <attribute key="slotType" value="head" />
         <attribute key="absorbPercentPhysical" value="2" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2503" article="a" name="dwarven armor">
         <attribute key="weight" value="13000" />
         <attribute key="armor" value="10" />
         <attribute key="slotType" value="body" />
         <attribute key="absorbPercentPhysical" value="5" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2504" name="dwarven legs">
@@ -4087,7 +4067,6 @@
         <attribute key="weight" value="9000" />
         <attribute key="armor" value="9" />
         <attribute key="slotType" value="body" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="3" />
     </item>
     <item id="2506" article="a" name="dragon scale helmet">
@@ -4584,12 +4563,10 @@
         <attribute key="armor" value="2" />
         <attribute key="slotType" value="feet" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="2642" name="sandals">
         <attribute key="weight" value="600" />
         <attribute key="slotType" value="feet" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="2643" name="leather boots">
@@ -4597,12 +4574,10 @@
         <attribute key="armor" value="1" />
         <attribute key="slotType" value="feet" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="2644" name="bunnyslippers">
         <attribute key="weight" value="600" />
         <attribute key="slotType" value="feet" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="2645" name="steel boots">
@@ -4610,13 +4585,11 @@
         <attribute key="armor" value="3" />
         <attribute key="slotType" value="feet" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="2646" name="golden boots">
         <attribute key="weight" value="3100" />
         <attribute key="armor" value="4" />
         <attribute key="slotType" value="feet" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="2647" name="plate legs">
@@ -4671,7 +4644,6 @@
         <attribute key="armor" value="11" />
         <attribute key="slotType" value="body" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2657" article="a" name="simple dress">
         <attribute key="weight" value="1000" />
@@ -4699,7 +4671,6 @@
         <attribute key="weight" value="750" />
         <attribute key="armor" value="1" />
         <attribute key="slotType" value="head" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2663" article="a" name="mystic turban">
@@ -7516,7 +7487,6 @@
         <attribute key="armor" value="9" />
         <attribute key="slotType" value="body" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="3969" article="a" name="horseman helmet">
         <attribute key="weight" value="4200" />
@@ -7537,7 +7507,6 @@
         <attribute key="weight" value="4600" />
         <attribute key="armor" value="7" />
         <attribute key="slotType" value="head" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="3973" article="a" name="tusk shield">
@@ -7567,7 +7536,6 @@
         <attribute key="weight" value="900" />
         <attribute key="armor" value="1" />
         <attribute key="slotType" value="feet" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="3983" article="a" name="bast skirt">
@@ -8820,7 +8788,6 @@
         <attribute key="armor" value="2" />
         <attribute key="slotType" value="feet" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="5463" name="sugar cane">
         <attribute key="description" value="It has just been harvested." />
@@ -9273,7 +9240,6 @@
         <attribute key="weight" value="4200" />
         <attribute key="armor" value="9" />
         <attribute key="slotType" value="head" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item fromid="5743" toid="5744" article="a" name="sunken ship" />
@@ -13191,14 +13157,12 @@
         <attribute key="slotType" value="feet" />
         <attribute key="speed" value="-12" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="7458" article="a" name="fur cap">
         <attribute key="description" value="It feels nice and warm on your ears." />
         <attribute key="weight" value="1800" />
         <attribute key="armor" value="3" />
         <attribute key="slotType" value="head" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="7459" article="a" name="pair of earmuffs">
@@ -13229,7 +13193,6 @@
         <attribute key="armor" value="10" />
         <attribute key="slotType" value="body" />
         <attribute key="description" value="It is imbued with protective magic." />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="7464" name="mammoth fur shorts">
@@ -14875,7 +14838,6 @@
         <attribute key="absorbPercentEarth" value="5" />
         <attribute key="absorbPercentFire" value="-5" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="7887" article="a" name="terra amulet">
         <attribute key="weight" value="500" />
@@ -14920,7 +14882,6 @@
         <attribute key="absorbPercentIce" value="-5" />
         <attribute key="slotType" value="feet" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="7892" name="glacier shoes">
         <attribute key="weight" value="750" />
@@ -14929,7 +14890,6 @@
         <attribute key="absorbPercentIce" value="5" />
         <attribute key="absorbPercentEnergy" value="-5" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="7893" name="lightning boots">
         <attribute key="weight" value="750" />
@@ -14937,7 +14897,6 @@
         <attribute key="absorbPercentEnergy" value="5" />
         <attribute key="absorbPercentEarth" value="-5" />
         <attribute key="slotType" value="feet" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="7894" name="magma legs">
@@ -15961,7 +15920,6 @@
         <attribute key="armor" value="3" />
         <attribute key="slotType" value="head" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="8821" article="a" name="witchhunter's coat">
         <attribute key="weight" value="2500" />
@@ -16279,7 +16237,6 @@
         <attribute key="weight" value="6900" />
         <attribute key="skillDist" value="3" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="8889" article="a" name="skullcracker armor">
         <attribute key="weight" value="11000" />
@@ -16300,7 +16257,6 @@
         <attribute key="slotType" value="body" />
         <attribute key="weight" value="6500" />
         <attribute key="skillDist" value="2" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="8892" article="an" name="ethno coat">
@@ -16909,7 +16865,6 @@
         <attribute key="magiclevelpoints" value="1" />
         <attribute key="slotType" value="head" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="9081" article="a" name="parcel">
         <attribute key="weight" value="1800" />
@@ -17508,7 +17463,6 @@
         <attribute key="slotType" value="head" />
         <attribute key="magiclevelpoints" value="2" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="9779" article="a" name="crystal column" />
     <item id="9780" article="a" name="dead tortoise">
@@ -17879,7 +17833,6 @@
         <attribute key="slotType" value="feet" />
         <attribute key="weight" value="600" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="9932" name="firewalker boots">
         <attribute key="description" value="Wearing these boots reduces the damage gotten from fiery ground." />
@@ -18228,7 +18181,6 @@
         <attribute key="armor" value="3" />
         <attribute key="slotType" value="head" />
         <attribute key="magiclevelpoints" value="1" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="10017" article="a" name="football" />
@@ -18871,7 +18823,6 @@
         <attribute key="armor" value="5" />
         <attribute key="slotType" value="head" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="10292" article="a" name="pointed rabbitslayer">
         <attribute key="description" value="Someone has sharpened this carrot to inflict some nasty damage especially on rabbits." />
@@ -18909,7 +18860,6 @@
         <attribute key="armor" value="6" />
         <attribute key="slotType" value="body" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="10297" article="a" name="shield of care">
         <attribute key="description" value="This shield will surely care for anyone who can bear it." />
@@ -18924,14 +18874,12 @@
         <attribute key="armor" value="3" />
         <attribute key="slotType" value="head" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="10299" article="a" name="helmet of nature">
         <attribute key="description" value="One can only hope nobody will ever insist on wearing that." />
         <attribute key="weight" value="1100" />
         <attribute key="armor" value="3" />
         <attribute key="slotType" value="head" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="10300" name="trousers of the ancients">
@@ -19472,7 +19420,6 @@
         <attribute key="absorbPercentManaDrain" value="5" />
         <attribute key="slotType" value="head" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="10571" article="a" name="war crystal">
         <attribute key="weight" value="145" />
@@ -19902,7 +19849,6 @@
         <attribute key="slotType" value="feet" />
         <attribute key="weight" value="1850" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="11118" name="dragon scale boots">
         <attribute key="armor" value="3" />
@@ -19910,7 +19856,6 @@
         <attribute key="absorbPercentIce" value="-3" />
         <attribute key="slotType" value="feet" />
         <attribute key="weight" value="1850" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="11119" article="a" name="heart backpack">
@@ -20165,7 +20110,6 @@
         <attribute key="absorbPercentHoly" value="-2" />
         <attribute key="slotType" value="feet" />
         <attribute key="weight" value="2250" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="11241" article="an" name="expedition backpack">
@@ -20428,14 +20372,12 @@
         <attribute key="slotType" value="head" />
         <attribute key="absorbPercentPhysical" value="5" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="11303" name="Zaoan shoes">
         <attribute key="weight" value="700" />
         <attribute key="armor" value="1" />
         <attribute key="slotType" value="feet" />
         <attribute key="speed" value="10" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="11304" name="Zaoan legs">
@@ -20729,7 +20671,6 @@
         <attribute key="armor" value="4" />
         <attribute key="magiclevelpoints" value="1" />
         <attribute key="slotType" value="head" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="11369" article="a" name="terramite shell">
@@ -21896,7 +21837,6 @@
         <attribute key="slotType" value="body" />
         <attribute key="speed" value="20" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="12608" article="a" name="broken key ring">
         <attribute key="weight" value="50" />
@@ -22068,14 +22008,12 @@
         <attribute key="absorbPercentDeath" value="3" />
         <attribute key="skillDist" value="1" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="12646" name="draken boots">
         <attribute key="armor" value="3" />
         <attribute key="speed" value="30" />
         <attribute key="weight" value="2500" />
         <attribute key="slotType" value="feet" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="12647" article="a" name="snake god's wristguard">
@@ -24902,7 +24840,6 @@
         <attribute key="absorbPercentPhysical" value="8" />
         <attribute key="showattributes" value="1" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="15407" article="a" name="depth lorica">
         <attribute key="weight" value="14500" />
@@ -24911,7 +24848,6 @@
         <attribute key="skillDist" value="3" />
         <attribute key="absorbPercentDeath" value="5" />
         <attribute key="showattributes" value="1" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="15408" article="a" name="depth galea">
@@ -24935,7 +24871,6 @@
         <attribute key="speed" value="-10" />
         <attribute key="absorbPercentPhysical" value="5" />
         <attribute key="showattributes" value="1" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="15411" article="a" name="depth scutum">
@@ -26520,7 +26455,6 @@
         <attribute key="slotType" value="body" />
         <attribute key="speed" value="30" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="18405" name="prismatic legs">
         <attribute key="weight" value="7100" />
@@ -26536,7 +26470,6 @@
         <attribute key="speed" value="30" />
         <attribute key="absorbPercentDeath" value="3" />
         <attribute key="showattributes" value="1" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="18407" article="a" name="prismatic necklace">
@@ -28026,7 +27959,6 @@
         <attribute key="weight" value="3500" />
         <attribute key="armor" value="7" />
         <attribute key="slotType" value="head" />
-        <attribute key="imbuementslots" value="2" />
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="20133" name="lost bracers">
@@ -31461,7 +31393,6 @@
         <attribute key="armor" value="11" />
         <attribute key="slotType" value="body" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="21693" article="a" name="horn">
         <attribute key="weight" value="120" />
@@ -31521,7 +31452,6 @@
     </item>
     <item id="21708" name="vampire silk slippers">
         <attribute key="weight" value="1150" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item fromid="21709" toid="21712" name="slime spores" />
@@ -33498,7 +33428,6 @@
         <attribute key="slotType" value="body" />
         <attribute key="weight" value="12500" />
         <attribute key="imbuementslots" value="2" />
-        <attribute key="imbuementslots" value="2" />
     </item>
     <item id="23538" article="a" name="heat core">
         <attribute key="armor" value="12" />
@@ -33517,7 +33446,6 @@
         <attribute key="slotType" value="feet" />
         <attribute key="absorbPercentPhysical" value="1" />
         <attribute key="weight" value="1800" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="23541" article="a" name="gearwheel chain">
@@ -34823,7 +34751,6 @@
         <attribute key="speed" value="30" />
         <attribute key="armor" value="2" />
         <attribute key="imbuementslots" value="1" />
-        <attribute key="imbuementslots" value="1" />
     </item>
     <item id="24638" article="a" name="nightmare teddy">
         <attribute key="weight" value="590" />
@@ -35249,7 +35176,6 @@
         <attribute key="slotType" value="feet" />
         <attribute key="speed" value="20" />
         <attribute key="armor" value="2" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="24743" article="a" name="wereboar loincloth">
@@ -36206,7 +36132,6 @@
         <attribute key="armor" value="4" />
         <attribute key="weight" value="3600" />
         <attribute key="slotType" value="feet" />
-        <attribute key="imbuementslots" value="1" />
         <attribute key="imbuementslots" value="1" />
     </item>
     <item id="25413" article="a" name="shroud of despair">
