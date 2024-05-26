@@ -1276,3 +1276,20 @@ uint16_t getDepotBoxId(uint16_t index)
 	}
 	return depotBoxes[index];
 }
+
+std::string getStatName(uint8_t id)
+{
+	switch (id) {
+	case STAT_MAXHITPOINTS:
+		return "max hitpoints";
+
+	case STAT_MAXMANAPOINTS:
+		return "max manapoints";
+
+	case STAT_MAGICPOINTS:
+		return "magic level";
+
+	default:
+		return "unknown";
+	}
+}

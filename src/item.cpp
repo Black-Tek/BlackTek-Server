@@ -21,6 +21,18 @@ extern Vocations g_vocations;
 
 Items Item::items;
 
+// Description Utility Functions
+void handleRuneDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType);
+void handleWeaponDistanceDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType);
+void handleWeaponMeleeDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType, bool& begin);
+void handleSkillsDescription(std::ostringstream& s, const ItemType& it, bool& begin);
+void handleStatsDescription(std::ostringstream& s, const ItemType& it, bool& begin);
+void handleStatsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
+void handleAbsorbsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
+void handleAbsorbsFieldsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
+void handleAbilitiesDescription(std::ostringstream& s, const ItemType& it, bool& begin);
+void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begin);
+
 Item* Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
 {
 	Item* newItem = nullptr;
@@ -1026,431 +1038,31 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 		subType = item->getSubType();
 	}
 
+	const std::string classification = item ? item->getClassification() : it.classification;
+	const std::string tier = item ? item->getTier() : it.tier;
+
 	if (it.isRune()) {
-		if (it.runeLevel > 0 || it.runeMagLevel > 0) {
-			if (RuneSpell* rune = g_spells->getRuneSpell(it.id)) {
-				int32_t tmpSubType = subType;
-				if (item) {
-					tmpSubType = item->getSubType();
-				}
-				s << " (\"" << it.runeSpellName << "\"). " << (it.stackable && tmpSubType > 1 ? "They" : "It") << " can only be used by ";
-
-				const VocSpellMap& vocMap = rune->getVocMap();
-				std::vector<Vocation*> showVocMap;
-
-				// vocations are usually listed with the unpromoted and promoted version, the latter being
-				// hidden from description, so `total / 2` is most likely the amount of vocations to be shown.
-				showVocMap.reserve(vocMap.size() / 2);
-				for (const auto& voc : vocMap) {
-					if (voc.second) {
-						showVocMap.push_back(g_vocations.getVocation(voc.first));
-					}
-				}
-
-				if (!showVocMap.empty()) {
-					auto vocIt = showVocMap.begin(), vocLast = (showVocMap.end() - 1);
-					while (vocIt != vocLast) {
-						s << asLowerCaseString((*vocIt)->getVocName()) << "s";
-						if (++vocIt == vocLast) {
-							s << " and ";
-						} else {
-							s << ", ";
-						}
-					}
-					s << asLowerCaseString((*vocLast)->getVocName()) << "s";
-				} else {
-					s << "players";
-				}
-
-				s << " with";
-
-				if (it.runeLevel > 0) {
-					s << " level " << it.runeLevel;
-				}
-
-				if (it.runeMagLevel > 0) {
-					if (it.runeLevel > 0) {
-						s << " and";
-					}
-
-					s << " magic level " << it.runeMagLevel;
-				}
-
-				s << " or higher";
-			}
-		}
+		handleRuneDescription(s, it, item, subType);
 	} else if (it.weaponType != WEAPON_NONE) {
 		bool begin = true;
+
 		if (it.weaponType == WEAPON_DISTANCE && it.ammoType != AMMO_NONE) {
-			s << " (Range:" << static_cast<uint16_t>(item ? item->getShootRange() : it.shootRange);
-
-			int32_t attack;
-			int8_t hitChance;
-			if (item) {
-				attack = item->getAttack();
-				hitChance = item->getHitChance();
-			} else {
-				attack = it.attack;
-				hitChance = it.hitChance;
-			}
-
-			if (attack != 0) {
-				s << ", Atk" << std::showpos << attack << std::noshowpos;
-			}
-
-			if (hitChance != 0) {
-				s << ", Hit%" << std::showpos << static_cast<int16_t>(hitChance) << std::noshowpos;
-			}
-
+			handleWeaponDistanceDescription(s, it, item, subType);
 			begin = false;
 		} else if (it.weaponType != WEAPON_AMMO) {
-			int32_t attack, defense, extraDefense;
-			if (item) {
-				attack = item->getAttack();
-				defense = item->getDefense();
-				extraDefense = item->getExtraDefense();
-			} else {
-				attack = it.attack;
-				defense = it.defense;
-				extraDefense = it.extraDefense;
-			}
-
-			if (attack != 0) {
-				begin = false;
-				s << " (Atk:" << attack;
-
-				if (it.abilities && it.abilities->elementType != COMBAT_NONE && it.abilities->elementDamage != 0) {
-					s << " physical + " << it.abilities->elementDamage << ' ' << getCombatName(it.abilities->elementType);
-				}
-			}
-
-			uint32_t attackSpeed = item ? item->getAttackSpeed() : it.attackSpeed;
-			if (attackSpeed) {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "Atk Spd:" << (attackSpeed / 1000.) << "s";
-			}
-
-			if (defense != 0 || extraDefense != 0) {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "Def:" << defense;
-				if (extraDefense != 0) {
-					s << ' ' << std::showpos << extraDefense << std::noshowpos;
-				}
-			}
+			handleWeaponMeleeDescription(s, it, item, subType, begin);
 		}
 
-		// Show Classification and Tier on item 
-		uint32_t classification = item ? item->getClassification() : it.classification;
-		uint32_t tier = item ? item->getTier() : it.tier;
+		if (!classification.empty()) {
+			s << "\nClassification: " << classification;
+		}
 
-		if (classification) {
-			s << "\nClassification: " << classification << " Tier: " << tier;
+		if (!tier.empty()) {
+			s << "\nTier: " << tier;
 		}
 
 		if (it.abilities) {
-			for (uint8_t i = SKILL_FIRST; i <= SKILL_LAST; i++) {
-				if (!it.abilities->skills[i]) {
-					continue;
-				}
-
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << getSkillName(i) << ' ' << std::showpos << it.abilities->skills[i] << std::noshowpos;
-			}
-
-			for (uint8_t i = SPECIALSKILL_FIRST; i <= SPECIALSKILL_LAST; i++) {
-				if (!it.abilities->specialSkills[i]) {
-					continue;
-				}
-
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << getSpecialSkillName(i) << ' ' << std::showpos << it.abilities->specialSkills[i] << '%' << std::noshowpos;
-			}
-
-			if (it.abilities->stats[STAT_MAGICPOINTS]) {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "magic level " << std::showpos << it.abilities->stats[STAT_MAGICPOINTS] << std::noshowpos;
-			}
-
-			int16_t show = it.abilities->absorbPercent[0];
-			if (show != 0) {
-				for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-					if (it.abilities->absorbPercent[i] != show) {
-						show = 0;
-						break;
-					}
-				}
-			}
-
-			if (show == 0) {
-				bool tmp = true;
-
-				for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-					if (it.abilities->absorbPercent[i] == 0) {
-						continue;
-					}
-
-					if (tmp) {
-						tmp = false;
-
-						if (begin) {
-							begin = false;
-							s << " (";
-						} else {
-							s << ", ";
-						}
-
-						s << "protection ";
-					} else {
-						s << ", ";
-					}
-
-					s << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << it.abilities->absorbPercent[i] << std::noshowpos << '%';
-				}
-			} else {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "protection all " << std::showpos << show << std::noshowpos << '%';
-			}
-
-			show = it.abilities->fieldAbsorbPercent[0];
-			if (show != 0) {
-				for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-					if (it.abilities->absorbPercent[i] != show) {
-						show = 0;
-						break;
-					}
-				}
-			}
-
-			if (show == 0) {
-				bool tmp = true;
-
-				for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-					if (it.abilities->fieldAbsorbPercent[i] == 0) {
-						continue;
-					}
-
-					if (tmp) {
-						tmp = false;
-
-						if (begin) {
-							begin = false;
-							s << " (";
-						} else {
-							s << ", ";
-						}
-
-						s << "protection ";
-					} else {
-						s << ", ";
-					}
-
-					s << getCombatName(indexToCombatType(i)) << " field " << std::showpos << it.abilities->fieldAbsorbPercent[i] << std::noshowpos << '%';
-				}
-			} else {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "protection all fields " << std::showpos << show << std::noshowpos << '%';
-			}
-
-			int16_t modifier = item ? item->getReflect(COMBAT_NONE).percent : it.abilities->reflect[0].percent;
-			show = modifier;
-			if (show != 0) {
-				for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-					if (it.abilities->fieldAbsorbPercent[i] != show) {
-						show = 0;
-						break;
-					}
-				}
-			}
-
-			if (show == 0) {
-				bool tmp = true;
-
-				for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-					modifier = item ? item->getReflect(indexToCombatType(i)).percent : it.abilities->reflect[i].percent;
-					if (modifier == 0) {
-						continue;
-					}
-
-					if (tmp) {
-						tmp = false;
-
-						if (begin) {
-							begin = false;
-							s << " (";
-						} else {
-							s << ", ";
-						}
-
-						s << "reflect ";
-					} else {
-						s << ", ";
-					}
-
-					s << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << modifier << std::noshowpos << '%';
-				}
-			} else {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "reflect all " << std::showpos << show << std::noshowpos << '%';
-			}
-
-			modifier = item ? item->getReflect(COMBAT_NONE).chance : it.abilities->reflect[0].chance;
-			show = modifier;
-			if (show != 0) {
-				for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-					int16_t temp = item ? item->getReflect(indexToCombatType(i)).percent : it.abilities->reflect[i].percent;
-					if (temp != show) {
-						show = 0;
-						break;
-					}
-				}
-			}
-
-			if (show == 0) {
-				bool tmp = true;
-
-				for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-					modifier = item ? item->getReflect(indexToCombatType(i)).percent : it.abilities->reflect[i].percent;
-					if (modifier == 0) {
-						continue;
-					}
-
-					if (tmp) {
-						tmp = false;
-
-						if (begin) {
-							begin = false;
-							s << " (";
-						} else {
-							s << ", ";
-						}
-
-						s << "reflect ";
-					} else {
-						s << ", ";
-					}
-
-					s << getCombatName(indexToCombatType(i)) << " chance " << std::showpos << modifier << std::noshowpos << '%';
-				}
-			} else {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "reflect chance all " << std::showpos << show << std::noshowpos << '%';
-			}
-
-			modifier = item ? item->getBoostPercent(COMBAT_NONE) : it.abilities->boostPercent[0];
-			show = modifier;
-			if (show != 0) {
-				for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-					int16_t temp = item ? item->getReflect(indexToCombatType(i)).chance : it.abilities->reflect[i].chance;
-					if (temp != show) {
-						show = 0;
-						break;
-					}
-				}
-			}
-
-			if (show == 0) {
-				bool tmp = true;
-
-				for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-					modifier = item ? item->getBoostPercent(indexToCombatType(i)) : it.abilities->boostPercent[i];
-					if (modifier == 0) {
-						continue;
-					}
-
-					if (tmp) {
-						tmp = false;
-
-						if (begin) {
-							begin = false;
-							s << " (";
-						} else {
-							s << ", ";
-						}
-
-						s << "boost ";
-					} else {
-						s << ", ";
-					}
-
-					s << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << modifier << std::noshowpos << '%';
-				}
-			} else {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "boost all " << std::showpos << show << std::noshowpos << '%';
-			}
-
-
-
-			if (it.abilities->speed) {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "speed " << std::showpos << (it.abilities->speed >> 1) << std::noshowpos;
-			}
+			handleAbilitiesDescription(s, it, begin);
 		}
 
 		if (!begin) {
@@ -1465,285 +1077,23 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 			begin = false;
 		}
 
+		if (!classification.empty()) {
+			s << "\nClassification: " << classification;
+		}
+
+		if (!tier.empty()) {
+			s << "\nTier: " << tier;
+		}
+
 		if (it.abilities) {
-			for (uint8_t i = SKILL_FIRST; i <= SKILL_LAST; i++) {
-				if (!it.abilities->skills[i]) {
-					continue;
-				}
-
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << getSkillName(i) << ' ' << std::showpos << it.abilities->skills[i] << std::noshowpos;
-			}
-
-			if (it.abilities->stats[STAT_MAGICPOINTS]) {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "magic level " << std::showpos << it.abilities->stats[STAT_MAGICPOINTS] << std::noshowpos;
-			}
-
-			int16_t show = it.abilities->absorbPercent[0];
-			if (show != 0) {
-				for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-					if (it.abilities->absorbPercent[i] != show) {
-						show = 0;
-						break;
-					}
-				}
-			}
-
-			if (!show) {
-				bool protectionBegin = true;
-				for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-					if (it.abilities->absorbPercent[i] == 0) {
-						continue;
-					}
-
-					if (protectionBegin) {
-						protectionBegin = false;
-
-						if (begin) {
-							begin = false;
-							s << " (";
-						} else {
-							s << ", ";
-						}
-
-						s << "protection ";
-					} else {
-						s << ", ";
-					}
-
-					s << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << it.abilities->absorbPercent[i] << std::noshowpos << '%';
-				}
-			} else {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "protection all " << std::showpos << show << std::noshowpos << '%';
-			}
-
-			show = it.abilities->fieldAbsorbPercent[0];
-			if (show != 0) {
-				for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-					if (it.abilities->absorbPercent[i] != show) {
-						show = 0;
-						break;
-					}
-				}
-			}
-
-			if (!show) {
-				bool tmp = true;
-
-				for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-					if (it.abilities->fieldAbsorbPercent[i] == 0) {
-						continue;
-					}
-
-					if (tmp) {
-						tmp = false;
-
-						if (begin) {
-							begin = false;
-							s << " (";
-						} else {
-							s << ", ";
-						}
-
-						s << "protection ";
-					} else {
-						s << ", ";
-					}
-
-					s << getCombatName(indexToCombatType(i)) << " field " << std::showpos << it.abilities->fieldAbsorbPercent[i] << std::noshowpos << '%';
-				}
-			} else {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "protection all fields " << std::showpos << show << std::noshowpos << '%';
-			}
-			int16_t modifier = item ? item->getReflect(COMBAT_NONE).percent : it.abilities->reflect[0].percent;
-			show = modifier;
-			if (show != 0) {
-				for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-					if (it.abilities->fieldAbsorbPercent[i] != show) {
-						show = 0;
-						break;
-					}
-				}
-			}
-
-			if (show == 0) {
-				bool tmp = true;
-
-				for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-					modifier = item ? item->getReflect(indexToCombatType(i)).percent : it.abilities->reflect[i].percent;
-					if (modifier == 0) {
-						continue;
-					}
-
-					if (tmp) {
-						tmp = false;
-
-						if (begin) {
-							begin = false;
-							s << " (";
-						} else {
-							s << ", ";
-						}
-
-						s << "reflect ";
-					} else {
-						s << ", ";
-					}
-
-					s << getCombatName(indexToCombatType(i)) << ' ' << modifier << std::noshowpos << '%';
-				}
-			} else {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "reflect all " << show << std::noshowpos << '%';
-			}
-
-			modifier = item ? item->getReflect(COMBAT_NONE).chance : it.abilities->reflect[0].chance;
-			show = modifier;
-			if (show != 0) {
-				for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-					int16_t temp = item ? item->getReflect(indexToCombatType(i)).percent : it.abilities->reflect[i].percent;
-					if (temp != show) {
-						show = 0;
-						break;
-					}
-				}
-			}
-
-			if (show == 0) {
-				bool tmp = true;
-
-				for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-					modifier = item ? item->getReflect(indexToCombatType(i)).chance : it.abilities->reflect[i].chance;
-					if (modifier == 0) {
-						continue;
-					}
-
-					if (tmp) {
-						tmp = false;
-
-						if (begin) {
-							begin = false;
-							s << " (";
-						} else {
-							s << ", ";
-						}
-
-						s << "reflect ";
-					} else {
-						s << ", ";
-					}
-
-					s << getCombatName(indexToCombatType(i)) << " chance " << modifier << std::noshowpos << '%';
-				}
-			} else {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "reflect chance all " << show << std::noshowpos << '%';
-			}
-
-			modifier = item ? item->getBoostPercent(COMBAT_NONE) : it.abilities->boostPercent[0];
-			show = modifier;
-			if (show != 0) {
-				for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-					int16_t temp = item ? item->getReflect(indexToCombatType(i)).chance : it.abilities->reflect[i].chance;
-					if (temp != show) {
-						show = 0;
-						break;
-					}
-				}
-			}
-
-			if (show == 0) {
-				bool tmp = true;
-
-				for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-					modifier = item ? item->getBoostPercent(indexToCombatType(i)) : it.abilities->boostPercent[i];
-					if (modifier == 0) {
-						continue;
-					}
-
-					if (tmp) {
-						tmp = false;
-
-						if (begin) {
-							begin = false;
-							s << " (";
-						} else {
-							s << ", ";
-						}
-
-						s << "boost ";
-					} else {
-						s << ", ";
-					}
-
-					s << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << modifier << std::noshowpos << '%';
-				}
-			} else {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "boost all " << std::showpos << show << std::noshowpos << '%';
-			}
-
-			if (it.abilities->speed) {
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "speed " << std::showpos << (it.abilities->speed >> 1) << std::noshowpos;
-			}
+			handleAbilitiesDescription(s, it, begin);
 		}
 
 		if (!begin) {
 			s << ')';
 		}
 	} else if (it.isContainer() || (item && item->getContainer())) {
+		bool begin = true;
 		uint32_t volume = 0;
 		if (!item || !item->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)) {
 			if (it.isContainer()) {
@@ -1754,7 +1104,24 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 		}
 
 		if (volume != 0) {
-			s << " (Vol:" << volume << ')';
+			s << " (Vol:" << volume;
+			begin = false;
+		}
+
+		if (!classification.empty()) {
+			s << "\nClassification: " << classification;
+		}
+
+		if (!tier.empty()) {
+			s << "\nTier: " << tier;
+		}
+
+		if (it.abilities) {
+			handleAbilitiesDescription(s, it, begin);
+		}
+
+		if (!begin) {
+			s << ')';
 		}
 	} else {
 		bool found = true;
@@ -2455,4 +1822,333 @@ void Item::decayImbuements(bool infight) {
 			}
 		}
 	}
+}
+
+void handleRuneDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType) {
+	if (RuneSpell* rune = g_spells->getRuneSpell(it.id)) {
+		int32_t tmpSubType = subType;
+		if (item) {
+			tmpSubType = item->getSubType();
+		}
+		s << " (\"" << it.runeSpellName << "\"). " << (it.stackable && tmpSubType > 1 ? "They" : "It") << " can only be used by ";
+
+		const VocSpellMap& vocMap = rune->getVocMap();
+		std::vector<Vocation*> showVocMap;
+
+		// vocations are usually listed with the unpromoted and promoted version, the latter being
+		// hidden from description, so `total / 2` is most likely the amount of vocations to be shown.
+		showVocMap.reserve(vocMap.size() / 2);
+		for (const auto& voc : vocMap) {
+			if (voc.second) {
+				showVocMap.push_back(g_vocations.getVocation(voc.first));
+			}
+		}
+
+		if (!showVocMap.empty()) {
+			auto vocIt = showVocMap.begin(), vocLast = (showVocMap.end() - 1);
+			while (vocIt != vocLast) {
+				s << asLowerCaseString((*vocIt)->getVocName()) << "s";
+				if (++vocIt == vocLast) {
+					s << " and ";
+				}
+				else {
+					s << ", ";
+				}
+			}
+			s << asLowerCaseString((*vocLast)->getVocName()) << "s";
+		}
+		else {
+			s << "players";
+		}
+
+		s << " with";
+
+		if (it.runeLevel > 0) {
+			s << " level " << it.runeLevel;
+		}
+
+		if (it.runeMagLevel > 0) {
+			if (it.runeLevel > 0) {
+				s << " and";
+			}
+
+			s << " magic level " << it.runeMagLevel;
+		}
+
+		s << " or higher";
+	}
+}
+
+void handleWeaponDistanceDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType) {
+	s << " (Range:" << static_cast<uint16_t>(item ? item->getShootRange() : it.shootRange);
+
+	int32_t attack;
+	int8_t hitChance;
+	if (item) {
+		attack = item->getAttack();
+		hitChance = item->getHitChance();
+	}
+	else {
+		attack = it.attack;
+		hitChance = it.hitChance;
+	}
+
+	if (attack != 0) {
+		s << ", Atk" << std::showpos << attack << std::noshowpos;
+	}
+
+	if (hitChance != 0) {
+		s << ", Hit%" << std::showpos << static_cast<int16_t>(hitChance) << std::noshowpos;
+	}
+}
+
+void handleWeaponMeleeDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType, bool& begin) {
+	int32_t attack, defense, extraDefense;
+	if (item) {
+		attack = item->getAttack();
+		defense = item->getDefense();
+		extraDefense = item->getExtraDefense();
+	}
+	else {
+		attack = it.attack;
+		defense = it.defense;
+		extraDefense = it.extraDefense;
+	}
+
+	if (attack != 0) {
+		begin = false;
+		s << " (Atk:" << attack;
+
+		if (it.abilities && it.abilities->elementType != COMBAT_NONE && it.abilities->elementDamage != 0) {
+			s << " physical + " << it.abilities->elementDamage << ' ' << getCombatName(it.abilities->elementType);
+		}
+	}
+
+	uint32_t attackSpeed = item ? item->getAttackSpeed() : it.attackSpeed;
+	if (attackSpeed) {
+		if (begin) {
+			begin = false;
+			s << " (";
+		}
+		else {
+			s << ", ";
+		}
+
+		s << "Atk Spd:" << (attackSpeed / 1000.) << "s";
+	}
+
+	if (defense != 0 || extraDefense != 0) {
+		if (begin) {
+			begin = false;
+			s << " (";
+		}
+		else {
+			s << ", ";
+		}
+
+		s << "Def:" << defense;
+		if (extraDefense != 0) {
+			s << ' ' << std::showpos << extraDefense << std::noshowpos;
+		}
+	}
+}
+
+void handleSkillsDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
+	for (uint8_t i = SKILL_FIRST; i <= SKILL_LAST; i++) {
+		if (!it.abilities->skills[i]) {
+			continue;
+		}
+
+		if (begin) {
+			begin = false;
+			s << " (";
+		}
+		else {
+			s << ", ";
+		}
+
+		s << getSkillName(i) << ' ' << std::showpos << it.abilities->skills[i] << std::noshowpos;
+	}
+
+	for (uint8_t i = SPECIALSKILL_FIRST; i <= SPECIALSKILL_LAST; i++) {
+		if (!it.abilities->specialSkills[i]) {
+			continue;
+		}
+
+		if (begin) {
+			begin = false;
+			s << " (";
+		}
+		else {
+			s << ", ";
+		}
+
+		s << getSpecialSkillName(i) << ' ' << std::showpos << it.abilities->specialSkills[i] << '%' << std::noshowpos;
+	}
+}
+
+void handleStatsDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
+	for (uint8_t i = STAT_FIRST; i <= STAT_LAST; i++) {
+		if (!it.abilities->stats[i]) {
+			continue;
+		}
+
+		if (begin) {
+			begin = false;
+			s << " (";
+		}
+		else {
+			s << ", ";
+		}
+
+		s << getStatName(i) << ' ' << std::showpos << it.abilities->stats[i] << std::noshowpos;
+	}
+}
+
+void handleStatsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
+	for (uint8_t i = STAT_FIRST; i <= STAT_LAST; i++) {
+		if (!it.abilities->statsPercent[i]) {
+			continue;
+		}
+
+		if (begin) {
+			begin = false;
+			s << " (";
+		}
+		else {
+			s << ", ";
+		}
+
+		s << getStatName(i) << ' ' << std::showpos << it.abilities->statsPercent[i] << std::noshowpos;
+	}
+}
+
+void handleAbsorbsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
+	int16_t show = it.abilities->absorbPercent[0];
+	if (show != 0) {
+		for (size_t i = 1; i < COMBAT_COUNT; ++i) {
+			if (it.abilities->absorbPercent[i] != show) {
+				show = 0;
+				break;
+			}
+		}
+	}
+
+	if (show == 0) {
+		bool tmp = true;
+
+		for (size_t i = 0; i < COMBAT_COUNT; ++i) {
+			if (it.abilities->absorbPercent[i] == 0) {
+				continue;
+			}
+
+			if (tmp) {
+				tmp = false;
+
+				if (begin) {
+					begin = false;
+					s << " (";
+				}
+				else {
+					s << ", ";
+				}
+
+				s << "protection ";
+			}
+			else {
+				s << ", ";
+			}
+
+			s << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << it.abilities->absorbPercent[i] << std::noshowpos << '%';
+		}
+	}
+	else {
+		if (begin) {
+			begin = false;
+			s << " (";
+		}
+		else {
+			s << ", ";
+		}
+
+		s << "protection all " << std::showpos << show << std::noshowpos << '%';
+	}
+}
+
+void handleAbsorbsFieldsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
+	int16_t show = it.abilities->fieldAbsorbPercent[0];
+	if (show != 0) {
+		for (size_t i = 1; i < COMBAT_COUNT; ++i) {
+			if (it.abilities->absorbPercent[i] != show) {
+				show = 0;
+				break;
+			}
+		}
+	}
+
+	if (show == 0) {
+		bool tmp = true;
+
+		for (size_t i = 0; i < COMBAT_COUNT; ++i) {
+			if (it.abilities->fieldAbsorbPercent[i] == 0) {
+				continue;
+			}
+
+			if (tmp) {
+				tmp = false;
+
+				if (begin) {
+					begin = false;
+					s << " (";
+				}
+				else {
+					s << ", ";
+				}
+
+				s << "protection ";
+			}
+			else {
+				s << ", ";
+			}
+
+			s << getCombatName(indexToCombatType(i)) << " field " << std::showpos << it.abilities->fieldAbsorbPercent[i] << std::noshowpos << '%';
+		}
+	}
+	else {
+		if (begin) {
+			begin = false;
+			s << " (";
+		}
+		else {
+			s << ", ";
+		}
+
+		s << "protection all fields " << std::showpos << show << std::noshowpos << '%';
+	}
+}
+
+void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
+	if (it.abilities->speed) {
+		if (begin) {
+			begin = false;
+			s << " (";
+		}
+		else {
+			s << ", ";
+		}
+
+		s << "speed " << std::showpos << (it.abilities->speed >> 1) << std::noshowpos;
+	}
+}
+
+void handleAbilitiesDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
+	handleSkillsDescription(s, it, begin);
+
+	handleStatsDescription(s, it, begin);
+	handleStatsPercentDescription(s, it, begin);
+
+	handleAbsorbsPercentDescription(s, it, begin);
+	handleAbsorbsFieldsPercentDescription(s, it, begin);
+
+	handleMiscDescription(s, it, begin);
 }

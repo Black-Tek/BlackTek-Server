@@ -895,18 +895,6 @@ class Item : virtual public Thing
 			}
 			return items[id].attackSpeed;
 		}
-		uint32_t getClassification() const {
-			if (hasAttribute(ITEM_ATTRIBUTE_CLASSIFICATION)) {
-				return getIntAttr(ITEM_ATTRIBUTE_CLASSIFICATION);
-			}
-			return items[id].classification;
-		}
-		uint32_t getTier() const {
-			if (hasAttribute(ITEM_ATTRIBUTE_TIER)) {
-				return getIntAttr(ITEM_ATTRIBUTE_TIER);
-			}
-			return items[id].tier;
-		}
 		int32_t getArmor() const {
 			if (hasAttribute(ITEM_ATTRIBUTE_ARMOR)) {
 				return getIntAttr(ITEM_ATTRIBUTE_ARMOR);
@@ -1010,6 +998,18 @@ class Item : virtual public Thing
 				return getStrAttr(ITEM_ATTRIBUTE_ARTICLE);
 			}
 			return items[id].article;
+		}
+		const std::string getClassification() const {
+			if (hasAttribute(ITEM_ATTRIBUTE_CLASSIFICATION)) {
+				return getStrAttr(ITEM_ATTRIBUTE_CLASSIFICATION);
+			}
+			return items[id].classification;
+		}
+		const std::string getTier() const {
+			if (hasAttribute(ITEM_ATTRIBUTE_TIER)) {
+				return getStrAttr(ITEM_ATTRIBUTE_TIER);
+			}
+			return items[id].tier;
 		}
 
 		// get the number of items

@@ -13040,9 +13040,8 @@ int LuaScriptInterface::luaItemTypeGetClassification(lua_State* L)
 	// itemType:getClassification()
 	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
 	if (itemType) {
-		lua_pushnumber(L, itemType->classification);
-	}
-	else {
+		pushString(L, itemType->classification);
+	} else {
 		lua_pushnil(L);
 	}
 	return 1;
@@ -13053,9 +13052,8 @@ int LuaScriptInterface::luaItemTypeGetTier(lua_State* L)
 	// itemType:getTier()
 	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
 	if (itemType) {
-		lua_pushnumber(L, itemType->tier);
-	}
-	else {
+		pushString(L, itemType->tier);
+	} else {
 		lua_pushnil(L);
 	}
 	return 1;

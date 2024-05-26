@@ -338,6 +338,8 @@ class ItemType
 		std::string article;
 		std::string pluralName;
 		std::string description;
+		std::string classification;
+		std::string tier;
 		std::string runeSpellName;
 		std::string vocationString;
 
@@ -345,8 +347,6 @@ class ItemType
 		std::unique_ptr<ConditionDamage> conditionDamage;
 
 		uint32_t attackSpeed = 0;
-		uint32_t classification = 0;
-		uint32_t tier = 0;
 		uint32_t weight = 0;
 		uint32_t levelDoor = 0;
 		uint32_t decayTime = 0;
