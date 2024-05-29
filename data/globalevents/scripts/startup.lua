@@ -42,4 +42,18 @@ function onStartup()
 		local position = town:getTemplePosition()
 		db.query("INSERT INTO `towns` (`id`, `name`, `posx`, `posy`, `posz`) VALUES (" .. town:getId() .. ", " .. db.escapeString(town:getName()) .. ", " .. position.x .. ", " .. position.y .. ", " .. position.z .. ")")
 	end
+	
+	-- check for duplicate storages
+	if configManager.getBoolean(configKeys.CHECK_DUPLICATE_STORAGE_KEYS) then
+		local variableNames = {"AccountStorageKeys", "PlayerStorageKeys", "GlobalStorageKeys", "actionIds", "uniqueIds"}
+		for _, variableName in ipairs(variableNames) do
+			local duplicates = checkDuplicateStorageKeys(variableName)
+			if duplicates then
+				local message = "Duplicate keys found: " .. table.concat(duplicates, ", ")
+				print(">> Checking " .. variableName .. ": " .. message)
+			else
+				print(">> Checking " .. variableName .. ": No duplicate keys found.")
+			end
+		end
+	end
 end
