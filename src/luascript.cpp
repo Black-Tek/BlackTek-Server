@@ -7312,7 +7312,7 @@ int LuaScriptInterface::luaItemAddImbuement(lua_State* L)
 	{
 		std::shared_ptr<Imbuement> imbue = getSharedPtr<Imbuement>(L, 2);
 		if (imbue) {
-			pushBoolean(L, item->addImbuement(imbue));
+			pushBoolean(L, item->addImbuement(imbue, true));
 		}
 	} else {
 		lua_pushnil(L);
@@ -7328,7 +7328,7 @@ int LuaScriptInterface::luaItemRemoveImbuement(lua_State* L)
 	{
 		std::shared_ptr<Imbuement> imbue = getSharedPtr<Imbuement>(L, 2);
 		if (imbue) {
-			pushBoolean(L, item->removeImbuement(imbue));
+			pushBoolean(L, item->removeImbuement(imbue, false));
 		}
 	} else {
 		lua_pushnil(L);

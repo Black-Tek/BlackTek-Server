@@ -135,6 +135,12 @@ bool Events::load()
 			} else {
 				std::cout << "[Warning - Events::load] Unknown monster method: " << methodName << std::endl;
 			}
+		} else if (className == "Item") {
+			if (methodName == "onImbue") {
+				info.itemOnImbue = event;
+			} else if (methodName == "onRemoveImbue") {
+				info.itemOnRemoveImbue = event;
+			}
 		} else {
 			std::cout << "[Warning - Events::load] Unknown class: " << className << std::endl;
 		}
@@ -1286,3 +1292,56 @@ void Events::eventMonsterOnDropLoot(Monster* monster, Container* corpse)
 	return scriptInterface.callVoidFunction(2);
 }
 
+bool Events::eventItemOnImbue(Item* item, std::shared_ptr<Imbuement> imbuement, bool created)
+{
+	if (info.itemOnImbue == -1) {
+		return true;
+	}
+
+	if (!scriptInterface.reserveScriptEnv()) {
+		std::cout << "[Error - Events::eventItemOnImbue] Call stack overflow" << std::endl;
+		return false;
+	}
+
+	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+	env->setScriptId(info.itemOnImbue, &scriptInterface);
+
+	lua_State* L = scriptInterface.getLuaState();
+	scriptInterface.pushFunction(info.itemOnImbue);
+
+	LuaScriptInterface::pushUserdata<Item>(L, item);
+	LuaScriptInterface::setItemMetatable(L, -1, item);
+
+	LuaScriptInterface::pushSharedPtr(L, imbuement);
+	LuaScriptInterface::setMetatable(L, -1, "Imbuement");
+
+	LuaScriptInterface::pushBoolean(L, created);
+
+	return scriptInterface.callFunction(3);
+}
+
+void Events::eventItemOnRemoveImbue(Item* item, ImbuementType imbueType, bool decayed)
+{
+	if (info.itemOnRemoveImbue == -1) {
+		return;
+	}
+
+	if (!scriptInterface.reserveScriptEnv()) {
+		std::cout << "[Error - Events::eventItemOnRemoveImbue] Call stack overflow" << std::endl;
+		return;
+	}
+
+	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+	env->setScriptId(info.itemOnRemoveImbue, &scriptInterface);
+
+	lua_State* L = scriptInterface.getLuaState();
+	scriptInterface.pushFunction(info.itemOnRemoveImbue);
+
+	LuaScriptInterface::pushUserdata<Item>(L, item);
+	LuaScriptInterface::setItemMetatable(L, -1, item);
+
+	lua_pushnumber(L, static_cast<uint8_t>(imbueType));
+	LuaScriptInterface::pushBoolean(L, decayed);
+
+	return scriptInterface.callVoidFunction(3);
+}

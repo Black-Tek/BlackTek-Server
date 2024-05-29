@@ -1106,8 +1106,8 @@ class Item : virtual public Thing
 		bool hasImbuementType(const ImbuementType imbuetype) const;
 		bool hasImbuement(const std::shared_ptr<Imbuement>& imbuement) const;
 		bool hasImbuements() const; /// change to isImbued();
-		bool addImbuement(std::shared_ptr<Imbuement> imbuement);
-		bool removeImbuement(std::shared_ptr<Imbuement> imbuement);
+		bool addImbuement(std::shared_ptr<Imbuement> imbuement, bool created = true);
+		bool removeImbuement(std::shared_ptr<Imbuement> imbuement, bool decayed = false);
 		std::vector<std::shared_ptr<Imbuement>>& getImbuements();
 
 	protected:

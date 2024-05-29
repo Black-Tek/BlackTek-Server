@@ -44,4 +44,8 @@
 	<!-- Monster methods -->
 	<event class="Monster" method="onDropLoot" enabled="1" />
 	<event class="Monster" method="onSpawn" enabled="0" />
+
+	<!-- Item methods -->
+	<event class="Item" method="onImbue" enabled="1"/>
+	<event class="Item" method="onRemoveImbue" enabled="1"/>
 </events>

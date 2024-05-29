@@ -14,10 +14,12 @@
 #include "scheduler.h"
 #include "actions.h"
 #include "spells.h"
+#include "events.h"
 
 extern Game g_game;
 extern Spells* g_spells;
 extern Vocations g_vocations;
+extern Events* g_events;
 
 Items Item::items;
 
@@ -705,7 +707,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 					return ATTR_READ_ERROR;
 				}
 
-				addImbuement(imb);
+				addImbuement(imb, false);
 			}
 			break;
 		}
@@ -1780,25 +1782,31 @@ bool Item::hasImbuements() const
 	return imbuements.size() > 0;
 }
 
-bool Item::addImbuement(std::shared_ptr<Imbuement>  imbuement)
+bool Item::addImbuement(std::shared_ptr<Imbuement>  imbuement, bool created)
 {
 	// item:addImbuement(imbuement) -- returns true if it successfully adds the imbuement
-	if (canImbue() && getFreeImbuementSlots() > 0)
+	if (canImbue() && getFreeImbuementSlots() > 0 && g_events->eventItemOnImbue(this, imbuement, created))
 	{
 		imbuements.push_back(imbuement);
+		if (isEquipped()) {
+			// TOOD: See player onThink. This needs to be called to start decay, but would have to pass a player, seek alternative solution in the future. For now, onThink always checks for items with imbuements to decay.
+		}
 		return true;
 	}
 	return false;
 }
 
-bool Item::removeImbuement(std::shared_ptr<Imbuement> imbuement)
+bool Item::removeImbuement(std::shared_ptr<Imbuement> imbuement, bool decayed)
 {
-	// item:removeImbuement(imbuement) -- returns true if it found and removed the imbuement
-	auto erased = std::erase_if(imbuements, [imbuement](auto elem) {
-		return elem == imbuement;
-		});
-	// this method should be used when removing slots probably.
-	return erased > 0;
+    // item:removeImbuement(imbuement) -- returns true if it found and removed the imbuement
+	for (auto imbue : imbuements) {
+		if (imbue == imbuement) {
+			g_events->eventItemOnRemoveImbue(this, imbuement->imbuetype, decayed);
+			imbuements.erase(std::remove(imbuements.begin(), imbuements.end(), imbue), imbuements.end());
+			return true;
+		}
+	}
+    return false;
 }
 
 std::vector<std::shared_ptr<Imbuement>>& Item::getImbuements(){
@@ -1806,18 +1814,18 @@ std::vector<std::shared_ptr<Imbuement>>& Item::getImbuements(){
 }
 
 void Item::decayImbuements(bool infight) {
-	for (const auto& imbue : imbuements) {
+	for (auto& imbue : imbuements) {
 		if (imbue->isEquipDecay()) {
 			imbue->duration -= 1;
 			if (imbue->duration <= 0) {
-				removeImbuement(imbue);
+				removeImbuement(imbue, true);
 				return;
 			}
 		}
 		if (imbue->isInfightDecay() && infight) {
 			imbue->duration -= 1;
 			if (imbue->duration <= 0) {
-				removeImbuement(imbue);
+				removeImbuement(imbue, true);
 				return;
 			}
 		}

@@ -66,6 +66,9 @@ ec.onSpellTry = {}
 -- Monster
 ec.onDropLoot = {}
 ec.onSpawn = {}
+-- Item
+ec.onImbue = {}
+ec.onRemoveImbue = {}
 
 EventCallback = {
 	register = function(self, triggerIndex)
