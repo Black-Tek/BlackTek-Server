@@ -79,6 +79,8 @@ mysqlSock = ""
 -- may cause high CPU usage with many players and potentially affect performance!
 -- NOTE: forceMonsterTypesOnLoad loads all monster types on startup to validate them.
 -- You can disable it to save some memory if you don't see any errors at startup.
+-- checkDuplicateStorageKeys checks the values stored in the variables for duplicates.
+-- Setting bedOfflineTraining to true enables offline training while in bed. If set to false, the player can only sleep in bed without training.
 allowChangeOutfit = true
 freePremium = false
 kickIdlePlayerAfterMinutes = 15
@@ -90,10 +92,14 @@ showScriptsLogInConsole = false
 showOnlineStatusInCharlist = false
 yellMinimumLevel = 2
 yellAlwaysAllowPremium = false
+minimumLevelToSendPrivate = 1
+premiumToSendPrivate = false
 forceMonsterTypesOnLoad = true
 cleanProtectionZones = false
 luaItemDesc = false
 showPlayerLogInConsole = true
+checkDuplicateStorageKeys = false
+bedOfflineTraining = true
 
 -- VIP and Depot limits
 -- NOTE: you can set custom limits per group in data/XML/groups.xml
