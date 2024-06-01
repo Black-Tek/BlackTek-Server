@@ -12,5 +12,8 @@ class BlackTekServerSDK(ConanFile):
         self.requires("boost/1.84.0")
         self.requires("luajit/2.1.0-beta3")
 
+    def build_requirements(self):
+        self.tool_requires("cmake/[>=3.25]")
+
     def layout(self):
         self.folders.generators = "./packages"

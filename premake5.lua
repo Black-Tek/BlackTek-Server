@@ -2,7 +2,7 @@ include "packages/conandeps.premake5.lua"
 
 workspace "Black-Tek-Server"
    configurations { "Debug", "Release"}
-   platforms { "64", "32"}
+   platforms { "64" }
    location "./projectfiles"
    editorintegration "On"
 
@@ -18,6 +18,8 @@ workspace "Black-Tek-Server"
       vectorextensions "AVX"
       enableunitybuild "On"
 
+      conan_setup()
+
       filter "configurations:Debug"
          defines { "DEBUG" }
          symbols "On"
@@ -28,10 +30,6 @@ workspace "Black-Tek-Server"
          defines { "NDEBUG" }
          symbols "On"
          optimize "Speed"
-      filter {}
-
-      filter "platforms:32"
-         architecture "x86"
       filter {}
 
       filter "platforms:64"
@@ -63,5 +61,4 @@ workspace "Black-Tek-Server"
          buildoptions { "-fvisibility=hidden" }   
       filter {}
 
-      conan_setup()
       intrinsics   "On"
