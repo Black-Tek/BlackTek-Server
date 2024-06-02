@@ -7,26 +7,33 @@ Black Tek Server is a free and open-source MMORPG server emulator written in C++
 If you don't want to bother with source code or compiling. You can download from our release sections the binaries with everything needed ready to go.
 
 #### Compiling 
-To compile using the [default build system](https://premake.github.io/) and [package manager](https://conan.io/) you will need [python](https://www.python.org/) at least version [3.10.14](https://www.python.org/downloads/release/python-31014/) and conan installed. 
-Start with python first. If you already have python installed, you can proceed to installing conan with pip in terminal.
-Once you have installed python successfully, you need to run the following command to install Conan the package manager:
+To compile you will need to install and integrate vcpkg.
+You can find detailed instructions for [Windows](https://github.com/microsoft/vcpkg?tab=readme-ov-file#quick-start-windows) and [Unix](https://github.com/microsoft/vcpkg?tab=readme-ov-file#quick-start-unix) based operating systems.
 
-    pip install conan
+Once you have successfully installed vcpkg, and integrated the installation, you will need to download the newest [premake](https://github.com/premake/premake-core.git) from the dev branch (must use dev branch, its the one hyperlinked).
 
-You need to make sure you have full rights in the terminal while executing the command.
+Please follow instructions on how to compile premake for your Operating System. Once you have premake compiled, place the binary in BlackTek-Server's folder. Then run premake via terminal/command line/bash using the following command:
 
-Window's users should run as administrator.
-Note to windows users, toolset 143 latest version for x86_64 (can be found under individual components in visual studio installer) and cmake must both be installed with visual studio as well. 
+Windows:
+```premake5 vs2022```
 
-Linux users need to sudo.
-Linux users also need to compile premake themselves. It is included in the vendors folder. It's a simple one source file compile using make is all that is required, instructions for compiling it is included inside its build folder. 
-If you are having issues with linux please check our troubleshooting guide [here](). <-- doesn't exist yet.
+Linux:
+```./premake5 gmake2```
 
-Once you have successfully installed Conan, you can now run the script "setup_build.py" and wait for it to finish its process. Once it has closed, you will have your project files (in windows they are in folder "projectfiles") for use in compiling. 
+OSX aka Mac:
+```premake5 xcode4```
 
-If you are using visual studio, you can open your solution, select your preferred configuration, and build. 
+This will generate your project files. 
 
-For linux users, your makefile's are ready to be used via terminal or your favorite IDE. 
+Next you will need to enable manifest mode for vcpkg.
+
+You can do so by enabling the environment variable ```VCPKG_FEATURE_FLAGS=manifests```
+
+Alternatively, for visual studio users, you can just go to ```project->properties->configuration properties->vcpkg``` and change ```Use Vcpkg Manifest``` to ```yes```.
+
+You can find more information about manifest mode [here.](https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode)
+
+Once you have enabled manifest mode, you can now select your configuration, and run "Rebuild all" (or its equivalent) to produce your executable.
 
 ### Support
 ### Issues
