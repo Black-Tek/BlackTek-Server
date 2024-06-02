@@ -7,4 +7,9 @@
 # Build Output
 /build
 
+# VCPKG Dependencies
+/vcpkg_installed
+
+# Personal Config File
+config.lua
 

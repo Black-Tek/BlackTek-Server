@@ -1,9 +1,7 @@
-include "packages/conandeps.premake5.lua"
-
 workspace "Black-Tek-Server"
    configurations { "Debug", "Release"}
    platforms { "64" }
-   location "./projectfiles"
+   location ""
    editorintegration "On"
 
    project        "Black-Tek-Server"
@@ -12,13 +10,11 @@ workspace "Black-Tek-Server"
       cppdialect  "C++20"
       targetdir   "%{wks.location}"
       objdir      "build/%{cfg.buildcfg}/obj"
-      location    "./projectfiles"
+      location    ""
       files { "src/**.cpp", "src/**.h" }
       flags {"LinkTimeOptimization", "MultiProcessorCompile"}
       vectorextensions "AVX"
       enableunitybuild "On"
-
-      conan_setup()
 
       filter "configurations:Debug"
          defines { "DEBUG" }
@@ -44,7 +40,6 @@ workspace "Black-Tek-Server"
          openmp "On"
          characterset "MBCS"
          debugformat "c7"
-         flags {"NoIncrementalLink"}
          linkoptions {"/IGNORE:4099"}
       filter {}
 
