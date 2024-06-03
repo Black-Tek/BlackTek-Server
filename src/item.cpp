@@ -31,6 +31,7 @@ void handleSkillsDescription(std::ostringstream& s, const ItemType& it, bool& be
 void handleStatsDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleStatsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleAbsorbsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
+void handleReflectPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleAbsorbsFieldsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleAbilitiesDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begin);
@@ -1864,8 +1865,7 @@ void handleRuneDescription(std::ostringstream& s, const ItemType& it, const Item
 				}
 			}
 			s << asLowerCaseString((*vocLast)->getVocName()) << "s";
-		}
-		else {
+		} else {
 			s << "players";
 		}
 
@@ -1895,8 +1895,7 @@ void handleWeaponDistanceDescription(std::ostringstream& s, const ItemType& it, 
 	if (item) {
 		attack = item->getAttack();
 		hitChance = item->getHitChance();
-	}
-	else {
+	} else {
 		attack = it.attack;
 		hitChance = it.hitChance;
 	}
@@ -1916,8 +1915,7 @@ void handleWeaponMeleeDescription(std::ostringstream& s, const ItemType& it, con
 		attack = item->getAttack();
 		defense = item->getDefense();
 		extraDefense = item->getExtraDefense();
-	}
-	else {
+	} else {
 		attack = it.attack;
 		defense = it.defense;
 		extraDefense = it.extraDefense;
@@ -1937,8 +1935,7 @@ void handleWeaponMeleeDescription(std::ostringstream& s, const ItemType& it, con
 		if (begin) {
 			begin = false;
 			s << " (";
-		}
-		else {
+		} else {
 			s << ", ";
 		}
 
@@ -1949,8 +1946,7 @@ void handleWeaponMeleeDescription(std::ostringstream& s, const ItemType& it, con
 		if (begin) {
 			begin = false;
 			s << " (";
-		}
-		else {
+		} else {
 			s << ", ";
 		}
 
@@ -1970,8 +1966,7 @@ void handleSkillsDescription(std::ostringstream& s, const ItemType& it, bool& be
 		if (begin) {
 			begin = false;
 			s << " (";
-		}
-		else {
+		} else {
 			s << ", ";
 		}
 
@@ -1986,8 +1981,7 @@ void handleSkillsDescription(std::ostringstream& s, const ItemType& it, bool& be
 		if (begin) {
 			begin = false;
 			s << " (";
-		}
-		else {
+		} else {
 			s << ", ";
 		}
 
@@ -2004,8 +1998,7 @@ void handleStatsDescription(std::ostringstream& s, const ItemType& it, bool& beg
 		if (begin) {
 			begin = false;
 			s << " (";
-		}
-		else {
+		} else {
 			s << ", ";
 		}
 
@@ -2022,8 +2015,7 @@ void handleStatsPercentDescription(std::ostringstream& s, const ItemType& it, bo
 		if (begin) {
 			begin = false;
 			s << " (";
-		}
-		else {
+		} else {
 			s << ", ";
 		}
 
@@ -2056,30 +2048,26 @@ void handleAbsorbsPercentDescription(std::ostringstream& s, const ItemType& it, 
 				if (begin) {
 					begin = false;
 					s << " (";
-				}
-				else {
+				} else {
 					s << ", ";
 				}
 
-				s << "protection ";
-			}
-			else {
+				s << "absorb ";
+			} else {
 				s << ", ";
 			}
 
 			s << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << it.abilities->absorbPercent[i] << std::noshowpos << '%';
 		}
-	}
-	else {
+	} else {
 		if (begin) {
 			begin = false;
 			s << " (";
-		}
-		else {
+		} else {
 			s << ", ";
 		}
 
-		s << "protection all " << std::showpos << show << std::noshowpos << '%';
+		s << "absorb all " << std::showpos << show << std::noshowpos << '%';
 	}
 }
 
@@ -2108,30 +2096,26 @@ void handleAbsorbsFieldsPercentDescription(std::ostringstream& s, const ItemType
 				if (begin) {
 					begin = false;
 					s << " (";
-				}
-				else {
+				} else {
 					s << ", ";
 				}
 
-				s << "protection ";
-			}
-			else {
+				s << "absorb ";
+			} else {
 				s << ", ";
 			}
 
 			s << getCombatName(indexToCombatType(i)) << " field " << std::showpos << it.abilities->fieldAbsorbPercent[i] << std::noshowpos << '%';
 		}
-	}
-	else {
+	} else {
 		if (begin) {
 			begin = false;
 			s << " (";
-		}
-		else {
+		} else {
 			s << ", ";
 		}
 
-		s << "protection all fields " << std::showpos << show << std::noshowpos << '%';
+		s << "absorb all fields " << std::showpos << show << std::noshowpos << '%';
 	}
 }
 
@@ -2140,8 +2124,7 @@ void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begi
 		if (begin) {
 			begin = false;
 			s << " (";
-		}
-		else {
+		} else {
 			s << ", ";
 		}
 
@@ -2149,14 +2132,60 @@ void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begi
 	}
 }
 
+void handleReflectPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
+	int16_t show = it.abilities->reflect[0].percent;
+	if (show != 0) {
+		for (size_t i = 1; i < COMBAT_COUNT; ++i) {
+			if (it.abilities->reflect[i].percent != show) {
+				show = 0;
+				break;
+			}
+		}
+	}
+
+	if (show == 0) {
+		bool tmp = true;
+
+		for (size_t i = 0; i < COMBAT_COUNT; ++i) {
+			if (it.abilities->reflect[i].percent == 0) {
+				continue;
+			}
+
+			if (tmp) {
+				tmp = false;
+
+				if (begin) {
+					begin = false;
+					s << " (";
+				} else {
+					s << ", ";
+				}
+
+				s << "reflect ";
+			} else {
+				s << ", ";
+			}
+
+			s << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << it.abilities->reflect[i].percent << std::noshowpos << '%';
+		}
+	} else {
+		if (begin) {
+			begin = false;
+			s << " (";
+		} else {
+			s << ", ";
+		}
+
+		s << "reflect all " << std::showpos << show << std::noshowpos << '%';
+	}
+}
+
 void handleAbilitiesDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
 	handleSkillsDescription(s, it, begin);
-
 	handleStatsDescription(s, it, begin);
 	handleStatsPercentDescription(s, it, begin);
-
+	handleReflectPercentDescription(s, it, begin);
 	handleAbsorbsPercentDescription(s, it, begin);
 	handleAbsorbsFieldsPercentDescription(s, it, begin);
-
 	handleMiscDescription(s, it, begin);
 }
