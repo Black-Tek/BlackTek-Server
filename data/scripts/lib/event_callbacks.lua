@@ -69,6 +69,13 @@ ec.onSpawn = {}
 -- Item
 ec.onImbue = {}
 ec.onRemoveImbue = {}
+-- Offensive
+ec.onAttack = {}
+ec.onHit = {}
+ec.onBlocked = {}
+-- Defensive
+ec.onBlockAttack = {}
+ec.onDefendAttack = {}
 
 EventCallback = {
 	register = function(self, triggerIndex)

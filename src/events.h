@@ -72,6 +72,11 @@ class Events
 		// Item
 		int32_t itemOnImbue = -1;
 		int32_t itemOnRemoveImbue = -1;
+		int32_t itemOnAttack = -1;
+		int32_t itemOnHit = -1;
+		int32_t itemOnBlocked = -1;
+		int32_t itemOnDefendAttack = -1;
+		int32_t itemOnBlockAttack = -1;
 	};
 
 	public:
@@ -127,6 +132,12 @@ class Events
 		// Item
 		bool eventItemOnImbue(Item* item, std::shared_ptr<Imbuement> imbuement, bool created = true);
 		void eventItemOnRemoveImbue(Item* item, ImbuementType imbueType, bool decayed = false);
+		void eventItemOnAttack(Item* item, Player* attacker, Creature* defender, CombatType_t combatType);
+		void eventItemOnHit(Item* item, Player* attacker, Creature* defender, CombatType_t combatType);
+		void eventItemOnBlocked(Item* item, Player* attacker, Creature* defender, CombatType_t combatType);
+		void eventItemOnDefendAttack(Item* item, Player* attacker, Creature* defender, CombatType_t combatType);
+		void eventItemOnBlockAttack(Item* item, Player* attacker, Creature* defender, CombatType_t combatType);
+
 
 		int32_t getScriptId(EventInfoId eventInfoId) {
 			switch (eventInfoId)

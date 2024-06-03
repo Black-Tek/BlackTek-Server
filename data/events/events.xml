@@ -48,4 +48,12 @@
 	<!-- Item methods -->
 	<event class="Item" method="onImbue" enabled="1"/>
 	<event class="Item" method="onRemoveImbue" enabled="1"/>
+	<!-- Offensive -->
+	<event class="Item" method="onAttack" enabled="0"/>
+	<event class="Item" method="onHit" enabled="0"/>
+	<event class="Item" method="onBlocked" enabled="0"/>
+	<!-- Defensive -->
+	<event class="Item" method="onBlockAttack" enabled="0"/>
+	<event class="Item" method="onDefendAttack" enabled="0"/>
+
 </events>

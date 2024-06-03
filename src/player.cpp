@@ -1932,15 +1932,6 @@ BlockType_t Player::blockHit(Creature* attacker, CombatType_t combatType, int32_
 		sendCreatureSquare(attacker, SQ_COLOR_BLACK);
 	}
 
-	if (blockType != BLOCK_NONE) {
-		return blockType;
-	}
-
-	if (damage <= 0) {
-		damage = 0;
-		return BLOCK_ARMOR;
-	}
-
 	if (!ignoreResistances) {
 		Reflect reflect;
 
@@ -2042,6 +2033,28 @@ BlockType_t Player::blockHit(Creature* attacker, CombatType_t combatType, int32_
 		damage = 0;
 		blockType = BLOCK_ARMOR;
 	}
+
+	// Item Events : TODO: Add Dodge and Miss events
+	if (attacker && (combatType != COMBAT_HEALING && combatType != COMBAT_NONE) )
+	{
+		// Defender's items
+		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+			Item* item = inventory[slot];
+			if (!item) {
+				continue;
+			}
+
+			if (item->getDefense() > 0 || item->getArmor() > 0) {
+				g_events->eventItemOnDefendAttack(item, this, attacker, combatType);
+				if (blockType == BLOCK_DEFENSE && item->getDefense() > 0) {
+					g_events->eventItemOnBlockAttack(item, this, attacker, combatType);
+				} else if (blockType == BLOCK_ARMOR && item->getArmor() > 0) {
+					g_events->eventItemOnBlockAttack(item, this, attacker, combatType);
+				}
+			}
+		}
+	}
+
 	return blockType;
 }
 
