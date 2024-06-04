@@ -957,20 +957,22 @@ BlockType_t Creature::blockHit(Creature* attacker, CombatType_t combatType, int3
 	onAttacked();
 
 	// Attacker's items
-	Player* attackerPlayer = attacker->getPlayer();
-	if (attackerPlayer) {
-		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-			Item* item = attackerPlayer->getInventoryItem(static_cast<slots_t>(slot));
-			if (!item) {
-				continue;
-			}
-			if (item->getAttack() > 0) {
-				g_events->eventItemOnAttack(item, attackerPlayer, this, combatType);
-				if (blockType == BLOCK_NONE) {
-					g_events->eventItemOnHit(item, attackerPlayer, this, combatType);
+	if (attacker) {
+		Player* attackerPlayer = attacker->getPlayer();
+		if (attackerPlayer) {
+			for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+				Item* item = attackerPlayer->getInventoryItem(static_cast<slots_t>(slot));
+				if (!item) {
+					continue;
 				}
-				else if (blockType == BLOCK_DEFENSE || blockType == BLOCK_ARMOR) {
-					g_events->eventItemOnBlocked(item, attackerPlayer, this, combatType);
+				if (item->getAttack() > 0) {
+					g_events->eventItemOnAttack(item, attackerPlayer, this, combatType);
+					if (blockType == BLOCK_NONE) {
+						g_events->eventItemOnHit(item, attackerPlayer, this, combatType);
+					}
+					else if (blockType == BLOCK_DEFENSE || blockType == BLOCK_ARMOR) {
+						g_events->eventItemOnBlocked(item, attackerPlayer, this, combatType);
+					}
 				}
 			}
 		}
