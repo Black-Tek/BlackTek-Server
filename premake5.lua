@@ -41,6 +41,7 @@ workspace "Black-Tek-Server"
          characterset "MBCS"
          debugformat "c7"
          linkoptions {"/IGNORE:4099"}
+         vsprops { VcpkgEnableManifest = "true" }
       filter {}
 
       filter "toolset:gcc"
