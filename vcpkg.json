@@ -14,7 +14,8 @@
     },
     "libmariadb",
     "cryptopp",
-    "pugixml"
+    "pugixml",
+    "zlib"
   ],
   "features": {
     "lua": {
@@ -31,7 +32,7 @@
     }
   },
   "default-features": [
-    "lua"
+    "lua" /// Can change here your preference for lua support.
   ],
   "builtin-baseline": "215a2535590f1f63788ac9bd2ed58ad15e6afdff"
 }
