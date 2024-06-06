@@ -13,3 +13,5 @@
 # Personal Config File
 config.lua
 
+# CLion and other JetBrains tools
+/.idea
