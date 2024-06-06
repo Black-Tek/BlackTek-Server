@@ -1,6 +1,6 @@
 workspace "Black-Tek-Server"
    configurations { "Debug", "Release"}
-   platforms { "64" }
+   platforms { "64", "ARM64" }
    location ""
    editorintegration "On"
 
@@ -13,9 +13,7 @@ workspace "Black-Tek-Server"
       location    ""
       files { "src/**.cpp", "src/**.h" }
       flags {"LinkTimeOptimization", "MultiProcessorCompile"}
-      vectorextensions "AVX"
       enableunitybuild "On"
-      architecture "amd64"
       intrinsics   "On"
 
       filter "configurations:Debug"
@@ -29,6 +27,12 @@ workspace "Black-Tek-Server"
          symbols "On"
          optimize "Speed"
       filter {}
+	  
+      filter "platforms:64"
+         architecture "x86_64"
+
+      filter "platforms:ARM64"
+         architecture "ARM64"
 
       filter "system:not windows"
          buildoptions { "-Wall", "-Wextra", "-pedantic", "-pipe", "-fvisibility=hidden", "-Wno-unused-local-typedefs" }
@@ -43,7 +47,18 @@ workspace "Black-Tek-Server"
          vsprops { VcpkgEnableManifest = "true" }
       filter {}
 
-      filter "system:Unix"
+      filter "architecture:amd64"
+	     vectorextensions "AVX"
+      filter{}
+
+      filter { "system:linux", "architecture:ARM64" }
+         -- Paths to vcpkg installed dependencies
+         libdirs { "vcpkg_installed/arm64-linux/lib" }
+         includedirs { "vcpkg_installed/arm64-linux/include" }
+         links { "pugixml", "lua", "fmt", "ssl", "mariadb", "cryptopp", "crypto", "boost_iostreams", "zstd", "z" }
+      filter{}
+
+      filter { "system:linux", "architecture:amd64" }
          -- Paths to vcpkg installed dependencies
          libdirs { "vcpkg_installed/x64-linux/lib" }
          includedirs { "vcpkg_installed/x64-linux/include" }

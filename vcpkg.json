@@ -32,7 +32,7 @@
     }
   },
   "default-features": [
-    "lua" /// Can change here your preference for lua support.
+    "lua"
   ],
   "builtin-baseline": "215a2535590f1f63788ac9bd2ed58ad15e6afdff"
 }
