@@ -1,0 +1,12 @@
+version: "3.7"
+
+services:
+  server:
+    build:
+      context: .
+    restart: always
+    volumes:
+      - .:/srv
+    ports:
+      - "7171:7171"
+      - "7172:7172"
