@@ -1790,7 +1790,11 @@ bool Item::addImbuement(std::shared_ptr<Imbuement>  imbuement, bool created)
 	{
 		imbuements.push_back(imbuement);
 		if (isEquipped()) {
-			// TOOD: See player onThink. This needs to be called to start decay, but would have to pass a player, seek alternative solution in the future. For now, onThink always checks for items with imbuements to decay.
+			Player* player = dynamic_cast<Player*>(this->getTopParent());
+			if (player) {
+				player->sendSkills();
+				player->sendStats();
+			}
 		}
 		return true;
 	}
@@ -1804,6 +1808,13 @@ bool Item::removeImbuement(std::shared_ptr<Imbuement> imbuement, bool decayed)
 		if (imbue == imbuement) {
 			g_events->eventItemOnRemoveImbue(this, imbuement->imbuetype, decayed);
 			imbuements.erase(std::remove(imbuements.begin(), imbuements.end(), imbue), imbuements.end());
+			if (isEquipped()) {
+				Player* player = dynamic_cast<Player*>(this->getTopParent());
+				if (player) {
+					player->sendSkills();
+					player->sendStats();
+				}
+			}
 			return true;
 		}
 	}
