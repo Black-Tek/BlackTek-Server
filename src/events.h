@@ -30,8 +30,7 @@ class Events
 		int32_t creatureOnTargetCombat = -1;
 		int32_t creatureOnHear = -1;
 		int32_t creatureOnAttack = -1;
-		int32_t creatureOnMissedAttack = -1;
-		int32_t creatureOnBlockedAttack = -1;
+		int32_t creatureOnDefend = -1;
 
 		// Party
 		int32_t partyOnJoin = -1;
@@ -73,10 +72,8 @@ class Events
 		int32_t itemOnImbue = -1;
 		int32_t itemOnRemoveImbue = -1;
 		int32_t itemOnAttack = -1;
-		int32_t itemOnHit = -1;
-		int32_t itemOnBlocked = -1;
-		int32_t itemOnDefendAttack = -1;
-		int32_t itemOnBlockAttack = -1;
+		int32_t itemOnDefend = -1;
+
 	};
 
 	public:
@@ -89,9 +86,8 @@ class Events
 		ReturnValue eventCreatureOnAreaCombat(Creature* creature, Tile* tile, bool aggressive);
 		ReturnValue eventCreatureOnTargetCombat(Creature* creature, Creature* target);
 		void eventCreatureOnHear(Creature* creature, Creature* speaker, const std::string& words, SpeakClasses type);
-		void eventCreatureOnAttack(Creature* creature, Creature* target, CombatOrigin origin);
-		void eventCreatureOnMissedAttack(Creature* creature, Creature* target, CombatType_t combatType);
-		void eventCreatureOnBlockedAttack(Creature* creature, Creature* target, CombatOrigin origin, CombatType_t combatType);
+		void eventCreatureOnAttack(Creature* attacker, Creature* target, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
+		void eventCreatureOnDefend(Creature* defender, Creature* attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
 
 		// Party
 		bool eventPartyOnJoin(Party* party, Player* player);
@@ -132,12 +128,10 @@ class Events
 		// Item
 		bool eventItemOnImbue(Item* item, std::shared_ptr<Imbuement> imbuement, bool created = true);
 		void eventItemOnRemoveImbue(Item* item, ImbuementType imbueType, bool decayed = false);
-		void eventItemOnAttack(Item* item, Player* attacker, Creature* defender, CombatType_t combatType);
-		void eventItemOnHit(Item* item, Player* attacker, Creature* defender, CombatType_t combatType);
-		void eventItemOnBlocked(Item* item, Player* attacker, Creature* defender, CombatType_t combatType);
-		void eventItemOnDefendAttack(Item* item, Player* attacker, Creature* defender, CombatType_t combatType);
-		void eventItemOnBlockAttack(Item* item, Player* attacker, Creature* defender, CombatType_t combatType);
 
+		void eventItemOnAttack(Item* item, Player* itemHolder, Creature* defender, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
+		void eventItemOnDefend(Item* item, Player* itemHolder, Creature* attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
+		
 
 		int32_t getScriptId(EventInfoId eventInfoId) {
 			switch (eventInfoId)

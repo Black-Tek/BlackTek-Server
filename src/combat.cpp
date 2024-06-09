@@ -799,7 +799,6 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 	bool success = false;
 	if (damage.primary.type != COMBAT_MANADRAIN) {
 		if (g_game.combatBlockHit(damage, caster, target, params.blockedByShield, params.blockedByArmor, params.itemId != 0, params.ignoreResistances)) {
-			g_events->eventCreatureOnBlockedAttack(caster, target, params.origin, params.combatType);
 			return;
 		}
 

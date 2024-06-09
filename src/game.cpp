@@ -3881,15 +3881,35 @@ bool Game::combatBlockHit(CombatDamage& damage, Creature* attacker, Creature* ta
 	if (damage.primary.type != COMBAT_NONE) {
 		damage.primary.value = -damage.primary.value;
 		primaryBlockType = target->blockHit(attacker, damage.primary.type, damage.primary.value, checkDefense, checkArmor, field, ignoreResistances);
+		if (damage.primary.type != COMBAT_HEALING) {
+			g_events->eventCreatureOnAttack(attacker, target, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
+			g_events->eventCreatureOnDefend(target, attacker, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
 
-		if (primaryBlockType == BLOCK_DEFENSE || primaryBlockType == BLOCK_ARMOR || primaryBlockType == BLOCK_IMMUNITY) {
-			g_events->eventCreatureOnBlockedAttack(target, attacker, damage.origin, damage.primary.type);
+			if (Player* aggressor = attacker->getPlayer()) {
+				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+					Item* item = aggressor->getInventoryItem(static_cast<slots_t>(slot));
+					if (!item) {
+						continue;
+					}
+					if (item->getAttack() > 0) {
+						g_events->eventItemOnAttack(item, aggressor, target, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
+					}
+				}
+			}
+
+			if (Player* victim = target->getPlayer()) {
+				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+					Item* item = victim->getInventoryItem(static_cast<slots_t>(slot));
+					if (!item) {
+						continue;
+					}
+
+					if (item->getDefense() > 0 || item->getArmor() > 0) {
+						g_events->eventItemOnDefend(item, victim, attacker, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
+					}
+				}
+			}
 		}
-
-		if (primaryBlockType == BLOCK_DEFENSE) {
-			g_events->eventCreatureOnMissedAttack(target, attacker, damage.primary.type);
-		}
-
 		damage.primary.value = -damage.primary.value;
 		sendBlockEffect(primaryBlockType, damage.primary.type, target->getPosition());
 	} else {
@@ -3899,15 +3919,35 @@ bool Game::combatBlockHit(CombatDamage& damage, Creature* attacker, Creature* ta
 	if (damage.secondary.type != COMBAT_NONE) {
 		damage.secondary.value = -damage.secondary.value;
 		secondaryBlockType = target->blockHit(attacker, damage.secondary.type, damage.secondary.value, false, false, field, ignoreResistances);
+		if (damage.primary.type != COMBAT_HEALING) {
+			g_events->eventCreatureOnAttack(attacker, target, secondaryBlockType, damage.secondary.type, damage.origin, damage.critical, damage.leeched);
+			g_events->eventCreatureOnDefend(target, attacker, secondaryBlockType, damage.secondary.type, damage.origin, damage.critical, damage.leeched);
 
-		if (secondaryBlockType == BLOCK_DEFENSE || secondaryBlockType == BLOCK_ARMOR || secondaryBlockType == BLOCK_IMMUNITY) {
-			g_events->eventCreatureOnBlockedAttack(target, attacker, damage.origin, damage.primary.type);
+			if (Player* aggressor = attacker->getPlayer()) {
+				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+					Item* item = aggressor->getInventoryItem(static_cast<slots_t>(slot));
+					if (!item) {
+						continue;
+					}
+					if (item->getAttack() > 0) {
+						g_events->eventItemOnAttack(item, aggressor, target, secondaryBlockType, damage.secondary.type, damage.origin, damage.critical, damage.leeched);
+					}
+				}
+			}
+
+			if (Player* victim = target->getPlayer()) {
+				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+					Item* item = victim->getInventoryItem(static_cast<slots_t>(slot));
+					if (!item) {
+						continue;
+					}
+
+					if (item->getDefense() > 0 || item->getArmor() > 0) {
+						g_events->eventItemOnDefend(item, victim, attacker, secondaryBlockType, damage.secondary.type, damage.origin, damage.critical, damage.leeched);
+					}
+				}
+			}
 		}
-
-		if (secondaryBlockType == BLOCK_DEFENSE) {
-			g_events->eventCreatureOnMissedAttack(target, attacker, damage.primary.type);
-		}
-
 		damage.secondary.value = -damage.secondary.value;
 		sendBlockEffect(secondaryBlockType, damage.secondary.type, target->getPosition());
 	} else {

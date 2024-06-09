@@ -815,12 +815,6 @@ void Monster::doAttacking(uint32_t interval)
 					lookUpdated = true;
 				}
 
-				if (spellBlock.isMelee) {
-					g_events->eventCreatureOnAttack(this, attackedCreature, ORIGIN_MELEE);
-				} else {
-					g_events->eventCreatureOnAttack(this, attackedCreature, ORIGIN_SPELL);
-				}
-
 				minCombatValue = spellBlock.minCombatValue;
 				maxCombatValue = spellBlock.maxCombatValue;
 				spellBlock.spell->castSpell(this, attackedCreature);

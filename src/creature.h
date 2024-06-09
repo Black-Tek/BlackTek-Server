@@ -1,8 +1,8 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_CREATURE_H_5363C04015254E298F84E6D59A139508
-#define FS_CREATURE_H_5363C04015254E298F84E6D59A139508
+#ifndef FS_CREATURE_H
+#define FS_CREATURE_H
 
 #include "map.h"
 #include "position.h"
@@ -206,6 +206,28 @@ class Creature : virtual public Thing
 		}
 		uint32_t getBaseSpeed() const {
 			return baseSpeed;
+		}
+		void setDodgeChance(uint8_t newDodgeChance) {
+			dodgeChance = newDodgeChance;
+		}
+		uint8_t getDodgeChance() const {
+			return dodgeChance;
+		}
+
+		void addDodgeChance(uint8_t chance) {
+			if ((dodgeChance + chance) >= std::numeric_limits<uint8_t>::max()) {
+				dodgeChance = std::numeric_limits<uint8_t>::max();
+			} else {
+				dodgeChance += chance;
+			}
+		}
+
+		void removeDodgeChance(uint8_t chance) {
+			if ((dodgeChance - chance) <= 0) {
+				dodgeChance = 0;
+			} else {
+				dodgeChance -= chance;
+			}
 		}
 
 		int32_t getHealth() const {
@@ -510,6 +532,7 @@ class Creature : virtual public Thing
 		int32_t health = 1000;
 		int32_t healthMax = 1000;
 		uint8_t drunkenness = 0;
+		uint8_t dodgeChance = 0;
 
 		Outfit_t currentOutfit;
 		Outfit_t defaultOutfit;

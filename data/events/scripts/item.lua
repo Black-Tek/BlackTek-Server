@@ -14,39 +14,16 @@ function Item:onRemoveImbue(imbueType, decayRemoved)
 	end
 end
 
---- Offensive ---
-function Item:onAttack(player, creature, combatType)
+function Item:onAttack(player, creature, blockType, combatType)
 	local onAttack = EventCallback.onAttack
 	if EventCallback.onAttack then
-		onAttack(self, player, creature, combatType)
+		onAttack(self, player, creature, blockType, combatType)
 	end
 end
 
-function Item:onHit(player, creature, combatType)
-	local onHit = EventCallback.onHit
-	if EventCallback.onHit then
-		onHit(self, player, creature, combatType)
-	end
-end
-
-function Item:onBlocked(player, creature, combatType)
-	local onBlocked = EventCallback.onBlocked
-	if EventCallback.onBlocked then
-		onBlocked(self, player, creature, combatType)
-	end
-end
-
---- Defensive ---
-function Item:onDefendAttack(player, creature, combatType)
-	local onDefendAttack = EventCallback.onDefendAttack
-	if EventCallback.onDefendAttack then
-		onDefendAttack(self, player, creature, combatType)
-	end
-end
-
-function Item:onBlockAttack(player, creature, combatType)
-	local onBlockAttack = EventCallback.onBlockAttack
-	if EventCallback.onBlockAttack then
-		onBlockAttack(self, player, creature, combatType)
+function Item:onDefend(player, creature, blockType, combatType)
+	local onDefend = EventCallback.onDefend
+	if EventCallback.onDefend then
+		onDefend(self, player, creature, blockType, combatType)
 	end
 end

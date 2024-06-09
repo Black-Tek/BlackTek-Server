@@ -28,9 +28,8 @@ ec.onChangeMount = {}
 ec.onAreaCombat = {returnValue=true}
 ec.onTargetCombat = {returnValue=true}
 ec.onHear = {}
-ec.onAttack = {}
-ec.onMissedAttack = {}
-ec.onBlockedAttack = {}
+ec.onDoAttack = {}
+ec.onDefendAttack = {}
 -- ec.onChangeZone = {} // todo: missing event from main.
 -- Party
 ec.onJoin = {}
@@ -71,11 +70,7 @@ ec.onImbue = {}
 ec.onRemoveImbue = {}
 -- Offensive
 ec.onAttack = {}
-ec.onHit = {}
-ec.onBlocked = {}
--- Defensive
-ec.onBlockAttack = {}
-ec.onDefendAttack = {}
+ec.onDefend = {}
 
 EventCallback = {
 	register = function(self, triggerIndex)

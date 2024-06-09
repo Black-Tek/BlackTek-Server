@@ -35,23 +35,16 @@ function Creature:onHear(speaker, words, type)
 	end
 end
 
-function Creature:onAttack(target, origin)
-	local onAttack = EventCallback.onAttack
-	if onAttack then
-		onAttack(self, target, origin)
+function Creature:onAttack(target, blockType, combatType, origin, criticalDamage, leechedDamage)
+	local onAttack = EventCallback.onDoAttack
+	if onDoAttack then
+		onDoAttack(self, target, blockType, combatType, origin, criticalDamage, leechedDamage)
 	end
 end
 
-function Creature:onMissedAttack(target, combatType)
-	local onMissedAttack = EventCallback.onMissedAttack
-	if onMissedAttack then
-		onMissedAttack(self, target, combatType)
-	end
-end
-
-function Creature:onBlockedAttack(target, origin, combatType)
-	local onBlockedAttack = EventCallback.onBlockedAttack
-	if onBlockedAttack then
-		onBlockedAttack(self, target, origin, combatType)
+function Creature:onDefend(attacker, blockType, combatType, origin, criticalDamage, leechedDamage)
+	local onDefend = EventCallback.onDefendAttack
+	if onDefendAttack then
+		onDefendAttack(self, attacker, blockType, combatType, origin, criticalDamage, leechedDamage)
 	end
 end
