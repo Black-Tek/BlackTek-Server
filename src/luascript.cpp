@@ -16704,9 +16704,9 @@ int LuaScriptInterface::luaActionRegister(lua_State* L)
 			return 1;
 		}
 		pushBoolean(L, g_actions->registerLuaEvent(action));
-		action->clearActionIdRange();
-		action->clearItemIdRange();
-		action->clearUniqueIdRange();
+		g_actions->clearItemIdRange(action);
+		g_actions->clearUniqueIdRange(action);
+		g_actions->clearActionIdRange(action);
 	} else {
 		lua_pushnil(L);
 	}
@@ -16721,10 +16721,10 @@ int LuaScriptInterface::luaActionItemId(lua_State* L)
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		if (parameters > 1) {
 			for (int i = 0; i < parameters; ++i) {
-				action->addItemId(getNumber<uint32_t>(L, 2 + i));
+				g_actions->addItemId(action, getNumber<uint32_t>(L, 2 + i));
 			}
 		} else {
-			action->addItemId(getNumber<uint32_t>(L, 2));
+			g_actions->addItemId(action, getNumber<uint32_t>(L, 2));
 		}
 		pushBoolean(L, true);
 	} else {
@@ -16741,10 +16741,10 @@ int LuaScriptInterface::luaActionActionId(lua_State* L)
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		if (parameters > 1) {
 			for (int i = 0; i < parameters; ++i) {
-				action->addActionId(getNumber<uint32_t>(L, 2 + i));
+				g_actions->addActionId(action, getNumber<uint32_t>(L, 2 + i));
 			}
 		} else {
-			action->addActionId(getNumber<uint32_t>(L, 2));
+			g_actions->addActionId(action, getNumber<uint32_t>(L, 2));
 		}
 		pushBoolean(L, true);
 	} else {
@@ -16761,10 +16761,10 @@ int LuaScriptInterface::luaActionUniqueId(lua_State* L)
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		if (parameters > 1) {
 			for (int i = 0; i < parameters; ++i) {
-				action->addUniqueId(getNumber<uint32_t>(L, 2 + i));
+				g_actions->addUniqueId(action, getNumber<uint32_t>(L, 2 + i));
 			}
 		} else {
-			action->addUniqueId(getNumber<uint32_t>(L, 2));
+			g_actions->addUniqueId(action, getNumber<uint32_t>(L, 2));
 		}
 		pushBoolean(L, true);
 	} else {
@@ -17064,19 +17064,20 @@ int LuaScriptInterface::luaMoveEventRegister(lua_State* L)
 	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
 	if (moveevent) {
 		if ((moveevent->getEventType() == MOVE_EVENT_EQUIP || moveevent->getEventType() == MOVE_EVENT_DEEQUIP) && moveevent->getSlot() == SLOTP_WHEREEVER) {
-			uint32_t id = moveevent->getItemIdRange().at(0);
+			uint32_t id = g_moveEvents->getItemIdRange(moveevent).at(0);
 			ItemType& it = Item::items.getItemType(id);
 			moveevent->setSlot(it.slotPosition);
 		}
 		if (!moveevent->isScripted()) {
 			pushBoolean(L, g_moveEvents->registerLuaFunction(moveevent));
+			g_moveEvents->clearItemIdRange(moveevent);
 			return 1;
 		}
 		pushBoolean(L, g_moveEvents->registerLuaEvent(moveevent));
-		moveevent->clearItemIdRange();
-		moveevent->clearActionIdRange();
-		moveevent->clearUniqueIdRange();
-		moveevent->clearPosList();
+		g_moveEvents->clearItemIdRange(moveevent);
+		g_moveEvents->clearActionIdRange(moveevent);
+		g_moveEvents->clearUniqueIdRange(moveevent);
+		g_moveEvents->clearPosList(moveevent);
 	} else {
 		lua_pushnil(L);
 	}
@@ -17246,10 +17247,10 @@ int LuaScriptInterface::luaMoveEventItemId(lua_State* L)
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		if (parameters > 1) {
 			for (int i = 0; i < parameters; ++i) {
-				moveevent->addItemId(getNumber<uint32_t>(L, 2 + i));
+				g_moveEvents->addItemId(moveevent, getNumber<uint32_t>(L, 2 + i));
 			}
 		} else {
-			moveevent->addItemId(getNumber<uint32_t>(L, 2));
+			g_moveEvents->addItemId(moveevent, getNumber<uint32_t>(L, 2));
 		}
 		pushBoolean(L, true);
 	} else {
@@ -17266,10 +17267,10 @@ int LuaScriptInterface::luaMoveEventActionId(lua_State* L)
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		if (parameters > 1) {
 			for (int i = 0; i < parameters; ++i) {
-				moveevent->addActionId(getNumber<uint32_t>(L, 2 + i));
+				g_moveEvents->addActionId(moveevent, getNumber<uint32_t>(L, 2 + i));
 			}
 		} else {
-			moveevent->addActionId(getNumber<uint32_t>(L, 2));
+			g_moveEvents->addActionId(moveevent, getNumber<uint32_t>(L, 2));
 		}
 		pushBoolean(L, true);
 	} else {
@@ -17286,10 +17287,10 @@ int LuaScriptInterface::luaMoveEventUniqueId(lua_State* L)
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		if (parameters > 1) {
 			for (int i = 0; i < parameters; ++i) {
-				moveevent->addUniqueId(getNumber<uint32_t>(L, 2 + i));
+				g_moveEvents->addUniqueId(moveevent, getNumber<uint32_t>(L, 2 + i));
 			}
 		} else {
-			moveevent->addUniqueId(getNumber<uint32_t>(L, 2));
+			g_moveEvents->addUniqueId(moveevent, getNumber<uint32_t>(L, 2));
 		}
 		pushBoolean(L, true);
 	} else {
@@ -17306,10 +17307,10 @@ int LuaScriptInterface::luaMoveEventPosition(lua_State* L)
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		if (parameters > 1) {
 			for (int i = 0; i < parameters; ++i) {
-				moveevent->addPosList(getPosition(L, 2 + i));
+				g_moveEvents->addPosList(moveevent, getPosition(L, 2 + i));
 			}
 		} else {
-			moveevent->addPosList(getPosition(L, 2));
+			g_moveEvents->addPosList(moveevent, getPosition(L, 2));
 		}
 		pushBoolean(L, true);
 	} else {
