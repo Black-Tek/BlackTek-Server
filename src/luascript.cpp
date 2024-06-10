@@ -16721,10 +16721,10 @@ int LuaScriptInterface::luaActionItemId(lua_State* L)
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		if (parameters > 1) {
 			for (int i = 0; i < parameters; ++i) {
-				g_actions->addItemId(action, getNumber<uint32_t>(L, 2 + i));
+				g_actions->addItemId(action, getNumber<uint16_t>(L, 2 + i));
 			}
 		} else {
-			g_actions->addItemId(action, getNumber<uint32_t>(L, 2));
+			g_actions->addItemId(action, getNumber<uint16_t>(L, 2));
 		}
 		pushBoolean(L, true);
 	} else {
@@ -16741,10 +16741,10 @@ int LuaScriptInterface::luaActionActionId(lua_State* L)
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		if (parameters > 1) {
 			for (int i = 0; i < parameters; ++i) {
-				g_actions->addActionId(action, getNumber<uint32_t>(L, 2 + i));
+				g_actions->addActionId(action, getNumber<uint16_t>(L, 2 + i));
 			}
 		} else {
-			g_actions->addActionId(action, getNumber<uint32_t>(L, 2));
+			g_actions->addActionId(action, getNumber<uint16_t>(L, 2));
 		}
 		pushBoolean(L, true);
 	} else {
@@ -16761,10 +16761,10 @@ int LuaScriptInterface::luaActionUniqueId(lua_State* L)
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		if (parameters > 1) {
 			for (int i = 0; i < parameters; ++i) {
-				g_actions->addUniqueId(action, getNumber<uint32_t>(L, 2 + i));
+				g_actions->addUniqueId(action, getNumber<uint16_t>(L, 2 + i));
 			}
 		} else {
-			g_actions->addUniqueId(action, getNumber<uint32_t>(L, 2));
+			g_actions->addUniqueId(action, getNumber<uint16_t>(L, 2));
 		}
 		pushBoolean(L, true);
 	} else {

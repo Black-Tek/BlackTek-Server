@@ -51,6 +51,15 @@ class MoveEvents final : public BaseEvents
 
 		MoveEvent* getEvent(Item* item, MoveEvent_t eventType);
 
+		bool isValid(std::map<MoveEvent*, std::vector<uint32_t>> map, MoveEvent* event)
+		{
+			return map.find(event) != map.end();
+		}
+		bool isValidPos(std::map<MoveEvent*, std::vector<Position>> map, MoveEvent* event)
+		{
+			return map.find(event) != map.end();
+		}
+
 		void clearItemIdRange(MoveEvent* event) { itemIdRange.erase(event); }
 		const std::vector<uint32_t>& getItemIdRange(MoveEvent* event) const { return itemIdRange.at(event); }
 		void addItemId(MoveEvent* event, uint32_t id) { itemIdRange[event].emplace_back(id); }
