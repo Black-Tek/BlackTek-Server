@@ -1256,7 +1256,7 @@ bool Creature::addCondition(Condition* condition, bool force/* = false*/)
 	}
 
 	auto casterId = condition->getParam(CONDITION_PARAM_OWNER);
-	if (condition->getType() == CONDITION_PARALYZE && this->getPlayer() && this->getPlayer()->isImbued() && this->getID() != casterId) {
+	if (condition->getType() == CONDITION_PARALYZE && this->getPlayer() && this->getPlayer()->isWearingImbuedItem() && this->getID() != casterId) {
 		int32_t chance = 0;
 		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
 			Item* item = this->getPlayer()->getInventoryItem(slot);

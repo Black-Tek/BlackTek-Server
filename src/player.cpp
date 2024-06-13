@@ -1513,6 +1513,8 @@ void Player::onThink(uint32_t interval)
 			Item* item = inventory[slot];
 			if (item && item->hasImbuements()) {
 				item->decayImbuements(hasCondition(CONDITION_INFIGHT));
+				sendSkills();
+				sendStats();
 			}
 		}
 	// } // part of the above TODO:
@@ -3072,10 +3074,9 @@ void Player::postAddNotification(Thing* thing, const Cylinder* oldParent, int32_
 		g_moveEvents->onPlayerEquip(this, thing->getItem(), static_cast<slots_t>(index), false);
 		g_events->eventPlayerOnInventoryUpdate(this, thing->getItem(), static_cast<slots_t>(index), true);
 		if (isInventorySlot(static_cast<slots_t>(index))) {
-			thing->getItem()->setEquipped(true);
-			if (thing->getItem()->hasImbuements()) {
+			Item* item = thing->getItem();
+			if (item && item->hasImbuements()) {
 				addItemImbuements(thing->getItem());
-				setImbued(true);
 			}
 		}
 	}
@@ -3130,24 +3131,15 @@ void Player::postAddNotification(Thing* thing, const Cylinder* oldParent, int32_
 void Player::postRemoveNotification(Thing* thing, const Cylinder* newParent, int32_t index, cylinderlink_t link /*= LINK_OWNER*/)
 {
 	if (link == LINK_OWNER) {
-		bool stillImbued = false;
 		//calling movement scripts
 		g_moveEvents->onPlayerDeEquip(this, thing->getItem(), static_cast<slots_t>(index));
 		g_events->eventPlayerOnInventoryUpdate(this, thing->getItem(), static_cast<slots_t>(index), false);
 		if (isInventorySlot(static_cast<slots_t>(index))) {
-			thing->getItem()->setEquipped(false);
-			if (thing->getItem()->hasImbuements()) {
+			Item* item = thing->getItem();
+			if (item && item->hasImbuements()) {
 				removeItemImbuements(thing->getItem());
 			}
 		}
-		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-			Item* item = getInventoryItem(slot);
-			if (item && item->hasImbuements()) {
-				stillImbued = true;
-				break;
-			}
-		}
-		setImbued(stillImbued);
 	}
 
 	bool requireListUpdate = false;

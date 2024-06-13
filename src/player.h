@@ -566,11 +566,14 @@ class Player final : public Creature, public Cylinder
 		bool updateSaleShopList(const Item* item);
 		bool hasShopItemForSale(uint32_t itemId, uint8_t subType) const;
 
-		bool isImbued() const {
-			return imbued;
-		}
-		void setImbued(bool imbuementStatus) {
-			imbued = imbuementStatus;
+		bool isWearingImbuedItem() const {
+			for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+				Item* item = getInventoryItem(static_cast<slots_t>(slot));
+				if (item && item->hasImbuements()) {
+					return true;
+				}
+			}
+			return false;
 		}
 
 		void setChaseMode(bool mode);
@@ -1316,7 +1319,6 @@ class Player final : public Creature, public Cylinder
 		bool isConnecting = false;
 		bool addAttackSkillPoint = false;
 		bool inventoryAbilities[CONST_SLOT_LAST + 1] = {};
-		bool imbued = false;
 
 		static uint32_t playerAutoID;
 

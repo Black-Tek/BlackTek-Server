@@ -1683,6 +1683,18 @@ const bool& ItemAttributes::CustomAttribute::get<bool>() {
 	return emptyBool;
 }
 
+const bool Item::isEquipped() const {
+	Player* player = getHoldingPlayer();
+	if (player) {
+		for (uint32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; slot++) {
+			if(player->getInventoryItem(slot) == this) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 uint16_t Item::getImbuementSlots() const
 {
 	// item:getImbuementSlots() -- returns how many total slots
@@ -1788,14 +1800,14 @@ bool Item::addImbuement(std::shared_ptr<Imbuement>  imbuement, bool created)
 	// item:addImbuement(imbuement) -- returns true if it successfully adds the imbuement
 	if (canImbue() && getFreeImbuementSlots() > 0 && g_events->eventItemOnImbue(this, imbuement, created))
 	{
-		imbuements.push_back(imbuement);
 		if (isEquipped()) {
-			Player* player = dynamic_cast<Player*>(this->getTopParent());
-			if (player) {
-				player->sendSkills();
-				player->sendStats();
-			}
+			/* Due to client limitation, if we add imbuements to equipped items, skills don't update properly.
+			An alternative solution would be to force a removal of the item, and apply imbuement, then re-equip the item,
+			we don't use this work-around as I am concerned about possible exploitation, since people are good at that. */
+			return false; 
 		}
+
+		imbuements.push_back(imbuement);
 		return true;
 	}
 	return false;
@@ -1806,22 +1818,23 @@ bool Item::removeImbuement(std::shared_ptr<Imbuement> imbuement, bool decayed)
     // item:removeImbuement(imbuement) -- returns true if it found and removed the imbuement
 	for (auto imbue : imbuements) {
 		if (imbue == imbuement) {
+
+			if (isEquipped()) {
+				/* Due to client limitation, if we add imbuements to equipped items, skills don't update properly.
+				An alternative solution would be to force a removal of the item, and apply imbuement, then re-equip the item,
+				we don't use this work-around as I am concerned about possible exploitation, since people are good at that. */
+				return false;
+			}
+
 			g_events->eventItemOnRemoveImbue(this, imbuement->imbuetype, decayed);
 			imbuements.erase(std::remove(imbuements.begin(), imbuements.end(), imbue), imbuements.end());
-			if (isEquipped()) {
-				Player* player = dynamic_cast<Player*>(this->getTopParent());
-				if (player) {
-					player->sendSkills();
-					player->sendStats();
-				}
-			}
 			return true;
 		}
 	}
     return false;
 }
 
-std::vector<std::shared_ptr<Imbuement>>& Item::getImbuements(){
+std::vector<std::shared_ptr<Imbuement>>& Item::getImbuements() {
 	return imbuements;
 }
 

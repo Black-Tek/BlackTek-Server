@@ -821,13 +821,7 @@ class Item : virtual public Thing
 			return items[id].decayTo;
 		}
 
-		bool isEquipped() const {
-			return equipped;
-		}
-		void setEquipped(bool status) {
-			equipped = status;
-		}
-
+		const bool isEquipped() const;
 		void decayImbuements(bool infight);
 
 		static std::string getDescription(const ItemType& it, int32_t lookDistance, const Item* item = nullptr, int32_t subType = -1, bool addArticle = true);
@@ -1126,7 +1120,6 @@ class Item : virtual public Thing
 		uint32_t referenceCounter = 0;
 
 		uint8_t count = 1; // number of stacked items
-		bool equipped = false;
 		bool loadedFromMap = false;
 
 		//Don't add variables here, use the ItemAttribute class.
