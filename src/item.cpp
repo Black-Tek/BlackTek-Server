@@ -1800,14 +1800,13 @@ bool Item::addImbuement(std::shared_ptr<Imbuement>  imbuement, bool created)
 	// item:addImbuement(imbuement) -- returns true if it successfully adds the imbuement
 	if (canImbue() && getFreeImbuementSlots() > 0 && g_events->eventItemOnImbue(this, imbuement, created))
 	{
-		if (isEquipped()) {
-			/* Due to client limitation, if we add imbuements to equipped items, skills don't update properly.
-			An alternative solution would be to force a removal of the item, and apply imbuement, then re-equip the item,
-			we don't use this work-around as I am concerned about possible exploitation, since people are good at that. */
-			return false; 
-		}
 
 		imbuements.push_back(imbuement);
+
+		Player* player = getHoldingPlayer();
+		if (player && isEquipped()) {
+			player->addItemImbuements(this);
+		}
 		return true;
 	}
 	return false;
@@ -1819,15 +1818,14 @@ bool Item::removeImbuement(std::shared_ptr<Imbuement> imbuement, bool decayed)
 	for (auto imbue : imbuements) {
 		if (imbue == imbuement) {
 
-			if (isEquipped()) {
-				/* Due to client limitation, if we add imbuements to equipped items, skills don't update properly.
-				An alternative solution would be to force a removal of the item, and apply imbuement, then re-equip the item,
-				we don't use this work-around as I am concerned about possible exploitation, since people are good at that. */
-				return false;
+			Player* player = getHoldingPlayer();
+			if (player && isEquipped()) {
+				player->removeImbuementEffect(imbue);
 			}
 
 			g_events->eventItemOnRemoveImbue(this, imbuement->imbuetype, decayed);
 			imbuements.erase(std::remove(imbuements.begin(), imbuements.end(), imbue), imbuements.end());
+
 			return true;
 		}
 	}

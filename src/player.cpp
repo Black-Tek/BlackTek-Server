@@ -4841,3 +4841,67 @@ void Player::removeItemImbuements(Item* item) {
 	sendSkills();
 	sendStats();
 }
+
+
+void Player::removeImbuementEffect(std::shared_ptr<Imbuement> imbue) {
+
+
+	if (imbue->isSkill()) {
+		switch (imbue->imbuetype) {
+		case ImbuementType::IMBUEMENT_TYPE_FIST_SKILL:
+			setVarSkill(SKILL_FIST, -static_cast<int32_t>(imbue->value));
+			break;
+		case ImbuementType::IMBUEMENT_TYPE_CLUB_SKILL:
+			setVarSkill(SKILL_CLUB, -static_cast<int32_t>(imbue->value));
+			break;
+		case ImbuementType::IMBUEMENT_TYPE_SWORD_SKILL:
+			setVarSkill(SKILL_SWORD, -static_cast<int32_t>(imbue->value));
+			break;
+		case ImbuementType::IMBUEMENT_TYPE_AXE_SKILL:
+			setVarSkill(SKILL_AXE, -static_cast<int32_t>(imbue->value));
+			break;
+		case ImbuementType::IMBUEMENT_TYPE_DISTANCE_SKILL:
+			setVarSkill(SKILL_DISTANCE, -static_cast<int32_t>(imbue->value));
+			break;
+		case ImbuementType::IMBUEMENT_TYPE_SHIELD_SKILL:
+			setVarSkill(SKILL_SHIELD, -static_cast<int32_t>(imbue->value));
+			break;
+		case ImbuementType::IMBUEMENT_TYPE_FISHING_SKILL:
+			setVarSkill(SKILL_FISHING, -static_cast<int32_t>(imbue->value));
+			break;
+		case ImbuementType::IMBUEMENT_TYPE_MAGIC_LEVEL:
+			setVarSkill(SKILL_MAGLEVEL, -static_cast<int32_t>(imbue->value));
+			break;
+		}
+	}
+
+	if (imbue->isSpecialSkill()) {
+		switch (imbue->imbuetype) {
+		case ImbuementType::IMBUEMENT_TYPE_MANA_LEECH:
+			setVarSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT, -static_cast<int32_t>(imbue->value));
+			break;
+		case ImbuementType::IMBUEMENT_TYPE_LIFE_LEECH:
+			setVarSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT, -static_cast<int32_t>(imbue->value));
+			break;
+		case ImbuementType::IMBUEMENT_TYPE_CRITICAL_CHANCE:
+			setVarSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE, -static_cast<int32_t>(imbue->value));
+			break;
+		case ImbuementType::IMBUEMENT_TYPE_CRITICAL_AMOUNT:
+			setVarSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT, -static_cast<int32_t>(imbue->value));
+			break;
+		}
+	}
+
+	if (imbue->isStat()) {
+		switch (imbue->imbuetype) {
+		case ImbuementType::IMBUEMENT_TYPE_CAPACITY_BOOST:
+			capacity -= imbue->value;
+			break;
+		case ImbuementType::IMBUEMENT_TYPE_SPEED_BOOST:
+			g_game.changeSpeed(this, -static_cast<int32_t>(imbue->value));
+			break;
+		}
+	}
+	sendSkills();
+	sendStats();
+}

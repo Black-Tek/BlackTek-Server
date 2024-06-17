@@ -1156,6 +1156,7 @@ class Player final : public Creature, public Cylinder
 		void updateRegeneration();
 		void addItemImbuements(Item* item);
 		void removeItemImbuements(Item* item);
+		void removeImbuementEffect(std::shared_ptr<Imbuement> imbue);
 
 	private:
 		std::forward_list<Condition*> getMuteConditions() const;
