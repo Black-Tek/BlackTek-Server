@@ -3919,7 +3919,7 @@ bool Game::combatBlockHit(CombatDamage& damage, Creature* attacker, Creature* ta
 	if (damage.secondary.type != COMBAT_NONE) {
 		damage.secondary.value = -damage.secondary.value;
 		secondaryBlockType = target->blockHit(attacker, damage.secondary.type, damage.secondary.value, false, false, field, ignoreResistances);
-		if (damage.primary.type != COMBAT_HEALING) {
+		if (attacker && target && (damage.primary.type != COMBAT_HEALING)) {
 			g_events->eventCreatureOnAttack(attacker, target, secondaryBlockType, damage.secondary.type, damage.origin, damage.critical, damage.leeched);
 			g_events->eventCreatureOnDefend(target, attacker, secondaryBlockType, damage.secondary.type, damage.origin, damage.critical, damage.leeched);
 
