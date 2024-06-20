@@ -479,232 +479,288 @@ void Tile::onUpdateTile(const SpectatorVec& spectators)
 	}
 }
 
-ReturnValue Tile::queryAdd(int32_t, const Thing& thing, uint32_t, uint32_t flags, Creature*) const
+ReturnValue Tile::queryAdd(const Creature& creature, uint32_t flags) const
 {
-	if (const Creature* creature = thing.getCreature()) {
-		if (hasBitSet(FLAG_NOLIMIT, flags)) {
-			return RETURNVALUE_NOERROR;
-		}
+    ReturnValue results = RETURNVALUE_NOERROR;
 
-		if (hasBitSet(FLAG_PATHFINDING, flags) && hasFlag(TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT)) {
-			return RETURNVALUE_NOTPOSSIBLE;
-		}
+    if (hasBitSet(FLAG_NOLIMIT, flags)) {
+        return RETURNVALUE_NOERROR;
+    }
 
-		if (ground == nullptr) {
-			return RETURNVALUE_NOTPOSSIBLE;
-		}
+    if (hasBitSet(FLAG_PATHFINDING, flags) && hasFlag(TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT)) {
+        return RETURNVALUE_NOTPOSSIBLE;
+    }
 
-		if (const Monster* monster = creature->getMonster()) {
-			if (hasFlag(TILESTATE_PROTECTIONZONE | TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT)) {
-				return RETURNVALUE_NOTPOSSIBLE;
-			}
+    if (ground == nullptr) {
+        return RETURNVALUE_NOTPOSSIBLE;
+    }
 
-			const CreatureVector* creatures = getCreatures();
-			if (monster->canPushCreatures() && !monster->isSummon()) {
-				if (creatures) {
-					for (Creature* tileCreature : *creatures) {
-						if (tileCreature->getPlayer() && tileCreature->getPlayer()->isInGhostMode()) {
-							continue;
-						}
+	const CreatureVector* creatures = getCreatures();
 
-						const Monster* creatureMonster = tileCreature->getMonster();
-						if (!creatureMonster || !tileCreature->isPushable() ||
-								(creatureMonster->isSummon() && creatureMonster->getMaster()->getPlayer())) {
-							return RETURNVALUE_NOTPOSSIBLE;
-						}
-					}
-				}
-			} else if (creatures && !creatures->empty()) {
-				for (const Creature* tileCreature : *creatures) {
-					if (!tileCreature->isInGhostMode()) {
-						return RETURNVALUE_NOTENOUGHROOM;
-					}
-				}
-			}
-
-			if (hasFlag(TILESTATE_IMMOVABLEBLOCKSOLID)) {
-				return RETURNVALUE_NOTPOSSIBLE;
-			}
-
-			if (hasBitSet(FLAG_PATHFINDING, flags) && hasFlag(TILESTATE_IMMOVABLENOFIELDBLOCKPATH)) {
-				return RETURNVALUE_NOTPOSSIBLE;
-			}
-
-			if (hasFlag(TILESTATE_BLOCKSOLID) || (hasBitSet(FLAG_PATHFINDING, flags) && hasFlag(TILESTATE_NOFIELDBLOCKPATH))) {
-				if (!(monster->canPushItems() || hasBitSet(FLAG_IGNOREBLOCKITEM, flags))) {
-					return RETURNVALUE_NOTPOSSIBLE;
-				}
-			}
-
-			MagicField* field = getFieldItem();
-			if (!field || field->isBlocking() || field->getDamage() == 0) {
-				return RETURNVALUE_NOERROR;
-			}
-
-			CombatType_t combatType = field->getCombatType();
-
-			//There is 3 options for a monster to enter a magic field
-			//1) Monster is immune
-			if (!monster->isImmune(combatType)) {
-				//1) Monster is able to walk over field type
-				//2) Being attacked while random stepping will make it ignore field damages
-				if (hasBitSet(FLAG_IGNOREFIELDDAMAGE, flags)) {
-					if (!(monster->canWalkOnFieldType(combatType) || monster->isIgnoringFieldDamage())) {
-						return RETURNVALUE_NOTPOSSIBLE;
-					}
-				} else {
-					return RETURNVALUE_NOTPOSSIBLE;
-				}
-			}
-
-			return RETURNVALUE_NOERROR;
-		}
-
-		const CreatureVector* creatures = getCreatures();
-		if (const Player* player = creature->getPlayer()) {
-			if (creatures && !creatures->empty() && !hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags) && !player->isAccessPlayer()) {
-				for (const Creature* tileCreature : *creatures) {
-					if (!player->canWalkthrough(tileCreature)) {
-						return RETURNVALUE_NOTPOSSIBLE;
-					}
-				}
-			}
-
-			if (MagicField* field = getFieldItem()) {
-				if (field->getDamage() != 0 && hasBitSet(FLAG_PATHFINDING, flags) &&
-					!hasBitSet(FLAG_IGNOREFIELDDAMAGE, flags)) {
-					return RETURNVALUE_NOTPOSSIBLE;
-				}
-			}
-
-			if (player->getParent() == nullptr && hasFlag(TILESTATE_NOLOGOUT)) {
-				//player is trying to login to a "no logout" tile
-				return RETURNVALUE_NOTPOSSIBLE;
-			}
-
-			const Tile* playerTile = player->getTile();
-			if (playerTile && player->isPzLocked()) {
-				if (!playerTile->hasFlag(TILESTATE_PVPZONE)) {
-					//player is trying to enter a pvp zone while being pz-locked
-					if (hasFlag(TILESTATE_PVPZONE)) {
-						return RETURNVALUE_PLAYERISPZLOCKEDENTERPVPZONE;
-					}
-				} else if (!hasFlag(TILESTATE_PVPZONE)) {
-					// player is trying to leave a pvp zone while being pz-locked
-					return RETURNVALUE_PLAYERISPZLOCKEDLEAVEPVPZONE;
-				}
-
-				if ((!playerTile->hasFlag(TILESTATE_NOPVPZONE) && hasFlag(TILESTATE_NOPVPZONE)) ||
-					(!playerTile->hasFlag(TILESTATE_PROTECTIONZONE) && hasFlag(TILESTATE_PROTECTIONZONE))) {
-					// player is trying to enter a non-pvp/protection zone while being pz-locked
-					return RETURNVALUE_PLAYERISPZLOCKED;
-				}
-			}
-		} else if (creatures && !creatures->empty() && !hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags)) {
-			for (const Creature* tileCreature : *creatures) {
-				if (!tileCreature->isInGhostMode()) {
-					return RETURNVALUE_NOTENOUGHROOM;
-				}
-			}
-		}
-
-		if (!hasBitSet(FLAG_IGNOREBLOCKITEM, flags)) {
-			//If the FLAG_IGNOREBLOCKITEM bit isn't set we dont have to iterate every single item
-			if (hasFlag(TILESTATE_BLOCKSOLID)) {
+	if (creatures && !creatures->empty() && !hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags)) {
+		for (const Creature* tileCreature : *creatures) {
+			if (!tileCreature->isInGhostMode()) {
 				return RETURNVALUE_NOTENOUGHROOM;
 			}
-		} else {
-			//FLAG_IGNOREBLOCKITEM is set
-			if (ground) {
-				const ItemType& iiType = Item::items[ground->getID()];
-				if (iiType.blockSolid && (!iiType.moveable || ground->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID))) {
+		}
+	}
+
+    if (!hasBitSet(FLAG_IGNOREBLOCKITEM, flags)) {
+        //If the FLAG_IGNOREBLOCKITEM bit isn't set we dont have to iterate every single item
+        if (hasFlag(TILESTATE_BLOCKSOLID)) {
+            return RETURNVALUE_NOTENOUGHROOM;
+        }
+    } else {
+        //FLAG_IGNOREBLOCKITEM is set
+        if (ground) {
+            const ItemType& iiType = Item::items[ground->getID()];
+            if (iiType.blockSolid && (!iiType.moveable || ground->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID))) {
+                return RETURNVALUE_NOTPOSSIBLE;
+            }
+        }
+
+        if (const auto items = getItemList()) {
+            for (const Item* item : *items) {
+                const ItemType& iiType = Item::items[item->getID()];
+                if (iiType.blockSolid && (!iiType.moveable || item->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID))) {
+                    return RETURNVALUE_NOTPOSSIBLE;
+                }
+            }
+        }
+    }
+
+	if (const Player* player = dynamic_cast<const Player*>(&creature)) {
+		results = queryAdd(*player, flags);
+	} else if (const Monster* monster = dynamic_cast<const Monster*>(&creature)) {
+		results = queryAdd(*monster, flags);
+	}
+
+	return results;
+}
+
+
+ReturnValue Tile::queryAdd(const Player& player, uint32_t flags) const {
+
+	const CreatureVector* creatures = getCreatures();
+
+	// If we aren't a GM/Admin can't walk on a tile that has a creature, if we don't have walkthrough enabled.
+	if (creatures && !creatures->empty() && !hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags) && !player.isAccessPlayer()) {
+		for (const Creature* tileCreature : *creatures) {
+			if (!player.canWalkthrough(tileCreature)) {
+				return RETURNVALUE_NOTPOSSIBLE;
+			}
+		}
+	}
+
+	// We are auto-walking, lets not step on a field that would hurt us.
+	if (MagicField* field = getFieldItem()) {
+		if (field->getDamage() != 0 && hasBitSet(FLAG_PATHFINDING, flags) &&
+			!hasBitSet(FLAG_IGNOREFIELDDAMAGE, flags)) {
+			return RETURNVALUE_NOTPOSSIBLE;
+		}
+	}
+
+	// Player is trying to login to a "no logout" tile.
+	if (player.getParent() == nullptr && hasFlag(TILESTATE_NOLOGOUT)) {
+		return RETURNVALUE_NOTPOSSIBLE;
+	}
+
+	// Player is pz'd, let do some checks.
+	const Tile* playerTile = player.getTile();
+	if (playerTile && player.isPzLocked()) {
+		if (!playerTile->hasFlag(TILESTATE_PVPZONE)) {
+			//player is trying to enter a pvp zone while being pz-locked
+			if (hasFlag(TILESTATE_PVPZONE)) {
+				return RETURNVALUE_PLAYERISPZLOCKEDENTERPVPZONE;
+			}
+		} else if (!hasFlag(TILESTATE_PVPZONE)) {
+			// player is trying to leave a pvp zone while being pz-locked
+			return RETURNVALUE_PLAYERISPZLOCKEDLEAVEPVPZONE;
+		}
+
+		if ((!playerTile->hasFlag(TILESTATE_NOPVPZONE) && hasFlag(TILESTATE_NOPVPZONE)) ||
+			(!playerTile->hasFlag(TILESTATE_PROTECTIONZONE) && hasFlag(TILESTATE_PROTECTIONZONE))) {
+			// player is trying to enter a non-pvp/protection zone while being pz-locked
+			return RETURNVALUE_PLAYERISPZLOCKED;
+		}
+	}
+
+	return RETURNVALUE_NOERROR;
+}
+
+
+ReturnValue Tile::queryAdd(const Monster& monster, uint32_t flags) const {
+	// Monsters
+	// Monsters cannot enter pz, jump floors, or step into teleports
+	if (hasFlag(TILESTATE_PROTECTIONZONE | TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT)) {
+		return RETURNVALUE_NOTPOSSIBLE;
+	}
+
+	// Something immovable blocking the way.
+	if (hasFlag(TILESTATE_IMMOVABLEBLOCKSOLID)) {
+		return RETURNVALUE_NOTPOSSIBLE;
+	}
+
+	// Monster is searching for a path and tile has immovable field in the way.
+	if (hasBitSet(FLAG_PATHFINDING, flags) && hasFlag(TILESTATE_IMMOVABLENOFIELDBLOCKPATH)) {
+		return RETURNVALUE_NOTPOSSIBLE;
+	}
+
+	// Monster is looking for a clear path, some stuff is blocking it.
+	if (hasFlag(TILESTATE_BLOCKSOLID) || (hasBitSet(FLAG_PATHFINDING, flags) && hasFlag(TILESTATE_NOFIELDBLOCKPATH))) {
+		if (!(monster.canPushItems() || hasBitSet(FLAG_IGNOREBLOCKITEM, flags))) {
+			return RETURNVALUE_NOTPOSSIBLE;
+		}
+	}
+
+	const CreatureVector* creatures = getCreatures();
+
+	// We have creatures on the tile we are trying to step on
+	if (creatures && !creatures->empty()) {
+		for (const Creature* tileCreature : *creatures) {
+			// creature is not in ghost mode
+			if (!tileCreature->isInGhostMode()) {
+				return RETURNVALUE_NOTENOUGHROOM;
+			}
+			
+			if (monster.canPushCreatures() && !monster.isSummon()) {
+				// the creature is a player in ghost mode.
+				if (tileCreature->getPlayer() && tileCreature->getPlayer()->isInGhostMode()) {
+					continue;
+				}
+				// the creature is a monster this monster can't push.
+				const Monster* creatureMonster = tileCreature->getMonster();
+				if (!creatureMonster || !tileCreature->isPushable() || (creatureMonster->isSummon() && creatureMonster->getMaster()->getPlayer())) {
 					return RETURNVALUE_NOTPOSSIBLE;
-				}
-			}
-
-			if (const auto items = getItemList()) {
-				for (const Item* item : *items) {
-					const ItemType& iiType = Item::items[item->getID()];
-					if (iiType.blockSolid && (!iiType.moveable || item->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID))) {
-						return RETURNVALUE_NOTPOSSIBLE;
-					}
-				}
-			}
-		}
-	} else if (const Item* item = thing.getItem()) {
-		const TileItemVector* items = getItemList();
-		if (items && items->size() >= 0xFFFF) {
-			return RETURNVALUE_NOTPOSSIBLE;
-		}
-
-		if (hasBitSet(FLAG_NOLIMIT, flags)) {
-			return RETURNVALUE_NOERROR;
-		}
-
-		if (item->isStoreItem()) {
-			return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
-		}
-
-		bool itemIsHangable = item->isHangable();
-		if (ground == nullptr && !itemIsHangable) {
-			return RETURNVALUE_NOTPOSSIBLE;
-		}
-
-		const CreatureVector* creatures = getCreatures();
-		if (creatures && !creatures->empty() && item->isBlocking() && !hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags)) {
-			for (const Creature* tileCreature : *creatures) {
-				if (!tileCreature->isInGhostMode()) {
-					return RETURNVALUE_NOTENOUGHROOM;
-				}
-			}
-		}
-
-		if (itemIsHangable && hasFlag(TILESTATE_SUPPORTS_HANGABLE)) {
-			if (items) {
-				for (const Item* tileItem : *items) {
-					if (tileItem->isHangable()) {
-						return RETURNVALUE_NEEDEXCHANGE;
-					}
-				}
-			}
-		} else {
-			if (ground) {
-				const ItemType& iiType = Item::items[ground->getID()];
-				if (iiType.blockSolid) {
-					if (!iiType.allowPickupable || item->isMagicField() || item->isBlocking()) {
-						if (!item->isPickupable()) {
-							return RETURNVALUE_NOTENOUGHROOM;
-						}
-
-						if (!iiType.hasHeight || iiType.pickupable || iiType.isBed()) {
-							return RETURNVALUE_NOTENOUGHROOM;
-						}
-					}
-				}
-			}
-
-			if (items) {
-				for (const Item* tileItem : *items) {
-					const ItemType& iiType = Item::items[tileItem->getID()];
-					if (!iiType.blockSolid) {
-						continue;
-					}
-
-					if (iiType.allowPickupable && !item->isMagicField() && !item->isBlocking()) {
-						continue;
-					}
-
-					if (!item->isPickupable()) {
-						return RETURNVALUE_NOTENOUGHROOM;
-					}
-
-					if (!iiType.hasHeight || iiType.pickupable || iiType.isBed()) {
-						return RETURNVALUE_NOTENOUGHROOM;
-					}
 				}
 			}
 		}
 	}
+
+	// If the magic field is safe, return early
+    MagicField* field = getFieldItem();
+    if (!field || field->isBlocking() || field->getDamage() == 0) {
+        return RETURNVALUE_NOERROR;
+    }
+
+    CombatType_t combatType = field->getCombatType();
+
+    //There is 3 options for a monster to enter a magic field
+    //1) Monster is immune
+    if (!monster.isImmune(combatType)) {
+        //1) Monster is able to walk over field type
+        //2) Being attacked while random stepping will make it ignore field damages
+        if (hasBitSet(FLAG_IGNOREFIELDDAMAGE, flags)) {
+            if (!(monster.canWalkOnFieldType(combatType) || monster.isIgnoringFieldDamage())) {
+                return RETURNVALUE_NOTPOSSIBLE;
+            }
+        } else {
+            return RETURNVALUE_NOTPOSSIBLE;
+        }
+    }
+
+    return RETURNVALUE_NOERROR;
+}
+
+ReturnValue Tile::queryAdd(const Item& item, uint32_t flags) const {
+    // Tile's item stack is at its numeric limit can't add anything
+    const TileItemVector* items = getItemList();
+    if (items && items->size() >= 0xFFFF) {
+        return RETURNVALUE_NOTPOSSIBLE;
+    }
+
+    // Tile has no limit flag
+    if (hasBitSet(FLAG_NOLIMIT, flags)) {
+        return RETURNVALUE_NOERROR;
+    }
+
+    // Can't move store items to tiles
+    if (item.isStoreItem()) {
+        return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
+    }
+
+    // If its a wall, but not a hangable item.
+    bool itemIsHangable = item.isHangable();
+    if (ground == nullptr && !itemIsHangable) {
+        return RETURNVALUE_NOTPOSSIBLE;
+    }
+
+    // If there is any creature there, who is not in ghost mode... don't think this should be here...
+    const CreatureVector* creatures = getCreatures();
+    if (creatures && !creatures->empty() && item.isBlocking() && !hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags)) {
+        for (const Creature* tileCreature : *creatures) {
+            if (!tileCreature->isInGhostMode()) {
+                return RETURNVALUE_NOTENOUGHROOM;
+            }
+        }
+    }
+
+	//////////////////////////////////////////////////////////////
+	// Can move the hangable check inside the loop instead, get rid of the else,
+	// and then merge the other if(items) check and loop into this one.
+
+    // If we have a hangable item and the tile supports hangables
+    if (itemIsHangable && hasFlag(TILESTATE_SUPPORTS_HANGABLE)) {
+        if (items) {
+            for (const Item* tileItem : *items) {
+				// there is already a hangable there
+                if (tileItem->isHangable()) {
+                    return RETURNVALUE_NEEDEXCHANGE;
+                }
+            }
+        }
+	// I believe this 'else' is not needed, and potentially limiting where we don't want to be.
+    } else {
+        if (ground) {
+            const ItemType& iiType = Item::items[ground->getID()];
+            if (iiType.blockSolid) {
+                if (!iiType.allowPickupable || item.isMagicField() || item.isBlocking()) {
+                    if (!item.isPickupable()) {
+                        return RETURNVALUE_NOTENOUGHROOM;
+                    }
+
+                    if (!iiType.hasHeight || iiType.pickupable || iiType.isBed()) {
+                        return RETURNVALUE_NOTENOUGHROOM;
+                    }
+                }
+            }
+        }
+		// We can move this into the previous check and combine the loops. 
+        if (items) {
+            for (const Item* tileItem : *items) {
+                const ItemType& iiType = Item::items[tileItem->getID()];
+                if (!iiType.blockSolid) {
+                    continue;
+                }
+
+                if (iiType.allowPickupable && !item.isMagicField() && !item.isBlocking()) {
+                    continue;
+                }
+
+                if (!item.isPickupable()) {
+                    return RETURNVALUE_NOTENOUGHROOM;
+                }
+
+                if (!iiType.hasHeight || iiType.pickupable || iiType.isBed()) {
+                    return RETURNVALUE_NOTENOUGHROOM;
+                }
+            }
+        }
+    }
+    return RETURNVALUE_NOERROR;
+}
+
+ReturnValue Tile::queryAdd(int32_t, const Thing& thing, uint32_t, uint32_t flags, Creature*) const {
+	if (const Creature* creature = dynamic_cast<const Creature*>(&thing)) {
+		return queryAdd(*creature, flags);
+	}
+
+	if (const Item* item = dynamic_cast<const Item*>(&thing)) {
+		return queryAdd(*item, flags);
+	}
+
+	std::cout << "|| WARNING || Tile::queryAdd() passed the object "<< typeid(thing).name() << ", that is not a creature or item! " << "\n";
+
 	return RETURNVALUE_NOERROR;
 }
 

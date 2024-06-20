@@ -229,6 +229,11 @@ class Tile : public Cylinder
 		ReturnValue queryRemove(const Thing& thing, uint32_t count, uint32_t flags, Creature* actor = nullptr) const override;
 		Tile* queryDestination(int32_t& index, const Thing& thing, Item** destItem, uint32_t& flags) override;
 
+		ReturnValue queryAdd(const Creature& creature, uint32_t flags) const;
+		ReturnValue queryAdd(const Item& item, uint32_t flags) const;
+		ReturnValue queryAdd(const Player& player, uint32_t flags) const;
+		ReturnValue queryAdd(const Monster& monster, uint32_t flags) const;
+
 		void addThing(Thing* thing) override final;
 		void addThing(int32_t index, Thing* thing) override;
 
