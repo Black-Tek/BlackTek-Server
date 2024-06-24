@@ -52,12 +52,76 @@ ec.onLook = function(self, thing, position, distance, description)
 	end
 
 	if thing:isItem() then
-		description = string.format("%s\nTotal Imbuement Slots : %d", description, thing:getImbuementSlots())
-		description = string.format("%s\nFree Imbuement Slots : %d", description, thing:getFreeImbuementSlots())
-		if thing:hasImbuements() then
-			for each, imbuement in pairs(thing:getImbuements()) do
-				description = string.format("%s\n Imbuement Type : %d", description, imbuement:getType())
-				description = string.format("%s\n Duration : %d", description, imbuement:getDuration())
+		local totalSlots = thing:getImbuementSlots()  -- Get the total number of imbument slots.
+
+		if totalSlots > 0 then  -- Proceed only if slots are available.
+			local occupiedSlotsDescriptions = {}
+			local emptySlotsDescriptions = {}
+
+			-- Fetch current imbuments on the item.
+			local imbuments = thing:getImbuements()
+
+			for slot = 1, totalSlots do
+				local imbue = imbuments[slot]
+				if imbue and imbue.getType then
+					local imbueId = imbue:getType()
+					local imbueDuration = imbue:getDuration()
+					local imbueValue = imbue:getValue()
+					
+					-- Determine imbue type and name.
+					
+					local imbueName, imbueLevelName
+
+					for key, value in pairs(imbuements) do
+						if value.id == imbueId then
+							imbueName = value.name
+							
+							for levelName, levelData in pairs(value.levels) do
+								if levelData.value == imbueValue then
+									imbueLevelName = levelName
+									break
+								end
+							end
+							break
+						end
+					end
+
+					-- Format duration output.
+					local hours = math.floor(imbueDuration / 3600)
+					local remainingMinutes = math.floor((imbueDuration % 3600) / 60)
+					local formattedOutput
+
+					if imbueDuration < 60 then
+						formattedOutput = "less than a minute"
+					elseif imbueDuration < 3600 then
+						formattedOutput = string.format("%d min", remainingMinutes)
+					else
+						formattedOutput = string.format("%d:%02dh", hours, remainingMinutes)
+					end
+					
+					if imbueLevelName and imbueName and formattedOutput then
+						table.insert(occupiedSlotsDescriptions, imbueLevelName .. " " .. imbueName .. " " .. formattedOutput)
+					else
+						table.insert(occupiedSlotsDescriptions, "Unknown imbuement")
+					end
+				else
+					table.insert(emptySlotsDescriptions, "Empty Slot")
+				end
+			end
+
+			-- Combine descriptions of occupied and empty slots.
+			local slotsDescriptions = {}
+			for _, desc in ipairs(occupiedSlotsDescriptions) do
+				table.insert(slotsDescriptions, desc)
+			end
+			for _, desc in ipairs(emptySlotsDescriptions) do
+				table.insert(slotsDescriptions, desc)
+			end
+
+			-- Format the final description of imbuements.
+			if #slotsDescriptions > 0 then
+				local imbuementsDescription = "Imbuements: (" .. table.concat(slotsDescriptions, ", ") .. ")."
+				description = description and description .. "\n" .. imbuementsDescription or imbuementsDescription
 			end
 		end
 	end
