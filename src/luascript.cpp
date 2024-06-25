@@ -5759,13 +5759,20 @@ int LuaScriptInterface::luaTileQueryAdd(lua_State* L)
 		return 1;
 	}
 
-	Thing* thing = getThing(L, 2);
-	if (thing) {
+	if (Item* item = getUserdata<Item>(L, 2)) {
 		uint32_t flags = getNumber<uint32_t>(L, 3, 0);
-		lua_pushnumber(L, tile->queryAdd(0, *thing, 1, flags));
-	} else {
-		lua_pushnil(L);
+		lua_pushnumber(L, tile->queryAdd(*item, flags));
+		return 1;
 	}
+
+	if (Creature* creature = getUserdata<Creature>(L, 2)) {
+		uint32_t flags = getNumber<uint32_t>(L, 3, 0);
+		lua_pushnumber(L, tile->queryAdd(*creature, flags));
+		return 1;
+	}
+
+
+	lua_pushnil(L);
 	return 1;
 }
 

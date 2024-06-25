@@ -435,7 +435,7 @@ bool Npc::canWalkTo(const Position& fromPos, Direction dir) const
 	}
 
 	Tile* tile = g_game.map.getTile(toPos);
-	if (!tile || tile->queryAdd(0, *this, 1, 0) != RETURNVALUE_NOERROR) {
+	if (!tile || tile->queryAdd(*this, 0) != RETURNVALUE_NOERROR) {
 		return false;
 	}
 
