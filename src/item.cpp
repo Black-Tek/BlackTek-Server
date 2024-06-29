@@ -1803,9 +1803,13 @@ bool Item::addImbuement(std::shared_ptr<Imbuement>  imbuement, bool created)
 
 		imbuements.push_back(imbuement);
 
-		Player* player = getHoldingPlayer();
-		if (player && isEquipped()) {
-			player->addItemImbuements(this);
+		for (auto imbue : imbuements) {
+			if (imbue == imbuement) {
+				Player* player = getHoldingPlayer();
+				if (player && isEquipped()) {
+					player->addImbuementEffect(imbue);
+				}
+			}
 		}
 		return true;
 	}

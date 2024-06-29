@@ -35,7 +35,7 @@ local function getAllItemsInContainer(container)
 end
 
 -- Function to update the player's special skills based on equipped imbuements
-local function addChanceToImbuement(player, item, equipped)
+local function addChanceToImbuement(player, item, equipped, imbueId)
 
 local imbuementEffects = {
     [IMBUEMENT_TYPE_CRITICAL_AMOUNT] = {skill = SPECIALSKILL_CRITICALHITCHANCE, value = 10},
@@ -46,16 +46,26 @@ local imbuementEffects = {
     if not item:isItem() or not item:hasImbuements() then
         return false
     end
-
-    for imbuementType, effect in pairs(imbuementEffects) do
-        if item:hasImbuementType(imbuementType) then
-            local adjustment = equipped and effect.value or -effect.value
-            player:addSpecialSkill(effect.skill, adjustment)
-            return true
-        end
-    end
-
-    return false
+	
+	if imbueId then
+		for imbuementType, effect in pairs(imbuementEffects) do
+			if imbueId == imbuementType and item:hasImbuementType(imbuementType) then
+				local adjustment = equipped and effect.value or -effect.value
+				player:addSpecialSkill(effect.skill, adjustment)
+				return true
+			end
+		end
+	end
+	
+	for imbuementType, effect in pairs(imbuementEffects) do
+		if item:hasImbuementType(imbuementType) then
+			local adjustment = equipped and effect.value or -effect.value
+			player:addSpecialSkill(effect.skill, adjustment)
+			print("asd")
+		end
+	end
+	
+	return true
 end
 
 -- Function to get the imbuement item currently being used by the player
@@ -321,7 +331,7 @@ function SelectImbueTypeOrRemoveWindow.onModalWindow(player, modalWindowId, butt
                     for k,v in pairs (usedItem:getImbuements()) do
                         if v:getType() == imbuementId then
 							if isEquipped(usedItem) then
-								addChanceToImbuement(player, usedItem, false)
+								addChanceToImbuement(player, usedItem, false, imbuementId)
 							end
 							player:getPosition():sendMagicEffect(CONST_ME_MAGIC_RED)
                             usedItem:removeImbuement(v)	
@@ -493,7 +503,7 @@ function ImbuementApplicationWindow.onModalWindow(player, modalWindowId, buttonI
 				usedItem:addImbuement(imbue)
 				
 				if isEquipped(usedItem) then
-					addChanceToImbuement(player, usedItem, true)
+					addChanceToImbuement(player, usedItem, true, imbuementData.id)
 				end
 				
 				player:sendTextMessage(MESSAGE_STATUS_SMALL, "The item has been successfully imbued.")
