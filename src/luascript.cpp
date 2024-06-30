@@ -8675,7 +8675,7 @@ int LuaScriptInterface::luaCreatureRemove(lua_State* L)
 int LuaScriptInterface::luaCreatureTeleportTo(lua_State* L)
 {
 	// creature:teleportTo(position[, pushMovement = false])
-	bool pushMovement = getBoolean(L, 3, false);
+	bool pushMovement = getBoolean(L, 3) || false ;
 
 	const Position& position = getPosition(L, 2);
 	Creature* creature = getUserdata<Creature>(L, 1);
