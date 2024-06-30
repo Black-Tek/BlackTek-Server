@@ -61,7 +61,6 @@ local imbuementEffects = {
 		if item:hasImbuementType(imbuementType) then
 			local adjustment = equipped and effect.value or -effect.value
 			player:addSpecialSkill(effect.skill, adjustment)
-			print("asd")
 		end
 	end
 	
