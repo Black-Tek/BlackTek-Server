@@ -570,50 +570,69 @@ bool Map::checkSightLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uin
 
 bool Map::isSightClear(const Position& fromPos, const Position& toPos, bool sameFloor /*= false*/) const
 {
-	// return immediately true if the destination is same as current location
+	// Return immediately true if the destination is the same as the current location
 	if (fromPos == toPos) {
 		return true;
 	}
 
-	// cache differences to reduce function calls to position::getDistance
+	// Cache differences to reduce function calls to position::getDistance
 	auto diffX = std::abs(fromPos.x - toPos.x);
 	auto diffY = std::abs(fromPos.y - toPos.y);
 	auto diffZ = std::abs(fromPos.z - toPos.z);
 
-	// destination is on a different floor and sameFloor requirement is true
-	if (sameFloor && diffZ) {
+	// Destination is on a different floor and sameFloor requirement is true
+	if (sameFloor && diffZ != 0) {
 		return false;
 	}
 
-	// destination is on the same floor
+	// Destination is on the same floor
 	if (diffZ == 0) {
+		// Close proximity check
 		if (diffX < 2 && diffY < 2) {
 			return true;
 		}
-		return checkSightLine(fromPos.x, fromPos.y, toPos.x, toPos.y, fromPos.z) || sameFloor || (fromPos.z == 0);
+		// Check horizontal line of sight
+		bool sightClear = checkSightLine(fromPos.x, fromPos.y, toPos.x, toPos.y, fromPos.z);
+		if (sightClear || sameFloor) {
+			return sightClear;
+		}
+
+		// No obstacles above floor 0 so we can throw above the obstacle
+		if (fromPos.z == 0) {
+			return true;
+		}
+
+		// Check if tiles above us and the target are clear and check for a clear sight between them
+		uint8_t newZ = fromPos.z - 1;
+		return isTileClear(fromPos.x, fromPos.y, newZ, true) &&
+			isTileClear(toPos.x, toPos.y, newZ, true) &&
+			checkSightLine(fromPos.x, fromPos.y, toPos.x, toPos.y, newZ);
 	}
 
-	// destination is on a different floor
-
-	// check if destination crosses the ground floor
-	if ((fromPos.z < 8 && toPos.z > 7) || (fromPos.z > 7 && toPos.z < 8))
+	// Destination is on a different floor
+	if (sameFloor) {
 		return false;
+	}
 
-	// destination is above us
+	// Skip checks for sight line in case fromPos and toPos cross the ground floor
+	if ((fromPos.z < 8 && toPos.z > 7) || (fromPos.z > 7 && toPos.z < 8)) {
+		return false;
+	}
+
+	// Destination is above us
 	if (fromPos.z > toPos.z) {
 		if (diffZ > 1) {
 			return false;
 		}
 
-		// check a tile above us and the path to the target
-		auto newZ = fromPos.z - 1;
+		// Check a tile above us and the path to the target
+		uint8_t newZ = fromPos.z - 1;
 		return isTileClear(fromPos.x, fromPos.y, newZ, true) &&
 			checkSightLine(fromPos.x, fromPos.y, toPos.x, toPos.y, newZ);
 	}
 
-	// target is below us
-	// check if tiles above the target are clear
-	for (auto z = fromPos.z; z < toPos.z; ++z) {
+	// Target is below us, check if tiles above the target are clear
+	for (uint8_t z = fromPos.z; z < toPos.z; ++z) {
 		if (!isTileClear(toPos.x, toPos.y, z, true)) {
 			return false;
 		}
@@ -622,7 +641,6 @@ bool Map::isSightClear(const Position& fromPos, const Position& toPos, bool same
 	// Check if we can throw to the tile above the target
 	return checkSightLine(fromPos.x, fromPos.y, toPos.x, toPos.y, fromPos.z);
 }
-
 
 const Tile* Map::canWalkTo(const Creature& creature, const Position& pos) const
 {
