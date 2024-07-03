@@ -292,7 +292,8 @@ class LuaScriptInterface
 		template<typename T>
 		static T getNumber(lua_State *L, int32_t arg, T defaultValue)
 		{
-			if (lua_isnumber(L, arg) == 0) {
+			const auto parameters = lua_gettop(L);
+			if (parameters == 0 || arg > parameters) {
 				return defaultValue;
 			}
 			return getNumber<T>(L, arg);
@@ -323,7 +324,8 @@ class LuaScriptInterface
 		}
 		static bool getBoolean(lua_State* L, int32_t arg, bool defaultValue)
 		{
-			if (lua_isnumber(L, arg) == 0) {
+			const auto parameters = lua_gettop(L);
+			if (parameters == 0 || arg > parameters) {
 				return defaultValue;
 			}
 			return lua_toboolean(L, arg) != 0;
