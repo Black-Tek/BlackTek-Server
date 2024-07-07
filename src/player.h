@@ -496,6 +496,8 @@ class Player final : public Creature, public Cylinder
 
 		DepotChest* getDepotChest(uint32_t depotId, bool autoCreate);
 		DepotLocker& getDepotLocker();
+		uint32_t getDepotItemCount();
+
 		void onReceiveMail() const;
 		bool isNearDepotBox() const;
 

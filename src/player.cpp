@@ -857,6 +857,29 @@ DepotLocker& Player::getDepotLocker()
 	return *depotLocker;
 }
 
+uint32_t Player::getDepotItemCount()
+{
+	uint32_t counter = 0;
+
+	for (auto item : getDepotLocker().getItems(true)) {
+		
+		++counter;
+
+		std::string itemName = item->getName();
+
+		if (itemName.find("depot") != std::string::npos) {
+			--counter;
+		}
+		if (itemName.find("inbox") != std::string::npos) {
+			--counter;
+		}
+		if (itemName.find("market") != std::string::npos) {
+			--counter;
+		}
+	}
+	return counter;
+}
+
 void Player::sendCancelMessage(ReturnValue message) const
 {
 	sendCancelMessage(getReturnMessage(message));
