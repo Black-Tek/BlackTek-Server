@@ -7,6 +7,11 @@ Black Tek Server is a free and open-source MMORPG server emulator written in C++
 If you don't want to bother with source code or compiling. You can download from our release sections the binaries with everything needed ready to go.
 
 #### Compiling 
+
+For windows users looking for the quickest way to get started with BlackTek Server, you can follow the steps provided [here](https://otland.net/threads/tutorial-blacktek-from-nothing-to-fully-installed-with-aac-on-windows.289572/)
+
+Otherwise please follow the steps provided below:
+
 To compile you will need to install and integrate vcpkg.
 You can find detailed instructions for [Windows](https://github.com/microsoft/vcpkg?tab=readme-ov-file#quick-start-windows) and [Unix](https://github.com/microsoft/vcpkg?tab=readme-ov-file#quick-start-unix) based operating systems.
 
@@ -25,15 +30,8 @@ OSX aka Mac:
 
 This will generate your project files. 
 
-Next you will need to enable manifest mode for vcpkg.
-
-You can do so by enabling the environment variable ```VCPKG_FEATURE_FLAGS=manifests```
-
-Alternatively, for visual studio users, you can just go to ```project->properties->configuration properties->vcpkg``` and change ```Use Vcpkg Manifest``` to ```yes```.
-
+If you are using linux, please ensure you have manifest mode enabled.
 You can find more information about manifest mode [here.](https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode)
-
-Once you have enabled manifest mode, you can now select your configuration, and run "Rebuild all" (or its equivalent) to produce your executable.
 
 ### Support
 ### Issues
