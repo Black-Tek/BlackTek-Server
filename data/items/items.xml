@@ -21397,8 +21397,10 @@
         <attribute key="slotType" value="necklace" />
         <attribute key="weight" value="840" />
     </item>
-    <item id="12425" article="a" name="hunter's quiver" plural="hunter quivers">
-        <attribute key="weight" value="132" />
+    <item id="12425" article="a" name="hunter's quiver">
+        <attribute key="weaponType" value="quiver"/>
+		<attribute key="containersize" value="6"/>
+		<attribute key="weight" value="1700"/>
     </item>
     <item id="12426" article="a" name="jewelled belt">
         <attribute key="weight" value="124" />

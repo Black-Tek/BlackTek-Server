@@ -1,8 +1,8 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_CONTAINER_H_5590165FD8A2451B98D71F13CD3ED8DC
-#define FS_CONTAINER_H_5590165FD8A2451B98D71F13CD3ED8DC
+#ifndef FS_CONTAINER_H
+#define FS_CONTAINER_H
 
 #include <queue>
 
@@ -80,6 +80,9 @@ class Container : public Item, public Cylinder
 		uint32_t capacity() const {
 			return maxSize;
 		}
+		uint32_t getAmmoCount() const { 
+			return ammoCount; 
+		}
 
 		ContainerIterator iterator() const;
 
@@ -154,6 +157,7 @@ class Container : public Item, public Cylinder
 		uint32_t maxSize;
 		uint32_t totalWeight = 0;
 		uint32_t serializationCount = 0;
+		uint32_t ammoCount = 0;
 
 		bool unlocked;
 		bool pagination;

@@ -226,6 +226,7 @@ const std::unordered_map<std::string, WeaponType_t> WeaponTypesMap = {
 	{"distance", WEAPON_DISTANCE},
 	{"wand", WEAPON_WAND},
 	{"ammunition", WEAPON_AMMO},
+	{"quiver", WEAPON_QUIVER},
 };
 
 const std::unordered_map<std::string, FluidTypes_t> FluidTypesMap = {

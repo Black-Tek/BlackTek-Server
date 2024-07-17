@@ -62,6 +62,7 @@ class Weapon : public Event
 		virtual bool interruptSwing() const {
 			return false;
 		}
+		bool ammoCheck(const Player* player) const;
 
 		int32_t playerWeaponCheck(Player* player, Creature* target, uint8_t shootRange) const;
 		static bool useFist(Player* player, Creature* target);
