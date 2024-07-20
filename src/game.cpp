@@ -1214,15 +1214,16 @@ ReturnValue Game::internalMoveItem(Cylinder* fromCylinder, Cylinder* toCylinder,
 		}
 
 		int32_t newCount = m - n;
-		if (newCount > 0) {
+		assert(newCount >= 0);
+		if (newCount != item->getItemCount()) {
 			moveItem = item->clone();
 			moveItem->setItemCount(newCount);
-		} else {
-			moveItem = nullptr;
-		}
+		}else if (newCount == 0) {
+			if (item->isRemoved()) {
+				ReleaseItem(item);
+			}
 
-		if (item->isRemoved()) {
-			ReleaseItem(item);
+			moveItem = nullptr;
 		}
 	}
 
