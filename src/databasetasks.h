@@ -1,8 +1,8 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_DATABASETASKS_H_9CBA08E9F5FEBA7275CCEE6560059576
-#define FS_DATABASETASKS_H_9CBA08E9F5FEBA7275CCEE6560059576
+#ifndef FS_DATABASETASKS_H
+#define FS_DATABASETASKS_H
 
 #include <condition_variable>
 #include "thread_holder_base.h"

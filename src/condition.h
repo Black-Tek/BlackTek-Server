@@ -1,8 +1,8 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_CONDITION_H_F92FF8BDDD5B4EA59E2B1BB5C9C0A086
-#define FS_CONDITION_H_F92FF8BDDD5B4EA59E2B1BB5C9C0A086
+#ifndef FS_CONDITION_H
+#define FS_CONDITION_H
 
 #include "fileloader.h"
 #include "enums.h"

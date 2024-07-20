@@ -1,8 +1,8 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_CHAT_H_F1574642D0384ABFAB52B7ED906E5628
-#define FS_CHAT_H_F1574642D0384ABFAB52B7ED906E5628
+#ifndef FS_CHAT_H
+#define FS_CHAT_H
 
 #include "const.h"
 #include "luascript.h"

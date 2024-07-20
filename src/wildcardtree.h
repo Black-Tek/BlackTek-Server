@@ -1,8 +1,8 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_WILDCARDTREE_H_054C9BA46A1D4EA4B7C77ECE60ED4DEB
-#define FS_WILDCARDTREE_H_054C9BA46A1D4EA4B7C77ECE60ED4DEB
+#ifndef FS_WILDCARDTREE_H
+#define FS_WILDCARDTREE_H
 
 #include "enums.h"
 

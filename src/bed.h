@@ -1,8 +1,8 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_BED_H_84DE19758D424C6C9789189231946BFF
-#define FS_BED_H_84DE19758D424C6C9789189231946BFF
+#ifndef FS_BED_H
+#define FS_BED_H
 
 #include "item.h"
 
