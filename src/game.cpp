@@ -54,10 +54,14 @@ Game::Game()
 	offlineTrainingWindow.buttons.emplace_back("Okay", offlineTrainingWindow.defaultEnterButton);
 	offlineTrainingWindow.buttons.emplace_back("Cancel", offlineTrainingWindow.defaultEscapeButton);
 	offlineTrainingWindow.priority = true;
+
+	curl_global_init(CURL_GLOBAL_ALL);
 }
 
 Game::~Game()
 {
+	curl_global_cleanup();
+
 	for (const auto& it : guilds) {
 		delete it.second;
 	}
