@@ -56,12 +56,6 @@ enum DiscordMessageType {
 	MESSAGE_INFO
 };
 
-struct DiscordHandle {
-	std::string token;
-	std::string field;
-	struct curl_slist* headers;
-};
-
 static constexpr int32_t PLAYER_NAME_LENGTH = 25;
 static constexpr int32_t EVENT_LIGHTINTERVAL = 10000;
 static constexpr int32_t EVENT_WORLDTIMEINTERVAL = 2500;
@@ -544,7 +538,7 @@ class Game
 			tilesToClean.clear();
 		}
 
-		std::vector<DiscordHandle> discordHandles;
+		CURL* curl;
 
 	private:
 		bool playerSaySpell(Player* player, SpeakClasses type, const std::string& text);

@@ -27,6 +27,7 @@
 
 DatabaseTasks g_databaseTasks;
 Dispatcher g_dispatcher;
+Dispatcher g_dispatcher_discord;
 Scheduler g_scheduler;
 
 Game g_game;
@@ -71,6 +72,7 @@ int main(int argc, char* argv[])
 
 	g_dispatcher.start();
 	g_scheduler.start();
+	g_dispatcher_discord.start();
 
 	g_dispatcher.addTask(createTask([=, services = &serviceManager]() { mainLoader(argc, argv, services); }));
 
@@ -84,11 +86,14 @@ int main(int argc, char* argv[])
 		g_scheduler.shutdown();
 		g_databaseTasks.shutdown();
 		g_dispatcher.shutdown();
+		g_dispatcher_discord.shutdown();
 	}
 
 	g_scheduler.join();
 	g_databaseTasks.join();
 	g_dispatcher.join();
+	g_dispatcher_discord.join();
+
 	return 0;
 }
 
