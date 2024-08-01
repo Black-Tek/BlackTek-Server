@@ -62,7 +62,7 @@ Game::Game()
 Game::~Game()
 {
 	curl_global_cleanup();
-	curl_easy_cleanup(curl);
+	curl_easy_cleanup(curl)
 
 	for (const auto& it : guilds) {
 		delete it.second;
