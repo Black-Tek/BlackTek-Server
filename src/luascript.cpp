@@ -4979,19 +4979,17 @@ int LuaScriptInterface::luaGameSendDiscordWebhook(lua_State* L)
 	//Game.sendDiscordWebhook()
 	if (g_game.discordHandles.size() == 0)
 		return 1;
+
 	std::thread t{ [&] {
 		for (auto data : g_game.discordHandles) {
-			CURL* curl = curl_easy_init();
-			curl_easy_setopt(curl, CURLOPT_URL, data.token.data());
-			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.field.data());
-			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, data.headers);
+			curl_easy_setopt(g_game.curl, CURLOPT_URL, data.token.data());
+			curl_easy_setopt(g_game.curl, CURLOPT_POSTFIELDS, data.field.data());
+			curl_easy_setopt(g_game.curl, CURLOPT_HTTPHEADER, data.headers);
 
-			auto response = curl_easy_perform(curl);
+			auto response = curl_easy_perform(g_game.curl);
 
 			if (response != CURLE_OK)
 				std::cout << "Curl failed - reason: " << curl_easy_strerror(response) << std::endl;
-
-			curl_easy_cleanup(curl);
 		}
 
 		g_game.discordHandles.clear();

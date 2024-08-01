@@ -56,11 +56,13 @@ Game::Game()
 	offlineTrainingWindow.priority = true;
 
 	curl_global_init(CURL_GLOBAL_ALL);
+	curl = curl_easy_init();
 }
 
 Game::~Game()
 {
 	curl_global_cleanup();
+	curl_easy_cleanup(curl);
 
 	for (const auto& it : guilds) {
 		delete it.second;

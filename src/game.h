@@ -545,6 +545,7 @@ class Game
 		}
 
 		std::vector<DiscordHandle> discordHandles;
+		CURL* curl;
 
 	private:
 		bool playerSaySpell(Player* player, SpeakClasses type, const std::string& text);
