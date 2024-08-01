@@ -6,14 +6,13 @@ local LoginEvent = CreatureEvent("DiscordHook")
 --MESSAGE_LOG;
 --MESSAGE_INFO;
 
-local webhookLink = "YOUR WEBHOOK HERE"
+local webhookLink = "TOKEN HERE"
 
 function LoginEvent.onLogin(player)
-  Game.queueDiscordMessage(webhookLink, MESSAGE_INFO, "Player: " .. player:getName() .. " has logged in")
-  Game.queueDiscordMessage(webhookLink, MESSAGE_ERROR, "Player: " .. player:getName() .. " has logged in")
-  Game.queueDiscordMessage(webhookLink, MESSAGE_NORMAL, "Player: " .. player:getName() .. " has logged in")
-  Game.queueDiscordMessage(webhookLink, MESSAGE_LOG, "Player: " .. player:getName() .. " has logged in")
-  Game.sendDiscordWebhook()
+  Game.sendDiscordMessage(webhookLink, MESSAGE_INFO, "Player: " .. player:getName() .. " has logged in")
+  Game.sendDiscordMessage(webhookLink, MESSAGE_ERROR, "Player: " .. player:getName() .. " has logged in")
+  Game.sendDiscordMessage(webhookLink, MESSAGE_NORMAL, "Player: " .. player:getName() .. " has logged in")
+  Game.sendDiscordMessage(webhookLink, MESSAGE_LOG, "Player: " .. player:getName() .. " has logged in")
   return true
 end
 

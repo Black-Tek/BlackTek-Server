@@ -2161,8 +2161,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Game", "setAccountStorageValue", LuaScriptInterface::luaGameSetAccountStorageValue);
 	registerMethod("Game", "saveAccountStorageValues", LuaScriptInterface::luaGameSaveAccountStorageValues);
 
-	registerMethod("Game", "queueDiscordMessage", LuaScriptInterface::luaGameQueueDiscordMessages);
-	registerMethod("Game", "sendDiscordWebhook", LuaScriptInterface::luaGameSendDiscordWebhook);
+	registerMethod("Game", "sendDiscordMessage", LuaScriptInterface::luaGameSendDiscordWebhook);
 
 	// Variant
 	registerClass("Variant", "", LuaScriptInterface::luaVariantCreate);
@@ -4976,33 +4975,7 @@ int LuaScriptInterface::luaGameSaveAccountStorageValues(lua_State* L)
 
 int LuaScriptInterface::luaGameSendDiscordWebhook(lua_State* L)
 {
-	//Game.sendDiscordWebhook()
-	if (g_game.discordHandles.size() == 0)
-		return 1;
-
-	std::thread t{ [&] {
-		for (auto data : g_game.discordHandles) {
-			curl_easy_setopt(g_game.curl, CURLOPT_URL, data.token.data());
-			curl_easy_setopt(g_game.curl, CURLOPT_POSTFIELDS, data.field.data());
-			curl_easy_setopt(g_game.curl, CURLOPT_HTTPHEADER, data.headers);
-
-			auto response = curl_easy_perform(g_game.curl);
-
-			if (response != CURLE_OK)
-				std::cout << "Curl failed - reason: " << curl_easy_strerror(response) << std::endl;
-		}
-
-		g_game.discordHandles.clear();
-	}};
-
-	t.detach();
-
-	return 1;
-}
-
-int LuaScriptInterface::luaGameQueueDiscordMessages(lua_State* L)
-{
-	// Game.queueDiscordMessage(token, message_type, message)
+	// Game.sendDiscordMessage(token, message_type, message)
 
 	std::string token;
 	DiscordMessageType messageType;
@@ -5067,13 +5040,18 @@ int LuaScriptInterface::luaGameQueueDiscordMessages(lua_State* L)
 			return 1;
 		}
 
-		DiscordHandle h;
+		auto curl = g_game.curl;
 
-		h.token = token;
-		h.field = field;
-		h.headers = headers;
+		g_dispatcher_discord.addTask(createTask([curl, token, field, headers]() {
+			curl_easy_setopt(curl, CURLOPT_URL, token.data());
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, field.data());
+			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-		g_game.discordHandles.push_back(h);
+			auto response = curl_easy_perform(curl);
+
+			if (response != CURLE_OK)
+				std::cout << "Curl failed - reason: " << curl_easy_strerror(response) << std::endl;
+		}));
 	}
 
 	return 1;
