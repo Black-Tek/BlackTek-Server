@@ -4980,8 +4980,7 @@ int LuaScriptInterface::luaGameSendDiscordWebhook(lua_State* L)
 	if (g_game.discordHandles.size() == 0)
 		return 1;
 	std::thread t{ [&] {
-		for (auto data : g_game.discordHandles)
-		{
+		for (auto data : g_game.discordHandles) {
 			CURL* curl = curl_easy_init();
 			curl_easy_setopt(curl, CURLOPT_URL, data.token.data());
 			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.field.data());
@@ -4990,13 +4989,13 @@ int LuaScriptInterface::luaGameSendDiscordWebhook(lua_State* L)
 			auto response = curl_easy_perform(curl);
 
 			if (response != CURLE_OK)
-				std::cout << "Curl failed" << curl_easy_strerror(response) << std::endl;
+				std::cout << "Curl failed - reason: " << curl_easy_strerror(response) << std::endl;
 
 			curl_easy_cleanup(curl);
 		}
 
 		g_game.discordHandles.clear();
-	} };
+	}};
 
 	t.detach();
 
@@ -5024,8 +5023,7 @@ int LuaScriptInterface::luaGameQueueDiscordMessages(lua_State* L)
 		struct curl_slist* headers = nullptr;
 		headers = curl_slist_append(headers, "Content-Type: application/json");
 
-		switch (messageType)
-		{
+		switch (messageType) {
 		case DiscordMessageType::MESSAGE_NORMAL:
 			field = R"({
 				"content": null,
