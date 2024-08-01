@@ -1990,6 +1990,12 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(ImbuementType::IMBUEMENT_TYPE_MAGIC_LEVEL);
 	registerEnum(ImbuementType::IMBUEMENT_TYPE_LAST);
 
+	// Discord webhook enums
+	registerEnum(DiscordMessageType::MESSAGE_NORMAL);
+	registerEnum(DiscordMessageType::MESSAGE_ERROR);
+	registerEnum(DiscordMessageType::MESSAGE_LOG);
+	registerEnum(DiscordMessageType::MESSAGE_INFO);
+
 	// _G
 	registerGlobalVariable("INDEX_WHEREEVER", INDEX_WHEREEVER);
 	registerGlobalBoolean("VIRTUAL_PARENT", true);
@@ -2154,6 +2160,9 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Game", "getAccountStorageValue", LuaScriptInterface::luaGameGetAccountStorageValue);
 	registerMethod("Game", "setAccountStorageValue", LuaScriptInterface::luaGameSetAccountStorageValue);
 	registerMethod("Game", "saveAccountStorageValues", LuaScriptInterface::luaGameSaveAccountStorageValues);
+
+	registerMethod("Game", "queueDiscordMessage", LuaScriptInterface::luaGameQueueDiscordMessages);
+	registerMethod("Game", "sendDiscordWebhook", LuaScriptInterface::luaGameSendDiscordWebhook);
 
 	// Variant
 	registerClass("Variant", "", LuaScriptInterface::luaVariantCreate);
@@ -4961,6 +4970,115 @@ int LuaScriptInterface::luaGameSaveAccountStorageValues(lua_State* L)
 {
 	// Game.saveAccountStorageValues()
 	lua_pushboolean(L, g_game.saveAccountStorageValues());
+
+	return 1;
+}
+
+int LuaScriptInterface::luaGameSendDiscordWebhook(lua_State* L)
+{
+	//Game.sendDiscordWebhook()
+	if (g_game.discordHandles.size() == 0)
+		return 1;
+	std::thread t{ [&] {
+		for (auto data : g_game.discordHandles)
+		{
+			CURL* curl = curl_easy_init();
+			curl_easy_setopt(curl, CURLOPT_URL, data.token.data());
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.field.data());
+			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, data.headers);
+
+			auto response = curl_easy_perform(curl);
+
+			if (response != CURLE_OK)
+				std::cout << "Curl failed" << curl_easy_strerror(response) << std::endl;
+
+			curl_easy_cleanup(curl);
+		}
+
+		g_game.discordHandles.clear();
+	} };
+
+	t.detach();
+
+	return 1;
+}
+
+int LuaScriptInterface::luaGameQueueDiscordMessages(lua_State* L)
+{
+	// Game.queueDiscordMessage(token, message_type, message)
+
+	std::string token;
+	DiscordMessageType messageType;
+	std::string msg;
+
+	if (isString(L, 1))
+		token = getString(L, 1);
+	if (isNumber(L, 2))
+		messageType = getNumber<DiscordMessageType>(L, 2);
+	if (isString(L, 3))
+		msg = getString(L, 3);
+
+	if (token.length() > 0 && msg.length() > 0 && messageType >= 0) {
+		// "{\"content\": null,\"embeds\":[{\"title\": \"testing\",\"description\": \"tetsign\",\"color\": 4062976}],\"attachments\": []}"
+		std::string field;
+		struct curl_slist* headers = nullptr;
+		headers = curl_slist_append(headers, "Content-Type: application/json");
+
+		switch (messageType)
+		{
+		case DiscordMessageType::MESSAGE_NORMAL:
+			field = R"({
+				"content": null,
+				"embeds" : [{
+					"title": "~MESSAGE~",
+					"description" : ")" + msg + R"(",
+					"color" : 1815333
+				}]
+			})";
+			break;
+		case DiscordMessageType::MESSAGE_ERROR:
+			field = R"({
+				"content": null,
+				"embeds" : [{
+					"title": "~ERROR~",
+					"description" : ")" + msg + R"(",
+					"color" : 16711680
+				}]
+			})";
+			break;
+		case DiscordMessageType::MESSAGE_LOG:
+			field = R"({
+				"content": null,
+				"embeds" : [{
+					"title": "~LOG~",
+					"description" : ")" + msg + R"(",
+					"color" : 41727
+				}]
+			})";
+			break;
+		case DiscordMessageType::MESSAGE_INFO:
+			field = R"({
+				"content": null,
+				"embeds" : [{
+					"title": "~INFO~",
+					"description" : ")" + msg + R"(",
+					"color" : 16762880
+				}]
+			})";
+			break;
+
+		default:
+			return 1;
+		}
+
+		DiscordHandle h;
+
+		h.token = token;
+		h.field = field;
+		h.headers = headers;
+
+		g_game.discordHandles.push_back(h);
+	}
 
 	return 1;
 }

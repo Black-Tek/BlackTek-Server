@@ -15,7 +15,8 @@
     "libmariadb",
     "cryptopp",
     "pugixml",
-    "zlib"
+    "zlib",
+    "curl"
   ],
   "features": {
     "lua": {

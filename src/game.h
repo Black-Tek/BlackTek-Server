@@ -4,6 +4,8 @@
 #ifndef FS_GAME_H
 #define FS_GAME_H
 
+#include <curl/curl.h>
+
 #include "account.h"
 #include "combat.h"
 #include "groups.h"
@@ -45,6 +47,19 @@ enum GameState_t {
 	GAME_STATE_SHUTDOWN,
 	GAME_STATE_CLOSING,
 	GAME_STATE_MAINTAIN,
+};
+
+enum DiscordMessageType {
+	MESSAGE_NORMAL = 0,
+	MESSAGE_ERROR,
+	MESSAGE_LOG,
+	MESSAGE_INFO
+};
+
+struct DiscordHandle {
+	std::string token;
+	std::string field;
+	struct curl_slist* headers;
 };
 
 static constexpr int32_t PLAYER_NAME_LENGTH = 25;
@@ -528,6 +543,8 @@ class Game
 		void clearTilesToClean() {
 			tilesToClean.clear();
 		}
+
+		std::vector<DiscordHandle> discordHandles;
 
 	private:
 		bool playerSaySpell(Player* player, SpeakClasses type, const std::string& text);
