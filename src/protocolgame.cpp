@@ -1184,8 +1184,7 @@ void ProtocolGame::parseMarketBrowse(NetworkMessage& msg)
 	} else if (browseId == MARKETREQUEST_OWN_HISTORY) {
 		addGameTask([playerID = player->getID()]() { g_game.playerBrowseMarketOwnHistory(playerID); });
 	} else {
-		uint16_t spriteID = msg.get<uint16_t>();
-		addGameTask([=, playerID = player->getID()]() { g_game.playerBrowseMarket(playerID, spriteID); });
+		addGameTask([=, playerID = player->getID()]() { g_game.playerBrowseMarket(playerID, browseId); });
 	}
 }
 
