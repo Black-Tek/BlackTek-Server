@@ -93,6 +93,11 @@ class Combat
 		static bool isPlayerCombat(const Creature* target);
 		static CombatType_t ConditionToDamageType(ConditionType_t type);
 		static ConditionType_t DamageToConditionType(CombatType_t type);
+		// To-do : follow this call stack and improve it.
+		// Here we have a method that is under-utilized. It should be used in combats
+		// to remove those same checks out of game::combatHealthChange
+		// with the breaking down of the smaller parts of combatHealthChange as well
+		// we can eliminate the need in it all together and provide cleaner code.
 		static ReturnValue canTargetCreature(Player* attacker, Creature* target);
 		static ReturnValue canDoCombat(Creature* caster, Tile* tile, bool aggressive);
 		static ReturnValue canDoCombat(Creature* attacker, Creature* target);
@@ -103,8 +108,11 @@ class Combat
 		void doCombat(Creature* caster, Creature* target) const;
 		void doCombat(Creature* caster, const Position& position) const;
 
-		static void doTargetCombat(Creature* caster, Creature* target, CombatDamage& damage, const CombatParams& params);
+		static void doTargetCombat(Creature* caster, Creature* target, CombatDamage& damage, const CombatParams& params, bool sendDistanceEffect = true);
 		static void doAreaCombat(Creature* caster, const Position& position, const AreaCombat* area, CombatDamage& damage, const CombatParams& params);
+
+		static void applyDamageIncreaseModifier(uint8_t modifierType, CombatDamage& damage, int32_t percentValue, int32_t flatValue);
+		static void applyDamageReductionModifier(uint8_t modifierType, CombatDamage& damage, Player& damageTarget, std::optional<std::reference_wrapper<Creature>> attacker, int32_t percentValue, int32_t flatValue, uint8_t areaEffect = CONST_ME_NONE, uint8_t distanceEffect = CONST_ANI_NONE);
 
 		bool setCallback(CallBackParam_t key);
 		CallBack* getCallback(CallBackParam_t key);

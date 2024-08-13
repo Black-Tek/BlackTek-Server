@@ -1,0 +1,21 @@
+[LancelotsLance]
+name = "Lancelot's Lance"
+description = "a powerful ability whose origins trace back to the White Knight Lancelot"
+modifiers = [
+	# Lifesteal
+	{ stance = "attack", type = "lifesteal", value = 35, chance = 85, damageType = "physical", originType = "melee"},
+	# Melee Crits
+	{ stance = "attack", type = "critical", value = 35, chance = 98, damageType = "physical", originType = "melee", monster = "Rat"},
+]
+
+[GuardiansShield]
+name = "Guardian's Shield"
+description = "This enhancement comes from years of skilled craftsmanship, and just a touch of magic"
+modifiers = [
+	# Condition Resistance
+	{ stance = "defense", type = "resist", value = 20, originType = "condition" },
+	# Spell Deflection
+	{ stance = "defense", type = "deflect", value = 100, chance = 100, damageType = "physical" },
+	# Physical Absorb
+	{ stance = "defense", type = "absorb", value = 45, chance = 80, damageType = "physical"},
+]
