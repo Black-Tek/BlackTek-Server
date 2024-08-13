@@ -418,7 +418,7 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 	//load inventory items
 	ItemMap itemMap;
 
-	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes` FROM `player_items` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments` FROM `player_items` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
 
 		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
@@ -445,7 +445,7 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 	//load depot items
 	itemMap.clear();
 
-	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes` FROM `player_depotitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments` FROM `player_depotitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
 
 		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
@@ -475,7 +475,7 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 	// Load reward items
 	itemMap.clear();
 
-	if ((result = db.storeQuery(fmt::format("SELECT `sid`, `pid`, `itemtype`, `count`, `attributes` FROM `player_rewarditems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `sid`, `pid`, `itemtype`, `count`, `attributes`, `augments` FROM `player_rewarditems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
 
 		// Map to store containers (bags) for each unique DATE attribute
@@ -521,7 +521,7 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 	//load inbox items
 	itemMap.clear();
 
-	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes` FROM `player_inboxitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments` FROM `player_inboxitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
 
 		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
@@ -549,7 +549,7 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 	//load store inbox items
 	itemMap.clear();
 
-	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes` FROM `player_storeinboxitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments` FROM `player_storeinboxitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
 
 		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
@@ -602,18 +602,34 @@ bool IOLoginData::saveItems(const Player* player, const ItemBlockList& itemList,
 	int32_t runningId = 100;
 
 	Database& db = Database::getInstance();
+
 	for (const auto& it : itemList) {
 		int32_t pid = it.first;
 		Item* item = it.second;
 		++runningId;
 
 		propWriteStream.clear();
-		item->serializeAttr(propWriteStream);
+		item->serializeAttr(propWriteStream);  // Serialize item attributes
+		auto attributesData = propWriteStream.getStream();
+		// Serialize augments (if the item has any)
+		const auto& augments = item->getAugments();  // Assuming the item has a method to get augments
+		propWriteStream.clear();
+		propWriteStream.write<uint8_t>(augments.size());  // Write the number of augments
 
-		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}", player->getGUID(), pid, runningId, item->getID(), item->getSubType(), db.escapeString(propWriteStream.getStream())))) {
+		for (const auto& augment : augments) {
+			augment->serialize(propWriteStream);  // Serialize each augment
+		}
+		auto augmentsData = propWriteStream.getStream();
+
+		// Save the item and augment data into the query
+		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}",
+			player->getGUID(), pid, runningId, item->getID(), item->getSubType(),
+			db.escapeString(attributesData),  // Escape attributes string
+			db.escapeString(augmentsData)))) {  // Escape augment data string
 			return false;
 		}
 
+		// If the item is a container, add it to the queue for recursive processing
 		if (Container* container = item->getContainer()) {
 			queue.emplace_back(container, runningId);
 		}
@@ -628,21 +644,38 @@ bool IOLoginData::saveItems(const Player* player, const ItemBlockList& itemList,
 		for (Item* item : container->getItemList()) {
 			++runningId;
 
-			Container* subContainer = item->getContainer();
-			if (subContainer) {
-				queue.emplace_back(subContainer, runningId);
+			propWriteStream.clear();
+			item->serializeAttr(propWriteStream);  // Serialize item attributes
+			auto attributesData = propWriteStream.getStream();
+
+			const auto& augments = item->getAugments();
+			propWriteStream.clear();
+			propWriteStream.write<uint8_t>(augments.size());  // Write the number of augments
+
+			for (const auto& augment : augments) {
+				augment->serialize(propWriteStream);  // Serialize each augment
 			}
 
-			propWriteStream.clear();
-			item->serializeAttr(propWriteStream);
+			auto augmentsData = propWriteStream.getStream();
 
-			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}", player->getGUID(), parentId, runningId, item->getID(), item->getSubType(), db.escapeString(propWriteStream.getStream())))) {
+			// Save the item and augment data into the query
+			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}",
+				player->getGUID(), parentId, runningId, item->getID(), item->getSubType(),
+				db.escapeString(attributesData),  // Escape attributes string
+				db.escapeString(augmentsData)))) {  // Escape augment data string
 				return false;
+			}
+
+			// If the item is a container, add it to the queue for recursive processing
+			if (Container* subContainer = item->getContainer()) {
+				queue.emplace_back(subContainer, runningId);
 			}
 		}
 	}
+
 	return query_insert.execute();
 }
+
 
 bool IOLoginData::addRewardItems(uint32_t playerId, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream)
 {
@@ -848,7 +881,7 @@ bool IOLoginData::savePlayer(Player* player)
 		return false;
 	}
 
-	DBInsert itemsQuery("INSERT INTO `player_items` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`) VALUES ");
+	DBInsert itemsQuery("INSERT INTO `player_items` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments` ) VALUES ");
 
 	ItemBlockList itemList;
 	for (int32_t slotId = CONST_SLOT_FIRST; slotId <= CONST_SLOT_LAST; ++slotId) {
@@ -867,7 +900,7 @@ bool IOLoginData::savePlayer(Player* player)
 		return false;
 	}
 
-	DBInsert depotQuery("INSERT INTO `player_depotitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`) VALUES ");
+	DBInsert depotQuery("INSERT INTO `player_depotitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`) VALUES ");
 	itemList.clear();
 
 	for (const auto& it : player->depotChests) {
@@ -885,7 +918,7 @@ bool IOLoginData::savePlayer(Player* player)
 		return false;
 	}
 
-	DBInsert rewardQuery("INSERT INTO `player_rewarditems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`) VALUES ");
+	DBInsert rewardQuery("INSERT INTO `player_rewarditems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`) VALUES ");
 	itemList.clear();
 
 	int32_t pidCounter = 1;
@@ -912,7 +945,7 @@ bool IOLoginData::savePlayer(Player* player)
 		return false;
 	}
 
-	DBInsert inboxQuery("INSERT INTO `player_inboxitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`) VALUES ");
+	DBInsert inboxQuery("INSERT INTO `player_inboxitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`,  `augments`) VALUES ");
 	itemList.clear();
 
 	for (Item* item : player->getInbox()->getItemList()) {
@@ -928,7 +961,7 @@ bool IOLoginData::savePlayer(Player* player)
 		return false;
 	}
 
-	DBInsert storeInboxQuery("INSERT INTO `player_storeinboxitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`) VALUES ");
+	DBInsert storeInboxQuery("INSERT INTO `player_storeinboxitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`) VALUES ");
 	itemList.clear();
 
 	for (Item* item : player->getStoreInbox()->getItemList()) {
@@ -1020,27 +1053,41 @@ bool IOLoginData::formatPlayerName(std::string& name)
 
 void IOLoginData::loadItems(ItemMap& itemMap, DBResult_ptr result)
 {
+	Database& db = Database::getInstance();
+
 	do {
 		uint32_t sid = result->getNumber<uint32_t>("sid");
 		uint32_t pid = result->getNumber<uint32_t>("pid");
 		uint16_t type = result->getNumber<uint16_t>("itemtype");
 		uint16_t count = result->getNumber<uint16_t>("count");
 
+		// Load the attributes field
 		auto attr = result->getString("attributes");
 		PropStream propStream;
 		propStream.init(attr.data(), attr.size());
 
+		auto augmentData = result->getString("augments");
+		PropStream augmentStream;
+		augmentStream.init(augmentData.data(), augmentData.size());
+
+
 		Item* item = Item::CreateItem(type, count);
 		if (item) {
+			// Deserialize the item's attributes
 			if (!item->unserializeAttr(propStream)) {
-				std::cout << "WARNING: Serialize error in IOLoginData::loadItems" << std::endl;
+				std::cout << "WARNING: Serialize error in IOLoginData::loadItems for Attributes" << std::endl;
 			}
 
-			std::pair<Item*, uint32_t> pair(item, pid);
-			itemMap[sid] = pair;
+			if (!item->unserializeAugments(augmentStream)) {
+				std::cout << "WARNING: Serialize error in IOLoginData::loadItems for Augments" << std::endl;
+			}
+
+			// Add item to the itemMap
+			itemMap[sid] = std::make_pair(item, pid);
 		}
 	} while (result->next());
 }
+
 
 void IOLoginData::increaseBankBalance(uint32_t guid, uint64_t bankBalance)
 {

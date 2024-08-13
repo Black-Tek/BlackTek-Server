@@ -21,6 +21,7 @@
 #include "script.h"
 #include <fstream>
 #include <fmt/color.h>
+#include "augments.h"
 #if __has_include("gitmetadata.h")
 	#include "gitmetadata.h"
 #endif
@@ -285,6 +286,9 @@ void mainLoader(int, char*[], ServiceManager* services)
 		startupErrorMessage("Failed to load map");
 		return;
 	}
+
+	std::cout << ">> Loading augments" << std::endl;
+	Augments::loadAll();
 
 	std::cout << ">> Initializing gamestate" << std::endl;
 	g_game.setGameState(GAME_STATE_INIT);

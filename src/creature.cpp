@@ -789,6 +789,7 @@ Item* Creature::getCorpse(Creature*, Creature*)
 
 void Creature::changeHealth(int32_t healthChange, bool sendHealthChange/* = true*/)
 {
+	std::cout << "Creature::changeHealth called with " << healthChange << " as the change amount! \n";
 	int32_t oldHealth = health;
 
 	if (healthChange > 0) {
@@ -879,11 +880,6 @@ BlockType_t Creature::blockHit(Creature* attacker, CombatType_t combatType, int3
 				Item* item = attackerPlayer->getInventoryItem(static_cast<slots_t>(slot));
 				if (!item) {
 					continue;
-				}
-
-				const uint16_t boostPercent = item->getBoostPercent(combatType);
-				if (boostPercent != 0) {
-					damage += std::round(damage * (boostPercent / 100.));
 				}
 
 				if (item->hasImbuements() && blockType == BLOCK_NONE) {
