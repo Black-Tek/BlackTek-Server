@@ -21,8 +21,10 @@
 #include "mounts.h"
 #include "storeinbox.h"
 #include "rewardchest.h"
+#include "augments.h"
 
 #include <bitset>
+#include <optional>
 
 class House;
 class NetworkMessage;
@@ -598,6 +600,7 @@ class Player final : public Creature, public Cylinder
 		void changeHealth(int32_t healthChange, bool sendHealthChange = true) override;
 		void changeMana(int32_t manaChange);
 		void changeSoul(int32_t soulChange);
+		void changeStamina(int32_t amount);
 
 		bool isPzLocked() const {
 			return pzLocked;
@@ -1182,10 +1185,46 @@ class Player final : public Creature, public Cylinder
 		bool hasLearnedInstantSpell(const std::string& spellName) const;
 
 		void updateRegeneration();
+
 		void addItemImbuements(Item* item);
 		void removeItemImbuements(Item* item);
 		void addImbuementEffect(std::shared_ptr<Imbuement> imbue);
 		void removeImbuementEffect(std::shared_ptr<Imbuement> imbue);
+
+		CreatureType_t getCreatureType(Monster& monster);
+
+		// To-do : Make all these methods into const
+		std::unordered_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> getAttackModifiers();
+		std::unordered_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> getDefenseModifiers();
+
+		std::unordered_map<uint8_t, ModifierTotals> getConvertedTotals(const uint8_t modType, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName);
+
+		std::unordered_map<uint8_t, ModifierTotals> getAttackModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName);
+		std::unordered_map<uint8_t, ModifierTotals> getDefenseModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName);
+
+		std::vector<Position> getOpenPositionsInRadius(int radius) const;
+
+		const bool addAugment(std::string_view augmentName);
+		const bool addAugment(std::shared_ptr<Augment>& augment);
+
+		const bool removeAugment(std::string_view augmentName);
+		const bool removeAugment(std::shared_ptr<Augment>& augment);
+
+		const bool isAugmented();
+		const bool hasAugment(const std::string_view augmentName, const bool checkItems);
+		const bool hasAugment(const std::shared_ptr<Augment>& augmentName, const bool checkItems);
+		const std::vector<std::shared_ptr<Augment>> getPlayerAugments() const;
+
+		// To-do : convert all these params to const and ref.
+		void absorbDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
+		void restoreManaFromDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
+		void reviveSoulFromDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
+		void replenishStaminaFromDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
+		void resistDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
+		void reflectDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
+		void deflectDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
+		void ricochetDamage(CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
+		void reformDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList);
 
 	private:
 		std::forward_list<Condition*> getMuteConditions() const;
@@ -1239,6 +1278,8 @@ class Player final : public Creature, public Cylinder
 		std::map<uint8_t, OpenContainer> openContainers;
 		std::map<uint32_t, DepotChest*> depotChests;
 		std::map<uint32_t, int32_t> storageMap;
+
+		std::vector<std::shared_ptr<Augment>> augments;
 
 		std::vector<OutfitEntry> outfits;
 		GuildWarVector guildWarVector;

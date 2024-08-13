@@ -10,8 +10,8 @@
 #include "luascript.h"
 #include "tools.h"
 #include "imbuement.h"
+#include "augments.h"
 #include <typeinfo>
-
 #include <boost/variant.hpp>
 #include <deque>
 
@@ -91,8 +91,8 @@ enum AttrTypes_t {
 	ATTR_WRAPID = 36,
 	ATTR_STOREITEM = 37,
 	ATTR_ATTACK_SPEED = 38,
-	ATTR_REFLECT = 39,
-	ATTR_BOOST = 40,
+	ATTR_PLACE_HOLDER = 39,
+	ATTR_PLACE_HOLDERTOO = 40,
 	ATTR_CLASSIFICATION = 41,
 	ATTR_TIER = 42,
 	ATTR_IMBUESLOTS = 43,
@@ -350,7 +350,6 @@ class ItemAttributes
 		static int64_t emptyInt;
 		static double emptyDouble;
 		static bool emptyBool;
-		static Reflect emptyReflect;
 
 		typedef std::unordered_map<std::string, CustomAttribute> CustomAttributeMap;
 
@@ -418,18 +417,6 @@ class ItemAttributes
 
 		std::vector<Attribute> attributes;
 		uint32_t attributeBits = 0;
-
-		std::map<CombatType_t, Reflect> reflect;
-		std::map<CombatType_t, uint16_t> boostPercent;
-
-		const Reflect& getReflect(CombatType_t combatType) {
-			auto it = reflect.find(combatType);
-			return it != reflect.end() ? it->second : emptyReflect;
-		}
-		int16_t getBoostPercent(CombatType_t combatType) {
-			auto it = boostPercent.find(combatType);
-			return it != boostPercent.end() ? it->second : 0;
-		}
 
 		const std::string& getStrAttr(itemAttrTypes type) const;
 		void setStrAttr(itemAttrTypes type, std::string_view value);
@@ -836,6 +823,7 @@ class Item : virtual public Thing
 		//serialization
 		virtual Attr_ReadValue readAttr(AttrTypes_t attr, PropStream& propStream);
 		bool unserializeAttr(PropStream& propStream);
+		bool unserializeAugments(PropStream& propStream);
 		virtual bool unserializeItemNode(OTB::Loader&, const OTB::Node&, PropStream& propStream);
 
 		virtual void serializeAttr(PropWriteStream& propWriteStream) const;
@@ -920,16 +908,6 @@ class Item : virtual public Thing
 
 		uint32_t getWorth() const;
 		LightInfo getLightInfo() const;
-
-		void setReflect(CombatType_t combatType, const Reflect& reflect) {
-			getAttributes()->reflect[combatType] = reflect;
-		}
-		Reflect getReflect(CombatType_t combatType, bool total = true) const;
-
-		void setBoostPercent(CombatType_t combatType, uint16_t value) {
-			getAttributes()->boostPercent[combatType] = value;
-		}
-		uint16_t getBoostPercent(CombatType_t combatType, bool total = true) const;
 
 		bool hasProperty(ITEMPROPERTY prop) const;
 		bool isBlocking() const {
@@ -1105,6 +1083,18 @@ class Item : virtual public Thing
 		bool removeImbuement(std::shared_ptr<Imbuement> imbuement, bool decayed = false);
 		std::vector<std::shared_ptr<Imbuement>>& getImbuements();
 
+		const bool addAugment(std::string_view augmentName);
+		const bool addAugment(std::shared_ptr<Augment>& augment);
+		
+		const bool removeAugment(std::string_view name);
+		const bool removeAugment(std::shared_ptr<Augment>& augment);
+
+		bool isAugmented();
+		bool hasAugment(std::string_view name);
+		bool hasAugment(const std::shared_ptr<Augment>& augment);
+
+		const std::vector<std::shared_ptr<Augment>>& getAugments();
+
 	protected:
 		Cylinder* parent = nullptr;
 
@@ -1117,7 +1107,7 @@ class Item : virtual public Thing
 
 		uint16_t imbuementSlots = 0;
 		std::vector<std::shared_ptr<Imbuement>> imbuements;
-
+		std::vector<std::shared_ptr<Augment>> augments;
 		uint32_t referenceCounter = 0;
 
 		uint8_t count = 1; // number of stacked items

@@ -1914,7 +1914,7 @@ void Monster::death(Creature*)
 					auto lootItem = Item::CreateItem(lootBlock.id, uniform_random(1, lootBlock.countmax));
 					lootItem->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
 					lootItem->setIntAttr(ITEM_ATTRIBUTE_REWARDID, getMonster()->getID());
-					rewardContainer->internalAddThing(lootItem);
+					rewardContainer->internalAddThing(lootItem); // count not being passed, this is likely cause of broken stackables
 					hasLoot = true;
 				}
 				else if (!lootBlock.unique) {
@@ -1923,7 +1923,7 @@ void Monster::death(Creature*)
 						auto lootItem = Item::CreateItem(lootBlock.id, uniform_random(1, lootBlock.countmax));
 						lootItem->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
 						lootItem->setIntAttr(ITEM_ATTRIBUTE_REWARDID, getMonster()->getID());
-						rewardContainer->internalAddThing(lootItem);
+						rewardContainer->internalAddThing(lootItem); // count not being passed, this is likely cause of broken stackables
 						hasLoot = true;
 					}
 				}

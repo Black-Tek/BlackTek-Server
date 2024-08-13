@@ -8,6 +8,9 @@
 #include "weapons.h"
 #include "configmanager.h"
 #include "events.h"
+#include "monster.h"
+
+#include <optional>
 
 extern Game g_game;
 extern Weapons* g_weapons;
@@ -676,7 +679,7 @@ void Combat::doCombat(Creature* caster, Creature* target) const
 				}
 			}
 
-			if (params.dispelType == CONDITION_PARALYZE) {
+			if (params.dispelType & CONDITION_PARALYZE) {
 				target->removeCondition(CONDITION_PARALYZE);
 			} else {
 				target->removeCombatCondition(params.dispelType);
@@ -769,7 +772,7 @@ void Combat::doCombat(Creature* caster, const Position& position) const
 						}
 					}
 
-					if (params.dispelType == CONDITION_PARALYZE) {
+					if (params.dispelType & CONDITION_PARALYZE) {
 						creature->removeCondition(CONDITION_PARALYZE);
 					} else {
 						creature->removeCombatCondition(params.dispelType);
@@ -788,91 +791,356 @@ void Combat::doCombat(Creature* caster, const Position& position) const
 	}
 }
 
-void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& damage, const CombatParams& params)
-{
-	if (caster && target && params.distanceEffect != CONST_ANI_NONE) {
+static thread_local int combatRecursionDepth = 0;
+struct RecursionGuard {
+	RecursionGuard() { ++combatRecursionDepth; }
+	~RecursionGuard() { --combatRecursionDepth; }
+};
+
+void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& damage, const CombatParams& params, bool sendDistanceEffect)
+{	
+	// To-do : I need to properly handle augment based damage which requires entire reworking of this method.
+	// The thing that needs to happen is for augment based damage should not interact again with other aumgent
+	// based damage. Instead of using origin for this, would possibly be better as fields on the combat or combat params.
+	
+	if (params.distanceEffect != CONST_ANI_NONE && sendDistanceEffect) {
 		addDistanceEffect(caster, caster->getPosition(), target->getPosition(), params.distanceEffect);
 	}
+	// To-do : Get rid of these optionals (unsure, but I think they are a leak)
+	// by adding isPlayer and isMonster member methods to all the Creature classes.
+	std::optional<Player*> casterPlayer = caster && caster->getPlayer() ? std::optional<Player*>(caster->getPlayer()) : std::nullopt;
+	std::optional<Player*> targetPlayer = target && target->getPlayer() ? std::optional<Player*>(target->getPlayer()) : std::nullopt;
+	std::optional<Monster*> casterMonster = caster && caster->getMonster() ? std::optional<Monster*>(caster->getMonster()) : std::nullopt;
+	std::optional<Monster*> targetMonster = target && target->getMonster() ? std::optional<Monster*>(caster->getMonster()) : std::nullopt;
 
-	Player* casterPlayer = caster ? caster->getPlayer() : nullptr;
+	std::unordered_map<uint8_t, ModifierTotals> attackModData;
 
 	bool success = false;
-	if (damage.primary.type != COMBAT_MANADRAIN) {
+
+	if (casterPlayer.has_value() && target) {
+		attackModData.reserve(ATTACK_MODIFIER_LAST);
+		auto targetType = CREATURETYPE_ATTACKABLE;
+		if (target->getMonster()) {
+			targetType = casterPlayer.value()->getCreatureType(*target->getMonster());
+		} else if (target->getPlayer()) {
+			targetType = CREATURETYPE_PLAYER;
+		}
+		attackModData = casterPlayer.value()->getAttackModifierTotals(damage.primary.type, damage.origin, targetType, target->getRace(), target->getName());
+		/// we do conversion here incase someone wants to convert say healing to mana or mana to death.
+
+		auto conversionTotals = casterPlayer.value()->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage.primary.type, damage.origin, targetType, target->getRace(), target->getName()) ;
+		if (!conversionTotals.empty() && params.origin != ORIGIN_AUGMENT) {
+			std::cout << "Conversion Modifier Activated on " << damage.primary.value << " damage \n";
+			casterPlayer.value()->reformDamage(*target->getCreature(), damage, conversionTotals);
+			if (damage.primary.value == 0) {
+				return;
+			}
+		}
+
+		if (damage.primary.type != COMBAT_MANADRAIN && damage.primary.type != COMBAT_HEALING) {
+			if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
+				auto& [piercingPercentTotal, piercingFlatTotal] = attackModData[ATTACK_MODIFIER_PIERCING];
+				// we handle piercing ourselves so that we can exit this call stack early
+				// in the case that all the damage was converted to piercing
+				if (piercingPercentTotal || piercingFlatTotal) {
+					auto piercingDamage = 0;
+					if (piercingPercentTotal) {
+						auto percentValue = (piercingPercentTotal / 100);
+						piercingDamage = (piercingPercentTotal <= 100) ? damage.primary.value * (percentValue / 100) : damage.primary.value;
+					}
+
+					if (piercingFlatTotal) {
+						piercingDamage += piercingFlatTotal;
+					}
+
+					if (piercingDamage) {
+
+						auto trueDamage = std::abs(piercingDamage);
+						auto difference = std::abs(damage.primary.value) - trueDamage;
+						// we limit the damage taken from the original to its max value.
+						damage.primary.value = (difference <= 0) ? 0 : (0 - difference);
+
+						CombatDamage piercing;
+						piercing.origin = ORIGIN_AUGMENT;
+						piercing.primary.value = piercingDamage;
+						piercing.primary.type = COMBAT_UNDEFINEDDAMAGE;
+						std::cout << "Piercing Modifier Activated on " << damage.primary.value << " damage \n";
+						g_game.combatChangeHealth(caster, target, piercing);
+					}
+					// we return early incase all the damage is piercing now. 
+					// please note, due to this nature of piercing damage,
+					// piercing only interacts with conversion
+					// and does not interact with any of the other modifiers.
+					// in future rewrites of healthchange, lets allow piercing
+					// damage to also interact with other modifiers.
+					if (damage.primary.value == 0) {
+						return;
+					}
+				}
+			}
+
+			// All damage modifiers besides Critical are applied before armor/defense calculations.
+			if (g_game.combatBlockHit(damage, caster, target, params.blockedByShield, params.blockedByArmor, params.itemId != 0, params.ignoreResistances)) {
+				// if the damage is blocked return early
+				return;
+			}
+
+			if (!damage.critical && damage.origin != ORIGIN_CONDITION) {
+				auto percentTotal = 0;
+				auto flatTotal = 0;
+				if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
+					percentTotal = attackModData[ATTACK_MODIFIER_CRITICAL].percentTotal;
+					flatTotal = attackModData[ATTACK_MODIFIER_CRITICAL].flatTotal;
+				}
+
+				// normal crits are the old ones and are percent based
+				auto normalCritChance = casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE);
+				auto normalCritDamage = casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT);
+
+				// note : the way this works, its own damage increase is independent allowing for more than 100
+				// and also at the same time, its chance is independent, so it doesn't add to augmented crit's chance.
+				if (normalCritChance > 0 && normalCritDamage > 0 && normal_random(1, 100) <= normalCritChance) {
+					percentTotal += normalCritDamage;
+				}
+
+				// we do percent based crits first, so that the flat damage doesn't add to the percent increase.
+				if (percentTotal) {
+					auto damageIncrease = static_cast<int32_t>(std::round(damage.primary.value * (percentTotal / 100.0)));
+					damage.primary.value += damageIncrease;
+					damage.critical = true;
+					std::cout << "Critical Percent Modifier Activated on " << damage.primary.value << " damage \n";
+				}
+
+				if (flatTotal) {
+					damage.primary.value += flatTotal;
+					damage.critical = true;
+					std::cout << "Critical Flat Modifier Activated on " << damage.primary.value << " damage \n";
+				}
+			}
+
+			if (targetPlayer && (casterPlayer.value()->getID() != targetPlayer.value()->getID())) {
+
+				auto reformTotals = targetPlayer.value()->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
+				if (!reformTotals.empty() && params.origin != ORIGIN_AUGMENT) {
+					std::cout << "Reform Modifier Activated : on " << damage.primary.value << " damage \n";
+					targetPlayer.value()->reformDamage(*casterPlayer.value()->getCreature(), damage, reformTotals);
+					if (damage.primary.value == 0) {
+						return;
+					}
+				}
+
+				auto defenseModData = targetPlayer.value()->getDefenseModifierTotals(damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
+				if (!defenseModData.empty() && params.origin != ORIGIN_AUGMENT) {
+	
+					// To-do : We are passing creatures and players around by pointers right now
+					// we need to convert to using references on both players and creatures.
+					// Note: this is a huge to-do, due to derived creature class references not being copyable. 
+					for (const auto& [modkind, modTotals] : defenseModData) {
+						if (modTotals.percentTotal  || modTotals.flatTotal) {
+							applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), modTotals.percentTotal, modTotals.flatTotal, params.impactEffect, params.distanceEffect);
+							if (damage.primary.value == 0) {
+								return;
+							}
+						}
+					}
+				}
+			}
+			
+		}
+	} else if (casterMonster.has_value()) {
 		if (g_game.combatBlockHit(damage, caster, target, params.blockedByShield, params.blockedByArmor, params.itemId != 0, params.ignoreResistances)) {
 			return;
 		}
 
-		if (casterPlayer) {
-			Player* targetPlayer = target ? target->getPlayer() : nullptr;
-			if (targetPlayer && casterPlayer != targetPlayer && targetPlayer->getSkull() != SKULL_BLACK && damage.primary.type != COMBAT_HEALING) {
-				damage.primary.value /= 2;
-				damage.secondary.value /= 2;
+		if (targetPlayer.has_value()) {
+			// to-do change caster->getType() and other caster calls to casterMonster calls when std::optionals are changed out.
+			auto attackerType = targetPlayer.value()->getCreatureType(*casterMonster.value()->getMonster());
+			auto defenseModData = targetPlayer.value()->getDefenseModifierTotals(damage.primary.type, damage.origin, attackerType, casterMonster.value()->getRace(), casterMonster.value()->getName());
+			auto reformTotals = targetPlayer.value()->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, attackerType, casterMonster.value()->getRace(), casterMonster.value()->getName());
+			if (!reformTotals.empty() && params.origin != ORIGIN_AUGMENT) {
+				std::cout << "Reform Modifier Activated on " << damage.primary.value << " damage \n";
+				targetPlayer.value()->reformDamage(*casterMonster.value()->getCreature(), damage, reformTotals);
+				if (damage.primary.value == 0) {
+					return;
+				}
 			}
 
-			if (!damage.critical && damage.primary.type != COMBAT_HEALING && damage.origin != ORIGIN_CONDITION) {
-				uint16_t chance = casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE);
-				uint16_t skill = casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT);
-				if (chance > 0 && skill > 0 && normal_random(1, 100) <= chance) {
-					damage.primary.value += std::round(damage.primary.value * (skill / 100.));
-					damage.secondary.value += std::round(damage.secondary.value * (skill / 100.));
-					damage.critical = true;
+			if (!defenseModData.empty() && params.origin != ORIGIN_AUGMENT) {
+				for (const auto& [modkind, modTotals] : defenseModData) {
+					if (modTotals.percentTotal || modTotals.flatTotal) {
+						applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), modTotals.percentTotal, modTotals.flatTotal, params.impactEffect, params.distanceEffect);
+						if (damage.primary.value == 0) {
+							return;
+						}
+					}
 				}
 			}
 		}
-
-		success = g_game.combatChangeHealth(caster, target, damage);
 	} else {
+		std::cout << "Getting calls to doTargetCombat without a target. \n";
+	}
+
+	if (damage.primary.type == COMBAT_MANADRAIN) {
 		success = g_game.combatChangeMana(caster, target, damage);
+	} else {
+		success = g_game.combatChangeHealth(caster, target, damage);
 	}
 
 	if (success) {
-		if (damage.blockType == BLOCK_NONE || damage.blockType == BLOCK_ARMOR) {
+
+		if (target && caster && target != caster) {
+			if (damage.critical) {
+				g_game.addMagicEffect(target->getPosition(), CONST_ME_CRITICAL_DAMAGE);
+			}
+
 			for (const auto& condition : params.conditionList) {
-				if (caster == target || !target->isImmune(condition->getType())) {
+				if (!target->isImmune(condition->getType())) {
 					Condition* conditionCopy = condition->clone();
 					if (caster) {
 						conditionCopy->setParam(CONDITION_PARAM_OWNER, caster->getID());
 					}
-
 					//TODO: infight condition until all aggressive conditions has ended
 					target->addCombatCondition(conditionCopy);
 				}
 			}
-		}
 
-		if (damage.critical) {
-			g_game.addMagicEffect(target->getPosition(), CONST_ME_CRITICAL_DAMAGE);
-		}
+			if (!damage.leeched && damage.primary.type != COMBAT_HEALING && casterPlayer && damage.origin != ORIGIN_CONDITION) {
+				CombatDamage leechCombat;
+				leechCombat.origin = ORIGIN_NONE;
+				leechCombat.leeched = true;
 
-		if (!damage.leeched && damage.primary.type != COMBAT_HEALING && casterPlayer && damage.origin != ORIGIN_CONDITION) {
-			CombatDamage leechCombat;
-			leechCombat.origin = ORIGIN_NONE;
-			leechCombat.leeched = true;
+				auto totalDamage = std::abs(damage.primary.value + damage.secondary.value);
 
-			int32_t totalDamage = std::abs(damage.primary.value + damage.secondary.value);
+				// To-do : We don't activate lifesteal at all if the player is already at max health
+				// we can do better, they should still do the lifesteal even if they can't receive the life.
+				if (casterPlayer.value()->getHealth() < casterPlayer.value()->getMaxHealth()) {
+					// To-do : combine this if check with the one above to avoid unnecessary heap allocations
 
-			if (casterPlayer->getHealth() < casterPlayer->getMaxHealth()) {
-				uint16_t chance = casterPlayer->getSpecialSkill(SPECIALSKILL_LIFELEECHCHANCE);
-				uint16_t skill = casterPlayer->getSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT);
-				if (chance > 0 && skill > 0 && normal_random(1, 100) <= chance) {
-					leechCombat.primary.value = std::round(totalDamage * (skill / 100.));
-					g_game.combatChangeHealth(nullptr, casterPlayer, leechCombat);
-					casterPlayer->sendMagicEffect(casterPlayer->getPosition(), CONST_ME_MAGIC_RED);
+					auto lifeStealPercentTotal = 0;
+					auto lifeStealFlatTotal = 0;
+
+					if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
+						// to-do : when removing tibia crit/leech, bring this check up 2 branches to encompass all "steal" calculations.
+						lifeStealPercentTotal = attackModData[ATTACK_MODIFIER_LIFESTEAL].percentTotal;
+						lifeStealFlatTotal = attackModData[ATTACK_MODIFIER_LIFESTEAL].flatTotal;
+					}
+
+					auto lifeLeechChance = casterPlayer.value()->getSpecialSkill(SPECIALSKILL_LIFELEECHCHANCE);
+					auto lifeLeechAmount = casterPlayer.value()->getSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT);
+					auto totalGain = 0;
+
+					if (lifeLeechChance > 0 && lifeLeechAmount > 0 && normal_random(1, 100) <= lifeLeechChance) {
+						if (lifeStealPercentTotal) {
+							totalGain += (totalDamage * ((lifeLeechAmount + lifeStealPercentTotal) / 100));
+						} else {
+							totalGain += (totalDamage * (lifeLeechAmount / 100));
+						}
+					} else {
+						if (lifeStealPercentTotal) {
+							totalGain += (totalDamage * ((lifeStealPercentTotal) / 100));
+						}
+					}
+
+					if (lifeStealFlatTotal) {
+						totalGain += lifeStealFlatTotal;
+					}
+
+					if (totalGain) {
+						leechCombat.primary.value = totalGain;
+						g_game.combatChangeHealth(nullptr, casterPlayer.value(), leechCombat);
+						casterPlayer.value()->sendMagicEffect(casterPlayer.value()->getPosition(), CONST_ME_MAGIC_RED);
+					}
+
+				}
+
+				/// ATTACK_MODIFIER_MANASTEAL
+				if (casterPlayer.value()->getMana() < casterPlayer.value()->getMaxMana()) {
+
+					auto manaStealPercentTotal = 0;
+					auto manaStealFlatTotal = 0;
+
+					if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
+						// to-do : when removing tibia crit/leech, bring this check up 2 branches to encompass all "steal" calculations.
+						manaStealPercentTotal = attackModData[ATTACK_MODIFIER_MANASTEAL].percentTotal;
+						manaStealFlatTotal = attackModData[ATTACK_MODIFIER_MANASTEAL].flatTotal;
+					}
+
+					auto manaLeechChance = casterPlayer.value()->getSpecialSkill(SPECIALSKILL_MANALEECHCHANCE);
+					auto manaLeechAmount = casterPlayer.value()->getSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT);
+					auto totalGain = 0;
+
+					if (manaLeechChance > 0 && manaLeechAmount > 0 && normal_random(1, 100) <= manaLeechChance) {
+						if (manaStealPercentTotal) {
+							totalGain += static_cast<int>(std::round(totalDamage * ((manaLeechAmount + manaStealPercentTotal) / 100)));
+						} else {
+							totalGain += static_cast<int>(std::round(totalDamage * (manaLeechAmount / 100)));
+						}
+						std::cout << "Mana Leech Percent Modifier Activated : on " << damage.primary.value << " damage \n";
+					}
+
+					if (manaStealFlatTotal) {
+						std::cout << "Mana Leech Flat Modifier Activated : on " << damage.primary.value << " damage \n";
+						totalGain += manaStealFlatTotal;
+					}
+
+					if (totalGain) {
+						leechCombat.primary.value = totalGain;
+						g_game.combatChangeMana(nullptr, casterPlayer.value(), leechCombat);
+						casterPlayer.value()->sendMagicEffect(casterPlayer.value()->getPosition(), CONST_ME_MAGIC_BLUE);
+					}
+
+				}
+
+				/// ATTACK_MODIFIER_STAMINASTEAL
+				// To-do: move 2520 into a global constexpr
+				// or even better, make it have a real max var.
+				if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
+					if (casterPlayer.value()->getStaminaMinutes() < 2520) {
+						auto& [staminaStealPercentTotal, staminaStealFlatTotal] = attackModData[ATTACK_MODIFIER_STAMINASTEAL];
+
+						auto totalGain = 0;
+
+						if (staminaStealPercentTotal) {
+							std::cout << "Stamina Steal Percent Modifier Activated : on " << damage.primary.value << " damage \n";
+							totalGain += static_cast<int>(std::round(totalDamage * (staminaStealPercentTotal / 100)));
+						}
+
+						if (staminaStealFlatTotal) {
+							std::cout << "Stamina Steal Modifier Activated : on " << damage.primary.value << " damage \n";
+							totalGain += staminaStealFlatTotal;
+						}
+
+						if (totalGain) {
+							casterPlayer.value()->changeStamina(totalGain);
+						}
+
+					}
+
+					/// ATTACK_MODIFIER_SOULSTEAL
+					if (casterPlayer.value()->getSoul() < casterPlayer.value()->getVocation()->getSoulMax()) {
+						auto& [soulStealPercentTotal, soulStealFlatTotal] = attackModData[ATTACK_MODIFIER_SOULSTEAL];
+
+						auto totalGain = 0;
+
+						if (soulStealPercentTotal) {
+							std::cout << "Soul Steal Percent Modifier Activated : on " << damage.primary.value << " damage \n";
+							totalGain += static_cast<int>(std::round(totalDamage * (soulStealPercentTotal / 100)));
+						}
+
+						if (soulStealFlatTotal) {
+							std::cout << "Soul Steal Flat Modifier Activated : on " << damage.primary.value << " damage \n";
+							totalGain += soulStealFlatTotal;
+						}
+
+						if (totalGain) {
+							casterPlayer.value()->changeSoul(totalGain);
+						}
+
+					}
 				}
 			}
-
-			if (casterPlayer->getMana() < casterPlayer->getMaxMana()) {
-				uint16_t chance = casterPlayer->getSpecialSkill(SPECIALSKILL_MANALEECHCHANCE);
-				uint16_t skill = casterPlayer->getSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT);
-				if (chance > 0 && skill > 0 && normal_random(1, 100) <= chance) {
-					leechCombat.primary.value = std::round(totalDamage * (skill / 100.));
-					g_game.combatChangeMana(nullptr, casterPlayer, leechCombat);
-					casterPlayer->sendMagicEffect(casterPlayer->getPosition(), CONST_ME_MAGIC_BLUE);
-				}
-			}
 		}
-
-		if (params.dispelType == CONDITION_PARALYZE) {
+		if (params.dispelType && CONDITION_PARALYZE) {
 			target->removeCondition(CONDITION_PARALYZE);
 		} else {
 			target->removeCombatCondition(params.dispelType);
@@ -889,17 +1157,6 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 	auto tiles = caster ? getCombatArea(caster->getPosition(), position, area) : getCombatArea(position, position, area);
 
 	Player* casterPlayer = caster ? caster->getPlayer() : nullptr;
-	int32_t criticalPrimary = 0;
-	int32_t criticalSecondary = 0;
-	if (!damage.critical && damage.primary.type != COMBAT_HEALING && casterPlayer && damage.origin != ORIGIN_CONDITION) {
-		uint16_t chance = casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE);
-		uint16_t skill = casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT);
-		if (chance > 0 && skill > 0 && uniform_random(1, 100) <= chance) {
-			criticalPrimary = std::round(damage.primary.value * (skill / 100.));
-			criticalSecondary = std::round(damage.secondary.value * (skill / 100.));
-			damage.critical = true;
-		}
-	}
 
 	uint32_t maxX = 0;
 	uint32_t maxY = 0;
@@ -961,89 +1218,60 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 		}
 	}
 
-	CombatDamage leechCombat;
-	leechCombat.origin = ORIGIN_NONE;
-	leechCombat.leeched = true;
-
-	for (Creature* creature : toDamageCreatures) {
+	for (Creature* target : toDamageCreatures) {
 		CombatDamage damageCopy = damage; // we cannot avoid copying here, because we don't know if it's player combat or not, so we can't modify the initial damage.
-		bool playerCombatReduced = false;
-		if ((damageCopy.primary.value < 0 || damageCopy.secondary.value < 0) && caster) {
-			Player* targetPlayer = creature->getPlayer();
-			if (casterPlayer && targetPlayer && casterPlayer != targetPlayer && targetPlayer->getSkull() != SKULL_BLACK) {
-				damageCopy.primary.value /= 2;
-				damageCopy.secondary.value /= 2;
-				playerCombatReduced = true;
-			}
-		}
+		Combat::doTargetCombat(caster, target, damageCopy, params, false);
+	}
+}
 
-		if (damageCopy.critical) {
-			damageCopy.primary.value += playerCombatReduced ? criticalPrimary / 2 : criticalPrimary;
-			damageCopy.secondary.value += playerCombatReduced ? criticalSecondary / 2 : criticalSecondary;
-			g_game.addMagicEffect(creature->getPosition(), CONST_ME_CRITICAL_DAMAGE);
-		}
+void Combat::applyDamageIncreaseModifier(uint8_t modifierType, CombatDamage& damage, int32_t percentValue, int32_t flatValue) {
 
-		bool success = false;
-		if (damageCopy.primary.type != COMBAT_MANADRAIN) {
-			if (g_game.combatBlockHit(damageCopy, caster, creature, params.blockedByShield, params.blockedByArmor, params.itemId != 0, params.ignoreResistances)) {
-				continue;
-			}
-			success = g_game.combatChangeHealth(caster, creature, damageCopy);
+	if (percentValue) {
+		if (percentValue <= 100) {
+			damage.primary.value += damage.primary.value * (percentValue / 100.0);
 		} else {
-			success = g_game.combatChangeMana(caster, creature, damageCopy);
+			damage.primary.value *= 2;
 		}
+	}
+	if (percentValue) {
+		damage.primary.value += percentValue;
+	}
 
-		if (success) {
-			if (damage.blockType == BLOCK_NONE || damage.blockType == BLOCK_ARMOR) {
-				for (const auto& condition : params.conditionList) {
-					if (caster == creature || !creature->isImmune(condition->getType())) {
-						Condition* conditionCopy = condition->clone();
-						if (caster) {
-							conditionCopy->setParam(CONDITION_PARAM_OWNER, caster->getID());
-						}
+}
 
-						//TODO: infight condition until all aggressive conditions has ended
-						creature->addCombatCondition(conditionCopy);
-					}
-				}
-			}
+void Combat::applyDamageReductionModifier(uint8_t modifierType, CombatDamage& damage, Player& damageTarget, std::optional<std::reference_wrapper<Creature>> attacker, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect) {
+	
+	switch (modifierType) {
+		case DEFENSE_MODIFIER_ABSORB:
+			damageTarget.absorbDamage(attacker, damage, percent, flat);
+			return;
 
-			int32_t totalDamage = std::abs(damageCopy.primary.value + damageCopy.secondary.value);
+		case DEFENSE_MODIFIER_RESTORE:
+			damageTarget.restoreManaFromDamage(attacker, damage, percent, flat);
+			return;
 
-			if (casterPlayer && !damage.leeched && damage.primary.type != COMBAT_HEALING && damage.origin != ORIGIN_CONDITION) {
-				int32_t targetsCount = toDamageCreatures.size();
+		case DEFENSE_MODIFIER_REPLENISH:
+			damageTarget.replenishStaminaFromDamage(attacker, damage, percent, flat);
+			return;
 
-				if (casterPlayer->getHealth() < casterPlayer->getMaxHealth()) {
-					uint16_t chance = casterPlayer->getSpecialSkill(SPECIALSKILL_LIFELEECHCHANCE);
-					uint16_t skill = casterPlayer->getSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT);
-					if (chance > 0 && skill > 0 && normal_random(1, 100) <= chance) {
-						leechCombat.primary.value = std::ceil(totalDamage * ((skill / 100.) + ((targetsCount - 1) * ((skill / 100.) / 10.))) / targetsCount);
-						g_game.combatChangeHealth(nullptr, casterPlayer, leechCombat);
-						casterPlayer->sendMagicEffect(casterPlayer->getPosition(), CONST_ME_MAGIC_RED);
-					}
-				}
+		case DEFENSE_MODIFIER_REVIVE:
+			damageTarget.reviveSoulFromDamage(attacker, damage, percent, flat);
+			return;
 
-				if (casterPlayer->getMana() < casterPlayer->getMaxMana()) {
-					uint16_t chance = casterPlayer->getSpecialSkill(SPECIALSKILL_MANALEECHCHANCE);
-					uint16_t skill = casterPlayer->getSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT);
-					if (chance > 0 && skill > 0 && normal_random(1, 100) <= chance) {
-						leechCombat.primary.value = std::ceil(totalDamage * ((skill / 100.) + ((targetsCount - 1) * ((skill / 100.) / 10.))) / targetsCount);
-						g_game.combatChangeMana(nullptr, casterPlayer, leechCombat);
-						casterPlayer->sendMagicEffect(casterPlayer->getPosition(), CONST_ME_MAGIC_BLUE);
-					}
-				}
-			}
+		case DEFENSE_MODIFIER_REFLECT:
+			damageTarget.reflectDamage(attacker, damage, percent, flat, areaEffect, distanceEffect);
+			return;
 
-			if (params.dispelType == CONDITION_PARALYZE) {
-				creature->removeCondition(CONDITION_PARALYZE);
-			} else {
-				creature->removeCombatCondition(params.dispelType);
-			}
-		}
+		case DEFENSE_MODIFIER_DEFLECT:
+			damageTarget.deflectDamage(attacker, damage, percent, flat, areaEffect, distanceEffect);
+			return;
 
-		if (params.targetCallback) {
-			params.targetCallback->onTargetCombat(caster, creature);
-		}
+		case DEFENSE_MODIFIER_RICOCHET:
+			damageTarget.ricochetDamage(damage, percent, flat, areaEffect, distanceEffect);
+			return;
+
+		default:
+			return;
 	}
 }
 

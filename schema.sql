@@ -284,6 +284,7 @@ CREATE TABLE IF NOT EXISTS `player_depotitems` (
   `itemtype` smallint unsigned NOT NULL,
   `count` smallint NOT NULL DEFAULT '0',
   `attributes` blob NOT NULL,
+  `augments` blob NOT NULL,
   UNIQUE KEY `player_id_2` (`player_id`, `sid`),
   FOREIGN KEY (`player_id`) REFERENCES `players`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;
@@ -295,6 +296,7 @@ CREATE TABLE IF NOT EXISTS `player_rewarditems` (
   `itemtype` smallint unsigned NOT NULL,
   `count` smallint NOT NULL DEFAULT '0',
   `attributes` blob NOT NULL,
+  `augments` blob NOT NULL,
   UNIQUE KEY `player_id_2` (`player_id`, `sid`),
   FOREIGN KEY (`player_id`) REFERENCES `players`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;
@@ -306,6 +308,7 @@ CREATE TABLE IF NOT EXISTS `player_inboxitems` (
   `itemtype` smallint unsigned NOT NULL,
   `count` smallint NOT NULL DEFAULT '0',
   `attributes` blob NOT NULL,
+  `augments` blob NOT NULL,
   UNIQUE KEY `player_id_2` (`player_id`, `sid`),
   FOREIGN KEY (`player_id`) REFERENCES `players`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;
@@ -317,6 +320,7 @@ CREATE TABLE IF NOT EXISTS `player_storeinboxitems` (
   `itemtype` smallint unsigned NOT NULL,
   `count` smallint NOT NULL DEFAULT '0',
   `attributes` blob NOT NULL,
+  `augments` blob NOT NULL,
   UNIQUE KEY `player_id_2` (`player_id`, `sid`),
   FOREIGN KEY (`player_id`) REFERENCES `players`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;
@@ -328,6 +332,7 @@ CREATE TABLE IF NOT EXISTS `player_items` (
   `itemtype` smallint unsigned NOT NULL DEFAULT '0',
   `count` smallint NOT NULL DEFAULT '0',
   `attributes` blob NOT NULL,
+  `augments` blob NOT NULL,
   FOREIGN KEY (`player_id`) REFERENCES `players`(`id`) ON DELETE CASCADE,
   KEY `sid` (`sid`)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;

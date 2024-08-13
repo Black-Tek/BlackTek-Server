@@ -31,9 +31,6 @@ void handleWeaponMeleeDescription(std::ostringstream& s, const ItemType& it, con
 void handleSkillsDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleStatsDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleStatsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
-void handleAbsorbsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
-void handleReflectPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
-void handleAbsorbsFieldsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleAbilitiesDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 
@@ -672,44 +669,6 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 			break;
 		}
 
-		case ATTR_REFLECT: {
-			uint16_t size;
-			if (!propStream.read<uint16_t>(size)) {
-				return ATTR_READ_ERROR;
-			}
-
-			for (uint16_t i = 0; i < size; ++i) {
-				CombatType_t combatType;
-				Reflect reflect;
-
-				if (!propStream.read<CombatType_t>(combatType) || !propStream.read<uint16_t>(reflect.percent) || !propStream.read<uint16_t>(reflect.chance)) {
-					return ATTR_READ_ERROR;
-				}
-
-				getAttributes()->reflect[combatType] = reflect;
-			}
-			break;
-		}
-
-		case ATTR_BOOST: {
-			uint16_t size;
-			if (!propStream.read<uint16_t>(size)) {
-				return ATTR_READ_ERROR;
-			}
-
-			for (uint16_t i = 0; i < size; ++i) {
-				CombatType_t combatType;
-				uint16_t percent;
-
-				if (!propStream.read<CombatType_t>(combatType) || !propStream.read<uint16_t>(percent)) {
-					return ATTR_READ_ERROR;
-				}
-
-				getAttributes()->boostPercent[combatType] = percent;
-			}
-			break;
-		}
-
 		case ATTR_IMBUEMENTS: {
 			uint16_t size;
 			if (!propStream.read<uint16_t>(size)) {
@@ -815,6 +774,27 @@ bool Item::unserializeAttr(PropStream& propStream)
 			return false;
 		} else if (ret == ATTR_READ_END) {
 			return true;
+		}
+	}
+	return true;
+}
+
+bool Item::unserializeAugments(PropStream& propStream)
+{
+	uint32_t augmentCount = 0;
+
+	if (!propStream.read<uint32_t>(augmentCount)) {
+		std::cout << "WARNING: Failed to read augment count in IOLoginData::loadItems" << std::endl;
+		return false;
+	}
+
+	for (uint32_t i = 0; i < augmentCount; ++i) {
+		auto augment = std::make_shared<Augment>();
+		bool result = augment->unserialize(propStream);
+		if (!result) {
+			return result;
+		} else {
+			this->addAugment(augment);
 		}
 	}
 	return true;
@@ -982,31 +962,6 @@ void Item::serializeAttr(PropWriteStream& propWriteStream) const
 
 			// Serializing value type and value
 			entry.second.serialize(propWriteStream);
-		}
-	}
-
-	if (attributes) {
-		const auto& reflects = attributes->reflect;
-		if (!reflects.empty()) {
-			propWriteStream.write<uint8_t>(ATTR_REFLECT);
-			propWriteStream.write<uint16_t>(reflects.size());
-
-			for (const auto& reflect : reflects) {
-				propWriteStream.write<CombatType_t>(reflect.first);
-				propWriteStream.write<uint16_t>(reflect.second.percent);
-				propWriteStream.write<uint16_t>(reflect.second.chance);
-			}
-		}
-
-		const auto& boosts = attributes->boostPercent;
-		if (!boosts.empty()) {
-			propWriteStream.write<uint8_t>(ATTR_BOOST);
-			propWriteStream.write<uint16_t>(boosts.size());
-
-			for (const auto& boost : boosts) {
-				propWriteStream.write<CombatType_t>(boost.first);
-				propWriteStream.write<uint16_t>(boost.second);
-			}
 		}
 	}
 
@@ -1466,43 +1421,10 @@ LightInfo Item::getLightInfo() const
 	return {it.lightLevel, it.lightColor};
 }
 
-Reflect Item::getReflect(CombatType_t combatType, bool total /* = true */) const
-{
-	const ItemType& it = Item::items[id];
-
-	Reflect reflect;
-	if (attributes) {
-		reflect += attributes->getReflect(combatType);
-	}
-
-	if (total && it.abilities) {
-		reflect += it.abilities->reflect[combatTypeToIndex(combatType)];
-	}
-
-	return reflect;
-}
-
-uint16_t Item::getBoostPercent(CombatType_t combatType, bool total /* = true */) const
-{
-	const ItemType& it = Item::items[id];
-
-	uint16_t boostPercent = 0;
-	if (attributes) {
-		boostPercent += attributes->getBoostPercent(combatType);
-	}
-
-	if (total && it.abilities) {
-		boostPercent += it.abilities->boostPercent[combatTypeToIndex(combatType)];
-	}
-
-	return boostPercent;
-}
-
 std::string ItemAttributes::emptyString;
 int64_t ItemAttributes::emptyInt;
 double ItemAttributes::emptyDouble;
 bool ItemAttributes::emptyBool;
-Reflect ItemAttributes::emptyReflect;
 
 const std::string& ItemAttributes::getStrAttr(itemAttrTypes type) const
 {
@@ -1621,18 +1543,6 @@ bool Item::hasMarketAttributes() const
 {
 	if (!attributes) {
 		return true;
-	}
-
-	// discard items with custom boost and reflect
-	for (uint16_t i = 0; i < COMBAT_COUNT; ++i) {
-		if (getBoostPercent(indexToCombatType(i), false) > 0) {
-			return false;
-		}
-
-		Reflect tmpReflect = getReflect(indexToCombatType(i), false);
-		if (tmpReflect.chance != 0 || tmpReflect.percent != 0) {
-			return false;
-		}
 	}
 
 	// discard items with other modified attributes
@@ -1847,6 +1757,73 @@ std::vector<std::shared_ptr<Imbuement>>& Item::getImbuements() {
 	return imbuements;
 }
 
+const bool Item::addAugment(std::shared_ptr<Augment>& augment)
+{
+	if (std::find(augments.begin(), augments.end(), augment) != augments.end()) {
+		return false;
+	}
+
+	augments.push_back(augment);
+	return true;
+}
+
+const bool Item::addAugment(std::string_view augmentName)
+{
+	if (auto augment = Augments::GetAugment(augmentName)) {
+		augments.emplace_back(augment);
+		return true;
+	}
+	return false;
+}
+
+const bool Item::removeAugment(std::shared_ptr<Augment>& augment)
+{
+	auto originalSize = augments.size();
+	augments.erase(std::remove(augments.begin(), augments.end(), augment), augments.end());
+	return augments.size() < originalSize;
+}
+
+const bool Item::removeAugment(std::string_view name)
+{
+	augments.erase(std::remove_if(augments.begin(), augments.end(),
+		[&name](const std::shared_ptr<Augment>& augment) {
+			return augment->getName() == name;
+		}),	augments.end());
+	return false;
+}
+
+// To-do: Move to const inline next three methods at least.
+bool Item::isAugmented()
+{
+	return augments.size() > 0;
+}
+
+bool Item::hasAugment(std::string_view name)
+{
+	for (const auto& aug : augments) {
+		if (aug->getName() == name) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Item::hasAugment(const std::shared_ptr<Augment>& augment)
+{
+	for (const auto& aug : augments) {
+		if (aug == augment) {
+			return true;
+		}
+	}
+	return false;
+}
+
+
+const std::vector<std::shared_ptr<Augment>>& Item::getAugments()
+{
+	return augments;
+}
+
 void Item::decayImbuements(bool infight) {
 	for (auto& imbue : imbuements) {
 		if (imbue->isEquipDecay()) {
@@ -2056,102 +2033,6 @@ void handleStatsPercentDescription(std::ostringstream& s, const ItemType& it, bo
 	}
 }
 
-void handleAbsorbsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
-	int16_t show = it.abilities->absorbPercent[0];
-	if (show != 0) {
-		for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->absorbPercent[i] != show) {
-				show = 0;
-				break;
-			}
-		}
-	}
-
-	if (show == 0) {
-		bool tmp = true;
-
-		for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->absorbPercent[i] == 0) {
-				continue;
-			}
-
-			if (tmp) {
-				tmp = false;
-
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "absorb ";
-			} else {
-				s << ", ";
-			}
-
-			s << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << it.abilities->absorbPercent[i] << std::noshowpos << '%';
-		}
-	} else {
-		if (begin) {
-			begin = false;
-			s << " (";
-		} else {
-			s << ", ";
-		}
-
-		s << "absorb all " << std::showpos << show << std::noshowpos << '%';
-	}
-}
-
-void handleAbsorbsFieldsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
-	int16_t show = it.abilities->fieldAbsorbPercent[0];
-	if (show != 0) {
-		for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->absorbPercent[i] != show) {
-				show = 0;
-				break;
-			}
-		}
-	}
-
-	if (show == 0) {
-		bool tmp = true;
-
-		for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->fieldAbsorbPercent[i] == 0) {
-				continue;
-			}
-
-			if (tmp) {
-				tmp = false;
-
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "absorb ";
-			} else {
-				s << ", ";
-			}
-
-			s << getCombatName(indexToCombatType(i)) << " field " << std::showpos << it.abilities->fieldAbsorbPercent[i] << std::noshowpos << '%';
-		}
-	} else {
-		if (begin) {
-			begin = false;
-			s << " (";
-		} else {
-			s << ", ";
-		}
-
-		s << "absorb all fields " << std::showpos << show << std::noshowpos << '%';
-	}
-}
-
 void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
 	if (it.abilities->speed) {
 		if (begin) {
@@ -2165,60 +2046,9 @@ void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begi
 	}
 }
 
-void handleReflectPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
-	int16_t show = it.abilities->reflect[0].percent;
-	if (show != 0) {
-		for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->reflect[i].percent != show) {
-				show = 0;
-				break;
-			}
-		}
-	}
-
-	if (show == 0) {
-		bool tmp = true;
-
-		for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->reflect[i].percent == 0) {
-				continue;
-			}
-
-			if (tmp) {
-				tmp = false;
-
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "reflect ";
-			} else {
-				s << ", ";
-			}
-
-			s << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << it.abilities->reflect[i].percent << std::noshowpos << '%';
-		}
-	} else {
-		if (begin) {
-			begin = false;
-			s << " (";
-		} else {
-			s << ", ";
-		}
-
-		s << "reflect all " << std::showpos << show << std::noshowpos << '%';
-	}
-}
-
 void handleAbilitiesDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
 	handleSkillsDescription(s, it, begin);
 	handleStatsDescription(s, it, begin);
 	handleStatsPercentDescription(s, it, begin);
-	handleReflectPercentDescription(s, it, begin);
-	handleAbsorbsPercentDescription(s, it, begin);
-	handleAbsorbsFieldsPercentDescription(s, it, begin);
 	handleMiscDescription(s, it, begin);
 }

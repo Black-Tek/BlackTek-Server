@@ -8,6 +8,7 @@
     "boost-system",
     "boost-variant",
     "fmt",
+    "tomlplusplus",
     {
       "name": "libiconv",
       "platform": "osx"

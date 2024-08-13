@@ -71,7 +71,6 @@ struct Imbuement : std::enable_shared_from_this<Imbuement> {
 		propWriteStream.write<uint32_t>(static_cast<uint32_t>(decaytype));
 	}
 
-
 	bool unserialize(PropStream& propReadStream) {
 		uint32_t type, val, dur, decay;
 		if (!propReadStream.read<uint32_t>(type) ||
