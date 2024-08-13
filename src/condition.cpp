@@ -5,6 +5,7 @@
 
 #include "condition.h"
 #include "game.h"
+#include "monster.h"
 
 extern Game g_game;
 
@@ -1375,6 +1376,54 @@ bool ConditionDamage::doDamage(Creature* creature, int32_t healthChange)
 
 	if (g_game.combatBlockHit(damage, attacker, creature, false, false, field)) {
 		return false;
+	}
+
+	if (Player* player = creature->getPlayer()) {
+
+		if (attacker) {
+			auto creatureType = CREATURETYPE_ATTACKABLE;
+
+			if (Player* attackPlayer = attacker->getPlayer()) {
+				creatureType = CREATURETYPE_PLAYER;
+			} else if (Monster* attackMonster = attacker->getMonster()) {
+
+				for (auto monsterFriend : attackMonster->getFriendList()) {
+					if (Player* ally = monsterFriend->getPlayer()) {
+
+						if (ally->getGuild() && player->getGuild() && ally->getGuild() == player->getGuild()) {
+							creatureType = CREATURETYPE_SUMMON_GUILD;
+						}
+
+						if (ally->getParty() && player->getParty() && ally->getParty() == player->getParty()) {
+							creatureType = CREATURETYPE_SUMMON_PARTY;
+						}
+					}
+				}
+				
+				if (attackMonster->getMaster() && attackMonster->getMaster()->getID() == player->getID()) {
+					creatureType = CREATURETYPE_SUMMON_OWN;
+				}
+
+			}
+
+			auto defenseModData = player->getDefenseModifierTotals(damage.primary.type, ORIGIN_CONDITION, creatureType, attacker->getRace(), attacker->getName());
+			if (!defenseModData.empty()) {
+				for (const auto& [modkind, modTotals] : defenseModData) {
+					if (modTotals.percentTotal || modTotals.flatTotal) {
+						Combat::applyDamageReductionModifier(modkind, damage, *player, *attacker, modTotals.percentTotal, modTotals.flatTotal);
+					}
+				}
+			}
+		} else {
+			auto defenseModData = player->getDefenseModifierTotals(damage.primary.type, ORIGIN_CONDITION, CREATURETYPE_ATTACKABLE, RACE_NONE, "none");
+			if (!defenseModData.empty()) {
+				for (const auto& [modkind, modTotals] : defenseModData) {
+					if (modTotals.percentTotal || modTotals.flatTotal) {
+						Combat::applyDamageReductionModifier(modkind, damage, *player, std::nullopt, modTotals.percentTotal, modTotals.flatTotal);
+					}
+				}
+			}
+		}
 	}
 
 	return g_game.combatChangeHealth(attacker, creature, damage);

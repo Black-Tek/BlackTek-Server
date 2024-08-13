@@ -16,6 +16,8 @@
 #include "scheduler.h"
 #include "weapons.h"
 #include "rewardchest.h"
+#include "player.h"
+#include "spells.h"
 
 extern ConfigManager g_config;
 extern Game g_game;
@@ -1987,8 +1989,7 @@ BlockType_t Player::blockHit(Creature* attacker, CombatType_t combatType, int32_
 	}
 
 	if (!ignoreResistances) {
-		Reflect reflect;
-
+		
 		size_t combatIndex = combatTypeToIndex(combatType);
 		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
 			if (!isItemAbilityEnabled(static_cast<slots_t>(slot))) {
@@ -2006,32 +2007,12 @@ BlockType_t Player::blockHit(Creature* attacker, CombatType_t combatType, int32_
 					damage = 0;
 					return BLOCK_ARMOR;
 				}
-
 				continue;
 			}
 
-			const int16_t& absorbPercent = it.abilities->absorbPercent[combatIndex];
-			if (absorbPercent != 0) {
-				damage -= std::round(damage * (absorbPercent / 100.));
-
-				uint16_t charges = item->getCharges();
-				if (charges != 0) {
-					g_game.transformItem(item, item->getID(), charges - 1);
-				}
-			}
-
-			reflect += item->getReflect(combatType);
-
-			if (field) {
-				const int16_t& fieldAbsorbPercent = it.abilities->fieldAbsorbPercent[combatIndex];
-				if (fieldAbsorbPercent != 0) {
-					damage -= std::round(damage * (fieldAbsorbPercent / 100.));
-
-					uint16_t charges = item->getCharges();
-					if (charges != 0) {
-						g_game.transformItem(item, item->getID(), charges - 1);
-					}
-				}
+			uint16_t charges = item->getCharges();
+			if (charges != 0) {
+				g_game.transformItem(item, item->getID(), charges - 1);
 			}
 
 			if (item->hasImbuements()) {
@@ -2070,17 +2051,7 @@ BlockType_t Player::blockHit(Creature* attacker, CombatType_t combatType, int32_
 					}
 				}
 			}
-
 		}
-
-		if (attacker && reflect.chance > 0 && reflect.percent != 0 && uniform_random(1, 100) <= reflect.chance) {
-			CombatDamage reflectDamage;
-			reflectDamage.primary.type = combatType;
-			reflectDamage.primary.value = -std::round(damage * (reflect.percent / 100.));
-			reflectDamage.origin = ORIGIN_REFLECT;
-			g_game.combatChangeHealth(this, attacker, reflectDamage);
-		}
-
 	}
 
 	if (damage <= 0) {
@@ -3871,6 +3842,15 @@ void Player::changeSoul(int32_t soulChange)
 	sendStats();
 }
 
+void Player::changeStamina(int32_t amount)
+{
+	if (amount > 0) {
+		staminaMinutes += std::min<int32_t>(amount, 2520 - staminaMinutes);
+	} else {
+		staminaMinutes = std::max<int32_t>(0, staminaMinutes + amount);
+	}
+}
+
 bool Player::canWear(uint32_t lookType, uint8_t addons) const
 {
 	if (group->access) {
@@ -4733,6 +4713,95 @@ size_t Player::getMaxDepotItems() const
 	return g_config.getNumber(isPremium() ? ConfigManager::DEPOT_PREMIUM_LIMIT : ConfigManager::DEPOT_FREE_LIMIT);
 }
 
+const bool Player::addAugment(std::shared_ptr<Augment>& augment) {
+	if (std::find(augments.begin(), augments.end(), augment) == augments.end()) {
+		augments.push_back(augment);
+		return true;
+	}
+	return false;
+}
+
+const bool Player::addAugment(std::string_view augmentName) {
+
+	if (auto augment = Augments::GetAugment(augmentName)) {
+		augments.emplace_back(augment);
+		return true;
+	}
+	return false;
+}
+
+const bool Player::removeAugment(std::shared_ptr<Augment>& augment) {
+	auto it = std::find(augments.begin(), augments.end(), augment);
+	if (it != augments.end()) {
+		augments.erase(it);
+		return true;
+	}
+	return false;
+}
+
+const bool Player::isAugmented()
+{
+	return augments.size() > 0;
+}
+
+const bool Player::hasAugment(const std::string_view augmentName, bool checkItems)
+{
+	for (const auto& augment : augments) {
+		if (augment->getName() == augmentName) {
+			return true;
+		}
+	}
+
+	if (checkItems) {
+		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+			Item* item = inventory[slot];
+			for (const auto& aug : item->getAugments()) {
+				if (aug->getName() == augmentName) {
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+const bool Player::hasAugment(const std::shared_ptr<Augment>& augment, bool checkItems)
+{
+	for (const auto& aug : augments) {
+		if (aug == augment) {
+			return true;
+		}
+	}
+
+	if (checkItems) {
+		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+			Item* item = inventory[slot];
+			for (const auto& aug : item->getAugments()) {
+				if (aug == augment) {
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+const bool Player::removeAugment(std::string_view augmentName) {
+	auto it = std::find_if(augments.begin(), augments.end(),
+		[&](const std::shared_ptr<Augment>& augment) {
+			return augment->getName() == augmentName;
+		});
+
+	if (it != augments.end()) {
+		augments.erase(it);
+		return true;
+	}
+	return false;
+}
+
+
 std::forward_list<Condition*> Player::getMuteConditions() const
 {
 	std::forward_list<Condition*> muteConditions;
@@ -4992,7 +5061,6 @@ void Player::removeImbuementEffect(std::shared_ptr<Imbuement> imbue) {
 
 void Player::addImbuementEffect(std::shared_ptr<Imbuement> imbue) {
 
-
 	if (imbue->isSkill()) {
 		switch (imbue->imbuetype) {
 		case ImbuementType::IMBUEMENT_TYPE_FIST_SKILL:
@@ -5052,3 +5120,889 @@ void Player::addImbuementEffect(std::shared_ptr<Imbuement> imbue) {
 	sendSkills();
 	sendStats();
 }
+
+static ModifierTotals getValidatedTotals(const std::vector<std::shared_ptr<DamageModifier>> modifierList, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) {
+	auto percent = 0;
+	auto flat = 0;
+	// to-do: const and auto&
+	for (auto& modifier : modifierList) {
+
+		if (modifier->appliesToDamage(damageType) && modifier->appliesToOrigin(originType) && modifier->appliesToTarget(creatureType, race, creatureName)) {
+			if (modifier->isFlatValue() && modifier->getChance() == 0 || modifier->isFlatValue() && modifier->getChance() == 100) {
+					flat += modifier->getValue();
+					continue;
+			} else if (modifier->isFlatValue()) {
+				if (modifier->getChance() >= uniform_random(1, 100)) {
+					flat += modifier->getValue();
+					continue;
+				}
+			}
+
+			if (modifier->isPercent() && modifier->getChance() == 0 || modifier->isPercent() && modifier->getChance() == 100) {
+				percent += modifier->getValue();
+				continue;
+			} else if (modifier->isPercent()) {
+				if (modifier->getChance() >= uniform_random(1, 100)) {
+					percent += modifier->getValue();
+					continue;
+				}
+			}
+		}
+	}
+	percent = std::clamp<uint8_t>(percent, 0, 100);
+	return ModifierTotals(flat, percent);
+}
+
+std::unordered_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Player::getAttackModifiers() {
+	std::unordered_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> modifierMap;
+
+	if (!augments.empty()) {
+		for (auto aug : augments) {
+			for (auto& mod : aug->getAttackModifiers()) {
+				modifierMap[mod->getType()].emplace_back(mod);
+			}
+		}
+	}
+
+	for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+		Item* item = inventory[slot];
+		if (item && !item->getAugments().empty()) {
+			for (auto aug : item->getAugments()) {
+				for (auto& mod : aug->getAttackModifiers()) {
+					modifierMap[mod->getType()].emplace_back(mod);
+				}
+			}
+		}
+	}
+
+	return modifierMap;
+}
+
+std::unordered_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Player::getDefenseModifiers() {
+	std::unordered_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> modifierMap;
+
+	if (!augments.empty()) {
+		for (auto aug : augments) {
+			std::cout << "Found augments on player \n";
+			for (auto& mod : aug->getDefenseModifiers()) {
+				std::cout << "Found Defense Modifiers on player \n";
+				modifierMap[mod->getType()].emplace_back(mod);
+				std::cout << " /// MOD TYPE  == " << static_cast<int>(mod->getType()) << std::endl;
+			}
+		}
+	}
+
+	for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+		Item* item = inventory[slot];
+		if (item && !item->getAugments().empty()) {
+			for (auto aug : item->getAugments()) {
+				std::cout << "Found augments on item \n";
+				for (auto& mod : aug->getDefenseModifiers()) {
+					std::cout << "Found Defense Modifiers on item \n";
+					modifierMap[mod->getType()].emplace_back(mod);
+					std::cout << " /// MOD TYPE  == " << static_cast<int>(mod->getType()) << std::endl;
+				}
+			}
+		}
+	}
+
+	return modifierMap;
+}
+
+std::unordered_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uint8_t modType, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName)
+{
+	std::unordered_map<uint8_t, ModifierTotals> conversionList;
+	conversionList.reserve(COMBAT_COUNT);
+
+	// Note: Passing incorrect 'modType' param to this method can break it! 
+	// Only two modTypes that should be used are :
+	// ATTACK_MODIFIER_CONVERSION
+	// DEFENSE_MODIFIER_REFORM
+	// Their current values are 7 and 9, if you pass anything else, this method breaks.
+
+	if (!augments.empty()) {
+		for (const auto& aug : augments) {
+			const auto& modifiers = aug->getAttackModifiers(modType);
+			for (const auto& modifier : modifiers) {
+				if (modifier->appliesToDamage(damageType) && modifier->appliesToOrigin(originType) && modifier->appliesToTarget(creatureType, race, creatureName)) {
+
+					auto flat = 0;
+					auto percent = 0;
+
+					if (modifier->isFlatValue() && modifier->getChance() == 0 || modifier->isFlatValue() && modifier->getChance() == 100) {
+						flat += modifier->getValue();
+						continue;
+					} else if (modifier->isFlatValue()) {
+						if (modifier->getChance() >= uniform_random(1, 100)) {
+							flat += modifier->getValue();
+							continue;
+						}
+					}
+
+					if (modifier->isPercent() && modifier->getChance() == 0 || modifier->isPercent() && modifier->getChance() == 100) {
+						percent += modifier->getValue();
+						continue;
+					} else if (modifier->isPercent()) {
+						if (modifier->getChance() >= uniform_random(1, 100)) {
+							percent += modifier->getValue();
+							continue;
+						}
+					}
+					auto& entry = conversionList[modifier->conversionType()];
+					entry.flatTotal += flat;
+					entry.percentTotal += percent;
+					entry.percentTotal = std::clamp<uint8_t>(entry.percentTotal, 0, 100);
+				}
+			}
+		}
+	}
+
+	for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+		Item* item = inventory[slot];
+		if (item && !item->getAugments().empty()) {
+			for (const auto& aug : item->getAugments()) {
+				const auto& modifiers = aug->getAttackModifiers(modType);
+				for (const auto& modifier : modifiers) {
+					if (modifier->appliesToDamage(damageType) && modifier->appliesToOrigin(originType) && modifier->appliesToTarget(creatureType, race, creatureName)) {
+
+						auto flat = 0;
+						auto percent = 0;
+
+						if (modifier->isFlatValue() && modifier->getChance() == 0 || modifier->isFlatValue() && modifier->getChance() == 100) {
+							flat += modifier->getValue();
+							continue;
+						} else if (modifier->isFlatValue()) {
+							if (modifier->getChance() >= uniform_random(1, 100)) {
+								flat += modifier->getValue();
+								continue;
+							}
+						}
+
+						if (modifier->isPercent() && modifier->getChance() == 0 || modifier->isPercent() && modifier->getChance() == 100) {
+							percent += modifier->getValue();
+							continue;
+						} else if (modifier->isPercent()) {
+							if (modifier->getChance() >= uniform_random(1, 100)) {
+								percent += modifier->getValue();
+								continue;
+							}
+						}
+						auto& entry = conversionList[modifier->conversionType()];
+						entry.flatTotal += flat;
+						entry.percentTotal += percent;
+						entry.percentTotal = std::clamp<uint8_t>(entry.percentTotal, 0, 100);
+					}
+				}
+			}
+		}
+	}
+	return conversionList;
+}
+
+std::unordered_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) {
+	
+	std::unordered_map<uint8_t, ModifierTotals> modMap;
+	modMap.reserve(ATTACK_MODIFIER_LAST);
+
+	// To-do : Implement a cache for this, so we don't do this search on every single combat, always.
+	// May require a multi-map approach of storing augments, and getting rid of the vectors.
+	auto attackMods = getAttackModifiers();
+	for (uint8_t i = ATTACK_MODIFIER_NONE; i < ATTACK_MODIFIER_LAST; ++i) {
+		auto modTotals = getValidatedTotals(attackMods[i], damageType, originType, creatureType, race, creatureName);
+		modMap.try_emplace(i, modTotals);
+	}
+	return modMap;
+}
+
+std::unordered_map<uint8_t, ModifierTotals> Player::getDefenseModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, std::string_view creatureName) {
+	
+	std::unordered_map<uint8_t, ModifierTotals> modMap;
+	modMap.reserve(DEFENSE_MODIFIER_LAST);
+
+	// To-do : Implement a cache for this, so we don't do this search on every single combat, always.
+	// May require a multi-map approach of storing augments, and getting rid of the vectors. 
+	auto defenseMods = getDefenseModifiers();
+	for (uint8_t i = DEFENSE_MODIFIER_NONE; i < DEFENSE_MODIFIER_LAST; ++i) {
+		auto modTotals = getValidatedTotals(defenseMods[i], damageType, originType, creatureType, race, creatureName);
+		modMap.try_emplace(i, modTotals);
+	}
+	return modMap;
+}
+
+void Player::absorbDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
+	auto damageChange = 0;
+	if (percent) {
+		if (percent <= 100) {
+			damageChange += originalDamage.primary.value * (percent / 100.0);
+			std::cout << "Damage Change for absorb after percent applied is : " << damageChange << " \n";
+		} else {
+			damageChange += originalDamage.primary.value;
+			std::cout << "Damage Change for absorb after percent applied is : " << damageChange << " \n";
+		}
+	}
+	if (flat) {
+		damageChange += flat;
+		std::cout << "Damage Change for absorb after flat rate applied is : " << damageChange << " \n";
+	}
+	if (damageChange != 0) {
+		originalDamage.primary.value -= damageChange;
+		auto realHealthGain = std::abs(damageChange);
+
+		if (!targetOpt) {
+			TextMessage message(MESSAGE_HEALED, "You gained " + std::to_string(realHealthGain) + " health from absorbtion.");
+			message.position = getPosition();
+			message.primary.value = realHealthGain;
+			message.primary.color = TEXTCOLOR_PASTELRED;
+			sendTextMessage(message);
+			changeHealth(std::abs(damageChange));
+		} else {
+			Creature& attacker = targetOpt.value().get();
+			CombatDamage absorbedDamage{};
+			absorbedDamage.primary.value = realHealthGain;
+			absorbedDamage.primary.type = originalDamage.primary.type;
+			absorbedDamage.origin = ORIGIN_AUGMENT;
+			absorbedDamage.leeched = true;
+			g_game.combatChangeHealth(&attacker, this, absorbedDamage);
+		}
+	}
+}
+
+void Player::restoreManaFromDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
+	auto damageChange = 0;
+	if (percent) {
+		if (percent <= 100) {
+			damageChange += originalDamage.primary.value * (percent / 100.0);
+			std::cout << "Damage Change for restore after percent applied is : " << damageChange << " \n";
+		} else {
+			damageChange += originalDamage.primary.value;
+			std::cout << "Damage Change for restore after percent applied is : " << damageChange << " \n";
+		}
+	}
+	if (flat) {
+		damageChange += flat;
+		std::cout << "Damage Change for restore after flat rate applied is : " << damageChange << " \n";
+	}
+	if (damageChange != 0) {
+		originalDamage.primary.value -= damageChange;
+		auto realManaGain = std::abs(damageChange);
+		if (!targetOpt) {
+			TextMessage message(MESSAGE_HEALED, "You gained " + std::to_string(realManaGain) + " mana from restoration.");
+			message.position = getPosition();
+			message.primary.value = realManaGain;
+			message.primary.color = TEXTCOLOR_MAYABLUE;
+			sendTextMessage(message);
+			changeMana(realManaGain);
+		} else {
+			// to-do : re-evaluate this when reworking combat system.
+			Creature& attacker = targetOpt.value().get();
+			CombatDamage manaRestore{};
+			manaRestore.primary.value = realManaGain;
+			manaRestore.primary.type = originalDamage.primary.type;
+			manaRestore.origin = ORIGIN_AUGMENT;
+			manaRestore.leeched = true;
+			g_game.combatChangeMana(&attacker, this, manaRestore);
+		}
+	}
+}
+
+void Player::reviveSoulFromDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
+	auto damageChange = 0;
+	if (percent) {
+		if (percent <= 100) {
+			damageChange += originalDamage.primary.value * (percent / 100.0);
+			std::cout << "Damage Change for revive after percent applied is : " << damageChange << " \n";
+		} else {
+			damageChange += originalDamage.primary.value;
+			std::cout << "Damage Change for revive after percent applied is : " << damageChange << " \n";
+		}
+	}
+	if (flat) {
+		damageChange += flat;
+		std::cout << "Damage Change for revive after flat rate applied is : " << damageChange << " \n";
+	}
+	if (damageChange != 0) {
+		originalDamage.primary.value -= damageChange;
+		auto realSoulGain = std::abs(damageChange);
+		TextMessage message;
+		message.type = MESSAGE_HEALED;
+		message.position = getPosition();
+		message.primary.value = realSoulGain;
+		message.primary.color = TEXTCOLOR_LIGHTGREY;
+
+		if (!targetOpt) {
+			message.text = "You gained " + std::to_string(realSoulGain) + " soul from revival.";
+		} else {
+			Creature& attacker = targetOpt.value().get();
+			message.text = "You gained " + std::to_string(realSoulGain) + " soul from " + attacker.getName() + "'s attack.";
+		}
+		sendTextMessage(message);
+		changeSoul(damageChange);
+	}
+}
+
+void Player::replenishStaminaFromDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
+	auto damageChange = 0;
+	if (percent) {
+		if (percent <= 100) {
+			damageChange += originalDamage.primary.value * (percent / 100.0);
+			std::cout << "Damage Change for replenish after percent applied is : " << damageChange << " \n";
+		} else {
+			damageChange += originalDamage.primary.value;
+			std::cout << "Damage Change for replenish after percent applied is : " << damageChange << " \n";
+		}
+	}
+	if (flat) {
+		damageChange += flat;
+		std::cout << "Damage Change for reflect after flat rate applied is : " << damageChange << " \n";
+	}
+	if (damageChange != 0) {
+		originalDamage.primary.value -= damageChange;
+		auto realStaminaGain = std::abs(damageChange);
+		TextMessage message;
+		message.type = MESSAGE_HEALED;
+		message.position = getPosition();
+		message.primary.value = realStaminaGain;
+		message.primary.color = TEXTCOLOR_LIGHTGREY;
+
+		if (!targetOpt) {
+			message.text = "You gained " + std::to_string(realStaminaGain) + " stamina from replenishment.";
+		} else {
+			Creature& attacker = targetOpt.value().get();
+			message.text = "You gained " + std::to_string(realStaminaGain) + " stamina from " + attacker.getName() + "'s attack.";
+		}
+		sendTextMessage(message);
+		changeStamina(damageChange);
+	}
+}
+
+void Player::resistDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
+	auto damageChange = 0;
+	if (percent) {
+		if (percent <= 100) {
+			damageChange += originalDamage.primary.value * (percent / 100.0);
+			std::cout << "Damage Change for reflect after percent applied is : " << damageChange << " \n";
+		} else {
+			damageChange += originalDamage.primary.value;
+			std::cout << "Damage Change for reflect after percent applied is : " << damageChange << " \n";
+		}
+	}
+	if (flat) {
+		damageChange += flat;
+		std::cout << "Damage Change for reflect after flat rate applied is : " << damageChange << " \n";
+	}
+	if (damageChange != 0) {
+		originalDamage.primary.value -= damageChange;
+
+		auto resistedDamage = std::abs(damageChange);
+		TextMessage message;
+		message.type = MESSAGE_HEALED;
+		message.position = getPosition();
+		message.primary.value = resistedDamage;
+		message.primary.color = TEXTCOLOR_ORANGE;
+
+		if (!targetOpt) {
+			message.text = "You resisted " + std::to_string(resistedDamage) + " damage.";
+		} else {
+			Creature& attacker = targetOpt.value().get();
+			message.text = "You resisted " + std::to_string(resistedDamage) + " damage from " + attacker.getName() + "'s attack.";
+		}
+		sendTextMessage(message);
+	}
+}
+
+void Player::reflectDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect) {
+	if (!attackerOpt) {
+		return;
+	}
+
+	auto damageChange = 0;
+	if (percent) {
+		if (percent <= 100) {
+			damageChange += originalDamage.primary.value * (percent / 100.0);
+			std::cout << "Damage Change for reflect after percent applied is : " << damageChange << " \n";
+		} else {
+			damageChange += originalDamage.primary.value;
+			std::cout << "Damage Change for reflect after percent applied is : " << damageChange << " \n";
+		}
+	}
+	if (flat) {
+		damageChange += flat;
+		std::cout << "Damage Change for reflect after flat rate applied is : " << damageChange << " \n";
+	}
+
+
+	Creature& target = attackerOpt.value().get();
+
+	auto reflect = CombatDamage{};
+	reflect.primary.type = originalDamage.primary.type;
+	reflect.primary.value = damageChange;
+	reflect.origin = ORIGIN_AUGMENT;
+	originalDamage.primary.value -= damageChange;
+
+	TextMessage message;
+	auto reflectedDamage = std::abs(damageChange);
+	message.type = MESSAGE_DAMAGE_DEALT;
+	message.position = getPosition();
+	message.primary.value = reflectedDamage;
+	message.primary.color = TEXTCOLOR_ELECTRICPURPLE;
+	message.text = "You reflected " + std::to_string(reflectedDamage) + " damage from " + target.getName() + "'s attack back at them.";
+	sendTextMessage(message);
+
+	const auto& strikePosition = target.getPosition();
+
+	if (distanceEffect != CONST_ANI_NONE) {
+		g_game.addDistanceEffect(getPosition(), strikePosition, distanceEffect);
+	}
+
+	g_game.combatChangeHealth(this, &target, reflect);
+
+	if (areaEffect != CONST_ME_NONE) {
+		g_game.addMagicEffect(strikePosition, areaEffect);
+	}
+}
+
+using RawArea = std::vector<uint32_t>;
+using RawAreaVec = std::vector<RawArea>;
+
+// single
+RawArea Deflect1xArea = {
+	0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0,
+	0, 0, 3, 0, 0,
+	0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0
+};
+
+// doubles
+RawAreaVec Deflect2xAreas = {
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 1, 3, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 3, 1, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 1, 2, 1, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+};
+
+// double Diagonal
+RawAreaVec DeflectDiagonal2xAreas = {
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 3, 0, 0,
+		0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0,
+		0, 0, 3, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 2, 1, 0,
+		0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0
+	},
+};
+
+// triple
+RawArea Deflect3xArea = {
+	0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0,
+	0, 1, 3, 1, 0,
+	0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0
+};
+
+// triple Diagonal
+RawAreaVec DeflectDiagonal3xAreas = {
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0,
+		0, 1, 3, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 3, 1, 0,
+		0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0
+	}
+};
+
+// quad
+RawAreaVec Deflect4xAreas = {
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0,
+		0, 1, 3, 1, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 1, 1, 1, 0,
+		0, 0, 3, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	}
+};
+
+// quad Diagonal
+RawAreaVec DeflectDiagonal4xAreas = {
+	{
+		0, 0, 0, 0, 0,
+		0, 1, 1, 0, 0,
+		0, 1, 3, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 1, 0, 0, 0,
+		0, 0, 3, 1, 0,
+		0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0
+	}
+};
+
+// quint (5's)
+RawAreaVec Deflect5xAreas = {
+	{
+		0, 0, 0, 0, 0,
+		1, 0, 0, 0, 1,
+		0, 1, 3, 1, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 1, 0, 0,
+		0, 0, 1, 0, 0,
+		0, 1, 3, 1, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 1, 0, 0,
+		0, 1, 1, 1, 0,
+		0, 0, 3, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	}
+};
+
+// quint Diagonal
+RawAreaVec DeflectDiagonal5xAreas = {
+	{
+		0, 0, 1, 0, 0,
+		0, 0, 1, 0, 0,
+		1, 1, 3, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 1, 1, 0,
+		0, 1, 3, 0, 0,
+		0, 1, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 1, 0,
+		0, 0, 3, 1, 0,
+		0, 1, 1, 0, 0,
+		0, 0, 0, 0, 0
+	}
+};
+
+// sext (6's)
+RawAreaVec Deflect6xAreas = {
+	{
+		0, 0, 0, 0, 0,
+		1, 0, 1, 0, 1,
+		0, 1, 3, 1, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 1, 0, 1, 0,
+		0, 0, 1, 0, 0,
+		0, 1, 3, 1, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0,
+		0, 1, 3, 1, 0,
+		0, 1, 0, 1, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 1, 1, 1, 0,
+		0, 1, 3, 1, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	}
+};
+
+// sext Diagonal
+RawAreaVec DeflectDiagonal6xAreas = {
+	{
+		0, 0, 1, 0, 0,
+		0, 1, 1, 0, 0,
+		1, 1, 3, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 1, 1, 0,
+		0, 1, 3, 0, 0,
+		0, 1, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 1, 0,
+		0, 0, 3, 1, 0,
+		0, 1, 1, 0, 0,
+		0, 0, 0, 0, 0
+	}
+};
+
+static std::vector<uint32_t> GetDeflectArea(uint32_t targets) {
+	switch (targets) {
+		case 1:
+			return Deflect1xArea;
+		case 2:
+			return Deflect2xAreas[uniform_random(0, Deflect2xAreas.size() - 1)];
+		case 3:
+			return Deflect3xArea;
+		case 4:
+			return Deflect4xAreas[uniform_random(0, Deflect4xAreas.size() - 1)];
+		case 5:
+			return Deflect5xAreas[uniform_random(0, Deflect5xAreas.size() - 1)];
+		default:
+			return Deflect6xAreas[uniform_random(0, Deflect6xAreas.size() - 1)];
+	}
+}
+
+static std::vector<uint32_t> GetDiaganolDeflectArea(uint32_t targets) {
+	switch (targets) {
+		case 1:
+			return Deflect1xArea;
+		case 2:
+			return DeflectDiagonal2xAreas[uniform_random(0, DeflectDiagonal2xAreas.size() - 1)];
+		case 3:
+			return DeflectDiagonal3xAreas[uniform_random(0, DeflectDiagonal3xAreas.size() - 1)];
+		case 4:
+			return DeflectDiagonal4xAreas[uniform_random(0, DeflectDiagonal4xAreas.size() - 1)];
+		case 5:
+			return DeflectDiagonal5xAreas[uniform_random(0, DeflectDiagonal5xAreas.size() - 1)];
+		default:
+			return DeflectDiagonal6xAreas[uniform_random(0, DeflectDiagonal6xAreas.size() - 1)];
+	}
+}
+
+void Player::deflectDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect) {
+
+	auto damageChange = 0;
+	if (percent) {
+		if (percent <= 100) {
+			damageChange += originalDamage.primary.value * (percent / 100.0);
+			std::cout << "Damage Change for deflect after percent applied is : " << damageChange << " \n";
+		} else {
+			damageChange += originalDamage.primary.value;
+			std::cout << "Damage Change for deflect after percent applied is : " << damageChange << " \n";
+		}
+	}
+	if (flat) {
+		damageChange += flat;
+		std::cout << "Damage Change for deflect after flat rate applied is : " << damageChange << " \n";
+	}
+
+	if (damageChange != 0) {
+
+		auto deflectedDamage = std::abs(damageChange);
+		auto trueDamage = std::abs(originalDamage.primary.value);
+		auto difference = trueDamage - deflectedDamage;
+		auto damageDivider = 50; // make this global config.
+		auto targets = ((deflectedDamage / damageDivider) + 1);
+		auto* damageArea = new AreaCombat();
+
+		auto deflect = CombatDamage{};
+		deflect.primary.type = originalDamage.primary.type;
+		deflect.origin = ORIGIN_AUGMENT;
+		deflect.primary.value -= static_cast<int32_t>(std::abs(std::round(damageChange / 3)));
+
+		auto params = CombatParams();
+		params.origin = ORIGIN_AUGMENT;
+		params.combatType = originalDamage.primary.type;
+		params.distanceEffect = distanceEffect;
+		params.targetCasterOrTopMost = true;
+
+		if (areaEffect == CONST_ME_NONE) {
+			params.impactEffect = CombatTypeToAreaEffect(originalDamage.primary.type);
+		} else {
+			params.impactEffect = areaEffect;
+		}
+
+		if (difference <= 0) {
+			originalDamage.primary.value = 0;
+		} else { // damage should always be a negative value.
+			originalDamage.primary.value = (0 - difference);
+		}
+
+		// handle magic effect when damage type is melee or otherwise physical
+		if (!attackerOpt) {
+			// No attacker so we deflect based on players facing direction
+			auto pos = Spells::getCasterPosition(this, getOppositeDirection(this->getDirection()));
+			damageArea->setupArea(Deflect1xArea, 5);
+			Combat::doAreaCombat(this, pos, damageArea, deflect, params);
+		} else {
+			// with attacker we deflect based on where the attack came from (direction)
+			Creature& target = attackerOpt.value().get();
+			auto pos = Spells::getCasterPosition(this, getDirectionTo(target.getPosition(), this->getPosition()));
+
+			switch (getDirectionTo(this->getPosition(), target.getPosition())) {
+				case DIRECTION_NORTH:
+				case DIRECTION_SOUTH:
+				case DIRECTION_WEST:
+				case DIRECTION_EAST:
+					damageArea->setupArea(GetDeflectArea(targets), 5);
+					break;
+
+				case DIRECTION_SOUTHWEST:
+				case DIRECTION_SOUTHEAST:
+				case DIRECTION_NORTHWEST:
+				case DIRECTION_NORTHEAST:
+					damageArea->setupExtArea(GetDiaganolDeflectArea(targets), 5);
+					break;
+
+				default:
+					std::cout << ":: Warning :: Default Case being called for direction determined for deflection!" << std::endl;
+					damageArea->setupArea(GetDeflectArea(targets), 5);
+					break;
+			}
+
+			Combat::doAreaCombat(this, pos, damageArea, deflect, params);
+		}
+
+		TextMessage message;
+		message.type = MESSAGE_EVENT_DEFAULT;
+		message.position = getPosition();
+		message.primary.value = deflectedDamage;
+		message.primary.color = TEXTCOLOR_WHITE_EXP;
+		message.text = "You deflected " + std::to_string(deflectedDamage) + " total damage.";
+		sendTextMessage(message);
+	}
+}
+
+void Player::ricochetDamage(CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect) {
+
+	auto damageChange = 0;
+	if (percent) {
+		if (percent <= 100) {
+			damageChange += originalDamage.primary.value * (percent / 100.0);
+			std::cout << "Damage Change for ricochet after percent applied is : " << damageChange << " \n";
+		} else {
+			damageChange += originalDamage.primary.value;
+			std::cout << "Damage Change for ricochet after percent applied is : " << damageChange << " \n";
+		}
+	}
+	if (flat) {
+		damageChange += flat;
+		std::cout << "Damage Change for ricochet after flat rate applied is : " << damageChange << " \n";
+	}
+
+	if (damageChange != 0) {
+
+		SpectatorVec spectators;
+		// To-do : Make ranges configurable here
+		g_game.map.getSpectators(spectators, position, false, false, 5, 5, 5, 5);
+
+		std::vector<Creature*> targetList;
+		// we need to sort spectators for ones that are safe to attack
+		for (auto& creature : spectators) {
+			// this check is SUPER EXPENSIVE because it calls in all lua events as well as like three other methods.
+			if ((creature->getID() != this->getID()) && (Combat::canTargetCreature(this, creature) == RETURNVALUE_NOERROR)) {
+				targetList.emplace_back(creature);
+			}
+		}
+
+		if (!targetList.empty()) {
+			auto target = targetList[uniform_random(0, targetList.size()-1)];
+
+			if (target) {
+				originalDamage.primary.value -= damageChange;
+
+				TextMessage message;
+				auto deflectedDamage = std::abs(damageChange);
+				message.type = MESSAGE_DAMAGE_DEALT;
+				message.position = getPosition();
+				message.primary.value = deflectedDamage;
+				message.primary.color = TEXTCOLOR_SKYBLUE;
+				message.text = "An attack on you ricocheted " + std::to_string(deflectedDamage) + " damage.";
+				sendTextMessage(message);
+
+				auto ricochet = CombatDamage{};
+				ricochet.primary.type = originalDamage.primary.type;
+				ricochet.primary.value += damageChange;
+				ricochet.origin = ORIGIN_AUGMENT;
+
+				const auto& strikePosition = target->getPosition();
+
+				if (distanceEffect != CONST_ANI_NONE) {
+					g_game.addDistanceEffect(getPosition(), strikePosition, distanceEffect);
+				}
+
+				g_game.combatChangeHealth(this, target, ricochet);
+
+				if (areaEffect != CONST_ME_NONE) {
+					g_game.addMagicEffect(strikePosition, areaEffect);
+				}
+			}
+		}
+	}
+}
+
+// void Player::reformDamage()
