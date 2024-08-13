@@ -1,0 +1,11 @@
+[DruidicBlessing]
+name = "Druidic Blessing"
+description = "a vital blessing from the Great Meridan to only those worthy of such favor"
+modifiers = [
+	# Manasteal with poison spells
+	{ stance = "attack", type = "manasteal", value = 20, damageType = "earth", originType = "spell" },
+	# Staminasteal
+	{ stance = "attack", type = "staminasteal", value = 1, chance = 5, flatRate = true, damageType = "earth", originType = "condition" },
+	# Soulsteal
+	{ stance = "attack", type = "soulsteal", chance = 10, damageType = "ice", originType = "spell" },
+]
