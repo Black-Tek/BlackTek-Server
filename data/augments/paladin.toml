@@ -1,0 +1,11 @@
+[RangersResolve]
+name = "Ranger's Resolve"
+description = "An ancient shamanic blessing, endowing archers with the light needed to defeat the darkness"
+modifiers = [
+	# Piercing Shot
+	{ stance = "attack", type = "piercing", value = 20, flatRate = true, originType = "ranged"},
+	# Death Resistance
+	{ stance = "defense", type = "resist", value = 30, damageType = "death"},
+	# Soul Restoration
+	{ stance = "attack", type = "soulsteal", value = 1, chance = 60, flatRate = true, originType = "ranged" },
+]

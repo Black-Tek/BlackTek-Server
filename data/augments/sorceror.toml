@@ -1,0 +1,11 @@
+[MerlinsRage]
+name = "Merlins Rage"
+description = "A portion of The Great Mage Merlin's power! It takes great power just to wield this power!"
+modifiers = [
+	# Piercing curse damage
+	{ stance = "attack", type = "piercing", value = 20, damageType = "death", originType="condition"},
+	# Spell Crits
+	{ stance = "attack", type = "critical", value = 30, chance = 25, originType = "spell"},
+	# Spell Death Conversion
+	{ stance = "attack", type = "conversion", value = 10, toDamageType = "death", originType = "spell" },
+]

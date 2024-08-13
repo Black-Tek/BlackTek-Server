@@ -608,17 +608,28 @@ bool IOLoginData::saveItems(const Player* player, const ItemBlockList& itemList,
 		++runningId;
 
 		propWriteStream.clear();
-		item->serializeAttr(propWriteStream);
+		item->serializeAttr(propWriteStream);  // Serialize the item's attributes
 
-		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}", player->getGUID(), pid, runningId, item->getID(), item->getSubType(), db.escapeString(propWriteStream.getStream())))) {
+		// Serialize augments if the item has any
+		const auto& augments = item->getAugments();  // Assuming the item has a method to get augments
+		propWriteStream.write<uint32_t>(augments.size());  // Write the number of augments
+		for (const auto& augment : augments) {
+			augment->serialize(propWriteStream);  // Serialize each augment
+		}
+
+		// Add the row to the query
+		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}",
+			player->getGUID(), pid, runningId, item->getID(), item->getSubType(), db.escapeString(propWriteStream.getStream())))) {
 			return false;
 		}
 
+		// If the item is a container, add it to the queue for recursive processing
 		if (Container* container = item->getContainer()) {
 			queue.emplace_back(container, runningId);
 		}
 	}
 
+	// Process the queue for container items
 	while (!queue.empty()) {
 		const ContainerBlock& cb = queue.front();
 		Container* container = cb.first;
@@ -628,21 +639,33 @@ bool IOLoginData::saveItems(const Player* player, const ItemBlockList& itemList,
 		for (Item* item : container->getItemList()) {
 			++runningId;
 
+			// If the item is a container, add it to the queue
 			Container* subContainer = item->getContainer();
 			if (subContainer) {
 				queue.emplace_back(subContainer, runningId);
 			}
 
 			propWriteStream.clear();
-			item->serializeAttr(propWriteStream);
+			item->serializeAttr(propWriteStream);  // Serialize the item's attributes
 
-			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}", player->getGUID(), parentId, runningId, item->getID(), item->getSubType(), db.escapeString(propWriteStream.getStream())))) {
+			// Serialize augments if the item has any
+			const auto& augments = item->getAugments();
+			propWriteStream.write<uint32_t>(augments.size());  // Write the number of augments
+			for (const auto& augment : augments) {
+				augment->serialize(propWriteStream);  // Serialize each augment
+			}
+
+			// Add the row to the query
+			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}",
+				player->getGUID(), parentId, runningId, item->getID(), item->getSubType(), db.escapeString(propWriteStream.getStream())))) {
 				return false;
 			}
 		}
 	}
+
 	return query_insert.execute();
 }
+
 
 bool IOLoginData::addRewardItems(uint32_t playerId, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream)
 {
@@ -1021,26 +1044,46 @@ bool IOLoginData::formatPlayerName(std::string& name)
 void IOLoginData::loadItems(ItemMap& itemMap, DBResult_ptr result)
 {
 	do {
+		// Retrieve basic item data
 		uint32_t sid = result->getNumber<uint32_t>("sid");
 		uint32_t pid = result->getNumber<uint32_t>("pid");
 		uint16_t type = result->getNumber<uint16_t>("itemtype");
 		uint16_t count = result->getNumber<uint16_t>("count");
 
+		// Initialize the attribute stream
 		auto attr = result->getString("attributes");
 		PropStream propStream;
 		propStream.init(attr.data(), attr.size());
 
+		// Create the item
 		Item* item = Item::CreateItem(type, count);
 		if (item) {
+			// Deserialize the item's attributes
 			if (!item->unserializeAttr(propStream)) {
 				std::cout << "WARNING: Serialize error in IOLoginData::loadItems" << std::endl;
 			}
 
+			// Deserialize the augments (assuming the item supports augments)
+			uint32_t augmentCount;
+			if (propStream.read<uint32_t>(augmentCount)) {  // Read the number of augments
+				for (uint32_t i = 0; i < augmentCount; ++i) {
+					auto augment = std::make_shared<Augment>();
+					if (augment->unserialize(propStream)) {
+						item->addAugment(augment);  // Add the augment to the item
+					}
+					else {
+						std::cout << "WARNING: Augment deserialize error in IOLoginData::loadItems" << std::endl;
+					}
+				}
+			}
+
+			// Add the item to the item map
 			std::pair<Item*, uint32_t> pair(item, pid);
 			itemMap[sid] = pair;
 		}
 	} while (result->next());
 }
+
 
 void IOLoginData::increaseBankBalance(uint32_t guid, uint64_t bankBalance)
 {
