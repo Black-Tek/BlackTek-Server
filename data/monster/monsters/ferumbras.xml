@@ -16,6 +16,7 @@
 		<flag staticattack="90" />
 		<flag runonhealth="2500" />
 		<flag isboss="1" />
+		<flag isrewardboss="1" />
 	</flags>
 	<attacks>
 		<attack name="melee" interval="2000" min="0" max="-350" />
@@ -82,7 +83,7 @@
 		<voice sentence="Even in my weakened state I will crush you all!" />
 	</voices>
 	<loot>
-		<item id="5903" name="Ferumbras' hat" chance="100000" />
+		<item id="5903" name="Ferumbras' hat" chance="100000" unique="1" />
 		<item name="gold coin" countmax="100" chance="97000" />
 		<item name="gold coin" countmax="100" chance="97000" />
 		<item name="gold coin" countmax="70" chance="33000" />

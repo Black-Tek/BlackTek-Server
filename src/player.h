@@ -20,6 +20,7 @@
 #include "town.h"
 #include "mounts.h"
 #include "storeinbox.h"
+#include "rewardchest.h"
 
 #include <bitset>
 
@@ -497,7 +498,7 @@ class Player final : public Creature, public Cylinder
 		DepotChest* getDepotChest(uint32_t depotId, bool autoCreate);
 		DepotLocker& getDepotLocker();
 		uint32_t getDepotItemCount();
-
+		RewardChest& getRewardChest();
 		void onReceiveMail() const;
 		bool isNearDepotBox() const;
 
@@ -1291,6 +1292,7 @@ class Player final : public Creature, public Cylinder
 		Town* town = nullptr;
 		Vocation* vocation = nullptr;
 		StoreInbox* storeInbox = nullptr;
+		std::shared_ptr<RewardChest> rewardChest = nullptr;
 		DepotLocker_ptr depotLocker = nullptr;
 
 		uint32_t inventoryWeight = 0;

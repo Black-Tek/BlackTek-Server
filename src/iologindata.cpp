@@ -472,6 +472,52 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 		}
 	}
 
+	// Load reward items
+	itemMap.clear();
+
+	if ((result = db.storeQuery(fmt::format("SELECT `sid`, `pid`, `itemtype`, `count`, `attributes` FROM `player_rewarditems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+		loadItems(itemMap, result);
+
+		// Map to store containers (bags) for each unique DATE attribute
+		std::unordered_map<int64_t, Container*> dateContainers;
+
+		// Get the current time and calculate the time 7 days ago
+		time_t now = std::time(nullptr);
+		time_t seven_days_ago = now - (7 * 24 * 60 * 60); // 7 days in seconds
+		
+
+		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
+			const std::pair<Item*, uint32_t>& pair = it->second;
+			Item* item = pair.first;
+
+			int64_t rewardDate = item->getIntAttr(ITEM_ATTRIBUTE_DATE);
+
+			// Skip items older than 7 days
+			if (rewardDate < static_cast<int64_t>(seven_days_ago)) {
+				continue;
+			}
+
+			// Create or get existing container for the given DATE attribute
+			Container* container = nullptr;
+			auto containerIt = dateContainers.find(rewardDate);
+			if (containerIt != dateContainers.end()) {
+				container = containerIt->second;
+			}
+			else {
+				container = new Container(ITEM_REWARD_CONTAINER);
+				container->setIntAttr(ITEM_ATTRIBUTE_DATE, rewardDate); // Set the DATE attribute on the container
+				container->setIntAttr(ITEM_ATTRIBUTE_REWARDID, item->getIntAttr(ITEM_ATTRIBUTE_REWARDID));
+				dateContainers[rewardDate] = container;
+			}
+
+			container->internalAddThing(item);
+		}
+
+		for (auto& pair : dateContainers) {
+			player->getRewardChest().internalAddThing(pair.second);
+		}
+	}
+
 	//load inbox items
 	itemMap.clear();
 
@@ -593,6 +639,69 @@ bool IOLoginData::saveItems(const Player* player, const ItemBlockList& itemList,
 			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}", player->getGUID(), parentId, runningId, item->getID(), item->getSubType(), db.escapeString(propWriteStream.getStream())))) {
 				return false;
 			}
+		}
+	}
+	return query_insert.execute();
+}
+
+bool IOLoginData::addRewardItems(uint32_t playerId, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream)
+{
+	using ContainerBlock = std::pair<Container*, int32_t>;
+	std::list<ContainerBlock> queue;
+
+	Database& db = Database::getInstance();
+
+	DBResult_ptr result = db.storeQuery(fmt::format("SELECT MAX(pid) as max_pid FROM `player_rewarditems` WHERE `player_id` = {:d}", playerId));
+	int32_t runningId = 1;
+	int32_t pidCounter = 1;
+
+	if (result) {
+		int32_t maxPid = result->getNumber<int32_t>("max_pid");
+
+		if (maxPid > 0) {
+			pidCounter = maxPid + 1; 
+		}
+	}
+
+	int32_t parentPid = pidCounter;
+
+	for (const auto& it : itemList) {
+		Item* item = it.second;
+
+		propWriteStream.clear();
+		item->serializeAttr(propWriteStream);
+
+		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}", playerId, parentPid, runningId, item->getID(), item->getSubType(), db.escapeString(propWriteStream.getStream())))) {
+			return false;
+		}
+
+		if (Container* container = item->getContainer()) {
+			queue.emplace_back(container, runningId);
+		}
+
+		++runningId; // Always increment SID upwards
+	}
+
+	while (!queue.empty()) {
+		const ContainerBlock& cb = queue.front();
+		Container* container = cb.first;
+		int32_t parentId = cb.second;
+		queue.pop_front();
+
+		for (Item* item : container->getItemList()) {
+			propWriteStream.clear();
+			item->serializeAttr(propWriteStream);
+
+			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}", playerId, parentId, runningId, item->getID(), item->getSubType(), db.escapeString(propWriteStream.getStream())))) {
+				return false;
+			}
+
+			Container* subContainer = item->getContainer();
+			if (subContainer) {
+				queue.emplace_back(subContainer, runningId);
+			}
+
+			++runningId; // Always increment SID upwards
 		}
 	}
 	return query_insert.execute();
@@ -770,6 +879,33 @@ bool IOLoginData::savePlayer(Player* player)
 	if (!saveItems(player, itemList, depotQuery, propWriteStream)) {
 		return false;
 	}
+
+	// save reward items
+	if (!db.executeQuery(fmt::format("DELETE FROM `player_rewarditems` WHERE `player_id` = {:d}", player->getGUID()))) {
+		return false;
+	}
+
+	DBInsert rewardQuery("INSERT INTO `player_rewarditems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`) VALUES ");
+	itemList.clear();
+
+	int32_t pidCounter = 1;
+
+	for (Item* item : player->getRewardChest().getItemList()) {
+		if (Container* container = item->getContainer()) {
+			int32_t currentPid = pidCounter++;
+			for (Item* subItem : container->getItemList()) {
+				itemList.emplace_back(currentPid, subItem);
+			}
+		}
+		else {
+			itemList.emplace_back(0, item);
+		}
+	}
+
+	if (!saveItems(player, itemList, rewardQuery, propWriteStream)) {
+		return false;
+	}
+
 
 	//save inbox items
 	if (!db.executeQuery(fmt::format("DELETE FROM `player_inboxitems` WHERE `player_id` = {:d}", player->getGUID()))) {

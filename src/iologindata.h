@@ -43,6 +43,8 @@ class IOLoginData
 
 		static void updatePremiumTime(uint32_t accountId, time_t endTime);
 
+		static bool addRewardItems(uint32_t playerId, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream);
+
 	private:
 		using ItemMap = std::map<uint32_t, std::pair<Item*, uint32_t>>;
 
