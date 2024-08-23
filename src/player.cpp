@@ -15,6 +15,7 @@
 #include "movement.h"
 #include "scheduler.h"
 #include "weapons.h"
+#include "rewardchest.h"
 
 extern ConfigManager g_config;
 extern Game g_game;
@@ -897,6 +898,15 @@ uint32_t Player::getDepotItemCount()
 		}
 	}
 	return counter;
+}
+
+RewardChest& Player::getRewardChest()
+{
+	if (!rewardChest) {
+		rewardChest = std::make_shared<RewardChest>(ITEM_REWARD_CHEST);
+		RewardChest* rewardChest = new RewardChest(ITEM_REWARD_CHEST);
+	}
+	return *rewardChest;
 }
 
 void Player::sendCancelMessage(ReturnValue message) const

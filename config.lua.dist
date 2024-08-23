@@ -143,6 +143,13 @@ rateLoot = 2
 rateMagic = 3
 rateSpawn = 1
 
+-- Rates for reward boss system
+-- If a player meets their share of the expectedScore (totalScore/contributors), they receive a lootRate according to the rewardBaseRate.
+rewardBaseRate = 1
+rewardRateDamageDone = 1
+rewardRateDamageTaken = 0.5
+rewardRateHealingDone = 0.3
+
 -- Monster Despawn Config
 -- despawnRange is the amount of floors a monster can be from its spawn position
 -- despawnRadius is how many tiles away it can be from its spawn position

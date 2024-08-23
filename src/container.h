@@ -14,6 +14,7 @@ class Container;
 class DepotChest;
 class DepotLocker;
 class StoreInbox;
+class RewardChest;
 
 class ContainerIterator
 {
@@ -66,6 +67,13 @@ class Container : public Item, public Cylinder
 		virtual const StoreInbox* getStoreInbox() const {
 			return nullptr;
 		}
+		
+		virtual RewardChest* getRewardChest() {
+			return nullptr;
+		}
+		virtual const RewardChest* getRewardChest() const {
+			return nullptr;
+		}
 
 		Attr_ReadValue readAttr(AttrTypes_t attr, PropStream& propStream) override;
 		bool unserializeItemNode(OTB::Loader& loader, const OTB::Node& node, PropStream& propStream) override;
@@ -103,6 +111,7 @@ class Container : public Item, public Cylinder
 		void addItem(Item* item);
 		Item* getItemByIndex(size_t index) const;
 		bool isHoldingItem(const Item* item) const;
+		bool isRewardCorpse() const;
 
 		uint32_t getItemHoldingCount() const;
 		uint32_t getWeight() const override final;

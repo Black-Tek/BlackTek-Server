@@ -989,6 +989,8 @@ itemAttrTypes stringToItemAttribute(const std::string& str)
 		return ITEM_ATTRIBUTE_CLASSIFICATION;
 	} else if (str == "tier") {
 		return ITEM_ATTRIBUTE_TIER;
+	} else if (str == "rewardid") {
+		return ITEM_ATTRIBUTE_REWARDID;
 	}
 	return ITEM_ATTRIBUTE_NONE;
 }
@@ -1222,6 +1224,9 @@ const char* getReturnMessage(ReturnValue value)
 
 		case RETURNVALUE_YOUCANNOTUSETHISBED:
 			return "This bed can't be used, but Premium Account players can rent houses and sleep in beds there to regain health and mana.";
+			
+		case RETURNVALUE_REWARDCHESTEMPTY:
+			return "The chest is currently empty. You did not\ntake part in any battles in the last seven\ndays or already claimed your reward.";
 
 		case RETURNVALUE_QUIVERAMMOONLY:
 			return "This quiver only holds arrows and bolts.\nYou cannot put any other items in it.";

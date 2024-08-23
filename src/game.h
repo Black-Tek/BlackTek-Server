@@ -117,6 +117,23 @@ class Game
 
 		static std::string getTradeErrorDescription(ReturnValue ret, Item* item);
 
+		// Struct to store damage info for a rewardboss
+		struct PlayerScoreInfo {
+			int32_t damageDone = 0;   // Damage dealt by the player to the boss
+			int32_t damageTaken = 0;  // Damage taken by the player from the boss
+			int32_t healingDone = 0;  // Healing done to players near boss
+		};
+
+		// Struct to store contribution info for a rewardboss
+		struct RewardBossContributionInfo {
+			std::unordered_map<uint32_t, PlayerScoreInfo> playerScoreTable;  // Map of player GUIDs to PlayerScoreInfo
+		};
+
+		// Map to track the contributions of players to different rewardbosses
+		std::unordered_map<uint32_t, RewardBossContributionInfo> rewardBossTracking;
+
+		void resetDamageTracking(uint32_t monsterId);  // Function to reset damage tracking for a specific monster
+
 		/**
 		  * Returns a creature based on the unique creature identifier
 		  * \param id is the unique creature id to get a creature pointer to
