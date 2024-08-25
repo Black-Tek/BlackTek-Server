@@ -1,6 +1,42 @@
 version: "3.7"
 
 services:
+
+  database:
+    container_name: database
+    image: mariadb:latest
+    restart: unless-stopped
+    env_file:
+      - '.env'
+    networks:
+      - canary
+    ports:
+      - 3306:3306
+    volumes:
+      - 'canary:/var/lib/mysql'
+      - ./schema.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  login:
+    container_name: login
+    image: ghcr.io/tibia-oce/login-server:0.1.0
+    restart: unless-stopped
+    networks:
+      - canary
+    depends_on:
+      - database
+      - server
+    ports:
+      - 80:80
+      - 9090:9090
+    env_file:
+      - '.env'
+
   server:
     build:
       context: .
@@ -8,5 +44,31 @@ services:
     volumes:
       - .:/srv
     ports:
-      - "7171:7171"
-      - "7172:7172"
+      - 7171:7171
+      - 7172:7172
+    networks:
+      - canary
+    depends_on:
+      - database
+    env_file:
+      - '.env'
+
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin
+    restart: always
+    env_file:
+      - '.env'
+    networks:
+      - canary
+    ports:
+      - 5001:80
+    depends_on:
+      - database
+
+volumes:
+  canary:
+
+networks:
+  canary:
+    driver: bridge

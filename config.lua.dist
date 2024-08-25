@@ -19,11 +19,12 @@ expFromPlayersLevelRange = 75
 -- Connection Config
 -- NOTE: maxPlayers set to 0 means no limit
 -- NOTE: allowWalkthrough is only applicable to players
-ip = "127.0.0.1"
+ip = os.getenv("SERVER_IP") or "127.0.0.1"
 bindOnlyGlobalAddress = false
-loginProtocolPort = 7171
-gameProtocolPort = 7172
-statusProtocolPort = 7171
+loginProtocolPort = tonumber(os.getenv("STATUS_PROTOCOL_PORT") or "7171")
+statusProtocolPort = tonumber(os.getenv("STATUS_PROTOCOL_PORT") or "7171")
+gameProtocolPort = tonumber(os.getenv("GAME_PROTOCOL_PORT") or "7172")
+bindOnlyGlobalAddress = false
 maxPlayers = 0
 motd = "Welcome to The Black Tek Server!"
 onePlayerOnlinePerAccount = true
@@ -66,12 +67,12 @@ checkExpiredMarketOffersEachMinutes = 60
 maxMarketOffersAtATimePerPlayer = 100
 
 -- MySQL
-mysqlHost = "127.0.0.1"
-mysqlUser = "blacktekserver"
-mysqlPass = ""
-mysqlDatabase = "blacktekserver"
+mysqlHost = "database"
+mysqlUser = "forgottenserver"
+mysqlPass = "forgottenserver"
+mysqlDatabase = "forgottenserver"
 mysqlPort = 3306
-mysqlSock = ""
+mysqlSock = "/var/run/mysqld/mysqld.sock"
 
 -- Misc.
 -- NOTE: classicAttackSpeed set to true makes players constantly attack at regular
