@@ -1,12 +1,12 @@
 name: Build and Setup Project
 
 on:
-  push:
-    branches:
-      - master
+  # push:
+  #   branches:
+  #     - master
   pull_request:
     branches:
-      - master
+    - master
 
 jobs:
   build:

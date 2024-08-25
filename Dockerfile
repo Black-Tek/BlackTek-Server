@@ -33,7 +33,7 @@ FROM ubuntu:22.04
 COPY --from=build /usr/src/bts/Black-Tek-Server /bin/bts
 COPY data /srv/data/
 COPY LICENSE README.md *.dist *.sql key.pem /srv/
-COPY config.lua.dist /srv/canary/config.lua
+COPY config.lua.dist /srv/config.lua
 
 EXPOSE 7171 7172
 WORKDIR /srv
