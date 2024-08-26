@@ -887,43 +887,32 @@ BlockType_t Creature::blockHit(Creature* attacker, CombatType_t combatType, int3
 				}
 
 				if (item->hasImbuements() && blockType == BLOCK_NONE) {
-					Combat imbueCombat;
-					CombatParams imbueParams;
-					CombatDamage imbueDamage;
-					imbueParams.aggressive = true;
-					imbueParams.ignoreResistances = false;
-					imbueParams.blockedByArmor = false;
-					imbueParams.blockedByShield = false;
-					imbueDamage.blockType = BLOCK_NONE;
-					imbueDamage.origin = ORIGIN_IMBUEMENT;
-					int32_t conversionAmount = 0;
+					
 					for (auto imbuement : item->getImbuements()) {
-						conversionAmount = std::round(damage * (imbuement->value / 100.));
-						imbueDamage.primary.value = conversionAmount;
+
+						CombatDamage imbueDamage;
+						imbueDamage.blockType = BLOCK_NONE;
+						imbueDamage.origin = ORIGIN_IMBUEMENT;
+
+						auto conversionAmount = std::round(damage * (imbuement->value / 100.));
 						int32_t damageDifference = 0;
 						switch (imbuement->imbuetype) {
 						case IMBUEMENT_TYPE_FIRE_DAMAGE:
-							imbueParams.combatType = COMBAT_FIREDAMAGE;
 							imbueDamage.primary.type = COMBAT_FIREDAMAGE;
 							break;
 						case IMBUEMENT_TYPE_ENERGY_DAMAGE:
-							imbueParams.combatType = COMBAT_ENERGYDAMAGE;
 							imbueDamage.primary.type = COMBAT_ENERGYDAMAGE;
 							break;
 						case IMBUEMENT_TYPE_EARTH_DAMAGE:
-							imbueParams.combatType = COMBAT_EARTHDAMAGE;
 							imbueDamage.primary.type = COMBAT_EARTHDAMAGE;
 							break;
 						case IMBUEMENT_TYPE_ICE_DAMAGE:
-							imbueParams.combatType = COMBAT_ICEDAMAGE;
 							imbueDamage.primary.type = COMBAT_ICEDAMAGE;
 							break;
 						case IMBUEMENT_TYPE_HOLY_DAMAGE:
-							imbueParams.combatType = COMBAT_HOLYDAMAGE;
 							imbueDamage.primary.type = COMBAT_HOLYDAMAGE;
 							break;
 						case IMBUEMENT_TYPE_DEATH_DAMAGE:
-							imbueParams.combatType = COMBAT_DEATHDAMAGE;
 							imbueDamage.primary.type = COMBAT_DEATHDAMAGE;
 							break;
 						default:
@@ -931,10 +920,8 @@ BlockType_t Creature::blockHit(Creature* attacker, CombatType_t combatType, int3
 						}
 
 						if (conversionAmount > 0) {
-							imbueDamage.primary.value = conversionAmount;
-							imbueCombat.doTargetCombat(attacker, this, imbueDamage, imbueParams);
-							imbueDamage.primary.value = 0;
-							imbueDamage.primary.type = COMBAT_NONE;
+							imbueDamage.primary.value -= conversionAmount;
+							g_game.combatChangeHealth(attacker, this, imbueDamage);
 							damageDifference = damage - conversionAmount;
 							if (damageDifference < 0) {
 								damage = (-conversionAmount);
