@@ -9,11 +9,11 @@ services:
     env_file:
       - '.env'
     networks:
-      - canary
+      - tibia
     ports:
       - 3306:3306
     volumes:
-      - 'canary:/var/lib/mysql'
+      - 'tibia:/var/lib/mysql'
       - ./schema.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD", "healthcheck.sh"]
@@ -22,32 +22,16 @@ services:
       timeout: 5s
       retries: 3
 
-  login:
-    container_name: login
-    image: ghcr.io/tibia-oce/login-server:0.1.0
-    restart: unless-stopped
-    networks:
-      - canary
-    depends_on:
-      - database
-      - server
-    ports:
-      - 80:80
-      - 9090:9090
-    env_file:
-      - '.env'
-
   server:
+    container_name: server
     build:
       context: .
     restart: always
-    volumes:
-      - .:/srv
     ports:
       - 7171:7171
       - 7172:7172
     networks:
-      - canary
+      - tibia
     depends_on:
       - database
     env_file:
@@ -60,15 +44,15 @@ services:
     env_file:
       - '.env'
     networks:
-      - canary
+      - tibia
     ports:
       - 5001:80
     depends_on:
       - database
 
 volumes:
-  canary:
+  tibia:
 
 networks:
-  canary:
+  tibia:
     driver: bridge
