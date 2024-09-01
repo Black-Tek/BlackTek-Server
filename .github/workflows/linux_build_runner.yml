@@ -3,7 +3,7 @@ name: Linux Build
 on: [workflow_dispatch, pull_request, push]
 
 jobs:
-  pull_build:
+   linux_build:
     strategy:
       fail-fast: false
       matrix:
