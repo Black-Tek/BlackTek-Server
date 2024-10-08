@@ -2047,7 +2047,7 @@ BlockType_t Player::blockHit(Creature* attacker, CombatType_t combatType, int32_
 								damage -= std::round(damage * (imbuement->value / 100.));
 							}
 							break;
-						case ImbuementType::IMBUEMENT_TYPE_ICE_DAMAGE:
+						case ImbuementType::IMBUEMENT_TYPE_ICE_RESIST:
 							if (combatType == COMBAT_ICEDAMAGE) {
 								damage -= std::round(damage * (imbuement->value / 100.));
 							}
