@@ -16515,8 +16515,17 @@ int LuaScriptInterface::luaSpellVocation(lua_State* L)
 	} else {
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		for (int i = 0; i < parameters; ++i) {
-			auto vocList = explodeString(getString(L, 2 + i), ";");
-			spell->addVocMap(g_vocations.getVocationId(vocList[0]), vocList.size() > 1 ? booleanString(vocList[1]) : false);
+			std::string vocData = getString(L, 2 + i);
+			auto vocParts = explodeString(vocData, ";");
+
+			std::string name = std::string(vocParts[0]);
+			bool description = false;
+
+			if (vocParts.size() > 1) {
+				description = booleanString(vocParts[1]);
+			}
+
+			spell->addVocMap(g_vocations.getVocationId(name), description);
 		}
 		pushBoolean(L, true);
 	}

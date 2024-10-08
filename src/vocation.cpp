@@ -118,9 +118,26 @@ Vocation* Vocations::getVocation(uint16_t id)
 	return &it->second;
 }
 
+std::string trimString(const std::string& str) {
+	const auto strBegin = str.find_first_not_of(" \t");
+	if (strBegin == std::string::npos) return "";
+
+	const auto strEnd = str.find_last_not_of(" \t");
+	const auto strRange = strEnd - strBegin + 1;
+
+	return str.substr(strBegin, strRange);
+}
+
 int32_t Vocations::getVocationId(std::string_view name) const
 {
-	auto it = std::find_if(vocationsMap.begin(), vocationsMap.end(), [=](auto it) { return caseInsensitiveEqual(name, it.second.name); });
+	std::string trimmedName = trimString(std::string(name));
+
+	auto it = std::find_if(vocationsMap.begin(), vocationsMap.end(),
+		[&trimmedName](const auto& pair) {
+			bool result = caseInsensitiveEqual(trimmedName, pair.second.name);
+			return result;
+		});
+
 	return it != vocationsMap.end() ? it->first : -1;
 }
 
