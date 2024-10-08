@@ -932,7 +932,7 @@ BlockType_t Creature::blockHit(Creature* attacker, CombatType_t combatType, int3
 								} else {
 									imbueDamage.primary.value = (0 - conversionAmount);
 								}
-								damage == 0;
+								damage = 0;
 							} else {
 								imbueDamage.primary.value = (0 - conversionAmount);
 								// this might be confusing, but since we know damage is a negative number
