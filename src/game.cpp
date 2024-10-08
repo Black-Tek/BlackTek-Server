@@ -4363,7 +4363,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 				rewardBossTracking[monsterId] = RewardBossContributionInfo();
 			}
 
-			if (attacker->getPlayer()) {
+			if (attacker && attacker->getPlayer()) {
 				uint32_t playerGuid = attacker->getPlayer()->getGUID();
 				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageDone += realDamage * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE);
 			}
@@ -4377,7 +4377,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 				rewardBossTracking[monsterId] = RewardBossContributionInfo();
 			}
 
-			if (target->getPlayer()) {
+			if (target && target->getPlayer()) {
 				uint32_t playerGuid = target->getPlayer()->getGUID();
 				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realDamage * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN);
 			}
