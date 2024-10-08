@@ -673,6 +673,7 @@ void Game::playerMoveThing(uint32_t playerId, const Position& fromPos,
 			SchedulerTask* task = createSchedulerTask(MOVE_CREATURE_INTERVAL, [=, this, playerID = player->getID(), creatureID = movingCreature->getID()]() {
 				playerMoveCreatureByID(playerID, creatureID, fromPos, toPos);
 				});
+			player->setNextActionTask(task);
 		} else {
 			playerMoveCreature(player, movingCreature, movingCreature->getPosition(), tile);
 		}
