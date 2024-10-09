@@ -36,6 +36,7 @@ RUN /bts/vcpkg/vcpkg install && \
     premake5 gmake2 && \
     make -j$(nproc) config=debug_64
 
+# Stage 3: Final runtime image
 FROM ubuntu:22.04 AS final
 
 COPY --from=build /usr/src/bts/Black-Tek-Server /app/Black-Tek-Server
