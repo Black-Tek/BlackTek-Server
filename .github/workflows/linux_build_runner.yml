@@ -1,69 +1,55 @@
-name: Build and Setup Project
+name: Linux Build
 
 on:
-  # push:
-  #   branches:
-  #     - master
   pull_request:
     branches:
     - master
+  workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+   linux_build:
     strategy:
+      fail-fast: false
       matrix:
-        distro: [ubuntu-latest, debian, arch, fedora, gentoo]
+        os: [ubuntu-24.04, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+
     steps:
     - name: Set up Git
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
-    - name: Install Dependencies (Ubuntu/Debian)
-      if: matrix.distro == 'ubuntu-latest' || matrix.distro == 'debian'
+    - name: Install Uuid
       run: |
-        sudo apt-get update
-        sudo apt-get install -y git build-essential uuid-dev
+        if ! pkg-config --exists uuid; then
+          echo "libuuid is not installed. Installing it..."
+          sudo apt-get update
+          sudo apt-get install -y uuid-dev
+        else
+          echo "libuuid is already installed."
+        fi
 
-    - name: Install Dependencies (Arch)
-      if: matrix.distro == 'arch'
-      run: |
-        sudo pacman -Syu --noconfirm
-        sudo pacman -S --noconfirm git base-devel util-linux
+    - name: Ensure Correct VCPKG Baseline
+      uses: lukka/run-vcpkg@main
+      with:
+        vcpkgGitURL: "https://github.com/microsoft/vcpkg.git"
+        vcpkgGitCommitId: ${{ steps.vcpkg-step.outputs.vcpkgGitCommitId }}
 
-    - name: Install Dependencies (Fedora)
-      if: matrix.distro == 'fedora'
-      run: |
-        sudo dnf install -y git make uuid-devel
-
-    - name: Install Dependencies (Gentoo)
-      if: matrix.distro == 'gentoo'
-      run: |
-        sudo emerge --sync
-        sudo emerge --ask dev-vcs/git sys-apps/util-linux sys-devel/make
-
-    - name: Build Premake
+    - name: Setup Premake
       run: |
         git clone https://github.com/premake/premake-core
         cd premake-core
         make -f Bootstrap.mak linux
-
-    - name: Set up Vcpkg
-      run: |
-        git clone https://github.com/microsoft/vcpkg ../vcpkg
-        cd vcpkg
-        ./bootstrap-vcpkg.sh
-
-    - name: Configure Project
-      run: |
-        cd BlackTek-Server
-        ../premake-core/bin/release/premake5 gmake2
+        cd ..
+        ./premake-core/bin/release/premake5 gmake2
 
     - name: Install Vcpkg Libraries
       run: |
-        cd BlackTek-Server
-        ../vcpkg/vcpkg install
-
-    - name: Compile Project
+        vcpkg install
+        
+    - name: Compile Release 64
       run: |
-        cd BlackTek-Server
         make -j $(nproc) config=release_64
+
+    - name: Compile Debug 64
+      run: |
+        make -j $(nproc) config=debug_64

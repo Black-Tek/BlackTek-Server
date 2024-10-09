@@ -11,7 +11,8 @@ RUN apt update && apt install -y \
     zip \
     tar \
     git \
-    pkg-config
+    pkg-config \
+    cmake
 
 RUN mkdir /bts && \
     cd /bts && \

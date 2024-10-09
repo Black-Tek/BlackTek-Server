@@ -2136,6 +2136,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Game", "getPlayerCount", LuaScriptInterface::luaGameGetPlayerCount);
 	registerMethod("Game", "getNpcCount", LuaScriptInterface::luaGameGetNpcCount);
 	registerMethod("Game", "getMonsterTypes", LuaScriptInterface::luaGameGetMonsterTypes);
+	registerMethod("Game", "getCurrencyItems", LuaScriptInterface::luaGameGetCurrencyItems);
 
 	registerMethod("Game", "getTowns", LuaScriptInterface::luaGameGetTowns);
 	registerMethod("Game", "getHouses", LuaScriptInterface::luaGameGetHouses);
@@ -2318,6 +2319,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Item", "getCharges", LuaScriptInterface::luaItemGetCharges);
 	registerMethod("Item", "getFluidType", LuaScriptInterface::luaItemGetFluidType);
 	registerMethod("Item", "getWeight", LuaScriptInterface::luaItemGetWeight);
+	registerMethod("Item", "getWorth", LuaScriptInterface::luaItemGetWorth);
 
 	registerMethod("Item", "getSubType", LuaScriptInterface::luaItemGetSubType);
 
@@ -2865,6 +2867,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("ItemType", "getFluidSource", LuaScriptInterface::luaItemTypeGetFluidSource);
 	registerMethod("ItemType", "getCapacity", LuaScriptInterface::luaItemTypeGetCapacity);
 	registerMethod("ItemType", "getWeight", LuaScriptInterface::luaItemTypeGetWeight);
+	registerMethod("ItemType", "getWorth", LuaScriptInterface::luaItemTypeGetWorth);
 
 	registerMethod("ItemType", "getHitChance", LuaScriptInterface::luaItemTypeGetHitChance);
 	registerMethod("ItemType", "getShootRange", LuaScriptInterface::luaItemTypeGetShootRange);
@@ -4561,6 +4564,22 @@ int LuaScriptInterface::luaGameGetMonsterTypes(lua_State* L)
 		pushUserdata<MonsterType>(L, &mType.second);
 		setMetatable(L, -1, "MonsterType");
 		lua_setfield(L, -2, mType.first.c_str());
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaGameGetCurrencyItems(lua_State* L)
+{
+	// Game.getCurrencyItems()
+	const auto& currencyItems = Item::items.currencyItems;
+	size_t size = currencyItems.size();
+	lua_createtable(L, size, 0);
+
+	for (const auto& it : currencyItems) {
+		const ItemType& itemType = Item::items[it.second];
+		pushUserdata<const ItemType>(L, &itemType);
+		setMetatable(L, -1, "ItemType");
+		lua_rawseti(L, -2, size--);
 	}
 	return 1;
 }
@@ -6763,6 +6782,18 @@ int LuaScriptInterface::luaItemGetWeight(lua_State* L)
 	Item* item = getUserdata<Item>(L, 1);
 	if (item) {
 		lua_pushnumber(L, item->getWeight());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemGetWorth(lua_State* L)
+{
+	// item:getWorth()
+	Item* item = getUserdata<Item>(L, 1);
+	if (item) {
+		lua_pushnumber(L, item->getWorth());
 	} else {
 		lua_pushnil(L);
 	}
@@ -13132,6 +13163,19 @@ int LuaScriptInterface::luaItemTypeGetWeight(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaItemTypeGetWorth(lua_State* L)
+{
+	// itemType:getWorth()
+	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
+	if (!itemType) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushnumber(L, itemType->worth);
+	return 1;
+}
+
 int LuaScriptInterface::luaItemTypeGetHitChance(lua_State* L)
 {
 	// itemType:getHitChance()
@@ -16471,8 +16515,17 @@ int LuaScriptInterface::luaSpellVocation(lua_State* L)
 	} else {
 		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
 		for (int i = 0; i < parameters; ++i) {
-			auto vocList = explodeString(getString(L, 2 + i), ";");
-			spell->addVocMap(g_vocations.getVocationId(vocList[0]), vocList.size() > 1 ? booleanString(vocList[1]) : false);
+			std::string vocData = getString(L, 2 + i);
+			auto vocParts = explodeString(vocData, ";");
+
+			std::string name = std::string(vocParts[0]);
+			bool description = false;
+
+			if (vocParts.size() > 1) {
+				description = booleanString(vocParts[1]);
+			}
+
+			spell->addVocMap(g_vocations.getVocationId(name), description);
 		}
 		pushBoolean(L, true);
 	}

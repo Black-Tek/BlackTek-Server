@@ -887,59 +887,59 @@ BlockType_t Creature::blockHit(Creature* attacker, CombatType_t combatType, int3
 				}
 
 				if (item->hasImbuements() && blockType == BLOCK_NONE) {
-					Combat imbueCombat;
-					CombatParams imbueParams;
-					CombatDamage imbueDamage;
-					imbueParams.aggressive = true;
-					imbueParams.ignoreResistances = false;
-					imbueParams.blockedByArmor = false;
-					imbueParams.blockedByShield = false;
-					imbueDamage.blockType = BLOCK_NONE;
-					imbueDamage.origin = ORIGIN_IMBUEMENT;
-					int32_t conversionAmount = 0;
-					for (auto imbuement : item->getImbuements()) {
-						conversionAmount = std::round(damage * (imbuement->value / 100.));
-						imbueDamage.primary.value = conversionAmount;
-						int32_t damageDifference = 0;
-						switch (imbuement->imbuetype) {
-						case IMBUEMENT_TYPE_FIRE_DAMAGE:
-							imbueParams.combatType = COMBAT_FIREDAMAGE;
-							imbueDamage.primary.type = COMBAT_FIREDAMAGE;
-							break;
-						case IMBUEMENT_TYPE_ENERGY_DAMAGE:
-							imbueParams.combatType = COMBAT_ENERGYDAMAGE;
-							imbueDamage.primary.type = COMBAT_ENERGYDAMAGE;
-							break;
-						case IMBUEMENT_TYPE_EARTH_DAMAGE:
-							imbueParams.combatType = COMBAT_EARTHDAMAGE;
-							imbueDamage.primary.type = COMBAT_EARTHDAMAGE;
-							break;
-						case IMBUEMENT_TYPE_ICE_DAMAGE:
-							imbueParams.combatType = COMBAT_ICEDAMAGE;
-							imbueDamage.primary.type = COMBAT_ICEDAMAGE;
-							break;
-						case IMBUEMENT_TYPE_HOLY_DAMAGE:
-							imbueParams.combatType = COMBAT_HOLYDAMAGE;
-							imbueDamage.primary.type = COMBAT_HOLYDAMAGE;
-							break;
-						case IMBUEMENT_TYPE_DEATH_DAMAGE:
-							imbueParams.combatType = COMBAT_DEATHDAMAGE;
-							imbueDamage.primary.type = COMBAT_DEATHDAMAGE;
-							break;
-						default:
-							break;
-						}
+					
+					for (auto& imbuement : item->getImbuements()) {
+
+						auto conversionAmount = std::abs(std::round(damage * (imbuement->value / 100.)));
 
 						if (conversionAmount > 0) {
-							imbueDamage.primary.value = conversionAmount;
-							imbueCombat.doTargetCombat(attacker, this, imbueDamage, imbueParams);
-							imbueDamage.primary.value = 0;
-							imbueDamage.primary.type = COMBAT_NONE;
-							damageDifference = damage - conversionAmount;
-							if (damageDifference < 0) {
-								damage = (-conversionAmount);
+							auto trueDamage = std::abs(damage);
+							auto difference = (trueDamage - conversionAmount);
+
+							CombatDamage imbueDamage;
+							imbueDamage.blockType = BLOCK_NONE;
+							imbueDamage.origin = ORIGIN_IMBUEMENT;
+
+							switch (imbuement->imbuetype) {
+								case IMBUEMENT_TYPE_FIRE_DAMAGE:
+									imbueDamage.primary.type = COMBAT_FIREDAMAGE;
+									break;
+								case IMBUEMENT_TYPE_ENERGY_DAMAGE:
+									imbueDamage.primary.type = COMBAT_ENERGYDAMAGE;
+									break;
+								case IMBUEMENT_TYPE_EARTH_DAMAGE:
+									imbueDamage.primary.type = COMBAT_EARTHDAMAGE;
+									break;
+								case IMBUEMENT_TYPE_ICE_DAMAGE:
+									imbueDamage.primary.type = COMBAT_ICEDAMAGE;
+									break;
+								case IMBUEMENT_TYPE_HOLY_DAMAGE:
+									imbueDamage.primary.type = COMBAT_HOLYDAMAGE;
+									break;
+								case IMBUEMENT_TYPE_DEATH_DAMAGE:
+									imbueDamage.primary.type = COMBAT_DEATHDAMAGE;
+									break;
+								default:
+									break;
 							}
-							damageDifference = 0;
+							
+							// Here we keep the damage from being reduced so much it becomes healing,
+							// while also considering the damage the imbuement does, and limiting it
+							// to only do as much as actually convertable.
+							if (difference <= 0) {
+								if (difference < 0) {
+									imbueDamage.primary.value = (0 - trueDamage);
+								} else {
+									imbueDamage.primary.value = (0 - conversionAmount);
+								}
+								damage = 0;
+							} else {
+								imbueDamage.primary.value = (0 - conversionAmount);
+								// this might be confusing, but since we know damage is a negative number
+								// and we know that the conversion is positive, we can add them to reduce the damage.
+								damage += conversionAmount;
+							}
+							g_game.combatChangeHealth(attacker, this, imbueDamage);
 						}
 					}
 				}
