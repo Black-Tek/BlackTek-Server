@@ -7,6 +7,7 @@
     "boost-lockfree",
     "boost-system",
     "boost-variant",
+    "boost-algorithm",
     "fmt",
     {
       "name": "libiconv",

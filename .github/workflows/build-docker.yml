@@ -46,18 +46,16 @@ jobs:
         password: ${{ secrets.GHCR_TOKEN }}
 
     - name: Build and push (for tags)
-      uses: docker/build-push-action@v5
       if: github.ref_type == 'tag'
+      uses: docker/build-push-action@v5
       with:
         push: true
         tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
         platforms: linux/amd64,linux/arm64
-        build-args:  # Optional build arguments
-          VCPKG_BASELINE_COMMIT: ${{ steps.vcpkg-step.outputs.vcpkgGitCommitId }}
 
     - name: Build and push (for branches)
-      uses: docker/build-push-action@v5
       if: github.event_name == 'pull_request' || github.ref_type == 'branch'
+      uses: docker/build-push-action@v5
       with:
         push: ${{ github.event_name != 'pull_request' }}
         tags: ghcr.io/${{ github.repository }}:latest
