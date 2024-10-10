@@ -67,12 +67,12 @@ checkExpiredMarketOffersEachMinutes = 60
 maxMarketOffersAtATimePerPlayer = 100
 
 -- MySQL
-mysqlHost = "database"
-mysqlUser = "forgottenserver"
-mysqlPass = "forgottenserver"
-mysqlDatabase = "forgottenserver"
-mysqlPort = 3306
-mysqlSock = "/var/run/mysqld/mysqld.sock"
+mysqlHost = os.getenv("MYSQL_HOST") or "database"
+mysqlUser = os.getenv("MYSQL_USER") or "forgottenserver"
+mysqlPass = os.getenv("MYSQL_PASSWORD") or "forgottenserver"
+mysqlDatabase = os.getenv("MYSQL_DATABASE") or "forgottenserver"
+mysqlPort = tonumber(os.getenv("MYSQL_PORT") or "3306")
+mysqlSock = os.getenv("MYSQL_SOCK") or "/var/run/mysqld/mysqld.sock"
 
 -- Misc.
 -- NOTE: classicAttackSpeed set to true makes players constantly attack at regular
