@@ -6,36 +6,57 @@ services:
     container_name: database
     image: mariadb:latest
     restart: unless-stopped
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "/usr/bin/mysql", "--user=$$MYSQL_USER",  "--password=$$MYSQL_ROOT_PASSWORD", "--execute", "SHOW DATABASES;"]
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 10
     env_file:
-      - '.env'
+    - '.env'
     networks:
       - tibia
-    ports:
-      - 3306:3306
-    volumes:
-      - 'tibia:/var/lib/mysql'
-      - ./schema.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD", "healthcheck.sh"]
-      start_period: 10s
-      interval: 10s
-      timeout: 5s
-      retries: 3
+
+  check-db-started:
+    container_name: db-healthcheck
+    image: jwilder/dockerize:0.6.1    
+    env_file:
+      - '.env'      
+    depends_on:
+      - database          
+    command: 'dockerize -wait=tcp://database:3306 -timeout 30s'
+    networks:
+      - tibia
+
+  migrate:
+    container_name: migrations
+    image: ghcr.io/tibia-oce/migrate:latest
+    restart: "no"
+    networks:
+      - tibia
+    depends_on:
+      check-db-started:
+        condition: service_completed_successfully
+    env_file:
+      - '.env'
 
   server:
     container_name: server
     build:
       context: .
+      dockerfile: Dockerfile.amd
     restart: always
     ports:
       - 7171:7171
       - 7172:7172
     networks:
       - tibia
-    depends_on:
-      - database
     env_file:
       - '.env'
+    depends_on:
+      - migrate
 
   phpmyadmin:
     container_name: phpmyadmin
@@ -48,7 +69,7 @@ services:
     ports:
       - 5001:80
     depends_on:
-      - database
+      - migrate
 
 volumes:
   tibia:
