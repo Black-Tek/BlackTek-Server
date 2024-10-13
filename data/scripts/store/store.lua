@@ -41,6 +41,12 @@ function gameStoreInitialize()
 
     -- Equipment
     offers.addCategory(GAME_STORE, "Equipment", "Beginner Item Sets.", "item", 2331)
+    offers.addItem(GAME_STORE, "Equipment", "Dwarven Legs", "", 2504, 1, 5)
+    offers.addItem(GAME_STORE, "Equipment", "Mastermind Shield", "", 2514, 1, 5)
+    offers.addItem(GAME_STORE, "Equipment", "Boots of Haste", "", 2195, 1, 5)
+    offers.addItem(GAME_STORE, "Equipment", "Demon Helmet", "", 2493, 1, 5)
+    offers.addItem(GAME_STORE, "Equipment", "Demon Armour", "", 2494, 1, 5)
+
     offers.addItem(GAME_STORE, "Equipment", "Mage Starter Box", "Contains a full mage beginner set.", 29223, 1, 500)
     offers.addItem(GAME_STORE, "Equipment", "Paladin Starter Box", "Contains a full paladin beginner set.", 29224, 1,
         500)
@@ -67,6 +73,24 @@ function gameStoreInitialize()
     }, {
         mount = 0,
         type = 578,
+        addons = 3,
+        head = 9,
+        body = 126,
+        legs = 124,
+        feet = 116
+    }, 400)
+
+    offers.addOutfit(GAME_STORE, "Outfits", "Beggar Outfit", "Beggar", {
+        mount = 0,
+        type = 153,
+        addons = 3,
+        head = 9,
+        body = 126,
+        legs = 124,
+        feet = 116
+    }, {
+        mount = 0,
+        type = 157,
         addons = 3,
         head = 9,
         body = 126,

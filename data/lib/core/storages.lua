@@ -22,6 +22,9 @@ PlayerStorageKeys = {
 	mutatedPumpkin = 30035,
 	achievementsBase = 300000,
 	achievementsCounter = 20000,
+	--- Custom
+	templeTeleportItemCooldown = 40001,
+	houseTeleportItemCooldown = 40002,
 }
 
 GlobalStorageKeys = {

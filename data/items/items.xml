@@ -3001,9 +3001,8 @@
     <item id="2325" article="a" name="book">
         <attribute key="weight" value="1300" />
     </item>
-    <item id="2326" article="an" name="annihilation bear">
-        <attribute key="description" value="I braved the Annihilator and all I got is this lousy teddy bear." />
-        <attribute key="weight" value="4300" />
+    <item id="2326" article="an" name="house teleportation doll">
+        <attribute key="weight" value="120" />
     </item>
     <item id="2327" article="a" name="blessed ankh">
         <attribute key="description" value="You see the engraving of a white raven on its surface." />
@@ -3581,7 +3580,7 @@
         <attribute key="imbuementslots" value="3" />
     </item>
     <item id="2428" article="an" name="orcish axe">
-        <attribute key="weight" value="4500" />
+        <attribute key="weight" value="3200" />
         <attribute key="defense" value="12" />
         <attribute key="attack" value="23" />
         <attribute key="weaponType" value="axe" />
@@ -3667,7 +3666,7 @@
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2439" article="a" name="daramian mace">
-        <attribute key="weight" value="6800" />
+        <attribute key="weight" value="4800" />
         <attribute key="defense" value="12" />
         <attribute key="attack" value="21" />
         <attribute key="weaponType" value="club" />
@@ -3842,7 +3841,7 @@
         <attribute key="imbuementslots" value="2" />
     </item>
     <item id="2465" article="a" name="brass armor">
-        <attribute key="weight" value="8000" />
+        <attribute key="weight" value="3500" />
         <attribute key="armor" value="8" />
         <attribute key="slotType" value="body" />
     </item>
@@ -10677,7 +10676,7 @@
         <attribute key="weight" value="830" />
         <attribute key="description" value="It obviously shows Treasure Island including a big, red cross." />
     </item>
-    <item id="6119" article="a" name="scroll">
+    <item id="6119" article="a" name="temple teleportation scroll">
         <attribute key="weight" value="120" />
     </item>
     <item id="6120" name="Dragha's spellbook">
@@ -37870,4 +37869,5 @@
     <item id="26379" article="a" name="golden dragon tapestry" />
     <item id="26380" article="a" name="sword tapestry" />
     <item id="26381" article="a" name="brocade tapestry" />
+
 </items>
