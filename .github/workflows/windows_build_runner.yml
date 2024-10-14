@@ -1,6 +1,12 @@
+# todo: fix pathing
 name: Windows Build
 
-on: [workflow_dispatch, pull_request, push]
+on:
+  # pull_request:
+  #   branches:
+  #   - master
+  workflow_dispatch:
+
 jobs:
   job:
     name: ${{ matrix.os }}-${{ matrix.buildtype }}

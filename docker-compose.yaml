@@ -46,7 +46,9 @@ services:
     container_name: server
     build:
       context: .
-      dockerfile: Dockerfile.amd
+      dockerfile: Dockerfile
+      args:
+        RELEASE_ARCH: release_64
     restart: always
     ports:
       - 7171:7171
