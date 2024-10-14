@@ -11,7 +11,7 @@ on:
       - "src/**"
       - "data/**"
     branches:
-      - main
+      - master
 
 jobs:
   docker-image:
