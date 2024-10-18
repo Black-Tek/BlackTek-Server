@@ -121,7 +121,7 @@ jobs:
 
       - name: Semantic Release (Full Release on Push)
         id: semantic_release
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEBUG: semantic-release:*
