@@ -1,0 +1,39 @@
+name: Code Linting
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - master
+      - develop
+    paths:
+      - "src/**"
+      - "data/**"
+  push:
+    branches:
+      - master
+      - develop
+    paths:
+      - "src/**"
+      - "data/**"
+
+jobs:
+  lua:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code.
+        uses: actions/checkout@main
+
+      # todo: https://github.com/JohnnyMorganz/stylua-action/tree/v3/
+      - name: Tests
+        run: true
+
+  cpp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code.
+        uses: actions/checkout@main
+
+      # todo: https://github.com/DoozyX/clang-format-lint-action
+      - name: Tests
+        run: true

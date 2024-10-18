@@ -1,0 +1,40 @@
+name: Code Testing
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - master
+      - develop
+    paths:
+      - "src/**"
+      - "data/**"
+  push:
+    branches:
+      - master
+      - develop
+    paths:
+      - "src/**"
+      - "data/**"
+
+jobs:
+  lua:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code.
+        uses: actions/checkout@main
+
+      # todo: doesn't look like existing canary or tfs use lua testing yet
+      # consider testing on new modules instead
+      - name: Tests
+        run: true
+
+  cpp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # todo: see example https://github.com/opentibiabr/canary/tree/main/tests
+      - name: Tests
+        run: true

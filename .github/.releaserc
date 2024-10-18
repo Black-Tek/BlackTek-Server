@@ -1,0 +1,19 @@
+{
+  "branches": [
+    { "name": "master", "prerelease": false },
+    { "name": "develop", "prerelease": "rc" }
+  ],
+  "tagFormat": "v${version}",
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/github",
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "writerOpts": {
+          "headerPartial": ""
+        }
+      }
+    ]
+  ]
+}
