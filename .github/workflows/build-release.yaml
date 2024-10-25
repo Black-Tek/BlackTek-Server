@@ -18,59 +18,8 @@ on:
       - "data/**"
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      packages: write
-    strategy:
-      matrix:
-        platform: [linux/amd64, linux/arm64]
-        include:
-          - platform: linux/amd64
-            release_arch: release_64
-          - platform: linux/arm64
-            release_arch: release_arm64
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          install: true
-          driver-opts: image=moby/buildkit:latest,network=host
-
-      - name: Restore vcpkg cache
-        uses: actions/cache@v3
-        with:
-          path: /bts/vcpkg/installed
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
-          restore-keys: |
-            vcpkg-${{ runner.os }}-
-
-      - name: Restore Docker layer cache
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache
-          key: docker-cache-${{ runner.os }}-${{ matrix.platform }}-${{ hashFiles('Dockerfile', 'src/**') }}
-          restore-keys: |
-            docker-cache-${{ runner.os }}-${{ matrix.platform }}-
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: ${{ matrix.platform }}
-          build-args: |
-            RELEASE_ARCH=${{ matrix.release_arch }}
-
   release:
     runs-on: ubuntu-latest
-    needs: build
     outputs:
       release-version: ${{ steps.extract_version.outputs.RELEASE_VERSION }}
       is-prerelease: ${{ steps.prerelease_check.outputs.IS_PRERELEASE }}
@@ -163,18 +112,32 @@ jobs:
             echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
           fi
 
-  publish:
+  build:
     runs-on: ubuntu-latest
-    needs: [build, release]
+    needs: release
+    permissions:
+      packages: write
+    strategy:
+      matrix:
+        platform: [linux/amd64, linux/arm64]
+        include:
+          - platform: linux/amd64
+            release_arch: release_64
+          - platform: linux/arm64
+            release_arch: release_arm64
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-  
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-  
+        with:
+          install: true
+          driver-opts: image=moby/buildkit:latest,network=host
+            
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -182,6 +145,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
 
+      - name: Restore vcpkg cache
+        uses: actions/cache@v3
+        with:
+          path: /bts/vcpkg/installed
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+            
       # Build a comma-separated list of tags.. Always tag the image with the specific release
       # version (e.g., ghcr.io/xx/xx:v1.0.0). If the release is a pre-release (e.g.: alpha/beta),
       # add an 'rc' tag to mark it as a release candidate. If the release is a stable release, add
@@ -196,8 +167,16 @@ jobs:
             IMAGE_TAGS="$IMAGE_TAGS,ghcr.io/${{ github.repository }}:latest"
           fi
           echo "IMAGE_TAGS=${IMAGE_TAGS}" >> $GITHUB_OUTPUT
-  
-      - name: Build and Push Docker Image
+
+      - name: Restore Docker layer cache
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: docker-cache-${{ runner.os }}-${{ matrix.platform }}-${{ hashFiles('Dockerfile', 'src/**') }}
+          restore-keys: |
+            docker-cache-${{ runner.os }}-${{ matrix.platform }}-
+
+      - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -205,7 +184,6 @@ jobs:
           tags: ${{ steps.set_tags.outputs.IMAGE_TAGS }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ matrix.platform }}
           build-args: |
-            linux/amd64 RELEASE_ARCH=release_64
-            linux/arm64 RELEASE_ARCH=release_arm64
+            RELEASE_ARCH=${{ matrix.release_arch }}
