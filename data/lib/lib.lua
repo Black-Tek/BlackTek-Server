@@ -8,3 +8,8 @@ dofile('data/lib/compat/compat.lua')
 dofile('data/lib/debugging/dump.lua')
 dofile('data/lib/debugging/lua_version.lua')
 dofile('data/lib/json.lua')
+
+-- Custom
+dofile('data/lib/core/crafting.lua')
+dofile('data/lib/core/modal_window_lib.lua')
+dofile('data/lib/core/vocation_id.lua')
