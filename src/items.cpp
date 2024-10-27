@@ -184,6 +184,7 @@ const std::unordered_map<std::string, ItemParseAttributes_t> ItemParseAttributes
 	{"blocking", ITEM_PARSE_BLOCKING},
 	{"allowdistread", ITEM_PARSE_ALLOWDISTREAD},
 	{"storeitem", ITEM_PARSE_STOREITEM},
+	{"loottype", ITEM_PARSE_LOOTTYPE},
 	{"imbuementslots", 	ITEM_PARSE_IMBUEMENT_SLOT},
 	{"worth", ITEM_PARSE_WORTH},
 };
@@ -1681,6 +1682,40 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 					} else {
 						currencyItems.insert(CurrencyMap::value_type(worth, id));
 						it.worth = worth;
+					}
+					break;
+				}
+				case ITEM_PARSE_LOOTTYPE: {
+					tmpStrValue = asLowerCaseString(valueAttribute.as_string());
+					if (tmpStrValue == "coins") {
+						it.lootType = LOOT_CATEGORY_GOLD;
+					}
+					else if (tmpStrValue == "valuables") {
+						it.lootType = LOOT_CATEGORY_VALUABLES;
+					}
+					else if (tmpStrValue == "equipment") {
+						it.lootType = LOOT_CATEGORY_EQUIPMENT;
+					}
+					else if (tmpStrValue == "potions") {
+						it.lootType = LOOT_CATEGORY_POTIONS;
+					}
+					else if (tmpStrValue == "ammunition") {
+						it.lootType = LOOT_CATEGORY_AMMUNITION;
+					}
+					else if (tmpStrValue == "creature products") {
+						it.lootType = LOOT_CATEGORY_CREATURE_PRODUCTS;
+					}
+					else if (tmpStrValue == "food") {
+						it.lootType = LOOT_CATEGORY_FOOD;
+					}
+					else if (tmpStrValue == "special") {
+						it.lootType = LOOT_CATEGORY_SPECIAL;
+					}
+					else if (tmpStrValue == "misc") {
+						it.lootType = LOOT_CATEGORY_MISC;
+					}
+					else {
+						std::cout << "[Warning - Items::parseItemNode] Unknown lootType: " << valueAttribute.as_string() << std::endl;
 					}
 					break;
 				}

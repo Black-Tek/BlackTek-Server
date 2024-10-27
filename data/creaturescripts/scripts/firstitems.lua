@@ -3,6 +3,9 @@ local common_items = {{2460, 1}, -- brass helmet
 {2478, 1}, -- brass legs
 {2643, 1}, -- leather boots
 {1988, 1}, -- backpack
+{26414, 1}, -- beginner's pickaxe
+{26588, 1}, -- beginner's axe
+{26712, 1}, -- beginner's scissor
 {2120, 1}, -- rope
 {2554, 1}, -- shovel
 {6119, 1}, -- temple teleporter

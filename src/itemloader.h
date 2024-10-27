@@ -24,7 +24,6 @@ enum itemgroup_t {
 	ITEM_GROUP_DOOR, //deprecated
 	ITEM_GROUP_DEPRECATED,
 	ITEM_GROUP_PODIUM,
-
 	ITEM_GROUP_LAST
 };
 
