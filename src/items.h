@@ -199,6 +199,7 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_BLOCKING,
 	ITEM_PARSE_ALLOWDISTREAD,
 	ITEM_PARSE_STOREITEM,
+	ITEM_PARSE_LOOTTYPE,
 	ITEM_PARSE_IMBUEMENT_SLOT,
 	ITEM_PARSE_WORTH,
 };
@@ -396,6 +397,7 @@ class ItemType
 		ShootType_t shootType = CONST_ANI_NONE;
 		RaceType_t corpseType = RACE_NONE;
 		FluidTypes_t fluidSource = FLUID_NONE;
+		LootCategory_t lootType = LOOT_CATEGORY_MISC;
 
 		uint8_t floorChange = 0;
 		uint8_t alwaysOnTopOrder = 0;

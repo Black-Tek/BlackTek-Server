@@ -991,6 +991,8 @@ itemAttrTypes stringToItemAttribute(const std::string& str)
 		return ITEM_ATTRIBUTE_TIER;
 	} else if (str == "rewardid") {
 		return ITEM_ATTRIBUTE_REWARDID;
+	} else if (str == "lootcategory") {
+		return ITEM_ATTRIBUTE_LOOTCATEGORY;
 	}
 	return ITEM_ATTRIBUTE_NONE;
 }

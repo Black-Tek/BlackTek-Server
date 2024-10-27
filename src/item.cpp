@@ -672,6 +672,16 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 			break;
 		}
 
+		case ATTR_LOOT_CATEGORY: {
+			uint32_t lootCategory;
+			if (!propStream.read<uint32_t>(lootCategory)) {
+				return ATTR_READ_ERROR;
+			}
+
+			setIntAttr(ITEM_ATTRIBUTE_LOOTCATEGORY, lootCategory);
+			break;
+		}
+
 		case ATTR_REFLECT: {
 			uint16_t size;
 			if (!propStream.read<uint16_t>(size)) {
@@ -723,6 +733,15 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 				}
 
 				addImbuement(imb, false);
+			}
+			break;
+		}
+
+		//12+ compatibility
+		case ATTR_OPENCONTAINER:
+		case ATTR_PODIUMOUTFIT: {
+			if (!propStream.skip(15)) {
+				return ATTR_READ_ERROR;
 			}
 			break;
 		}
@@ -970,6 +989,11 @@ void Item::serializeAttr(PropWriteStream& propWriteStream) const
 	if (hasAttribute(ITEM_ATTRIBUTE_STOREITEM)) {
 		propWriteStream.write<uint8_t>(ATTR_STOREITEM);
 		propWriteStream.write<uint8_t>(getIntAttr(ITEM_ATTRIBUTE_STOREITEM));
+	}
+
+	if (hasAttribute(ITEM_ATTRIBUTE_LOOTCATEGORY)) {
+		propWriteStream.write<uint8_t>(ATTR_LOOT_CATEGORY);
+		propWriteStream.write<uint32_t>(getIntAttr(ITEM_ATTRIBUTE_LOOTCATEGORY));
 	}
 
 	if (hasAttribute(ITEM_ATTRIBUTE_CUSTOM)) {
@@ -1864,6 +1888,11 @@ void Item::decayImbuements(bool infight) {
 			}
 		}
 	}
+}
+
+LootCategory_t Item::getLootCategoryId() const
+{
+	return items[id].lootType;
 }
 
 void handleRuneDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType) {
