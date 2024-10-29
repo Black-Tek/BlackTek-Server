@@ -3,7 +3,7 @@ services:
   database:
     container_name: database
     image: mariadb:latest
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "3306:3306"
     healthcheck:
@@ -69,6 +69,20 @@ services:
       - tibia
     ports:
       - 5001:80
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  website:
+    container_name: website
+    image: ghcr.io/tibia-oce/website:latest
+    ports:
+      - 5002:80
+    restart: unless-stopped
+    env_file:
+      - '.env'
+    networks:
+      - tibia
     depends_on:
       migrate:
         condition: service_completed_successfully

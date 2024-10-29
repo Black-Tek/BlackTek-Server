@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Estherya" script="estherya.lua" walkinterval="2000" floorchange="0">
+	<health now="100" max="100" />
+	<look type="973" head="96" body="71" legs="63" feet="97" addons="3" />
+ <parameters>
+        <parameter key="message_greet" value="Blessings, |PLAYERNAME|! How may I be of service? Do you wish to trade some {Nightmare} Coins?"/>
+        <parameter key="message_farewell" value="Make your own destiny, |PLAYERNAME|."/>
+    </parameters>
+</npc>

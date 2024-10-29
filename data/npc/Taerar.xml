@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Taerar" walkinterval="2000" floorchange="0" script="taerar.lua">
+	<health now="150" max="150"/>
+	<look type="974" head="38" body="57" legs="26" feet="81" addons="3"/>
+	<parameters>
+		<parameter key="message_greet" value="Azure... Azure.... Ah! Greetings |PLAYERNAME|! I {trade} new stuff created by the Blacksmith for Azure Coins, are you looking to buy something ?."/>
+		<parameter key="message_farewell" value="Make your own destiny, |PLAYERNAME|."/>
+	</parameters>
+</npc>

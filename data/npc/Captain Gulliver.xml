@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Captain Gulliver" script="captain gulliver.lua" walkinterval="2000" floorchange="0">
+	<health now="100" max="100" />
+	<look type="574" head="31" body="79" legs="15" feet="103" addons="3"/>
+	<parameters>
+		<parameter key="message_greet" value="Welcome on board, |PLAYERNAME|. Where do you want to {sail} today?" />
+	</parameters>
+</npc>

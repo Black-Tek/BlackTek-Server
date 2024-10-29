@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Rostock" walkinterval="2000" floorchange="0" script="rostock.lua">
+	<health now="100" max="100"/>
+	<look type="633" head="37" body="99" legs="47" feet="68" addons="0"/>
+	<parameters>
+		<parameter key="module_shop" value="1"/>
+		<parameter key="shop_buyable" value="
+			beginner's axe, 26588, 5000;"/>
+			<parameter key="shop_sellable" value="
+			tree trunk,26593,250;
+			big piece of wood,26599,282;
+			ash plank,26600,525;
+			chestnut plank,26601,930;
+			olive plank,26603,1470;
+			cherry plank,26602,2520;" />
+	</parameters>
+</npc>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Elyotrope" walkinterval="2000" floorchange="0" script="elyotrope.lua">
+	<health now="100" max="100"/>
+	<look type="504"/>
+	<parameters>
+		<parameter key="module_shop" value="1"/>
+		<parameter key="shop_buyable" value="
+			beginner's pickaxe, 26414, 5000;"/>
+			<parameter key="shop_sellable" value="
+			small bronze ingot, 26424, 500;
+			small silver ingot, 26425, 650;
+			small sapphire ingot, 26430, 790;
+			small gold ingot, 26427, 960;
+			small amethyst ingot, 26426, 1230;
+			small ruby ingot, 26428, 1620;
+			small emerald ingot, 26429, 2490;
+			big bronze ingot, 26431, 1000;
+			big silver ingot, 26432, 1300;
+			big sapphire ingot, 26437, 1580;
+			big gold ingot, 26434, 1920;
+			big amethyst ingot, 26433, 2460;
+			big ruby ingot, 26435, 3240;
+			big emerald ingot, 26436, 4980;" />
+	</parameters>
+</npc>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Hanna" script="hanna.lua" walkinterval="2000" floorchange="0">
+	<health now="100" max="100" />
+	<look type="136" head="96" body="65" legs="0" feet="96" addons="2" />
+	<parameters>
+		<parameter key="module_shop" value="1" />
+		<parameter key="shop_sellable" value="
+			black pearl,2144,280;
+			blue crystal shard,18413,1500;
+			blue crystal splinter,18418,400;
+			brown crystal splinter,18417,400;
+			cyan crystal fragment,18419,800;
+			green giant shimmering pearl,7632,3000;
+			brown giant shimmering pearl,7633,3000;
+			gold ingot,9971,5000;
+			green crystal fragment,18421,800;
+			green crystal shard,18415,1500;
+			green crystal splinter,18416,400;
+			red crystal fragment,18420,800;
+			small amethyst,2150,200;
+			small diamond,2145,300;
+			small emerald,2149,250;
+			small ruby,2147,250;
+			small sapphire,2146,250;
+			small topaz,9970,200;
+			violet crystal shard,18414,1500;
+			wedding ring,2121,100;
+			white pearl,2143,160;
+			violet crystal, 26799, 1600;
+			blue crystal, 26800, 1300;
+			green crystal, 26801, 900;
+			lesser guardian gem, 27150, 550;
+			guardian gem, 27151, 950;
+			greater guardian gem, 27152, 1700;
+			lesser marksman gem, 27153, 800;
+			marksman gem, 27154, 1450;
+			greater marksman gem, 27155, 2725;
+			lesser sage gem, 27156, 400;
+			sage gem, 27157, 750;
+			greater sage gem, 27158, 1450;
+			lesser mystic gem, 27159, 625;
+			mystic gem, 27160, 1075;
+			greater mystic gem, 27161, 2115;
+			giant sapphire, 27185, 50000;
+			giant emerald, 27186, 90000;
+			giant ruby, 27187, 70000;
+			giant amethyst, 27290, 60000;
+			giant topaz, 27291, 80000;
+			amber with a bug, 27292, 41000;
+			amber with a dragonfly, 27293, 56000;
+			amber, 27294, 20000;
+			white gem, 27299, 12000;
+			diamond, 27300, 15000;
+			moonstone, 27301, 13000;
+			watermelon tourmaline, 27309, 30000;
+			watermelon tourmaline, 27310, 230000;
+			hexagonal ruby, 27375, 30000;" />
+		<parameter key="shop_buyable" value="
+			black pearl,2144,560;
+			bronze goblet,5807,2000;
+			golden amulet,2130,6600;
+			golden goblet,5805,5000;
+			ruby necklace,2133,3560;
+			silver goblet,5806,3000;
+			small amethyst,2150,400;
+			small diamond,2145,600;
+			small emerald,2149,500;
+			small ruby,2147,500;
+			small sapphire,2146,500;
+			wedding ring,2121,990;
+			white pearl,2143,320;" />
+	</parameters>
+</npc>

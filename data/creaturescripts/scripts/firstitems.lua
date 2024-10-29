@@ -1,19 +1,21 @@
-local common_items = {{2460, 1}, -- brass helmet
-{2465, 1}, -- brass armor
-{2478, 1}, -- brass legs
-{2643, 1}, -- leather boots
-{1988, 1}, -- backpack
-{26414, 1}, -- beginner's pickaxe
-{26588, 1}, -- beginner's axe
-{26712, 1}, -- beginner's scissor
-{2120, 1}, -- rope
-{2554, 1}, -- shovel
-{6119, 1}, -- temple teleporter
-{2326, 1}, -- house teleporter
-{2789, 100}, -- 100 brown mushroom
-{2160, 5}, -- 5 crystal coins
-{7618, 5}, -- 5 small health potions
-{7620, 5} -- 5 small mana potions
+local common_items = {
+    {2460, 1}, -- brass helmet
+    {2465, 1}, -- brass armor
+    {2478, 1}, -- brass legs
+    {2643, 1}, -- leather boots
+    {1988, 1}, -- backpack
+    {2173, 1}, -- amulet of loss
+    {26414, 1}, -- beginner's pickaxe
+    {26588, 1}, -- beginner's axe
+    {26712, 1}, -- beginner's scissor
+    {2120, 1}, -- rope
+    {2554, 1}, -- shovel
+    {6119, 1}, -- temple teleporter
+    {2326, 1}, -- house teleporter
+    {2789, 100}, -- 100 brown mushroom
+    {2160, 5}, -- 5 crystal coins
+    {7618, 5}, -- 5 small health potions
+    {7620, 5} -- 5 small mana potions
 }
 
 local vocation_items = {

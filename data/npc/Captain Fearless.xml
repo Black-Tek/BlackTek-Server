@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Captain Fearless" script="captain fearless.lua" walkinterval="2000" floorchange="0">
+	<health now="100" max="100" />
+	<look type="516" head="20" body="93" legs="107" feet="128" addons="3"/>
+	<parameters>
+		<parameter key="message_greet" value="Welcome on board, |PLAYERNAME|. Where do you want to {sail} today?" />
+	</parameters>
+</npc>

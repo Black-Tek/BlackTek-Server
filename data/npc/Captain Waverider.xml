@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Captain Waverider" script="captain waverider.lua" walkinterval="2000" floorchange="0">
+	<health now="100" max="100" />
+	<look type="129" head="104" body="47" legs="11" feet="41" addons="3"/>
+	<parameters>
+		<parameter key="message_greet" value="Welcome on board, |PLAYERNAME|. Where do you want to {sail} today?" />
+	</parameters>
+</npc>

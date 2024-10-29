@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Captain Breezelda" script="captain breezelda.lua" walkinterval="2000" floorchange="0">
+	<health now="100" max="100" />
+	<look type="288" head="19" body="69" legs="125" feet="50" addons="3"/>
+	<parameters>
+		<parameter key="message_greet" value="Welcome on board, |PLAYERNAME|. Where do you want to {sail} today?" />
+	</parameters>
+</npc>

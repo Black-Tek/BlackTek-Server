@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Elyria" walkinterval="2000" floorchange="0" script="elyria.lua">
+	<health now="100" max="100"/>
+	<look type="575" head="87" body="49" legs="67" feet="102" addons="3"/>
+	<parameters>
+		<parameter key="module_shop" value="1"/>
+		<parameter key="shop_buyable" value="
+			beginner's scissor, 26712, 5000;"/>
+	</parameters>
+</npc>

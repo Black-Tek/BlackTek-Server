@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Inigo" script="inigo.lua" walkinterval="2000" floorchange="0">
+	<health now="100" max="100" />
+	<look type="472" head="59" body="114" legs="0" feet="94" addons="1" />
+	<parameters>
+	<parameter key="module_shop" value="1" />
+	<parameter key="shop_sellable" value="
+			acorn, 11213, 10;
+			antlers, 11214, 50;
+			badger fur, 11216, 15;
+			bat wing, 5894, 50;
+			bear paw, 5896, 100;
+			broken crossbow, 12407, 30;
+			broken helmet, 12409, 20;
+			broken shamanic staff, 12408, 35;
+			bunch of troll hair, 10606, 30;
+			carrion worm fang, 11192, 35;
+			cyclops toe, 10574, 55;
+			damselfly eye, 19743, 25;
+			damselfly wing, 19738, 20;
+			goblin ear, 12495, 20;
+			honeycomb, 5902, 40;
+			lump of dirt, 10609, 10;
+			marsh stalker beak, 19741, 65;
+			minotaur horn, 12428, 75;
+			minotaur leather, 5878, 80;
+			orc leather, 12435, 30;
+			orc tooth, 11113, 150;
+			pelvis bone, 12437, 30;
+			piece of archer armor, 12439, 20;
+			piece of swampling wood, 20103, 30;
+			poison spider shell, 12441, 10;
+			purple robe, 12429, 110;
+			rotten piece of cloth, 11208, 30;
+			scorpion tail, 10568, 25;
+			shamanic hood, 12434, 45;
+			skull belt, 12436, 80;
+			small pitchfork, 12469, 70;
+			spider fangs, 8859, 10;
+			swampling moss, 20102, 20;
+			wolf paw, 5897, 70;"/>
+	</parameters>
+</npc>

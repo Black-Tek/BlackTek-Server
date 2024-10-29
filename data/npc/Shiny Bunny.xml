@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Shiny Bunny" script="shiny_bunny.lua" walkinterval="2000" floorchange="0">
+	<health now="100" max="100" />
+	<look type="1189" head="104" body="47" legs="11" feet="41" addons="3"/>
+	<parameters>
+		<parameter key="message_greet" value="Welcome |PLAYERNAME|. You participate to the {easter} event?" />
+	</parameters>
+</npc>

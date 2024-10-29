@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Armin" script="armin.lua" walkinterval="1100" speed="120" walkradius="5" floorchange="0">
+<health now="150" max="150"/>
+<look type="942" head="54" body="66" legs="103" feet="81" addons="0"/>
+<parameters>
+<parameter key="message_greet" value="Hello |PLAYERNAME|. I'm in charge of delivering Ancestral's Tasks to the players. Would you like to do a {normal} task, {daily} task, receive your {reward} from a task or {abandon} a task ? You can also see the {normal ancestral task list} and the {daily ancestral task list}."/>
+<parameter key="message_farewell" value="See you later." />
+        <parameter key="message_walkaway" value="See you later." />
+        </parameters>
+</npc>

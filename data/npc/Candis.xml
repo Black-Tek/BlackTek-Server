@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Candis" walkinterval="2000" floorchange="0" script="Candis.lua">
+	<health now="150" max="150"/>
+	<look type="1296" head="0" body="0" legs="0" feet="0" addons="0"/>
+	<parameters>
+		<parameter key="message_greet" value="Welcome to Candia |PLAYERNAME|, if you are looking for find Sugar bosses, you will need start before a {mission}. "/>
+		<parameter key="message_farewell" value="Be carful, this island is something magical."/>
+	</parameters>
+</npc>

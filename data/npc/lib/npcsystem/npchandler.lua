@@ -442,7 +442,7 @@ if NpcHandler == nil then
 		local cid = creature:getId()
 		local callback = self:getCallback(CALLBACK_PLAYER_CLOSECHANNEL)
 		if callback == nil or callback(cid) then
-			if self:processModuleCallback(CALLBACK_PLAYER_CLOSECHANNEL, cid) then
+			if self:processModuleCallback(CALLBACK_PLAYER_CLOSECHANNEL, cid, msgtype, msg) then
 				if self:isFocused(cid) then
 					self:unGreet(cid)
 				end
@@ -517,10 +517,9 @@ if NpcHandler == nil then
 		if self:isInRange(cid) then
 			if not self:isFocused(cid) then
 				self:greet(cid)
-				return true
+				return
 			end
 		end
-		return false
 	end
 
 	-- Simply calls the underlying unGreet function.

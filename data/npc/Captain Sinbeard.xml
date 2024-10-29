@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Captain Sinbeard" script="captain sinbeard.lua" walkinterval="2000" floorchange="0">
+	<health now="100" max="100" />
+	<look type="665" head="55" body="78" legs="99" feet="108" addons="3"/>
+	<parameters>
+		<parameter key="message_greet" value="Welcome on board, |PLAYERNAME|. Where do you want to {sail} today?" />
+	</parameters>
+</npc>

@@ -671,7 +671,6 @@
 	<monster name="Undead Cavebear" file="monsters/undead_cavebear.xml" />
 	<monster name="Undead Dragon" file="monsters/undead_dragon.xml" />
 	<monster name="Undead Gladiator" file="monsters/undead_gladiator.xml" />
-	<monster name="Undead Jester" file="monsters/undead_jester.xml" />
 	<monster name="Undead Mine Worker" file="monsters/undead_mine_worker.xml" />
 	<monster name="Undead Minion" file="monsters/undead_minion.xml" />
 	<monster name="Undead Prospector" file="monsters/undead_prospector.xml" />

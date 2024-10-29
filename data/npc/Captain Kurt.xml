@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Captain Kurt" script="captain kurt.lua" walkinterval="2000" floorchange="0">
+	<health now="100" max="100" />
+	<look type="746" head="49" body="39" legs="105" feet="70" addons="3"/>
+	<parameters>
+		<parameter key="message_greet" value="Welcome on board, |PLAYERNAME|. Where do you want to {sail} today?" />
+	</parameters>
+</npc>

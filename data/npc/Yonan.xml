@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Yonan" walkinterval="2000" floorchange="0" script="yonan.lua">
+	<health now="150" max="150"/>
+	<look type="1019" head="76" body="49" legs="10" feet="0" addons="1"/>
+	<parameters>
+		<parameter key="message_greet" value="Hello |PLAYERNAME|! Are you looking for {exchange} some idols for the {regalia of suon} ?."/>
+		<parameter key="message_farewell" value="Make your own destiny, |PLAYERNAME|."/>
+	</parameters>
+</npc>

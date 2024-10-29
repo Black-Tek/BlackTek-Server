@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Toffee" walkinterval="2000" floorchange="0" script="Toffee.lua">
+	<health now="150" max="150"/>
+	<look type="1291" head="0" body="0" legs="0" feet="0" addons="0"/>
+	<parameters>
+		<parameter key="message_greet" value="Chocolate, chocolate! |PLAYERNAME|, do you have some {dark chocolate} coins to trade ? "/>
+		<parameter key="message_farewell" value="Be sure to come with chocolate!, |PLAYERNAME|."/>
+	</parameters>
+</npc>

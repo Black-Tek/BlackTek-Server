@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<npc name="Feanor" walkinterval="2000" floorchange="0" script="feanor.lua">
+	<health now="100" max="100"/>
+	<look type="151" head="32" body="49" legs="39" feet="101" addons="3"/>
+	<parameters>
+		<parameter key="message_farewell" value="Need some tools for skin, do not hesistate!"/>
+		<parameter key="message_walkaway" value="Have a nice day."/>
+		<parameter key="message_sendtrade" value="Of course, just browse through my offers."/>
+		<parameter key="message_greet" value="Welcome to my shop |PLAYERNAME|."/>
+		<parameter key="module_shop" value="1"/>
+		<parameter key="shop_buyable" value="
+			obsidian knife, 5908, 45000;
+			blessed wooden stake, 5942, 75000;"/>
+	</parameters>
+</npc>

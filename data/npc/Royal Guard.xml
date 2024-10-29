@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Royal Guard" script="royal_guard.lua" walkinterval="1600" floorchange="0">
+	<health now="100000" max="100000" />
+	<look type="1108" head="46" body="51" legs="68" feet="4" addons="0" />
+ <parameters>
+        <parameter key="message_greet" value="Don't cause any trouble around, or we'll take care of you!"/>
+        <parameter key="message_farewell" value="That's it, go."/>
+    </parameters>
+</npc>

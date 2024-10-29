@@ -5,7 +5,7 @@ ENV VCPKG_ROOT=/bts/vcpkg
 
 RUN apt update && apt install -y \
     unzip make g++ uuid-dev wget curl zip tar git \
-    pkg-config cmake ninja-build python3
+    pkg-config cmake ninja-build python3 subversion
 
 RUN mkdir -p /bts /usr/src/bts
 RUN git clone https://github.com/microsoft/vcpkg.git /bts/vcpkg && \
@@ -36,9 +36,11 @@ RUN premake5 gmake2 && make -j$(nproc) config=${RELEASE_ARCH}
 
 # Stage 4: Create the final image
 FROM ubuntu:22.04 AS final
+RUN apt update && apt install -y wget unzip
 COPY --from=build /usr/src/bts/Black-Tek-Server /app/Black-Tek-Server
+COPY entrypoint.sh /app/entrypoint.sh
 COPY data /app/data
-COPY *.sql key.pem /app/
+COPY *.sql key.pem entrypoint.sh /app/
 COPY config.lua.dist /app/config.lua
 RUN groupadd -r btsuser && \
     useradd -r -g btsuser -d /app -s /sbin/nologin btsuser && \
@@ -46,4 +48,5 @@ RUN groupadd -r btsuser && \
     chown -R btsuser:btsuser /app
 USER btsuser
 WORKDIR /app
-ENTRYPOINT ["./Black-Tek-Server"]
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT ["./entrypoint.sh"]

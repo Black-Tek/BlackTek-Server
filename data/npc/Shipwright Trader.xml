@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Shipwright Trader" script="shipwright_trader.lua" walkinterval="0" floorchange="0">
+	<health now="5500000" max="5500000" />
+	<look typeex="27903" head="0" body="0" legs="0" feet="0" addons="0" />
+	<parameters>
+		<parameter key="message_greet" value="Greetings |PLAYERNAME|, i am interested on the most rare ressources." />
+		<parameter key="module_shop" value="1" />
+		<parameter key="shop_buyable" value="
+			small golden anchor, 15432, 27500;
+			exquisite plank, 12503, 1600;
+			exquisite silk, 12501, 55000;
+			nail, 8309, 350;
+			red paint, 25308, 4200;
+			metal fitting, 10034, 7100;" />
+	</parameters>
+</npc>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Khadin" script="khadin.lua" walkinterval="2000" floorchange="0">
+	<health now="150000" max="150000" />
+	<look type="1109" head="85" body="7" legs="12" feet="19" addons="0" />
+	<parameters>
+		<parameter key="message_greet" value="Greetings |PLAYERNAME|, i am interested on the most rare ressources." />
+		<parameter key="module_shop" value="1" />
+		<parameter key="shop_sellable" value="
+			crystallized ribs, 27697, 570;
+			mirror scale, 27698, 320;
+			flame cloth, 27706, 690;
+			runic hair, 27707, 225;
+			giant horn, 27708, 498;
+			petrified dragon head, 27709, 68000;
+			petrified dragon wings, 27710, 65000;
+			petrified dragon foot, 27711, 59800;
+			runic frozen crystal, 27712, 3950;
+			demon blood, 27713, 705;
+			unknown animal tail, 27714, 1080;
+			giant white pearl, 27715, 14000;
+			giant sky blue pearl, 27716, 19600;
+			giant midnight pearl, 27717, 33000;
+			moth wing, 27718, 1800;
+			giant pearl bracelet, 27719, 55800;
+			magic turbant, 27720, 1700;
+			forest diadem, 27721, 2500;
+			diamond ring in a shell, 27722, 75000;
+			rough diamond, 27723, 36000;
+			colored feather, 27724, 580;
+			heart's desire, 27892, 33000;
+			sea cavalier standard, 27893, 2700;
+			fortune sack, 27894, 1000;
+			ancient script leaf, 27895, 680;
+			beastly bounty bag, 27896, 10000;
+			smoldering stone, 27897, 320;
+			pirate's fortune map, 27898, 710;
+			aurous aquatic jewel, 27899, 72680;
+			buccaneer's bauble, 27900, 8600;
+			aquatic anchorite, 27901, 2125;
+			golden mariner, 27902, 115800;
+			dragon crown, 28127, 250000;" />
+	</parameters>
+</npc>
