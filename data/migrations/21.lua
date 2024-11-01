@@ -1,5 +1,5 @@
 function onUpdateDatabase()
-	print("> Updating database to version 22 (UTF-8 encoding)")
+	print(">> Updating database to version 22 (UTF-8 encoding)")
 	db.query("ALTER TABLE account_ban_history CONVERT TO CHARACTER SET utf8")
 	db.query("ALTER TABLE account_bans CONVERT TO CHARACTER SET utf8")
 	db.query("ALTER TABLE account_viplist CONVERT TO CHARACTER SET utf8")

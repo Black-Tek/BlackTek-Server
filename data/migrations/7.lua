@@ -1,5 +1,5 @@
 function onUpdateDatabase()
-	print("> Updating database to version 8 (account viplist with description, icon and notify server side)")
+	print(">> Updating database to version 8 (account viplist with description, icon and notify server side)")
 	db.query("RENAME TABLE `player_viplist` TO `account_viplist`")
 	db.query("ALTER TABLE `account_viplist` DROP FOREIGN KEY `account_viplist_ibfk_1`")
 	db.query("UPDATE `account_viplist` SET `player_id` = (SELECT `account_id` FROM `players` WHERE `id` = `player_id`)")

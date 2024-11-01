@@ -1,5 +1,5 @@
 function onUpdateDatabase()
-	print("> Updating database to version 30 (reward boss system)")
+	print(">> Updating database to version 30 (reward boss system)")
 	db.query([[
 		CREATE TABLE IF NOT EXISTS `player_rewarditems` (
 		  `player_id` int NOT NULL,

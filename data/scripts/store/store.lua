@@ -2,7 +2,7 @@ local handlers = require("data/scripts/store/handlers")
 local events = require("data/scripts/store/events")
 local offers = require("data/scripts/store/offers")
 
-local DONATION_URL = os.getenv("DONATION_URL") or ""
+local DONATION_URL = os.getenv("DONATION_URL") or "https://myaac.mythbound.dev/"
 local CODE_GAMESTORE = 102
 local GAME_STORE = nil
 

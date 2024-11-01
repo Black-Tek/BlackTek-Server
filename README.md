@@ -1,71 +1,36 @@
-<div align="center">
-
-<img src="https://miro.medium.com/v2/resize:fit:1024/0*tTUoVKGzxtZYA5xp.png" align="center" width="144px" height="144px"/>
-
-### Mythbound Server Engine
-
-_... built on BlackTek & TFS 1.42_ 🤖
-
-</div>
-
-<div align="center">
-
-[![Kubernetes](https://img.shields.io/static/v1?label=K3s&message=v1.30.2&color=blue&style=for-the-badge&logo=kubernetes&logoColor=white)](https://k3s.io/)&nbsp;&nbsp;
-[![Discord](https://img.shields.io/discord/1283279739775352896?style=for-the-badge&label&logo=discord&logoColor=white&color=blue)]([https://discord.gg/1283279739775352896](https://discord.gg/Erhz4GmDMd))&nbsp;&nbsp;
-[![Renovate](https://img.shields.io/github/actions/workflow/status/tibia-oce/infrastructure/renovate.yaml?branch=master&label=&logo=renovatebot&style=for-the-badge&color=blue)](https://github.com/tibia-oce/infrastructure/actions/workflows/renovate.yaml)
-
-</div>
-
-<div align="center">
-
-[![Cluster](https://img.shields.io/static/v1?label=Cluster&message=Online&color=brightgreen&style=for-the-badge&logo=v&logoColor=white)](https://status.mythbound.dev/)&nbsp;&nbsp;
-[![Server](https://img.shields.io/static/v1?label=Server&message=Online&color=brightgreen&style=for-the-badge&logo=v&logoColor=white)](https://status.mythbound.dev/endpoints/tibia_tibia-server)&nbsp;&nbsp;
-[![Website](https://img.shields.io/static/v1?label=Website&message=Online&color=brightgreen&style=for-the-badge&logo=statuspage&logoColor=white)](https://myaac.mythbound.dev/)&nbsp;&nbsp;
-
-</div>
-
-<br>
-
----
-
-<br>
-
-
-
-Black Tek Server [![Linux Build](https://github.com/Black-Tek/BlackTek-Server/actions/workflows/linux_build_runner.yml/badge.svg?branch=master)](https://github.com/Black-Tek/BlackTek-Server/actions/workflows/linux_build_runner.yml) [![Windows Build](https://github.com/Black-Tek/BlackTek-Server/actions/workflows/windows_build_runner.yml/badge.svg)](https://github.com/Black-Tek/BlackTek-Server/actions/workflows/windows_build_runner.yml)
+Mythbound Server [![Release](https://github.com/tibia-oce/server/actions/workflows/build-release.yaml/badge.svg?branch=master)](https://github.com/tibia-oce/server/actions/workflows/build-release.yaml)
 ===============
 
-Black Tek Server is a free and open-source MMORPG server emulator written in C++. It is a fork of the [TheForgottenServer](https://github.com/otland/forgottenserver) project. To connect to the server, you can use [OTClient Redemption](https://github.com/mehah/otclient).
+The Mythbound Server is a free and open-source MMORPG server emulator written in C++. It is a fork of the [BlackTek](https://github.com/Black-Tek/BlackTek-Server) project. To connect to the server, you can use [Mythbound Client](https://github.com/tibia-oce/otclient).
 
 ### Getting Started
-If you don't want to bother with source code or compiling. You can download from our release sections the binaries with everything needed ready to go.
 
-#### Compiling 
+To build and run it locally from source, all you require is [Docker](https://www.docker.com/) and [Make](https://www.gnu.org/software/make/#download) installed, then from the project root, run `make`.  
 
-For windows users looking for the quickest way to get started with BlackTek Server, you can follow the steps provided [here](https://otland.net/threads/tutorial-blacktek-from-nothing-to-fully-installed-with-aac-on-windows.289572/)
+The latest release of the Mythbound Server is available via `docker pull ghcr.io/tibia-oce/server:latest`. 
 
-Otherwise please follow the steps provided below:
 
-To compile you will need to install and integrate vcpkg.
-You can find detailed instructions for [Windows](https://github.com/microsoft/vcpkg?tab=readme-ov-file#quick-start-windows) and [Unix](https://github.com/microsoft/vcpkg?tab=readme-ov-file#quick-start-unix) based operating systems.
+### Compiling 
 
-Once you have successfully installed vcpkg, and integrated the installation, you will need to download the newest [premake](https://github.com/premake/premake-core.git) from the dev branch (must use dev branch, its the one hyperlinked).
+All compiling is done in Docker containers to streamline the setup process for you. This allows users to rebuild the server source reproducibly with the `make` command. The current container configs support building for **both ARM and AMD architectures** on Linux, Windows and MacOS, making it adaptable for various systems.
 
-Please follow instructions on how to compile premake for your Operating System. Once you have premake compiled, place the binary in BlackTek-Server's folder. Then run premake via terminal/command line/bash using the following command:
+**Alternatively**, if you'd prefer to compile the application manually, you will need to install and integrate vcpkg. You can find detailed instructions for [Windows](https://github.com/microsoft/vcpkg?tab=readme-ov-file#quick-start-windows) and [Unix](https://github.com/microsoft/vcpkg?tab=readme-ov-file#quick-start-unix) based operating systems. Once you have successfully installed vcpkg and integrated the installation, download the newest [Premake](https://github.com/premake/premake-core.git).
 
-Windows:
-```premake5 vs2022```
+### Environment Variables
 
-Linux:
-```./premake5 gmake2```
+There are defaults set already when you run `make`, however you can adjust the environment variables in the `.env` file as described below:
 
-OSX aka Mac:
-```premake5 xcode4```
-
-This will generate your project files. 
-
-If you are using linux, please ensure you have manifest mode enabled.
-You can find more information about manifest mode [here.](https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode)
-
-### Support
-### Issues
+|           NAME              |               DESCRIPTION                           |       DEFAULT VALUE                   |
+| :-------------------------- | :-------------------------------------------------  | :-----------------------------------  |
+| `MYSQL_DATABASE`            | The name of the MYSQL database                      | `forgottenserver`                     |
+| `MYSQL_HOST`                | The hostname or IP address of the MYSQL server      | `database`                            |
+| `MYSQL_PORT`                | The port number MYSQL server is listening on        | `3306`                                |
+| `MYSQL_ROOT_PASSWORD`       | The root password for MYSQL                         | `forgottenserver`                     |
+| `MYSQL_USERNAME`            | The username for connecting to MYSQL                | `forgottenserver`                     |
+| `MYSQL_SOCK`                | The socket file path for local MYSQL connections    | `/var/run/mysqld/mysqld.sock`         |
+| `STATUS_PROTOCOL_PORT`      | The port used for the status protocol of the server | `7171`                                |
+| `GAME_PROTOCOL_PORT`        | The port used for the game protocol of the server   | `7172`                                |
+| `SERVER_NAME`               | The display name of the server                      | `Mythbound`                           |
+| `SERVER_IP`                 | The IP address for the server                       | `127.0.0.1`                           |
+| `ASSETS_REPOSITORY`         | URL of the repository for assets                    | `https://github.com/tibia-oce/assets` |
+| `REPOSITORY_BRANCH`         | Branch of the assets repository to use              | `master`                              |

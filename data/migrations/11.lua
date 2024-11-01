@@ -1,5 +1,5 @@
 function onUpdateDatabase()
-	print("> Updating database to version 12 (storing players record and message of the day in database)")
+	print(">> Updating database to version 12 (storing players record and message of the day in database)")
 
 	local motdNum = ""
 	local motd = ""

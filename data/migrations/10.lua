@@ -1,5 +1,5 @@
 function onUpdateDatabase()
-	print("> Updating database to version 11 (improved guild and players online structure)")
+	print(">> Updating database to version 11 (improved guild and players online structure)")
 	db.query("CREATE TABLE IF NOT EXISTS `guild_membership` (`player_id` int NOT NULL, `guild_id` int NOT NULL, `rank_id` int NOT NULL, `nick` varchar(15) NOT NULL DEFAULT '', PRIMARY KEY (`player_id`), KEY `guild_id` (`guild_id`), KEY `rank_id` (`rank_id`)) ENGINE=InnoDB")
 	db.query("ALTER TABLE `guild_membership` ADD CONSTRAINT `guild_membership_ibfk_3` FOREIGN KEY (`rank_id`) REFERENCES `guild_ranks` (`id`) ON DELETE CASCADE ON UPDATE CASCADE, ADD CONSTRAINT `guild_membership_ibfk_1` FOREIGN KEY (`player_id`) REFERENCES `players` (`id`) ON DELETE CASCADE ON UPDATE CASCADE, ADD CONSTRAINT `guild_membership_ibfk_2` FOREIGN KEY (`guild_id`) REFERENCES `guilds` (`id`) ON DELETE CASCADE ON UPDATE CASCADE")
 	db.query("ALTER TABLE `guild_invites` ADD PRIMARY KEY (`player_id`, `guild_id`)")

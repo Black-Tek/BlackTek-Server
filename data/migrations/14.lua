@@ -1,5 +1,5 @@
 function onUpdateDatabase()
-	print("> Updating database to version 15 (moving groups to data/XML/groups.xml)")
+	print(">> Updating database to version 15 (moving groups to data/XML/groups.xml)")
 
 	db.query("ALTER TABLE players DROP FOREIGN KEY players_ibfk_2")
 	db.query("DROP INDEX group_id ON players")

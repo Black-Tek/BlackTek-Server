@@ -37,8 +37,12 @@ services:
     depends_on:
       check-db-started:
         condition: service_completed_successfully
-    env_file:
-      - '.env'
+    environment:
+      - MARIADB_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MARIADB_DATABASE=${MYSQL_DATABASE}
+      - MARIADB_USERNAME=${MYSQL_USER}
+      - MARIADB_HOST=${MYSQL_HOST}
+      - MARIADB_PORT=${MYSQL_PORT}
 
   server:
     container_name: server
@@ -65,6 +69,9 @@ services:
     restart: always
     env_file:
       - '.env'
+    environment:
+      - PMA_HOST=${MYSQL_HOST}
+      - PMA_PORT=${MYSQL_PORT}
     networks:
       - tibia
     ports:
@@ -81,6 +88,8 @@ services:
     restart: unless-stopped
     env_file:
       - '.env'
+    environment:
+      - STATUS_TIMEOUT=2000
     networks:
       - tibia
     depends_on:
