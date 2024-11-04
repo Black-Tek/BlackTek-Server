@@ -669,23 +669,6 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 			break;
 		}
 
-		case ATTR_IMBUEMENTS: {
-			uint16_t size;
-			if (!propStream.read<uint16_t>(size)) {
-				return ATTR_READ_ERROR;
-			}
-
-			for (uint16_t i = 0; i < size; ++i) {
-				std::shared_ptr<Imbuement> imb = std::make_shared<Imbuement>();
-				if (!imb->unserialize(propStream)) {
-					return ATTR_READ_ERROR;
-				}
-
-				addImbuement(imb, false);
-			}
-			break;
-		}
-
 		//these should be handled through derived classes
 		//If these are called then something has changed in the items.xml since the map was saved
 		//just read the values
@@ -754,6 +737,23 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 				}
 
 				setCustomAttribute(key, val);
+			}
+			break;
+		}
+
+		case ATTR_IMBUEMENTS: {
+			uint32_t size;
+			if (!propStream.read<uint32_t>(size)) {
+				return ATTR_READ_ERROR;
+			}
+
+			for (uint32_t i = 0; i < size; ++i) {
+				std::shared_ptr<Imbuement> imb = std::make_shared<Imbuement>();
+				if (!imb->unserialize(propStream)) {
+					return ATTR_READ_ERROR;
+				}
+
+				addImbuement(imb, false);
 			}
 			break;
 		}
@@ -965,9 +965,10 @@ void Item::serializeAttr(PropWriteStream& propWriteStream) const
 		}
 	}
 
+	propWriteStream.write<uint32_t>(ATTR_IMBUEMENTS);
+	propWriteStream.write<uint32_t>(imbuements.size());
+
 	if (hasImbuements()) {
-		propWriteStream.write<uint8_t>(ATTR_IMBUEMENTS);
-		propWriteStream.write<uint16_t>(imbuements.size());
 		for (auto entry : imbuements) {
 			entry->serialize(propWriteStream);
 		}
@@ -1709,7 +1710,7 @@ bool Item::hasImbuement(const std::shared_ptr<Imbuement>& imbuement) const
 bool Item::hasImbuements() const
 {
 	// item:hasImbuements() -- returns true if item has any imbuements
-	return imbuements.size() > 0;
+	return !imbuements.empty();
 }
 
 bool Item::addImbuement(std::shared_ptr<Imbuement>  imbuement, bool created)

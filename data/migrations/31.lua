@@ -8,10 +8,11 @@ function onUpdateDatabase()
 		) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;
 	]])
 
-	db.query("ALTER TABLE `player_items` ADD `augments` blob NOT NULL")
-	db.query("ALTER TABLE `player_inboxitems` ADD `augments` blob NOT NULL")
-	db.query("ALTER TABLE `player_depotitems` ADD `augments` blob NOT NULL")
-	db.query("ALTER TABLE `player_rewarditems` ADD `augments` blob NOT NULL")
-	db.query("ALTER TABLE `player_storeinboxitems` ADD `augments` blob NOT NULL")
+	db.query("ALTER TABLE `player_items` ADD COLUMN IF NOT EXISTS `augments` blob NOT NULL");
+	db.query("ALTER TABLE `player_inboxitems` ADD COLUMN IF NOT EXISTS `augments` blob NOT NULL");
+	db.query("ALTER TABLE `player_depotitems` ADD COLUMN IF NOT EXISTS `augments` blob NOT NULL");
+	db.query("ALTER TABLE `player_rewarditems` ADD COLUMN IF NOT EXISTS `augments` blob NOT NULL");
+	db.query("ALTER TABLE `player_storeinboxitems` ADD COLUMN IF NOT EXISTS `augments` blob NOT NULL");
+
 	return true
 end

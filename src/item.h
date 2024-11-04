@@ -1106,8 +1106,8 @@ class Item : virtual public Thing
 		std::unique_ptr<ItemAttributes> attributes;
 
 		uint16_t imbuementSlots = 0;
-		std::vector<std::shared_ptr<Imbuement>> imbuements;
-		std::vector<std::shared_ptr<Augment>> augments;
+		std::vector<std::shared_ptr<Imbuement>> imbuements{};
+		std::vector<std::shared_ptr<Augment>> augments{};
 		uint32_t referenceCounter = 0;
 
 		uint8_t count = 1; // number of stacked items
