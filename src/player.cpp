@@ -5469,19 +5469,21 @@ std::unordered_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
 	std::unordered_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> modifierMap;
 
 	if (!augments.empty()) {
-		for (auto aug : augments) {
-			for (auto& mod : aug->getAttackModifiers()) {
+		for (auto& aug : augments) {
+			for (auto mod : aug->getAttackModifiers()) {
 				modifierMap[mod->getType()].emplace_back(mod);
 			}
 		}
 	}
 
-	for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+	for (uint8_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_RING; ++slot) {
 		Item* item = inventory[slot];
 		if (item && !item->getAugments().empty()) {
-			for (auto aug : item->getAugments()) {
-				for (auto& mod : aug->getAttackModifiers()) {
-					modifierMap[mod->getType()].emplace_back(mod);
+			for (auto& aug : item->getAugments()) {
+				if (!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || (item->getSlotPosition() & getPositionForSlot(static_cast<slots_t>(slot)))) {
+					for (auto mod : aug->getAttackModifiers()) {
+						modifierMap[mod->getType()].emplace_back(mod);
+					}
 				}
 			}
 		}
@@ -5494,19 +5496,21 @@ std::unordered_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
 	std::unordered_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> modifierMap;
 
 	if (!augments.empty()) {
-		for (auto aug : augments) {
-			for (auto& mod : aug->getDefenseModifiers()) {
+		for (auto& aug : augments) {
+			for (auto mod : aug->getDefenseModifiers()) {
 				modifierMap[mod->getType()].emplace_back(mod);
 			}
 		}
 	}
 
-	for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+	for (uint8_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_RING; ++slot) {
 		Item* item = inventory[slot];
 		if (item && !item->getAugments().empty()) {
-			for (auto aug : item->getAugments()) {
-				for (auto& mod : aug->getDefenseModifiers()) {
-					modifierMap[mod->getType()].emplace_back(mod);
+			for (auto& aug : item->getAugments()) {
+				if (!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || (item->getSlotPosition() & getPositionForSlot(static_cast<slots_t>(slot)))) {
+					for (auto mod : aug->getDefenseModifiers()) {
+						modifierMap[mod->getType()].emplace_back(mod);
+					}
 				}
 			}
 		}

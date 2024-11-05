@@ -1623,6 +1623,11 @@ Item* Game::transformItem(Item* item, uint16_t newId, int32_t newCount /*= -1*/)
 		return item;
 	}
 
+	if (item->isAugmented() || item->hasImbuements()) {
+		std::cout << "Warning! Attempted to transform imbued/augmented item : " << item->getName() << " \n";
+		return item;
+	}
+
 	Cylinder* cylinder = item->getParent();
 	if (cylinder == nullptr) {
 		return nullptr;

@@ -1407,7 +1407,7 @@ bool Item::canDecay() const
 	if (hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)) {
 		return false;
 	}
-
+	// to-do: Should probably block imbued and augmented items here.
 	return true;
 }
 
@@ -1627,7 +1627,14 @@ uint16_t Item::getFreeImbuementSlots() const
 
 bool Item::canImbue() const
 {
-	// item:canImbue() -- returns true if item has slots that are free
+	// todo: known bug, stackables are imbueable, but no protection is offered for someone copying items with imbuements,
+	// unless the stackables are items created a new, in that case, the imbuements don't carry over when broken down,
+	// what needs to be in place is a change of itemID and name when imbuing a stack of stackables, and apply these changes,
+	// to every single item in the stack, keeping them from being stacked with other items, or being cloned, all while
+	// still allowing the item to benefit from the imbuement. 
+	if (canDecay() || !canTransform() || getCharges() || !hasProperty(CONST_PROP_MOVEABLE)) {
+		return false;
+	}
 	return (imbuementSlots > 0 && imbuementSlots > imbuements.size()) ? true : false;
 }
 

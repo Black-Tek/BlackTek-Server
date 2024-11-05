@@ -2078,6 +2078,7 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::PLAYER_CONSOLE_LOGS);
 	registerEnumIn("configKeys", ConfigManager::BED_OFFLINE_TRAINING);	
 	registerEnumIn("configKeys", ConfigManager::HOUSE_DOOR_SHOW_PRICE);
+	registerEnumIn("configKeys", ConfigManager::AUGMENT_SLOT_PROTECTION);
 
 	registerEnumIn("configKeys", ConfigManager::REWARD_BASE_RATE);
 	registerEnumIn("configKeys", ConfigManager::REWARD_RATE_DAMAGE_DONE);
@@ -7171,6 +7172,11 @@ int LuaScriptInterface::luaItemTransform(lua_State* L)
 		return 1;
 	}
 
+	if (item->isAugmented() || item->hasImbuements()) {
+		lua_pushboolean(L, false);
+		return 1;
+	}
+
 	uint16_t itemId;
 	if (isNumber(L, 2)) {
 		itemId = getNumber<uint16_t>(L, 2);
@@ -7215,6 +7221,12 @@ int LuaScriptInterface::luaItemDecay(lua_State* L)
 	// item:decay(decayId)
 	Item* item = getUserdata<Item>(L, 1);
 	if (item) {
+
+		if (item->isAugmented() || item->hasImbuements()) {
+			lua_pushboolean(L, false);
+			return 1;
+		}
+
 		if (isNumber(L, 2)) {
 			item->setDecayTo(getNumber<int32_t>(L, 2));
 		}
@@ -7470,6 +7482,11 @@ int LuaScriptInterface::luaItemAddAugment(lua_State* L)
 	Item* item = getUserdata<Item>(L, 1);
 	if (!item) {
 		lua_pushnil(L);
+		return 1;
+	}
+
+	if (item->isStackable() || item->canDecay() || !item->canTransform() || item->getCharges() || !item->hasProperty(CONST_PROP_MOVEABLE)) {
+		lua_pushboolean(L, false);
 		return 1;
 	}
 

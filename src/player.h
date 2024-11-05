@@ -63,6 +63,32 @@ enum tradestate_t : uint8_t {
 	TRADE_TRANSFER,
 };
 
+static constexpr SlotPositionBits getPositionForSlot(slots_t constSlot) {
+	switch (constSlot) {
+	case CONST_SLOT_HEAD:
+		return SLOTP_HEAD;
+	case CONST_SLOT_NECKLACE:
+		return SLOTP_NECKLACE;
+	case CONST_SLOT_BACKPACK:
+		return SLOTP_BACKPACK;
+	case CONST_SLOT_ARMOR:
+		return SLOTP_ARMOR;
+	case CONST_SLOT_RIGHT:
+		return SLOTP_RIGHT;
+	case CONST_SLOT_LEFT:
+		return SLOTP_LEFT;
+	case CONST_SLOT_LEGS:
+		return SLOTP_LEGS;
+	case CONST_SLOT_FEET:
+		return SLOTP_FEET;
+	case CONST_SLOT_AMMO:
+		return SLOTP_AMMO;
+	case CONST_SLOT_RING:
+		return SLOTP_RING;
+	default: throw std::invalid_argument("Invalid ConstSlot value");
+	}
+}
+
 struct VIPEntry {
 	VIPEntry(uint32_t guid, std::string_view name, std::string_view description, uint32_t icon, bool notify) : guid{ guid }, name{ name }, description{ description }, icon{ icon }, notify{ notify } {}
 

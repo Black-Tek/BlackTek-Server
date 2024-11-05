@@ -55,6 +55,7 @@ class ConfigManager
 			PLAYER_CONSOLE_LOGS,
 			CHECK_DUPLICATE_STORAGE_KEYS,
 			BED_OFFLINE_TRAINING,
+			AUGMENT_SLOT_PROTECTION,
 
 			LAST_BOOLEAN_CONFIG /* this must be the last one */
 		};
