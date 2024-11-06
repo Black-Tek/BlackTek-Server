@@ -45,7 +45,6 @@ enum ModifierDefenseType : uint8_t {
 	DEFENSE_MODIFIER_RESIST,			// damage reduction
 	DEFENSE_MODIFIER_REFORM,			// convert damage to another type 
 
-
 	DEFENSE_MODIFIER_LAST
 };
 

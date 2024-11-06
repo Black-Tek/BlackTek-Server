@@ -820,6 +820,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 	if (casterPlayer.has_value() && target) {
 		attackModData.reserve(ATTACK_MODIFIER_LAST);
 		auto targetType = CREATURETYPE_ATTACKABLE;
+		// to-do: this is ugly, lets make it a function and assign its return to the variable above instead.
 		if (target->getMonster()) {
 			targetType = casterPlayer.value()->getCreatureType(*target->getMonster());
 		} else if (target->getPlayer()) {
@@ -838,12 +839,13 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 		}
 
 		if (damage.primary.type != COMBAT_MANADRAIN && damage.primary.type != COMBAT_HEALING) {
+			// to-do: checking against origin for augment is too limiting.. Lets make piercing like crit and leech, ect.
 			if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
 				auto& [piercingPercentTotal, piercingFlatTotal] = attackModData[ATTACK_MODIFIER_PIERCING];
 				// we handle piercing ourselves so that we can exit this call stack early
 				// in the case that all the damage was converted to piercing
 				if (piercingPercentTotal || piercingFlatTotal) {
-					auto piercingDamage = 0;
+					int32_t piercingDamage = 0;
 					if (piercingPercentTotal) {
 						auto percentValue = (piercingPercentTotal / 100);
 						piercingDamage = (piercingPercentTotal <= 100) ? damage.primary.value * (percentValue / 100) : damage.primary.value;
@@ -855,15 +857,22 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 
 					if (piercingDamage) {
 
-						auto trueDamage = std::abs(piercingDamage);
-						auto difference = std::abs(damage.primary.value) - trueDamage;
+						int32_t trueDamage = std::abs(piercingDamage);
+						int32_t difference = std::abs(damage.primary.value) - trueDamage;
 						// we limit the damage taken from the original to its max value.
 						damage.primary.value = (difference <= 0) ? 0 : (0 - difference);
 
 						CombatDamage piercing;
 						piercing.origin = ORIGIN_AUGMENT;
-						piercing.primary.value = piercingDamage;
+						piercing.primary.value = (0 - piercingDamage);
 						piercing.primary.type = COMBAT_UNDEFINEDDAMAGE;
+
+						// Can't use these params until we define skipping armor checks for piercing through Combat::doTargetCombat()
+						CombatParams piercingParams;
+						piercingParams.origin = ORIGIN_AUGMENT;
+						piercingParams.combatType = COMBAT_UNDEFINEDDAMAGE;
+						piercingParams.impactEffect = CONST_ME_SKULLHORIZONTAL;
+
 						std::cout << "Piercing Modifier Activated on " << damage.primary.value << " damage \n";
 						g_game.combatChangeHealth(caster, target, piercing);
 					}
@@ -885,43 +894,43 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				return;
 			}
 
-			if (!damage.critical && damage.origin != ORIGIN_CONDITION) {
-				auto percentTotal = 0;
-				auto flatTotal = 0;
-				if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
+			if (!damage.critical && damage.origin != ORIGIN_AUGMENT) {
+				int32_t percentTotal = 0;
+				int32_t flatTotal = 0;
+				if (!attackModData.empty()) {
 					percentTotal = attackModData[ATTACK_MODIFIER_CRITICAL].percentTotal;
 					flatTotal = attackModData[ATTACK_MODIFIER_CRITICAL].flatTotal;
 				}
 
 				// normal crits are the old ones and are percent based
-				auto normalCritChance = casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE);
-				auto normalCritDamage = casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT);
+				auto normalCritChance = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE));
+				auto normalCritDamage = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT));
 
 				// note : the way this works, its own damage increase is independent allowing for more than 100
 				// and also at the same time, its chance is independent, so it doesn't add to augmented crit's chance.
-				if (normalCritChance > 0 && normalCritDamage > 0 && normal_random(1, 100) <= normalCritChance) {
+				if ((normalCritChance && normalCritDamage) && (normal_random(1, 100) <= normalCritChance)) {
 					percentTotal += normalCritDamage;
 				}
 
 				// we do percent based crits first, so that the flat damage doesn't add to the percent increase.
 				if (percentTotal) {
-					auto damageIncrease = static_cast<int32_t>(std::round(damage.primary.value * (percentTotal / 100.0)));
-					damage.primary.value += damageIncrease;
+					auto damageIncrease = static_cast<int32_t>(std::abs(std::round(damage.primary.value * (percentTotal / 100.0))));
+					damage.primary.value -= damageIncrease;
 					damage.critical = true;
-					std::cout << "Critical Percent Modifier Activated on " << damage.primary.value << " damage \n";
+					std::cout << "Critical Percent Modifier Activated on " << damage.primary.value << " damage with " << damageIncrease << " as the bonus damage \n";
 				}
 
 				if (flatTotal) {
-					damage.primary.value += flatTotal;
+					damage.primary.value -= flatTotal;
 					damage.critical = true;
-					std::cout << "Critical Flat Modifier Activated on " << damage.primary.value << " damage \n";
+					std::cout << "Critical Flat Modifier Activated on " << damage.primary.value << " damage with " << flatTotal << " as the bonus damage \n";
 				}
 			}
 
-			if (targetPlayer && (casterPlayer.value()->getID() != targetPlayer.value()->getID())) {
+			if (targetPlayer.has_value() && (casterPlayer.value() != targetPlayer.value()) && params.origin != ORIGIN_AUGMENT) {
 
 				auto reformTotals = targetPlayer.value()->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
-				if (!reformTotals.empty() && params.origin != ORIGIN_AUGMENT) {
+				if (!reformTotals.empty()) {
 					std::cout << "Reform Modifier Activated : on " << damage.primary.value << " damage \n";
 					targetPlayer.value()->reformDamage(*casterPlayer.value()->getCreature(), damage, reformTotals);
 					if (damage.primary.value == 0) {
@@ -930,11 +939,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				}
 
 				auto defenseModData = targetPlayer.value()->getDefenseModifierTotals(damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
-				if (!defenseModData.empty() && params.origin != ORIGIN_AUGMENT) {
-	
-					// To-do : We are passing creatures and players around by pointers right now
-					// we need to convert to using references on both players and creatures.
-					// Note: this is a huge to-do, due to derived creature class references not being copyable. 
+				if (!defenseModData.empty()) {
 					for (const auto& [modkind, modTotals] : defenseModData) {
 						if (modTotals.percentTotal  || modTotals.flatTotal) {
 							applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), modTotals.percentTotal, modTotals.flatTotal, params.impactEffect, params.distanceEffect);
@@ -1005,138 +1010,146 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 			}
 
 			if (!damage.leeched && damage.primary.type != COMBAT_HEALING && casterPlayer && damage.origin != ORIGIN_CONDITION) {
-				CombatDamage leechCombat;
-				leechCombat.origin = ORIGIN_NONE;
-				leechCombat.leeched = true;
+				const auto totalDamage = static_cast<int32_t>(std::abs(damage.primary.value + damage.secondary.value));
+				// Percents
+				int32_t lifeStealPercentTotal = 0;
+				int32_t manaStealPercentTotal = 0;
+				int32_t staminaStealPercentTotal = 0;
+				int32_t soulStealPercentTotal = 0;
+				// Flats
+				int32_t lifeStealFlatTotal = 0;
+				int32_t manaStealFlatTotal = 0;
+				int32_t staminaStealFlatTotal = 0;
+				int32_t soulStealFlatTotal = 0;
+				// Gains
+				int32_t lifeStealGain = 0;
+				int32_t manaStealGain = 0;
+				int32_t soulGain = 0;
+				int32_t staminaGain = 0;
 
-				auto totalDamage = std::abs(damage.primary.value + damage.secondary.value);
-
-				// To-do : We don't activate lifesteal at all if the player is already at max health
-				// we can do better, they should still do the lifesteal even if they can't receive the life.
-				if (casterPlayer.value()->getHealth() < casterPlayer.value()->getMaxHealth()) {
-					// To-do : combine this if check with the one above to avoid unnecessary heap allocations
-
-					auto lifeStealPercentTotal = 0;
-					auto lifeStealFlatTotal = 0;
-
-					if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
-						// to-do : when removing tibia crit/leech, bring this check up 2 branches to encompass all "steal" calculations.
-						lifeStealPercentTotal = attackModData[ATTACK_MODIFIER_LIFESTEAL].percentTotal;
-						lifeStealFlatTotal = attackModData[ATTACK_MODIFIER_LIFESTEAL].flatTotal;
-					}
-
-					auto lifeLeechChance = casterPlayer.value()->getSpecialSkill(SPECIALSKILL_LIFELEECHCHANCE);
-					auto lifeLeechAmount = casterPlayer.value()->getSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT);
-					auto totalGain = 0;
-
-					if (lifeLeechChance > 0 && lifeLeechAmount > 0 && normal_random(1, 100) <= lifeLeechChance) {
-						if (lifeStealPercentTotal) {
-							totalGain += (totalDamage * ((lifeLeechAmount + lifeStealPercentTotal) / 100));
-						} else {
-							totalGain += (totalDamage * (lifeLeechAmount / 100));
-						}
-					} else {
-						if (lifeStealPercentTotal) {
-							totalGain += (totalDamage * ((lifeStealPercentTotal) / 100));
-						}
-					}
-
-					if (lifeStealFlatTotal) {
-						totalGain += lifeStealFlatTotal;
-					}
-
-					if (totalGain) {
-						leechCombat.primary.value = totalGain;
-						g_game.combatChangeHealth(nullptr, casterPlayer.value(), leechCombat);
-						casterPlayer.value()->sendMagicEffect(casterPlayer.value()->getPosition(), CONST_ME_MAGIC_RED);
-					}
-
-				}
-
-				/// ATTACK_MODIFIER_MANASTEAL
-				if (casterPlayer.value()->getMana() < casterPlayer.value()->getMaxMana()) {
-
-					auto manaStealPercentTotal = 0;
-					auto manaStealFlatTotal = 0;
-
-					if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
-						// to-do : when removing tibia crit/leech, bring this check up 2 branches to encompass all "steal" calculations.
-						manaStealPercentTotal = attackModData[ATTACK_MODIFIER_MANASTEAL].percentTotal;
-						manaStealFlatTotal = attackModData[ATTACK_MODIFIER_MANASTEAL].flatTotal;
-					}
-
-					auto manaLeechChance = casterPlayer.value()->getSpecialSkill(SPECIALSKILL_MANALEECHCHANCE);
-					auto manaLeechAmount = casterPlayer.value()->getSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT);
-					auto totalGain = 0;
-
-					if (manaLeechChance > 0 && manaLeechAmount > 0 && normal_random(1, 100) <= manaLeechChance) {
-						if (manaStealPercentTotal) {
-							totalGain += static_cast<int>(std::round(totalDamage * ((manaLeechAmount + manaStealPercentTotal) / 100)));
-						} else {
-							totalGain += static_cast<int>(std::round(totalDamage * (manaLeechAmount / 100)));
-						}
-						std::cout << "Mana Leech Percent Modifier Activated : on " << damage.primary.value << " damage \n";
-					}
-
-					if (manaStealFlatTotal) {
-						std::cout << "Mana Leech Flat Modifier Activated : on " << damage.primary.value << " damage \n";
-						totalGain += manaStealFlatTotal;
-					}
-
-					if (totalGain) {
-						leechCombat.primary.value = totalGain;
-						g_game.combatChangeMana(nullptr, casterPlayer.value(), leechCombat);
-						casterPlayer.value()->sendMagicEffect(casterPlayer.value()->getPosition(), CONST_ME_MAGIC_BLUE);
-					}
-
-				}
-
-				/// ATTACK_MODIFIER_STAMINASTEAL
-				// To-do: move 2520 into a global constexpr
-				// or even better, make it have a real max var.
 				if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
-					if (casterPlayer.value()->getStaminaMinutes() < 2520) {
-						auto& [staminaStealPercentTotal, staminaStealFlatTotal] = attackModData[ATTACK_MODIFIER_STAMINASTEAL];
+					// Percents
+					lifeStealPercentTotal = attackModData[ATTACK_MODIFIER_LIFESTEAL].percentTotal;
+					manaStealPercentTotal = attackModData[ATTACK_MODIFIER_MANASTEAL].percentTotal;
+					staminaStealPercentTotal = attackModData[ATTACK_MODIFIER_STAMINASTEAL].percentTotal;
+					soulStealPercentTotal = attackModData[ATTACK_MODIFIER_SOULSTEAL].percentTotal;
 
-						auto totalGain = 0;
+					// Flats
+					lifeStealFlatTotal = attackModData[ATTACK_MODIFIER_LIFESTEAL].flatTotal;
+					manaStealFlatTotal = attackModData[ATTACK_MODIFIER_MANASTEAL].flatTotal;
+					staminaStealFlatTotal = attackModData[ATTACK_MODIFIER_STAMINASTEAL].flatTotal;
+					soulStealFlatTotal = attackModData[ATTACK_MODIFIER_SOULSTEAL].flatTotal;
+				}
 
-						if (staminaStealPercentTotal) {
-							std::cout << "Stamina Steal Percent Modifier Activated : on " << damage.primary.value << " damage \n";
-							totalGain += static_cast<int>(std::round(totalDamage * (staminaStealPercentTotal / 100)));
-						}
+				// Static cast everything to int32_t to ensure consistency
+				auto lifeLeechChance = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_LIFELEECHCHANCE));
+				auto lifeLeechAmount = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT));
+				auto manaLeechChance = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_MANALEECHCHANCE));
+				auto manaLeechAmount = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT));
 
-						if (staminaStealFlatTotal) {
-							std::cout << "Stamina Steal Modifier Activated : on " << damage.primary.value << " damage \n";
-							totalGain += staminaStealFlatTotal;
-						}
+				// Lifesteal
+				if ((lifeLeechChance && lifeLeechAmount) && (normal_random(1, 100) <= lifeLeechChance)) {
+					lifeStealGain += static_cast<int32_t>(std::abs(std::round(totalDamage * (lifeLeechAmount / 100))));
+				}
 
-						if (totalGain) {
-							casterPlayer.value()->changeStamina(totalGain);
-						}
+				if (lifeStealPercentTotal) {
+					lifeStealGain += static_cast<int32_t>(std::abs(std::round(totalDamage * (lifeStealPercentTotal) / 100)));
+				}
 
+				if (lifeStealFlatTotal) {
+					lifeStealGain += static_cast<int32_t>(std::abs(lifeStealFlatTotal));
+				}
+
+				if (lifeStealGain) {
+					CombatDamage lifeStealCombat;
+					lifeStealCombat.origin = ORIGIN_AUGMENT;
+					lifeStealCombat.leeched = true;
+					lifeStealCombat.primary.value = lifeStealGain;
+
+					CombatParams lifeStealParams;
+					lifeStealParams.origin = ORIGIN_AUGMENT;
+					lifeStealParams.combatType = COMBAT_LIFEDRAIN;
+					lifeStealParams.targetCasterOrTopMost = true;
+					lifeStealParams.impactEffect = CONST_ME_MAGIC_RED; // to-do: maybe make this something cooler sometime
+					std::cout << "Life Gained from Steal " << lifeStealGain << " \n";
+					Combat::doTargetCombat(caster, target, lifeStealCombat, lifeStealParams);
+				}
+
+				/// Manasteal
+				if ((manaLeechChance && manaLeechAmount) && (normal_random(1, 100) <= manaLeechChance)) {
+					manaStealGain += static_cast<int32_t>(std::abs(std::round(totalDamage * (manaLeechAmount) / 100)));
+				}
+
+				if (manaStealPercentTotal) {
+					std::cout << "Mana Leech Percent Modifier Activated : on " << damage.primary.value << " damage \n";
+					manaStealGain += static_cast<int32_t>(std::abs(std::round(totalDamage * (manaStealPercentTotal) / 100)));
+				}
+
+				if (manaStealFlatTotal) {
+					std::cout << "Mana Leech Flat Modifier Activated : on " << damage.primary.value << " damage \n";
+					manaStealGain += static_cast<int32_t>(std::abs(manaStealFlatTotal));
+				}
+
+				if (manaStealGain) {
+					CombatDamage manaStealCombat;
+					manaStealCombat.origin = ORIGIN_AUGMENT;
+					manaStealCombat.leeched = true;
+					manaStealCombat.primary.value = manaStealGain;
+
+					CombatParams manaStealParams;
+					manaStealParams.origin = ORIGIN_AUGMENT;
+					manaStealParams.combatType = COMBAT_MANADRAIN;
+					manaStealParams.targetCasterOrTopMost = true;
+					manaStealParams.impactEffect = CONST_ME_MAGIC_BLUE; // to-do: maybe make this something cooler sometime
+					std::cout << "Mana Gained from Steal " << manaStealGain << " \n";
+					Combat::doTargetCombat(caster, target, manaStealCombat, manaStealParams);
+				}
+\
+				/// Staminasteal
+				if (staminaStealPercentTotal) {
+					std::cout << "Stamina Steal Percent Modifier Activated : on " << damage.primary.value << " damage \n";
+					staminaGain += std::abs(static_cast<int32_t>(std::round(totalDamage * (staminaStealPercentTotal / 100))));
+				}
+
+				if (staminaStealFlatTotal) {
+					std::cout << "Stamina Steal Modifier Activated : on " << damage.primary.value << " damage \n";
+					staminaGain += std::abs(static_cast<int32_t>(staminaStealFlatTotal));
+				}
+
+				if (staminaGain) {
+					// to-do: move to custom method/function
+					constexpr int32_t maxStamina = 2520;
+					int32_t trueStaminaGain = std::abs(std::round(staminaGain / 60));
+					int32_t missingStamina = maxStamina - static_cast<int32_t>(casterPlayer.value()->getStaminaMinutes());
+					if (trueStaminaGain >= missingStamina) {
+						casterPlayer.value()->changeStamina(std::abs(missingStamina));
+					} else {
+						casterPlayer.value()->changeStamina(trueStaminaGain);
 					}
+					g_game.addMagicEffect(casterPlayer.value()->getPosition(), CONST_ME_YELLOWENERGY);
+				}
 
-					/// ATTACK_MODIFIER_SOULSTEAL
-					if (casterPlayer.value()->getSoul() < casterPlayer.value()->getVocation()->getSoulMax()) {
-						auto& [soulStealPercentTotal, soulStealFlatTotal] = attackModData[ATTACK_MODIFIER_SOULSTEAL];
+				// Soulsteal
+				if (soulStealPercentTotal) {
+					std::cout << "Soul Steal Percent Modifier Activated : on " << damage.primary.value << " damage \n";
+					soulGain += std::abs(static_cast<int32_t>(std::round(totalDamage * (soulStealPercentTotal / 100))));
+				}
 
-						auto totalGain = 0;
+				if (soulStealFlatTotal) {
+					std::cout << "Soul Steal Flat Modifier Activated : on " << damage.primary.value << " damage \n";
+					soulGain += std::abs(static_cast<int32_t>(soulStealFlatTotal));
+				}
 
-						if (soulStealPercentTotal) {
-							std::cout << "Soul Steal Percent Modifier Activated : on " << damage.primary.value << " damage \n";
-							totalGain += static_cast<int>(std::round(totalDamage * (soulStealPercentTotal / 100)));
-						}
-
-						if (soulStealFlatTotal) {
-							std::cout << "Soul Steal Flat Modifier Activated : on " << damage.primary.value << " damage \n";
-							totalGain += soulStealFlatTotal;
-						}
-
-						if (totalGain) {
-							casterPlayer.value()->changeSoul(totalGain);
-						}
-
+				if (soulGain) {
+					int32_t trueSoulGain = std::abs(soulGain);
+					int32_t maxSoul = static_cast<int32_t>(casterPlayer.value()->getVocation()->getSoulMax());
+					int32_t missingSoul = maxSoul - static_cast<int32_t>(casterPlayer.value()->getSoul());
+					if (trueSoulGain <= maxSoul ) {
+						casterPlayer.value()->changeSoul(trueSoulGain);
+					} else {
+						casterPlayer.value()->changeSoul(std::abs(missingSoul));
 					}
+					g_game.addMagicEffect(casterPlayer.value()->getPosition(), CONST_ME_MAGIC_GREEN);
 				}
 			}
 		}
@@ -1252,6 +1265,10 @@ void Combat::applyDamageReductionModifier(uint8_t modifierType, CombatDamage& da
 
 		case DEFENSE_MODIFIER_REPLENISH:
 			damageTarget.replenishStaminaFromDamage(attacker, damage, percent, flat);
+			return;
+
+		case DEFENSE_MODIFIER_RESIST:
+			damageTarget.resistDamage(attacker, damage, percent, flat);
 			return;
 
 		case DEFENSE_MODIFIER_REVIVE:
