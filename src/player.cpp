@@ -4127,6 +4127,23 @@ void Player::changeSoul(int32_t soulChange)
 	sendStats();
 }
 
+// to-do: add internal protection for usage of this method and the next one.
+void Player::addSoul(uint8_t gain)
+{
+	if (gain > 0) {
+		soul += gain;
+	}
+	sendStats();
+}
+
+void Player::addStamina(uint16_t gain)
+{
+	if (gain > 0) {
+		staminaMinutes += gain;
+	}
+	sendStats();
+}
+
 void Player::changeStamina(int32_t amount)
 {
 	if (amount > 0) {

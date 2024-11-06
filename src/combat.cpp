@@ -791,12 +791,6 @@ void Combat::doCombat(Creature* caster, const Position& position) const
 	}
 }
 
-static thread_local int combatRecursionDepth = 0;
-struct RecursionGuard {
-	RecursionGuard() { ++combatRecursionDepth; }
-	~RecursionGuard() { --combatRecursionDepth; }
-};
-
 void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& damage, const CombatParams& params, bool sendDistanceEffect)
 {	
 	// To-do : I need to properly handle augment based damage which requires entire reworking of this method.
@@ -1029,10 +1023,10 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 
 				if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
 					// Percents
-					lifeStealPercentTotal = attackModData[ATTACK_MODIFIER_LIFESTEAL].percentTotal;
-					manaStealPercentTotal = attackModData[ATTACK_MODIFIER_MANASTEAL].percentTotal;
-					staminaStealPercentTotal = attackModData[ATTACK_MODIFIER_STAMINASTEAL].percentTotal;
-					soulStealPercentTotal = attackModData[ATTACK_MODIFIER_SOULSTEAL].percentTotal;
+					lifeStealPercentTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_LIFESTEAL].percentTotal);
+					manaStealPercentTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_MANASTEAL].percentTotal);
+					staminaStealPercentTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_STAMINASTEAL].percentTotal);
+					soulStealPercentTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_SOULSTEAL].percentTotal);
 
 					// Flats
 					lifeStealFlatTotal = attackModData[ATTACK_MODIFIER_LIFESTEAL].flatTotal;
@@ -1064,15 +1058,18 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 					CombatDamage lifeStealCombat;
 					lifeStealCombat.origin = ORIGIN_AUGMENT;
 					lifeStealCombat.leeched = true;
+					lifeStealCombat.primary.type = COMBAT_LIFEDRAIN;
 					lifeStealCombat.primary.value = lifeStealGain;
 
-					CombatParams lifeStealParams;
-					lifeStealParams.origin = ORIGIN_AUGMENT;
-					lifeStealParams.combatType = COMBAT_LIFEDRAIN;
-					lifeStealParams.targetCasterOrTopMost = true;
-					lifeStealParams.impactEffect = CONST_ME_MAGIC_RED; // to-do: maybe make this something cooler sometime
-					std::cout << "Life Gained from Steal " << lifeStealGain << " \n";
-					Combat::doTargetCombat(caster, target, lifeStealCombat, lifeStealParams);
+					// to-do: write necessary logic to handle leeched combats from augments
+					//CombatParams lifeStealParams;
+					//lifeStealParams.origin = ORIGIN_AUGMENT;
+					//lifeStealParams.combatType = COMBAT_LIFEDRAIN;
+					//lifeStealParams.targetCasterOrTopMost = true;
+					//lifeStealParams.impactEffect = CONST_ME_MAGIC_RED; // to-do: maybe make this something cooler sometime
+					//std::cout << "Life Gained from Steal " << lifeStealGain << " \n";
+					//Combat::doTargetCombat(caster, target, lifeStealCombat, lifeStealParams);
+					g_game.combatChangeHealth(target, caster, lifeStealCombat);
 				}
 
 				/// Manasteal
@@ -1094,37 +1091,41 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 					CombatDamage manaStealCombat;
 					manaStealCombat.origin = ORIGIN_AUGMENT;
 					manaStealCombat.leeched = true;
+					manaStealCombat.primary.type = COMBAT_MANADRAIN;
 					manaStealCombat.primary.value = manaStealGain;
 
-					CombatParams manaStealParams;
-					manaStealParams.origin = ORIGIN_AUGMENT;
-					manaStealParams.combatType = COMBAT_MANADRAIN;
-					manaStealParams.targetCasterOrTopMost = true;
-					manaStealParams.impactEffect = CONST_ME_MAGIC_BLUE; // to-do: maybe make this something cooler sometime
-					std::cout << "Mana Gained from Steal " << manaStealGain << " \n";
-					Combat::doTargetCombat(caster, target, manaStealCombat, manaStealParams);
+					//CombatParams manaStealParams;
+					//manaStealParams.origin = ORIGIN_AUGMENT;
+					//manaStealParams.combatType = COMBAT_MANADRAIN;
+					//manaStealParams.targetCasterOrTopMost = true;
+					//manaStealParams.impactEffect = CONST_ME_MAGIC_BLUE; // to-do: maybe make this something cooler sometime
+					//std::cout << "Mana Gained from Steal " << manaStealGain << " \n";
+					//Combat::doTargetCombat(caster, target, manaStealCombat, manaStealParams);
+					g_game.combatChangeMana(target, caster, manaStealCombat);
 				}
 \
 				/// Staminasteal
 				if (staminaStealPercentTotal) {
 					std::cout << "Stamina Steal Percent Modifier Activated : on " << damage.primary.value << " damage \n";
-					staminaGain += std::abs(static_cast<int32_t>(std::round(totalDamage * (staminaStealPercentTotal / 100))));
+					staminaGain += static_cast<int32_t>(std::abs(std::round(totalDamage * (staminaStealPercentTotal / 100))));
 				}
 
 				if (staminaStealFlatTotal) {
 					std::cout << "Stamina Steal Modifier Activated : on " << damage.primary.value << " damage \n";
-					staminaGain += std::abs(static_cast<int32_t>(staminaStealFlatTotal));
+					staminaGain += static_cast<int32_t>(std::abs(staminaStealFlatTotal));
 				}
 
 				if (staminaGain) {
 					// to-do: move to custom method/function
-					constexpr int32_t maxStamina = 2520;
-					int32_t trueStaminaGain = std::abs(std::round(staminaGain / 60));
-					int32_t missingStamina = maxStamina - static_cast<int32_t>(casterPlayer.value()->getStaminaMinutes());
-					if (trueStaminaGain >= missingStamina) {
-						casterPlayer.value()->changeStamina(std::abs(missingStamina));
+					constexpr uint16_t maxStamina = 2520;
+					uint16_t convertedGain = static_cast<uint16_t>(staminaGain);
+					uint16_t trueStaminaGain = static_cast<uint16_t>(convertedGain / 60);
+					uint16_t currentStamina = casterPlayer.value()->getStaminaMinutes();
+					uint16_t missingStamina = (maxStamina - currentStamina);
+					if ((trueStaminaGain + currentStamina) >= missingStamina) {
+						casterPlayer.value()->addStamina(missingStamina);
 					} else {
-						casterPlayer.value()->changeStamina(trueStaminaGain);
+						casterPlayer.value()->addStamina(trueStaminaGain);
 					}
 					g_game.addMagicEffect(casterPlayer.value()->getPosition(), CONST_ME_YELLOWENERGY);
 				}
@@ -1132,24 +1133,27 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				// Soulsteal
 				if (soulStealPercentTotal) {
 					std::cout << "Soul Steal Percent Modifier Activated : on " << damage.primary.value << " damage \n";
-					soulGain += std::abs(static_cast<int32_t>(std::round(totalDamage * (soulStealPercentTotal / 100))));
+					soulGain += static_cast<int32_t>(std::abs(totalDamage * (soulStealPercentTotal /  100 )));
 				}
 
 				if (soulStealFlatTotal) {
 					std::cout << "Soul Steal Flat Modifier Activated : on " << damage.primary.value << " damage \n";
-					soulGain += std::abs(static_cast<int32_t>(soulStealFlatTotal));
+					soulGain += (soulStealFlatTotal);
 				}
 
 				if (soulGain) {
-					int32_t trueSoulGain = std::abs(soulGain);
-					int32_t maxSoul = static_cast<int32_t>(casterPlayer.value()->getVocation()->getSoulMax());
-					int32_t missingSoul = maxSoul - static_cast<int32_t>(casterPlayer.value()->getSoul());
-					if (trueSoulGain <= maxSoul ) {
-						casterPlayer.value()->changeSoul(trueSoulGain);
-					} else {
-						casterPlayer.value()->changeSoul(std::abs(missingSoul));
+					if (soulGain <= std::numeric_limits<uint8_t>::max()) {
+						uint8_t trueSoulGain = static_cast<uint8_t>(soulGain);
+						uint8_t currentSoul = casterPlayer.value()->getSoul();
+						uint8_t maxSoul = casterPlayer.value()->getVocation()->getSoulMax();
+						uint8_t missingSoul = (maxSoul - currentSoul);
+						if ((trueSoulGain + currentSoul)  <= maxSoul) {
+							casterPlayer.value()->addSoul(trueSoulGain);
+						} else {
+							casterPlayer.value()->addSoul(missingSoul);
+						}
+						g_game.addMagicEffect(casterPlayer.value()->getPosition(), CONST_ME_MAGIC_GREEN);
 					}
-					g_game.addMagicEffect(casterPlayer.value()->getPosition(), CONST_ME_MAGIC_GREEN);
 				}
 			}
 		}
