@@ -24,12 +24,12 @@ public:
 
 	static constexpr auto path = "data/augments/";
 	static const ModifierStance ParseStance(std::string_view stanceName) noexcept;
+	static const ModFactor ParseFactor(std::string_view factor) noexcept;
 	static const ModifierAttackType ParseAttackModifier(std::string_view modName) noexcept;
 	static const ModifierDefenseType ParseDefenseModifier(std::string_view modName) noexcept;
 	static const CombatType_t ParseDamage(std::string_view damageName) noexcept;
 	static const CombatOrigin ParseOrigin(std::string_view originName) noexcept;
 	static const RaceType_t ParseRaceType(std::string_view raceType) noexcept;
-	static const ModFactor ParseModFactor(std::string_view modFactor) noexcept;
 	static const CreatureType_t ParseCreatureType(std::string_view creatureType) noexcept;
 
 	static std::shared_ptr<Augment> MakeAugment(std::string_view augmentName);

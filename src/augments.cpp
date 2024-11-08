@@ -53,7 +53,7 @@ void Augments::loadAll() {
                                 auto& table = *prop.as_table();
                                 std::string_view modType =          table["mod"].value_or("none");
                                 uint16_t amount =                   table["value"].value_or(0);
-                                uint8_t factor =                    table["factor"].value_or(0);
+                                std::string_view factor =           table["factor"].value_or("none");
                                 uint8_t chance =                    table["chance"].value_or(100);
                                 std::string_view damageType =       table["damage"].value_or("none");
                                 std::string_view originType =       table["origin"].value_or("none");
@@ -69,7 +69,7 @@ void Augments::loadAll() {
                                         ParseStance(modType),
                                         ParseAttackModifier(modType),
                                         amount,
-                                        std::bit_cast<ModFactor>(factor),
+                                        ParseFactor(factor),
                                         chance,
                                         ParseDamage(damageType),
                                         ParseOrigin(originType),
@@ -94,7 +94,7 @@ void Augments::loadAll() {
                                         ParseStance(modType),
                                         ParseDefenseModifier(modType),
                                         amount,
-                                        std::bit_cast<ModFactor>(factor),
+                                        ParseFactor(factor),
                                         chance,
                                         ParseDamage(damageType),
                                         ParseOrigin(originType),
@@ -149,6 +149,15 @@ const ModifierStance Augments::ParseStance(std::string_view modName) noexcept
     }
     std::cout << "[::Augment Error::] no such mod by type name : " << std::string{ modName } << " /n";
     return NO_MOD;
+}
+
+const ModFactor Augments::ParseFactor(std::string_view factor) noexcept
+{
+    std::string f_type = std::string{ factor };
+    if (f_type == "flat") {
+        return FLAT_MODIFIER;
+    }
+    return PERCENT_MODIFIER;
 }
 
 const CombatType_t Augments::ParseDamage(std::string_view damageName) noexcept
@@ -273,18 +282,6 @@ const RaceType_t Augments::ParseRaceType(std::string_view raceType) noexcept {
     }
 
     return RACE_NONE;
-}
-
-const ModFactor Augments::ParseModFactor(std::string_view modFactor) noexcept {
-    if (modFactor.data() == "percent") {
-        return PERCENT_MODIFIER;
-    } else if (modFactor.data() == "flat") {
-        return FLAT_MODIFIER;
-    } else {
-        std::cout << "Unknown Mod Factor : " << modFactor << " only options are percent or flat \n";
-    }
-
-    return PERCENT_MODIFIER;
 }
 
 const CreatureType_t Augments::ParseCreatureType(std::string_view creatureType) noexcept {

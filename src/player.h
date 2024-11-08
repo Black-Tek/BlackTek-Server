@@ -36,6 +36,8 @@ class SchedulerTask;
 class Bed;
 class Guild;
 
+constexpr uint16_t MaximumStamina = 2520;
+
 enum skillsid_t {
 	SKILLVALUE_LEVEL = 0,
 	SKILLVALUE_TRIES = 1,

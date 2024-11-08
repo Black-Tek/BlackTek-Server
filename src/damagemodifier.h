@@ -29,8 +29,10 @@ enum ModifierAttackType : uint8_t {
 	ATTACK_MODIFIER_CRITICAL,			// damage can critcally hit
 	ATTACK_MODIFIER_PIERCING,			// damage ignores defenses
 	ATTACK_MODIFIER_CONVERSION,			// damage is converted to different type
+	// ATTACK_MODIFIER_CRIPPLE,			// new modifier for paralyzing target
 
-	ATTACK_MODIFIER_LAST
+	ATTACK_MODIFIER_FIRST = ATTACK_MODIFIER_LIFESTEAL,
+	ATTACK_MODIFIER_LAST = ATTACK_MODIFIER_CONVERSION,
 };
 
 enum ModifierDefenseType : uint8_t {
@@ -206,7 +208,7 @@ inline void DamageModifier::setValue(uint16_t amount) {
 
 inline void DamageModifier::setFactor(uint8_t factor)
 {
-	m_factor = std::bit_cast<ModFactor>(factor);
+	m_factor = static_cast<ModFactor>(factor);
 }
 
 inline void DamageModifier::setCombatType(CombatType_t combatType) {
