@@ -5667,7 +5667,7 @@ std::vector<Position> Player::getOpenPositionsInRadius(int radius) const {
 			}
 
 			Tile* tile = g_game.map.getTile(pos);
-			if (tile && g_game.canThrowObjectTo(center, pos)) {
+			if (tile && g_game.canThrowObjectTo(center, pos) && !tile->getZone() == ZONE_PROTECTION) {
 				openPositions.push_back(pos);
 			}
 		}
