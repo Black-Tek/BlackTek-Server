@@ -38,8 +38,8 @@ void Augments::loadAll() {
 
                     toml::table augment_info = *entry.as_table();
                     auto modifier_data = augment_info["modifiers"];
-                    const std::string& name = augment_info["name"].value_or("unknown");
-                    const std::string& description = augment_info["description"].value_or("unknown");
+                    std::string name = augment_info["name"].value_or("unknown");
+                    std::string description = augment_info["description"].value_or("unknown");
 
                     if (name == "unknown") {
                         std::cout << "Error: All augments require a name \n";
@@ -103,7 +103,10 @@ void Augments::loadAll() {
 
                                     if (modType == "reform") {
                                         auto reformType = ParseDamage(table["toDamage"].value_or("none"));
+                                        std::cout << "Loading Reform Damage for damage type : " << table["toDamage"].value_or("none") << " according to parser. \n";
+                                        std::cout << "Loading Reform Damage for damage type : " << getCombatName(reformType) << " according to ParseDamage Method. \n";
                                         damage_modifier->setTransformDamageType(reformType);
+                                        std::cout << "Loading Reform Damage for damage type : " << getCombatName(damage_modifier->getConversionType()) << " according to conversionType Method. \n";
                                     }
 
                                     if (creatureName != "none") {

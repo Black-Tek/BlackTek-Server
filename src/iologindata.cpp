@@ -1208,11 +1208,11 @@ void IOLoginData::loadItems(ItemMap& itemMap, DBResult_ptr result)
 		if (item) {
 			// Deserialize the item's attributes
 			if (!item->unserializeAttr(propStream)) {
-				std::cout << "WARNING: Serialize error in IOLoginData::loadItems for Attributes" << std::endl;
+
 			}
 
 			if (!item->unserializeAugments(augmentStream)) {
-				std::cout << "WARNING: Serialize error in IOLoginData::loadItems for Augments" << std::endl;
+				// todo: handle this
 			}
 
 			// Add item to the itemMap

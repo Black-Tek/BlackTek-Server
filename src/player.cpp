@@ -5451,8 +5451,8 @@ CreatureType_t Player::getCreatureType(Monster& monster) {
 }
 
 static ModifierTotals getValidatedTotals(const std::vector<std::shared_ptr<DamageModifier>> modifierList, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) {
-	auto percent = 0;
-	auto flat = 0;
+	uint16_t percent = 0;
+	uint16_t flat = 0;
 	// to-do: const and auto&
 	for (auto& modifier : modifierList) {
 
@@ -5478,7 +5478,7 @@ static ModifierTotals getValidatedTotals(const std::vector<std::shared_ptr<Damag
 			}
 		}
 	}
-	percent = std::clamp<uint8_t>(percent, 0, 100);
+	percent = std::clamp<uint16_t>(percent, 0, 100);
 	return ModifierTotals(flat, percent);
 }
 
@@ -5538,47 +5538,45 @@ std::unordered_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
 
 std::unordered_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uint8_t modType, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName)
 {
-	std::unordered_map<uint8_t, ModifierTotals> conversionList;
-	conversionList.reserve(COMBAT_COUNT);
+	std::unordered_map<uint8_t, ModifierTotals> playerList;
+	playerList.reserve(COMBAT_COUNT);
 
-	// Note: Passing incorrect 'modType' param to this method can break it! 
-	// Only two modTypes that should be used are :
-	// ATTACK_MODIFIER_CONVERSION
-	// DEFENSE_MODIFIER_REFORM
-	// Their current values are 7 and 9, if you pass anything else, this method breaks.
+	std::unordered_map<uint8_t, ModifierTotals> itemList;
+	itemList.reserve(COMBAT_COUNT);
+	
+	if ((modType != ATTACK_MODIFIER_CONVERSION) && (modType != DEFENSE_MODIFIER_REFORM)) {
+		std::cout << "::: WARNING Player::getConvertedTotals called with invalid Mod Type! \n";
+		return playerList;
+	}
 
 	if (!augments.empty()) {
 		for (const auto& aug : augments) {
-			const auto& modifiers = aug->getAttackModifiers(modType);
+			const auto& modifiers = modType == ATTACK_MODIFIER_CONVERSION ? aug->getAttackModifiers(modType) : aug->getDefenseModifiers(modType);
 			for (const auto& modifier : modifiers) {
 				if (modifier->appliesToDamage(damageType) && modifier->appliesToOrigin(originType) && modifier->appliesToTarget(creatureType, race, creatureName)) {
 
-					auto flat = 0;
-					auto percent = 0;
+					uint16_t flat = 0;
+					uint16_t percent = 0;
 
 					if (modifier->isFlatValue() && modifier->getChance() == 0 || modifier->isFlatValue() && modifier->getChance() == 100) {
 						flat += modifier->getValue();
-						continue;
 					} else if (modifier->isFlatValue()) {
 						if (modifier->getChance() >= uniform_random(1, 100)) {
 							flat += modifier->getValue();
-							continue;
 						}
 					}
 
 					if (modifier->isPercent() && modifier->getChance() == 0 || modifier->isPercent() && modifier->getChance() == 100) {
 						percent += modifier->getValue();
-						continue;
 					} else if (modifier->isPercent()) {
 						if (modifier->getChance() >= uniform_random(1, 100)) {
 							percent += modifier->getValue();
-							continue;
 						}
 					}
-					auto& entry = conversionList[modifier->conversionType()];
-					entry.flatTotal += flat;
-					entry.percentTotal += percent;
-					entry.percentTotal = std::clamp<uint8_t>(entry.percentTotal, 0, 100);
+
+					percent = std::clamp<uint16_t>(percent, 0, 100);
+					ModifierTotals totals{ flat, percent };
+					playerList.emplace(combatTypeToIndex(modifier->getConversionType()), totals);
 				}
 			}
 		}
@@ -5588,42 +5586,53 @@ std::unordered_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uin
 		Item* item = inventory[slot];
 		if (item && !item->getAugments().empty()) {
 			for (const auto& aug : item->getAugments()) {
-				const auto& modifiers = aug->getAttackModifiers(modType);
+				std::cout << " <> Augment Count <> " << item->getAugments().size() << " \n";
+				const auto& modifiers = modType == ATTACK_MODIFIER_CONVERSION ? aug->getAttackModifiers(modType) : aug->getDefenseModifiers(modType);
+				std::cout << " <> Modifier Count <> " << modifiers.size() << " \n";
+				std::cout << " <> Reform Count <> " << aug->getDefenseModifiers(modType).size() << " \n";
+				std::cout << " <> Conversion Count <> " << aug->getAttackModifiers(modType).size() << " \n";
 				for (const auto& modifier : modifiers) {
+					std::cout << " <> Applies To Damage <> " << modifier->appliesToDamage(damageType) << " \n";
+					std::cout << " <> Applies To Origin <> " << modifier->appliesToOrigin(originType) << " \n";
+					std::cout << " <> Applies To Target <> " << modifier->appliesToTarget(creatureType, race, creatureName) << " \n";
+					std::cout << " <> Reforms Damage To Type <> " << getCombatName(modifier->getConversionType()) << " \n";
 					if (modifier->appliesToDamage(damageType) && modifier->appliesToOrigin(originType) && modifier->appliesToTarget(creatureType, race, creatureName)) {
 
-						auto flat = 0;
-						auto percent = 0;
+						uint16_t flat = 0;
+						uint16_t percent = 0;
 
 						if (modifier->isFlatValue() && modifier->getChance() == 0 || modifier->isFlatValue() && modifier->getChance() == 100) {
 							flat += modifier->getValue();
-							continue;
 						} else if (modifier->isFlatValue()) {
 							if (modifier->getChance() >= uniform_random(1, 100)) {
 								flat += modifier->getValue();
-								continue;
 							}
 						}
 
 						if (modifier->isPercent() && modifier->getChance() == 0 || modifier->isPercent() && modifier->getChance() == 100) {
 							percent += modifier->getValue();
-							continue;
 						} else if (modifier->isPercent()) {
 							if (modifier->getChance() >= uniform_random(1, 100)) {
 								percent += modifier->getValue();
-								continue;
 							}
 						}
-						auto& entry = conversionList[modifier->conversionType()];
-						entry.flatTotal += flat;
-						entry.percentTotal += percent;
-						entry.percentTotal = std::clamp<uint8_t>(entry.percentTotal, 0, 100);
+
+						percent = std::clamp<uint16_t>(percent, 0, 100);
+
+						std::cout << " <> Percent <> " << percent << " \n";
+						std::cout << " <> Flat <> " << flat << " \n";
+
+						playerList[combatTypeToIndex(modifier->getConversionType())].flatTotal += flat;
+						playerList[combatTypeToIndex(modifier->getConversionType())].percentTotal = std::clamp<uint8_t>(playerList[modifier->getConversionType()].percentTotal + percent, 0, 100);
+
+						std::cout << " <> Percent Total <> " << playerList[combatTypeToIndex(modifier->getConversionType())].percentTotal << " \n";
 					}
 				}
 			}
 		}
 	}
-	return conversionList;
+
+	return playerList;
 }
 
 std::unordered_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) {
@@ -6046,8 +6055,50 @@ void Player::ricochetDamage(CombatDamage& originalDamage, int32_t percent, int32
 		originalDamage.primary.value = (difference <= 0) ? 0 : (0 - difference);
 		auto damageArea = std::make_unique<AreaCombat>();
 		damageArea->setupArea(Deflect1xArea, 5);
-
 		Combat::doAreaCombat(this, targetPos, damageArea.get(), ricochet, params);
+	}
+}
+
+void Player::convertDamage(Creature* target, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList) {
+	auto iter = conversionList.begin();
+
+	while (originalDamage.primary.value < 0 && iter != conversionList.end()) {
+
+		CombatType_t combatType = indexToCombatType(iter->first);
+		ModifierTotals& totals = iter->second;
+
+		int32_t damageChange = 0;
+		int32_t percent = static_cast<int32_t>(totals.percentTotal);
+		int32_t flat = static_cast<int32_t>(totals.flatTotal);
+		if (percent) {
+			if (percent <= 100) {
+				damageChange += std::abs(originalDamage.primary.value * (totals.percentTotal / 100));
+			} else {
+				damageChange += std::abs(originalDamage.primary.value);
+			}
+		}
+		if (flat) {
+			damageChange += flat;
+		}
+
+		if (damageChange) {
+			int32_t maxDamage = std::abs(originalDamage.primary.value);
+			int32_t convertedDamage = std::abs(damageChange);
+			int32_t difference = maxDamage - convertedDamage;
+			originalDamage.primary.value = (difference > maxDamage) ? 0 : (originalDamage.primary.value + convertedDamage);
+
+			auto converted = CombatDamage{};
+			converted.primary.type = combatType;
+			converted.primary.value = (0 - convertedDamage);
+			converted.origin = ORIGIN_AUGMENT;
+
+			auto params = CombatParams{};
+			params.combatType = combatType;
+			
+			Combat::doTargetCombat(this, target, converted, params);
+		}
+
+		++iter;
 	}
 }
 
@@ -6057,38 +6108,44 @@ void Player::reformDamage(std::optional<std::reference_wrapper<Creature>> attack
 	while (originalDamage.primary.value < 0 && iter != conversionList.end()) {
 
 		CombatType_t combatType = indexToCombatType(iter->first);
+		std::cout << ":X:X: Reform Damage :X:X: \n";
+		std::cout << "Called on Damage : " << originalDamage.primary.value << " \n";
+		std::cout << "Reform Damage to : " << getCombatName(combatType) << " \n";
 		ModifierTotals& totals = iter->second;
 
 		int32_t damageChange = 0;
-		if (totals.percentTotal) {
-			if (totals.percentTotal <= 100) {
-				damageChange += originalDamage.primary.value * (totals.percentTotal / 100.0);
-			}
-			else {
-				damageChange += originalDamage.primary.value;
+		int32_t percent = static_cast<int32_t>(totals.percentTotal);
+		int32_t flat = static_cast<int32_t>(totals.flatTotal);
+		if (percent) {
+			if (percent <= 100) {
+				damageChange += std::abs(originalDamage.primary.value * (totals.percentTotal / 100));
+			} else {
+				damageChange += std::abs(originalDamage.primary.value);
 			}
 		}
-		if (totals.flatTotal) {
-			damageChange += totals.flatTotal;
+		if (flat) {
+			damageChange += flat;
 		}
 
-		if (damageChange != 0) {
+		if (damageChange) {
+			int32_t maxDamage = std::abs(originalDamage.primary.value);
 			int32_t convertedDamage = std::abs(damageChange);
-			int32_t difference = std::abs(originalDamage.primary.value) - convertedDamage;
-
-			originalDamage.primary.value = (difference <= 0) ? 0 : (0 - difference);
+			int32_t difference = maxDamage - convertedDamage;
+			originalDamage.primary.value = (difference > maxDamage) ? 0 : (originalDamage.primary.value + convertedDamage);
 
 			auto converted = CombatDamage{};
 			converted.primary.type = combatType;
-			converted.primary.value = damageChange;
+			converted.primary.value = (0 - convertedDamage);
 			converted.origin = ORIGIN_AUGMENT;
 
+			auto params = CombatParams{};
+			params.combatType = combatType;
 
 			if (attackerOpt.has_value()) {
 				auto& attacker = attackerOpt.value().get();
-				g_game.combatChangeHealth(&attacker, this, converted);
+				Combat::doTargetCombat(&attacker, this, converted, params);
 			} else {
-				g_game.combatChangeHealth(nullptr, this, converted);
+				Combat::doTargetCombat(nullptr, this, converted, params);
 			}
 		}
 

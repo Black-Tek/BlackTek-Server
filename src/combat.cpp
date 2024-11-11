@@ -826,7 +826,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 		auto conversionTotals = casterPlayer.value()->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage.primary.type, damage.origin, targetType, target->getRace(), target->getName()) ;
 		if (!conversionTotals.empty() && params.origin != ORIGIN_AUGMENT) {
 			std::cout << "Conversion Modifier Activated on " << damage.primary.value << " damage \n";
-			casterPlayer.value()->reformDamage(*target->getCreature(), damage, conversionTotals);
+			casterPlayer.value()->convertDamage(target->getCreature(), damage, conversionTotals);
 			if (damage.primary.value == 0) {
 				return;
 			}

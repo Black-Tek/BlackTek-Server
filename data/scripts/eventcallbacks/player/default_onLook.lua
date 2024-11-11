@@ -124,6 +124,14 @@ ec.onLook = function(self, thing, position, distance, description)
 				description = description and description .. "\n" .. imbuementsDescription or imbuementsDescription
 			end
 		end
+
+		if thing:isAugmented() then
+			for index, augment in pairs(thing:getAugments()) do
+				augDesc = augment:getDescription()
+				description = description.. " \n Augment : " .. augment:getName() .. " \n " .. augDesc
+			end
+		end
+
 	end
 
 	return description

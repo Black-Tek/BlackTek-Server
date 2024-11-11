@@ -1254,6 +1254,8 @@ class Player final : public Creature, public Cylinder
 		void reflectDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
 		void deflectDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
 		void ricochetDamage(CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
+		void convertDamage(Creature* target, CombatDamage& originalDamage,
+		                   std::unordered_map<uint8_t, ModifierTotals> conversionList);
 		void reformDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList);
 
 	private:

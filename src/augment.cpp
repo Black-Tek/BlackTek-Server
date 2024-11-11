@@ -8,7 +8,7 @@
 
 #include "augment.h"
 
-Augment::Augment(std::string_view name, std::string_view description) : m_name(name), m_description(description) {
+Augment::Augment(std::string name, std::string description) : m_name(name), m_description(description) {
 	
 }
 

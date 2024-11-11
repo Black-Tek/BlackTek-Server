@@ -10,15 +10,77 @@
 
 #include "otpch.h"
 #include "tools.h"
-#include "const.h"
 #include "fileloader.h"
 
 struct ModifierTotals {
 	ModifierTotals() = default;
-	ModifierTotals(uint8_t flat, uint8_t percent) : flatTotal(flat), percentTotal(percent) {}
-	uint8_t flatTotal = 0;
-	uint8_t percentTotal = 0;
+	ModifierTotals(uint16_t flat, uint16_t percent) : flatTotal(flat), percentTotal(percent) {}
+	uint16_t flatTotal = 0;
+	uint16_t percentTotal = 0;
 };
+
+struct WeildModifier {
+	uint8_t main = 0; // stat / skill 
+	uint8_t sub = 0; // health / sword
+	uint8_t value = 0;
+	// Percent & Flat can be out-of-banded into being each their own containers;
+};
+
+enum StatModifier : uint8_t {
+	MAX_HEALTH,
+	HEALTH_REGEN,
+	MAX_MANA,
+	MANA_REGEN,
+	MAX_SOUL,
+	SOUL_REGEN,
+	MAX_STAMINA,
+	STAMINA_REGEN,
+	/// Entries below this line are to be added as future features.
+	MOVEMENT_SPEED,
+	CASTING_SPEED,
+	ATTACK_SPEED,
+};
+
+enum SkillModifier : uint8_t {
+	MELEE_SKILL,
+	FIST_SKILL,
+	SWORD_SKILL,
+	AXE_SKILL,
+	CLUB_SKILL,
+	WAND_SKILL,
+	ROD_SKILL,
+	MAGIC_SKILL,
+	MAGIC_WEAPON_SKILL,
+	DISTANCE_SKILL,
+	SHIELD_SKILL,
+	FISHING_SKILL,
+};
+
+enum KillModifier : uint8_t {
+	AOE_DAMAGE,
+	BONUS_LOOT, // flat
+	BONUS_EXP,  // flat
+	LOOT_GAIN,  // percent
+	EXP_GAIN,   // percent
+};
+
+enum PassiveEffect : uint8_t {
+	// all these applicable to specific creature.
+	SCAVENGE, // increase chance for skinning
+	GUTTING, // increased creature products w/ chance
+	VOIDCALL, // increase mana leech if applicable
+	VAMPIRIC, // increase life leech if applicable
+	BLESS, // reduced death penalty
+	CLEANSE, // removes one random active negative status effect and temporarily makes you immune against it
+	ADDRENALINE, // chance to get temporary boosted movement speed after being attacked
+	NUMB, // chance to paralyze attacker after an attack
+	LOWBLOW, // increases crit hit chance if chance is already above 0
+	DODGE, // chance to dodge an attack
+};
+
+
+
+
 
 enum ModifierAttackType : uint8_t {
 	ATTACK_MODIFIER_NONE,				// default
@@ -70,7 +132,6 @@ public:
 	// allow copying
 	DamageModifier(const DamageModifier&) = default;
 	DamageModifier& operator=(const DamageModifier&) = default;
-	auto operator<=>(const DamageModifier&) const = default;
 
 	DamageModifier(uint8_t stance, uint8_t modType, uint16_t amount, ModFactor factorType, uint8_t chance, CombatType_t combatType = COMBAT_NONE , CombatOrigin source = ORIGIN_NONE, CreatureType_t creatureType = CREATURETYPE_ATTACKABLE,  RaceType_t race = RACE_NONE, std::string creatureName = "none") :
 		m_mod_stance(stance),					// attack / defense
@@ -87,13 +148,13 @@ public:
 
 	static std::shared_ptr<DamageModifier> makeModifier(uint8_t stance, uint8_t modType, uint16_t amount, ModFactor factorType, uint8_t chance, CombatType_t combatType = COMBAT_NONE, CombatOrigin source = ORIGIN_NONE, CreatureType_t creatureType = CREATURETYPE_ATTACKABLE, RaceType_t race = RACE_NONE, std::string_view creatureName = "none");
 
-	const uint8_t getStance() const;
-	const uint8_t getType() const;
-	const uint16_t getValue() const;
-	const uint8_t getChance() const;
+	const uint8_t& getStance() const;
+	const uint8_t& getType() const;
+	const uint16_t& getValue() const;
+	const uint8_t& getChance() const;
 
-	const CombatType_t getDamageType() const;
-	const CombatOrigin getOriginType() const;
+	const CombatType_t& getDamageType() const;
+	const CombatOrigin& getOriginType() const;
 
 	const bool isPercent() const;
 	const bool isFlatValue() const;
@@ -102,8 +163,8 @@ public:
 	const bool appliesToTarget(const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const;
 	const bool isAttackStance() const;
 	const bool isDefenseStance() const;
-	const std::string getMonsterName() const;
-	const CombatType_t conversionType() const;
+	const std::string& getMonsterName() const;
+	const CombatType_t& getConversionType() const;
 
 	void setValue(uint16_t amount);
 	void setFactor(uint8_t factor);
@@ -122,23 +183,12 @@ public:
 		propWriteStream.write<uint8_t>(m_factor);
 		propWriteStream.write<uint8_t>(m_chance);
 		propWriteStream.write<CombatType_t>(m_damage_type);
+		propWriteStream.write<CombatType_t>(m_to_damage_type);
 		propWriteStream.write<CombatOrigin>(m_origin_type);
 		propWriteStream.write<CreatureType_t>(m_creature_type);
 		propWriteStream.write<RaceType_t>(m_race_type);
 		propWriteStream.writeString(m_creature_name);
 
-		// handle m_aux_attribute
-		if (m_aux_attribute.has_value()) {
-			if (m_aux_attribute.type() == typeid(uint8_t)) {
-				propWriteStream.write<uint8_t>(0);  // Type tag for uint8_t
-				propWriteStream.write<uint8_t>(std::any_cast<uint8_t>(m_aux_attribute));
-			} else if (m_aux_attribute.type() == typeid(std::string)) {
-				propWriteStream.write<uint8_t>(1);  // Type tag for std::string
-				propWriteStream.writeString(std::any_cast<std::string>(m_aux_attribute));
-			}
-		} else {
-			propWriteStream.write<uint8_t>(255);  // Tag for no value
-		}
 	}
 
 	bool unserialize(PropStream& propReadStream) {
@@ -149,38 +199,14 @@ public:
 		if (!propReadStream.read<uint8_t>(m_chance)) return false;
 
 		if (!propReadStream.read<CombatType_t>(m_damage_type)) return false;
+		if (!propReadStream.read<CombatType_t>(m_to_damage_type)) return false;
 		if (!propReadStream.read<CombatOrigin>(m_origin_type)) return false;
 		if (!propReadStream.read<CreatureType_t>(m_creature_type)) return false;
 		if (!propReadStream.read<RaceType_t>(m_race_type)) return false;
 
 		auto [creatureName, success] = propReadStream.readString();
 		if (!success) return false;
-		m_creature_name = creatureName;
-
-		// Deserialize and assign m_aux_attribute (std::any)
-		uint8_t typeTag;
-		if (!propReadStream.read<uint8_t>(typeTag)) return false;
-
-		switch (typeTag) {
-			case 0: {  // uint8_t case
-				uint8_t auxValue;
-				if (!propReadStream.read<uint8_t>(auxValue)) return false;
-				m_aux_attribute = auxValue;
-				break;
-			}
-			case 1: {  // std::string case
-				auto [auxStr, success] = propReadStream.readString();
-				if (!success) return false;
-				m_aux_attribute = std::string(auxStr);
-				break;
-			}
-			case 255: { // No value case, reset m_aux_attribute
-				m_aux_attribute.reset();
-				break;
-			}
-			default:
-				return false;  // Unknown type, error
-		}
+		m_creature_name = std::string(creatureName);
 
 		return true;
 	}
@@ -193,11 +219,11 @@ private:
 	uint8_t m_factor = 0;
 	uint8_t m_chance = 0;
 	CombatType_t m_damage_type = COMBAT_NONE;
+	CombatType_t m_to_damage_type = COMBAT_NONE;
 	CombatOrigin m_origin_type = ORIGIN_NONE;
 	CreatureType_t m_creature_type = CREATURETYPE_ATTACKABLE;
 	RaceType_t m_race_type = RACE_NONE;
 	std::string m_creature_name = "none";
-	std::any m_aux_attribute;						// can be used for determining a type of damage, when transforming from one type to another.
 };
 
 /// Inline Methods' Definitions
@@ -265,27 +291,27 @@ inline const bool DamageModifier::appliesToTarget(const CreatureType_t creatureT
 	return attackableTarget;
 }
 
-inline const uint8_t DamageModifier::getStance() const {
+inline const uint8_t& DamageModifier::getStance() const {
 	return m_mod_stance;
 }
 
-inline const uint8_t DamageModifier::getType() const {
+inline const uint8_t& DamageModifier::getType() const {
 	return m_mod_type;
 }
 
-inline const uint16_t DamageModifier::getValue() const {
+inline const uint16_t& DamageModifier::getValue() const {
 	return m_value;
 }
 
-inline const uint8_t DamageModifier::getChance() const {
+inline const uint8_t& DamageModifier::getChance() const {
 	return m_chance;
 }
 
-inline const CombatType_t DamageModifier::getDamageType() const {
+inline const CombatType_t& DamageModifier::getDamageType() const {
 	return m_damage_type;
 }
 
-inline const CombatOrigin DamageModifier::getOriginType() const {
+inline const CombatOrigin& DamageModifier::getOriginType() const {
 	return m_origin_type;
 }
 
@@ -297,6 +323,16 @@ inline const bool DamageModifier::isAttackStance() const
 inline const bool DamageModifier::isDefenseStance() const
 {
 	return m_mod_stance == DEFENSE_MOD;
+}
+
+inline const std::string& DamageModifier::getMonsterName() const
+{
+	return m_creature_name;
+}
+
+inline const CombatType_t& DamageModifier::getConversionType() const
+{
+	return m_to_damage_type;
 }
 
 #endif

@@ -7969,22 +7969,22 @@ int LuaScriptInterface::luaAugmentGetName(lua_State* L) {
 		return 1;
 	}
 
-	std::string_view name = augment->getName();
-	lua_pushlstring(L, name.data(), name.size());
+	std::string name = augment->getName();
+	pushString(L, name);
 	return 1;
 }
 
 int LuaScriptInterface::luaAugmentGetDescription(lua_State* L) {
 	// Augment:getDescription()
-	auto augment = getSharedPtr<Augment>(L, 1); // Get augment object
+	auto augment = getSharedPtr<Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		lua_pushnil(L);
 		return 1;
 	}
 
-	std::string_view description = augment->getDescription(); // Get the description as string_view
-	lua_pushlstring(L, description.data(), description.size()); // Push the description onto the Lua stack
+	std::string description = augment->getDescription();
+	pushString(L, description);
 	return 1;
 }
 

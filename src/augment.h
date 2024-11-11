@@ -15,7 +15,7 @@ class Augment : public std::enable_shared_from_this<Augment> {
 
 public:
 	Augment() = default;
-	Augment(std::string_view name, std::string_view description = "");
+	Augment(std::string name, std::string description = "");
 	Augment(std::shared_ptr<Augment>& original);
 
 	~Augment() = default;
@@ -27,13 +27,13 @@ public:
 	// comparison operator
 	std::strong_ordering operator<=>(const Augment& other) const = default;
 
-	const std::string_view getName() const;
-	const std::string_view getDescription() const;
+	const std::string getName() const;
+	const std::string getDescription() const;
 
-	void setName(std::string_view name);
-	void setDescription(std::string_view description);
+	void setName(std::string name);
+	void setDescription(std::string description);
 
-	static std::shared_ptr<Augment> MakeAugment(std::string_view augmentName, std::string_view description = "");
+	static std::shared_ptr<Augment> MakeAugment(std::string augmentName, std::string description = "");
 	static std::shared_ptr<Augment> MakeAugment(std::shared_ptr<Augment>& originalPointer);
 
 	void addModifier(std::shared_ptr<DamageModifier>& modifier);
@@ -47,8 +47,8 @@ public:
 
 	void serialize(PropWriteStream& propWriteStream) const {
 		// Serialize m_name and m_description
-		propWriteStream.writeString(std::string{ m_name});
-		propWriteStream.writeString(std::string{ m_description });
+		propWriteStream.writeString(m_name);
+		propWriteStream.writeString(m_description);
 
 		// Serialize m_attack_modifiers
 		propWriteStream.write<uint32_t>(m_attack_modifiers.size());  // Write the number of attack modifiers
@@ -70,14 +70,14 @@ public:
 			std::cout << "WARNING: Failed to deserialize augment name" << std::endl;
 			return false;
 		}
-		m_name = name;
+		m_name = std::string(name);
 
 		auto [description, successDesc] = propReadStream.readString();
 		if (!successDesc) {
 			std::cout << "WARNING: Failed to deserialize augment description" << std::endl;
 			return false;
 		}
-		m_description = description;
+		m_description = std::string(description);
 
 		// Deserialize m_attack_modifiers
 		uint32_t attackModifierCount;
@@ -121,12 +121,12 @@ private:
 
 	std::vector<std::shared_ptr<DamageModifier>> m_attack_modifiers;
 	std::vector<std::shared_ptr<DamageModifier>> m_defense_modifiers;
-	std::string_view m_name;
-	std::string_view m_description;
+	std::string m_name;
+	std::string m_description;
 };
 
 
-inline std::shared_ptr<Augment> Augment::MakeAugment(std::string_view augmentName, std::string_view description) {
+inline std::shared_ptr<Augment> Augment::MakeAugment(std::string augmentName, std::string description) {
 	auto augment = std::make_shared<Augment>(augmentName);
 	return augment;
 }
@@ -137,20 +137,20 @@ inline std::shared_ptr<Augment> Augment::MakeAugment(std::shared_ptr<Augment>& o
 	return augmentClone;
 }
 
-inline const std::string_view Augment::getName() const {
+inline const std::string Augment::getName() const {
 	return m_name;
 }
 
-inline const std::string_view Augment::getDescription() const
+inline const std::string Augment::getDescription() const
 {
 	return m_description;
 }
 
-inline void Augment::setName(std::string_view name) {
+inline void Augment::setName(std::string name) {
 	m_name = name;
 }
 
-inline void Augment::setDescription(std::string_view description) {
+inline void Augment::setDescription(std::string description) {
 	m_description = description;
 }
 
