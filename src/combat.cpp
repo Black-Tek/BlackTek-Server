@@ -841,6 +841,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				if (piercingPercentTotal || piercingFlatTotal) {
 					int32_t piercingDamage = 0;
 					if (piercingPercentTotal) {
+						auto piercePercent = static_cast<int32_t>(piercingPercentTotal);
 						auto percentValue = (piercingPercentTotal / 100);
 						piercingDamage = (piercingPercentTotal <= 100) ? damage.primary.value * (percentValue / 100) : damage.primary.value;
 					}
@@ -936,7 +937,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				if (!defenseModData.empty()) {
 					for (const auto& [modkind, modTotals] : defenseModData) {
 						if (modTotals.percentTotal  || modTotals.flatTotal) {
-							applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), modTotals.percentTotal, modTotals.flatTotal, params.impactEffect, params.distanceEffect);
+							applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.impactEffect, params.distanceEffect);
 							if (damage.primary.value == 0) {
 								return;
 							}
@@ -967,7 +968,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 			if (!defenseModData.empty() && params.origin != ORIGIN_AUGMENT) {
 				for (const auto& [modkind, modTotals] : defenseModData) {
 					if (modTotals.percentTotal || modTotals.flatTotal) {
-						applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), modTotals.percentTotal, modTotals.flatTotal, params.impactEffect, params.distanceEffect);
+						applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.impactEffect, params.distanceEffect);
 						if (damage.primary.value == 0) {
 							return;
 						}

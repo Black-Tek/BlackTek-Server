@@ -5783,7 +5783,7 @@ void Player::reviveSoulFromDamage(std::optional<std::reference_wrapper<Creature>
 		message.type = MESSAGE_HEALED;
 		message.position = getPosition();
 		message.primary.value = realSoulGain;
-		message.primary.color = TEXTCOLOR_LIGHTGREY;
+		message.primary.color = TEXTCOLOR_SKYBLUE;
 
 		if (!targetOpt.has_value()) {
 			message.text = "You gained " + std::to_string(realSoulGain) + " soul from revival.";
@@ -5819,6 +5819,8 @@ void Player::replenishStaminaFromDamage(std::optional<std::reference_wrapper<Cre
 		message.position = getPosition();
 		message.primary.value = realStaminaGain;
 		message.primary.color = TEXTCOLOR_LIGHTGREY;
+
+		realStaminaGain = static_cast<int32_t>(std::round(realStaminaGain / 60));
 
 		if (!targetOpt.has_value()) {
 			message.text = "You gained " + std::to_string(realStaminaGain) + " stamina from replenishment.";
@@ -5885,14 +5887,14 @@ void Player::reflectDamage(std::optional<std::reference_wrapper<Creature>> attac
 
 	Creature& target = attackerOpt.value().get();
 
-	auto reflect = CombatDamage{};
-	reflect.primary.type = originalDamage.primary.type;
-	reflect.primary.value = damageChange;
-	reflect.origin = ORIGIN_AUGMENT;
-
 	int32_t reflectedDamage = std::abs(damageChange);
 	int32_t difference = std::abs(originalDamage.primary.value) - reflectedDamage;
 	originalDamage.primary.value = (difference <= 0) ? 0 : (0 - difference);
+
+	auto reflect = CombatDamage{};
+	reflect.primary.type = originalDamage.primary.type;
+	reflect.primary.value = (0 - reflectedDamage);
+	reflect.origin = ORIGIN_AUGMENT;
 
 	std::ostringstream outputStringStream;
 	outputStringStream << "You reflected " << reflectedDamage << " damage from " << target.getName() << "'s attack back at them.";
@@ -6094,6 +6096,8 @@ void Player::convertDamage(Creature* target, CombatDamage& originalDamage, std::
 
 			auto params = CombatParams{};
 			params.combatType = combatType;
+
+			std::cout << "Final numbers for converted damage is : " << converted.primary.value << " \n";
 			
 			Combat::doTargetCombat(this, target, converted, params);
 		}
@@ -6140,6 +6144,8 @@ void Player::reformDamage(std::optional<std::reference_wrapper<Creature>> attack
 
 			auto params = CombatParams{};
 			params.combatType = combatType;
+
+			std::cout << "Final numbers for reformed damage is : " << converted.primary.value << " \n";
 
 			if (attackerOpt.has_value()) {
 				auto& attacker = attackerOpt.value().get();
