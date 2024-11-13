@@ -5501,6 +5501,10 @@ std::unordered_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
 					for (auto mod : aug->getAttackModifiers()) {
 						modifierMap[mod->getType()].emplace_back(mod);
 					}
+				} else if ( g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO)) {
+					for (auto mod : aug->getAttackModifiers()) {
+						modifierMap[mod->getType()].emplace_back(mod);
+					}
 				}
 			}
 		}
@@ -5526,6 +5530,10 @@ std::unordered_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
 			for (auto& aug : item->getAugments()) {
 				if (!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || (item->getSlotPosition() & getPositionForSlot(static_cast<slots_t>(slot)))) {
 					for (auto mod : aug->getDefenseModifiers()) {
+						modifierMap[mod->getType()].emplace_back(mod);
+					}
+				} else if (g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO)) {
+					for (auto mod : aug->getAttackModifiers()) {
 						modifierMap[mod->getType()].emplace_back(mod);
 					}
 				}
