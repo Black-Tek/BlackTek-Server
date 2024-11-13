@@ -835,15 +835,15 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 		if (damage.primary.type != COMBAT_MANADRAIN && damage.primary.type != COMBAT_HEALING) {
 			// to-do: checking against origin for augment is too limiting.. Lets make piercing like crit and leech, ect.
 			if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
-				auto& [piercingPercentTotal, piercingFlatTotal] = attackModData[ATTACK_MODIFIER_PIERCING];
+				auto& [piercingFlatTotal, piercingPercentTotal] = attackModData[ATTACK_MODIFIER_PIERCING];
 				// we handle piercing ourselves so that we can exit this call stack early
 				// in the case that all the damage was converted to piercing
 				if (piercingPercentTotal || piercingFlatTotal) {
 					int32_t piercingDamage = 0;
 					if (piercingPercentTotal) {
 						auto piercePercent = static_cast<int32_t>(piercingPercentTotal);
-						auto percentValue = (piercingPercentTotal / 100);
-						piercingDamage = (piercingPercentTotal <= 100) ? damage.primary.value * (percentValue / 100) : damage.primary.value;
+						auto percentValue = static_cast<int32_t>(std::round(piercingPercentTotal / 100));
+						piercingDamage = (piercingPercentTotal <= 100) ? (damage.primary.value * percentValue) : damage.primary.value;
 					}
 
 					if (piercingFlatTotal) {
@@ -859,7 +859,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 
 						CombatDamage piercing;
 						piercing.origin = ORIGIN_AUGMENT;
-						piercing.primary.value = (0 - piercingDamage);
+						piercing.primary.value = (0 - trueDamage);
 						piercing.primary.type = COMBAT_UNDEFINEDDAMAGE;
 
 						// Can't use these params until we define skipping armor checks for piercing through Combat::doTargetCombat()
@@ -1120,7 +1120,10 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 
 				if (staminaGain) {
 					if (staminaGain <= std::numeric_limits<uint16_t>::max()) {
-						uint16_t trueStaminaGain = static_cast<uint16_t>(std::round(staminaGain / 60));
+						uint16_t trueStaminaGain = static_cast<uint16_t>(staminaGain);
+						if (!g_config.getBoolean(ConfigManager::AUGMENT_STAMINA_RULE)) {
+							trueStaminaGain = static_cast<int32_t>(std::round(staminaGain / 60));
+						}
 						uint16_t currentStamina = casterPlayer.value()->getStaminaMinutes();
 						uint16_t missingStamina = (MaximumStamina - currentStamina);
 						if ((trueStaminaGain + currentStamina) >= missingStamina) {

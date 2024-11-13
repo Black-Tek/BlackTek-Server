@@ -5702,7 +5702,13 @@ void Player::absorbDamage(std::optional<std::reference_wrapper<Creature>> target
 	if (damageChange != 0) {
 		int32_t realHealthGain = std::abs(damageChange);
 		int32_t difference = std::abs(originalDamage.primary.value) - realHealthGain;
-		originalDamage.primary.value = (difference <= 0) ? 0 : (0 - difference);
+
+		if (difference <= 0) {
+			realHealthGain = std::abs(originalDamage.primary.value);
+			originalDamage.primary.value = 0;
+		} else {
+			originalDamage.primary.value = (0 - difference);
+		}
 
 		if (!targetOpt.has_value()) {
 			TextMessage message(MESSAGE_HEALED, "You gained " + std::to_string(realHealthGain) + " health from absorbtion.");
@@ -5740,7 +5746,15 @@ void Player::restoreManaFromDamage(std::optional<std::reference_wrapper<Creature
 	if (damageChange != 0) {
 		int32_t realManaGain = std::abs(damageChange);
 		int32_t difference = std::abs(originalDamage.primary.value) - realManaGain;
-		originalDamage.primary.value = (difference <= 0) ? 0 : (0 - difference);
+
+		if (difference <= 0) {
+			realManaGain = std::abs(originalDamage.primary.value);
+			originalDamage.primary.value = 0;
+		} else {
+			originalDamage.primary.value = (0 - difference);
+		}
+
+
 		if (!targetOpt.has_value()) {
 			TextMessage message(MESSAGE_HEALED, "You gained " + std::to_string(realManaGain) + " mana from restoration.");
 			message.position = getPosition();
@@ -5778,7 +5792,16 @@ void Player::reviveSoulFromDamage(std::optional<std::reference_wrapper<Creature>
 	if (damageChange != 0) {
 		int32_t realSoulGain = std::abs(damageChange);
 		int32_t difference = std::abs(originalDamage.primary.value) - realSoulGain;
-		originalDamage.primary.value = (difference <= 0) ? 0 : (0 - difference);
+
+		if (difference <= 0) {
+			realSoulGain = std::abs(originalDamage.primary.value);
+			originalDamage.primary.value = 0;
+		}
+		else {
+			originalDamage.primary.value = (0 - difference);
+		}
+
+
 		TextMessage message;
 		message.type = MESSAGE_HEALED;
 		message.position = getPosition();
@@ -5813,14 +5836,24 @@ void Player::replenishStaminaFromDamage(std::optional<std::reference_wrapper<Cre
 	if (damageChange != 0) {
 		int32_t realStaminaGain = std::abs(damageChange);
 		int32_t difference = std::abs(originalDamage.primary.value) - realStaminaGain;
-		originalDamage.primary.value = (difference <= 0) ? 0 : (0 - difference);
+
+		if (difference <= 0) {
+			realStaminaGain = std::abs(originalDamage.primary.value);
+			originalDamage.primary.value = 0;
+		}
+		else {
+			originalDamage.primary.value = (0 - difference);
+		}
+
 		TextMessage message;
 		message.type = MESSAGE_HEALED;
 		message.position = getPosition();
 		message.primary.value = realStaminaGain;
 		message.primary.color = TEXTCOLOR_LIGHTGREY;
 
-		realStaminaGain = static_cast<int32_t>(std::round(realStaminaGain / 60));
+		if (!g_config.getBoolean(ConfigManager::AUGMENT_STAMINA_RULE)) {
+			realStaminaGain = static_cast<int32_t>(std::round(realStaminaGain / 60));
+		}
 
 		if (!targetOpt.has_value()) {
 			message.text = "You gained " + std::to_string(realStaminaGain) + " stamina from replenishment.";
@@ -5850,7 +5883,14 @@ void Player::resistDamage(std::optional<std::reference_wrapper<Creature>> target
 	if (damageChange != 0) {
 		int32_t resistedDamage = std::abs(damageChange);
 		int32_t difference = std::abs(originalDamage.primary.value) - resistedDamage;
-		originalDamage.primary.value = (difference <= 0) ? 0 : (0 - difference);
+
+		if (difference <= 0) {
+			resistedDamage = std::abs(originalDamage.primary.value);
+			originalDamage.primary.value = 0;
+		} else {
+			originalDamage.primary.value = (0 - difference);
+		}
+
 		TextMessage message;
 		message.type = MESSAGE_HEALED;
 		message.position = getPosition();
@@ -5876,8 +5916,7 @@ void Player::reflectDamage(std::optional<std::reference_wrapper<Creature>> attac
 	if (percent) {
 		if (percent <= 100) {
 			damageChange += originalDamage.primary.value * (percent / 100.0);
-		}
-		else {
+		} else {
 			damageChange += originalDamage.primary.value;
 		}
 	}
@@ -5889,7 +5928,13 @@ void Player::reflectDamage(std::optional<std::reference_wrapper<Creature>> attac
 
 	int32_t reflectedDamage = std::abs(damageChange);
 	int32_t difference = std::abs(originalDamage.primary.value) - reflectedDamage;
-	originalDamage.primary.value = (difference <= 0) ? 0 : (0 - difference);
+	
+	if (difference <= 0) {
+		reflectedDamage = std::abs(originalDamage.primary.value);
+		originalDamage.primary.value = 0;
+	} else {
+		originalDamage.primary.value = (0 - difference);
+	}
 
 	auto reflect = CombatDamage{};
 	reflect.primary.type = originalDamage.primary.type;
@@ -5927,8 +5972,7 @@ void Player::deflectDamage(std::optional<std::reference_wrapper<Creature>> attac
 	if (percent) {
 		if (percent <= 100) {
 			damageChange += originalDamage.primary.value * (percent / 100.0);
-		}
-		else {
+		} else {
 			damageChange += originalDamage.primary.value;
 		}
 	}
@@ -5946,10 +5990,17 @@ void Player::deflectDamage(std::optional<std::reference_wrapper<Creature>> attac
 		auto damageArea = std::make_unique<AreaCombat>();
 		auto attackPos = Position();
 
+		if (difference <= 0) {
+			deflectedDamage = std::abs(originalDamage.primary.value);
+			originalDamage.primary.value = 0;
+		} else {
+			originalDamage.primary.value = (0 - difference);
+		}
+
 		auto deflect = CombatDamage{};
 		deflect.primary.type = originalDamage.primary.type;
 		deflect.origin = ORIGIN_AUGMENT;
-		deflect.primary.value -= static_cast<int32_t>(std::abs(std::round(damageChange / 3)));
+		deflect.primary.value = (0 - static_cast<int32_t>(std::abs(std::round(deflectedDamage / targets))));
 
 		auto params = CombatParams();
 		params.origin = ORIGIN_AUGMENT;
@@ -5958,7 +6009,6 @@ void Player::deflectDamage(std::optional<std::reference_wrapper<Creature>> attac
 		params.targetCasterOrTopMost = true;
 
 		params.impactEffect = (areaEffect == CONST_ME_NONE) ? CombatTypeToAreaEffect(originalDamage.primary.type) : areaEffect;
-		originalDamage.primary.value = (difference <= 0) ? 0 : (0 - difference);
 
 		// handle magic effect when damage type is melee or otherwise physical
 		if (!attackerOpt.has_value()) {
@@ -6031,6 +6081,13 @@ void Player::ricochetDamage(CombatDamage& originalDamage, int32_t percent, int32
 		int32_t ricochetedDamage = std::abs(damageChange);
 		int32_t difference = std::abs(originalDamage.primary.value) - ricochetedDamage;
 
+		if (difference <= 0) {
+			ricochetedDamage = std::abs(originalDamage.primary.value);
+			originalDamage.primary.value = 0;
+		} else {
+			originalDamage.primary.value = (0 - difference);
+		}
+
 		std::ostringstream outputStringStream;
 		outputStringStream << "An attack on you ricocheted " << ricochetedDamage << " damage.";
 		TextMessage message;
@@ -6054,7 +6111,6 @@ void Player::ricochetDamage(CombatDamage& originalDamage, int32_t percent, int32
 		params.targetCasterOrTopMost = true;
 		params.impactEffect = (areaEffect == CONST_ME_NONE) ? CombatTypeToAreaEffect(originalDamage.primary.type) : areaEffect;
 
-		originalDamage.primary.value = (difference <= 0) ? 0 : (0 - difference);
 		auto damageArea = std::make_unique<AreaCombat>();
 		damageArea->setupArea(Deflect1xArea, 5);
 		Combat::doAreaCombat(this, targetPos, damageArea.get(), ricochet, params);
@@ -6087,7 +6143,13 @@ void Player::convertDamage(Creature* target, CombatDamage& originalDamage, std::
 			int32_t maxDamage = std::abs(originalDamage.primary.value);
 			int32_t convertedDamage = std::abs(damageChange);
 			int32_t difference = maxDamage - convertedDamage;
-			originalDamage.primary.value = (difference > maxDamage) ? 0 : (originalDamage.primary.value + convertedDamage);
+			
+			if (difference <= 0) {
+				convertedDamage = std::abs(originalDamage.primary.value);
+				originalDamage.primary.value = 0;
+			} else {
+				originalDamage.primary.value = (0 - difference);
+			}
 
 			auto converted = CombatDamage{};
 			converted.primary.type = combatType;
@@ -6096,8 +6158,18 @@ void Player::convertDamage(Creature* target, CombatDamage& originalDamage, std::
 
 			auto params = CombatParams{};
 			params.combatType = combatType;
+			params.origin = ORIGIN_AUGMENT;
 
-			std::cout << "Final numbers for converted damage is : " << converted.primary.value << " \n";
+			std::ostringstream outputStringStream;
+			outputStringStream << "You converted " << convertedDamage << " " << getCombatName(originalDamage.primary.type) << " damage to " << getCombatName(combatType) << " during an attack on " << target->getName() << ". \n";
+			TextMessage message;
+
+			message.type = MESSAGE_EVENT_DEFAULT;
+			message.position = getPosition();
+			message.primary.value = convertedDamage;
+			message.primary.color = TEXTCOLOR_WHITE_EXP;
+			message.text = outputStringStream.str();
+			sendTextMessage(message);
 			
 			Combat::doTargetCombat(this, target, converted, params);
 		}
@@ -6135,7 +6207,13 @@ void Player::reformDamage(std::optional<std::reference_wrapper<Creature>> attack
 			int32_t maxDamage = std::abs(originalDamage.primary.value);
 			int32_t convertedDamage = std::abs(damageChange);
 			int32_t difference = maxDamage - convertedDamage;
-			originalDamage.primary.value = (difference > maxDamage) ? 0 : (originalDamage.primary.value + convertedDamage);
+			
+			if (difference <= 0) {
+				convertedDamage = std::abs(originalDamage.primary.value);
+				originalDamage.primary.value = 0;
+			} else {
+				originalDamage.primary.value = (0 - difference);
+			}
 
 			auto converted = CombatDamage{};
 			converted.primary.type = combatType;
@@ -6144,8 +6222,24 @@ void Player::reformDamage(std::optional<std::reference_wrapper<Creature>> attack
 
 			auto params = CombatParams{};
 			params.combatType = combatType;
+			params.origin = ORIGIN_AUGMENT;
 
-			std::cout << "Final numbers for reformed damage is : " << converted.primary.value << " \n";
+
+			std::ostringstream outputStringStream;
+			if (attackerOpt.has_value()) {
+				Creature& attacker = attackerOpt.value().get();
+				outputStringStream << "You reformed " << convertedDamage << " " << getCombatName(originalDamage.primary.type) << " damage from " << getCombatName(combatType) << " during an attack on you by " << attacker.getName() << ". \n";
+			} else {
+				outputStringStream << "You reformed " << convertedDamage << " " << getCombatName(originalDamage.primary.type) << " damage from " << getCombatName(combatType) << ". \n";
+			}
+			TextMessage message;
+
+			message.type = MESSAGE_EVENT_DEFAULT;
+			message.position = getPosition();
+			message.primary.value = convertedDamage;
+			message.primary.color = TEXTCOLOR_WHITE_EXP;
+			message.text = outputStringStream.str();
+			sendTextMessage(message);
 
 			if (attackerOpt.has_value()) {
 				auto& attacker = attackerOpt.value().get();

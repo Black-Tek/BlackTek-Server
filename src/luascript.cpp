@@ -2079,6 +2079,7 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::BED_OFFLINE_TRAINING);	
 	registerEnumIn("configKeys", ConfigManager::HOUSE_DOOR_SHOW_PRICE);
 	registerEnumIn("configKeys", ConfigManager::AUGMENT_SLOT_PROTECTION);
+	registerEnumIn("configKeys", ConfigManager::AUGMENT_STAMINA_RULE);
 
 	registerEnumIn("configKeys", ConfigManager::REWARD_BASE_RATE);
 	registerEnumIn("configKeys", ConfigManager::REWARD_RATE_DAMAGE_DONE);
