@@ -31,7 +31,7 @@ std::vector<std::shared_ptr<DamageModifier>> Augment::getAttackModifiers(uint8_t
 	for (auto& mod : m_attack_modifiers) {
 
 		if (mod->getType() == modType) {
-			modifiers.push_back(mod);
+			modifiers.emplace_back(mod);
 		}
 	}
 	return modifiers;
@@ -39,10 +39,14 @@ std::vector<std::shared_ptr<DamageModifier>> Augment::getAttackModifiers(uint8_t
 
 std::vector<std::shared_ptr<DamageModifier>> Augment::getDefenseModifiers(uint8_t modType) {
 	std::vector<std::shared_ptr<DamageModifier>> modifiers;
+	std::cout << "Defense Modifier Size : " << this->getDefenseModifiers().size() << ". \n";
 	for (auto& mod : m_defense_modifiers) {
-
+		
+		std::cout << "Param Type is : " << static_cast<int>(modType) << ". \n";
+		std::cout << "Get Type is : " << static_cast<int>(mod->getType()) << ". \n";
 		if (mod->getType() == modType) {
-			modifiers.push_back(mod);
+			std::cout << "Found defense modifier type : " << modType << ". \n";
+			modifiers.emplace_back(mod);
 		}
 	}
 	return modifiers;

@@ -842,7 +842,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 					int32_t piercingDamage = 0;
 					if (piercingPercentTotal) {
 						auto piercePercent = static_cast<int32_t>(piercingPercentTotal);
-						auto percentValue = static_cast<int32_t>(std::round(piercingPercentTotal / 100));
+						auto percentValue = static_cast<int32_t>(std::round(piercingPercentTotal / 100.0));
 						piercingDamage = (piercingPercentTotal <= 100) ? (damage.primary.value * percentValue) : damage.primary.value;
 					}
 
@@ -868,7 +868,17 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 						piercingParams.combatType = COMBAT_UNDEFINEDDAMAGE;
 						piercingParams.impactEffect = CONST_ME_SKULLHORIZONTAL;
 
-						std::cout << "Piercing Modifier Activated on " << damage.primary.value << " damage \n";
+						std::ostringstream outputStringStream;
+
+						outputStringStream << "You pierced " << target->getName() << " for " << piercing.primary.value << " damage! \n";
+						TextMessage message;
+
+						message.type = MESSAGE_EVENT_DEFAULT;
+						message.position = caster->getPosition();
+						message.primary.color = TEXTCOLOR_WHITE_EXP;
+						message.text = outputStringStream.str();
+						casterPlayer.value()->sendTextMessage(message);
+
 						g_game.combatChangeHealth(caster, target, piercing);
 					}
 					// we return early incase all the damage is piercing now. 
@@ -937,6 +947,8 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				if (!defenseModData.empty()) {
 					for (const auto& [modkind, modTotals] : defenseModData) {
 						if (modTotals.percentTotal  || modTotals.flatTotal) {
+							std::cout << "::Defense Mods Called on Player attack:: \n";
+							std::cout << "::Mod Kind = " << modkind << " with percent = " << static_cast<int32_t>(modTotals.percentTotal) << " and the flat being = " << static_cast<int32_t>(modTotals.flatTotal) << " \n";
 							applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.impactEffect, params.distanceEffect);
 							if (damage.primary.value == 0) {
 								return;
@@ -968,6 +980,8 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 			if (!defenseModData.empty() && params.origin != ORIGIN_AUGMENT) {
 				for (const auto& [modkind, modTotals] : defenseModData) {
 					if (modTotals.percentTotal || modTotals.flatTotal) {
+						std::cout << "::Defense Mods Called on Monster attack:: \n";
+						std::cout << "::Mod Kind = " << modkind << " with percent = " << static_cast<int32_t>(modTotals.percentTotal) << " and the flat being = " << static_cast<int32_t>(modTotals.flatTotal) << " \n";
 						applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.impactEffect, params.distanceEffect);
 						if (damage.primary.value == 0) {
 							return;
@@ -1269,37 +1283,45 @@ void Combat::applyDamageIncreaseModifier(uint8_t modifierType, CombatDamage& dam
 }
 
 void Combat::applyDamageReductionModifier(uint8_t modifierType, CombatDamage& damage, Player& damageTarget, std::optional<std::reference_wrapper<Creature>> attacker, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect) {
-	
+
 	switch (modifierType) {
 		case DEFENSE_MODIFIER_ABSORB:
+			std::cout << ":: Absorb Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.absorbDamage(attacker, damage, percent, flat);
 			return;
 
 		case DEFENSE_MODIFIER_RESTORE:
+			std::cout << ":: Restore Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.restoreManaFromDamage(attacker, damage, percent, flat);
 			return;
 
 		case DEFENSE_MODIFIER_REPLENISH:
+			std::cout << ":: Replenish Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.replenishStaminaFromDamage(attacker, damage, percent, flat);
 			return;
 
 		case DEFENSE_MODIFIER_RESIST:
+			std::cout << ":: Resist Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.resistDamage(attacker, damage, percent, flat);
 			return;
 
 		case DEFENSE_MODIFIER_REVIVE:
+			std::cout << ":: Revive Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.reviveSoulFromDamage(attacker, damage, percent, flat);
 			return;
 
 		case DEFENSE_MODIFIER_REFLECT:
+			std::cout << ":: Reflect Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.reflectDamage(attacker, damage, percent, flat, areaEffect, distanceEffect);
 			return;
 
 		case DEFENSE_MODIFIER_DEFLECT:
+			std::cout << ":: Deflect Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.deflectDamage(attacker, damage, percent, flat, areaEffect, distanceEffect);
 			return;
 
 		case DEFENSE_MODIFIER_RICOCHET:
+			std::cout << ":: Ricochet Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.ricochetDamage(damage, percent, flat, areaEffect, distanceEffect);
 			return;
 

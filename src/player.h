@@ -1258,6 +1258,8 @@ class Player final : public Creature, public Cylinder
 		                   std::unordered_map<uint8_t, ModifierTotals> conversionList);
 		void reformDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList);
 
+		static std::unique_ptr<AreaCombat> generateDeflectArea(int32_t targetCount, Position& defendersPosition, Position& attackersPosition);
+
 	private:
 		std::forward_list<Condition*> getMuteConditions() const;
 

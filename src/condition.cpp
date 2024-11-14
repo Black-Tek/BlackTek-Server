@@ -1401,7 +1401,7 @@ bool ConditionDamage::doDamage(Creature* creature, int32_t healthChange)
 			if (!defenseModData.empty()) {
 				for (const auto& [modkind, modTotals] : defenseModData) {
 					if (modTotals.percentTotal || modTotals.flatTotal) {
-						Combat::applyDamageReductionModifier(modkind, damage, *player, *attacker, modTotals.percentTotal, modTotals.flatTotal);
+						Combat::applyDamageReductionModifier(modkind, damage, *player, *attacker, static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal));
 					}
 					if (damage.primary.value == 0) {
 						return true;
@@ -1423,7 +1423,7 @@ bool ConditionDamage::doDamage(Creature* creature, int32_t healthChange)
 			if (!defenseModData.empty()) {
 				for (const auto& [modkind, modTotals] : defenseModData) {
 					if (modTotals.percentTotal || modTotals.flatTotal) {
-						Combat::applyDamageReductionModifier(modkind, damage, *player, std::nullopt, modTotals.percentTotal, modTotals.flatTotal);
+						Combat::applyDamageReductionModifier(modkind, damage, *player, std::nullopt, static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal));
 					}
 					if (damage.primary.value == 0) {
 						return true;

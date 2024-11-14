@@ -5694,10 +5694,11 @@ std::vector<Position> Player::getOpenPositionsInRadius(int radius) const {
 }
 
 void Player::absorbDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
+	std::cout << ":: Inside Absorb with percent = " << percent << " and the flat being = " << flat << " \n";
 	int32_t damageChange = 0;
 	if (percent) {
 		if (percent <= 100) {
-			damageChange += originalDamage.primary.value * (percent / 100);
+			damageChange += originalDamage.primary.value * (percent / 100.0);
 		}
 		else {
 			damageChange += originalDamage.primary.value;
@@ -5738,10 +5739,11 @@ void Player::absorbDamage(std::optional<std::reference_wrapper<Creature>> target
 }
 
 void Player::restoreManaFromDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
+	std::cout << ":: Inside Restore with percent = " << percent << " and the flat being = " << flat << " \n";
 	int32_t damageChange = 0;
 	if (percent) {
 		if (percent <= 100) {
-			damageChange += originalDamage.primary.value * (percent / 100);
+			damageChange += originalDamage.primary.value * (percent / 100.0);
 		}
 		else {
 			damageChange += originalDamage.primary.value;
@@ -5784,10 +5786,11 @@ void Player::restoreManaFromDamage(std::optional<std::reference_wrapper<Creature
 }
 
 void Player::reviveSoulFromDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
+	std::cout << ":: Inside Revive with percent = " << percent << " and the flat being = " << flat << " \n";
 	int32_t damageChange = 0;
 	if (percent) {
 		if (percent <= 100) {
-			damageChange += originalDamage.primary.value * (percent / 100);
+			damageChange += originalDamage.primary.value * (percent / 100.0);
 		}
 		else {
 			damageChange += originalDamage.primary.value;
@@ -5813,8 +5816,6 @@ void Player::reviveSoulFromDamage(std::optional<std::reference_wrapper<Creature>
 		TextMessage message;
 		message.type = MESSAGE_HEALED;
 		message.position = getPosition();
-		message.primary.value = realSoulGain;
-		message.primary.color = TEXTCOLOR_SKYBLUE;
 
 		if (!targetOpt.has_value()) {
 			message.text = "You gained " + std::to_string(realSoulGain) + " soul from revival.";
@@ -5829,9 +5830,10 @@ void Player::reviveSoulFromDamage(std::optional<std::reference_wrapper<Creature>
 
 void Player::replenishStaminaFromDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
 	int32_t damageChange = 0;
+	std::cout << ":: Inside Replenish with percent = " << percent << " and the flat being = " << flat << " \n";
 	if (percent) {
 		if (percent <= 100) {
-			damageChange += originalDamage.primary.value * (percent / 100);
+			damageChange += originalDamage.primary.value * (percent / 100.0);
 		}
 		else {
 			damageChange += originalDamage.primary.value;
@@ -6066,7 +6068,6 @@ void Player::deflectDamage(std::optional<std::reference_wrapper<Creature>> attac
 	}
 }
 
-// to-do: setup animations and ensure all damage and combat params are managed.
 void Player::ricochetDamage(CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect) {
 
 	int32_t damageChange = 0;
@@ -6138,7 +6139,7 @@ void Player::convertDamage(Creature* target, CombatDamage& originalDamage, std::
 		int32_t flat = static_cast<int32_t>(totals.flatTotal);
 		if (percent) {
 			if (percent <= 100) {
-				damageChange += std::abs(originalDamage.primary.value * (totals.percentTotal / 100));
+				damageChange += std::abs(originalDamage.primary.value * (totals.percentTotal / 100.0));
 			} else {
 				damageChange += std::abs(originalDamage.primary.value);
 			}
@@ -6202,7 +6203,7 @@ void Player::reformDamage(std::optional<std::reference_wrapper<Creature>> attack
 		int32_t flat = static_cast<int32_t>(totals.flatTotal);
 		if (percent) {
 			if (percent <= 100) {
-				damageChange += std::abs(originalDamage.primary.value * (totals.percentTotal / 100));
+				damageChange += std::abs(originalDamage.primary.value * (totals.percentTotal / 100.0));
 			} else {
 				damageChange += std::abs(originalDamage.primary.value);
 			}
@@ -6261,3 +6262,9 @@ void Player::reformDamage(std::optional<std::reference_wrapper<Creature>> attack
 	}
 }
 
+std::unique_ptr<AreaCombat> Player::generateDeflectArea(int32_t targetCount, Position& defendersPosition, Position& attackersPosition) {
+	auto combatArea = std::make_unique<AreaCombat>();
+	combatArea->setupArea(Deflect1xArea, 5);
+	combatArea->setupExtArea(GetDiaganolDeflectArea(targetCount), 5);
+	return combatArea;
+}
