@@ -103,10 +103,7 @@ void Augments::loadAll() {
 
                                     if (modType == "reform") {
                                         auto reformType = ParseDamage(table["toDamage"].value_or("none"));
-                                        std::cout << "Loading Reform Damage for damage type : " << table["toDamage"].value_or("none") << " according to parser. \n";
-                                        std::cout << "Loading Reform Damage for damage type : " << getCombatName(reformType) << " according to ParseDamage Method. \n";
                                         damage_modifier->setTransformDamageType(reformType);
-                                        std::cout << "Loading Reform Damage for damage type : " << getCombatName(damage_modifier->getConversionType()) << " according to conversionType Method. \n";
                                     }
 
                                     if (creatureName != "none") {

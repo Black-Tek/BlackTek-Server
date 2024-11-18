@@ -36,6 +36,479 @@ uint32_t Player::playerAutoID = 0x10000000;
 
 using RawArea = std::vector<uint32_t>;
 using RawAreaVec = std::vector<RawArea>;
+using DeflectionEffectMap = std::unordered_map<int, RawAreaVec>;
+using DeflectAreaMap = std::unordered_map<Direction, const DeflectionEffectMap>;
+
+static const DeflectionEffectMap _StandardDeflectionMap = DeflectionEffectMap{
+		{1, {{0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 3, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0}}},
+
+		{2, {{0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 1, 3, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 1, 2, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0}}},
+
+		{3, {{0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 1, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0}}},
+
+		{4, {{0, 0, 0, 0, 0,
+			  0, 0, 1, 0, 0,
+			  0, 1, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 0, 0, 0, 0,
+			  0, 1, 1, 1, 0,
+			  0, 0, 3, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0}}},
+
+		{5, {{0, 0, 0, 0, 0,
+			  1, 0, 0, 0, 1,
+			  0, 1, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 0, 1, 0, 0,
+			  0, 0, 1, 0, 0,
+			  0, 1, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 0, 1, 0, 0,
+			  0, 1, 1, 1, 0,
+			  0, 0, 3, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0}}},
+
+		{6, {{0, 0, 0, 0, 0,
+			  1, 0, 1, 0, 1,
+			  0, 1, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 1, 0, 1, 0,
+			  0, 0, 1, 0, 0,
+			  0, 1, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 0, 0, 0, 0,
+			  0, 0, 1, 0, 0,
+			  0, 1, 3, 1, 0,
+			  0, 1, 0, 1, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 0, 0, 0, 0,
+			  0, 1, 1, 1, 0,
+			  0, 1, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0}}}
+};
+
+
+static const DeflectionEffectMap _DiagonalDeflectionMap = DeflectionEffectMap{
+	{1,  {{0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 3, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0}}},
+		{2, { // Double Diagonal
+			{0, 0, 0, 0, 0,
+			 0, 0, 1, 0, 0,
+			 0, 0, 3, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 3, 0, 0,
+			 0, 0, 1, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 1, 0, 0, 0,
+			 0, 0, 3, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 2, 1, 0,
+			 0, 0, 1, 0, 0,
+			 0, 0, 0, 0, 0}
+		}},
+		{3, { // Triple Diagonal
+			{0, 0, 0, 0, 0,
+			 0, 0, 1, 0, 0,
+			 0, 1, 3, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 0, 0, 1, 0,
+			 0, 0, 3, 0, 0,
+			 0, 1, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 3, 1, 0,
+			 0, 0, 1, 0, 0,
+			 0, 0, 0, 0, 0}
+		}},
+		{4, { // Quad Diagonal
+			{0, 0, 0, 0, 0,
+			 0, 1, 1, 0, 0,
+			 0, 1, 3, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 1, 0, 1, 0,
+			 0, 0, 3, 0, 0,
+			 0, 1, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{1, 0, 0, 0, 0,
+			 0, 1, 1, 0, 0,
+			 0, 1, 2, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0}
+		}},
+		{5, { // Quint Diagonal
+			{0, 0, 1, 0, 0,
+			 0, 0, 1, 0, 0,
+			 1, 1, 3, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 0, 1, 1, 0,
+			 0, 1, 3, 0, 0,
+			 0, 1, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 1, 0, 0,
+			 0, 1, 1, 0, 0,
+			 1, 1, 2, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0}
+		}},
+		{6, { // Sext Diagonal
+			{0, 0, 1, 0, 0,
+			 0, 1, 1, 0, 0,
+			 1, 1, 3, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 0, 1, 1, 0,
+			 0, 1, 3, 0, 0,
+			 0, 1, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{1, 0, 0, 0, 0,
+			 0, 1, 1, 1, 0,
+			 0, 1, 2, 0, 0,
+			 0, 1, 0, 0, 0,
+			 0, 0, 0, 0, 0}
+		}}
+};
+
+static const DeflectAreaMap DeflectAreas = DeflectAreaMap{
+	{DIRECTION_NORTH, _StandardDeflectionMap},
+	{DIRECTION_SOUTH, _StandardDeflectionMap},
+	{DIRECTION_WEST, _StandardDeflectionMap},
+	{DIRECTION_EAST, _StandardDeflectionMap},
+	{DIRECTION_NORTHWEST, _DiagonalDeflectionMap},
+	{DIRECTION_NORTHEAST, _DiagonalDeflectionMap},
+	{DIRECTION_SOUTHWEST, _DiagonalDeflectionMap},
+	{DIRECTION_SOUTHEAST, _DiagonalDeflectionMap},
+};
+
+std::unordered_map<int, RawAreaVec> deflectionAreas = {
+	{1, {{0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 3, 0, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0}}},
+
+	{2, {{0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0,
+		  0, 1, 3, 0, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0},
+		 {0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 3, 1, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0},
+		 {0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0,
+		  0, 1, 2, 1, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0}}},
+
+	{3, {{0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0,
+		  0, 1, 3, 1, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0}}},
+
+	{4, {{0, 0, 0, 0, 0,
+		  0, 0, 1, 0, 0,
+		  0, 1, 3, 1, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0},
+		 {0, 0, 0, 0, 0,
+		  0, 1, 1, 1, 0,
+		  0, 0, 3, 0, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0}}},
+
+	{5, {{0, 0, 0, 0, 0,
+		  1, 0, 0, 0, 1,
+		  0, 1, 3, 1, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0},
+		 {0, 0, 1, 0, 0,
+		  0, 0, 1, 0, 0,
+		  0, 1, 3, 1, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0},
+		 {0, 0, 1, 0, 0,
+		  0, 1, 1, 1, 0,
+		  0, 0, 3, 0, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0}}},
+
+	{6, {{0, 0, 0, 0, 0,
+		  1, 0, 1, 0, 1,
+		  0, 1, 3, 1, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0},
+		 {0, 1, 0, 1, 0,
+		  0, 0, 1, 0, 0,
+		  0, 1, 3, 1, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0},
+		 {0, 0, 0, 0, 0,
+		  0, 0, 1, 0, 0,
+		  0, 1, 3, 1, 0,
+		  0, 1, 0, 1, 0,
+		  0, 0, 0, 0, 0},
+		 {0, 0, 0, 0, 0,
+		  0, 1, 1, 1, 0,
+		  0, 1, 3, 1, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0}}}
+};
+
+std::unordered_map<int, RawAreaVec> deflectionDiagonalAreas = {
+	{1,  {{0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 3, 0, 0,
+		  0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0}}},
+	{2, { // Double Diagonal
+		{0, 0, 0, 0, 0,
+		 0, 0, 0, 0, 0,
+		 0, 0, 3, 0, 0,
+		 0, 0, 1, 0, 0,
+		 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0,
+		 0, 0, 1, 0, 0,
+		 0, 0, 3, 0, 0,
+		 0, 0, 0, 0, 0,
+		 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0,
+		 0, 0, 0, 0, 0,
+		 0, 0, 2, 1, 0,
+		 0, 0, 1, 0, 0,
+		 0, 0, 0, 0, 0}
+	}},
+	{3, { // Triple Diagonal
+		{0, 0, 0, 0, 0,
+		 0, 0, 0, 0, 0,
+		 0, 0, 3, 0, 0,
+		 0, 0, 0, 0, 0,
+		 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0,
+		 0, 0, 0, 0, 0,
+		 0, 0, 3, 1, 0,
+		 0, 0, 1, 1, 0,
+		 0, 0, 0, 0, 0}
+	}},
+	{4, { // Quad Diagonal
+		{0, 0, 0, 0, 0,
+		 0, 1, 1, 0, 0,
+		 0, 1, 3, 0, 0,
+		 0, 0, 0, 0, 0,
+		 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0,
+		 0, 1, 0, 0, 0,
+		 0, 0, 3, 1, 0,
+		 0, 0, 1, 0, 0,
+		 0, 0, 0, 0, 0}
+	}},
+	{5, { // Quint Diagonal
+		{0, 0, 1, 0, 0,
+		 0, 0, 1, 0, 0,
+		 1, 1, 3, 0, 0,
+		 0, 0, 0, 0, 0,
+		 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0,
+		 0, 0, 1, 1, 0,
+		 0, 1, 3, 0, 0,
+		 0, 1, 0, 0, 0,
+		 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0,
+		 0, 0, 0, 1, 0,
+		 0, 0, 3, 1, 0,
+		 0, 1, 1, 0, 0,
+		 0, 0, 0, 0, 0}
+	}},
+	{6, { // Sext Diagonal
+		{0, 0, 1, 0, 0,
+		 0, 1, 1, 0, 0,
+		 1, 1, 3, 0, 0,
+		 0, 0, 0, 0, 0,
+		 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0,
+		 0, 0, 1, 1, 0,
+		 0, 1, 3, 0, 0,
+		 0, 1, 0, 0, 0,
+		 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0,
+		 0, 0, 0, 1, 0,
+		 0, 0, 3, 1, 0,
+		 0, 1, 1, 0, 0,
+		 0, 0, 0, 0, 0}
+	}}
+};
+
+
+
+// double Diagonal
+RawAreaVec DeflectDiagonal2xAreas = {
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 3, 0, 0,
+		0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0,
+		0, 0, 3, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 2, 1, 0,
+		0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0
+	},
+};
+
+// triple Diagonal
+RawAreaVec DeflectDiagonal3xAreas = {
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0,
+		0, 1, 3, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 3, 1, 0,
+		0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0
+	}
+};
+
+// quad Diagonal
+RawAreaVec DeflectDiagonal4xAreas = {
+	{
+		0, 0, 0, 0, 0,
+		0, 1, 1, 0, 0,
+		0, 1, 3, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 1, 0, 0, 0,
+		0, 0, 3, 1, 0,
+		0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0
+	}
+};
+
+// quint Diagonal
+RawAreaVec DeflectDiagonal5xAreas = {
+	{
+		0, 0, 1, 0, 0,
+		0, 0, 1, 0, 0,
+		1, 1, 3, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 1, 1, 0,
+		0, 1, 3, 0, 0,
+		0, 1, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 1, 0,
+		0, 0, 3, 1, 0,
+		0, 1, 1, 0, 0,
+		0, 0, 0, 0, 0
+	}
+};
+
+// sext Diagonal
+RawAreaVec DeflectDiagonal6xAreas = {
+	{
+		0, 0, 1, 0, 0,
+		0, 1, 1, 0, 0,
+		1, 1, 3, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 1, 1, 0,
+		0, 1, 3, 0, 0,
+		0, 1, 0, 0, 0,
+		0, 0, 0, 0, 0
+	},
+
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 1, 0,
+		0, 0, 3, 1, 0,
+		0, 1, 1, 0, 0,
+		0, 0, 0, 0, 0
+	}
+};
+
 
 // single
 RawArea Deflect1xArea = {
@@ -73,32 +546,6 @@ RawAreaVec Deflect2xAreas = {
 	},
 };
 
-// double Diagonal
-RawAreaVec DeflectDiagonal2xAreas = {
-	{
-		0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0,
-		0, 0, 3, 0, 0,
-		0, 0, 1, 0, 0,
-		0, 0, 0, 0, 0
-	},
-
-	{
-		0, 0, 0, 0, 0,
-		0, 0, 1, 0, 0,
-		0, 0, 3, 0, 0,
-		0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0
-	},
-
-	{
-		0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0,
-		0, 0, 2, 1, 0,
-		0, 0, 1, 0, 0,
-		0, 0, 0, 0, 0
-	},
-};
 
 // triple
 RawArea Deflect3xArea = {
@@ -109,24 +556,7 @@ RawArea Deflect3xArea = {
 	0, 0, 0, 0, 0
 };
 
-// triple Diagonal
-RawAreaVec DeflectDiagonal3xAreas = {
-	{
-		0, 0, 0, 0, 0,
-		0, 0, 1, 0, 0,
-		0, 1, 3, 0, 0,
-		0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0
-	},
 
-	{
-		0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0,
-		0, 0, 3, 1, 0,
-		0, 0, 1, 0, 0,
-		0, 0, 0, 0, 0
-	}
-};
 
 // quad
 RawAreaVec Deflect4xAreas = {
@@ -147,24 +577,7 @@ RawAreaVec Deflect4xAreas = {
 	}
 };
 
-// quad Diagonal
-RawAreaVec DeflectDiagonal4xAreas = {
-	{
-		0, 0, 0, 0, 0,
-		0, 1, 1, 0, 0,
-		0, 1, 3, 0, 0,
-		0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0
-	},
 
-	{
-		0, 0, 0, 0, 0,
-		0, 1, 0, 0, 0,
-		0, 0, 3, 1, 0,
-		0, 0, 1, 0, 0,
-		0, 0, 0, 0, 0
-	}
-};
 
 // quint (5's)
 RawAreaVec Deflect5xAreas = {
@@ -193,32 +606,6 @@ RawAreaVec Deflect5xAreas = {
 	}
 };
 
-// quint Diagonal
-RawAreaVec DeflectDiagonal5xAreas = {
-	{
-		0, 0, 1, 0, 0,
-		0, 0, 1, 0, 0,
-		1, 1, 3, 0, 0,
-		0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0
-	},
-
-	{
-		0, 0, 0, 0, 0,
-		0, 0, 1, 1, 0,
-		0, 1, 3, 0, 0,
-		0, 1, 0, 0, 0,
-		0, 0, 0, 0, 0
-	},
-
-	{
-		0, 0, 0, 0, 0,
-		0, 0, 0, 1, 0,
-		0, 0, 3, 1, 0,
-		0, 1, 1, 0, 0,
-		0, 0, 0, 0, 0
-	}
-};
 
 // sext (6's)
 RawAreaVec Deflect6xAreas = {
@@ -255,32 +642,7 @@ RawAreaVec Deflect6xAreas = {
 	}
 };
 
-// sext Diagonal
-RawAreaVec DeflectDiagonal6xAreas = {
-	{
-		0, 0, 1, 0, 0,
-		0, 1, 1, 0, 0,
-		1, 1, 3, 0, 0,
-		0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0
-	},
 
-	{
-		0, 0, 0, 0, 0,
-		0, 0, 1, 1, 0,
-		0, 1, 3, 0, 0,
-		0, 1, 0, 0, 0,
-		0, 0, 0, 0, 0
-	},
-
-	{
-		0, 0, 0, 0, 0,
-		0, 0, 0, 1, 0,
-		0, 0, 3, 1, 0,
-		0, 1, 1, 0, 0,
-		0, 0, 0, 0, 0
-	}
-};
 
 static std::vector<uint32_t> GetDeflectArea(uint32_t targets) {
 	switch (targets) {
@@ -5594,16 +5956,8 @@ std::unordered_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uin
 		Item* item = inventory[slot];
 		if (item && !item->getAugments().empty()) {
 			for (const auto& aug : item->getAugments()) {
-				std::cout << " <> Augment Count <> " << item->getAugments().size() << " \n";
 				const auto& modifiers = modType == ATTACK_MODIFIER_CONVERSION ? aug->getAttackModifiers(modType) : aug->getDefenseModifiers(modType);
-				std::cout << " <> Modifier Count <> " << modifiers.size() << " \n";
-				std::cout << " <> Reform Count <> " << aug->getDefenseModifiers(modType).size() << " \n";
-				std::cout << " <> Conversion Count <> " << aug->getAttackModifiers(modType).size() << " \n";
 				for (const auto& modifier : modifiers) {
-					std::cout << " <> Applies To Damage <> " << modifier->appliesToDamage(damageType) << " \n";
-					std::cout << " <> Applies To Origin <> " << modifier->appliesToOrigin(originType) << " \n";
-					std::cout << " <> Applies To Target <> " << modifier->appliesToTarget(creatureType, race, creatureName) << " \n";
-					std::cout << " <> Reforms Damage To Type <> " << getCombatName(modifier->getConversionType()) << " \n";
 					if (modifier->appliesToDamage(damageType) && modifier->appliesToOrigin(originType) && modifier->appliesToTarget(creatureType, race, creatureName)) {
 
 						uint16_t flat = 0;
@@ -5976,96 +6330,81 @@ void Player::reflectDamage(std::optional<std::reference_wrapper<Creature>> attac
 	}
 }
 
-void Player::deflectDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect) {
+void Player::deflectDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, 
+                          CombatDamage& originalDamage, 
+                          int32_t percent, 
+                          int32_t flat, 
+                          CombatOrigin paramOrigin, 
+                          uint8_t areaEffect, 
+                          uint8_t distanceEffect) {
 
-	int32_t damageChange = 0;
-	if (percent) {
-		if (percent <= 100) {
-			damageChange += originalDamage.primary.value * (percent / 100.0);
-		} else {
-			damageChange += originalDamage.primary.value;
-		}
-	}
-	if (flat) {
-		damageChange += flat;
-	}
+    // Calculate amount of damage to deflect based on percent and flat modifiers
+    int32_t deflectedAmount = 0;
+    const int32_t originalValue = std::abs(originalDamage.primary.value);
 
-	if (damageChange != 0) {
+    if (percent > 0) {
+        // Use floating point for accurate percentage calculation
+        // Cap percent at 100 to prevent deflecting more than original damage
+        double percentMultiplier = std::min(percent, 100) / 100.0;
+        deflectedAmount += static_cast<int32_t>(std::round(originalValue * percentMultiplier));
+    }
+    
+    if (flat > 0) {
+        deflectedAmount += flat;
+    }
 
-		int32_t deflectedDamage = std::abs(damageChange);
-		int32_t trueDamage = std::abs(originalDamage.primary.value);
-		int32_t difference = trueDamage - deflectedDamage;
-		int32_t damageDivider = 50; // make this global config.
-		int32_t targets = ((deflectedDamage / damageDivider) + 1);
-		auto damageArea = std::make_unique<AreaCombat>();
-		auto attackPos = Position();
+    // Ensure we don't deflect more than the original damage
+    deflectedAmount = std::min(deflectedAmount, originalValue);
+    
+    if (deflectedAmount > 0) {
+        // Calculate number of target tiles based on damage amount
+        constexpr double DAMAGE_DIVIDER = 50.0; // Should be moved to global config
+        constexpr double MAX_TARGETS = 6.0;
+        const double calculatedTargets = std::min(
+            std::round(static_cast<double>(deflectedAmount) / DAMAGE_DIVIDER) + 1.0, 
+            MAX_TARGETS
+        );
 
-		if (difference <= 0) {
-			deflectedDamage = std::abs(originalDamage.primary.value);
-			originalDamage.primary.value = 0;
-		} else {
-			originalDamage.primary.value = (0 - difference);
-		}
+    	std::cout << ":: DeflectedAmount : " << deflectedAmount << std::endl;
+    	std::cout << ":: DeflectedAmount as Double : " << static_cast<double>(deflectedAmount) << std::endl;
+    	std::cout << ":: OriginalValue : " << originalValue << std::endl;
+    	std::cout << ":: Calculated Targets : " << calculatedTargets << std::endl;
+    	std::cout << ":: Damage Formula results : " << (-1 * std::round(static_cast<double>(deflectedAmount) / calculatedTargets)) << std::endl;
 
-		auto deflect = CombatDamage{};
-		deflect.primary.type = originalDamage.primary.type;
-		deflect.origin = ORIGIN_AUGMENT;
-		deflect.primary.value = (0 - static_cast<int32_t>(std::abs(std::round(deflectedDamage / targets))));
+        // Generate combat positions and area
+        auto defensePos = getPosition();
+        auto attackPos = generateAttackPosition(attackerOpt, defensePos, paramOrigin);
+        auto damageArea = generateDeflectArea(attackerOpt, static_cast<int32_t>(calculatedTargets));
 
-		auto params = CombatParams();
-		params.origin = ORIGIN_AUGMENT;
-		params.combatType = originalDamage.primary.type;
-		params.distanceEffect = distanceEffect;
-		params.targetCasterOrTopMost = true;
+        // Update original damage
+        originalDamage.primary.value = (deflectedAmount < originalValue) ? (-1 * (originalValue - deflectedAmount)) : 0;
 
-		params.impactEffect = (areaEffect == CONST_ME_NONE) ? CombatTypeToAreaEffect(originalDamage.primary.type) : areaEffect;
+        // Create deflect damage object
+        auto deflectDamage = CombatDamage{};
+        deflectDamage.primary.type = originalDamage.primary.type;
+        deflectDamage.origin = ORIGIN_AUGMENT;
+        // Calculate damage per tile (negative for damage application)
+        deflectDamage.primary.value = -1 * std::round(static_cast<double>(deflectedAmount) / calculatedTargets);
 
-		// handle magic effect when damage type is melee or otherwise physical
-		if (!attackerOpt.has_value()) {
-			// No attacker so we deflect based on players facing direction
-			attackPos = Spells::getCasterPosition(this, getOppositeDirection(this->getDirection()));
-			damageArea->setupArea(Deflect1xArea, 5);
-			
-		} else {
-			// with attacker we deflect based on where the attack came from (direction)
-			Creature& target = attackerOpt.value().get();
-			attackPos = Spells::getCasterPosition(this, getDirectionTo(this->getPosition(), target.getPosition()));
+        // Setup combat parameters
+        auto params = CombatParams();
+        params.origin = ORIGIN_AUGMENT;
+        params.combatType = originalDamage.primary.type;
+        params.distanceEffect = distanceEffect;
+        params.targetCasterOrTopMost = true;
+        params.impactEffect = (areaEffect == CONST_ME_NONE) 
+            ? CombatTypeToAreaEffect(originalDamage.primary.type) 
+            : areaEffect;
 
-			switch (getDirectionTo(target.getPosition(), this->getPosition())) {
-				case DIRECTION_NORTH:
-				case DIRECTION_SOUTH:
-				case DIRECTION_WEST:
-				case DIRECTION_EAST:
-					damageArea->setupArea(GetDeflectArea(targets), 5);
-					break;
+        // Send feedback message to player
+        sendTextMessage(
+            MESSAGE_EVENT_DEFAULT,
+            fmt::format("You deflected {} total damage.", deflectedAmount)
+        );
 
-				case DIRECTION_SOUTHWEST:
-				case DIRECTION_SOUTHEAST:
-				case DIRECTION_NORTHWEST:
-				case DIRECTION_NORTHEAST:
-					damageArea->setupExtArea(GetDiaganolDeflectArea(targets), 5);
-					break;
-
-				default:
-					std::cout << ":: Warning :: Default Case being called for direction determined for deflection!" << std::endl;
-					damageArea->setupArea(GetDeflectArea(targets), 5);
-					break;
-			}
-		}
-
-		std::ostringstream outputStringStream;
-		outputStringStream << "You deflected " << deflectedDamage << " total damage.";
-
-		TextMessage message;
-		message.type = MESSAGE_EVENT_DEFAULT;
-		message.position = getPosition();
-		message.primary.value = deflectedDamage;
-		message.primary.color = TEXTCOLOR_WHITE_EXP;
-		message.text = outputStringStream.str();
-		
-		sendTextMessage(message);
-		Combat::doAreaCombat(this, attackPos, damageArea.get(), deflect, params);
-	}
+        // Apply the deflected damage
+        Combat::doAreaCombat(this, attackPos, damageArea.get(), deflectDamage, params);
+    }
 }
 
 void Player::ricochetDamage(CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect) {
@@ -6262,9 +6601,104 @@ void Player::reformDamage(std::optional<std::reference_wrapper<Creature>> attack
 	}
 }
 
-std::unique_ptr<AreaCombat> Player::generateDeflectArea(int32_t targetCount, Position& defendersPosition, Position& attackersPosition) {
+Position Player::generateAttackPosition(std::optional<std::reference_wrapper<Creature>> attacker, Position& defensePosition, CombatOrigin origin) {
+
+	const Direction attackDirection = (attacker.has_value())
+		? getDirectionTo(defensePosition, attacker.value().get().getPosition())
+		: getOppositeDirection(this->getDirection());
+
+	// Offsets
+	static constexpr std::array<std::array<int, 4>, 8> DIRECTION_PATTERNS = { {
+			// x_start, x_end, y_start, y_end
+			{-1, 1, -2, -1},// NORTH:
+			{1, 2, -1, 1},// EAST:
+			{-1, 1, 1, 2},// SOUTH:
+			{-2, -1, -1, 1},// WEST:
+			{-2, -1, 1, 2},// SOUTHWEST:
+			{1, 2, 1, 2},// SOUTHEAST:
+			{-2, -1, -2, -1},// NORTHWEST:
+			{1, 2, -2, -1}// NORTHEAST:
+		} };
+
+	std::vector<Position> possibleTargets;
+	possibleTargets.reserve(9);
+
+	const auto& pattern = DIRECTION_PATTERNS[attackDirection & 0x7]; // Mask to handle diagonal directions
+
+	auto addLocationInline = [&](int x, int y) {
+		Position targetLocation{
+			static_cast<uint16_t>(defensePosition.x + x),
+			static_cast<uint16_t>(defensePosition.y + y),
+			defensePosition.z
+		};
+
+		const auto tile = g_game.map.getTile(targetLocation);
+		const bool isValid = tile
+			&& g_game.canThrowObjectTo(defensePosition, targetLocation)
+			&& !tile->getZone() == ZONE_PROTECTION
+			&& !tile->hasFlag(TILESTATE_PROTECTIONZONE
+				| TILESTATE_FLOORCHANGE
+				| TILESTATE_TELEPORT
+				| TILESTATE_IMMOVABLEBLOCKSOLID
+				| TILESTATE_NOPVPZONE
+				| TILESTATE_IMMOVABLEBLOCKPATH
+				| TILESTATE_IMMOVABLENOFIELDBLOCKPATH);
+
+		if (isValid) {
+			possibleTargets.emplace_back(targetLocation);
+		}
+	};
+	
+	for (int x = pattern[0]; x <= pattern[1]; ++x) {
+		for (int y = pattern[2]; y <= pattern[3]; ++y) {
+			addLocationInline(x, y);
+		}
+	}
+
+	const size_t vectorSize = possibleTargets.size();
+	const size_t index = vectorSize ? (std::rand() % vectorSize) : 0;
+
+	return vectorSize ? possibleTargets[index] : Spells::getCasterPosition(this, getOppositeDirection(this->getDirection()));
+} 
+
+std::unique_ptr<AreaCombat> Player::generateDeflectArea(std::optional<std::reference_wrapper<Creature>> attacker, int32_t targetCount) {
 	auto combatArea = std::make_unique<AreaCombat>();
-	combatArea->setupArea(Deflect1xArea, 5);
-	combatArea->setupExtArea(GetDiaganolDeflectArea(targetCount), 5);
+	auto direction = DIRECTION_NONE;
+
+	auto defendersPosition = this->getPosition();
+
+	if (attacker) {
+		direction = getDirectionTo(defendersPosition, attacker.value().get().getPosition());
+		switch (direction) {
+		case DIRECTION_NORTH:
+		case DIRECTION_EAST:
+		case DIRECTION_SOUTH:
+		case DIRECTION_WEST: {
+			auto targetAreas = _StandardDeflectionMap.find(targetCount)->second;
+				if (!targetAreas.empty()) {
+					auto index = std::rand() % targetAreas.size();
+					auto area = targetAreas[index];
+					combatArea->setupArea(area, 5);
+				}
+			break;
+		}
+		case DIRECTION_SOUTHWEST:
+		case DIRECTION_SOUTHEAST:
+		case DIRECTION_NORTHWEST:
+		case DIRECTION_NORTHEAST: {
+			auto targetAreas = _DiagonalDeflectionMap.find(targetCount)->second;
+			if (!targetAreas.empty()) {
+				auto index = std::rand() % targetAreas.size();
+				auto area = targetAreas[index];
+				combatArea->setupExtArea(area, 5);
+			}
+			break;
+		}
+		[[unlikely]]default:
+			std::cerr << "Deflection area attempted to be generated from unknown direction!" << std::endl;
+			break;
+		}
+	}
+
 	return combatArea;
 }

@@ -835,58 +835,61 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 		if (damage.primary.type != COMBAT_MANADRAIN && damage.primary.type != COMBAT_HEALING) {
 			// to-do: checking against origin for augment is too limiting.. Lets make piercing like crit and leech, ect.
 			if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
-				auto& [piercingFlatTotal, piercingPercentTotal] = attackModData[ATTACK_MODIFIER_PIERCING];
-				// we handle piercing ourselves so that we can exit this call stack early
-				// in the case that all the damage was converted to piercing
-				if (piercingPercentTotal || piercingFlatTotal) {
-					int32_t piercingDamage = 0;
-					if (piercingPercentTotal) {
-						auto piercePercent = static_cast<int32_t>(piercingPercentTotal);
-						auto percentValue = static_cast<int32_t>(std::round(piercingPercentTotal / 100.0));
-						piercingDamage = (piercingPercentTotal <= 100) ? (damage.primary.value * percentValue) : damage.primary.value;
-					}
+				const auto& [piercingFlatTotal, piercingPercentTotal] = attackModData[ATTACK_MODIFIER_PIERCING];
 
-					if (piercingFlatTotal) {
-						piercingDamage += piercingFlatTotal;
-					}
+				int32_t piercingDamage = 0;
 
-					if (piercingDamage) {
+				if (piercingPercentTotal) {
+					const auto piercePercent = static_cast<double>(piercingPercentTotal);
 
-						int32_t trueDamage = std::abs(piercingDamage);
-						int32_t difference = std::abs(damage.primary.value) - trueDamage;
-						// we limit the damage taken from the original to its max value.
-						damage.primary.value = (difference <= 0) ? 0 : (0 - difference);
+					std::cout << "::Inside Piercing being called on : " << damage.primary.value << " \n";
+					std::cout << "::Piercing original percent : " << piercePercent << " \n";
 
-						CombatDamage piercing;
-						piercing.origin = ORIGIN_AUGMENT;
-						piercing.primary.value = (0 - trueDamage);
-						piercing.primary.type = COMBAT_UNDEFINEDDAMAGE;
+					piercingDamage = (piercingPercentTotal <= 100)
+						? static_cast<int32_t>(std::round((damage.primary.value / 100.0) * piercePercent))
+						: damage.primary.value;
 
-						// Can't use these params until we define skipping armor checks for piercing through Combat::doTargetCombat()
-						CombatParams piercingParams;
-						piercingParams.origin = ORIGIN_AUGMENT;
-						piercingParams.combatType = COMBAT_UNDEFINEDDAMAGE;
-						piercingParams.impactEffect = CONST_ME_SKULLHORIZONTAL;
+					std::cout << "::Pierce damage from percent : " << piercingDamage << " \n";
+				}
 
-						std::ostringstream outputStringStream;
+				if (piercingFlatTotal) {
+					piercingDamage += static_cast<int32_t>(piercingFlatTotal);
+				}
 
-						outputStringStream << "You pierced " << target->getName() << " for " << piercing.primary.value << " damage! \n";
-						TextMessage message;
+				if (piercingDamage) {
+					const int32_t truePiercingDamage = std::abs(piercingDamage);
+					const int32_t originalDamageAbs = std::abs(damage.primary.value);
+					const int32_t remainingDamage = originalDamageAbs - truePiercingDamage;
 
-						message.type = MESSAGE_EVENT_DEFAULT;
-						message.position = caster->getPosition();
-						message.primary.color = TEXTCOLOR_WHITE_EXP;
-						message.text = outputStringStream.str();
-						casterPlayer.value()->sendTextMessage(message);
+					std::cout << "::Piercing true damage reads : " << truePiercingDamage << " \n";
+					std::cout << "::Piercing's called with originating damage : " << damage.primary.value << " \n";
+					std::cout << "::Piercing difference from originating damage : " << remainingDamage << " \n";
 
-						g_game.combatChangeHealth(caster, target, piercing);
-					}
-					// we return early incase all the damage is piercing now. 
-					// please note, due to this nature of piercing damage,
-					// piercing only interacts with conversion
-					// and does not interact with any of the other modifiers.
-					// in future rewrites of healthchange, lets allow piercing
-					// damage to also interact with other modifiers.
+					damage.primary.value = (remainingDamage <= 0) ? 0 : (0 - remainingDamage);
+
+					std::cout << "::Piercings changed originating value to : " << damage.primary.value << " \n";
+
+					CombatDamage piercing;
+					piercing.origin = ORIGIN_AUGMENT;
+					piercing.primary.value = (0 - truePiercingDamage);
+					piercing.primary.type = COMBAT_UNDEFINEDDAMAGE;
+
+					CombatParams piercingParams;
+					piercingParams.origin = ORIGIN_AUGMENT;
+					piercingParams.combatType = COMBAT_UNDEFINEDDAMAGE;
+					piercingParams.impactEffect = CONST_ME_SKULLHORIZONTAL;
+
+						const auto message = fmt::format("You pierced {} for {} damage! \n",
+							target->getName(),
+							truePiercingDamage);
+
+						(casterPlayer.value())->sendTextMessage(
+							MESSAGE_EVENT_DEFAULT,
+							message
+						);
+
+					g_game.combatChangeHealth(caster, target, piercing);
+
 					if (damage.primary.value == 0) {
 						return;
 					}
@@ -933,6 +936,10 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 			}
 
 			if (targetPlayer.has_value() && (casterPlayer.value() != targetPlayer.value()) && params.origin != ORIGIN_AUGMENT) {
+				//auto defensePos = targetPlayer.value()->getPosition();
+				//auto attackPos = targetPlayer.value()->generateAttackPosition(*caster, defensePos, params.origin);
+				//g_game.addDistanceEffect(defensePos, attackPos, CONST_ANI_SIMPLEARROW);
+				//g_game.addMagicEffect(attackPos, CONST_ME_RAGIAZ_BONECAPSULE);
 
 				auto reformTotals = targetPlayer.value()->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
 				if (!reformTotals.empty()) {
@@ -949,7 +956,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 						if (modTotals.percentTotal  || modTotals.flatTotal) {
 							std::cout << "::Defense Mods Called on Player attack:: \n";
 							std::cout << "::Mod Kind = " << modkind << " with percent = " << static_cast<int32_t>(modTotals.percentTotal) << " and the flat being = " << static_cast<int32_t>(modTotals.flatTotal) << " \n";
-							applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.impactEffect, params.distanceEffect);
+							applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.origin, params.impactEffect, params.distanceEffect);
 							if (damage.primary.value == 0) {
 								return;
 							}
@@ -965,6 +972,10 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 		}
 
 		if (targetPlayer.has_value()) {
+			//auto defensePos = targetPlayer.value()->getPosition();
+			//auto attackPos = targetPlayer.value()->generateAttackPosition(*casterMonster.value(), defensePos, params.origin);
+			//g_game.addDistanceEffect(defensePos, attackPos, CONST_ANI_SIMPLEARROW);
+			//g_game.addMagicEffect(attackPos, CONST_ME_RAGIAZ_BONECAPSULE);
 			// to-do change caster->getType() and other caster calls to casterMonster calls when std::optionals are changed out.
 			auto attackerType = targetPlayer.value()->getCreatureType(*casterMonster.value()->getMonster());
 			auto defenseModData = targetPlayer.value()->getDefenseModifierTotals(damage.primary.type, damage.origin, attackerType, casterMonster.value()->getRace(), casterMonster.value()->getName());
@@ -982,7 +993,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 					if (modTotals.percentTotal || modTotals.flatTotal) {
 						std::cout << "::Defense Mods Called on Monster attack:: \n";
 						std::cout << "::Mod Kind = " << modkind << " with percent = " << static_cast<int32_t>(modTotals.percentTotal) << " and the flat being = " << static_cast<int32_t>(modTotals.flatTotal) << " \n";
-						applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.impactEffect, params.distanceEffect);
+						applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.origin, params.impactEffect, params.distanceEffect);
 						if (damage.primary.value == 0) {
 							return;
 						}
@@ -1282,7 +1293,7 @@ void Combat::applyDamageIncreaseModifier(uint8_t modifierType, CombatDamage& dam
 
 }
 
-void Combat::applyDamageReductionModifier(uint8_t modifierType, CombatDamage& damage, Player& damageTarget, std::optional<std::reference_wrapper<Creature>> attacker, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect) {
+void Combat::applyDamageReductionModifier(uint8_t modifierType, CombatDamage& damage, Player& damageTarget, std::optional<std::reference_wrapper<Creature>> attacker, int32_t percent, int32_t flat, CombatOrigin paramOrigin, uint8_t areaEffect, uint8_t distanceEffect) {
 
 	switch (modifierType) {
 		case DEFENSE_MODIFIER_ABSORB:
@@ -1317,7 +1328,7 @@ void Combat::applyDamageReductionModifier(uint8_t modifierType, CombatDamage& da
 
 		case DEFENSE_MODIFIER_DEFLECT:
 			std::cout << ":: Deflect Called with percent = " << percent << " and the flat being = " << flat << " \n";
-			damageTarget.deflectDamage(attacker, damage, percent, flat, areaEffect, distanceEffect);
+			damageTarget.deflectDamage(attacker, damage, percent, flat, paramOrigin, areaEffect, distanceEffect);
 			return;
 
 		case DEFENSE_MODIFIER_RICOCHET:

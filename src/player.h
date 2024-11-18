@@ -1252,13 +1252,14 @@ class Player final : public Creature, public Cylinder
 		void replenishStaminaFromDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
 		void resistDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
 		void reflectDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
-		void deflectDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
+		void deflectDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, CombatOrigin paramOrigin, uint8_t areaEffect, uint8_t distanceEffect);
 		void ricochetDamage(CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
-		void convertDamage(Creature* target, CombatDamage& originalDamage,
-		                   std::unordered_map<uint8_t, ModifierTotals> conversionList);
+		void convertDamage(Creature* target, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList);
 		void reformDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList);
 
-		static std::unique_ptr<AreaCombat> generateDeflectArea(int32_t targetCount, Position& defendersPosition, Position& attackersPosition);
+		Position generateAttackPosition(std::optional<std::reference_wrapper<Creature>> attacker, Position& defensePosition, CombatOrigin origin);
+
+		std::unique_ptr<AreaCombat> generateDeflectArea(std::optional<std::reference_wrapper<Creature>> attacker, int32_t targetCount);
 
 	private:
 		std::forward_list<Condition*> getMuteConditions() const;
