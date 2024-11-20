@@ -108,7 +108,7 @@ static const DeflectionEffectMap _StandardDeflectionMap = DeflectionEffectMap{
 			 {0, 0, 0, 0, 0,
 			  0, 0, 1, 0, 0,
 			  0, 1, 3, 1, 0,
-			  0, 1, 0, 1, 0,
+			  1, 0, 0, 0, 1,
 			  0, 0, 0, 0, 0},
 			 {0, 0, 0, 0, 0,
 			  0, 1, 1, 1, 0,
@@ -204,7 +204,7 @@ static const DeflectionEffectMap _DiagonalDeflectionMap = DeflectionEffectMap{
 			 0, 0, 0, 0, 0,
 			 0, 0, 0, 0, 0},
 			{0, 0, 0, 0, 0,
-			 0, 0, 1, 1, 0,
+			 0, 1, 1, 1, 0,
 			 0, 1, 3, 0, 0,
 			 0, 1, 0, 0, 0,
 			 0, 0, 0, 0, 0},
@@ -5914,7 +5914,7 @@ std::unordered_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uin
 	std::unordered_map<uint8_t, ModifierTotals> itemList;
 	itemList.reserve(COMBAT_COUNT);
 	
-	if ((modType != ATTACK_MODIFIER_CONVERSION) && (modType != DEFENSE_MODIFIER_REFORM)) {
+	[[unlikely]]if ((modType != ATTACK_MODIFIER_CONVERSION) && (modType != DEFENSE_MODIFIER_REFORM)) {
 		std::cout << "::: WARNING Player::getConvertedTotals called with invalid Mod Type! \n";
 		return playerList;
 	}
@@ -5980,14 +5980,8 @@ std::unordered_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uin
 						}
 
 						percent = std::clamp<uint16_t>(percent, 0, 100);
-
-						std::cout << " <> Percent <> " << percent << " \n";
-						std::cout << " <> Flat <> " << flat << " \n";
-
 						playerList[combatTypeToIndex(modifier->getConversionType())].flatTotal += flat;
 						playerList[combatTypeToIndex(modifier->getConversionType())].percentTotal = std::clamp<uint8_t>(playerList[modifier->getConversionType()].percentTotal + percent, 0, 100);
-
-						std::cout << " <> Percent Total <> " << playerList[combatTypeToIndex(modifier->getConversionType())].percentTotal << " \n";
 					}
 				}
 			}
@@ -6001,9 +5995,7 @@ std::unordered_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(cons
 	
 	std::unordered_map<uint8_t, ModifierTotals> modMap;
 	modMap.reserve(ATTACK_MODIFIER_LAST);
-
-	// To-do : Implement a cache for this, so we don't do this search on every single combat, always.
-	// May require a multi-map approach of storing augments, and getting rid of the vectors.
+	
 	auto attackMods = getAttackModifiers();
 	for (uint8_t i = ATTACK_MODIFIER_NONE; i < ATTACK_MODIFIER_LAST; ++i) {
 		auto modTotals = getValidatedTotals(attackMods[i], damageType, originType, creatureType, race, creatureName);
@@ -6016,9 +6008,7 @@ std::unordered_map<uint8_t, ModifierTotals> Player::getDefenseModifierTotals(con
 	
 	std::unordered_map<uint8_t, ModifierTotals> modMap;
 	modMap.reserve(DEFENSE_MODIFIER_LAST);
-
-	// To-do : Implement a cache for this, so we don't do this search on every single combat, always.
-	// May require a multi-map approach of storing augments, and getting rid of the vectors. 
+	
 	auto defenseMods = getDefenseModifiers();
 	for (uint8_t i = DEFENSE_MODIFIER_NONE; i < DEFENSE_MODIFIER_LAST; ++i) {
 		auto modTotals = getValidatedTotals(defenseMods[i], damageType, originType, creatureType, race, creatureName);
@@ -6037,8 +6027,19 @@ std::vector<Position> Player::getOpenPositionsInRadius(int radius) const {
 				continue; // make sure its same floor, maybe in future we remove this check XD
 			}
 
-			Tile* tile = g_game.map.getTile(pos);
-			if (tile && g_game.canThrowObjectTo(center, pos) && !tile->getZone() == ZONE_PROTECTION) {
+			auto tile = g_game.map.getTile(pos);
+			const bool isValid = tile
+			&& g_game.canThrowObjectTo(center, pos)
+			&& !tile->getZone() == ZONE_PROTECTION
+			&& !tile->hasFlag(TILESTATE_PROTECTIONZONE
+				| TILESTATE_FLOORCHANGE
+				| TILESTATE_TELEPORT
+				| TILESTATE_IMMOVABLEBLOCKSOLID
+				| TILESTATE_NOPVPZONE
+				| TILESTATE_IMMOVABLEBLOCKPATH
+				| TILESTATE_IMMOVABLENOFIELDBLOCKPATH);
+
+			if (isValid) {
 				openPositions.push_back(pos);
 			}
 		}
@@ -6048,7 +6049,6 @@ std::vector<Position> Player::getOpenPositionsInRadius(int radius) const {
 }
 
 void Player::absorbDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
-	std::cout << ":: Inside Absorb with percent = " << percent << " and the flat being = " << flat << " \n";
 	int32_t damageChange = 0;
 	if (percent) {
 		if (percent <= 100) {
@@ -6093,7 +6093,6 @@ void Player::absorbDamage(std::optional<std::reference_wrapper<Creature>> target
 }
 
 void Player::restoreManaFromDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
-	std::cout << ":: Inside Restore with percent = " << percent << " and the flat being = " << flat << " \n";
 	int32_t damageChange = 0;
 	if (percent) {
 		if (percent <= 100) {
@@ -6140,7 +6139,6 @@ void Player::restoreManaFromDamage(std::optional<std::reference_wrapper<Creature
 }
 
 void Player::reviveSoulFromDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
-	std::cout << ":: Inside Revive with percent = " << percent << " and the flat being = " << flat << " \n";
 	int32_t damageChange = 0;
 	if (percent) {
 		if (percent <= 100) {
@@ -6184,7 +6182,6 @@ void Player::reviveSoulFromDamage(std::optional<std::reference_wrapper<Creature>
 
 void Player::replenishStaminaFromDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
 	int32_t damageChange = 0;
-	std::cout << ":: Inside Replenish with percent = " << percent << " and the flat being = " << flat << " \n";
 	if (percent) {
 		if (percent <= 100) {
 			damageChange += originalDamage.primary.value * (percent / 100.0);
@@ -6337,14 +6334,11 @@ void Player::deflectDamage(std::optional<std::reference_wrapper<Creature>> attac
                           CombatOrigin paramOrigin, 
                           uint8_t areaEffect, 
                           uint8_t distanceEffect) {
-
-    // Calculate amount of damage to deflect based on percent and flat modifiers
+	
     int32_t deflectedAmount = 0;
     const int32_t originalValue = std::abs(originalDamage.primary.value);
 
     if (percent > 0) {
-        // Use floating point for accurate percentage calculation
-        // Cap percent at 100 to prevent deflecting more than original damage
         double percentMultiplier = std::min(percent, 100) / 100.0;
         deflectedAmount += static_cast<int32_t>(std::round(originalValue * percentMultiplier));
     }
@@ -6357,36 +6351,24 @@ void Player::deflectDamage(std::optional<std::reference_wrapper<Creature>> attac
     deflectedAmount = std::min(deflectedAmount, originalValue);
     
     if (deflectedAmount > 0) {
-        // Calculate number of target tiles based on damage amount
         constexpr double DAMAGE_DIVIDER = 50.0; // Should be moved to global config
         constexpr double MAX_TARGETS = 6.0;
         const double calculatedTargets = std::min(
             std::round(static_cast<double>(deflectedAmount) / DAMAGE_DIVIDER) + 1.0, 
             MAX_TARGETS
         );
-
-    	std::cout << ":: DeflectedAmount : " << deflectedAmount << std::endl;
-    	std::cout << ":: DeflectedAmount as Double : " << static_cast<double>(deflectedAmount) << std::endl;
-    	std::cout << ":: OriginalValue : " << originalValue << std::endl;
-    	std::cout << ":: Calculated Targets : " << calculatedTargets << std::endl;
-    	std::cout << ":: Damage Formula results : " << (-1 * std::round(static_cast<double>(deflectedAmount) / calculatedTargets)) << std::endl;
-
-        // Generate combat positions and area
+    	
         auto defensePos = getPosition();
         auto attackPos = generateAttackPosition(attackerOpt, defensePos, paramOrigin);
         auto damageArea = generateDeflectArea(attackerOpt, static_cast<int32_t>(calculatedTargets));
-
-        // Update original damage
+    	
         originalDamage.primary.value = (deflectedAmount < originalValue) ? (-1 * (originalValue - deflectedAmount)) : 0;
-
-        // Create deflect damage object
+    	
         auto deflectDamage = CombatDamage{};
         deflectDamage.primary.type = originalDamage.primary.type;
         deflectDamage.origin = ORIGIN_AUGMENT;
-        // Calculate damage per tile (negative for damage application)
         deflectDamage.primary.value = -1 * std::round(static_cast<double>(deflectedAmount) / calculatedTargets);
-
-        // Setup combat parameters
+    	
         auto params = CombatParams();
         params.origin = ORIGIN_AUGMENT;
         params.combatType = originalDamage.primary.type;
@@ -6395,14 +6377,12 @@ void Player::deflectDamage(std::optional<std::reference_wrapper<Creature>> attac
         params.impactEffect = (areaEffect == CONST_ME_NONE) 
             ? CombatTypeToAreaEffect(originalDamage.primary.type) 
             : areaEffect;
-
-        // Send feedback message to player
+    	
         sendTextMessage(
             MESSAGE_EVENT_DEFAULT,
-            fmt::format("You deflected {} total damage.", deflectedAmount)
+            "You deflected" + std::to_string(deflectedAmount) + "total damage."
         );
-
-        // Apply the deflected damage
+    	
         Combat::doAreaCombat(this, attackPos, damageArea.get(), deflectDamage, params);
     }
 }
@@ -6532,9 +6512,6 @@ void Player::reformDamage(std::optional<std::reference_wrapper<Creature>> attack
 	while (originalDamage.primary.value < 0 && iter != conversionList.end()) {
 
 		CombatType_t combatType = indexToCombatType(iter->first);
-		std::cout << ":X:X: Reform Damage :X:X: \n";
-		std::cout << "Called on Damage : " << originalDamage.primary.value << " \n";
-		std::cout << "Reform Damage to : " << getCombatName(combatType) << " \n";
 		ModifierTotals& totals = iter->second;
 
 		int32_t damageChange = 0;
@@ -6583,8 +6560,6 @@ void Player::reformDamage(std::optional<std::reference_wrapper<Creature>> attack
 			TextMessage message;
 
 			message.type = MESSAGE_EVENT_DEFAULT;
-			message.position = getPosition();
-			message.primary.value = convertedDamage;
 			message.primary.color = TEXTCOLOR_WHITE_EXP;
 			message.text = outputStringStream.str();
 			sendTextMessage(message);
@@ -6606,6 +6581,7 @@ Position Player::generateAttackPosition(std::optional<std::reference_wrapper<Cre
 	const Direction attackDirection = (attacker.has_value())
 		? getDirectionTo(defensePosition, attacker.value().get().getPosition())
 		: getOppositeDirection(this->getDirection());
+	
 
 	// Offsets
 	static constexpr std::array<std::array<int, 4>, 8> DIRECTION_PATTERNS = { {

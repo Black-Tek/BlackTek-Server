@@ -285,7 +285,7 @@ inline const bool DamageModifier::appliesToTarget(const CreatureType_t creatureT
 		if (m_creature_name.empty() || m_creature_name == "none") {
 			attackableTarget = true;
 		} else {
-			attackableTarget = (m_creature_name == creatureName.data());
+			attackableTarget = (m_creature_name == std::string(creatureName.data()));
 		}
 	}
 	return attackableTarget;
