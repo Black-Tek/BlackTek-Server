@@ -805,12 +805,9 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 	std::optional<Player*> casterPlayer = caster && caster->getPlayer() ? std::optional<Player*>(caster->getPlayer()) : std::nullopt;
 	std::optional<Player*> targetPlayer = target && target->getPlayer() ? std::optional<Player*>(target->getPlayer()) : std::nullopt;
 	std::optional<Monster*> casterMonster = caster && caster->getMonster() ? std::optional<Monster*>(caster->getMonster()) : std::nullopt;
-	std::optional<Monster*> targetMonster = target && target->getMonster() ? std::optional<Monster*>(caster->getMonster()) : std::nullopt;
 
 	std::unordered_map<uint8_t, ModifierTotals> attackModData;
-
-	bool success = false;
-
+	
 	if (casterPlayer.has_value() && target) {
 		attackModData.reserve(ATTACK_MODIFIER_LAST);
 		auto targetType = CREATURETYPE_ATTACKABLE;
@@ -911,8 +908,8 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				}
 
 				// normal crits are the old ones and are percent based
-				auto normalCritChance = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE));
-				auto normalCritDamage = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT));
+				const auto normalCritChance = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE));
+				const auto normalCritDamage = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT));
 
 				// note : the way this works, its own damage increase is independent allowing for more than 100
 				// and also at the same time, its chance is independent, so it doesn't add to augmented crit's chance.
@@ -922,7 +919,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 
 				// we do percent based crits first, so that the flat damage doesn't add to the percent increase.
 				if (percentTotal) {
-					auto damageIncrease = static_cast<int32_t>(std::abs(std::round(damage.primary.value * (percentTotal / 100.0))));
+					auto damageIncrease = std::abs(damage.primary.value * percentTotal / 100);
 					damage.primary.value -= damageIncrease;
 					damage.critical = true;
 					std::cout << "Critical Percent Modifier Activated on " << damage.primary.value << " damage with " << damageIncrease << " as the bonus damage \n";
@@ -936,11 +933,6 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 			}
 
 			if (targetPlayer.has_value() && (casterPlayer.value() != targetPlayer.value()) && params.origin != ORIGIN_AUGMENT) {
-				//auto defensePos = targetPlayer.value()->getPosition();
-				//auto attackPos = targetPlayer.value()->generateAttackPosition(*caster, defensePos, params.origin);
-				//g_game.addDistanceEffect(defensePos, attackPos, CONST_ANI_SIMPLEARROW);
-				//g_game.addMagicEffect(attackPos, CONST_ME_RAGIAZ_BONECAPSULE);
-
 				auto reformTotals = targetPlayer.value()->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
 				if (!reformTotals.empty()) {
 					std::cout << "Reform Modifier Activated : on " << damage.primary.value << " damage \n";
@@ -954,8 +946,6 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				if (!defenseModData.empty()) {
 					for (const auto& [modkind, modTotals] : defenseModData) {
 						if (modTotals.percentTotal  || modTotals.flatTotal) {
-							std::cout << "::Defense Mods Called on Player attack:: \n";
-							std::cout << "::Mod Kind = " << modkind << " with percent = " << static_cast<int32_t>(modTotals.percentTotal) << " and the flat being = " << static_cast<int32_t>(modTotals.flatTotal) << " \n";
 							applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.origin, params.impactEffect, params.distanceEffect);
 							if (damage.primary.value == 0) {
 								return;
@@ -972,11 +962,6 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 		}
 
 		if (targetPlayer.has_value()) {
-			//auto defensePos = targetPlayer.value()->getPosition();
-			//auto attackPos = targetPlayer.value()->generateAttackPosition(*casterMonster.value(), defensePos, params.origin);
-			//g_game.addDistanceEffect(defensePos, attackPos, CONST_ANI_SIMPLEARROW);
-			//g_game.addMagicEffect(attackPos, CONST_ME_RAGIAZ_BONECAPSULE);
-			// to-do change caster->getType() and other caster calls to casterMonster calls when std::optionals are changed out.
 			auto attackerType = targetPlayer.value()->getCreatureType(*casterMonster.value()->getMonster());
 			auto defenseModData = targetPlayer.value()->getDefenseModifierTotals(damage.primary.type, damage.origin, attackerType, casterMonster.value()->getRace(), casterMonster.value()->getName());
 			auto reformTotals = targetPlayer.value()->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, attackerType, casterMonster.value()->getRace(), casterMonster.value()->getName());
@@ -991,8 +976,6 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 			if (!defenseModData.empty() && params.origin != ORIGIN_AUGMENT) {
 				for (const auto& [modkind, modTotals] : defenseModData) {
 					if (modTotals.percentTotal || modTotals.flatTotal) {
-						std::cout << "::Defense Mods Called on Monster attack:: \n";
-						std::cout << "::Mod Kind = " << modkind << " with percent = " << static_cast<int32_t>(modTotals.percentTotal) << " and the flat being = " << static_cast<int32_t>(modTotals.flatTotal) << " \n";
 						applyDamageReductionModifier(modkind, damage, *targetPlayer.value()->getPlayer(), *caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.origin, params.impactEffect, params.distanceEffect);
 						if (damage.primary.value == 0) {
 							return;
@@ -1005,12 +988,10 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 		std::cout << "Getting calls to doTargetCombat without a target. \n";
 	}
 
-	if (damage.primary.type == COMBAT_MANADRAIN) {
-		success = g_game.combatChangeMana(caster, target, damage);
-	} else {
-		success = g_game.combatChangeHealth(caster, target, damage);
-	}
-
+	auto success = (damage.primary.type == COMBAT_MANADRAIN) ?
+		g_game.combatChangeMana(caster, target, damage) :
+		g_game.combatChangeHealth(caster, target, damage);
+	
 	if (success) {
 
 		if (target && caster && target != caster) {
@@ -1029,24 +1010,15 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				}
 			}
 
-			if (!damage.leeched && damage.primary.type != COMBAT_HEALING && casterPlayer && damage.origin != ORIGIN_CONDITION) {
-				const auto totalDamage = static_cast<int32_t>(std::abs(damage.primary.value + damage.secondary.value));
-				// Percents
-				int32_t lifeStealPercentTotal = 0;
-				int32_t manaStealPercentTotal = 0;
-				int32_t staminaStealPercentTotal = 0;
-				int32_t soulStealPercentTotal = 0;
-				// Flats
-				int32_t lifeStealFlatTotal = 0;
-				int32_t manaStealFlatTotal = 0;
-				int32_t staminaStealFlatTotal = 0;
-				int32_t soulStealFlatTotal = 0;
-				// Gains
-				int32_t lifeStealGain = 0;
-				int32_t manaStealGain = 0;
-				int32_t soulGain = 0;
-				int32_t staminaGain = 0;
-
+			if (!damage.leeched && damage.primary.type != COMBAT_HEALING
+				&& casterPlayer
+				&& damage.origin != ORIGIN_CONDITION) {
+				const auto totalDamage = std::abs(damage.primary.value + damage.secondary.value);
+				int32_t lifeStealPercentTotal = 0, manaStealPercentTotal = 0, staminaStealPercentTotal = 0, soulStealPercentTotal = 0;
+				int32_t lifeStealFlatTotal = 0, manaStealFlatTotal = 0, staminaStealFlatTotal = 0, soulStealFlatTotal = 0;
+				int32_t lifeStealGain = 0, manaStealGain = 0, soulGain = 0, staminaGain = 0;
+				
+				// Static cast everything to int32_t to ensure consistency
 				if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
 					// Percents
 					lifeStealPercentTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_LIFESTEAL].percentTotal);
@@ -1055,29 +1027,28 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 					soulStealPercentTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_SOULSTEAL].percentTotal);
 
 					// Flats
-					lifeStealFlatTotal = attackModData[ATTACK_MODIFIER_LIFESTEAL].flatTotal;
-					manaStealFlatTotal = attackModData[ATTACK_MODIFIER_MANASTEAL].flatTotal;
-					staminaStealFlatTotal = attackModData[ATTACK_MODIFIER_STAMINASTEAL].flatTotal;
-					soulStealFlatTotal = attackModData[ATTACK_MODIFIER_SOULSTEAL].flatTotal;
+					lifeStealFlatTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_LIFESTEAL].flatTotal);
+					manaStealFlatTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_MANASTEAL].flatTotal);
+					staminaStealFlatTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_STAMINASTEAL].flatTotal);
+					soulStealFlatTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_SOULSTEAL].flatTotal);
 				}
 
-				// Static cast everything to int32_t to ensure consistency
-				auto lifeLeechChance = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_LIFELEECHCHANCE));
-				auto lifeLeechAmount = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT));
-				auto manaLeechChance = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_MANALEECHCHANCE));
-				auto manaLeechAmount = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT));
+				const auto lifeLeechChance = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_LIFELEECHCHANCE));
+				const auto lifeLeechAmount = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT));
+				const auto manaLeechChance = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_MANALEECHCHANCE));
+				const auto manaLeechAmount = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT));
 
 				// Lifesteal
 				if ((lifeLeechChance && lifeLeechAmount) && (normal_random(1, 100) <= lifeLeechChance)) {
-					lifeStealGain += static_cast<int32_t>(std::round(totalDamage * (lifeLeechAmount / 100)));
+					lifeStealGain += totalDamage * lifeLeechAmount / 100;
 				}
 
 				if (lifeStealPercentTotal) {
-					lifeStealGain += static_cast<int32_t>(std::round(totalDamage * (lifeStealPercentTotal) / 100));
+					lifeStealGain += totalDamage * lifeStealPercentTotal / 100;
 				}
 
 				if (lifeStealFlatTotal) {
-					lifeStealGain += static_cast<int32_t>(lifeStealFlatTotal);
+					lifeStealGain += (lifeStealFlatTotal);
 				}
 
 				if (lifeStealGain) {
@@ -1086,31 +1057,22 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 					lifeStealCombat.leeched = true;
 					lifeStealCombat.primary.type = COMBAT_LIFEDRAIN;
 					lifeStealCombat.primary.value = lifeStealGain;
-
-					// to-do: write necessary logic to handle leeched combats from augments
-					//CombatParams lifeStealParams;
-					//lifeStealParams.origin = ORIGIN_AUGMENT;
-					//lifeStealParams.combatType = COMBAT_LIFEDRAIN;
-					//lifeStealParams.targetCasterOrTopMost = true;
-					//lifeStealParams.impactEffect = CONST_ME_MAGIC_RED; // to-do: maybe make this something cooler sometime
-					//std::cout << "Life Gained from Steal " << lifeStealGain << " \n";
-					//Combat::doTargetCombat(caster, target, lifeStealCombat, lifeStealParams);
 					g_game.combatChangeHealth(target, caster, lifeStealCombat);
 				}
 
 				/// Manasteal
 				if ((manaLeechChance && manaLeechAmount) && (normal_random(1, 100) <= manaLeechChance)) {
-					manaStealGain += static_cast<int32_t>(std::round(totalDamage * (manaLeechAmount) / 100));
+					manaStealGain += totalDamage * manaLeechAmount / 100;
 				}
 
 				if (manaStealPercentTotal) {
 					std::cout << "Mana Leech Percent Modifier Activated : on " << damage.primary.value << " damage \n";
-					manaStealGain += static_cast<int32_t>(std::round(totalDamage * (manaStealPercentTotal) / 100));
+					manaStealGain += totalDamage * manaStealPercentTotal / 100;
 				}
 
 				if (manaStealFlatTotal) {
 					std::cout << "Mana Leech Flat Modifier Activated : on " << damage.primary.value << " damage \n";
-					manaStealGain += static_cast<int32_t>(manaStealFlatTotal);
+					manaStealGain += manaStealFlatTotal;
 				}
 
 				if (manaStealGain) {
@@ -1119,38 +1081,30 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 					manaStealCombat.leeched = true;
 					manaStealCombat.primary.type = COMBAT_MANADRAIN;
 					manaStealCombat.primary.value = manaStealGain;
-
-					//CombatParams manaStealParams;
-					//manaStealParams.origin = ORIGIN_AUGMENT;
-					//manaStealParams.combatType = COMBAT_MANADRAIN;
-					//manaStealParams.targetCasterOrTopMost = true;
-					//manaStealParams.impactEffect = CONST_ME_MAGIC_BLUE; // to-do: maybe make this something cooler sometime
-					//std::cout << "Mana Gained from Steal " << manaStealGain << " \n";
-					//Combat::doTargetCombat(caster, target, manaStealCombat, manaStealParams);
 					g_game.combatChangeMana(target, caster, manaStealCombat);
 				}
-\
+
 				/// Staminasteal
 				if (staminaStealPercentTotal) {
 					std::cout << "Stamina Steal Percent Modifier Activated : on " << damage.primary.value << " damage \n";
-					staminaGain += static_cast<int32_t>(std::round(totalDamage * (staminaStealPercentTotal) / 100));
+					staminaGain += totalDamage * staminaStealPercentTotal / 100;
 					std::cout << "Stamina Gain total so far : " << staminaGain << " \n";
 				}
 
 				if (staminaStealFlatTotal) {
 					std::cout << "Stamina Steal Modifier Activated : on " << damage.primary.value << " damage \n";
-					staminaGain += static_cast<int32_t>(staminaStealFlatTotal);
+					staminaGain += staminaStealFlatTotal;
 					std::cout << "Stamina Gain total so far : " << staminaGain << " \n";
 				}
 
 				if (staminaGain) {
 					if (staminaGain <= std::numeric_limits<uint16_t>::max()) {
-						uint16_t trueStaminaGain = static_cast<uint16_t>(staminaGain);
-						if (!g_config.getBoolean(ConfigManager::AUGMENT_STAMINA_RULE)) {
-							trueStaminaGain = static_cast<int32_t>(std::round(staminaGain / 60));
-						}
-						uint16_t currentStamina = casterPlayer.value()->getStaminaMinutes();
-						uint16_t missingStamina = (MaximumStamina - currentStamina);
+						const uint16_t trueStaminaGain = g_config.getBoolean(ConfigManager::AUGMENT_STAMINA_RULE) ?
+							static_cast<uint16_t>(staminaGain) :
+							static_cast<uint16_t>(staminaGain / 60);
+						
+						const uint16_t currentStamina = casterPlayer.value()->getStaminaMinutes();
+						const uint16_t missingStamina = (MaximumStamina - currentStamina);
 						if ((trueStaminaGain + currentStamina) >= missingStamina) {
 							casterPlayer.value()->addStamina(missingStamina);
 						} else {
@@ -1165,22 +1119,22 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				// Soulsteal
 				if (soulStealPercentTotal) {
 					std::cout << "Soul Steal Percent Modifier Activated : on " << damage.primary.value << " damage \n";
-					soulGain += static_cast<int32_t>(totalDamage * (soulStealPercentTotal) /  100 );
+					soulGain += totalDamage * soulStealPercentTotal /  100 ;
 					std::cout << "Soul Gain total so far : " << soulGain << " \n";
 				}
 
 				if (soulStealFlatTotal) {
 					std::cout << "Soul Steal Flat Modifier Activated : on " << damage.primary.value << " damage \n";
-					soulGain += static_cast<int32_t>(soulStealFlatTotal);
+					soulGain += soulStealFlatTotal;
 					std::cout << "Soul Gain total so far : " << soulGain << " \n";
 				}
 
 				if (soulGain) {
 					if (soulGain <= std::numeric_limits<uint8_t>::max()) {
-						uint8_t trueSoulGain = static_cast<uint8_t>(soulGain);
-						uint8_t currentSoul = casterPlayer.value()->getSoul();
-						uint8_t maxSoul = casterPlayer.value()->getVocation()->getSoulMax();
-						uint8_t missingSoul = (maxSoul - currentSoul);
+						const uint8_t trueSoulGain = static_cast<uint8_t>(soulGain);
+						const uint8_t currentSoul = casterPlayer.value()->getSoul();
+						const uint8_t maxSoul = casterPlayer.value()->getVocation()->getSoulMax();
+						const uint8_t missingSoul = (maxSoul - currentSoul);
 						if ((trueSoulGain + currentSoul) >= maxSoul) {
 							casterPlayer.value()->addSoul(missingSoul);
 						} else {
@@ -1194,7 +1148,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				}
 			}
 		}
-		if (params.dispelType && CONDITION_PARALYZE) {
+		if (params.dispelType & CONDITION_PARALYZE) {
 			target->removeCondition(CONDITION_PARALYZE);
 		} else {
 			target->removeCombatCondition(params.dispelType);

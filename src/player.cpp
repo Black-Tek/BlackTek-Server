@@ -6048,282 +6048,205 @@ std::vector<Position> Player::getOpenPositionsInRadius(int radius) const {
 	return openPositions;
 }
 
-void Player::absorbDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
-	int32_t damageChange = 0;
+void Player::absorbDamage(std::optional<std::reference_wrapper<Creature>> attacker,
+							CombatDamage& originalDamage,
+							int32_t percent,
+							int32_t flat) {
+	int32_t absorbDamage = 0;
+	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
 	if (percent) {
-		if (percent <= 100) {
-			damageChange += originalDamage.primary.value * (percent / 100.0);
-		}
-		else {
-			damageChange += originalDamage.primary.value;
-		}
+		absorbDamage += originalDamageValue  * percent / 100;
 	}
 	if (flat) {
-		damageChange += flat;
+		absorbDamage += flat;
 	}
 
-	if (damageChange != 0) {
-		int32_t realHealthGain = std::abs(damageChange);
-		int32_t difference = std::abs(originalDamage.primary.value) - realHealthGain;
+	if (absorbDamage != 0) {
+		absorbDamage = std::min<int32_t>(absorbDamage, originalDamageValue);
+		originalDamage.primary.value += absorbDamage;
 
-		if (difference <= 0) {
-			realHealthGain = std::abs(originalDamage.primary.value);
-			originalDamage.primary.value = 0;
-		} else {
-			originalDamage.primary.value = (0 - difference);
+		auto absorb = CombatDamage{};
+		absorb.leeched = true;
+		absorb.origin = ORIGIN_AUGMENT;
+		absorb.primary.type = COMBAT_HEALING;
+		absorb.primary.value = absorbDamage;
+
+		auto absorbParams = CombatParams{};
+		absorbParams.origin = ORIGIN_AUGMENT;
+		absorbParams.combatType = COMBAT_HEALING;
+		absorbParams.impactEffect = CONST_ME_MAGIC_RED;
+		absorbParams.distanceEffect = CONST_ANI_NONE;
+
+		if (!attacker.has_value()) {
+			Combat::doTargetCombat(nullptr, this, absorb, absorbParams);
+			return;
 		}
 
-		if (!targetOpt.has_value()) {
-			TextMessage message(MESSAGE_HEALED, "You gained " + std::to_string(realHealthGain) + " health from absorbtion.");
-			message.position = getPosition();
-			message.primary.value = realHealthGain;
-			message.primary.color = TEXTCOLOR_PASTELRED;
-			sendTextMessage(message);
-			changeHealth(std::abs(damageChange));
-		} else {
-			Creature& attacker = targetOpt.value().get();
-			CombatDamage absorbedDamage{};
-			absorbedDamage.primary.value = realHealthGain;
-			absorbedDamage.primary.type = COMBAT_HEALING;
-			absorbedDamage.origin = ORIGIN_AUGMENT;
-			absorbedDamage.leeched = true;
-			g_game.combatChangeHealth(&attacker, this, absorbedDamage);
-		}
+		Combat::doTargetCombat(&attacker.value().get(), this, absorb, absorbParams);
 	}
 }
 
-void Player::restoreManaFromDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
-	int32_t damageChange = 0;
+void Player::restoreManaFromDamage(std::optional<std::reference_wrapper<Creature>> attacker,
+									CombatDamage& originalDamage,
+									int32_t percent,
+									int32_t flat) {
+	int32_t restoreDamage = 0;
+	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
 	if (percent) {
-		if (percent <= 100) {
-			damageChange += originalDamage.primary.value * (percent / 100.0);
-		}
-		else {
-			damageChange += originalDamage.primary.value;
-		}
+		restoreDamage += originalDamageValue  * percent / 100;
 	}
 	if (flat) {
-		damageChange += flat;
+		restoreDamage += flat;
 	}
 
-	if (damageChange != 0) {
-		int32_t realManaGain = std::abs(damageChange);
-		int32_t difference = std::abs(originalDamage.primary.value) - realManaGain;
+	if (restoreDamage != 0) {
+		restoreDamage = std::min<int32_t>(restoreDamage, originalDamageValue);
+		originalDamage.primary.value += restoreDamage;
 
-		if (difference <= 0) {
-			realManaGain = std::abs(originalDamage.primary.value);
-			originalDamage.primary.value = 0;
-		} else {
-			originalDamage.primary.value = (0 - difference);
+		auto restore = CombatDamage{};
+		restore.leeched = true;
+		restore.origin = ORIGIN_AUGMENT;
+		restore.primary.type = COMBAT_MANADRAIN;
+		restore.primary.value = restoreDamage;
+
+		auto restoreParams = CombatParams{};
+		restoreParams.origin = ORIGIN_AUGMENT;
+		restoreParams.combatType = COMBAT_MANADRAIN;
+		restoreParams.impactEffect = CONST_ME_ENERGYHIT;
+		restoreParams.distanceEffect = CONST_ANI_NONE;
+
+		if (!attacker.has_value()) {
+			Combat::doTargetCombat(nullptr, this, restore, restoreParams);
+			return;
 		}
 
-
-		if (!targetOpt.has_value()) {
-			TextMessage message(MESSAGE_HEALED, "You gained " + std::to_string(realManaGain) + " mana from restoration.");
-			message.position = getPosition();
-			message.primary.value = realManaGain;
-			message.primary.color = TEXTCOLOR_MAYABLUE;
-			sendTextMessage(message);
-			changeMana(realManaGain);
-		} else {
-			// to-do : re-evaluate this when reworking combat system.
-			Creature& attacker = targetOpt.value().get();
-			CombatDamage manaRestore{};
-			manaRestore.primary.value = realManaGain;
-			manaRestore.primary.type = originalDamage.primary.type;
-			manaRestore.origin = ORIGIN_AUGMENT;
-			manaRestore.leeched = true;
-			g_game.combatChangeMana(&attacker, this, manaRestore);
-		}
+		Combat::doTargetCombat(&attacker.value().get(), this, restore, restoreParams);
 	}
 }
 
-void Player::reviveSoulFromDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
-	int32_t damageChange = 0;
+void Player::reviveSoulFromDamage(std::optional<std::reference_wrapper<Creature>> attacker,
+									CombatDamage& originalDamage,
+									int32_t percent,
+									int32_t flat) {
+	int32_t reviveDamage = 0;
+	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
 	if (percent) {
-		if (percent <= 100) {
-			damageChange += originalDamage.primary.value * (percent / 100.0);
-		}
-		else {
-			damageChange += originalDamage.primary.value;
-		}
+		reviveDamage += originalDamageValue  * percent / 100;
 	}
 	if (flat) {
-		damageChange += flat;
+		reviveDamage += flat;
 	}
 
-	if (damageChange != 0) {
-		int32_t realSoulGain = std::abs(damageChange);
-		int32_t difference = std::abs(originalDamage.primary.value) - realSoulGain;
+	if (reviveDamage != 0) {
+		reviveDamage = std::min<int32_t>(reviveDamage,  originalDamageValue);
+		originalDamage.primary.value += reviveDamage;
 
-		if (difference <= 0) {
-			realSoulGain = std::abs(originalDamage.primary.value);
-			originalDamage.primary.value = 0;
-		}
-		else {
-			originalDamage.primary.value = (0 - difference);
-		}
-
-
-		TextMessage message;
-		message.type = MESSAGE_HEALED;
-		message.position = getPosition();
-
-		if (!targetOpt.has_value()) {
-			message.text = "You gained " + std::to_string(realSoulGain) + " soul from revival.";
-		} else {
-			Creature& attacker = targetOpt.value().get();
-			message.text = "You gained " + std::to_string(realSoulGain) + " soul from " + attacker.getName() + "'s attack.";
-		}
-		sendTextMessage(message);
-		changeSoul(realSoulGain);
+		auto message = (attacker.has_value()) ?
+			"You gained " + std::to_string(reviveDamage) + " soul from " + attacker.value().get().getName() + "'s attack." :
+			"You gained " + std::to_string(reviveDamage) + " soul from revival.";
+		
+		sendTextMessage(MESSAGE_HEALED, message);
+		changeSoul(reviveDamage);
 	}
 }
 
-void Player::replenishStaminaFromDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
-	int32_t damageChange = 0;
+void Player::replenishStaminaFromDamage(std::optional<std::reference_wrapper<Creature>> attacker,
+										CombatDamage& originalDamage,
+										int32_t percent,
+										int32_t flat) {
+	int32_t replenishDamage = 0;
+	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
 	if (percent) {
-		if (percent <= 100) {
-			damageChange += originalDamage.primary.value * (percent / 100.0);
-		}
-		else {
-			damageChange += originalDamage.primary.value;
-		}
+		replenishDamage += originalDamageValue  * percent / 100;
 	}
 	if (flat) {
-		damageChange += flat;
+		replenishDamage += flat;
 	}
 
-	if (damageChange != 0) {
-		int32_t realStaminaGain = std::abs(damageChange);
-		int32_t difference = std::abs(originalDamage.primary.value) - realStaminaGain;
-
-		if (difference <= 0) {
-			realStaminaGain = std::abs(originalDamage.primary.value);
-			originalDamage.primary.value = 0;
-		}
-		else {
-			originalDamage.primary.value = (0 - difference);
-		}
-
-		TextMessage message;
-		message.type = MESSAGE_HEALED;
-		message.position = getPosition();
-		message.primary.value = realStaminaGain;
-		message.primary.color = TEXTCOLOR_LIGHTGREY;
+	if (replenishDamage != 0) {
+		replenishDamage = std::min<int32_t>(replenishDamage,  originalDamageValue);
+		originalDamage.primary.value += replenishDamage;
 
 		if (!g_config.getBoolean(ConfigManager::AUGMENT_STAMINA_RULE)) {
-			realStaminaGain = static_cast<int32_t>(std::round(realStaminaGain / 60));
+			replenishDamage = std::round<int32_t>(replenishDamage / 60);
 		}
 
-		if (!targetOpt.has_value()) {
-			message.text = "You gained " + std::to_string(realStaminaGain) + " stamina from replenishment.";
-		} else {
-			Creature& attacker = targetOpt.value().get();
-			message.text = "You gained " + std::to_string(realStaminaGain) + " stamina from " + attacker.getName() + "'s attack.";
-		}
-		sendTextMessage(message);
-		changeStamina(realStaminaGain);
+		auto message = (attacker.has_value()) ?
+			"You gained " + std::to_string(replenishDamage) + " stamina from " + attacker.value().get().getName() + "'s attack." :
+			"You gained " + std::to_string(replenishDamage) + " stamina from replenishment.";
+
+		sendTextMessage(MESSAGE_HEALED,  message);
+		changeStamina(replenishDamage);
 	}
 }
 
-void Player::resistDamage(std::optional<std::reference_wrapper<Creature>> targetOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) {
-	int32_t damageChange = 0;
+void Player::resistDamage(std::optional<std::reference_wrapper<Creature>> attacker,
+							CombatDamage& originalDamage,
+							int32_t percent,
+							int32_t flat) {
+	int32_t resistDamage = 0;
+	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
 	if (percent) {
-		if (percent <= 100) {
-			damageChange += originalDamage.primary.value * (percent / 100.0);
-		}
-		else {
-			damageChange += originalDamage.primary.value;
-		}
+		resistDamage += originalDamageValue  * percent / 100;
 	}
 	if (flat) {
-		damageChange += flat;
+		resistDamage += flat;
 	}
 
-	if (damageChange != 0) {
-		int32_t resistedDamage = std::abs(damageChange);
-		int32_t difference = std::abs(originalDamage.primary.value) - resistedDamage;
+	if (resistDamage != 0) {
+		resistDamage = std::min<int32_t>(resistDamage, originalDamageValue);
+		originalDamage.primary.value += resistDamage;
+		
+		auto message = (attacker.has_value()) ?
+			"You resisted " + std::to_string(resistDamage) + " damage from " + attacker.value().get().getName() + "'s attack." :
+			"You resisted " + std::to_string(resistDamage) + " damage.";
 
-		if (difference <= 0) {
-			resistedDamage = std::abs(originalDamage.primary.value);
-			originalDamage.primary.value = 0;
-		} else {
-			originalDamage.primary.value = (0 - difference);
-		}
-
-		TextMessage message;
-		message.type = MESSAGE_HEALED;
-		message.position = getPosition();
-		message.primary.value = resistedDamage;
-		message.primary.color = TEXTCOLOR_ORANGE;
-
-		if (!targetOpt.has_value()) {
-			message.text = "You resisted " + std::to_string(resistedDamage) + " damage.";
-		} else {
-			Creature& attacker = targetOpt.value().get();
-			message.text = "You resisted " + std::to_string(resistedDamage) + " damage from " + attacker.getName() + "'s attack.";
-		}
-		sendTextMessage(message);
+		sendTextMessage(MESSAGE_HEALED, message);
 	}
 }
 
-void Player::reflectDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect) {
-	if (!attackerOpt.has_value()) {
+void Player::reflectDamage(std::optional<std::reference_wrapper<Creature>> attacker,
+							CombatDamage& originalDamage,
+							int32_t percent,
+							int32_t flat,
+							uint8_t areaEffect,
+							uint8_t distanceEffect) {
+	
+	if (!attacker.has_value()) {
 		return;
 	}
 
-	int32_t damageChange = 0;
+	int32_t reflectDamage = 0;
+	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
 	if (percent) {
-		if (percent <= 100) {
-			damageChange += originalDamage.primary.value * (percent / 100.0);
-		} else {
-			damageChange += originalDamage.primary.value;
-		}
+		reflectDamage += originalDamageValue  * percent / 100;
 	}
 	if (flat) {
-		damageChange += flat;
+		reflectDamage += flat;
 	}
 
-	Creature& target = attackerOpt.value().get();
+	if (reflectDamage != 0)	{
+		Creature& target = attacker.value().get();
+		reflectDamage = std::min<int32_t>(reflectDamage, originalDamageValue);
+		originalDamage.primary.value += reflectDamage;
 
-	int32_t reflectedDamage = std::abs(damageChange);
-	int32_t difference = std::abs(originalDamage.primary.value) - reflectedDamage;
+		auto reflect = CombatDamage{};
+		reflect.primary.type = originalDamage.primary.type;
+		reflect.primary.value = (0 - reflectDamage);
+		reflect.origin = ORIGIN_AUGMENT;
+
+		auto params = CombatParams{};
+		params.distanceEffect = distanceEffect;
+		params.impactEffect = areaEffect;
+		params.origin = ORIGIN_AUGMENT;
+		params.combatType = originalDamage.primary.type;
+
+		sendTextMessage(
+		MESSAGE_DAMAGE_DEALT,
+		 "You reflected " + std::to_string(reflectDamage) + " damage from " + target.getName() + "'s attack back at them."
+		 );
 	
-	if (difference <= 0) {
-		reflectedDamage = std::abs(originalDamage.primary.value);
-		originalDamage.primary.value = 0;
-	} else {
-		originalDamage.primary.value = (0 - difference);
-	}
-
-	auto reflect = CombatDamage{};
-	reflect.primary.type = originalDamage.primary.type;
-	reflect.primary.value = (0 - reflectedDamage);
-	reflect.origin = ORIGIN_AUGMENT;
-
-	std::ostringstream outputStringStream;
-	outputStringStream << "You reflected " << reflectedDamage << " damage from " << target.getName() << "'s attack back at them.";
-
-	TextMessage message;
-	message.type = MESSAGE_DAMAGE_DEALT;
-	message.position = getPosition();
-	message.primary.value = reflectedDamage;
-	message.primary.color = TEXTCOLOR_ELECTRICPURPLE;
-	message.text = outputStringStream.str();
-	sendTextMessage(message);
-
-	const auto& strikePosition = target.getPosition();
-
-	// to-do : change to use combat::doCombat() over game::combatHealthChange()
-	if (distanceEffect != CONST_ANI_NONE) {
-		g_game.addDistanceEffect(getPosition(), strikePosition, distanceEffect);
-	}
-
-	g_game.combatChangeHealth(this, &target, reflect);
-
-	if (areaEffect != CONST_ME_NONE) {
-		g_game.addMagicEffect(strikePosition, areaEffect);
+		Combat::doTargetCombat(this, &target, reflect, params);
 	}
 }
 
@@ -6335,39 +6258,34 @@ void Player::deflectDamage(std::optional<std::reference_wrapper<Creature>> attac
                           uint8_t areaEffect, 
                           uint8_t distanceEffect) {
 	
-    int32_t deflectedAmount = 0;
-    const int32_t originalValue = std::abs(originalDamage.primary.value);
+    int32_t deflectDamage = 0;
+    const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
 
-    if (percent > 0) {
-        double percentMultiplier = std::min(percent, 100) / 100.0;
-        deflectedAmount += static_cast<int32_t>(std::round(originalValue * percentMultiplier));
-    }
+	if (percent) {
+		deflectDamage += originalDamageValue  * percent / 100;
+	}
+	if (flat) {
+		deflectDamage += flat;
+	}
     
-    if (flat > 0) {
-        deflectedAmount += flat;
-    }
-
-    // Ensure we don't deflect more than the original damage
-    deflectedAmount = std::min(deflectedAmount, originalValue);
-    
-    if (deflectedAmount > 0) {
-        constexpr double DAMAGE_DIVIDER = 50.0; // Should be moved to global config
-        constexpr double MAX_TARGETS = 6.0;
-        const double calculatedTargets = std::min(
-            std::round(static_cast<double>(deflectedAmount) / DAMAGE_DIVIDER) + 1.0, 
+    if (deflectDamage > 0) {
+    	deflectDamage = std::min(deflectDamage, originalDamageValue);
+    	originalDamage.primary.value += deflectDamage;
+        constexpr int32_t DAMAGE_DIVIDER = 50.0; // Should be moved to global config
+        constexpr int32_t MAX_TARGETS = 6.0;
+        const int32_t calculatedTargets = std::min<int32_t>(
+            std::round<int32_t>((deflectDamage) / DAMAGE_DIVIDER) + 1, 
             MAX_TARGETS
         );
     	
         auto defensePos = getPosition();
         auto attackPos = generateAttackPosition(attackerOpt, defensePos, paramOrigin);
-        auto damageArea = generateDeflectArea(attackerOpt, static_cast<int32_t>(calculatedTargets));
+        auto damageArea = generateDeflectArea(attackerOpt, calculatedTargets);
     	
-        originalDamage.primary.value = (deflectedAmount < originalValue) ? (-1 * (originalValue - deflectedAmount)) : 0;
-    	
-        auto deflectDamage = CombatDamage{};
-        deflectDamage.primary.type = originalDamage.primary.type;
-        deflectDamage.origin = ORIGIN_AUGMENT;
-        deflectDamage.primary.value = -1 * std::round(static_cast<double>(deflectedAmount) / calculatedTargets);
+        auto deflect = CombatDamage{};
+        deflect.primary.type = originalDamage.primary.type;
+        deflect.origin = ORIGIN_AUGMENT;
+        deflect.primary.value = -1 * std::round<int32_t>(deflectDamage / calculatedTargets);
     	
         auto params = CombatParams();
         params.origin = ORIGIN_AUGMENT;
@@ -6380,56 +6298,42 @@ void Player::deflectDamage(std::optional<std::reference_wrapper<Creature>> attac
     	
         sendTextMessage(
             MESSAGE_EVENT_DEFAULT,
-            "You deflected" + std::to_string(deflectedAmount) + "total damage."
+            "You deflected" + std::to_string(deflectDamage) + "total damage."
         );
     	
-        Combat::doAreaCombat(this, attackPos, damageArea.get(), deflectDamage, params);
+        Combat::doAreaCombat(this, attackPos, damageArea.get(), deflect, params);
     }
 }
 
-void Player::ricochetDamage(CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect) {
+void Player::ricochetDamage(CombatDamage& originalDamage,
+							int32_t percent,
+							int32_t flat,
+							uint8_t areaEffect,
+							uint8_t distanceEffect) {
 
-	int32_t damageChange = 0;
+	int32_t ricochetDamage = 0;
+	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
+
 	if (percent) {
-		if (percent <= 100) {
-			damageChange += originalDamage.primary.value * (percent / 100.0);
-		}
-		else {
-			damageChange += originalDamage.primary.value;
-		}
+		ricochetDamage += originalDamageValue  * percent / 100;
 	}
 	if (flat) {
-		damageChange += flat;
+		ricochetDamage += flat;
 	}
 
 	auto targetList = getOpenPositionsInRadius(3);
 
-	if (damageChange != 0 && targetList.size() > 0) {
+	if (ricochetDamage != 0 && targetList.size() > 0) {
 		const auto& targetPos = targetList[uniform_random(0, targetList.size() - 1)];
-		int32_t ricochetedDamage = std::abs(damageChange);
-		int32_t difference = std::abs(originalDamage.primary.value) - ricochetedDamage;
+		ricochetDamage = std::min(ricochetDamage, originalDamageValue);
+		originalDamage.primary.value += ricochetDamage;
 
-		if (difference <= 0) {
-			ricochetedDamage = std::abs(originalDamage.primary.value);
-			originalDamage.primary.value = 0;
-		} else {
-			originalDamage.primary.value = (0 - difference);
-		}
-
-		std::ostringstream outputStringStream;
-		outputStringStream << "An attack on you ricocheted " << ricochetedDamage << " damage.";
-		TextMessage message;
-		
-		message.type = MESSAGE_EVENT_DEFAULT;
-		message.position = getPosition();
-		message.primary.value = ricochetedDamage;
-		message.primary.color = TEXTCOLOR_WHITE_EXP;
-		message.text = outputStringStream.str();
-		sendTextMessage(message);
+		auto message = "An attack on you ricocheted " + std::to_string(ricochetDamage) + " damage.";
+		sendTextMessage(MESSAGE_EVENT_ADVANCE, message);
 
 		auto ricochet = CombatDamage{};
 		ricochet.primary.type = originalDamage.primary.type;
-		ricochet.primary.value = (0 - ricochetedDamage);
+		ricochet.primary.value = (0 - ricochetDamage);
 		ricochet.origin = ORIGIN_AUGMENT;
 
 		auto params = CombatParams();
@@ -6453,32 +6357,21 @@ void Player::convertDamage(Creature* target, CombatDamage& originalDamage, std::
 		CombatType_t combatType = indexToCombatType(iter->first);
 		ModifierTotals& totals = iter->second;
 
-		int32_t damageChange = 0;
+		int32_t convertedDamage = 0;
 		int32_t percent = static_cast<int32_t>(totals.percentTotal);
 		int32_t flat = static_cast<int32_t>(totals.flatTotal);
+		const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
 		if (percent) {
-			if (percent <= 100) {
-				damageChange += std::abs(originalDamage.primary.value * (totals.percentTotal / 100.0));
-			} else {
-				damageChange += std::abs(originalDamage.primary.value);
-			}
+			convertedDamage += originalDamageValue  * percent / 100;
 		}
 		if (flat) {
-			damageChange += flat;
+			convertedDamage += flat;
 		}
 
-		if (damageChange) {
-			int32_t maxDamage = std::abs(originalDamage.primary.value);
-			int32_t convertedDamage = std::abs(damageChange);
-			int32_t difference = maxDamage - convertedDamage;
+		if (convertedDamage != 0 && target) {
+			convertedDamage = std::min<int32_t>(convertedDamage, originalDamageValue);
+			originalDamage.primary.value += convertedDamage;
 			
-			if (difference <= 0) {
-				convertedDamage = std::abs(originalDamage.primary.value);
-				originalDamage.primary.value = 0;
-			} else {
-				originalDamage.primary.value = (0 - difference);
-			}
-
 			auto converted = CombatDamage{};
 			converted.primary.type = combatType;
 			converted.primary.value = (0 - convertedDamage);
@@ -6487,26 +6380,16 @@ void Player::convertDamage(Creature* target, CombatDamage& originalDamage, std::
 			auto params = CombatParams{};
 			params.combatType = combatType;
 			params.origin = ORIGIN_AUGMENT;
-
-			std::ostringstream outputStringStream;
-			outputStringStream << "You converted " << convertedDamage << " " << getCombatName(originalDamage.primary.type) << " damage to " << getCombatName(combatType) << " during an attack on " << target->getName() << ". \n";
-			TextMessage message;
-
-			message.type = MESSAGE_EVENT_DEFAULT;
-			message.position = getPosition();
-			message.primary.value = convertedDamage;
-			message.primary.color = TEXTCOLOR_WHITE_EXP;
-			message.text = outputStringStream.str();
-			sendTextMessage(message);
 			
+			auto message = "You converted " + std::to_string(convertedDamage) + " " + getCombatName(originalDamage.primary.type) + " damage to " + getCombatName(combatType) + " during an attack on " + target->getName() + ".";
+			sendTextMessage(MESSAGE_DAMAGE_DEALT, message);
 			Combat::doTargetCombat(this, target, converted, params);
 		}
-
 		++iter;
 	}
 }
 
-void Player::reformDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList) {
+void Player::reformDamage(std::optional<std::reference_wrapper<Creature>> attacker, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList) {
 	auto iter = conversionList.begin();
 
 	while (originalDamage.primary.value < 0 && iter != conversionList.end()) {
@@ -6514,64 +6397,38 @@ void Player::reformDamage(std::optional<std::reference_wrapper<Creature>> attack
 		CombatType_t combatType = indexToCombatType(iter->first);
 		ModifierTotals& totals = iter->second;
 
-		int32_t damageChange = 0;
+		int32_t reformedDamage = 0;
 		int32_t percent = static_cast<int32_t>(totals.percentTotal);
 		int32_t flat = static_cast<int32_t>(totals.flatTotal);
+		const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
 		if (percent) {
-			if (percent <= 100) {
-				damageChange += std::abs(originalDamage.primary.value * (totals.percentTotal / 100.0));
-			} else {
-				damageChange += std::abs(originalDamage.primary.value);
-			}
+			reformedDamage += originalDamageValue  * percent / 100;
 		}
 		if (flat) {
-			damageChange += flat;
+			reformedDamage += flat;
 		}
 
-		if (damageChange) {
-			int32_t maxDamage = std::abs(originalDamage.primary.value);
-			int32_t convertedDamage = std::abs(damageChange);
-			int32_t difference = maxDamage - convertedDamage;
-			
-			if (difference <= 0) {
-				convertedDamage = std::abs(originalDamage.primary.value);
-				originalDamage.primary.value = 0;
-			} else {
-				originalDamage.primary.value = (0 - difference);
-			}
+		if (reformedDamage) {
+			reformedDamage = std::min<int32_t>(reformedDamage, originalDamageValue);
+			originalDamage.primary.value += reformedDamage;
 
-			auto converted = CombatDamage{};
-			converted.primary.type = combatType;
-			converted.primary.value = (0 - convertedDamage);
-			converted.origin = ORIGIN_AUGMENT;
+			auto reform = CombatDamage{};
+			reform.primary.type = combatType;
+			reform.primary.value = (0 - reformedDamage);
+			reform.origin = ORIGIN_AUGMENT;
 
 			auto params = CombatParams{};
 			params.combatType = combatType;
 			params.origin = ORIGIN_AUGMENT;
-
-
-			std::ostringstream outputStringStream;
-			if (attackerOpt.has_value()) {
-				Creature& attacker = attackerOpt.value().get();
-				outputStringStream << "You reformed " << convertedDamage << " " << getCombatName(originalDamage.primary.type) << " damage from " << getCombatName(combatType) << " during an attack on you by " << attacker.getName() << ". \n";
-			} else {
-				outputStringStream << "You reformed " << convertedDamage << " " << getCombatName(originalDamage.primary.type) << " damage from " << getCombatName(combatType) << ". \n";
-			}
-			TextMessage message;
-
-			message.type = MESSAGE_EVENT_DEFAULT;
-			message.primary.color = TEXTCOLOR_WHITE_EXP;
-			message.text = outputStringStream.str();
-			sendTextMessage(message);
-
-			if (attackerOpt.has_value()) {
-				auto& attacker = attackerOpt.value().get();
-				Combat::doTargetCombat(&attacker, this, converted, params);
-			} else {
-				Combat::doTargetCombat(nullptr, this, converted, params);
-			}
+			
+			auto message = (attacker.has_value()) ?
+				"You reformed " + std::to_string(reformedDamage) + " " + getCombatName(originalDamage.primary.type) + " damage from " + getCombatName(combatType) + " during an attack on you by " + attacker.value().get().getName() + "." :
+				"You reformed " + std::to_string(reformedDamage) + " " + getCombatName(originalDamage.primary.type) + " damage from " + getCombatName(combatType) + ".";
+			
+			sendTextMessage(MESSAGE_DAMAGE_DEALT, message);
+			auto target = (attacker.has_value()) ? &attacker.value().get() : nullptr;
+			Combat::doTargetCombat(target, this, reform, params);
 		}
-
 		++iter;
 	}
 }
@@ -6582,18 +6439,17 @@ Position Player::generateAttackPosition(std::optional<std::reference_wrapper<Cre
 		? getDirectionTo(defensePosition, attacker.value().get().getPosition())
 		: getOppositeDirection(this->getDirection());
 	
-
 	// Offsets
 	static constexpr std::array<std::array<int, 4>, 8> DIRECTION_PATTERNS = { {
 			// x_start, x_end, y_start, y_end
-			{-1, 1, -2, -1},// NORTH:
-			{1, 2, -1, 1},// EAST:
-			{-1, 1, 1, 2},// SOUTH:
-			{-2, -1, -1, 1},// WEST:
-			{-2, -1, 1, 2},// SOUTHWEST:
-			{1, 2, 1, 2},// SOUTHEAST:
-			{-2, -1, -2, -1},// NORTHWEST:
-			{1, 2, -2, -1}// NORTHEAST:
+			{-1, 1, -2, -1},	// NORTH:
+			{1, 2, -1, 1},	// EAST:
+			{-1, 1, 1, 2},	// SOUTH:
+			{-2, -1, -1, 1},	// WEST:
+			{-2, -1, 1, 2},	// SOUTHWEST:
+			{1, 2, 1, 2},		// SOUTHEAST:
+			{-2, -1, -2, -1},	// NORTHWEST:
+			{1, 2, -2, -1}	// NORTHEAST:
 		} };
 
 	std::vector<Position> possibleTargets;
@@ -6633,47 +6489,42 @@ Position Player::generateAttackPosition(std::optional<std::reference_wrapper<Cre
 
 	const size_t vectorSize = possibleTargets.size();
 	const size_t index = vectorSize ? (std::rand() % vectorSize) : 0;
-
 	return vectorSize ? possibleTargets[index] : Spells::getCasterPosition(this, getOppositeDirection(this->getDirection()));
 } 
 
 std::unique_ptr<AreaCombat> Player::generateDeflectArea(std::optional<std::reference_wrapper<Creature>> attacker, int32_t targetCount) {
 	auto combatArea = std::make_unique<AreaCombat>();
-	auto direction = DIRECTION_NONE;
-
 	auto defendersPosition = this->getPosition();
-
-	if (attacker) {
-		direction = getDirectionTo(defendersPosition, attacker.value().get().getPosition());
-		switch (direction) {
-		case DIRECTION_NORTH:
-		case DIRECTION_EAST:
-		case DIRECTION_SOUTH:
-		case DIRECTION_WEST: {
-			auto targetAreas = _StandardDeflectionMap.find(targetCount)->second;
-				if (!targetAreas.empty()) {
-					auto index = std::rand() % targetAreas.size();
-					auto area = targetAreas[index];
-					combatArea->setupArea(area, 5);
-				}
-			break;
-		}
-		case DIRECTION_SOUTHWEST:
-		case DIRECTION_SOUTHEAST:
-		case DIRECTION_NORTHWEST:
-		case DIRECTION_NORTHEAST: {
-			auto targetAreas = _DiagonalDeflectionMap.find(targetCount)->second;
+	auto direction = (attacker.has_value()) ? getDirectionTo(defendersPosition, attacker.value().get().getPosition()) : getOppositeDirection(this->getDirection());
+	
+	switch (direction) {
+	case DIRECTION_NORTH:
+	case DIRECTION_EAST:
+	case DIRECTION_SOUTH:
+	case DIRECTION_WEST: {
+		auto targetAreas = _StandardDeflectionMap.find(targetCount)->second;
 			if (!targetAreas.empty()) {
 				auto index = std::rand() % targetAreas.size();
 				auto area = targetAreas[index];
-				combatArea->setupExtArea(area, 5);
+				combatArea->setupArea(area, 5);
 			}
-			break;
+		break;
+	}
+	case DIRECTION_SOUTHWEST:
+	case DIRECTION_SOUTHEAST:
+	case DIRECTION_NORTHWEST:
+	case DIRECTION_NORTHEAST: {
+		auto targetAreas = _DiagonalDeflectionMap.find(targetCount)->second;
+		if (!targetAreas.empty()) {
+			auto index = std::rand() % targetAreas.size();
+			auto area = targetAreas[index];
+			combatArea->setupExtArea(area, 5);
 		}
-		[[unlikely]]default:
-			std::cerr << "Deflection area attempted to be generated from unknown direction!" << std::endl;
-			break;
-		}
+		break;
+	}
+	[[unlikely]]default:
+		std::cerr << "Deflection area attempted to be generated from unknown direction!" << std::endl;
+		break;
 	}
 
 	return combatArea;
