@@ -835,18 +835,14 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				const auto& [piercingFlatTotal, piercingPercentTotal] = attackModData[ATTACK_MODIFIER_PIERCING];
 
 				int32_t piercingDamage = 0;
-
+				const auto originalDamage = std::abs(damage.primary.value);
 				if (piercingPercentTotal) {
-					const auto piercePercent = static_cast<double>(piercingPercentTotal);
-
-					std::cout << "::Inside Piercing being called on : " << damage.primary.value << " \n";
-					std::cout << "::Piercing original percent : " << piercePercent << " \n";
+					const auto piercePercent = static_cast<int32_t>(piercingPercentTotal);
 
 					piercingDamage = (piercingPercentTotal <= 100)
-						? static_cast<int32_t>(std::round((damage.primary.value / 100.0) * piercePercent))
+						? (originalDamage * piercePercent / 100)
 						: damage.primary.value;
-
-					std::cout << "::Pierce damage from percent : " << piercingDamage << " \n";
+					
 				}
 
 				if (piercingFlatTotal) {
@@ -854,21 +850,12 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				}
 
 				if (piercingDamage) {
-					const int32_t truePiercingDamage = std::abs(piercingDamage);
-					const int32_t originalDamageAbs = std::abs(damage.primary.value);
-					const int32_t remainingDamage = originalDamageAbs - truePiercingDamage;
-
-					std::cout << "::Piercing true damage reads : " << truePiercingDamage << " \n";
-					std::cout << "::Piercing's called with originating damage : " << damage.primary.value << " \n";
-					std::cout << "::Piercing difference from originating damage : " << remainingDamage << " \n";
-
-					damage.primary.value = (remainingDamage <= 0) ? 0 : (0 - remainingDamage);
-
-					std::cout << "::Piercings changed originating value to : " << damage.primary.value << " \n";
-
+					piercingDamage = std::min<int32_t>(piercingDamage, originalDamage);
+					damage.primary.value += piercingDamage;
+					
 					CombatDamage piercing;
 					piercing.origin = ORIGIN_AUGMENT;
-					piercing.primary.value = (0 - truePiercingDamage);
+					piercing.primary.value = (0 - piercingDamage);
 					piercing.primary.type = COMBAT_UNDEFINEDDAMAGE;
 
 					CombatParams piercingParams;
@@ -876,15 +863,8 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 					piercingParams.combatType = COMBAT_UNDEFINEDDAMAGE;
 					piercingParams.impactEffect = CONST_ME_SKULLHORIZONTAL;
 
-						const auto message = fmt::format("You pierced {} for {} damage! \n",
-							target->getName(),
-							truePiercingDamage);
-
-						(casterPlayer.value())->sendTextMessage(
-							MESSAGE_EVENT_DEFAULT,
-							message
-						);
-
+					const auto message = "You pierced " + target->getName() + " for " + std::to_string(piercingDamage) + " damage!" ;
+					casterPlayer.value()->sendTextMessage(MESSAGE_EVENT_DEFAULT, message);
 					g_game.combatChangeHealth(caster, target, piercing);
 
 					if (damage.primary.value == 0) {

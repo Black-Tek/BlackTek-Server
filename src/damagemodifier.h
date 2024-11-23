@@ -17,6 +17,16 @@ struct ModifierTotals {
 	ModifierTotals(uint16_t flat, uint16_t percent) : flatTotal(flat), percentTotal(percent) {}
 	uint16_t flatTotal = 0;
 	uint16_t percentTotal = 0;
+
+	ModifierTotals operator+(const ModifierTotals& other) const {
+		return ModifierTotals(flatTotal + other.flatTotal, percentTotal + other.percentTotal);
+	}
+	
+	ModifierTotals& operator+=(const ModifierTotals& other) {
+		flatTotal += other.flatTotal;
+		percentTotal = std::min<uint16_t>(percentTotal + other.percentTotal, 100);
+		return *this;
+	}
 };
 
 struct WeildModifier {

@@ -5944,9 +5944,12 @@ std::unordered_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uin
 						}
 					}
 
-					percent = std::clamp<uint16_t>(percent, 0, 100);
-					ModifierTotals totals{ flat, percent };
-					playerList.emplace(combatTypeToIndex(modifier->getConversionType()), totals);
+					percent = std::min<uint16_t>(percent, 100);
+					auto index = combatTypeToIndex(modifier->getConversionType());
+					auto [it, inserted] = playerList.try_emplace(index, ModifierTotals{flat, percent});
+					if (!inserted) {
+						it->second += ModifierTotals{flat, percent};
+					}
 				}
 			}
 		}
@@ -5978,10 +5981,13 @@ std::unordered_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uin
 								percent += modifier->getValue();
 							}
 						}
-
-						percent = std::clamp<uint16_t>(percent, 0, 100);
-						playerList[combatTypeToIndex(modifier->getConversionType())].flatTotal += flat;
-						playerList[combatTypeToIndex(modifier->getConversionType())].percentTotal = std::clamp<uint8_t>(playerList[modifier->getConversionType()].percentTotal + percent, 0, 100);
+						
+						percent = std::min<uint16_t>(percent, 100);
+						auto index = combatTypeToIndex(modifier->getConversionType());
+						auto [it, inserted] = playerList.try_emplace(index, ModifierTotals{flat, percent});
+						if (!inserted) {
+							it->second += ModifierTotals{flat, percent};
+						}
 					}
 				}
 			}
@@ -6168,7 +6174,7 @@ void Player::replenishStaminaFromDamage(std::optional<std::reference_wrapper<Cre
 		originalDamage.primary.value += replenishDamage;
 
 		if (!g_config.getBoolean(ConfigManager::AUGMENT_STAMINA_RULE)) {
-			replenishDamage = std::round<int32_t>(replenishDamage / 60);
+			replenishDamage = replenishDamage / 60;
 		}
 
 		auto message = (attacker.has_value()) ?
@@ -6176,7 +6182,7 @@ void Player::replenishStaminaFromDamage(std::optional<std::reference_wrapper<Cre
 			"You gained " + std::to_string(replenishDamage) + " stamina from replenishment.";
 
 		sendTextMessage(MESSAGE_HEALED,  message);
-		changeStamina(replenishDamage);
+		addStamina(static_cast<uint16_t>(replenishDamage));
 	}
 }
 
@@ -6298,7 +6304,7 @@ void Player::deflectDamage(std::optional<std::reference_wrapper<Creature>> attac
     	
         sendTextMessage(
             MESSAGE_EVENT_DEFAULT,
-            "You deflected" + std::to_string(deflectDamage) + "total damage."
+            "You deflected " + std::to_string(deflectDamage) + " total damage."
         );
     	
         Combat::doAreaCombat(this, attackPos, damageArea.get(), deflect, params);
