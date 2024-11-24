@@ -27,7 +27,7 @@ std::shared_ptr<Augment> Augments::MakeAugment(std::string_view augmentName)
 }
 
 void Augments::loadAll() {
-    for (const auto& entry : std::filesystem::directory_iterator(path)) {
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(path)) {
         if (entry.is_regular_file() && entry.path().extension() == ".toml") {
 
             try {

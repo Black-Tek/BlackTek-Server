@@ -741,4 +741,6 @@
 	<monster name="Zugurosh" file="monsters/zugurosh.xml" />
 	<monster name="Zulazza the Corruptor" file="monsters/zulazza_the_corruptor.xml" />
 	<monster name="Zushuka" file="monsters/zushuka.xml" />
+	<monster name ="Defense Monk" file = "monsters/defense_monk.xml"/>
+	<monster name ="Attack Monk" file = "monsters/attack_monk.xml"/>
 </monsters>

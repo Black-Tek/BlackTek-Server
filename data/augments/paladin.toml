@@ -16,7 +16,7 @@ modifiers = [
 
 [LightningShot]
 name = "Lightning Shot"
-description = "This special ability allows you to so quick your ammo sometimes summons lightning itself"
+description = "This special ability allows your shots such speed your ammo sometimes summons lightning itself"
 modifiers = [
 	# Electric Shot
 	{ damage = "physical", mod = "conversion", value = 20, chance = 30, toDamage = "energy", origin = "ranged"}
