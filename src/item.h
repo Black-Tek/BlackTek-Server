@@ -906,6 +906,10 @@ class Item : virtual public Thing
 			return items[id].hitChance;
 		}
 
+		uint16_t getEquipSlot() const {
+			return items[id].equipSlot;
+		}
+
 		uint32_t getWorth() const;
 		LightInfo getLightInfo() const;
 

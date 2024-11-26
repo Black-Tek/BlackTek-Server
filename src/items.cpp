@@ -740,28 +740,40 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 					tmpStrValue = asLowerCaseString(valueAttribute.as_string());
 					if (tmpStrValue == "head") {
 						it.slotPosition |= SLOTP_HEAD;
+						it.equipSlot = SLOTP_HEAD;
 					} else if (tmpStrValue == "body") {
 						it.slotPosition |= SLOTP_ARMOR;
+						it.equipSlot = SLOTP_ARMOR;
 					} else if (tmpStrValue == "legs") {
 						it.slotPosition |= SLOTP_LEGS;
+						it.equipSlot = SLOTP_LEGS;
 					} else if (tmpStrValue == "feet") {
 						it.slotPosition |= SLOTP_FEET;
+						it.equipSlot = SLOTP_FEET;
 					} else if (tmpStrValue == "backpack") {
 						it.slotPosition |= SLOTP_BACKPACK;
+						it.equipSlot = SLOTP_BACKPACK;
 					} else if (tmpStrValue == "two-handed") {
 						it.slotPosition |= SLOTP_TWO_HAND;
+						it.equipSlot = SLOTP_TWO_HAND;
 					} else if (tmpStrValue == "right-hand") {
 						it.slotPosition &= ~SLOTP_LEFT;
+						it.equipSlot = SLOTP_LEFT;
 					} else if (tmpStrValue == "left-hand") {
 						it.slotPosition &= ~SLOTP_RIGHT;
+						it.equipSlot = SLOTP_RIGHT;
 					} else if (tmpStrValue == "necklace") {
 						it.slotPosition |= SLOTP_NECKLACE;
+						it.equipSlot = SLOTP_NECKLACE;
 					} else if (tmpStrValue == "ring") {
 						it.slotPosition |= SLOTP_RING;
+						it.equipSlot = SLOTP_RING;
 					} else if (tmpStrValue == "ammo") {
 						it.slotPosition |= SLOTP_AMMO;
+						it.equipSlot = SLOTP_AMMO;
 					} else if (tmpStrValue == "hand") {
 						it.slotPosition |= SLOTP_HAND;
+						it.equipSlot = SLOTP_HAND;
 					} else {
 						std::cout << "[Warning - Items::parseItemNode] Unknown slotType: " << valueAttribute.as_string() << std::endl;
 					}

@@ -272,7 +272,16 @@ inline const bool DamageModifier::appliesToDamage(const CombatType_t damageType)
 }
 
 inline const bool DamageModifier::appliesToOrigin(const CombatOrigin origin) const {
-	return m_origin_type == ORIGIN_NONE || m_origin_type == origin;
+	bool matches = (m_origin_type == ORIGIN_NONE || m_origin_type == origin);
+	bool applies = (m_origin_type == ORIGIN_AUGMENT
+		&& (origin == ORIGIN_ABSORB
+			|| origin == ORIGIN_RESTORE
+			|| origin == ORIGIN_REFLECT
+			|| origin == ORIGIN_DEFLECT
+			|| origin == ORIGIN_RICOCHET
+			|| origin == ORIGIN_PIERCING));
+	
+	return matches || applies;
 }
 
 inline const bool DamageModifier::appliesToTarget(const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const {

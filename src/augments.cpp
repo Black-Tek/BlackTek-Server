@@ -162,20 +162,29 @@ const ModFactor Augments::ParseFactor(std::string_view factor) noexcept
 
 const CombatType_t Augments::ParseDamage(std::string_view damageName) noexcept
 {   // Note : If you add values to the list you must increase the size manually
-    // current size is : 12
-    const std::array<std::pair<std::string_view, CombatType_t>, 12> static_map{ {
+    // current size is : 21
+    const std::array<std::pair<std::string_view, CombatType_t>, 21> static_map{ {
         {"none",            COMBAT_NONE},
         {"all",             COMBAT_NONE},
         {"physical",        COMBAT_PHYSICALDAMAGE},
+        {"melee",           COMBAT_PHYSICALDAMAGE},
         {"energy",          COMBAT_ENERGYDAMAGE},
+        {"electric",        COMBAT_ENERGYDAMAGE},
         {"earth",           COMBAT_EARTHDAMAGE},
+        {"poison",          COMBAT_EARTHDAMAGE},
         {"fire",            COMBAT_FIREDAMAGE},
         {"lifedrain",       COMBAT_LIFEDRAIN},
+        {"lifesteal",       COMBAT_LIFEDRAIN},
+        {"lifeleech",       COMBAT_LIFEDRAIN},
         {"manadrain",       COMBAT_MANADRAIN},
+        {"manasteal",       COMBAT_MANADRAIN},
+        {"manaleech",       COMBAT_MANADRAIN},
         {"drown",           COMBAT_DROWNDAMAGE},
+        {"water",           COMBAT_DROWNDAMAGE},
         {"ice",             COMBAT_ICEDAMAGE},
         {"holy",            COMBAT_HOLYDAMAGE},
         {"death",           COMBAT_DEATHDAMAGE},
+        {"curse",           COMBAT_DEATHDAMAGE},
     } };
 
     for (const auto& [key, value] : static_map) {
@@ -189,18 +198,20 @@ const CombatType_t Augments::ParseDamage(std::string_view damageName) noexcept
 
 const CombatOrigin Augments::ParseOrigin(std::string_view originName) noexcept
 {   // Note : If you add values to the list you must increase the size manually
-    // current size is : 12
-    const std::array<std::pair<std::string_view, CombatOrigin>, 12> static_map{ {
+    // current size is : 14
+    const std::array<std::pair<std::string_view, CombatOrigin>, 14> static_map{ {
         {"none",            ORIGIN_NONE},
         {"all",             ORIGIN_NONE},
         {"condition",       ORIGIN_CONDITION},
         {"spell",           ORIGIN_SPELL},
         {"melee",           ORIGIN_MELEE},
         {"ranged",          ORIGIN_RANGED},
+        {"absorb",          ORIGIN_ABSORB},
+        {"restore",         ORIGIN_RESTORE},
         {"reflect",         ORIGIN_REFLECT},
         {"deflect",         ORIGIN_DEFLECT},
         {"ricochet",        ORIGIN_RICOCHET},
-        {"modifier",        ORIGIN_DMGMOD},
+        {"piercing",        ORIGIN_PIERCING},
         {"augment",         ORIGIN_AUGMENT},
         {"imbuement",       ORIGIN_IMBUEMENT},
     } };
@@ -286,18 +297,22 @@ const RaceType_t Augments::ParseRaceType(std::string_view raceType) noexcept {
 
 const CreatureType_t Augments::ParseCreatureType(std::string_view creatureType) noexcept {
     // Note : If you add values to the list you must increase the size manually
-    // current size is : 10
-    const std::array<std::pair<std::string_view, CreatureType_t>, 10> static_map{ {
+    // current size is : 14
+    const std::array<std::pair<std::string_view, CreatureType_t>, 14> static_map{ {
         {"player",                      CREATURETYPE_PLAYER},
         {"monster",                     CREATURETYPE_MONSTER},
         {"npc",                         CREATURETYPE_NPC},
         {"allsummon",                   CREATURETYPE_SUMMON_ALL},
+        {"summons",                     CREATURETYPE_SUMMON_ALL},
         {"ownedsummon",                 CREATURETYPE_SUMMON_OWN},
+        {"mysummon",                    CREATURETYPE_SUMMON_OWN},
         {"hostilesummon",               CREATURETYPE_SUMMON_HOSTILE},
+        {"enemysummon",                 CREATURETYPE_SUMMON_HOSTILE},
         {"guildsummon",                 CREATURETYPE_SUMMON_GUILD},
         {"partysummon",                 CREATURETYPE_SUMMON_PARTY},
         {"boss",                        CREATURETYPE_BOSS},
         {"none",                        CREATURETYPE_ATTACKABLE},
+        {"all",                         CREATURETYPE_ATTACKABLE},
     } };
 
     for (const auto& [key, value] : static_map) {

@@ -820,7 +820,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 		attackModData = casterPlayer.value()->getAttackModifierTotals(damage.primary.type, damage.origin, targetType, target->getRace(), target->getName());
 		/// we do conversion here incase someone wants to convert say healing to mana or mana to death.
 
-		auto conversionTotals = casterPlayer.value()->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage.primary.type, damage.origin, targetType, target->getRace(), target->getName()) ;
+		const auto& conversionTotals = casterPlayer.value()->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage.primary.type, damage.origin, targetType, target->getRace(), target->getName()) ;
 		if (!conversionTotals.empty() && params.origin != ORIGIN_AUGMENT) {
 			std::cout << "Conversion Modifier Activated on " << damage.primary.value << " damage \n";
 			casterPlayer.value()->convertDamage(target->getCreature(), damage, conversionTotals);
@@ -831,13 +831,13 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 
 		if (damage.primary.type != COMBAT_MANADRAIN && damage.primary.type != COMBAT_HEALING) {
 			// to-do: checking against origin for augment is too limiting.. Lets make piercing like crit and leech, ect.
-			if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
+			if (!attackModData.empty() && params.origin != ORIGIN_PIERCING) {
 				const auto& [piercingFlatTotal, piercingPercentTotal] = attackModData[ATTACK_MODIFIER_PIERCING];
 
 				int32_t piercingDamage = 0;
-				const auto originalDamage = std::abs(damage.primary.value);
+				const auto& originalDamage = std::abs(damage.primary.value);
 				if (piercingPercentTotal) {
-					const auto piercePercent = static_cast<int32_t>(piercingPercentTotal);
+					const auto& piercePercent = static_cast<int32_t>(piercingPercentTotal);
 
 					piercingDamage = (piercingPercentTotal <= 100)
 						? (originalDamage * piercePercent / 100)
@@ -873,13 +873,14 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				}
 			}
 
-			// All damage modifiers besides Critical are applied before armor/defense calculations.
-			if (g_game.combatBlockHit(damage, caster, target, params.blockedByShield, params.blockedByArmor, params.itemId != 0, params.ignoreResistances)) {
-				// if the damage is blocked return early
-				return;
+			if (params.origin != ORIGIN_PIERCING) {
+			auto blocked =g_game.combatBlockHit(damage, caster, target, params.blockedByShield, params.blockedByArmor, params.itemId != 0, params.ignoreResistances);
+				if (blocked) {
+					return;
+				}
 			}
 
-			if (!damage.critical && damage.origin != ORIGIN_AUGMENT) {
+			if (!damage.critical) {
 				int32_t percentTotal = 0;
 				int32_t flatTotal = 0;
 				if (!attackModData.empty()) {
@@ -888,8 +889,8 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				}
 
 				// normal crits are the old ones and are percent based
-				const auto normalCritChance = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE));
-				const auto normalCritDamage = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT));
+				const auto& normalCritChance = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE));
+				const auto& normalCritDamage = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT));
 
 				// note : the way this works, its own damage increase is independent allowing for more than 100
 				// and also at the same time, its chance is independent, so it doesn't add to augmented crit's chance.
@@ -913,7 +914,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 			}
 
 			if (targetPlayer.has_value() && (casterPlayer.value() != targetPlayer.value()) && params.origin != ORIGIN_AUGMENT) {
-				auto reformTotals = targetPlayer.value()->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
+				const auto& reformTotals = targetPlayer.value()->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
 				if (!reformTotals.empty()) {
 					std::cout << "Reform Modifier Activated : on " << damage.primary.value << " damage \n";
 					targetPlayer.value()->reformDamage(*casterPlayer.value()->getCreature(), damage, reformTotals);
@@ -922,7 +923,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 					}
 				}
 
-				auto defenseModData = targetPlayer.value()->getDefenseModifierTotals(damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
+				const auto& defenseModData = targetPlayer.value()->getDefenseModifierTotals(damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
 				if (!defenseModData.empty()) {
 					for (const auto& [modkind, modTotals] : defenseModData) {
 						if (modTotals.percentTotal  || modTotals.flatTotal) {
@@ -942,8 +943,8 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 		}
 
 		if (targetPlayer.has_value()) {
-			auto attackerType = targetPlayer.value()->getCreatureType(*casterMonster.value()->getMonster());
-			auto defenseModData = targetPlayer.value()->getDefenseModifierTotals(damage.primary.type, damage.origin, attackerType, casterMonster.value()->getRace(), casterMonster.value()->getName());
+			const auto& attackerType = targetPlayer.value()->getCreatureType(*casterMonster.value()->getMonster());
+			const auto& defenseModData = targetPlayer.value()->getDefenseModifierTotals(damage.primary.type, damage.origin, attackerType, casterMonster.value()->getRace(), casterMonster.value()->getName());
 			auto reformTotals = targetPlayer.value()->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, attackerType, casterMonster.value()->getRace(), casterMonster.value()->getName());
 			if (!reformTotals.empty() && params.origin != ORIGIN_AUGMENT) {
 				std::cout << "Reform Modifier Activated on " << damage.primary.value << " damage \n";
