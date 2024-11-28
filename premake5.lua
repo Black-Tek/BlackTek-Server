@@ -55,7 +55,7 @@ workspace "Black-Tek-Server"
          -- Paths to vcpkg installed dependencies
          libdirs { "vcpkg_installed/arm64-linux/lib" }
          includedirs { "vcpkg_installed/arm64-linux/include" }
-         links { "pugixml", "lua", "fmt", "ssl", "mariadb", "cryptopp", "crypto", "boost_iostreams", "zstd", "z", "curl", "tomlplusplus", "ssl" }
+         links { "ssl", "crypto", "pugixml", "lua", "fmt", "mariadb", "cryptopp", "boost_iostreams", "zstd", "z", "curl", "tomlplusplus" }
       filter{}
 
       filter { "system:linux", "architecture:amd64" }
@@ -66,12 +66,12 @@ workspace "Black-Tek-Server"
       filter{}
 
       filter "toolset:gcc"
-         buildoptions { "-fno-strict-aliasing" }
+         buildoptions { "-fno-strict-aliasing", "-Wno-ignored-qualifiers", "-Wno-unused-function"  }
          buildoptions {"-std=c++20"}
       filter {}
 
       filter "toolset:clang"
-         buildoptions { "-Wimplicit-fallthrough", "-Wmove" }
+         buildoptions { "-Wimplicit-fallthrough", "-Wmove", "-Wno-ignored-qualifiers", "-Wno-unused-function" }
       filter {}
 
       filter { "system:macosx", "action:gmake" }
