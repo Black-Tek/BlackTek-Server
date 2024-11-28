@@ -59,18 +59,23 @@ workspace "Black-Tek-Server"
 	     vectorextensions "AVX"
       filter{}
 
+      filter {"system:linux"}
+      linkoptions { "-v" }
+      filter {}
+
+
       filter { "system:linux", "architecture:ARM64" }
          -- Paths to vcpkg installed dependencies
          libdirs { "vcpkg_installed/arm64-linux/lib" }
          includedirs { "vcpkg_installed/arm64-linux/include" }
-         links { "pugixml", "lua", "fmt", "ssl", "mariadb", "cryptopp", "crypto", "boost_iostreams", "zstd", "z", "curl", "tomlplusplus" }
+         links { "pugixml", "lua", "fmt", "ssl", "mariadb", "cryptopp", "crypto", "boost_iostreams", "zstd", "z", "curl", "tomlplusplus", "ssl" }
       filter{}
 
       filter { "system:linux", "architecture:amd64" }
          -- Paths to vcpkg installed dependencies
          libdirs { "vcpkg_installed/x64-linux/lib" }
          includedirs { "vcpkg_installed/x64-linux/include" }
-         links { "pugixml", "lua", "fmt", "ssl", "mariadb", "cryptopp", "crypto", "boost_iostreams", "zstd", "z", "curl", "tomlplusplus" }
+         links { "pugixml", "lua", "fmt", "ssl", "mariadb", "cryptopp", "crypto", "boost_iostreams", "zstd", "z", "curl", "tomlplusplus", "ssl" }
       filter{}
 
       filter "toolset:gcc"

@@ -5859,7 +5859,7 @@ std::unordered_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
 		Item* item = inventory[slot];
 		if (item && !item->getAugments().empty()) {
 			for (auto& aug : item->getAugments()) {
-				if (!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || (item->getEquipSlot() == item->getSlotPosition())) {
+				if (!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot)))) {
 					for (auto mod : aug->getAttackModifiers()) {
 						modifierMap[mod->getType()].emplace_back(mod);
 					}
@@ -5890,7 +5890,7 @@ std::unordered_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
 		Item* item = inventory[slot];
 		if (item && !item->getAugments().empty()) {
 			for (auto& aug : item->getAugments()) {
-				if (!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || (item->getEquipSlot() == item->getSlotPosition())) {
+				if (!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot)))) {
 					for (auto mod : aug->getDefenseModifiers()) {
 						modifierMap[mod->getType()].emplace_back(mod);
 					}

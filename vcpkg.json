@@ -9,6 +9,7 @@
     "boost-variant",
     "fmt",
     "tomlplusplus",
+    "openssl",
     {
       "name": "libiconv",
       "platform": "osx"
