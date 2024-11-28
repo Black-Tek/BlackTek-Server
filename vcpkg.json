@@ -1,26 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "dependencies": [
-    {
-      "name": "openssl",
-      "default-features": false,
-      "features": [ "shared" ]
-    },
-    {
-      "name": "curl",
-      "default-features": false,
-      "features": [ "ssl", "non-http", "shared" ]
-    },
-    {
-      "name": "libmariadb",
-      "default-features": false,
-      "features": [ "shared" ]
-    },
-    {
-      "name": "cryptopp",
-      "default-features": false,
-      "features": [ "shared" ]
-    },
     "boost-asio",
     "boost-iostreams",
     "boost-locale",
@@ -29,12 +9,16 @@
     "boost-variant",
     "fmt",
     "tomlplusplus",
+    "openssl",
     {
       "name": "libiconv",
       "platform": "osx"
     },
+    "libmariadb",
+    "cryptopp",
     "pugixml",
-    "zlib"
+    "zlib",
+    "curl"
   ],
   "features": {
     "lua": {

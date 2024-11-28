@@ -66,12 +66,12 @@ workspace "Black-Tek-Server"
       filter{}
 
       filter "toolset:gcc"
-         buildoptions { "-fno-strict-aliasing", "-Wno-ignored-qualifiers", "-Wno-unused-function"  }
+         buildoptions { "-fno-strict-aliasing" }
          buildoptions {"-std=c++20"}
       filter {}
 
       filter "toolset:clang"
-         buildoptions { "-Wimplicit-fallthrough", "-Wmove", "-Wno-ignored-qualifiers", "-Wno-unused-function" }
+         buildoptions { "-Wimplicit-fallthrough", "-Wmove" }
       filter {}
 
       filter { "system:macosx", "action:gmake" }
