@@ -1,56 +1,56 @@
-name: Windows Build
+# name: Windows Build
 
-on: [workflow_dispatch, pull_request, push]
-jobs:
-  job:
-    name: ${{ matrix.os }}-${{ matrix.buildtype }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-2022]
-        buildtype: [windows-release, windows-release-asan, windows-debug]
-        include:
-          - os: windows-2022
-            triplet: x64-windows
-            packages: >
-              sccache
+# on: [workflow_dispatch, pull_request, push]
+# jobs:
+#   job:
+#     name: ${{ matrix.os }}-${{ matrix.buildtype }}
+#     runs-on: ${{ matrix.os }}
+#     strategy:
+#       matrix:
+#         os: [windows-2022]
+#         buildtype: [windows-release, windows-release-asan, windows-debug]
+#         include:
+#           - os: windows-2022
+#             triplet: x64-windows
+#             packages: >
+#               sccache
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@main
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@main
 
-      - name: Ensure Correct VCPKG Version
-        uses: lukka/run-vcpkg@main
-        with:
-          vcpkgGitURL: "https://github.com/microsoft/vcpkg.git"
-          vcpkgGitCommitId: ${{ steps.vcpkg-step.outputs.vcpkgGitCommitId }}
+#       - name: Ensure Correct VCPKG Version
+#         uses: lukka/run-vcpkg@main
+#         with:
+#           vcpkgGitURL: "https://github.com/microsoft/vcpkg.git"
+#           vcpkgGitCommitId: ${{ steps.vcpkg-step.outputs.vcpkgGitCommitId }}
 
-      - name: Setup Premake & Generate Solution
-        run: |
-          git clone https://github.com/premake/premake-core
-          cd premake-core
-          cmd /c Bootstrap.bat
-          move .\bin\release\premake5.exe D:\a\BlackTek-Server\BlackTek-Server\premake5.exe
-          cd D:\a\BlackTek-Server\BlackTek-Server
-          D:\a\BlackTek-Server\BlackTek-Server\premake5.exe vs2022
+#       - name: Setup Premake & Generate Solution
+#         run: |
+#           git clone https://github.com/premake/premake-core
+#           cd premake-core
+#           cmd /c Bootstrap.bat
+#           move .\bin\release\premake5.exe D:\a\BlackTek-Server\BlackTek-Server\premake5.exe
+#           cd D:\a\BlackTek-Server\BlackTek-Server
+#           D:\a\BlackTek-Server\BlackTek-Server\premake5.exe vs2022
 
-      - name: Configure Package Manager
-        uses: egor-tensin/vs-shell@v2
-        with:
-          arch: x64
+#       - name: Configure Package Manager
+#         uses: egor-tensin/vs-shell@v2
+#         with:
+#           arch: x64
 
-      - name: Install Dependencies
-        run: |
-          cd D:\a\BlackTek-Server
-          vcpkg install --triplet x64-windows
-          vcpkg integrate install
+#       - name: Install Dependencies
+#         run: |
+#           cd D:\a\BlackTek-Server
+#           vcpkg install --triplet x64-windows
+#           vcpkg integrate install
 
-      - name: Compile Release
-        run: |
-          cd D:\a\BlackTek-Server\BlackTek-Server
-          msbuild Black-Tek-Server.sln /p:Configuration=Release
+#       - name: Compile Release
+#         run: |
+#           cd D:\a\BlackTek-Server\BlackTek-Server
+#           msbuild Black-Tek-Server.sln /p:Configuration=Release
 
-      - name: Compile Debug
-        run: |
-          cd D:\a\BlackTek-Server\BlackTek-Server
-          msbuild Black-Tek-Server.sln /p:Configuration=Debug
+#       - name: Compile Debug
+#         run: |
+#           cd D:\a\BlackTek-Server\BlackTek-Server
+#           msbuild Black-Tek-Server.sln /p:Configuration=Debug

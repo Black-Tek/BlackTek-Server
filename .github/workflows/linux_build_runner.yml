@@ -44,9 +44,8 @@ jobs:
         
     - name: Compile Release 64
       run: |
-        make -j $(nproc) config=release_64 CPPFLAGS="-Wno-ignored-qualifiers -Wno-unused-function"
-    
+        make -j $(nproc) config=release_64
+
     - name: Compile Debug 64
       run: |
-        make -j $(nproc) config=debug_64 CPPFLAGS="-Wno-ignored-qualifiers -Wno-unused-function"
-    
+        make -j $(nproc) config=debug_64
