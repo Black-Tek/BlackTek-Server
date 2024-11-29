@@ -11701,17 +11701,58 @@ int LuaScriptInterface::luaPlayerRemoveAugment(lua_State* L)
 
 int LuaScriptInterface::luaPlayerIsAugmented(lua_State* L)
 {
-	return 0;
+	Player* player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushboolean(L, player->isAugmented());
+	return 1;
 }
 
 int LuaScriptInterface::luaPlayerHasAugment(lua_State* L)
 {
-	return 0;
+	Player* player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (isString(L, 2) && isBoolean(L, 3)) {
+		auto name = getString(L, 2);
+		auto checkItems = getBoolean(L, 3);
+		lua_pushboolean(L, player->hasAugment(name, checkItems));
+	} else if (isUserdata(L, 2)) {
+		if (std::shared_ptr<Augment>& augment = getSharedPtr<Augment>(L, 2)) {
+			if (isBoolean(L, 3)) {
+				auto checkItems = getBoolean(L, 3);
+				lua_pushboolean(L, player->hasAugment(augment, checkItems));
+			} else {
+				lua_pushboolean(L, player->hasAugment(augment, true));
+			}
+		}
+	}
+	return 1;
 }
 
 int LuaScriptInterface::luaPlayerGetAugments(lua_State* L)
 {
-	return 0;
+	Player* player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	
+	std::vector<std::shared_ptr<Augment>> augments;
+	
+	lua_newtable(L);
+	int index = 1;
+	for (const auto& augment : augments) {
+		pushSharedPtr(L, augment);
+		setMetatable(L, -1, "Augment");
+		lua_rawseti(L, -2, index++);
+	}
+	return 1;
 }
 
 // Monster
