@@ -28,6 +28,7 @@
 #include "script.h"
 #include "weapons.h"
 #include "luavariant.h"
+#include "augments.h"
 
 extern Chat* g_chat;
 extern Game g_game;
@@ -822,14 +823,6 @@ InstantSpell* LuaScriptInterface::getInstantSpell(lua_State* L, int32_t arg)
 	return spell;
 }
 
-Reflect LuaScriptInterface::getReflect(lua_State* L, int32_t arg)
-{
-	uint16_t percent = getField<uint16_t>(L, arg, "percent");
-	uint16_t chance = getField<uint16_t>(L, arg, "chance");
-	lua_pop(L, 2);
-	return Reflect(percent, chance);
-}
-
 Thing* LuaScriptInterface::getThing(lua_State* L, int32_t arg)
 {
 	Thing* thing;
@@ -1013,13 +1006,6 @@ void LuaScriptInterface::pushLoot(lua_State* L, const std::vector<LootBlock>& lo
 
 		lua_rawseti(L, -2, ++index);
 	}
-}
-
-void LuaScriptInterface::pushReflect(lua_State* L, const Reflect& reflect)
-{
-	lua_createtable(L, 0, 2);
-	setField(L, "percent", reflect.percent);
-	setField(L, "chance", reflect.chance);
 }
 
 #define registerEnum(value) { std::string enumName = #value; registerGlobalVariable(enumName.substr(enumName.find_last_of(':') + 1), value); }
@@ -1507,7 +1493,7 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(CREATURETYPE_MONSTER)
 	registerEnum(CREATURETYPE_NPC)
 	registerEnum(CREATURETYPE_SUMMON_OWN)
-	registerEnum(CREATURETYPE_SUMMON_OTHERS)
+	registerEnum(CREATURETYPE_SUMMON_HOSTILE)
 
 	registerEnum(CLIENTOS_LINUX)
 	registerEnum(CLIENTOS_WINDOWS)
@@ -2092,6 +2078,8 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::PLAYER_CONSOLE_LOGS);
 	registerEnumIn("configKeys", ConfigManager::BED_OFFLINE_TRAINING);	
 	registerEnumIn("configKeys", ConfigManager::HOUSE_DOOR_SHOW_PRICE);
+	registerEnumIn("configKeys", ConfigManager::AUGMENT_SLOT_PROTECTION);
+	registerEnumIn("configKeys", ConfigManager::AUGMENT_STAMINA_RULE);
 
 	registerEnumIn("configKeys", ConfigManager::REWARD_BASE_RATE);
 	registerEnumIn("configKeys", ConfigManager::REWARD_RATE_DAMAGE_DONE);
@@ -2350,11 +2338,6 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("Item", "setStoreItem", LuaScriptInterface::luaItemSetStoreItem);
 	registerMethod("Item", "isStoreItem", LuaScriptInterface::luaItemIsStoreItem);
-	registerMethod("Item", "setReflect", LuaScriptInterface::luaItemSetReflect);
-	registerMethod("Item", "getReflect", LuaScriptInterface::luaItemGetReflect);
-
-	registerMethod("Item", "setBoostPercent", LuaScriptInterface::luaItemSetBoostPercent);
-	registerMethod("Item", "getBoostPercent", LuaScriptInterface::luaItemGetBoostPercent);
 
 	registerMethod("Item", "getImbuementSlots", LuaScriptInterface::luaItemGetImbuementSlots);
 	registerMethod("Item", "getFreeImbuementSlots", LuaScriptInterface::luaItemGetFreeImbuementSlots);
@@ -2366,6 +2349,12 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Item", "addImbuement", LuaScriptInterface::luaItemAddImbuement);
 	registerMethod("Item", "removeImbuement", LuaScriptInterface::luaItemRemoveImbuement);
 	registerMethod("Item", "getImbuements", LuaScriptInterface::luaItemGetImbuements);
+
+	registerMethod("Item", "addAugment", LuaScriptInterface::luaItemAddAugment);
+	registerMethod("Item", "removeAugment", LuaScriptInterface::luaItemRemoveAugment);
+	registerMethod("Item", "isAugmented", LuaScriptInterface::luaItemIsAugmented);
+	registerMethod("Item", "hasAugment", LuaScriptInterface::luaItemHasAugment);
+	registerMethod("Item", "getAugments", LuaScriptInterface::luaItemGetAugments);
 
 	// Imbuement
 	registerClass("Imbuement", "", LuaScriptInterface::luaImbuementCreate);
@@ -2384,6 +2373,26 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Imbuement", "makeInfightDecayed", LuaScriptInterface::luaImbuementSetInfightDecay);
 	registerMethod("Imbuement", "isEquipDecayed", LuaScriptInterface::luaImbuementIsEquipDecay);
 	registerMethod("Imbuement", "isInfightDecayed", LuaScriptInterface::luaImbuementIsInfightDecay);
+
+	// DamageModifer
+	registerClass("DamageModifier", "", LuaScriptInterface::luaDamageModifierCreate);
+	registerMetaMethod("DamageModifier", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMethod("DamageModifier", "setValue", LuaScriptInterface::luaDamageModifierSetValue);
+	registerMethod("DamageModifier", "setRateFactor", LuaScriptInterface::luaDamageModifierSetRateFactor);
+	registerMethod("DamageModifier", "setCombatFilter", LuaScriptInterface::luaDamageModifierSetCombatFilter);
+	registerMethod("DamageModifier", "setOriginFilter", LuaScriptInterface::luaDamageModifierSetOriginFilter);
+
+	// Augment
+	registerClass("Augment", "", LuaScriptInterface::luaAugmentCreate);
+	registerMetaMethod("Augment", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMethod("Augment", "setName", LuaScriptInterface::luaAugmentSetName);
+	registerMethod("Augment", "setDescription", LuaScriptInterface::luaAugmentSetDescription);
+	registerMethod("Augment", "getName", LuaScriptInterface::luaAugmentGetName);
+	registerMethod("Augment", "getDescription", LuaScriptInterface::luaAugmentGetDescription);
+	registerMethod("Augment", "addDamageModifier", LuaScriptInterface::luaAugmentAddDamageModifier);
+	registerMethod("Augment", "removeDamageModifier", LuaScriptInterface::luaAugmentRemoveDamageModifier);
+	registerMethod("Augment", "getAttackModifiers", LuaScriptInterface::luaAugmentGetDefenseModifiers);
+	registerMethod("Augment", "getDefenseModifiers", LuaScriptInterface::luaAugmentGetDefenseModifiers);
 
 	// Container
 	registerClass("Container", "Item", LuaScriptInterface::luaContainerCreate);
@@ -2673,6 +2682,12 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "resetIdleTime", LuaScriptInterface::luaPlayerResetIdleTime);
 
 	registerMethod("Player", "sendCreatureSquare", LuaScriptInterface::luaPlayerSendCreatureSquare);
+
+	registerMethod("Player", "addAugment", LuaScriptInterface::luaPlayerAddAugment);
+	registerMethod("Player", "removeAugment", LuaScriptInterface::luaPlayerRemoveAugment);
+	registerMethod("Player", "isAugmented", LuaScriptInterface::luaPlayerIsAugmented);
+	registerMethod("Player", "hasAugment", LuaScriptInterface::luaPlayerHasAugment);
+	registerMethod("Player", "getAugments", LuaScriptInterface::luaPlayerGetAugments);
 
 	// Monster
 	registerClass("Monster", "Creature", LuaScriptInterface::luaMonsterCreate);
@@ -5881,19 +5896,24 @@ int LuaScriptInterface::luaTileQueryAdd(lua_State* L)
 		return 1;
 	}
 
-	if (Item* item = getUserdata<Item>(L, 2)) {
-		uint32_t flags = getNumber<uint32_t>(L, 3, 0);
-		lua_pushnumber(L, tile->queryAdd(*item, flags));
+	Thing* thing = getThing(L, 2);
+	if (!thing) {
+		lua_pushnil(L);
 		return 1;
 	}
 
-	if (Creature* creature = getUserdata<Creature>(L, 2)) {
+	if (Creature* creature = thing->getCreature()) {
 		uint32_t flags = getNumber<uint32_t>(L, 3, 0);
 		lua_pushnumber(L, tile->queryAdd(*creature, flags));
 		return 1;
 	}
 
-
+	if (Item* item = thing->getItem()) {
+		uint32_t flags = getNumber<uint32_t>(L, 3, 0);
+		lua_pushnumber(L, tile->queryAdd(*item, flags));
+		return 1;
+	}
+	
 	lua_pushnil(L);
 	return 1;
 }
@@ -7153,6 +7173,11 @@ int LuaScriptInterface::luaItemTransform(lua_State* L)
 		return 1;
 	}
 
+	if (item->isAugmented() || item->hasImbuements()) {
+		lua_pushboolean(L, false);
+		return 1;
+	}
+
 	uint16_t itemId;
 	if (isNumber(L, 2)) {
 		itemId = getNumber<uint16_t>(L, 2);
@@ -7197,6 +7222,12 @@ int LuaScriptInterface::luaItemDecay(lua_State* L)
 	// item:decay(decayId)
 	Item* item = getUserdata<Item>(L, 1);
 	if (item) {
+
+		if (item->isAugmented() || item->hasImbuements()) {
+			lua_pushboolean(L, false);
+			return 1;
+		}
+
 		if (isNumber(L, 2)) {
 			item->setDecayTo(getNumber<int32_t>(L, 2));
 		}
@@ -7279,60 +7310,6 @@ int LuaScriptInterface::luaItemIsStoreItem(lua_State* L)
 	if (item) {
 		pushBoolean(L, item->isStoreItem());
 	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemSetReflect(lua_State* L)
-{
-	// item:setReflect(combatType, reflect)
-	Item* item = getUserdata<Item>(L, 1);
-	if (!item) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	item->setReflect(getNumber<CombatType_t>(L, 2), getReflect(L, 3));
-	pushBoolean(L, true);
-	return 1;
-}
-
-int LuaScriptInterface::luaItemGetReflect(lua_State* L)
-{
-	// item:getReflect(combatType[, total = true])
-	Item* item = getUserdata<Item>(L, 1);
-	if (item) {
-		pushReflect(L, item->getReflect(getNumber<CombatType_t>(L, 2), getBoolean(L, 3, true)));
-	}
-	else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemSetBoostPercent(lua_State* L)
-{
-	// item:setBoostPercent(combatType, percent)
-	Item* item = getUserdata<Item>(L, 1);
-	if (!item) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	item->setBoostPercent(getNumber<CombatType_t>(L, 2), getNumber<uint16_t>(L, 3));
-	pushBoolean(L, true);
-	return 1;
-}
-
-int LuaScriptInterface::luaItemGetBoostPercent(lua_State* L)
-{
-	// item:getBoostPercent(combatType[, total = true])
-	Item* item = getUserdata<Item>(L, 1);
-	if (item) {
-		lua_pushnumber(L, item->getBoostPercent(getNumber<CombatType_t>(L, 2), getBoolean(L, 3, true)));
-	}
-	else {
 		lua_pushnil(L);
 	}
 	return 1;
@@ -7496,6 +7473,122 @@ int LuaScriptInterface::luaItemGetImbuements(lua_State* L)
 	for (std::shared_ptr<Imbuement> imbuement : imbuements) {
 		pushSharedPtr(L, imbuement);
 		setMetatable(L, -1, "Imbuement");
+		lua_rawseti(L, -2, ++index);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemAddAugment(lua_State* L)
+{
+	Item* item = getUserdata<Item>(L, 1);
+	if (!item) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (item->isStackable() || item->canDecay() || !item->canTransform() || item->getCharges() || !item->hasProperty(CONST_PROP_MOVEABLE)) {
+		lua_pushboolean(L, false);
+		return 1;
+	}
+
+	if (isString(L, 2)) {
+		std::cout << getString(L, 2) << " \n";
+		if (auto augment = Augments::GetAugment(getString(L, 2))) {
+			lua_pushboolean(L, item->addAugment(augment));
+		} else {
+			lua_pushnil(L);
+			reportError(__FUNCTION__, "Item::addAugment() argument not found as any name in augments loaded on startup! \n");
+		}
+	} else if (isUserdata(L, 2)) {
+		if (std::shared_ptr augment = getSharedPtr<Augment>(L, 2)) {
+			lua_pushboolean(L, item->addAugment(augment));
+		} else {
+			lua_pushnil(L);
+			reportError(__FUNCTION__, "Item::addAugment() invalid userdata passed as argument! \n");
+		}
+	} else {
+		reportError(__FUNCTION__, "Item::addAugment() passed invalid type, must be string or userdata! \n");
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemRemoveAugment(lua_State* L)
+{
+	Item* item = getUserdata<Item>(L, 1);
+	if (!item) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (isString(L, 2)) {
+		auto name = getString(L, 2);
+		lua_pushboolean(L, item->removeAugment(name));
+	} else if (isUserdata(L, 2)) {
+		if (std::shared_ptr<Augment> augment = getSharedPtr<Augment>(L, 2)) {
+			lua_pushboolean(L, item->removeAugment(augment));
+		} else {
+			reportError(__FUNCTION__, "Item::removeAugment() invalid userdata type passed as argument! \n");
+			lua_pushnil(L);
+		}
+	} else {
+		reportError(__FUNCTION__, "Item::removeAugment() passed invalid type, must be string or userdata! \n");
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemIsAugmented(lua_State* L)
+{
+	Item* item = getUserdata<Item>(L, 1);
+	if (!item) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushboolean(L, item->isAugmented());
+	return 1;
+}
+
+int LuaScriptInterface::luaItemHasAugment(lua_State* L)
+{
+	Item* item = getUserdata<Item>(L, 1);
+	if (!item) {
+		lua_pushnil(L);
+		return 1;
+	}
+	
+	if (isString(L, 2)) {
+		auto name = getString(L, 2);
+		lua_pushboolean(L, item->hasAugment(name));
+	} else if (isUserdata(L, 2)) {
+		if (std::shared_ptr<Augment> augment = getSharedPtr<Augment>(L, 2)) {
+			lua_pushboolean(L, item->hasAugment(augment));
+		} else {
+			reportError(__FUNCTION__, "Item::hasAugment() invalid userdata type passed as argument! \n");
+			lua_pushnil(L);
+		}
+	} else {
+		reportError(__FUNCTION__, "Item::hasAugment() passed invalid type, must be string or userdata! \n");
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemGetAugments(lua_State* L)
+{
+	Item* item = getUserdata<Item>(L, 1);
+	if (!item) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	std::vector<std::shared_ptr<Augment>> augments = item->getAugments();
+	lua_createtable(L, augments.size(), 0);
+
+	int index = 0;
+	for (std::shared_ptr<Augment> augment : augments) {
+		pushSharedPtr(L, augment);
+		setMetatable(L, -1, "Augment");
 		lua_rawseti(L, -2, ++index);
 	}
 	return 1;
@@ -7688,6 +7781,311 @@ int LuaScriptInterface::luaImbuementIsInfightDecay(lua_State* L)
 	}
 	return 1;
 }
+
+int LuaScriptInterface::luaDamageModifierCreate(lua_State* L)
+{	// To-do : DamageModifier(DamageModifier)
+	// DamageModifier(stance, type, value, percent/flat, chance, combatType, originType, creatureType, race)
+	auto stance = getNumber<ImbuementType>(L, 2);
+	auto modType = getNumber<uint8_t>(L, 3);
+	auto amount = getNumber<uint16_t>(L, 4);
+	auto factor = getNumber<ModFactor>(L, 5);
+	auto chance = getNumber<uint8_t>(L, 6);
+	auto combatType = getNumber<CombatType_t>(L, 7, COMBAT_NONE);
+	auto originType = getNumber<CombatOrigin>(L, 8, ORIGIN_NONE);
+	auto creatureType = getNumber<CreatureType_t>(L, 9, CREATURETYPE_ATTACKABLE);
+	auto race = getNumber<RaceType_t>(L, 10, RACE_NONE);
+	auto creatureName = getString(L, 11);
+
+	// to-do: handle no param defaults and throw error
+	if (stance && modType && amount && factor) {
+		pushSharedPtr(L, DamageModifier::makeModifier(stance, modType, amount, factor, chance, combatType, originType, creatureType, race, creatureName));
+		setMetatable(L, -1, "DamageModifier");
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetValue(lua_State* L)
+{
+	std::shared_ptr<DamageModifier> modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		// to-do: handle no param defaults and throw error
+		uint8_t amount = getNumber<uint8_t>(L, 2);
+		if (amount) {
+			modifier->setValue(amount);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetRateFactor(lua_State* L)
+{
+	std::shared_ptr<DamageModifier> modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		// to-do: handle no param defaults and throw error
+		uint8_t factor = getNumber<uint8_t>(L, 2);
+		if (factor >= 0) {
+			modifier->setFactor(factor);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetCombatFilter(lua_State* L)
+{
+	std::shared_ptr<DamageModifier> modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		// to-do: handle no param defaults and throw error
+		CombatType_t combatType = getNumber<CombatType_t>(L, 2);
+		if (combatType >= 0) {
+			modifier->setCombatType(combatType);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetOriginFilter(lua_State* L)
+{
+	std::shared_ptr<DamageModifier> modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		// to-do: handle no param defaults and throw error
+		CombatOrigin origin = getNumber<CombatOrigin>(L, 2);
+		if (origin >= 0) {
+			modifier->setOriginType(origin);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaAugmentCreate(lua_State* L)
+{	// To-do : Augment(augment) and Augment(name) <-- where name is looked up from global collection.
+	// Augment(name, description, modifier or table_of_modifiers)
+
+	if (isString(L, 2)) {
+		auto name = getString(L, 2);
+		auto augment = Augments::GetAugment(name);
+
+		if (augment) {
+			pushSharedPtr(L, augment);
+			setMetatable(L, -1, "Augment");
+			return 1; // return early here because we found a global augment with this name
+		}
+
+		auto description = getString(L, 3);
+		if (isUserdata(L, 4)) {
+			auto modifier = getSharedPtr<DamageModifier>(L, 4);
+			if (modifier) {
+				auto augment = Augment::MakeAugment(name, description);
+				augment->addModifier(modifier);
+				pushSharedPtr(L, augment);
+				setMetatable(L, -1, "Augment");
+			} else {
+				reportError(__FUNCTION__, "Invalid Userdata For Modifier Parameter used during Augment Creation \n");
+				lua_pushnil(L);
+			}
+		} else if (isTable(L, 4)) {
+			auto list = std::vector<std::shared_ptr<DamageModifier>>();
+			list.reserve(24);
+
+			// Iterate over the table at index 4
+			lua_pushnil(L);  // First key for lua_next
+			while (lua_next(L, 4) != 0) {
+				// Check if the value is userdata and of type DamageModifier
+				if (isUserdata(L, -1)) {
+					auto modifier = getSharedPtr<DamageModifier>(L, -1);
+					if (modifier) {
+						list.emplace_back(modifier);
+					} else {
+						reportError(__FUNCTION__, "Invalid userdata in table element\n");
+					}
+				} else {
+					reportError(__FUNCTION__, "Non-userdata found in table element\n");
+				}
+				// Remove the value, keep the key for lua_next
+				lua_pop(L, 1);
+			}
+
+			// Create augment with all modifiers
+			// To-do : Add augments created this particular way to global table
+			auto augment = Augment::MakeAugment(name, description);
+			for (auto& modifier : list) {
+				augment->addModifier(modifier);
+			}
+			pushSharedPtr(L, augment);
+			setMetatable(L, -1, "Augment");
+		} else {
+			reportError(__FUNCTION__, "Invalid parameter for Augment Creation\n");
+			lua_pushnil(L);
+		}
+	}
+	
+	
+	return 1;
+}
+
+	
+int LuaScriptInterface::luaAugmentSetName(lua_State* L)
+{
+	// Augment:setName(newName)
+	auto augment = getSharedPtr<Augment>(L, 1);
+	if (!augment) {
+		reportError(__FUNCTION__, "Invalid Augment userdata\n");
+		return 0;
+	}
+
+	auto newName = getString(L, 2);
+	augment->setName(newName);
+	return 0;
+}
+
+int LuaScriptInterface::luaAugmentSetDescription(lua_State* L)
+{
+	// Augment:getDescription(newDescription)
+	auto augment = getSharedPtr<Augment>(L, 1);
+	if (!augment) {
+		reportError(__FUNCTION__, "Invalid Augment userdata\n");
+		return 0;
+	}
+
+	auto newDescription = getString(L, 2);
+	augment->setDescription(newDescription);
+	return 0;
+}
+
+int LuaScriptInterface::luaAugmentGetName(lua_State* L) {
+	// Augment:getName()
+	auto augment = getSharedPtr<Augment>(L, 1); // Get augment object
+	if (!augment) {
+		reportError(__FUNCTION__, "Invalid Augment userdata\n");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	std::string name = augment->getName();
+	pushString(L, name);
+	return 1;
+}
+
+int LuaScriptInterface::luaAugmentGetDescription(lua_State* L) {
+	// Augment:getDescription()
+	auto augment = getSharedPtr<Augment>(L, 1);
+	if (!augment) {
+		reportError(__FUNCTION__, "Invalid Augment userdata\n");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	std::string description = augment->getDescription();
+	pushString(L, description);
+	return 1;
+}
+
+// To-do : The following methods that return 0 should all be converted to return something (boolean for most).
+int LuaScriptInterface::luaAugmentAddDamageModifier(lua_State* L)
+{
+	// Augment:addDamageModifier(modifier)
+	auto augment = getSharedPtr<Augment>(L, 1);
+	if (!augment) {
+		reportError(__FUNCTION__, "Invalid Augment userdata\n");
+		return 0;
+	}
+
+	auto modifier = getSharedPtr<DamageModifier>(L, 2);
+	if (!modifier) {
+		reportError(__FUNCTION__, "Invalid DamageModifier userdata\n");
+		return 0;
+	}
+
+	augment->addModifier(modifier);
+	return 0;
+}
+
+int LuaScriptInterface::luaAugmentRemoveDamageModifier(lua_State* L)
+{
+	// Augment:RemoveDamageModifier(modifier)
+	auto augment = getSharedPtr<Augment>(L, 1);
+	if (!augment) {
+		reportError(__FUNCTION__, "Invalid Augment userdata\n");
+		return 0;
+	}
+
+	auto modifier = getSharedPtr<DamageModifier>(L, 2);
+	if (!modifier) {
+		reportError(__FUNCTION__, "Invalid DamageModifier userdata\n");
+		return 0;
+	}
+
+	augment->removeModifier(modifier);
+	return 0;
+}
+
+int LuaScriptInterface::luaAugmentGetAttackModifiers(lua_State* L) {
+	// Augment:GetAttackModifiers([modType])
+	auto augment = getSharedPtr<Augment>(L, 1);
+	if (!augment) {
+		reportError(__FUNCTION__, "Invalid Augment userdata\n");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	std::vector<std::shared_ptr<DamageModifier>> modifiers;
+
+	if (lua_gettop(L) > 1 && lua_isinteger(L, 2)) {
+		uint8_t modType = static_cast<uint8_t>(lua_tointeger(L, 2));
+		modifiers = augment->getAttackModifiers(modType);
+	} else {
+		modifiers = augment->getAttackModifiers();
+	}
+
+	lua_newtable(L);
+	int index = 1;
+	for (const auto& modifier : modifiers) {
+		pushSharedPtr(L, modifier);
+		setMetatable(L, -1, "DamageModifier");
+		lua_rawseti(L, -2, index++);
+	}
+
+	return 1;
+}
+
+int LuaScriptInterface::luaAugmentGetDefenseModifiers(lua_State* L) {
+	// Augment:GetDefenseModifiers([modType])
+	auto augment = getSharedPtr<Augment>(L, 1);
+	if (!augment) {
+		reportError(__FUNCTION__, "Invalid Augment userdata\n");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	std::vector<std::shared_ptr<DamageModifier>> modifiers;
+
+	if (lua_gettop(L) > 1 && lua_isinteger(L, 2)) {
+		uint8_t modType = static_cast<uint8_t>(lua_tointeger(L, 2));
+		modifiers = augment->getDefenseModifiers(modType);
+	} else {
+		modifiers = augment->getDefenseModifiers();
+	}
+
+	lua_newtable(L);
+	int index = 1;
+	for (const auto& modifier : modifiers) {
+		pushSharedPtr(L, modifier);
+		setMetatable(L, -1, "DamageModifier");
+		lua_rawseti(L, -2, index++);
+	}
+
+	return 1;
+}
+
 
 // Container
 int LuaScriptInterface::luaContainerCreate(lua_State* L)
@@ -11247,6 +11645,116 @@ int LuaScriptInterface::luaPlayerSendCreatureSquare(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaPlayerAddAugment(lua_State* L)
+{
+	Player* player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (isString(L, 2)) {
+		if (auto augment = Augments::GetAugment(getString(L, 2))) {
+			lua_pushboolean(L, player->addAugment(augment));
+		} else {
+			lua_pushnil(L);
+			reportError(__FUNCTION__, "Player::addAugment() argument not found as any name in augments loaded on startup! \n");
+		}
+	} else if (isUserdata(L, 2)) {
+		if (std::shared_ptr augment = getSharedPtr<Augment>(L, 2)) {
+			lua_pushboolean(L, player->addAugment(augment));
+		} else {
+			lua_pushnil(L);
+			reportError(__FUNCTION__, "Player::addAugment() invalid userdata passed as argument! \n");
+		}
+	} else {
+		reportError(__FUNCTION__, "Player::addAugment() passed invalid type, must be string or userdata! \n");
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerRemoveAugment(lua_State* L)
+{
+	Player* player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (isString(L, 2)) {
+		auto name = getString(L, 2);
+		lua_pushboolean(L, player->removeAugment(name));
+	} else if (isUserdata(L, 2)) {
+		if (std::shared_ptr<Augment> augment = getSharedPtr<Augment>(L, 2)) {
+			lua_pushboolean(L, player->removeAugment(augment));
+		} else {
+			reportError(__FUNCTION__, "Player::removeAugment() invalid userdata type passed as argument! \n");
+			lua_pushnil(L);
+		}
+	} else {
+		reportError(__FUNCTION__, "Player::removeAugment() passed invalid type, must be string or userdata! \n");
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerIsAugmented(lua_State* L)
+{
+	Player* player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushboolean(L, player->isAugmented());
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerHasAugment(lua_State* L)
+{
+	Player* player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (isString(L, 2) && isBoolean(L, 3)) {
+		auto name = getString(L, 2);
+		auto checkItems = getBoolean(L, 3);
+		lua_pushboolean(L, player->hasAugment(name, checkItems));
+	} else if (isUserdata(L, 2)) {
+		if (std::shared_ptr<Augment>& augment = getSharedPtr<Augment>(L, 2)) {
+			if (isBoolean(L, 3)) {
+				auto checkItems = getBoolean(L, 3);
+				lua_pushboolean(L, player->hasAugment(augment, checkItems));
+			} else {
+				lua_pushboolean(L, player->hasAugment(augment, true));
+			}
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerGetAugments(lua_State* L)
+{
+	Player* player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	
+	std::vector<std::shared_ptr<Augment>> augments;
+	
+	lua_newtable(L);
+	int index = 1;
+	for (const auto& augment : augments) {
+		pushSharedPtr(L, augment);
+		setMetatable(L, -1, "Augment");
+		lua_rawseti(L, -2, index++);
+	}
+	return 1;
+}
+
 // Monster
 int LuaScriptInterface::luaMonsterCreate(lua_State* L)
 {
@@ -13390,22 +13898,6 @@ int LuaScriptInterface::luaItemTypeGetAbilities(lua_State* L)
 			lua_rawseti(L, -2, i + 1);
 		}
 		lua_setfield(L, -2, "specialSkills");
-
-		// Field absorb percent
-		lua_createtable(L, 0, COMBAT_COUNT);
-		for (int32_t i = 0; i < COMBAT_COUNT; i++) {
-			lua_pushnumber(L, abilities.fieldAbsorbPercent[i]);
-			lua_rawseti(L, -2, i + 1);
-		}
-		lua_setfield(L, -2, "fieldAbsorbPercent");
-
-		// Absorb percent
-		lua_createtable(L, 0, COMBAT_COUNT);
-		for (int32_t i = 0; i < COMBAT_COUNT; i++) {
-			lua_pushnumber(L, abilities.absorbPercent[i]);
-			lua_rawseti(L, -2, i + 1);
-		}
-		lua_setfield(L, -2, "absorbPercent");
 	}
 	return 1;
 }

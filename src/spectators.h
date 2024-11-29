@@ -37,6 +37,10 @@ public:
 		vec.pop_back();
 	}
 
+	Creature* operator[] (uint8_t index) {
+		return vec[index];
+	}
+
 	size_t size() const { return vec.size(); }
 	bool empty() const { return vec.empty(); }
 	Iterator begin() { return vec.begin(); }

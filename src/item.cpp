@@ -31,9 +31,6 @@ void handleWeaponMeleeDescription(std::ostringstream& s, const ItemType& it, con
 void handleSkillsDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleStatsDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleStatsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
-void handleAbsorbsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
-void handleReflectPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
-void handleAbsorbsFieldsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleAbilitiesDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 
@@ -391,6 +388,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_RUNE_CHARGES: {
 			uint8_t count;
 			if (!propStream.read<uint8_t>(count)) {
+				std::cout << "Failed to read : Rune Charges \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -401,6 +399,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_ACTION_ID: {
 			uint16_t actionId;
 			if (!propStream.read<uint16_t>(actionId)) {
+				std::cout << "Failed to read : Action ID \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -411,6 +410,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_UNIQUE_ID: {
 			uint16_t uniqueId;
 			if (!propStream.read<uint16_t>(uniqueId)) {
+				std::cout << "Failed to read : Unique ID \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -421,6 +421,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_TEXT: {
 			auto [text, ok] = propStream.readString();
 			if (!ok) {
+				std::cout << "Failed to read : Text Attribute String \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -431,6 +432,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_WRITTENDATE: {
 			uint32_t writtenDate;
 			if (!propStream.read<uint32_t>(writtenDate)) {
+				std::cout << "Failed to read : Written Date \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -441,6 +443,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_WRITTENBY: {
 			auto [writer, ok] = propStream.readString();
 			if (!ok) {
+				std::cout << "Failed to read : Written By \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -451,6 +454,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_DESC: {
 			auto [text, ok] = propStream.readString();
 			if (!ok) {
+				std::cout << "Failed to read : Description Attribute \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -461,6 +465,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_CHARGES: {
 			uint16_t charges;
 			if (!propStream.read<uint16_t>(charges)) {
+				std::cout << "Failed to read : Charges Attribute \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -471,6 +476,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_DURATION: {
 			int32_t duration;
 			if (!propStream.read<int32_t>(duration)) {
+				std::cout << "Failed to read : Duration \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -481,6 +487,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_DECAYING_STATE: {
 			uint8_t state;
 			if (!propStream.read<uint8_t>(state)) {
+				std::cout << "Failed to read : Decay State \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -493,6 +500,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_NAME: {
 			auto [name, ok] = propStream.readString();
 			if (!ok) {
+				std::cout << "Failed to read : Name Attribute \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -502,6 +510,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 
 		case ATTR_ARTICLE: {
 			auto [article, ok] = propStream.readString();
+			std::cout << "Failed to read : Article Attribute \n";
 			if (!ok) {
 				return ATTR_READ_ERROR;
 			}
@@ -513,6 +522,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_PLURALNAME: {
 			auto [pluralName, ok] = propStream.readString();
 			if (!ok) {
+				std::cout << "Failed to read : PluralName \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -523,6 +533,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_WEIGHT: {
 			uint32_t weight;
 			if (!propStream.read<uint32_t>(weight)) {
+				std::cout << "Failed to read : Weight \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -533,6 +544,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_ATTACK: {
 			int32_t attack;
 			if (!propStream.read<int32_t>(attack)) {
+				std::cout << "Failed to read : Attack \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -543,6 +555,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_ATTACK_SPEED: {
 			uint32_t attackSpeed;
 			if (!propStream.read<uint32_t>(attackSpeed)) {
+				std::cout << "Failed to read : Attack Speed \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -550,51 +563,10 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 			break;
 		}
 
-		case ATTR_CLASSIFICATION: {
-			uint32_t classification;
-			if (!propStream.read<uint32_t>(classification)) {
-				return ATTR_READ_ERROR;
-			}
-
-			setIntAttr(ITEM_ATTRIBUTE_CLASSIFICATION, classification);
-			break;
-		}
-
-		case ATTR_TIER: {
-			uint32_t tier;
-			if (!propStream.read<uint32_t>(tier)) {
-				return ATTR_READ_ERROR;
-			}
-
-			setIntAttr(ITEM_ATTRIBUTE_TIER, tier);
-			break;
-		}
-
-
-		case ATTR_REWARDID: {
-			uint32_t rewardid;
-			if (!propStream.read<uint32_t>(rewardid)) {
-				return ATTR_READ_ERROR;
-			}
-
-			setIntAttr(ITEM_ATTRIBUTE_REWARDID, rewardid);
-			break;
-		}
-
-
-		case ATTR_IMBUESLOTS: {
-			uint32_t slots;
-			if (!propStream.read<uint32_t>(slots)) {
-				return ATTR_READ_ERROR;
-			}
-
-			imbuementSlots = slots;
-			break;
-		}
-
 		case ATTR_DEFENSE: {
 			int32_t defense;
 			if (!propStream.read<int32_t>(defense)) {
+				std::cout << "Failed to read : Defense \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -605,6 +577,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_EXTRADEFENSE: {
 			int32_t extraDefense;
 			if (!propStream.read<int32_t>(extraDefense)) {
+				std::cout << "Failed to read : Extra Defense \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -615,6 +588,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_ARMOR: {
 			int32_t armor;
 			if (!propStream.read<int32_t>(armor)) {
+				std::cout << "Failed to read : Armor \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -625,6 +599,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_HITCHANCE: {
 			int8_t hitChance;
 			if (!propStream.read<int8_t>(hitChance)) {
+				std::cout << "Failed to read : HitChance \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -635,6 +610,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_SHOOTRANGE: {
 			uint8_t shootRange;
 			if (!propStream.read<uint8_t>(shootRange)) {
+				std::cout << "Failed to read : ShootRange \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -645,6 +621,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_DECAYTO: {
 			int32_t decayTo;
 			if (!propStream.read<int32_t>(decayTo)) {
+				std::cout << "Failed to read : Decay To \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -655,6 +632,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_WRAPID: {
 			uint16_t wrapId;
 			if (!propStream.read<uint16_t>(wrapId)) {
+				std::cout << "Failed to read : Wrap ID \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -665,65 +643,11 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		case ATTR_STOREITEM: {
 			uint8_t storeItem;
 			if (!propStream.read<uint8_t>(storeItem)) {
+				std::cout << "Failed to read : Store Item \n";
 				return ATTR_READ_ERROR;
 			}
 
 			setIntAttr(ITEM_ATTRIBUTE_STOREITEM, storeItem);
-			break;
-		}
-
-		case ATTR_REFLECT: {
-			uint16_t size;
-			if (!propStream.read<uint16_t>(size)) {
-				return ATTR_READ_ERROR;
-			}
-
-			for (uint16_t i = 0; i < size; ++i) {
-				CombatType_t combatType;
-				Reflect reflect;
-
-				if (!propStream.read<CombatType_t>(combatType) || !propStream.read<uint16_t>(reflect.percent) || !propStream.read<uint16_t>(reflect.chance)) {
-					return ATTR_READ_ERROR;
-				}
-
-				getAttributes()->reflect[combatType] = reflect;
-			}
-			break;
-		}
-
-		case ATTR_BOOST: {
-			uint16_t size;
-			if (!propStream.read<uint16_t>(size)) {
-				return ATTR_READ_ERROR;
-			}
-
-			for (uint16_t i = 0; i < size; ++i) {
-				CombatType_t combatType;
-				uint16_t percent;
-
-				if (!propStream.read<CombatType_t>(combatType) || !propStream.read<uint16_t>(percent)) {
-					return ATTR_READ_ERROR;
-				}
-
-				getAttributes()->boostPercent[combatType] = percent;
-			}
-			break;
-		}
-
-		case ATTR_IMBUEMENTS: {
-			uint16_t size;
-			if (!propStream.read<uint16_t>(size)) {
-				return ATTR_READ_ERROR;
-			}
-
-			for (uint16_t i = 0; i < size; ++i) {
-				std::shared_ptr<Imbuement> imb = std::make_shared<Imbuement>();
-				if (!imb->unserialize(propStream)) {
-					return ATTR_READ_ERROR;
-				}
-
-				addImbuement(imb, false);
-			}
 			break;
 		}
 
@@ -734,6 +658,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		//Depot class
 		case ATTR_DEPOT_ID: {
 			if (!propStream.skip(2)) {
+				std::cout << "Failed to read : Depot ID \n";
 				return ATTR_READ_ERROR;
 			}
 			break;
@@ -742,6 +667,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		//Door class
 		case ATTR_HOUSEDOORID: {
 			if (!propStream.skip(1)) {
+				std::cout << "Failed to read : HouseDoor ID \n";
 				return ATTR_READ_ERROR;
 			}
 			break;
@@ -750,6 +676,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		//Bed class
 		case ATTR_SLEEPERGUID: {
 			if (!propStream.skip(4)) {
+				std::cout << "Failed to read : Sleeper GUID \n";
 				return ATTR_READ_ERROR;
 			}
 			break;
@@ -757,6 +684,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 
 		case ATTR_SLEEPSTART: {
 			if (!propStream.skip(4)) {
+				std::cout << "Failed to read : Sleep Start \n";
 				return ATTR_READ_ERROR;
 			}
 			break;
@@ -765,6 +693,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		//Teleport class
 		case ATTR_TELE_DEST: {
 			if (!propStream.skip(5)) {
+				std::cout << "Failed to read : Teleport Destination \n";
 				return ATTR_READ_ERROR;
 			}
 			break;
@@ -772,12 +701,14 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 
 		//Container class
 		case ATTR_CONTAINER_ITEMS: {
+			std::cout << "Failed to read : Container Items \n";
 			return ATTR_READ_ERROR;
 		}
 
 		case ATTR_CUSTOM_ATTRIBUTES: {
 			uint64_t size;
 			if (!propStream.read<uint64_t>(size)) {
+				std::cout << "Failed to read : Custom Attribute Size \n";
 				return ATTR_READ_ERROR;
 			}
 
@@ -785,17 +716,82 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 				// Unserialize key type and value
 				auto [key, ok] = propStream.readString();
 				if (!ok) {
+					std::cout << "Failed to read : Custom Attribute Key \n";
 					return ATTR_READ_ERROR;
 				};
 
 				// Unserialize value type and value
 				ItemAttributes::CustomAttribute val;
 				if (!val.unserialize(propStream)) {
+					std::cout << "Failed to read : Custom Attribute Value \n";
 					return ATTR_READ_ERROR;
 				}
 
 				setCustomAttribute(key, val);
 			}
+			break;
+		}
+
+		case ATTR_CLASSIFICATION: {
+			auto [classification, ok] = propStream.readString();
+			if (!ok) {
+				std::cout << "Failed to read : Classification \n";
+				return ATTR_READ_ERROR;
+			}
+
+			setStrAttr(ITEM_ATTRIBUTE_CLASSIFICATION, classification);
+			break;
+		}
+
+		case ATTR_TIER: {
+			auto [tier, ok] = propStream.readString();
+			if (!ok) {
+				std::cout << "Failed to read : Tier \n";
+				return ATTR_READ_ERROR;
+			}
+
+			setStrAttr(ITEM_ATTRIBUTE_TIER, tier);
+			break;
+		}
+
+		case ATTR_IMBUESLOTS: {
+			uint16_t slots;
+			if (!propStream.read<uint16_t>(slots)) {
+				std::cout << "Failed to read : Imbuement Slots \n";
+				return ATTR_READ_ERROR;
+			}
+
+			imbuementSlots = slots;
+			break;
+		}
+
+		case ATTR_IMBUEMENTS: {
+			uint32_t size;
+			if (!propStream.read<uint32_t>(size)) {
+				std::cout << "Failed to read : Imbuement's Size \n";
+				return ATTR_READ_ERROR;
+			}
+
+			for (uint32_t i = 0; i < size; ++i) {
+				std::shared_ptr<Imbuement> imb = std::make_shared<Imbuement>();
+				if (!imb->unserialize(propStream)) {
+					std::cout << "Failed to read : Imbuement Data \n";
+					return ATTR_READ_ERROR;
+				}
+
+				addImbuement(imb, false);
+			}
+			break;
+		}
+
+		case ATTR_REWARDID: {
+			uint32_t rewardid;
+			if (!propStream.read<uint32_t>(rewardid)) {
+				std::cout << "Failed to read : Reward ID \n";
+				return ATTR_READ_ERROR;
+			}
+
+			setIntAttr(ITEM_ATTRIBUTE_REWARDID, rewardid);
 			break;
 		}
 
@@ -815,6 +811,27 @@ bool Item::unserializeAttr(PropStream& propStream)
 			return false;
 		} else if (ret == ATTR_READ_END) {
 			return true;
+		}
+	}
+	return true;
+}
+
+bool Item::unserializeAugments(PropStream& propStream)
+{
+	uint32_t augmentCount = 0;
+
+	if (!propStream.read<uint32_t>(augmentCount)) {
+		std::cout << "WARNING: Failed to read augment count in IOLoginData::loadItems" << std::endl;
+		return false;
+	}
+
+	for (uint32_t i = 0; i < augmentCount; ++i) {
+		auto augment = std::make_shared<Augment>();
+		bool result = augment->unserialize(propStream);
+		if (!result) {
+			return result;
+		} else {
+			this->addAugment(augment);
 		}
 	}
 	return true;
@@ -912,26 +929,6 @@ void Item::serializeAttr(PropWriteStream& propWriteStream) const
 		propWriteStream.write<uint32_t>(getIntAttr(ITEM_ATTRIBUTE_ATTACK_SPEED));
 	}
 
-	if (hasAttribute(ITEM_ATTRIBUTE_CLASSIFICATION)) {
-		propWriteStream.write<uint8_t>(ATTR_CLASSIFICATION);
-		propWriteStream.write<uint32_t>(getIntAttr(ITEM_ATTRIBUTE_CLASSIFICATION));
-	}
-
-	if (hasAttribute(ITEM_ATTRIBUTE_TIER)) {
-		propWriteStream.write<uint8_t>(ATTR_TIER);
-		propWriteStream.write<uint32_t>(getIntAttr(ITEM_ATTRIBUTE_TIER));
-	}
-
-	if (hasAttribute(ITEM_ATTRIBUTE_REWARDID)) {
-		propWriteStream.write<uint8_t>(ATTR_REWARDID);
-		propWriteStream.write<uint32_t>(getIntAttr(ITEM_ATTRIBUTE_REWARDID));
-	}
-
-	if (getImbuementSlots() > 0) {
-		propWriteStream.write<uint8_t>(ATTR_IMBUESLOTS);
-		propWriteStream.write<uint32_t>(imbuementSlots);
-	}
-
 	if (hasAttribute(ITEM_ATTRIBUTE_DEFENSE)) {
 		propWriteStream.write<uint8_t>(ATTR_DEFENSE);
 		propWriteStream.write<int32_t>(getIntAttr(ITEM_ATTRIBUTE_DEFENSE));
@@ -985,38 +982,35 @@ void Item::serializeAttr(PropWriteStream& propWriteStream) const
 		}
 	}
 
-	if (attributes) {
-		const auto& reflects = attributes->reflect;
-		if (!reflects.empty()) {
-			propWriteStream.write<uint8_t>(ATTR_REFLECT);
-			propWriteStream.write<uint16_t>(reflects.size());
-
-			for (const auto& reflect : reflects) {
-				propWriteStream.write<CombatType_t>(reflect.first);
-				propWriteStream.write<uint16_t>(reflect.second.percent);
-				propWriteStream.write<uint16_t>(reflect.second.chance);
-			}
-		}
-
-		const auto& boosts = attributes->boostPercent;
-		if (!boosts.empty()) {
-			propWriteStream.write<uint8_t>(ATTR_BOOST);
-			propWriteStream.write<uint16_t>(boosts.size());
-
-			for (const auto& boost : boosts) {
-				propWriteStream.write<CombatType_t>(boost.first);
-				propWriteStream.write<uint16_t>(boost.second);
-			}
-		}
+	if (hasAttribute(ITEM_ATTRIBUTE_CLASSIFICATION)) {
+		propWriteStream.write<uint8_t>(ATTR_CLASSIFICATION);
+		propWriteStream.writeString(getStrAttr(ITEM_ATTRIBUTE_CLASSIFICATION));
 	}
 
+	if (hasAttribute(ITEM_ATTRIBUTE_TIER)) {
+		propWriteStream.write<uint8_t>(ATTR_TIER);
+		propWriteStream.writeString(getStrAttr(ITEM_ATTRIBUTE_TIER));
+	}
+
+	if (getImbuementSlots() > 0) {
+		propWriteStream.write<uint8_t>(ATTR_IMBUESLOTS);
+		propWriteStream.write<uint16_t>(imbuementSlots);
+	}
+
+	propWriteStream.write<uint32_t>(ATTR_IMBUEMENTS);
+	propWriteStream.write<uint32_t>(imbuements.size());
+
 	if (hasImbuements()) {
-		propWriteStream.write<uint8_t>(ATTR_IMBUEMENTS);
-		propWriteStream.write<uint16_t>(imbuements.size());
 		for (auto entry : imbuements) {
 			entry->serialize(propWriteStream);
 		}
 	}
+
+	if (hasAttribute(ITEM_ATTRIBUTE_REWARDID)) {
+		propWriteStream.write<uint8_t>(ATTR_REWARDID);
+		propWriteStream.write<uint32_t>(getIntAttr(ITEM_ATTRIBUTE_REWARDID));
+	}
+
 }
 
 bool Item::hasProperty(ITEMPROPERTY prop) const
@@ -1451,7 +1445,7 @@ bool Item::canDecay() const
 	if (hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)) {
 		return false;
 	}
-
+	// to-do: Should probably block imbued and augmented items here.
 	return true;
 }
 
@@ -1466,43 +1460,10 @@ LightInfo Item::getLightInfo() const
 	return {it.lightLevel, it.lightColor};
 }
 
-Reflect Item::getReflect(CombatType_t combatType, bool total /* = true */) const
-{
-	const ItemType& it = Item::items[id];
-
-	Reflect reflect;
-	if (attributes) {
-		reflect += attributes->getReflect(combatType);
-	}
-
-	if (total && it.abilities) {
-		reflect += it.abilities->reflect[combatTypeToIndex(combatType)];
-	}
-
-	return reflect;
-}
-
-uint16_t Item::getBoostPercent(CombatType_t combatType, bool total /* = true */) const
-{
-	const ItemType& it = Item::items[id];
-
-	uint16_t boostPercent = 0;
-	if (attributes) {
-		boostPercent += attributes->getBoostPercent(combatType);
-	}
-
-	if (total && it.abilities) {
-		boostPercent += it.abilities->boostPercent[combatTypeToIndex(combatType)];
-	}
-
-	return boostPercent;
-}
-
 std::string ItemAttributes::emptyString;
 int64_t ItemAttributes::emptyInt;
 double ItemAttributes::emptyDouble;
 bool ItemAttributes::emptyBool;
-Reflect ItemAttributes::emptyReflect;
 
 const std::string& ItemAttributes::getStrAttr(itemAttrTypes type) const
 {
@@ -1623,18 +1584,6 @@ bool Item::hasMarketAttributes() const
 		return true;
 	}
 
-	// discard items with custom boost and reflect
-	for (uint16_t i = 0; i < COMBAT_COUNT; ++i) {
-		if (getBoostPercent(indexToCombatType(i), false) > 0) {
-			return false;
-		}
-
-		Reflect tmpReflect = getReflect(indexToCombatType(i), false);
-		if (tmpReflect.chance != 0 || tmpReflect.percent != 0) {
-			return false;
-		}
-	}
-
 	// discard items with other modified attributes
 	for (const auto& attr : attributes->getList()) {
 		if (attr.type == ITEM_ATTRIBUTE_CHARGES) {
@@ -1716,7 +1665,14 @@ uint16_t Item::getFreeImbuementSlots() const
 
 bool Item::canImbue() const
 {
-	// item:canImbue() -- returns true if item has slots that are free
+	// todo: known bug, stackables are imbueable, but no protection is offered for someone copying items with imbuements,
+	// unless the stackables are items created a new, in that case, the imbuements don't carry over when broken down,
+	// what needs to be in place is a change of itemID and name when imbuing a stack of stackables, and apply these changes,
+	// to every single item in the stack, keeping them from being stacked with other items, or being cloned, all while
+	// still allowing the item to benefit from the imbuement. 
+	if (canDecay() || !canTransform() || getCharges() || !hasProperty(CONST_PROP_MOVEABLE)) {
+		return false;
+	}
 	return (imbuementSlots > 0 && imbuementSlots > imbuements.size()) ? true : false;
 }
 
@@ -1799,7 +1755,7 @@ bool Item::hasImbuement(const std::shared_ptr<Imbuement>& imbuement) const
 bool Item::hasImbuements() const
 {
 	// item:hasImbuements() -- returns true if item has any imbuements
-	return imbuements.size() > 0;
+	return !imbuements.empty();
 }
 
 bool Item::addImbuement(std::shared_ptr<Imbuement>  imbuement, bool created)
@@ -1845,6 +1801,73 @@ bool Item::removeImbuement(std::shared_ptr<Imbuement> imbuement, bool decayed)
 
 std::vector<std::shared_ptr<Imbuement>>& Item::getImbuements() {
 	return imbuements;
+}
+
+const bool Item::addAugment(std::shared_ptr<Augment>& augment)
+{
+	if (std::find(augments.begin(), augments.end(), augment) != augments.end()) {
+		return false;
+	}
+
+	augments.push_back(augment);
+	return true;
+}
+
+const bool Item::addAugment(std::string_view augmentName)
+{
+	if (auto augment = Augments::GetAugment(augmentName)) {
+		augments.emplace_back(augment);
+		return true;
+	}
+	return false;
+}
+
+const bool Item::removeAugment(std::shared_ptr<Augment>& augment)
+{
+	auto originalSize = augments.size();
+	augments.erase(std::remove(augments.begin(), augments.end(), augment), augments.end());
+	return augments.size() < originalSize;
+}
+
+const bool Item::removeAugment(std::string_view name)
+{
+	augments.erase(std::remove_if(augments.begin(), augments.end(),
+		[&name](const std::shared_ptr<Augment>& augment) {
+			return augment->getName() == name;
+		}),	augments.end());
+	return false;
+}
+
+// To-do: Move to const inline next three methods at least.
+bool Item::isAugmented()
+{
+	return augments.size() > 0;
+}
+
+bool Item::hasAugment(std::string_view name)
+{
+	for (const auto& aug : augments) {
+		if (aug->getName() == name) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Item::hasAugment(const std::shared_ptr<Augment>& augment)
+{
+	for (const auto& aug : augments) {
+		if (aug == augment) {
+			return true;
+		}
+	}
+	return false;
+}
+
+
+const std::vector<std::shared_ptr<Augment>>& Item::getAugments()
+{
+	return augments;
 }
 
 void Item::decayImbuements(bool infight) {
@@ -2056,102 +2079,6 @@ void handleStatsPercentDescription(std::ostringstream& s, const ItemType& it, bo
 	}
 }
 
-void handleAbsorbsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
-	int16_t show = it.abilities->absorbPercent[0];
-	if (show != 0) {
-		for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->absorbPercent[i] != show) {
-				show = 0;
-				break;
-			}
-		}
-	}
-
-	if (show == 0) {
-		bool tmp = true;
-
-		for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->absorbPercent[i] == 0) {
-				continue;
-			}
-
-			if (tmp) {
-				tmp = false;
-
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "absorb ";
-			} else {
-				s << ", ";
-			}
-
-			s << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << it.abilities->absorbPercent[i] << std::noshowpos << '%';
-		}
-	} else {
-		if (begin) {
-			begin = false;
-			s << " (";
-		} else {
-			s << ", ";
-		}
-
-		s << "absorb all " << std::showpos << show << std::noshowpos << '%';
-	}
-}
-
-void handleAbsorbsFieldsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
-	int16_t show = it.abilities->fieldAbsorbPercent[0];
-	if (show != 0) {
-		for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->absorbPercent[i] != show) {
-				show = 0;
-				break;
-			}
-		}
-	}
-
-	if (show == 0) {
-		bool tmp = true;
-
-		for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->fieldAbsorbPercent[i] == 0) {
-				continue;
-			}
-
-			if (tmp) {
-				tmp = false;
-
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "absorb ";
-			} else {
-				s << ", ";
-			}
-
-			s << getCombatName(indexToCombatType(i)) << " field " << std::showpos << it.abilities->fieldAbsorbPercent[i] << std::noshowpos << '%';
-		}
-	} else {
-		if (begin) {
-			begin = false;
-			s << " (";
-		} else {
-			s << ", ";
-		}
-
-		s << "absorb all fields " << std::showpos << show << std::noshowpos << '%';
-	}
-}
-
 void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
 	if (it.abilities->speed) {
 		if (begin) {
@@ -2165,60 +2092,9 @@ void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begi
 	}
 }
 
-void handleReflectPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
-	int16_t show = it.abilities->reflect[0].percent;
-	if (show != 0) {
-		for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->reflect[i].percent != show) {
-				show = 0;
-				break;
-			}
-		}
-	}
-
-	if (show == 0) {
-		bool tmp = true;
-
-		for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->reflect[i].percent == 0) {
-				continue;
-			}
-
-			if (tmp) {
-				tmp = false;
-
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "reflect ";
-			} else {
-				s << ", ";
-			}
-
-			s << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << it.abilities->reflect[i].percent << std::noshowpos << '%';
-		}
-	} else {
-		if (begin) {
-			begin = false;
-			s << " (";
-		} else {
-			s << ", ";
-		}
-
-		s << "reflect all " << std::showpos << show << std::noshowpos << '%';
-	}
-}
-
 void handleAbilitiesDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
 	handleSkillsDescription(s, it, begin);
 	handleStatsDescription(s, it, begin);
 	handleStatsPercentDescription(s, it, begin);
-	handleReflectPercentDescription(s, it, begin);
-	handleAbsorbsPercentDescription(s, it, begin);
-	handleAbsorbsFieldsPercentDescription(s, it, begin);
 	handleMiscDescription(s, it, begin);
 }

@@ -881,11 +881,6 @@ BlockType_t Creature::blockHit(Creature* attacker, CombatType_t combatType, int3
 					continue;
 				}
 
-				const uint16_t boostPercent = item->getBoostPercent(combatType);
-				if (boostPercent != 0) {
-					damage += std::round(damage * (boostPercent / 100.));
-				}
-
 				if (item->hasImbuements() && blockType == BLOCK_NONE) {
 					
 					for (auto& imbuement : item->getImbuements()) {

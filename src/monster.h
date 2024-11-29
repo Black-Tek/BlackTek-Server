@@ -64,6 +64,7 @@ class Monster final : public Creature
 		}
 
 		CreatureType_t getType() const override {
+			// to-do : write the logic for all the various summons
 			return CREATURETYPE_MONSTER;
 		}
 
@@ -150,6 +151,9 @@ class Monster final : public Creature
 			return targetList;
 		}
 		const CreatureHashSet& getFriendList() const {
+			return friendList;
+		}
+		CreatureHashSet& getFriendList() {
 			return friendList;
 		}
 

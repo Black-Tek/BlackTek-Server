@@ -11,6 +11,38 @@
 #include "const.h"
 #include "enums.h"
 
+static constexpr MagicEffectClasses CombatTypeToAreaEffect(CombatType_t combatType) {
+	switch (combatType) {
+		case COMBAT_PHYSICALDAMAGE:
+			return CONST_ME_BLOCKHIT;
+		case COMBAT_ENERGYDAMAGE:
+			return CONST_ME_ENERGYHIT;
+		case COMBAT_EARTHDAMAGE:
+			return CONST_ME_HITBYPOISON;
+		case COMBAT_FIREDAMAGE:
+			return CONST_ME_HITBYFIRE;
+		case COMBAT_UNDEFINEDDAMAGE:
+			return CONST_ME_PURPLEENERGY;
+		case COMBAT_LIFEDRAIN:
+			return CONST_ME_REDSMOKE;
+		case COMBAT_MANADRAIN:
+			return CONST_ME_LOSEENERGY;
+		case COMBAT_HEALING:
+			return CONST_ME_MAGIC_RED;
+		case COMBAT_DROWNDAMAGE:
+			return CONST_ME_WATERSPLASH;
+		case COMBAT_ICEDAMAGE:
+			return CONST_ME_ICEATTACK;
+		case COMBAT_HOLYDAMAGE:
+			return CONST_ME_HOLYDAMAGE;
+		case COMBAT_DEATHDAMAGE:
+			return CONST_ME_MORTAREA;
+
+		default:
+			return CONST_ME_BLOCKHIT;
+	}
+}
+
 void printXMLError(const std::string& where, const std::string& fileName, const pugi::xml_parse_result& result);
 
 const std::vector<Direction>& getShuffleDirections();
@@ -47,6 +79,22 @@ bool boolean_random(double probability = 0.5);
 Direction getDirection(const std::string& string);
 Position getNextPosition(Direction direction, Position pos);
 Direction getDirectionTo(const Position& from, const Position& to);
+
+static Direction getOppositeDirection(Direction currentDirection) {
+	switch (currentDirection) {
+	case DIRECTION_NORTH:
+		return DIRECTION_SOUTH;
+	case DIRECTION_SOUTH:
+		return DIRECTION_NORTH;
+	case DIRECTION_WEST:
+		return DIRECTION_EAST;
+	case DIRECTION_EAST:
+		return DIRECTION_WEST;
+	default:
+		return DIRECTION_SOUTH;
+	}
+	return DIRECTION_SOUTH;
+}
 
 std::string getFirstLine(const std::string& str);
 

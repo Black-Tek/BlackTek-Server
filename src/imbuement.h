@@ -65,19 +65,19 @@ struct Imbuement : std::enable_shared_from_this<Imbuement> {
 	bool isInfightDecay() const;
 
 	void serialize(PropWriteStream& propWriteStream) const {
-		propWriteStream.write<uint32_t>(static_cast<uint32_t>(imbuetype));
+		propWriteStream.write<uint8_t>(static_cast<uint8_t>(imbuetype));
 		propWriteStream.write<uint32_t>(value);
 		propWriteStream.write<uint32_t>(duration);
-		propWriteStream.write<uint32_t>(static_cast<uint32_t>(decaytype));
+		propWriteStream.write<uint8_t>(static_cast<uint8_t>(decaytype));
 	}
 
-
 	bool unserialize(PropStream& propReadStream) {
-		uint32_t type, val, dur, decay;
-		if (!propReadStream.read<uint32_t>(type) ||
+		uint32_t val, dur;
+		uint8_t type, decay;
+		if (!propReadStream.read<uint8_t>(type) ||
 			!propReadStream.read<uint32_t>(val) ||
 			!propReadStream.read<uint32_t>(dur) ||
-			!propReadStream.read<uint32_t>(decay)) {
+			!propReadStream.read<uint8_t>(decay)) {
 			return false;
 		}
 

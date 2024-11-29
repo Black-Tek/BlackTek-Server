@@ -1,0 +1,40 @@
+[MerlinsRage]
+name = "Merlins Rage"
+description = "A portion of The Great Mage Merlin's power! It takes great power just to wield this power!"
+modifiers = [
+	# Piercing curse damage
+	{ mod = "piercing", value = 100, damage = "death", origin="condition"},
+	# Spell Crits
+	{ mod = "critical", value = 30, chance = 25, origin = "spell"},
+	# Spell Death Conversion
+	{ mod = "conversion", value = 10, toDamage = "death", origin = "spell" },
+]
+
+[NecromancersDelight]
+name = "Necromancer's Delight"
+description = "The darkest souls find comfort in deathly pain"
+modifiers = [
+	# Spell Death Conversion
+	{ mod = "absorb", value = 15, damage = "death"}
+]
+
+[MorganasGift]
+name = "Morgana's Gift"
+description = "A small taste of Morgana's frightening power!"
+modifiers = [
+	# Spell Vamp
+	{ mod = "lifesteal", value = 15, origin = "spell"}
+]
+
+[GiantsDemise]
+name = "Giant's Demise"
+decription = "The dark knowledge to a bring down all those who are truly giant"
+modifiers = [
+	# Boss Piercing 
+	{ mod = "piercing", target = "boss", value = 20,  origin = "spell"},
+	# Boss Crits
+	{ mod = "critical",  target = "boss", value = 30, chance = 25},
+	# Behemoth Piercing 
+	{ mod = "piercing", monster = "Behemoth", value = 60, origin = "spell"},
+	{ mod = "piercing", monster = "Behemoth", value = 60, origin = "condition"},
+]
