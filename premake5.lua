@@ -68,14 +68,14 @@ workspace "Black-Tek-Server"
          -- Paths to vcpkg installed dependencies
          libdirs { "vcpkg_installed/arm64-linux/lib" }
          includedirs { "vcpkg_installed/arm64-linux/include" }
-         links { "pugixml", "lua", "fmt", "ssl", "mariadb", "cryptopp", "crypto", "boost_iostreams", "zstd", "z", "curl", "tomlplusplus", "ssl" }
+         links { "pugixml", "lua", "fmt", "mariadb", "cryptopp", "boost_iostreams", "zstd", "z", "curl", "tomlplusplus", "ssl", "crypto" }
       filter{}
 
       filter { "system:linux", "architecture:amd64" }
          -- Paths to vcpkg installed dependencies
          libdirs { "vcpkg_installed/x64-linux/lib" }
          includedirs { "vcpkg_installed/x64-linux/include" }
-         links { "pugixml", "lua", "fmt", "ssl", "mariadb", "cryptopp", "crypto", "boost_iostreams", "zstd", "z", "curl", "tomlplusplus", "ssl" }
+         links { "pugixml", "lua", "fmt", "mariadb", "cryptopp", "boost_iostreams", "zstd", "z", "curl", "tomlplusplus", "ssl", "crypto" }
       filter{}
 
       filter "toolset:gcc"
