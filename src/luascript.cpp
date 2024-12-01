@@ -1494,6 +1494,12 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(CREATURETYPE_NPC)
 	registerEnum(CREATURETYPE_SUMMON_OWN)
 	registerEnum(CREATURETYPE_SUMMON_HOSTILE)
+	registerEnum(CREATURETYPE_SUMMON_GUILD)
+	registerEnum(CREATURETYPE_SUMMON_PARTY)
+	registerEnum(CREATURETYPE_BOSS)
+	registerEnum(CREATURETYPE_SUMMON_HOSTILE)
+	registerEnum(CREATURETYPE_ATTACKABLE)
+	registerEnum(CREATURETYPE_SUMMON_ALL)
 
 	registerEnum(CLIENTOS_LINUX)
 	registerEnum(CLIENTOS_WINDOWS)
@@ -1984,6 +1990,32 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(DiscordMessageType::MESSAGE_ERROR);
 	registerEnum(DiscordMessageType::MESSAGE_LOG);
 	registerEnum(DiscordMessageType::MESSAGE_INFO);
+
+	// Attack Modifiers
+	registerEnum(ATTACK_MODIFIER_FIRST)
+	registerEnum(ATTACK_MODIFIER_NONE)
+	registerEnum(ATTACK_MODIFIER_LIFESTEAL)
+	registerEnum(ATTACK_MODIFIER_MANASTEAL)
+	registerEnum(ATTACK_MODIFIER_STAMINASTEAL)
+	registerEnum(ATTACK_MODIFIER_SOULSTEAL)
+	registerEnum(ATTACK_MODIFIER_CRITICAL)
+	registerEnum(ATTACK_MODIFIER_PIERCING)
+	registerEnum(ATTACK_MODIFIER_CONVERSION)
+	registerEnum(ATTACK_MODIFIER_LAST)
+
+	// Defense Modifiers
+	registerEnum(DEFENSE_MODIFIER_FIRST)
+	registerEnum(DEFENSE_MODIFIER_NONE)
+	registerEnum(DEFENSE_MODIFIER_ABSORB)
+	registerEnum(DEFENSE_MODIFIER_RESTORE)
+	registerEnum(DEFENSE_MODIFIER_REPLENISH)
+	registerEnum(DEFENSE_MODIFIER_REVIVE)
+	registerEnum(DEFENSE_MODIFIER_REFLECT)
+	registerEnum(DEFENSE_MODIFIER_DEFLECT)
+	registerEnum(DEFENSE_MODIFIER_RICOCHET)
+	registerEnum(DEFENSE_MODIFIER_RESIST)
+	registerEnum(DEFENSE_MODIFIER_RESIST)
+	registerEnum(DEFENSE_MODIFIER_LAST)
 
 	// _G
 	registerGlobalVariable("INDEX_WHEREEVER", INDEX_WHEREEVER);

@@ -6016,7 +6016,7 @@ std::unordered_map<uint8_t, ModifierTotals> Player::getDefenseModifierTotals(con
 	modMap.reserve(DEFENSE_MODIFIER_LAST);
 	
 	auto defenseMods = getDefenseModifiers();
-	for (uint8_t i = DEFENSE_MODIFIER_NONE; i < DEFENSE_MODIFIER_LAST; ++i) {
+	for (uint8_t i = DEFENSE_MODIFIER_FIRST; i < DEFENSE_MODIFIER_LAST; ++i) {
 		auto modTotals = getValidatedTotals(defenseMods[i], damageType, originType, creatureType, race, creatureName);
 		modMap.try_emplace(i, modTotals);
 	}
