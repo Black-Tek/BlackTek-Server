@@ -1870,15 +1870,16 @@ void Monster::death(Creature*)
 
 			const auto& creatureLoot = mType->info.lootItems;
 			int64_t currentTime = time(nullptr);
-			
-			for (const auto& [playerId, score] : bossScoreTable.playerScoreTable)
-			{
-				auto contrubutionScore = score.damageDone + score.damageTaken + score.healingDone;
-				double expectedScore = ((contrubutionScore / totalScore) * g_config.getFloat(ConfigManager::REWARD_BASE_RATE));
+
+			for (const auto& [playerId, score] : bossScoreTable.playerScoreTable) {
+
+				auto contributionScore = score.damageDone + score.damageTaken + score.healingDone;
+				// we should never see 0's here, but better safe than sorry.
+				double expectedScore = (contributionScore) ? ((contributionScore / totalScore) * g_config.getFloat(ConfigManager::REWARD_BASE_RATE)) : 0;
 				int32_t lootRate = std::min<int32_t>(expectedScore, 1.0);
 
 				Player* player = g_game.getPlayerByGUID(playerId);
-
+				// possibly need to use Item::CreateItemAsContainer() here instead.
 				auto rewardContainer = Item::CreateItem(ITEM_REWARD_CONTAINER)->getContainer();
 				rewardContainer->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
 				rewardContainer->setIntAttr(ITEM_ATTRIBUTE_REWARDID, getMonster()->getID());
@@ -1895,8 +1896,10 @@ void Monster::death(Creature*)
 					if ((lootBlock.unique && isTopPlayer) || (chance <= adjustedChance  )) {
 						// Ensure that the mostScoreContributor can receive multiple unique items
 						auto lootItem = Item::CreateItem(lootBlock.id, count);
-						lootItem->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
-						lootItem->setIntAttr(ITEM_ATTRIBUTE_REWARDID, monsterId);
+						if (!lootItem->isStackable()) {
+							lootItem->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
+							lootItem->setIntAttr(ITEM_ATTRIBUTE_REWARDID, monsterId);
+						}
 						if (g_game.internalAddItem(rewardContainer, lootItem) == RETURNVALUE_NOERROR) {
 							hasLoot = true;
 						} else {
@@ -1930,8 +1933,8 @@ void Monster::death(Creature*)
 				} else if (player) {
 					player->sendTextMessage(MESSAGE_LOOT, "You did not receive any loot.");
 				}
-				g_game.resetDamageTracking(monsterId);
 			}
+			g_game.resetDamageTracking(monsterId);
 		}
 	}
 
