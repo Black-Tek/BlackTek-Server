@@ -499,8 +499,10 @@ ReturnValue Tile::queryAdd(const Creature& creature, uint32_t flags) const
 
 	if (creatures && !creatures->empty() && !hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags)) {
 		for (const Creature* tileCreature : *creatures) {
-			if (!tileCreature->isInGhostMode()) {
-				return RETURNVALUE_NOTENOUGHROOM;
+			if (!tileCreature->isInGhostMode() && (tileCreature->getPlayer() && !tileCreature->getPlayer()->isAccessPlayer() )) {
+				if (creature.getPlayer() && !creature.getPlayer()->isAccessPlayer() && !creature.getPlayer()->canWalkthrough(tileCreature)) {
+					return RETURNVALUE_NOTENOUGHROOM;
+				}
 			}
 		}
 	}
@@ -515,6 +517,7 @@ ReturnValue Tile::queryAdd(const Creature& creature, uint32_t flags) const
         if (ground) {
             const ItemType& iiType = Item::items[ground->getID()];
             if (iiType.blockSolid && (!iiType.moveable || ground->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID))) {
+            	std::cout << "BlockSolid with unique and ground return." << std::endl;
                 return RETURNVALUE_NOTPOSSIBLE;
             }
         }
@@ -523,6 +526,7 @@ ReturnValue Tile::queryAdd(const Creature& creature, uint32_t flags) const
             for (const Item* item : *items) {
                 const ItemType& iiType = Item::items[item->getID()];
                 if (iiType.blockSolid && (!iiType.moveable || item->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID))) {
+                	std::cout << "BlockSolid without a ground return." << std::endl;
                     return RETURNVALUE_NOTPOSSIBLE;
                 }
             }
