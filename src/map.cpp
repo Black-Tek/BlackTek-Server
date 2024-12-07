@@ -407,9 +407,27 @@ void Map::getSpectators(SpectatorVec& spectators, const Position& centerPos, boo
     minRangeY = (minRangeY == 0 ? -maxViewportY : -minRangeY);
     maxRangeY = (maxRangeY == 0 ? maxViewportY : maxRangeY);
 
-    std::array<int32_t, 4> cache_values{
-        -maxViewportX , maxViewportX , -maxViewportY , maxViewportY
-    };
+    chunkKey.minRangeX = minRangeX;
+	chunkKey.maxRangeX = maxRangeX;
+	chunkKey.minRangeY = minRangeY;
+	chunkKey.maxRangeY = maxRangeY;
+	chunkKey.x = centerPos.x;
+	chunkKey.y = centerPos.y;
+	chunkKey.z = centerPos.z;
+	chunkKey.multifloor = multifloor;
+	chunkKey.onlyPlayers = onlyPlayers;
+
+	auto it = chunksSpectatorCache.find(chunkKey);
+	if (it != chunksSpectatorCache.end()) {
+		if (!spectators.empty()) {
+			spectators.addSpectators(it->second);
+		} else {
+			spectators = it->second;
+		}
+		foundCache = true;
+	} else {
+		cacheResult = true;
+	}
 
     if (minRangeX == -maxViewportX && maxRangeX == maxViewportX && minRangeY == -maxViewportY && maxRangeY == maxViewportY && multifloor) {
         if (onlyPlayers) {
@@ -467,11 +485,7 @@ void Map::getSpectators(SpectatorVec& spectators, const Position& centerPos, boo
         getSpectatorsInternal(spectators, centerPos, minRangeX, maxRangeX, minRangeY, maxRangeY, minRangeZ, maxRangeZ, onlyPlayers);
 
         if (cacheResult) {
-            if (onlyPlayers) {
-                playersSpectatorCache[centerPos] = spectators;
-            } else {
-                spectatorCache[centerPos] = spectators;
-            }
+            chunksSpectatorCache.emplace(chunkKey, spectators);
         }
     }
 }

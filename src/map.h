@@ -34,6 +34,45 @@ static constexpr int32_t MAX_NODES = 512;
 static constexpr int32_t MAP_NORMALWALKCOST = 10;
 static constexpr int32_t MAP_DIAGONALWALKCOST = 25;
 
+struct alignas(16) ChunkKey {
+	int32_t minRangeX, maxRangeX, minRangeY, maxRangeY;
+	uint16_t x, y;
+	uint8_t z;
+	bool multifloor, onlyPlayers;
+
+	bool operator==(const ChunkKey& other) const noexcept {
+		return std::memcmp(this, &other, sizeof(ChunkKey)) == 0;
+	}
+};
+static ChunkKey chunkKey;
+struct ChunkKeyHash {
+	std::size_t operator()(const ChunkKey& key) const noexcept {
+		std::size_t hash = 0;
+		hash_combine(hash, key.minRangeX, key.maxRangeX, key.minRangeY, key.maxRangeY,
+					 key.x, key.y, key.z, key.multifloor, key.onlyPlayers);
+		return hash;
+	}
+
+private:
+	template <typename... Args>
+	static void hash_combine(std::size_t& seed, Args&&... args) {
+		(hash_combine_impl(seed, std::forward<Args>(args)), ...);
+	}
+
+	template <typename T>
+	static void hash_combine_impl(std::size_t& seed, const T& v) {
+		seed ^= std::hash<T>{}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+	}
+};
+
+struct ChunkKeyEqual {
+	bool operator()(const ChunkKey& lhs, const ChunkKey& rhs) const noexcept {
+		return std::memcmp(&lhs, &rhs, sizeof(ChunkKey)) == 0;
+	}
+};
+
+using ChunkCache = std::unordered_map<ChunkKey, SpectatorVec, ChunkKeyHash, ChunkKeyEqual>;
+
 class AStarNodes
 {
 	public:
@@ -169,6 +208,10 @@ class Map
 		  * \returns true if the map was loaded successfully
 		  */
 		bool loadMap(const std::string& identifier, bool loadHouses);
+		void clearChunkSpectatorCache()	{
+			playersSpectatorCache.clear();
+			chunksSpectatorCache.clear();
+		}
 
 		/**
 		  * Save a map.
@@ -268,7 +311,7 @@ class Map
 	private:
 		SpectatorCache spectatorCache;
 		SpectatorCache playersSpectatorCache;
-
+		ChunkCache chunksSpectatorCache;
 		QTreeNode root;
 
 		std::filesystem::path spawnfile;
