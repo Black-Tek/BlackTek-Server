@@ -822,7 +822,6 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 
 		const auto& conversionTotals = casterPlayer.value()->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage.primary.type, damage.origin, targetType, target->getRace(), target->getName()) ;
 		if (!conversionTotals.empty() && params.origin != ORIGIN_AUGMENT) {
-			std::cout << "Conversion Modifier Activated on " << damage.primary.value << " damage \n";
 			casterPlayer.value()->convertDamage(target->getCreature(), damage, conversionTotals);
 			if (damage.primary.value == 0) {
 				return;
@@ -903,20 +902,17 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 					auto damageIncrease = std::abs(damage.primary.value * percentTotal / 100);
 					damage.primary.value -= damageIncrease;
 					damage.critical = true;
-					std::cout << "Critical Percent Modifier Activated on " << damage.primary.value << " damage with " << damageIncrease << " as the bonus damage \n";
 				}
 
 				if (flatTotal) {
 					damage.primary.value -= flatTotal;
 					damage.critical = true;
-					std::cout << "Critical Flat Modifier Activated on " << damage.primary.value << " damage with " << flatTotal << " as the bonus damage \n";
 				}
 			}
 
 			if (targetPlayer.has_value() && (casterPlayer.value() != targetPlayer.value()) && params.origin != ORIGIN_AUGMENT) {
 				const auto& reformTotals = targetPlayer.value()->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
 				if (!reformTotals.empty()) {
-					std::cout << "Reform Modifier Activated : on " << damage.primary.value << " damage \n";
 					targetPlayer.value()->reformDamage(*casterPlayer.value()->getCreature(), damage, reformTotals);
 					if (damage.primary.value == 0) {
 						return;
@@ -947,7 +943,6 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 			const auto& defenseModData = targetPlayer.value()->getDefenseModifierTotals(damage.primary.type, damage.origin, attackerType, casterMonster.value()->getRace(), casterMonster.value()->getName());
 			auto reformTotals = targetPlayer.value()->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, attackerType, casterMonster.value()->getRace(), casterMonster.value()->getName());
 			if (!reformTotals.empty() && params.origin != ORIGIN_AUGMENT) {
-				std::cout << "Reform Modifier Activated on " << damage.primary.value << " damage \n";
 				targetPlayer.value()->reformDamage(*casterMonster.value()->getCreature(), damage, reformTotals);
 				if (damage.primary.value == 0) {
 					return;
@@ -965,7 +960,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				}
 			}
 		}
-	} else {
+	} else [[unlikely]] {
 		std::cout << "Getting calls to doTargetCombat without a target. \n";
 	}
 
@@ -1047,12 +1042,10 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				}
 
 				if (manaStealPercentTotal) {
-					std::cout << "Mana Leech Percent Modifier Activated : on " << damage.primary.value << " damage \n";
 					manaStealGain += totalDamage * manaStealPercentTotal / 100;
 				}
 
 				if (manaStealFlatTotal) {
-					std::cout << "Mana Leech Flat Modifier Activated : on " << damage.primary.value << " damage \n";
 					manaStealGain += manaStealFlatTotal;
 				}
 
@@ -1067,15 +1060,11 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 
 				/// Staminasteal
 				if (staminaStealPercentTotal) {
-					std::cout << "Stamina Steal Percent Modifier Activated : on " << damage.primary.value << " damage \n";
 					staminaGain += totalDamage * staminaStealPercentTotal / 100;
-					std::cout << "Stamina Gain total so far : " << staminaGain << " \n";
 				}
 
 				if (staminaStealFlatTotal) {
-					std::cout << "Stamina Steal Modifier Activated : on " << damage.primary.value << " damage \n";
 					staminaGain += staminaStealFlatTotal;
-					std::cout << "Stamina Gain total so far : " << staminaGain << " \n";
 				}
 
 				if (staminaGain) {
@@ -1099,15 +1088,11 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 
 				// Soulsteal
 				if (soulStealPercentTotal) {
-					std::cout << "Soul Steal Percent Modifier Activated : on " << damage.primary.value << " damage \n";
 					soulGain += totalDamage * soulStealPercentTotal /  100 ;
-					std::cout << "Soul Gain total so far : " << soulGain << " \n";
 				}
 
 				if (soulStealFlatTotal) {
-					std::cout << "Soul Steal Flat Modifier Activated : on " << damage.primary.value << " damage \n";
 					soulGain += soulStealFlatTotal;
-					std::cout << "Soul Gain total so far : " << soulGain << " \n";
 				}
 
 				if (soulGain) {
@@ -1232,42 +1217,34 @@ void Combat::applyDamageReductionModifier(uint8_t modifierType, CombatDamage& da
 
 	switch (modifierType) {
 		case DEFENSE_MODIFIER_ABSORB:
-			std::cout << ":: Absorb Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.absorbDamage(attacker, damage, percent, flat);
 			return;
 
 		case DEFENSE_MODIFIER_RESTORE:
-			std::cout << ":: Restore Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.restoreManaFromDamage(attacker, damage, percent, flat);
 			return;
 
 		case DEFENSE_MODIFIER_REPLENISH:
-			std::cout << ":: Replenish Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.replenishStaminaFromDamage(attacker, damage, percent, flat);
 			return;
 
 		case DEFENSE_MODIFIER_RESIST:
-			std::cout << ":: Resist Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.resistDamage(attacker, damage, percent, flat);
 			return;
 
 		case DEFENSE_MODIFIER_REVIVE:
-			std::cout << ":: Revive Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.reviveSoulFromDamage(attacker, damage, percent, flat);
 			return;
 
 		case DEFENSE_MODIFIER_REFLECT:
-			std::cout << ":: Reflect Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.reflectDamage(attacker, damage, percent, flat, areaEffect, distanceEffect);
 			return;
 
 		case DEFENSE_MODIFIER_DEFLECT:
-			std::cout << ":: Deflect Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.deflectDamage(attacker, damage, percent, flat, paramOrigin, areaEffect, distanceEffect);
 			return;
 
 		case DEFENSE_MODIFIER_RICOCHET:
-			std::cout << ":: Ricochet Called with percent = " << percent << " and the flat being = " << flat << " \n";
 			damageTarget.ricochetDamage(damage, percent, flat, areaEffect, distanceEffect);
 			return;
 
