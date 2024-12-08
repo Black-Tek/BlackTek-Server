@@ -1184,9 +1184,6 @@ void IOLoginData::loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augm
 		for (uint32_t i = 0; i < augmentCount; ++i) {
 			auto augment = std::make_shared<Augment>();
 
-			// Log before unserialization
-			std::cout << "INFO: Attempting to unserialize augment " << i << " for player " << playerID << std::endl;
-
 			try {
 				if (!augment->unserialize(augmentStream)) {
 					std::cout << "WARNING: Failed to unserialize augment " << i
@@ -1201,7 +1198,6 @@ void IOLoginData::loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augm
 				return;
 			}
 		}
-		std::cout << "INFO: Completed loading augments for player " << playerID << std::endl;
 	}
 	catch (const std::exception& e) {
 		std::cout << "ERROR: Exception in loadPlayerAugments: " << e.what() << std::endl;
