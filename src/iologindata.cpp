@@ -760,9 +760,23 @@ bool IOLoginData::addRewardItems(uint32_t playerId, const ItemBlockList& itemLis
 		propWriteStream.clear();
 		item->serializeAttr(propWriteStream);
 
-		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}", playerId, parentPid, runningId, item->getID(), item->getSubType(), db.escapeString(propWriteStream.getStream())))) {
-			return false;
+		auto attributesData = propWriteStream.getStream();
+
+		const auto& augments = item->getAugments();
+		propWriteStream.clear();
+		propWriteStream.write<uint32_t>(augments.size());
+
+		for (const auto& augment : augments) {
+			augment->serialize(propWriteStream);
 		}
+		auto augmentsData = propWriteStream.getStream();
+
+		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}",
+			playerId, parentPid, runningId, item->getID(), item->getSubType(),
+			db.escapeString(attributesData),
+			db.escapeString(augmentsData)))) {
+			return false;
+			}
 
 		if (Container* container = item->getContainer()) {
 			queue.emplace_back(container, runningId);
@@ -781,9 +795,23 @@ bool IOLoginData::addRewardItems(uint32_t playerId, const ItemBlockList& itemLis
 			propWriteStream.clear();
 			item->serializeAttr(propWriteStream);
 
-			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}", playerId, parentId, runningId, item->getID(), item->getSubType(), db.escapeString(propWriteStream.getStream())))) {
-				return false;
+			auto attributesData = propWriteStream.getStream();
+
+			const auto& augments = item->getAugments();
+			propWriteStream.clear();
+			propWriteStream.write<uint32_t>(augments.size());
+
+			for (const auto& augment : augments) {
+				augment->serialize(propWriteStream);
 			}
+			auto augmentsData = propWriteStream.getStream();
+
+			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}",
+				playerId, parentPid, runningId, item->getID(), item->getSubType(),
+				db.escapeString(attributesData),
+				db.escapeString(augmentsData)))) {
+				return false;
+				}
 
 			Container* subContainer = item->getContainer();
 			if (subContainer) {
@@ -1139,15 +1167,12 @@ void IOLoginData::loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augm
 		augmentStream.init(augmentData.data(), augmentData.size());
 
 		uint32_t augmentCount = 0;
-		std::cout << "INFO: Starting augment count read for player " << playerID << std::endl;
 
 		if (!augmentStream.read<uint32_t>(augmentCount)) {
 			std::cout << "WARNING: Failed to read augment count for player " << playerID << std::endl;
 			return;
 		}
-
-		std::cout << "INFO: Augment count read as " << augmentCount << " for player " << playerID << std::endl;
-
+		
 		// Additional validation on augmentCount
 		if (augmentCount > MAX_AUGMENT_COUNT) {
 			std::cout << "ERROR: Augment count too high for player " << playerID << ": " << augmentCount << std::endl;

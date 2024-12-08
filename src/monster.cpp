@@ -1854,6 +1854,7 @@ void Monster::death(Creature*)
 			int32_t totalDamageDone = 0;
 			int32_t totalDamageTaken = 0;
 			int32_t totalHealingDone = 0;
+			int32_t contributors = bossScoreTable.playerScoreTable.size();
 
 			for (const auto& [playerId, score] : bossScoreTable.playerScoreTable) {
 				int32_t playerScore = score.damageDone + score.damageTaken + score.healingDone; 
@@ -1873,53 +1874,56 @@ void Monster::death(Creature*)
 
 			for (const auto& [playerId, score] : bossScoreTable.playerScoreTable) {
 
-				auto contributionScore = score.damageDone + score.damageTaken + score.healingDone;
+				auto contributionScore =
+					(score.damageDone * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE))
+					+ (score.damageTaken * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN))
+					+ (score.healingDone * (g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE)));
 				// we should never see 0's here, but better safe than sorry.
-				double expectedScore = (contributionScore) ? ((contributionScore / totalScore) * g_config.getFloat(ConfigManager::REWARD_BASE_RATE)) : 0;
-				int32_t lootRate = std::min<int32_t>(expectedScore, 1.0);
+				float expectedScore = (contributionScore) ? (totalScore / (contributors * 3.0)) : 0;
+				int32_t lootRate = std::max<int32_t>(g_config.getFloat(ConfigManager::REWARD_BASE_RATE), 1.0);
 
 				Player* player = g_game.getPlayerByGUID(playerId);
-				// possibly need to use Item::CreateItemAsContainer() here instead.
 				auto rewardContainer = Item::CreateItem(ITEM_REWARD_CONTAINER)->getContainer();
 				rewardContainer->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
 				rewardContainer->setIntAttr(ITEM_ATTRIBUTE_REWARDID, getMonster()->getID());
 
 				bool hasLoot = false;
+				auto isTopPlayer = (playerId == topContributerId) ? true : false;
+				// we only need to confirm contribution counts because users can set specific types of contribution rates to 0
+				// contribution only counts if you pull your own weight, so lets check expected score
+				if (contributionScore >= expectedScore) {
+					for (const auto& lootBlock : creatureLoot) {					
+						if (!lootBlock.unique || (lootBlock.unique && isTopPlayer)) {
+							int32_t adjustedChance = (static_cast<int32_t>(lootBlock.chance) * lootRate);
+							auto chance = uniform_random(1, MAX_LOOTCHANCE);
+							auto count = uniform_random(1, lootBlock.countmax);
 
-				for (const auto& lootBlock : creatureLoot) {
-					int32_t adjustedChance = (static_cast<int32_t>(lootBlock.chance) * lootRate) * g_config.getNumber(ConfigManager::RATE_LOOT);
-
-					auto isTopPlayer = (playerId == topContributerId) ? true : false;
-					auto chance = uniform_random(1, MAX_LOOTCHANCE);
-					auto count = uniform_random(1, lootBlock.countmax);
-
-					if ((lootBlock.unique && isTopPlayer) || (chance <= adjustedChance  )) {
-						// Ensure that the mostScoreContributor can receive multiple unique items
-						auto lootItem = Item::CreateItem(lootBlock.id, count);
-						if (!lootItem->isStackable()) {
-							lootItem->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
-							lootItem->setIntAttr(ITEM_ATTRIBUTE_REWARDID, monsterId);
+							if (chance <= adjustedChance) {
+								// Ensure that the mostScoreContributor can receive multiple unique items
+								auto lootItem = Item::CreateItem(lootBlock.id, count);
+								if (!lootItem->isStackable()) {
+									lootItem->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
+									lootItem->setIntAttr(ITEM_ATTRIBUTE_REWARDID, monsterId);
+								}
+								if (g_game.internalAddItem(rewardContainer, lootItem) == RETURNVALUE_NOERROR) {
+									hasLoot = true;
+								} 
+							}
 						}
-						if (g_game.internalAddItem(rewardContainer, lootItem) == RETURNVALUE_NOERROR) {
-							hasLoot = true;
-						} else {
-							std::cout << "::Error in Boss Reward System:: Failed to add "
-							<< lootItem->getName()
-							<< " to player "
-							<< player->getName()
-							<< " for the kill of "
-							<< getName() << std::endl;
-						}
-						
+					}
+				} else {
+					// player contributed but not enough.
+					if (player)	{
+						player->sendTextMessage(MESSAGE_LOOT, "You did not receive any loot.");
 					}
 				}
-
 				if (hasLoot) {
 					if (player) {
-						g_game.internalAddItem(player->getRewardChest().getContainer(), rewardContainer);
-						player->sendTextMessage(MESSAGE_LOOT, "The following items dropped by " + getMonster()->getName() + " are available in your reward chest: " + rewardContainer->getContentDescription() + ".");
+						if (g_game.internalAddItem(player->getRewardChest().getContainer(), rewardContainer) == RETURNVALUE_NOERROR) {
+							player->sendTextMessage(MESSAGE_LOOT, "The following items dropped by " + getMonster()->getName() + " are available in your reward chest: " + rewardContainer->getContentDescription() + ".");
+						}
 					} else {
-						DBInsert rewardQuery("INSERT INTO `player_rewarditems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`) VALUES ");
+						DBInsert rewardQuery("INSERT INTO `player_rewarditems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`) VALUES ");
 						PropWriteStream propWriteStream;
 
 						ItemBlockList itemList;
@@ -1930,8 +1934,6 @@ void Monster::death(Creature*)
 
 						IOLoginData::addRewardItems(playerId, itemList, rewardQuery, propWriteStream);
 					}
-				} else if (player) {
-					player->sendTextMessage(MESSAGE_LOOT, "You did not receive any loot.");
 				}
 			}
 			g_game.resetDamageTracking(monsterId);
