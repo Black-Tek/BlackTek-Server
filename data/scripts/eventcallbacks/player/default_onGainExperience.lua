@@ -49,8 +49,8 @@ function default.onGainExperience(player, source, exp, rawExp, sendText)
 		player:addCondition(soulCondition)
 	end
 
-	-- Apply low level bonus
-	exp = exp * (1 + player:calculateLowLevelBonus(level) / 100)
+	-- Apply experience stage multiplier
+	exp = exp * Game.getExperienceStage(level)
 
 	-- Stamina modifier
 	if configManager.getBoolean(configKeys.STAMINA_SYSTEM) then
