@@ -188,6 +188,9 @@ class Spell : public BaseSpell
 		}
 		void setGroup(SpellGroup_t g) {
 			group = g;
+			if(group == SPELLGROUP_NONE) {
+				groupCooldown = 0;
+			}
 		}
 		SpellGroup_t getSecondaryGroup() const {
 			return secondaryGroup;

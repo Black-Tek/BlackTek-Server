@@ -416,6 +416,7 @@ bool Spell::configureSpell(const pugi::xml_node& node)
 		std::string tmpStr = asLowerCaseString(attr.as_string());
 		if (tmpStr == "none" || tmpStr == "0") {
 			group = SPELLGROUP_NONE;
+			groupCooldown = 0;
 		} else if (tmpStr == "attack" || tmpStr == "1") {
 			group = SPELLGROUP_ATTACK;
 		} else if (tmpStr == "healing" || tmpStr == "2") {
