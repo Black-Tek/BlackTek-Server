@@ -771,12 +771,12 @@ void Spell::postCastSpell(Player* player, bool finishedCast /*= true*/, bool pay
 				player->addCondition(condition);
 			}
 
-			if (groupCooldown > 0) {
+			if (group != SPELLGROUP_NONE && groupCooldown > 0) {
 				Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLGROUPCOOLDOWN, groupCooldown, 0, false, group);
 				player->addCondition(condition);
 			}
 
-			if (secondaryGroupCooldown > 0) {
+			if (secondaryGroup != SPELLGROUP_NONE && secondaryGroupCooldown > 0) {
 				Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLGROUPCOOLDOWN, secondaryGroupCooldown, 0, false, secondaryGroup);
 				player->addCondition(condition);
 			}
@@ -884,12 +884,12 @@ bool InstantSpell::playerCastInstant(Player* player, std::string& param)
 						player->addCondition(condition);
 					}
 
-					if (groupCooldown > 0) {
+					if (group != SPELLGROUP_NONE && groupCooldown > 0) {
 						Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLGROUPCOOLDOWN, groupCooldown, 0, false, group);
 						player->addCondition(condition);
 					}
 
-					if (secondaryGroupCooldown > 0) {
+					if (secondaryGroup != SPELLGROUP_NONE && secondaryGroupCooldown > 0) {
 						Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLGROUPCOOLDOWN, secondaryGroupCooldown, 0, false, secondaryGroup);
 						player->addCondition(condition);
 					}
@@ -944,12 +944,12 @@ bool InstantSpell::playerCastInstant(Player* player, std::string& param)
 					player->addCondition(condition);
 				}
 
-				if (groupCooldown > 0) {
+				if (group != SPELLGROUP_NONE && groupCooldown > 0) {
 					Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLGROUPCOOLDOWN, groupCooldown, 0, false, group);
 					player->addCondition(condition);
 				}
 
-				if (secondaryGroupCooldown > 0) {
+				if (secondaryGroup != SPELLGROUP_NONE && secondaryGroupCooldown > 0) {
 					Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLGROUPCOOLDOWN, secondaryGroupCooldown, 0, false, secondaryGroup);
 					player->addCondition(condition);
 				}
