@@ -1243,7 +1243,7 @@ int64_t OTSYS_TIME()
 
 SpellGroup_t stringToSpellGroup(const std::string& value)
 {
-	std::string tmpStr = boost::algorithm::to_lower_copy(value);
+	std::string tmpStr = asLowerCaseString(value);
 	if (tmpStr == "none" || tmpStr == "0") {
 		return SPELLGROUP_NONE;
 	} else if (tmpStr == "attack" || tmpStr == "1") {
