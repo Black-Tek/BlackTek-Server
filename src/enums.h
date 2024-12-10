@@ -151,7 +151,7 @@ enum SpellGroup_t : uint8_t {
 	SPELLGROUP_SUPPORT = 3,
 	SPELLGROUP_SPECIAL = 4,
 
-	SPELLGROUP_UNKNOWN = 255, // last, unspecified
+	SPELLGROUP_UNKNOWN = 255 // when no group set in revscript
 };
 
 enum SpellType_t : uint8_t {

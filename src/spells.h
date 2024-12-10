@@ -280,6 +280,7 @@ class Spell : public BaseSpell
 		bool playerSpellCheck(Player* player) const;
 		bool playerInstantSpellCheck(Player* player, const Position& toPos);
 		bool playerRuneSpellCheck(Player* player, const Position& toPos);
+		void addCooldowns(Player* player) const;
 
 		VocSpellMap vocSpellMap;
 
