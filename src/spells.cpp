@@ -403,6 +403,15 @@ bool Spell::configureSpell(const pugi::xml_node& node)
 		spellId = pugi::cast<uint16_t>(attr.value());
 	}
 
+
+	if ((attr = node.attribute("aggressive"))) {
+		aggressive = booleanString(attr.as_string());
+	}
+
+	if (group == SPELLGROUP_NONE) {
+		group = (aggressive ? SPELLGROUP_ATTACK : SPELLGROUP_HEALING);
+	}
+
 	if ((attr = node.attribute("group"))) {
 		std::string tmpStr = asLowerCaseString(attr.as_string());
 		if (tmpStr == "none" || tmpStr == "0") {
@@ -420,7 +429,7 @@ bool Spell::configureSpell(const pugi::xml_node& node)
 		}
 	}
 
-	if ((attr = node.attribute("groupcooldown"))) {
+	if (group != SPELLGROUP_NONE && (attr = node.attribute("groupcooldown"))) {
 		groupCooldown = pugi::cast<uint32_t>(attr.value());
 	}
 
@@ -441,7 +450,7 @@ bool Spell::configureSpell(const pugi::xml_node& node)
 		}
 	}
 
-	if ((attr = node.attribute("secondarygroupcooldown"))) {
+	if (secondaryGroup != SPELLGROUP_NONE && (attr = node.attribute("secondarygroupcooldown"))) {
 		secondaryGroupCooldown = pugi::cast<uint32_t>(attr.value());
 	}
 
@@ -518,14 +527,6 @@ bool Spell::configureSpell(const pugi::xml_node& node)
 
 	if ((attr = node.attribute("pzlock"))) {
 		pzLock = booleanString(attr.as_string());
-	}
-
-	if ((attr = node.attribute("aggressive"))) {
-		aggressive = booleanString(attr.as_string());
-	}
-
-	if (group == SPELLGROUP_NONE) {
-		group = (aggressive ? SPELLGROUP_ATTACK : SPELLGROUP_HEALING);
 	}
 
 	for (auto vocationNode : node.children()) {
