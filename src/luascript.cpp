@@ -16671,7 +16671,7 @@ int LuaScriptInterface::luaSpellGroup(lua_State* L)
 				pushBoolean(L, true);
 			} else if (isString(L, 2)) {
 				group = stringToSpellGroup(getString(L, 2));
-				if (group != SPELLGROUP_NONE) {
+				if (group != SPELLGROUP_UNKNOWN) {
 					spell->setGroup(group);
 				} else {
 					std::cout << "[Warning - Spell::group] Unknown group: " << getString(L, 2) << std::endl;
@@ -16693,7 +16693,7 @@ int LuaScriptInterface::luaSpellGroup(lua_State* L)
 				pushBoolean(L, true);
 			} else if (isString(L, 2) && isString(L, 3)) {
 				primaryGroup = stringToSpellGroup(getString(L, 2));
-				if (primaryGroup != SPELLGROUP_NONE) {
+				if (primaryGroup != SPELLGROUP_UNKNOWN) {
 					spell->setGroup(primaryGroup);
 				} else {
 					std::cout << "[Warning - Spell::group] Unknown primaryGroup: " << getString(L, 2) << std::endl;
@@ -16701,7 +16701,7 @@ int LuaScriptInterface::luaSpellGroup(lua_State* L)
 					return 1;
 				}
 				secondaryGroup = stringToSpellGroup(getString(L, 3));
-				if (secondaryGroup != SPELLGROUP_NONE) {
+				if (secondaryGroup != SPELLGROUP_UNKNOWN) {
 					spell->setSecondaryGroup(secondaryGroup);
 				} else {
 					std::cout << "[Warning - Spell::group] Unknown secondaryGroup: " << getString(L, 3) << std::endl;

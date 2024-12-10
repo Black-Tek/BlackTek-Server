@@ -150,6 +150,8 @@ enum SpellGroup_t : uint8_t {
 	SPELLGROUP_HEALING = 2,
 	SPELLGROUP_SUPPORT = 3,
 	SPELLGROUP_SPECIAL = 4,
+
+	SPELLGROUP_UNKNOWN = 255 // when no group set in revscript
 };
 
 enum SpellType_t : uint8_t {
