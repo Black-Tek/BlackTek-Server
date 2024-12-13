@@ -9840,7 +9840,7 @@ int LuaScriptInterface::luaPlayerGetMaxMana(lua_State* L)
 	// player:getMaxMana()
 	const Player* player = getUserdata<const Player>(L, 1);
 	if (player) {
-		lua_pushnumber(L, player->getMaxMana());
+		lua_pushinteger(L, player->getMaxMana());
 	} else {
 		lua_pushnil(L);
 	}
