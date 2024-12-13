@@ -42,6 +42,27 @@ class Monster;
 class InstantSpell;
 class Spell;
 
+template<typename T>
+concept EnumType = std::is_enum_v<T> && !std::is_same_v<T, bool>;
+
+template<typename T>
+concept IntegerType =
+	std::is_integral_v<T>
+	&& !std::is_same_v<T, char>
+	&& !std::is_same_v<T, wchar_t>
+	&& !std::is_same_v<T, unsigned char>
+	&& !std::is_same_v<T, bool>
+	&& (std::is_signed_v<T> || std::is_unsigned_v<T>);
+
+template<typename T>
+concept IntLuaType =  EnumType<T> || IntegerType<T>;
+
+template<typename T>
+concept Boolean = std::is_same_v<T, bool>;
+
+template<typename T>
+concept StringType = std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>;
+
 enum {
 	EVENT_ID_LOADING = 1,
 	EVENT_ID_USER = 1000,
@@ -397,15 +418,26 @@ class LuaScriptInterface
 		static void pushOutfit(lua_State* L, const Outfit* outfit);
 		static void pushMount(lua_State* L, const Mount* mount);
 		static void pushLoot(lua_State* L, const std::vector<LootBlock>& lootList);
-
-		//
-		static void setField(lua_State* L, const char* index, lua_Number value)
+	
+		static void setField(lua_State* L, const char* index, std::floating_point auto value)
 		{
 			lua_pushnumber(L, value);
 			lua_setfield(L, -2, index);
 		}
 
-		static void setField(lua_State* L, const char* index, const std::string& value)
+		static void setField(lua_State* L, const char* index, IntLuaType auto value)
+		{
+			lua_pushinteger(L, value);
+			lua_setfield(L, -2, index);
+		}
+
+		static void setField(lua_State* L, const char* index, Boolean auto value)
+		{
+			lua_pushboolean(L, value);
+			lua_setfield(L, -2, index);
+		}
+	        
+		static void setField(lua_State* L, const char* index, StringType auto value)
 		{
 			pushString(L, value);
 			lua_setfield(L, -2, index);

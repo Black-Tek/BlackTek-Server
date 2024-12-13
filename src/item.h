@@ -252,7 +252,7 @@ class ItemAttributes
 				}
 
 				void operator()(const int64_t& v) const {
-					lua_pushnumber(L, v);
+					lua_pushinteger(L, v);
 				}
 
 				void operator()(const double& v) const {

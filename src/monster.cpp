@@ -309,7 +309,7 @@ void Monster::onCreatureSay(Creature* creature, SpeakClasses type, const std::st
 		LuaScriptInterface::pushUserdata<Creature>(L, creature);
 		LuaScriptInterface::setCreatureMetatable(L, -1, creature);
 
-		lua_pushnumber(L, type);
+		lua_pushinteger(L, type);
 		LuaScriptInterface::pushString(L, text);
 
 		scriptInterface->callVoidFunction(4);
@@ -736,7 +736,7 @@ void Monster::onThink(uint32_t interval)
 		LuaScriptInterface::pushUserdata<Monster>(L, this);
 		LuaScriptInterface::setMetatable(L, -1, "Monster");
 
-		lua_pushnumber(L, interval);
+		lua_pushinteger(L, interval);
 
 		if (scriptInterface->callFunction(2)) {
 			return;
@@ -1881,7 +1881,7 @@ void Monster::death(Creature*)
 				// we should never see 0's here, but better safe than sorry.
 				float expectedScore = (contributionScore) ? (totalScore / (contributors * 3.0)) : 0;
 				int32_t lootRate = std::max<int32_t>(g_config.getFloat(ConfigManager::REWARD_BASE_RATE), 1.0);
-
+				
 				Player* player = g_game.getPlayerByGUID(playerId);
 				auto rewardContainer = Item::CreateItem(ITEM_REWARD_CONTAINER)->getContainer();
 				rewardContainer->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
@@ -1895,9 +1895,10 @@ void Monster::death(Creature*)
 					for (const auto& lootBlock : creatureLoot) {					
 						if (!lootBlock.unique || (lootBlock.unique && isTopPlayer)) {
 							int32_t adjustedChance = (static_cast<int32_t>(lootBlock.chance) * lootRate);
+							
 							auto chance = uniform_random(1, MAX_LOOTCHANCE);
 							auto count = uniform_random(1, lootBlock.countmax);
-
+							
 							if (chance <= adjustedChance) {
 								// Ensure that the mostScoreContributor can receive multiple unique items
 								auto lootItem = Item::CreateItem(lootBlock.id, count);
