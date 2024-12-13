@@ -2075,7 +2075,7 @@ void handleStatsPercentDescription(std::ostringstream& s, const ItemType& it, bo
 			s << ", ";
 		}
 
-		s << getStatName(i) << ' ' << std::showpos << it.abilities->statsPercent[i] << std::noshowpos;
+		s << getStatName(i) << ' ' << std::showpos << (it.abilities->statsPercent[i] - 100) << "%" << std::noshowpos;
 	}
 }
 
