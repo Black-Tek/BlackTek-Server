@@ -45,6 +45,35 @@ class Action : public Event
 			checkFloor = v;
 		}
 
+		void clearItemIdRange() {
+			return ids.clear();
+		}
+		const std::vector<uint16_t>& getItemIdRange() const {
+			return ids;
+		}
+		void addItemId(uint16_t id) {
+			ids.emplace_back(id);
+		}
+
+		void clearUniqueIdRange() {
+			return uids.clear();
+		}
+		const std::vector<uint16_t>& getUniqueIdRange() const {
+			return uids;
+		}
+		void addUniqueId(uint16_t id) {
+			uids.emplace_back(id);
+		}
+
+		void clearActionIdRange() {
+			return aids.clear();
+		}
+		const std::vector<uint16_t>& getActionIdRange() const {
+			return aids;
+		}
+		void addActionId(uint16_t id) {
+			aids.emplace_back(id);
+		}
 
 		virtual ReturnValue canExecuteAction(const Player* player, const Position& toPos);
 		virtual bool hasOwnErrorHandler() {
@@ -60,6 +89,9 @@ class Action : public Event
 		bool allowFarUse = false;
 		bool checkFloor = true;
 		bool checkLineOfSight = true;
+		std::vector<uint16_t> ids;
+		std::vector<uint16_t> uids;
+		std::vector<uint16_t> aids;
 };
 
 class Actions final : public BaseEvents
@@ -79,22 +111,8 @@ class Actions final : public BaseEvents
 		ReturnValue canUse(const Player* player, const Position& pos, const Item* item);
 		ReturnValue canUseFar(const Creature* creature, const Position& toPos, bool checkLineOfSight, bool checkFloor);
 
-		void clearItemIdRange(Action* action) { ids.erase(action); }
-		const std::vector<uint16_t>& getItemIdRange(Action* action) const { return ids.at(action); }
-		void addItemId(Action* action, uint16_t id) { ids[action].emplace_back(id); }
-
-		void clearUniqueIdRange(Action* action) { uids.erase(action); }
-		const std::vector<uint16_t>& getUniqueIdRange(Action* action) const { return uids.at(action); }
-		void addUniqueId(Action* action, uint16_t id) { uids[action].emplace_back(id); }
-
-		void clearActionIdRange(Action* action) { aids.erase(action); }
-		const std::vector<uint16_t>& getActionIdRange(Action* action) const { return aids.at(action); }
-		void addActionId(Action* action, uint16_t id) { aids[action].emplace_back(id); }
-
 		bool registerLuaEvent(Action* event);
 		void clear(bool fromLua) override final;
-
-		bool isValid(std::map<Action*, std::vector<uint16_t>> map, Action* action) { return map.find(action) != map.end(); }
 
 	private:
 		ReturnValue internalUseItem(Player* player, const Position& pos, uint8_t index, Item* item, bool isHotkey);
@@ -108,10 +126,6 @@ class Actions final : public BaseEvents
 		ActionUseMap useItemMap;
 		ActionUseMap uniqueItemMap;
 		ActionUseMap actionItemMap;
-
-		std::map<Action*, std::vector<uint16_t>> ids;
-		std::map<Action*, std::vector<uint16_t>> uids;
-		std::map<Action*, std::vector<uint16_t>> aids;
 
 		Action* getAction(const Item* item);
 		void clearMap(ActionUseMap& map, bool fromLua);

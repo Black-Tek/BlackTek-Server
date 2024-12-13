@@ -517,7 +517,6 @@ ReturnValue Tile::queryAdd(const Creature& creature, uint32_t flags) const
         if (ground) {
             const ItemType& iiType = Item::items[ground->getID()];
             if (iiType.blockSolid && (!iiType.moveable || ground->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID))) {
-            	std::cout << "BlockSolid with unique and ground return." << std::endl;
                 return RETURNVALUE_NOTPOSSIBLE;
             }
         }

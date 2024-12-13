@@ -1,8 +1,8 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_MOVEMENT_H
-#define FS_MOVEMENT_H
+#ifndef FS_MOVEMENT_H_5E0D2626D4634ACA83AC6509518E5F49
+#define FS_MOVEMENT_H_5E0D2626D4634ACA83AC6509518E5F49
 
 #include "baseevents.h"
 #include "item.h"
@@ -51,31 +51,6 @@ class MoveEvents final : public BaseEvents
 
 		MoveEvent* getEvent(Item* item, MoveEvent_t eventType);
 
-		bool isValid(std::map<MoveEvent*, std::vector<uint32_t>> map, MoveEvent* event)
-		{
-			return map.find(event) != map.end();
-		}
-		bool isValidPos(std::map<MoveEvent*, std::vector<Position>> map, MoveEvent* event)
-		{
-			return map.find(event) != map.end();
-		}
-
-		void clearItemIdRange(MoveEvent* event) { itemIdRange.erase(event); }
-		const std::vector<uint32_t>& getItemIdRange(MoveEvent* event) const { return itemIdRange.at(event); }
-		void addItemId(MoveEvent* event, uint32_t id) { itemIdRange[event].emplace_back(id); }
-
-		void clearActionIdRange(MoveEvent* event) { actionIdRange.erase(event); }
-		const std::vector<uint32_t>& getActionIdRange(MoveEvent* event) const { return actionIdRange.at(event); }
-		void addActionId(MoveEvent* event, uint32_t id) { actionIdRange[event].emplace_back(id); }
-
-		void clearUniqueIdRange(MoveEvent* event) { uniqueIdRange.erase(event); }
-		const std::vector<uint32_t>& getUniqueIdRange(MoveEvent* event) const { return uniqueIdRange.at(event); }
-		void addUniqueId(MoveEvent* event, uint32_t id) { uniqueIdRange[event].emplace_back(id); }
-
-		void clearPosList(MoveEvent* event) { posList.erase(event); }
-		const std::vector<Position>& getPosList(MoveEvent* event) const { return posList.at(event); }
-		void addPosList(MoveEvent* event, Position pos) { posList[event].emplace_back(pos); }
-
 		bool registerLuaEvent(MoveEvent* event);
 		bool registerLuaFunction(MoveEvent* event);
 		void clear(bool fromLua) override final;
@@ -102,10 +77,6 @@ class MoveEvents final : public BaseEvents
 		MoveListMap actionIdMap;
 		MoveListMap itemIdMap;
 		MovePosListMap positionMap;
-		std::map<MoveEvent*, std::vector<uint32_t>> itemIdRange;
-		std::map<MoveEvent*, std::vector<uint32_t>> actionIdRange;
-		std::map<MoveEvent*, std::vector<uint32_t>> uniqueIdRange;
-		std::map<MoveEvent*, std::vector<Position>> posList;
 
 		LuaScriptInterface scriptInterface;
 };
