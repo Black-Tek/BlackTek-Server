@@ -200,7 +200,7 @@ bool MoveEvents::registerLuaFunction(MoveEvent* event)
 		}
 	}
 
-	if (isValid(itemIdRange, event)) {
+	if (!getItemIdRange(event).empty()) {
 		const auto& range = getItemIdRange(event);
 		for (auto& id : range) {
 			addEvent(*moveEvent, id, itemIdMap);
@@ -239,7 +239,7 @@ bool MoveEvents::registerLuaEvent(MoveEvent* event)
 		}
 	}
 
-	if (isValid(itemIdRange, event)) {
+	if (!getItemIdRange(event).empty()) {
 		const auto& range = getItemIdRange(event);
 		for (auto& id : range) {
 			addEvent(*moveEvent, id, itemIdMap);
@@ -252,17 +252,17 @@ bool MoveEvents::registerLuaEvent(MoveEvent* event)
 			}
 			addEvent(*moveEvent, id, itemIdMap);
 		}
-	} else if (isValid(actionIdRange, event)) {
+	} else if (!getActionIdRange(event).empty()) {
 		const auto& range = getActionIdRange(event);
 		for (auto& id : range) {
 			addEvent(*moveEvent, id, actionIdMap);
 		}
-	} else if (isValid(uniqueIdRange, event)) {
+	} else if (!getUniqueIdRange(event).empty()) {
 		const auto& range = getUniqueIdRange(event);
 		for (auto& id : range) {
 			addEvent(*moveEvent, id, uniqueIdMap);
 		}
-	} else if (isValidPos(posList, event)) {
+	} else if (!getPosList(event).empty()) {
 		const auto& range = getPosList(event);
 		for (auto& pos : range) {
 			addEvent(*moveEvent, pos, positionMap);
