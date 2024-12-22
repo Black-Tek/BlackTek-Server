@@ -796,7 +796,7 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		}
 
 		default:
-			return ATTR_READ_ERROR;
+			return ATTR_READ_CONTINUE;
 	}
 
 	return ATTR_READ_CONTINUE;
@@ -973,11 +973,8 @@ void Item::serializeAttr(PropWriteStream& propWriteStream) const
 		const ItemAttributes::CustomAttributeMap* customAttrMap = attributes->getCustomAttributeMap();
 		propWriteStream.write<uint8_t>(ATTR_CUSTOM_ATTRIBUTES);
 		propWriteStream.write<uint64_t>(static_cast<uint64_t>(customAttrMap->size()));
-		for (const auto &entry : *customAttrMap) {
-			// Serializing key type and value
+		for (const auto& entry : *customAttrMap) {
 			propWriteStream.writeString(entry.first);
-
-			// Serializing value type and value
 			entry.second.serialize(propWriteStream);
 		}
 	}
@@ -997,11 +994,11 @@ void Item::serializeAttr(PropWriteStream& propWriteStream) const
 		propWriteStream.write<uint16_t>(imbuementSlots);
 	}
 
-	propWriteStream.write<uint32_t>(ATTR_IMBUEMENTS);
-	propWriteStream.write<uint32_t>(imbuements.size());
-
 	if (hasImbuements()) {
-		for (auto entry : imbuements) {
+		const auto& imbues = getImbuements();
+		propWriteStream.write<uint8_t>(ATTR_IMBUEMENTS);
+		propWriteStream.write<uint32_t>(imbues.size());
+		for (const auto& entry : imbues) {
 			entry->serialize(propWriteStream);
 		}
 	}
@@ -1010,8 +1007,9 @@ void Item::serializeAttr(PropWriteStream& propWriteStream) const
 		propWriteStream.write<uint8_t>(ATTR_REWARDID);
 		propWriteStream.write<uint32_t>(getIntAttr(ITEM_ATTRIBUTE_REWARDID));
 	}
-
 }
+
+
 
 bool Item::hasProperty(ITEMPROPERTY prop) const
 {
@@ -1800,6 +1798,11 @@ bool Item::removeImbuement(std::shared_ptr<Imbuement> imbuement, bool decayed)
 }
 
 std::vector<std::shared_ptr<Imbuement>>& Item::getImbuements() {
+	return imbuements;
+}
+
+const std::vector<std::shared_ptr<Imbuement>>& Item::getImbuements() const
+{
 	return imbuements;
 }
 

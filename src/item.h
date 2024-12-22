@@ -1086,6 +1086,8 @@ class Item : virtual public Thing
 		bool addImbuement(std::shared_ptr<Imbuement> imbuement, bool created = true);
 		bool removeImbuement(std::shared_ptr<Imbuement> imbuement, bool decayed = false);
 		std::vector<std::shared_ptr<Imbuement>>& getImbuements();
+		const std::vector<std::shared_ptr<Imbuement>>& getImbuements() const;
+
 
 		const bool addAugment(std::string_view augmentName);
 		const bool addAugment(std::shared_ptr<Augment>& augment);

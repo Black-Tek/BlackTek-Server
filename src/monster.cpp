@@ -1900,7 +1900,6 @@ void Monster::death(Creature*)
 							auto count = uniform_random(1, lootBlock.countmax);
 							
 							if (chance <= adjustedChance) {
-								// Ensure that the mostScoreContributor can receive multiple unique items
 								auto lootItem = Item::CreateItem(lootBlock.id, count);
 								if (!lootItem->isStackable()) {
 									lootItem->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
