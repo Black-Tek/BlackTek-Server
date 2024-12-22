@@ -870,7 +870,7 @@ BlockType_t Creature::blockHit(Creature* attacker, CombatType_t combatType, int3
 		}
 	}
 	
-	if (attacker)
+	if (attacker && combatType != COMBAT_HEALING && blockType == BLOCK_NONE)
 	{
 		Player* attackerPlayer = attacker->getPlayer();
 		if (attackerPlayer) {
@@ -881,7 +881,7 @@ BlockType_t Creature::blockHit(Creature* attacker, CombatType_t combatType, int3
 					continue;
 				}
 
-				if (item->hasImbuements() && blockType == BLOCK_NONE) {
+				if (item->hasImbuements()) {
 					
 					for (auto& imbuement : item->getImbuements()) {
 

@@ -2662,7 +2662,7 @@ BlockType_t Player::blockHit(Creature* attacker, CombatType_t combatType, int32_
 				g_game.transformItem(item, item->getID(), charges - 1);
 			}
 
-			if (item->hasImbuements()) {
+			if (item->hasImbuements() && combatType != COMBAT_HEALING) {
 				for (auto imbuement : item->getImbuements()) {
 					switch (imbuement->imbuetype) {
 						case ImbuementType::IMBUEMENT_TYPE_FIRE_RESIST:
