@@ -1,37 +1,24 @@
-Black Tek Server [![Linux Build](https://github.com/Black-Tek/BlackTek-Server/actions/workflows/linux_build_runner.yml/badge.svg?branch=master)](https://github.com/Black-Tek/BlackTek-Server/actions/workflows/linux_build_runner.yml) [![Windows Build](https://github.com/Black-Tek/BlackTek-Server/actions/workflows/windows_build_runner.yml/badge.svg)](https://github.com/Black-Tek/BlackTek-Server/actions/workflows/windows_build_runner.yml)
-===============
+# Black Tek Server [![Linux Build](https://github.com/Black-Tek/BlackTek-Server/actions/workflows/linux_build_runner.yml/badge.svg?branch=master)](https://github.com/Black-Tek/BlackTek-Server/actions/workflows/linux_build_runner.yml) [![Windows Build](https://github.com/Black-Tek/BlackTek-Server/actions/workflows/windows_build_runner.yml/badge.svg)](https://github.com/Black-Tek/BlackTek-Server/actions/workflows/windows_build_runner.yml)
 
-Black Tek Server is a free and open-source MMORPG server emulator written in C++. It is a fork of the [TheForgottenServer](https://github.com/otland/forgottenserver) project. To connect to the server, you can use [OTClient Redemption](https://github.com/mehah/otclient).
 
-### Getting Started
-If you don't want to bother with source code or compiling. You can download from our release sections the binaries with everything needed ready to go.
+## What is BlackTek Server?
+__________________
+**BlackTek Server** is an open source **2D Top Down MMORPG Game Server**, with tailor-made gameplay and tile based movement,  developed in modern C++. 
 
-#### Compiling 
+## What is the point of BlackTek Server?
+_______________
+**BlackTek Server** is intended to provide a user-friendly experience building 2D MMORPG's in a _**rapid development environment**_. Ultimately the goal is to create a user experience that removes the barrier between _**content creator**_ and _**programmer**_. 
 
-For windows users looking for the quickest way to get started with BlackTek Server, you can follow the steps provided [here](https://otland.net/threads/tutorial-blacktek-from-nothing-to-fully-installed-with-aac-on-windows.289572/)
+## What sparked this idea?
+__________________
 
-Otherwise please follow the steps provided below:
+BlackTek Server's origins started first with [OpenTibia](https://github.com/opentibia/server) and later [The Forgottenserver](https://github.com/otland/forgottenserver) , both are game servers designed to emulate a popular 2D MMORPG known as Tibia. <br>
+<br> Having had my fun growing up tinkering with OpenTibia servers like TFS, I always wished they were not built so strict (explicitly emulating tibia), and allowed much more custom types of things. Since that never happened, I decided to do it myself! <br> 
+<br> BlackTek Server's starting codebase is [The Forgottenserver 1.4.2](https://github.com/otland/forgottenserver/releases/tag/v1.4.2), and BlackTek Server [1.0]() and [1.1]() were built to be almost completely backwards compatible with TFS 1.4.2.
 
-To compile you will need to install and integrate vcpkg.
-You can find detailed instructions for [Windows](https://github.com/microsoft/vcpkg?tab=readme-ov-file#quick-start-windows) and [Unix](https://github.com/microsoft/vcpkg?tab=readme-ov-file#quick-start-unix) based operating systems.
+## Getting Started
+____________
+If you wish to get started immediately you may download all the binaries along with the datapack and other required files from our [Release Section](https://github.com/Black-Tek/BlackTek-Server/releases).
 
-Once you have successfully installed vcpkg, and integrated the installation, you will need to download the newest [premake](https://github.com/premake/premake-core.git) from the dev branch (must use dev branch, its the one hyperlinked).
-
-Please follow instructions on how to compile premake for your Operating System. Once you have premake compiled, place the binary in BlackTek-Server's folder. Then run premake via terminal/command line/bash using the following command:
-
-Windows:
-```premake5 vs2022```
-
-Linux:
-```./premake5 gmake2```
-
-OSX aka Mac:
-```premake5 xcode4```
-
-This will generate your project files. 
-
-If you are using linux, please ensure you have manifest mode enabled.
-You can find more information about manifest mode [here.](https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode)
-
-### Support
-### Issues
+Getting setup for compiling can be done the easy way by running either the ```bootstrap.bat```(Windows) or ```bootstrap.sh```(Linux). <br>
+<br>If you prefer compiling manually, or you are looking for a more thorough getting started guide, you can find the information needed, based on your specific needs in our wiki [here](https://github.com/Black-Tek/BlackTek-Server/wiki/Getting-Started#compiling).<br>
