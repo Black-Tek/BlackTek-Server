@@ -1,10 +1,19 @@
 name: Windows Build
-
-on: [workflow_dispatch, pull_request, push]
+on: 
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - 'master'
+      - '1.0'
+      - '1.1'
 jobs:
-  job:
+  BuildForWindows:
     name: ${{ matrix.os }}-${{ matrix.buildtype }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      packages: write
+      contents: write
     strategy:
       matrix:
         os: [windows-2022]
@@ -12,12 +21,13 @@ jobs:
         include:
           - os: windows-2022
             triplet: x64-windows
-            packages: >
-              sccache
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@main
+
+      - name: Configure Custom Environment Settings
+        run: |
+          $env:VCPKG_BINARY_SOURCES="clear"
 
       - name: Ensure Correct VCPKG Version
         uses: lukka/run-vcpkg@main
@@ -49,8 +59,51 @@ jobs:
         run: |
           cd D:\a\BlackTek-Server\BlackTek-Server
           msbuild Black-Tek-Server.sln /p:Configuration=Release
+          cmd /c copy Black-Tek-Server.exe BlackTek-Server-Release.exe
 
       - name: Compile Debug
         run: |
           cd D:\a\BlackTek-Server\BlackTek-Server
           msbuild Black-Tek-Server.sln /p:Configuration=Debug
+          cmd /c copy Black-Tek-Server.exe BlackTek-Server-Debug.exe
+          del Black-Tek-Server.exe
+          cd D:\a\BlackTek-Server
+
+      - name: Cleanup Vcpkg_installed 
+        uses: JesseTG/rm@v1.0.3
+        with:
+            path: D:/a/BlackTek-Server/BlackTek-Server/vcpkg_installed
+
+      - name: Cleanup Intermediaries 
+        uses: JesseTG/rm@v1.0.3
+        with:
+            path: D:/a/BlackTek-Server/BlackTek-Server/build
+
+      - name: Cleanup More VCPKG stuff 
+        uses: JesseTG/rm@v1.0.3
+        with:
+            path: D:/a/BlackTek-Server/BlackTek-Server/vcpkg
+
+      - name: Cleanup Premake-Core 
+        uses: JesseTG/rm@v1.0.3
+        with:
+            path: D:/a/BlackTek-Server/BlackTek-Server/premake-core
+
+      - name: Prepare Compressed Assets
+        run: |
+          7z a BlackTek-Server.zip D:/a/BlackTek-Server/BlackTek-Server/
+
+      - name: Upload Assets for Edge Build
+        if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+        uses: softprops/action-gh-release@v2
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          prerelease: true
+          tag_name: ${{ matrix.buildtype }}-Edge-Build-${{ github.sha }}
+          name: BlackTek Server Edge Build
+          body: |
+            This is an automated Windows Edge build for commit ${{ github.sha }}
+            OS-BuildType: ${{ matrix.buildtype }}
+            Build date: ${{ github.event.head_commit.timestamp }}
+          files: BlackTek-Server.zip
