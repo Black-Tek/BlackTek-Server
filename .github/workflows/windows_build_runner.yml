@@ -92,10 +92,10 @@ jobs:
       - name: Prepare Compressed Assets
         run: |
           echo "Commit SHA: ${{ github.sha }}" > version.info
-          7z a BlackTek-Server.zip D:/a/BlackTek-Server/BlackTek-Server/
+          7z a BlackTek-Server-${{ github.sha }}.zip D:/a/BlackTek-Server/BlackTek-Server/
 
       - name: Upload Assets for Edge Build
-        if: (github.event_name == 'push') && (matrix.os == 'windows-release') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && (matrix.os == 'windows-release') && github.event.pull_request.merged == true)
+        if: (github.event_name == 'push') && (matrix.os == 'windows-release') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
         uses: softprops/action-gh-release@v2
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
