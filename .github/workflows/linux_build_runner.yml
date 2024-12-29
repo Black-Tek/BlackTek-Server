@@ -78,7 +78,7 @@ jobs:
     - name: Prepare Compressed Assets
       run: |
          echo "Commit SHA: ${{ github.sha }}" > version.info
-         zip -r BlackTek-Server.zip ${{ github.workspace }}
+         zip -r BlackTek-Server-${{ github.sha }}.zip ${{ github.workspace }}
          zip -r BlackTek-Server.zip version.info
 
     - name: Upload Assets for Edge Build
