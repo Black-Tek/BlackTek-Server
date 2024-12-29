@@ -45,13 +45,13 @@ jobs:
     - name: Compile Release 64
       run: |
         make -j $(nproc) config=release_64
-        cp Black-Tek-Server.exe BlackTek-Server-Release.exe
+        cp Black-Tek-Server BlackTek-Server-Release
 
     - name: Compile Debug 64
       run: |
         make -j $(nproc) config=debug_64
-        cp Black-Tek-Server.exe BlackTek-Server-Debug.exe
-        rm Black-Tek-Server.exe
+        cp Black-Tek-Server BlackTek-Server-Debug
+        rm Black-Tek-Server
 
     - name: Cleanup Vcpkg_installed
       uses: JesseTG/rm@v1.0.3
