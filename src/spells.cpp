@@ -217,7 +217,7 @@ InstantSpell* Spells::getInstantSpell(const std::string& words)
 	for (auto& it : instants) {
 		const std::string& instantSpellWords = it.second.getWords();
 		size_t spellLen = instantSpellWords.length();
-		if (caseInsensitiveEqual(words, instantSpellWords)) {
+		if (caseInsensitiveStartsWith(words, instantSpellWords)) {
 			if (!result || spellLen > result->getWords().size()) {
 				result = &it.second;
 				if (words.length() == spellLen) {
