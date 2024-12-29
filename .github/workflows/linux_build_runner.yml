@@ -9,7 +9,9 @@ jobs:
       matrix:
         os: [ubuntu-24.04, ubuntu-22.04]
     runs-on: ${{ matrix.os }}
-
+    permissions:
+      packages: write
+      contents: write
     steps:
     - name: Set up Git
       uses: actions/checkout@v4
