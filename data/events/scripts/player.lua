@@ -214,3 +214,17 @@ function Player:onSpellTry(spell, spellType)
 	end
 	return true
 end
+
+function Player:onAugment(augment)
+	local onAugment = EventCallback.onPlayerAugment
+	if EventCallback.onPlayerAugment then
+		onPlayerAugment(self, augment)
+	end
+end
+
+function Player:onRemoveAugment(augment)
+	local onRemoveAugment = EventCallback.onRemovePlayerAugment
+	if EventCallback.onRemovePlayerAugment then
+		onRemovePlayerAugment(self, augment)
+	end
+end

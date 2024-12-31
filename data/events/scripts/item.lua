@@ -27,3 +27,17 @@ function Item:onDefend(player, creature, blockType, combatType)
 		onDefend(self, player, creature, blockType, combatType)
 	end
 end
+
+function Item:onAugment(augment)
+	local onAugment = EventCallback.onItemAugment
+	if EventCallback.onItemAugment then
+		onItemAugment(self, augment)
+	end
+end
+
+function Item:onRemoveAugment(augment)
+	local onRemoveAugment = EventCallback.onRemoveItemAugment
+	if EventCallback.onRemoveItemAugment then
+		onRemoveItemAugment(self, augment)
+	end
+end

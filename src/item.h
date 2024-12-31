@@ -1095,9 +1095,9 @@ class Item : virtual public Thing
 		const bool removeAugment(std::string_view name);
 		const bool removeAugment(std::shared_ptr<Augment>& augment);
 
-		bool isAugmented();
-		bool hasAugment(std::string_view name);
-		bool hasAugment(const std::shared_ptr<Augment>& augment);
+		bool isAugmented() const;
+		bool hasAugment(std::string_view name) const;
+		bool hasAugment(const std::shared_ptr<Augment>& augment) const;
 
 		const std::vector<std::shared_ptr<Augment>>& getAugments();
 

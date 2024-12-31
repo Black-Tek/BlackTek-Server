@@ -63,6 +63,8 @@ class Events
 		int32_t playerOnInventoryUpdate = -1;
 		int32_t playerOnRotateItem = -1;
 		int32_t playerOnSpellTry = -1;
+		int32_t playerOnAugment = -1;
+		int32_t playerOnRemoveAugment = -1;
 
 		// Monster
 		int32_t monsterOnDropLoot = -1;
@@ -73,6 +75,8 @@ class Events
 		int32_t itemOnRemoveImbue = -1;
 		int32_t itemOnAttack = -1;
 		int32_t itemOnDefend = -1;
+		int32_t itemOnAugment = -1;
+		int32_t itemOnRemoveAugment = -1;
 
 	};
 
@@ -120,6 +124,8 @@ class Events
 		void eventPlayerOnInventoryUpdate(Player* player, Item* item, slots_t slot, bool equip);
 		void eventPlayerOnRotateItem(Player* player, Item* item);
 		bool eventPlayerOnSpellTry(Player* player, const Spell* spell, SpellType_t spellType);
+		void eventPlayerOnAugment(Player* player, std::shared_ptr<Augment> augment);
+		void eventPlayerOnRemoveAugment(Player* player, std::shared_ptr<Augment> augment);
 
 		// Monster
 		void eventMonsterOnDropLoot(Monster* monster, Container* corpse);
@@ -131,6 +137,8 @@ class Events
 
 		void eventItemOnAttack(Item* item, Player* itemHolder, Creature* defender, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
 		void eventItemOnDefend(Item* item, Player* itemHolder, Creature* attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
+		void eventItemOnAugment(Item* item, std::shared_ptr<Augment> augment);
+		void eventItemOnRemoveAugment(Item* item, std::shared_ptr<Augment> augment);
 		
 
 		int32_t getScriptId(EventInfoId eventInfoId) {
