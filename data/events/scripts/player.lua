@@ -217,14 +217,14 @@ end
 
 function Player:onAugment(augment)
 	local onAugment = EventCallback.onPlayerAugment
-	if EventCallback.onPlayerAugment then
-		onPlayerAugment(self, augment)
+	if onAugment then
+		onAugment(self, augment)
 	end
 end
 
 function Player:onRemoveAugment(augment)
 	local onRemoveAugment = EventCallback.onRemovePlayerAugment
-	if EventCallback.onRemovePlayerAugment then
-		onRemovePlayerAugment(self, augment)
+	if onRemoveAugment then
+		onRemoveAugment(self, augment)
 	end
 end

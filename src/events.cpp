@@ -122,9 +122,9 @@ bool Events::load()
 				info.playerOnRotateItem = event;
 			} else if (methodName == "onSpellTry") {
 				info.playerOnSpellTry = event;
-			} else if (methodName == "onPlayerAugment") {
+			} else if (methodName == "onAugment") {
 				info.playerOnAugment = event;
-			} else if (methodName == "onRemovePlayerAugment") {
+			} else if (methodName == "onRemoveAugment") {
 				info.playerOnRemoveAugment = event;
 			} else {
 				std::cout << "[Warning - Events::load] Unknown player method: " << methodName << std::endl;
@@ -146,9 +146,9 @@ bool Events::load()
 				info.itemOnAttack = event;
 			} else if (methodName == "onDefend") {
 				info.itemOnDefend = event;
-			} else if (methodName == "onItemAugment") {
+			} else if (methodName == "onAugment") {
 				info.itemOnAugment = event;
-			} else if (methodName == "onRemoveItemAugment") {
+			} else if (methodName == "onRemoveAugment") {
 				info.itemOnRemoveAugment = event;
 			} 
 		} else {
