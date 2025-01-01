@@ -62,15 +62,18 @@ ec.onWrapItem = {}
 ec.onInventoryUpdate = {}
 ec.onRotateItem = {}
 ec.onSpellTry = {}
+ec.onPlayerAugment = {}
+ec.onRemovePlayerAugment = {}
 -- Monster
 ec.onDropLoot = {}
 ec.onSpawn = {}
 -- Item
 ec.onImbue = {}
 ec.onRemoveImbue = {}
--- Offensive
 ec.onAttack = {}
 ec.onDefend = {}
+ec.onItemAugment = {}
+ec.onRemoveItemAugment = {}
 
 EventCallback = {
 	register = function(self, triggerIndex)

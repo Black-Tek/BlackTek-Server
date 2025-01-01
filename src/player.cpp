@@ -5377,6 +5377,7 @@ size_t Player::getMaxDepotItems() const
 const bool Player::addAugment(std::shared_ptr<Augment>& augment) {
 	if (std::find(augments.begin(), augments.end(), augment) == augments.end()) {
 		augments.push_back(augment);
+		g_events->eventPlayerOnAugment(this, augment);
 		return true;
 	}
 	return false;
@@ -5386,6 +5387,7 @@ const bool Player::addAugment(std::string_view augmentName) {
 
 	if (auto augment = Augments::GetAugment(augmentName)) {
 		augments.emplace_back(augment);
+		g_events->eventPlayerOnAugment(this, augment);
 		return true;
 	}
 	return false;
@@ -5394,6 +5396,7 @@ const bool Player::addAugment(std::string_view augmentName) {
 const bool Player::removeAugment(std::shared_ptr<Augment>& augment) {
 	auto it = std::find(augments.begin(), augments.end(), augment);
 	if (it != augments.end()) {
+		g_events->eventPlayerOnRemoveAugment(this, augment);
 		augments.erase(it);
 		return true;
 	}
@@ -5454,16 +5457,18 @@ const std::vector<std::shared_ptr<Augment>> Player::getPlayerAugments() const {
 }
 
 const bool Player::removeAugment(std::string_view augmentName) {
-	auto it = std::find_if(augments.begin(), augments.end(),
+	auto originalSize = augments.size();
+	
+	augments.erase(std::remove_if(augments.begin(), augments.end(),
 		[&](const std::shared_ptr<Augment>& augment) {
+			auto match = augment->getName() == augmentName;
+			if (match) {
+				g_events->eventPlayerOnRemoveAugment(this, augment);
+			}
 			return augment->getName() == augmentName;
-		});
-
-	if (it != augments.end()) {
-		augments.erase(it);
-		return true;
-	}
-	return false;
+		}), augments.end());
+	
+	return augments.size() > originalSize;
 }
 
 

@@ -1813,6 +1813,7 @@ const bool Item::addAugment(std::shared_ptr<Augment>& augment)
 	}
 
 	augments.push_back(augment);
+	g_events->eventItemOnAugment(this, augment);
 	return true;
 }
 
@@ -1820,6 +1821,7 @@ const bool Item::addAugment(std::string_view augmentName)
 {
 	if (auto augment = Augments::GetAugment(augmentName)) {
 		augments.emplace_back(augment);
+		g_events->eventItemOnAugment(this, augment);
 		return true;
 	}
 	return false;
@@ -1829,25 +1831,35 @@ const bool Item::removeAugment(std::shared_ptr<Augment>& augment)
 {
 	auto originalSize = augments.size();
 	augments.erase(std::remove(augments.begin(), augments.end(), augment), augments.end());
+	auto removed = (augments.size() - originalSize) > 0 ? true : false;
+	if (removed) {
+		g_events->eventItemOnRemoveAugment(this, augment);
+	}
+	return removed;
+}
+
+const bool Item::removeAugment(std::string_view name) {
+	auto originalSize = augments.size();
+    
+	augments.erase(std::remove_if(augments.begin(), augments.end(),
+		[this, &name](const std::shared_ptr<Augment>& augment) {
+			auto match = augment->getName() == name;
+			if (match) {
+				g_events->eventItemOnRemoveAugment(this, augment);
+			}
+			return match;
+		}), augments.end());
+        
 	return augments.size() < originalSize;
 }
 
-const bool Item::removeAugment(std::string_view name)
-{
-	augments.erase(std::remove_if(augments.begin(), augments.end(),
-		[&name](const std::shared_ptr<Augment>& augment) {
-			return augment->getName() == name;
-		}),	augments.end());
-	return false;
-}
-
 // To-do: Move to const inline next three methods at least.
-bool Item::isAugmented()
+bool Item::isAugmented() const
 {
 	return augments.size() > 0;
 }
 
-bool Item::hasAugment(std::string_view name)
+bool Item::hasAugment(std::string_view name) const
 {
 	for (const auto& aug : augments) {
 		if (aug->getName() == name) {
@@ -1857,7 +1869,7 @@ bool Item::hasAugment(std::string_view name)
 	return false;
 }
 
-bool Item::hasAugment(const std::shared_ptr<Augment>& augment)
+bool Item::hasAugment(const std::shared_ptr<Augment>& augment) const
 {
 	for (const auto& aug : augments) {
 		if (aug == augment) {
