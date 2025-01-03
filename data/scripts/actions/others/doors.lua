@@ -48,7 +48,7 @@ function door.onUse(player, item, fromPosition, target, toPosition, isHotkey)
 	elseif table.contains(lockedDoors, itemId) then
 		player:sendTextMessage(MESSAGE_INFO_DESCR, "It is locked.")
 		return true	
-	elseif table.contains(openDoors, itemId) or table.contains(openExtraDoors, itemId) or table.contains(openHouseDoors, itemId) or player:getGroup():getAccess() then
+	elseif table.contains(openDoors, itemId) or table.contains(openExtraDoors, itemId) or table.contains(openHouseDoors, itemId) then
 		local doorCreatures = Tile(toPosition):getCreatures()
 		if doorCreatures and #doorCreatures > 0 then
 			player:sendCancelMessage(RETURNVALUE_NOTENOUGHROOM)
@@ -56,7 +56,7 @@ function door.onUse(player, item, fromPosition, target, toPosition, isHotkey)
 		end
 		item:transform(itemId - 1)
 		return true	
-	elseif table.contains(closedDoors, itemId) or table.contains(closedExtraDoors, itemId) or table.contains(closedHouseDoors, itemId) or player:getGroup():getAccess() then
+	elseif table.contains(closedDoors, itemId) or table.contains(closedExtraDoors, itemId) or table.contains(closedHouseDoors, itemId) then
 		item:transform(itemId + 1)
 		return true
 	end
