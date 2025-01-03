@@ -10,7 +10,7 @@ premake_cmd="${HOME}/.local/bin/premake5"
 premake_args=""
 
 # Prerequisite packages
-debian_install="apt-get -y install git zip unzip tar curl build-essential uuid-dev"
+debian_install="apt-get -y install git zip unzip tar curl build-essential uuid-dev pkg-config"
 arch_install="pacman -Syu git zip"
 fedora_install="dnf -y install git make gcc-c++ libuuid-devel perl-IPC-Cmd"
 suse_install="zypper -y install git-core make gcc-c++ libuuid-devel"
