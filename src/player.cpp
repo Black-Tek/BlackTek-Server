@@ -2661,43 +2661,6 @@ BlockType_t Player::blockHit(Creature* attacker, CombatType_t combatType, int32_
 			if (charges != 0) {
 				g_game.transformItem(item, item->getID(), charges - 1);
 			}
-
-			if (item->hasImbuements() && combatType != COMBAT_HEALING) {
-				for (auto imbuement : item->getImbuements()) {
-					switch (imbuement->imbuetype) {
-						case ImbuementType::IMBUEMENT_TYPE_FIRE_RESIST:
-							if (combatType == COMBAT_FIREDAMAGE) {
-								damage -= std::round(damage * (imbuement->value / 100.));
-							}
-							break;
-						case ImbuementType::IMBUEMENT_TYPE_EARTH_RESIST:
-							if (combatType == COMBAT_EARTHDAMAGE) {
-								damage -= std::round(damage * (imbuement->value / 100.));
-							}
-							break;
-						case ImbuementType::IMBUEMENT_TYPE_ICE_RESIST:
-							if (combatType == COMBAT_ICEDAMAGE) {
-								damage -= std::round(damage * (imbuement->value / 100.));
-							}
-							break;
-						case ImbuementType::IMBUEMENT_TYPE_ENERGY_RESIST:
-							if (combatType == COMBAT_ENERGYDAMAGE) {
-								damage -= std::round(damage * (imbuement->value / 100.));
-							}
-							break;
-						case ImbuementType::IMBUEMENT_TYPE_DEATH_RESIST:
-							if (combatType == COMBAT_DEATHDAMAGE) {
-								damage -= std::round(damage * (imbuement->value / 100.));
-							}
-							break;
-						case ImbuementType::IMBUEMENT_TYPE_HOLY_RESIST:
-							if (combatType == COMBAT_HOLYDAMAGE) {
-								damage -= std::round(damage * (imbuement->value / 100.));
-							}
-							break;
-					}
-				}
-			}
 		}
 	}
 
@@ -5667,8 +5630,7 @@ void Player::removeItemImbuements(Item* item) {
 
 
 void Player::removeImbuementEffect(std::shared_ptr<Imbuement> imbue) {
-
-
+	
 	if (imbue->isSkill()) {
 		switch (imbue->imbuetype) {
 		case ImbuementType::IMBUEMENT_TYPE_FIST_SKILL:

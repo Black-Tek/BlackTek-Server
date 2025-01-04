@@ -975,7 +975,8 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				g_game.addMagicEffect(target->getPosition(), CONST_ME_CRITICAL_DAMAGE);
 			}
 
-			for (const auto& condition : params.conditionList) {
+			for (const auto& condition : params.conditionList)
+			{
 				if (!target->isImmune(condition->getType())) {
 					Condition* conditionCopy = condition->clone();
 					if (caster) {
@@ -985,6 +986,141 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 					target->addCombatCondition(conditionCopy);
 				}
 			}
+			// hopefully runes are counted as spells and not ranged
+			if (casterPlayer.has_value()
+				&& (damage.origin == ORIGIN_MELEE || damage.origin == ORIGIN_RANGED)
+				&& (damage.primary.type != COMBAT_HEALING && damage.primary.type != COMBAT_MANADRAIN )) {
+				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+
+					Item* item = casterPlayer.value()->getInventoryItem(static_cast<slots_t>(slot));
+					if (!item) {
+						continue;
+					}
+					if (item->hasImbuements()) {
+						
+						for (auto& imbuement : item->getImbuements()) {
+							if (!imbuement->value) {
+								continue;
+							}
+							const auto& originalDamage = abs(damage.primary.value);
+							const auto& conversionAmount = (originalDamage * imbuement->value) / 100;
+							const int32_t& difference = (originalDamage - conversionAmount);
+							
+							CombatDamage imbueDamage;
+							imbueDamage.blockType = BLOCK_NONE;
+							imbueDamage.origin = ORIGIN_IMBUEMENT;
+
+							switch (imbuement->imbuetype) {
+								case IMBUEMENT_TYPE_FIRE_DAMAGE:
+									imbueDamage.primary.type = COMBAT_FIREDAMAGE;
+									break;
+								case IMBUEMENT_TYPE_ENERGY_DAMAGE:
+									imbueDamage.primary.type = COMBAT_ENERGYDAMAGE;
+									break;
+								case IMBUEMENT_TYPE_EARTH_DAMAGE:
+									imbueDamage.primary.type = COMBAT_EARTHDAMAGE;
+									break;
+								case IMBUEMENT_TYPE_ICE_DAMAGE:
+									imbueDamage.primary.type = COMBAT_ICEDAMAGE;
+									break;
+								case IMBUEMENT_TYPE_HOLY_DAMAGE:
+									imbueDamage.primary.type = COMBAT_HOLYDAMAGE;
+									break;
+								case IMBUEMENT_TYPE_DEATH_DAMAGE:
+									imbueDamage.primary.type = COMBAT_DEATHDAMAGE;
+									break;
+								default: [[unlikely]]
+									break;
+							}
+
+							if (difference < 0) {
+								imbueDamage.primary.value -= originalDamage;
+								g_game.combatChangeHealth(caster, target, imbueDamage);
+								break;
+							} // else
+							imbueDamage.primary.value -= conversionAmount;
+							g_game.combatChangeHealth(caster, target, imbueDamage);
+						}
+					}
+				}
+			}
+
+				if (targetPlayer.has_value() && damage.primary.type != COMBAT_HEALING && damage.primary.type != COMBAT_MANADRAIN ) {
+					for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot)
+					{
+						Item* item = targetPlayer.value()->getInventoryItem(static_cast<slots_t>(slot));
+						if (!item) {
+							continue;
+						}
+
+						if (item->hasImbuements()) {
+							for (const auto& imbuement : item->getImbuements()) {
+								const auto combatType = damage.primary.type;
+								const auto& originalDamage = abs(damage.primary.value);
+								const auto& resistance = (originalDamage * imbuement->value) / 100;
+								const int32_t& difference = (originalDamage - resistance);
+								switch (imbuement->imbuetype) {
+								case ImbuementType::IMBUEMENT_TYPE_FIRE_RESIST:
+									if (combatType == COMBAT_FIREDAMAGE) {
+										if (difference < 0) {
+											damage.primary.value = 0;
+											return;
+										}
+										damage.primary.value += difference;
+									}
+									break;
+								case ImbuementType::IMBUEMENT_TYPE_EARTH_RESIST:
+									if (combatType == COMBAT_EARTHDAMAGE) {
+										if (difference < 0) {
+											damage.primary.value = 0;
+											return;
+										}
+										damage.primary.value += difference;
+									}
+									break;
+								case ImbuementType::IMBUEMENT_TYPE_ICE_RESIST:
+									if (combatType == COMBAT_ICEDAMAGE) {
+										if (difference < 0) {
+											damage.primary.value = 0;
+											return;
+										}
+										damage.primary.value += difference;
+									}
+									break;
+								case ImbuementType::IMBUEMENT_TYPE_ENERGY_RESIST:
+									if (combatType == COMBAT_ENERGYDAMAGE) {
+										if (difference < 0) {
+											damage.primary.value = 0;
+											return;
+										}
+										damage.primary.value += difference;
+									}
+									break;
+								case ImbuementType::IMBUEMENT_TYPE_DEATH_RESIST:
+									if (combatType == COMBAT_DEATHDAMAGE) {
+										if (difference < 0) {
+											damage.primary.value = 0;
+											return;
+										}
+										damage.primary.value += difference;
+									}
+									break;
+								case ImbuementType::IMBUEMENT_TYPE_HOLY_RESIST:
+									if (combatType == COMBAT_HOLYDAMAGE) {
+										if (difference < 0) {
+											damage.primary.value = 0;
+											return;
+										}
+										damage.primary.value += difference;
+									}
+									break;
+								default: [[unlikely]]
+									break;
+								}
+							}
+						}
+					}
+				}
 
 			if (!damage.leeched && damage.primary.type != COMBAT_HEALING
 				&& casterPlayer
