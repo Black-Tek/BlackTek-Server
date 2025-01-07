@@ -1423,6 +1423,7 @@ class LuaScriptInterface
 		static int luaMonsterTypeCreate(lua_State* L);
 
 		static int luaMonsterTypeIsAttackable(lua_State* L);
+		static int luaMonsterTypeIsRewardBoss(lua_State* L);
 		static int luaMonsterTypeIsChallengeable(lua_State* L);
 		static int luaMonsterTypeIsConvinceable(lua_State* L);
 		static int luaMonsterTypeIsSummonable(lua_State* L);
