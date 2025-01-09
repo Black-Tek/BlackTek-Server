@@ -5,6 +5,7 @@
 #define FS_NETWORKMESSAGE_H
 
 #include "const.h"
+#include "enums.h"
 
 class Item;
 class Creature;
@@ -99,6 +100,7 @@ class NetworkMessage
 		void addItem(uint16_t id, uint8_t count);
 		void addItem(const Item* item);
 		void addItemId(uint16_t itemId);
+		void addOutfit(Outfit_t& outfit);
 
 		MsgSize_t getLength() const {
 			return info.length;

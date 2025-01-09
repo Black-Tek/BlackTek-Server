@@ -66,7 +66,7 @@ void ProtocolLogin::getCharacterList(const std::string& accountName, const std::
 	//Add char list
 	output->addByte(0x64);
 
-	uint8_t size = std::min<size_t>(std::numeric_limits<uint8_t>::max(), account.characters.size());
+	uint8_t characters = std::min<size_t>(std::numeric_limits<uint8_t>::max() - 1, account.characters.size());
 
 	if (g_config.getBoolean(ConfigManager::ONLINE_OFFLINE_CHARLIST)) {
 		output->addByte(2); // number of worlds
@@ -87,15 +87,13 @@ void ProtocolLogin::getCharacterList(const std::string& accountName, const std::
 		output->addByte(0);
 	}
 
-	output->addByte(size);
-	for (uint8_t i = 0; i < size; i++) {
-		const std::string& character = account.characters[i];
-		if (g_config.getBoolean(ConfigManager::ONLINE_OFFLINE_CHARLIST)) {
-			output->addByte(g_game.getPlayerByName(character) ? 1 : 0);
-		} else {
-			output->addByte(0);
-		}
-		output->addString(character);
+	output->addByte(characters);
+	for (std::vector<Character>::iterator it = account.characters.begin(); it != account.characters.end(); it++) {
+		output->addByte(0x00);
+		output->addString(it->name);
+		output->add<uint32_t>(it->level);
+		output->add<uint16_t>(it->vocation);
+		output->addOutfit(it->outfit);
 	}
 
 	//Add premium days
