@@ -10,6 +10,7 @@
 #include "creatureevent.h"
 #include "events.h"
 #include "game.h"
+#include "enums.h"
 #include "iologindata.h"
 #include "monster.h"
 #include "movement.h"
@@ -4794,6 +4795,7 @@ void Player::updateRegeneration()
 	}
 }
 
+
 void Player::addItemImbuements(Item* item) {
 	if (item->hasImbuements()) {
 		const std::vector<std::shared_ptr<Imbuement>>& imbuementList = item->getImbuements();
@@ -5051,4 +5053,152 @@ void Player::addImbuementEffect(std::shared_ptr<Imbuement> imbue) {
 	}
 	sendSkills();
 	sendStats();
+}
+
+
+void Player::doAutoLoot(const std::vector<Item*>& items)
+{
+	if (items.empty()) {
+		return;
+	}
+
+	for (const auto& item : items) {
+		if (std::find(autoLootItems.begin(), autoLootItems.end(), item->getID()) == autoLootItems.end()) {
+			continue;
+		}
+
+		addAutoLootItems(item);
+	}
+}
+
+void Player::updateAutoLoot(uint16_t clientId, const std::string& name, bool remove)
+{
+	std::string itemName;
+	uint16_t serverId = 0;
+	if (clientId > 0) {
+		const ItemType& itemType = Item::items.getItemIdByClientId(clientId);
+		serverId = itemType.id;
+		itemName = itemType.name;
+
+		if (serverId == 0) {
+			sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("Item with ID {:d} does not exist.", clientId));
+			return;
+		}
+	}
+	else if (!name.empty()) {
+		const ItemType& itemType = Item::items.getItemByName(name);
+		serverId = itemType.id;
+		itemName = itemType.name;
+		clientId = itemType.clientId;
+
+		if (serverId == 0) {
+			sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("{:s} does not exist.", name));
+			return;
+		}
+	}
+	else {
+		sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("Item with ID {:d} does not exist.", clientId));
+		return;
+	}
+
+	auto it = std::find(autoLootItems.begin(), autoLootItems.end(), serverId);
+	if (!remove && it == autoLootItems.end()) {
+		autoLootItems.push_back(serverId);
+		sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("{:s} has been added to the auto loot list.", itemName));
+	}
+	else if (remove && it != autoLootItems.end()) {
+		autoLootItems.erase(it);
+		sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("{:s} has been removed from the auto loot list.", itemName));
+	}
+
+	if (client) {
+		std::map<uint16_t, std::string> autoloot;
+		autoloot.insert_or_assign(clientId, itemName);
+		client->sendAutolootItems(autoloot, remove);
+	}
+}
+
+const std::map<uint16_t, std::string> Player::getAutolootItems() const
+{
+	std::map<uint16_t, std::string> autoloot;
+	if (!client) {
+		return autoloot;
+	}
+
+	for (auto& itemId : autoLootItems) {
+		const ItemType& itemType = Item::items[itemId];
+		autoloot.insert_or_assign(itemType.clientId, itemType.name);
+	}
+
+	return autoloot;
+}
+
+void Player::sendUpdateContainer(const Container* container)
+{
+	if (!client || !container) {
+		return;
+	}
+
+	for (auto& itContainer : openContainers) {
+		if (itContainer.second.container == container) {
+			client->sendUpdateContainer(itContainer.first);
+			break;
+		}
+	}
+}
+
+void Player::addAutoLootItems(Item* item)
+{
+	Item* backpack = getInventoryItem(CONST_SLOT_BACKPACK);
+	if (!backpack) {
+		sendTextMessage(MESSAGE_STATUS_WARNING, "Autoloot failed - no backpack equipped.");
+		return;
+	}
+
+	Container* backpackContainer = backpack->getContainer();
+	if (!backpackContainer) {
+		sendTextMessage(MESSAGE_STATUS_WARNING, "Autoloot failed - main backpack is not considered a container.");
+		return;
+	}
+
+	Item* moveItem = nullptr;
+	const LootCategory_t lootCategoryId = item->getLootCategoryId();
+	const auto itemName = item->getName();
+	const auto itemId = item->getID();
+	if (lootCategoryId == LOOT_CATEGORY_NONE) {
+		sendTextMessage(MESSAGE_STATUS_DEFAULT, fmt::format(
+			"Undefined loot category for {} (ID: {}). Moving to main backpack. Please lodge a ticket to have this updated.",
+			itemName, itemId));
+	}
+
+	// Recursive container search
+	std::list<Container*> containersToCheck = { backpackContainer };
+	while (!containersToCheck.empty()) {
+		Container* container = containersToCheck.front();
+		containersToCheck.pop_front();
+
+		for (Item* containedItem : container->getItemList()) {
+			Container* nestedContainer = containedItem->getContainer();
+			if (!nestedContainer) {
+				continue;
+			}
+
+			// Check if the container matches the loot category
+			if (hasBitSet(lootCategoryId, nestedContainer->getLootCategory())) {
+				if (g_game.internalMoveItem(item->getParent(), nestedContainer, INDEX_WHEREEVER, item, item->getItemCount(), &moveItem, 0) == RETURNVALUE_NOERROR) {
+					return;
+				}
+			}
+			containersToCheck.push_front(nestedContainer);
+		}
+	}
+
+	// Move item to main backpack
+	if (g_game.internalMoveItem(item->getParent(), backpackContainer, INDEX_WHEREEVER, item, item->getItemCount(), &moveItem, 0) != RETURNVALUE_NOERROR) {
+		sendTextMessage(MESSAGE_STATUS_WARNING, fmt::format(
+			"No space for {} (ID: {}). Item left in corpse.", itemName, itemId));
+	} else if (lootCategoryId != LOOT_CATEGORY_NONE) {
+		sendTextMessage(MESSAGE_STATUS_WARNING, fmt::format(
+			"Not enough space in the assigned backpack. The {} has been sent to your main backpack.", itemName));
+	}
 }

@@ -192,13 +192,13 @@ bool IOLoginData::preloadPlayer(Player* player)
 bool IOLoginData::loadPlayerById(Player* player, uint32_t id)
 {
 	Database& db = Database::getInstance();
-	return loadPlayer(player, db.storeQuery(fmt::format("SELECT `id`, `name`, `account_id`, `group_id`, `sex`, `vocation`, `experience`, `level`, `maglevel`, `health`, `healthmax`, `blessings`, `mana`, `manamax`, `manaspent`, `soul`, `lookbody`, `lookfeet`, `lookhead`, `looklegs`, `looktype`, `lookaddons`, `posx`, `posy`, `posz`, `cap`, `lastlogin`, `lastlogout`, `lastip`, `conditions`, `skulltime`, `skull`, `town_id`, `balance`, `offlinetraining_time`, `offlinetraining_skill`, `stamina`, `skill_fist`, `skill_fist_tries`, `skill_club`, `skill_club_tries`, `skill_sword`, `skill_sword_tries`, `skill_axe`, `skill_axe_tries`, `skill_dist`, `skill_dist_tries`, `skill_shielding`, `skill_shielding_tries`, `skill_fishing`, `skill_fishing_tries`, `direction` FROM `players` WHERE `id` = {:d}", id)));
+	return loadPlayer(player, db.storeQuery(fmt::format("SELECT `id`, `name`, `account_id`, `group_id`, `sex`, `vocation`, `experience`, `level`, `maglevel`, `health`, `healthmax`, `blessings`, `mana`, `manamax`, `manaspent`, `soul`, `lookbody`, `lookfeet`, `lookhead`, `looklegs`, `looktype`, `lookaddons`, `posx`, `posy`, `posz`, `cap`, `lastlogin`, `lastlogout`, `lastip`, `conditions`, `skulltime`, `skull`, `town_id`, `balance`, `offlinetraining_time`, `offlinetraining_skill`, `stamina`, `skill_fist`, `skill_fist_tries`, `skill_club`, `skill_club_tries`, `skill_sword`, `skill_sword_tries`, `skill_axe`, `skill_axe_tries`, `skill_dist`, `skill_dist_tries`, `skill_shielding`, `skill_shielding_tries`, `skill_fishing`, `skill_fishing_tries`, `direction`, `autoloot` FROM `players` WHERE `id` = {:d}", id)));
 }
 
 bool IOLoginData::loadPlayerByName(Player* player, const std::string& name)
 {
 	Database& db = Database::getInstance();
-	return loadPlayer(player, db.storeQuery(fmt::format("SELECT `id`, `name`, `account_id`, `group_id`, `sex`, `vocation`, `experience`, `level`, `maglevel`, `health`, `healthmax`, `blessings`, `mana`, `manamax`, `manaspent`, `soul`, `lookbody`, `lookfeet`, `lookhead`, `looklegs`, `looktype`, `lookaddons`, `posx`, `posy`, `posz`, `cap`, `lastlogin`, `lastlogout`, `lastip`, `conditions`, `skulltime`, `skull`, `town_id`, `balance`, `offlinetraining_time`, `offlinetraining_skill`, `stamina`, `skill_fist`, `skill_fist_tries`, `skill_club`, `skill_club_tries`, `skill_sword`, `skill_sword_tries`, `skill_axe`, `skill_axe_tries`, `skill_dist`, `skill_dist_tries`, `skill_shielding`, `skill_shielding_tries`, `skill_fishing`, `skill_fishing_tries`, `direction` FROM `players` WHERE `name` = {:s}", db.escapeString(name))));
+	return loadPlayer(player, db.storeQuery(fmt::format("SELECT `id`, `name`, `account_id`, `group_id`, `sex`, `vocation`, `experience`, `level`, `maglevel`, `health`, `healthmax`, `blessings`, `mana`, `manamax`, `manaspent`, `soul`, `lookbody`, `lookfeet`, `lookhead`, `looklegs`, `looktype`, `lookaddons`, `posx`, `posy`, `posz`, `cap`, `lastlogin`, `lastlogout`, `lastip`, `conditions`, `skulltime`, `skull`, `town_id`, `balance`, `offlinetraining_time`, `offlinetraining_skill`, `stamina`, `skill_fist`, `skill_fist_tries`, `skill_club`, `skill_club_tries`, `skill_sword`, `skill_sword_tries`, `skill_axe`, `skill_axe_tries`, `skill_dist`, `skill_dist_tries`, `skill_shielding`, `skill_shielding_tries`, `skill_fishing`, `skill_fishing_tries`, `direction`, `autoloot` FROM `players` WHERE `name` = {:s}", db.escapeString(name))));
 }
 
 static GuildWarVector getWarList(uint32_t guildId)
@@ -283,6 +283,21 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 			delete condition;
 		}
 		condition = Condition::createCondition(propStream);
+	}
+
+	// unserialize player autoloot list
+	unsigned long autolootSize;
+	const char* autoloot = result->getStream("autoloot", autolootSize);
+	PropStream propStreamAutoloot;
+	propStreamAutoloot.init(autoloot, autolootSize);
+	uint16_t autoLootSize;
+	if (propStreamAutoloot.read<uint16_t>(autoLootSize)) {
+		for (uint16_t i = 0; i < autoLootSize; ++i) {
+			uint16_t itemId;
+			if (propStreamAutoloot.read<uint16_t>(itemId) && itemId != 0) {
+				player->autoLootItems.push_back(itemId);
+			}
+		}
 	}
 
 	if (!player->setVocation(result->getNumber<uint16_t>("vocation"))) {
@@ -594,7 +609,7 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 	return true;
 }
 
-bool IOLoginData::saveItems(const Player* player, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream)
+bool IOLoginData::saveItems(const Player* player, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream, std::map<Container*, int>& openContainers)
 {
 	using ContainerBlock = std::pair<Container*, int32_t>;
 	std::list<ContainerBlock> queue;
@@ -607,15 +622,15 @@ bool IOLoginData::saveItems(const Player* player, const ItemBlockList& itemList,
 		Item* item = it.second;
 		++runningId;
 
+		if (Container* container = item->getContainer()) {
+			queue.emplace_back(container, runningId);
+		}
+
 		propWriteStream.clear();
 		item->serializeAttr(propWriteStream);
 
 		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}", player->getGUID(), pid, runningId, item->getID(), item->getSubType(), db.escapeString(propWriteStream.getStream())))) {
 			return false;
-		}
-
-		if (Container* container = item->getContainer()) {
-			queue.emplace_back(container, runningId);
 		}
 	}
 
@@ -643,6 +658,7 @@ bool IOLoginData::saveItems(const Player* player, const ItemBlockList& itemList,
 	}
 	return query_insert.execute();
 }
+
 
 bool IOLoginData::addRewardItems(uint32_t playerId, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream)
 {
@@ -733,6 +749,16 @@ bool IOLoginData::savePlayer(Player* player)
 		}
 	}
 
+	
+	//serialize autoloot list
+	PropWriteStream propWriteStreamLootList;
+	propWriteStreamLootList.write<uint16_t>(player->autoLootItems.size());
+	for (auto& itItem : player->autoLootItems) { propWriteStreamLootList.write<uint16_t>(itItem); }
+	propWriteStreamLootList.write<uint16_t>(0);
+	std::string_view autolootStream = propWriteStreamLootList.getStream();
+	const char* autoloot = autolootStream.data();
+	size_t autolootSize = autolootStream.size();
+
 	//First, an UPDATE query to write the player itself
 	std::ostringstream query;
 	query << "UPDATE `players` SET ";
@@ -772,6 +798,7 @@ bool IOLoginData::savePlayer(Player* player)
 	}
 
 	query << "`conditions` = " << db.escapeString(propWriteStream.getStream()) << ',';
+	query << "`autoloot` = " << db.escapeBlob(autoloot, autolootSize) << ','; 
 
 	if (g_game.getWorldType() != WORLD_TYPE_PVP_ENFORCED) {
 		int64_t skullTime = 0;
@@ -844,6 +871,11 @@ bool IOLoginData::savePlayer(Player* player)
 	}
 
 	//item saving
+	std::map<Container*, int> openContainers;
+	for (auto container : player->getOpenContainers()) {
+		if (!container.second.container) continue;
+		openContainers[container.second.container] = container.first;
+	}
 	if (!db.executeQuery(fmt::format("DELETE FROM `player_items` WHERE `player_id` = {:d}", player->getGUID()))) {
 		return false;
 	}
@@ -858,7 +890,7 @@ bool IOLoginData::savePlayer(Player* player)
 		}
 	}
 
-	if (!saveItems(player, itemList, itemsQuery, propWriteStream)) {
+	if (!saveItems(player, itemList, itemsQuery, propWriteStream, openContainers)) {
 		return false;
 	}
 
@@ -876,7 +908,7 @@ bool IOLoginData::savePlayer(Player* player)
 		}
 	}
 
-	if (!saveItems(player, itemList, depotQuery, propWriteStream)) {
+	if (!saveItems(player, itemList, depotQuery, propWriteStream, openContainers)) {
 		return false;
 	}
 
@@ -902,7 +934,7 @@ bool IOLoginData::savePlayer(Player* player)
 		}
 	}
 
-	if (!saveItems(player, itemList, rewardQuery, propWriteStream)) {
+	if (!saveItems(player, itemList, rewardQuery, propWriteStream, openContainers)) {
 		return false;
 	}
 
@@ -919,7 +951,7 @@ bool IOLoginData::savePlayer(Player* player)
 		itemList.emplace_back(0, item);
 	}
 
-	if (!saveItems(player, itemList, inboxQuery, propWriteStream)) {
+	if (!saveItems(player, itemList, inboxQuery, propWriteStream, openContainers)) {
 		return false;
 	}
 
@@ -935,7 +967,7 @@ bool IOLoginData::savePlayer(Player* player)
 		itemList.emplace_back(0, item);
 	}
 
-	if (!saveItems(player, itemList, storeInboxQuery, propWriteStream)) {
+	if (!saveItems(player, itemList, storeInboxQuery, propWriteStream, openContainers)) {
 		return false;
 	}
 

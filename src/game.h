@@ -430,6 +430,7 @@ class Game
 		void playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t spriteId, uint16_t amount, uint32_t price, bool anonymous);
 		void playerCancelMarketOffer(uint32_t playerId, uint32_t timestamp, uint16_t counter);
 		void playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16_t counter, uint16_t amount);
+		bool playerUpdateAutoLoot(uint32_t playerId, uint16_t clientId, const std::string& name, bool remove);
 
 		void parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const std::string& buffer);
 
@@ -458,6 +459,11 @@ class Game
 		GameState_t getGameState() const;
 		void setGameState(GameState_t newState);
 		void saveGameState();
+
+		void updateContainer(Player* player, Item* item);
+		Item* getItemBySpriteId(Player* player, const Position& pos, int16_t stackpos, const uint16_t spriteId, stackPosType_t stackposType);
+		bool playerRemoveLootCategory(uint32_t playerId, const Position& pos, uint16_t spriteId, int16_t stackpos);
+		bool playerAddLootCategory(uint32_t playerId, const Position& pos, uint16_t spriteId, int16_t stackpos, uint16_t categoryFlags);
 
 		//Events
 		void checkCreatureWalk(uint32_t creatureId);

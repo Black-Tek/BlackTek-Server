@@ -417,6 +417,7 @@ enum GuildEmblems_t : uint8_t {
 };
 
 enum item_t : uint16_t {
+	ITEM_REWARD_BAG = 21518,
 	ITEM_BROWSEFIELD = 460, // for internal use
 
 	ITEM_FIREFIELD_PVP_FULL = 1487,

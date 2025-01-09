@@ -1181,11 +1181,22 @@ class Player final : public Creature, public Cylinder
 		void forgetInstantSpell(const std::string& spellName);
 		bool hasLearnedInstantSpell(const std::string& spellName) const;
 
+		const std::map<uint8_t, OpenContainer>& getOpenContainers() const
+		{
+			return openContainers;
+		}
+
 		void updateRegeneration();
 		void addItemImbuements(Item* item);
 		void removeItemImbuements(Item* item);
 		void addImbuementEffect(std::shared_ptr<Imbuement> imbue);
 		void removeImbuementEffect(std::shared_ptr<Imbuement> imbue);
+
+		void sendUpdateContainer(const Container* container);
+		void doAutoLoot(const std::vector<Item*>& items);
+		void addAutoLootItems(Item* item);
+		void updateAutoLoot(uint16_t clientId, const std::string& name, bool remove);
+		const std::map<uint16_t, std::string> getAutolootItems() const;
 
 	private:
 		std::forward_list<Condition*> getMuteConditions() const;
@@ -1241,6 +1252,7 @@ class Player final : public Creature, public Cylinder
 		std::map<uint32_t, int32_t> storageMap;
 
 		std::vector<OutfitEntry> outfits;
+		std::vector<uint16_t> autoLootItems;
 		GuildWarVector guildWarVector;
 
 		std::list<ShopInfo> shopItemList;

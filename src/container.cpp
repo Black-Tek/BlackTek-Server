@@ -791,3 +791,17 @@ void ContainerIterator::advance()
 		}
 	}
 }
+
+void Container::onUpdateContainer()
+{
+	SpectatorVec spectatorsVector;
+	g_game.map.getSpectators(spectatorsVector, getPosition(), true, true);
+
+	//send change to client
+	for (auto& pCreature : spectatorsVector) {
+		Player* player = pCreature->getPlayer();
+		if (player) {
+			player->sendUpdateContainer(this);
+		}
+	}
+}

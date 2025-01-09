@@ -558,17 +558,21 @@ void ProtocolGame::parsePacket(NetworkMessage& msg)
 		case 0xF7: parseMarketCancelOffer(msg); break;
 		case 0xF8: parseMarketAcceptOffer(msg); break;
 		case 0xF9: parseModalWindowAnswer(msg); break;
+		case 0x60: parseUpdateAutoLoot(msg); break;
+		case 0x5E: parseRemoveLootCategory(msg); break;
+		case 0x5F: parseAddLootCategory(msg); break;
 
 		default:
 			// std::cout << "Player: " << player->getName() << " sent an unknown packet header: 0x" << std::hex << static_cast<uint16_t>(recvbyte) << std::dec << "!" << std::endl;
 			break;
-	}
+		}
 
 	if (msg.isOverrun()) {
+		std::cerr << "[Error - ProtocolGame::parsePacket] Buffer overrun detected" << std::endl;
 		disconnect();
 	}
 }
-
+ 
 void ProtocolGame::GetTileDescription(const Tile* tile, NetworkMessage& msg)
 {
 	msg.add<uint16_t>(0x00); //environmental effects
@@ -1234,7 +1238,6 @@ void ProtocolGame::parseSeekInContainer(NetworkMessage& msg)
 	addGameTask([=, playerID = player->getID()]() { g_game.playerSeekInContainer(playerID, containerId, index); });
 }
 
-// Send methods
 void ProtocolGame::sendOpenPrivateChannel(const std::string& receiver)
 {
 	NetworkMessage msg;
@@ -1565,6 +1568,7 @@ void ProtocolGame::sendContainer(uint8_t cid, const Container* container, bool h
 		msg.addByte(itemsToSend);
 		for (auto it = container->getItemList().begin() + firstIndex, end = it + itemsToSend; it != end; ++it) {
 			msg.addItem(*it);
+			msg.add<uint16_t>((*it)->getLootCategory());
 		}
 	} else {
 		msg.addByte(0x00);
@@ -2572,6 +2576,7 @@ void ProtocolGame::sendAddCreature(const Creature* creature, const Position& pos
 	sendVIPEntries();
 
 	sendBasicData();
+	sendAutolootItems(player->getAutolootItems(), false);
 	player->sendIcons();
 }
 
@@ -2653,6 +2658,7 @@ void ProtocolGame::sendInventoryItem(slots_t slot, const Item* item)
 		msg.addByte(0x78);
 		msg.addByte(slot);
 		msg.addItem(item);
+		msg.add<uint16_t>(item->getLootCategory());
 	} else {
 		msg.addByte(0x79);
 		msg.addByte(slot);
@@ -2689,6 +2695,7 @@ void ProtocolGame::sendAddContainerItem(uint8_t cid, uint16_t slot, const Item* 
 	msg.addByte(cid);
 	msg.add<uint16_t>(slot);
 	msg.addItem(item);
+	msg.add<uint16_t>(item->getLootCategory());
 	writeToOutputBuffer(msg);
 }
 
@@ -2699,6 +2706,7 @@ void ProtocolGame::sendUpdateContainerItem(uint8_t cid, uint16_t slot, const Ite
 	msg.addByte(cid);
 	msg.add<uint16_t>(slot);
 	msg.addItem(item);
+	msg.add<uint16_t>(item->getLootCategory());
 	writeToOutputBuffer(msg);
 }
 
@@ -3217,4 +3225,53 @@ void ProtocolGame::parseExtendedOpcode(NetworkMessage& msg)
 
 	// process additional opcodes via lua script event
 	addGameTask([=, playerID = player->getID(), buffer = std::string{ buffer }]() { g_game.parsePlayerExtendedOpcode(playerID, opcode, buffer); });
+}
+
+void ProtocolGame::parseUpdateAutoLoot(NetworkMessage& msg)
+{
+    uint16_t spriteId = msg.get<uint16_t>();
+    std::string name = std::string(msg.getString()); 
+    bool remove = msg.getByte() == 1;
+    uint32_t playerId = player->getID();
+    addGameTask([playerId, spriteId, name, remove]() { g_game.playerUpdateAutoLoot(playerId, spriteId, name, remove); });
+}
+
+void ProtocolGame::sendAutolootItems(const std::map<uint16_t, std::string>& autolootItems, bool remove)
+{
+	NetworkMessage msg;
+	msg.addByte(0x60);
+	msg.addByte(remove ? 0x01 : 0x00);
+	msg.add<uint16_t>(autolootItems.size());
+	for (auto& [clientId, name] : autolootItems) {
+		msg.addString(name);
+		msg.add<uint16_t>(clientId);
+	}
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendUpdateContainer(uint8_t containerId)
+{
+	NetworkMessage msg;
+	msg.addByte(0x54);
+	msg.addByte(containerId);
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::parseRemoveLootCategory(NetworkMessage& msg)
+{
+    Position pos = msg.getPosition();
+    uint16_t spriteId = msg.get<uint16_t>();
+    int16_t stackpos = msg.getByte();
+    uint32_t playerId = player->getID();
+    addGameTask([playerId, pos, spriteId, stackpos]() { g_game.playerRemoveLootCategory(playerId, pos, spriteId, stackpos); });
+}
+
+void ProtocolGame::parseAddLootCategory(NetworkMessage& msg)
+{
+    Position pos = msg.getPosition();
+    uint16_t spriteId = msg.get<uint16_t>();
+    int16_t stackpos = msg.getByte();
+    uint16_t categoryFlags = msg.get<uint16_t>();
+    uint32_t playerId = player->getID();
+    addGameTask([playerId, pos, spriteId, stackpos, categoryFlags]() { g_game.playerAddLootCategory(playerId, pos, spriteId, stackpos, categoryFlags); });
 }

@@ -146,6 +146,7 @@ class DBResult
 		}
 
 		std::string_view getString(std::string_view column) const;
+		const char* getStream(const std::string& s, unsigned long& size) const;
 
 		bool hasNext() const;
 		bool next();

@@ -10,6 +10,7 @@
 #include "mailbox.h"
 #include "house.h"
 #include "game.h"
+#include "enums.h"
 #include "bed.h"
 #include "scheduler.h"
 #include "actions.h"
@@ -1890,10 +1891,6 @@ void Item::decayImbuements(bool infight) {
 	}
 }
 
-LootCategory_t Item::getLootCategoryId() const
-{
-	return items[id].lootType;
-}
 
 void handleRuneDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType) {
 	if (RuneSpell* rune = g_spells->getRuneSpell(it.id)) {
@@ -2250,4 +2247,17 @@ void handleAbilitiesDescription(std::ostringstream& s, const ItemType& it, bool&
 	handleAbsorbsPercentDescription(s, it, begin);
 	handleAbsorbsFieldsPercentDescription(s, it, begin);
 	handleMiscDescription(s, it, begin);
+}
+
+LootCategory_t Item::getLootCategoryId() const
+{
+    uint16_t category = items[id].lootType;
+
+	if (!(category & (LOOT_CATEGORY_NONE | LOOT_CATEGORY_GOLD | LOOT_CATEGORY_VALUABLES | LOOT_CATEGORY_EQUIPMENT |
+					LOOT_CATEGORY_POTIONS | LOOT_CATEGORY_AMMUNITION | LOOT_CATEGORY_CREATURE_PRODUCTS |
+					LOOT_CATEGORY_FOOD | LOOT_CATEGORY_SPECIAL | LOOT_CATEGORY_MISC))) {
+		return LOOT_CATEGORY_NONE; // Default to NONE if invalid or unset
+	}
+
+    return static_cast<LootCategory_t>(category);
 }

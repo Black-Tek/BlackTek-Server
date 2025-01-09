@@ -148,6 +148,10 @@ class ProtocolGame final : public Protocol
 		void parseOpenPrivateChannel(NetworkMessage& msg);
 		void parseCloseChannel(NetworkMessage& msg);
 
+		void parseRemoveLootCategory(NetworkMessage& msg);
+		void parseAddLootCategory(NetworkMessage& msg);
+		void sendUpdateContainer(uint8_t containerId);
+
 		//Send functions
 		void sendChannelMessage(const std::string& author, const std::string& text, SpeakClasses type, uint16_t channel);
 		void sendChannelEvent(uint16_t channelId, const std::string& playerName, ChannelEvent_t channelEvent);
@@ -246,6 +250,9 @@ class ProtocolGame final : public Protocol
 		void sendUpdateContainerItem(uint8_t cid, uint16_t slot, const Item* item);
 		void sendRemoveContainerItem(uint8_t cid, uint16_t slot, const Item* lastItem);
 
+		// Autoloot
+		void parseUpdateAutoLoot(NetworkMessage& msg);
+		void sendAutolootItems(const std::map<uint16_t, std::string>& autolootItems, bool remove);
 		void sendContainer(uint8_t cid, const Container* container, bool hasParent, uint16_t firstIndex);
 		void sendCloseContainer(uint8_t cid);
 

@@ -121,7 +121,7 @@ void ProtocolLogin::onRecvFirstMessage(NetworkMessage& msg)
 	}
 
 	msg.skipBytes(2); // client OS
-
+	
 	uint16_t version = msg.get<uint16_t>();
 	if (version >= 971) {
 		msg.skipBytes(17);
@@ -184,10 +184,10 @@ void ProtocolLogin::onRecvFirstMessage(NetworkMessage& msg)
 	}
 
 	auto accountName = msg.getString();
-	if (accountName.empty()) {
-		disconnectClient("Invalid account name.", version);
-		return;
-	}
+    if (accountName.empty()) {
+        disconnectClient("Invalid account name.", version);
+        return;
+    }
 
 	auto password = msg.getString();
 	if (password.empty()) {

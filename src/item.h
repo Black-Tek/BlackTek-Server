@@ -921,7 +921,6 @@ class Item : virtual public Thing
 			return items[id].hitChance;
 		}
 
-		// Autoloot categories
 		LootCategory_t getLootCategoryId() const;
 
 		void resetLootCategoryId() { removeAttribute(ITEM_ATTRIBUTE_LOOTCATEGORY); }

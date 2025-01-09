@@ -602,7 +602,7 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 	}
 
 	it.name = itemNode.attribute("name").as_string();
-
+	
 	nameToItems.insert({ asLowerCaseString(it.name), id });
 
 	pugi::xml_attribute articleAttribute = itemNode.attribute("article");
@@ -616,6 +616,7 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 	}
 
 	Abilities& abilities = it.getAbilities();
+	it.lootType = LOOT_CATEGORY_NONE;
 
 	for (auto attributeNode : itemNode.children()) {
 		pugi::xml_attribute keyAttribute = attributeNode.attribute("key");
@@ -1715,7 +1716,7 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 						it.lootType = LOOT_CATEGORY_MISC;
 					}
 					else {
-						std::cout << "[Warning - Items::parseItemNode] Unknown lootType: " << valueAttribute.as_string() << std::endl;
+						std::cout << "[Warning - Items::parseItemNode] Missing or empty 'loottype' attribute. Defaulting to NONE for item ID: " << it.id << std::endl;
 					}
 					break;
 				}
@@ -1771,4 +1772,13 @@ uint16_t Items::getItemIdByName(const std::string& name)
 		return 0;
 
 	return result->second;
+}
+
+const ItemType& Items::getItemByName(const std::string& name) const
+{
+	auto result = nameToItems.find(asLowerCaseString(name));
+	if (result == nameToItems.end())
+		return items.front();
+
+	return getItemType(result->second);
 }

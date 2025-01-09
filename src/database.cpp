@@ -202,6 +202,24 @@ std::string_view DBResult::getString(std::string_view column) const
 	return { row[it->second], size };
 }
 
+const char* DBResult::getStream(const std::string& s, unsigned long& size) const
+{
+	auto it = listNames.find(s);
+	if (it == listNames.end()) {
+		std::cout << "[Error - DBResult::getStream] Column '" << s << "' doesn't exist in the result set" << std::endl;
+		size = 0;
+		return nullptr;
+	}
+
+	if (row[it->second] == nullptr) {
+		size = 0;
+		return nullptr;
+	}
+
+	size = mysql_fetch_lengths(handle)[it->second];
+	return row[it->second];
+}
+
 bool DBResult::hasNext() const
 {
 	return row != nullptr;

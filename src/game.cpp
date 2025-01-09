@@ -5957,3 +5957,124 @@ void Game::resetDamageTracking(uint32_t monsterId)
 {
 	rewardBossTracking.erase(monsterId);
 }
+
+Item* Game::getItemBySpriteId(Player* player, const Position& pos, int16_t stackpos, const uint16_t spriteId, stackPosType_t stackposType)
+{
+	if (pos.x == 0xFFFE) {
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return nullptr;
+	}
+
+	Thing* thing = internalGetThing(player, pos, stackpos, spriteId, stackposType);
+	if (!thing) {
+		return nullptr;
+	}
+
+	Item* item = thing->getItem();
+	if (!item || item->getClientID() != spriteId || (item->isLoadedFromMap())) {
+		return nullptr;
+	}
+
+	return item;
+}
+
+void Game::updateContainer(Player* player, Item* item)
+{
+	Cylinder* parent = item->getParent();
+	Container* container = dynamic_cast<Container*>(parent);
+	if (container) {
+		container->onUpdateContainer();
+	}
+	else if (parent == player) {
+		player->updateThing(item, item->getID(), item->getItemCount());
+	}
+}
+
+bool Game::playerRemoveLootCategory(uint32_t playerId, const Position& pos, uint16_t spriteId, int16_t stackpos)
+{
+	Player* player = getPlayerByID(playerId);
+	if (!player) {
+		return false;
+	}
+
+	Item* item = getItemBySpriteId(player, pos, stackpos, spriteId, STACKPOS_MOVE);
+	if (!item) {
+		return false;
+	}
+
+	Container* container = item->getContainer();
+	if (!container) {
+		return false;
+	}
+
+	container->resetLootCategoryId();
+	updateContainer(player, container);
+	return true;
+}
+
+bool Game::playerAddLootCategory(uint32_t playerId, const Position& pos, uint16_t spriteId, int16_t stackpos, uint16_t categoryFlags)
+{
+	Player* player = getPlayerByID(playerId);
+	if (!player) {
+		return false;
+	}
+
+	Item* item = getItemBySpriteId(player, pos, stackpos, spriteId, STACKPOS_MOVE);
+	if (!item) {
+		return false;
+	}
+
+	Container* container = item->getContainer();
+	if (!container) {
+		return false;
+	}
+
+	if (categoryFlags == 0xFFFF) {
+		// Copy the loot category to all containers within the main container
+		uint16_t containerFlags = container->getLootCategory();
+		if (containerFlags == 0) {
+			// Container doesn't have any loot category
+			return true;
+		}
+
+		std::list<Container*> containers{ container };
+		while (!containers.empty()) {
+			Container* tmpContainer = containers.front();
+			containers.pop_front();
+			for (Item* containerItem : tmpContainer->getItemList()) {
+				Container* subContainer = containerItem->getContainer();
+				if (!subContainer) {
+					continue;
+				}
+
+				containers.push_back(subContainer);
+				subContainer->setLootCategoryId(containerFlags);
+				tmpContainer->updateThing(subContainer, subContainer->getID(), subContainer->getItemCount());
+			}
+		}
+	}
+	else if (categoryFlags == 0xFFFE) {
+		// Delete the boss reward bag
+		if (item->getID() == ITEM_REWARD_BAG) {
+			internalRemoveItem(item);
+		}
+	}
+	else {
+		// Set the loot category to the selected container
+		container->setLootCategoryId(categoryFlags);
+		updateContainer(player, container);
+	}
+
+	return true;
+}
+
+bool Game::playerUpdateAutoLoot(uint32_t playerId, uint16_t clientId, const std::string& name, bool remove)
+{
+	Player* player = getPlayerByID(playerId);
+	if (!player) {
+		return false;
+	}
+
+	player->updateAutoLoot(clientId, name, remove);
+	return true;
+}
