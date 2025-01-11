@@ -2,7 +2,7 @@ local homeScroll = Action()
 
 function homeScroll.onUse(player, item, fromPosition, target, toPosition, isHotkey)
     local cooldown = PlayerStorageKeys.houseTeleportItemCooldown -- Cooldown storage value
-    local cooldownTime = 3 -- cd in seconds
+    local cooldownTime = 5 -- cd in seconds
 
     if player:getStorageValue(cooldown) > os.time() then -- Timed Cooldown
         local remainingTime = player:getStorageValue(cooldown) - os.time()

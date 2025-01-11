@@ -2,7 +2,7 @@ local templeTeleportItem = Action()
 
 function templeTeleportItem.onUse(player, item, fromPosition, target, toPosition, isHotkey)
     local cooldown = PlayerStorageKeys.templeTeleportItemCooldown -- Cooldown storage key
-    local cooldownTime = 600 -- Cooldown time in seconds (10 minutes)
+    local cooldownTime = 5 -- Cooldown time in seconds (10 minutes)
 
     -- Check if the cooldown has expired
     local currentTime = os.time()
