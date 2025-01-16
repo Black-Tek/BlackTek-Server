@@ -19,11 +19,13 @@ RUN /bts/vcpkg/vcpkg install
 # Stage 2: Install Premake after vcpkg is ready
 FROM dependencies AS premake
 RUN cd /bts && \
-    wget https://github.com/premake/premake-core/archive/refs/heads/master.zip && \
-    unzip master.zip && rm master.zip && \
-    cd premake-core-master && make -f Bootstrap.mak linux && \
-    mv bin/release/premake5 /bin/ && rm -rf /bts/premake-core-master
-
+    wget --no-netrc -q \
+        -O premake.tar.gz \
+        "https://github.com/premake/premake-core/releases/download/v5.0.0-beta4/premake-5.0.0-beta4-linux.tar.gz" && \
+    tar -xzf premake.tar.gz && \
+    rm premake.tar.gz && \
+    mv premake5 /usr/local/bin/ && \
+    chmod +x /usr/local/bin/premake5
 
 # Stage 3: Build the project with Premake and vcpkg
 FROM premake AS build
