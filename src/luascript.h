@@ -42,6 +42,27 @@ class Monster;
 class InstantSpell;
 class Spell;
 
+template<typename T>
+concept EnumType = std::is_enum_v<T> && !std::is_same_v<T, bool>;
+
+template<typename T>
+concept IntegerType =
+	std::is_integral_v<T>
+	&& !std::is_same_v<T, char>
+	&& !std::is_same_v<T, wchar_t>
+	&& !std::is_same_v<T, unsigned char>
+	&& !std::is_same_v<T, bool>
+	&& (std::is_signed_v<T> || std::is_unsigned_v<T>);
+
+template<typename T>
+concept IntLuaType =  EnumType<T> || IntegerType<T>;
+
+template<typename T>
+concept Boolean = std::is_same_v<T, bool>;
+
+template<typename T>
+concept StringType = std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>;
+
 enum {
 	EVENT_ID_LOADING = 1,
 	EVENT_ID_USER = 1000,
@@ -338,7 +359,6 @@ class LuaScriptInterface
 		static Outfit getOutfitClass(lua_State* L, int32_t arg);
 	
 		static InstantSpell* getInstantSpell(lua_State* L, int32_t arg);
-		static Reflect getReflect(lua_State* L, int32_t arg);
 
 		static Thing* getThing(lua_State* L, int32_t arg);
 		static Creature* getCreature(lua_State* L, int32_t arg);
@@ -398,16 +418,26 @@ class LuaScriptInterface
 		static void pushOutfit(lua_State* L, const Outfit* outfit);
 		static void pushMount(lua_State* L, const Mount* mount);
 		static void pushLoot(lua_State* L, const std::vector<LootBlock>& lootList);
-		static void pushReflect(lua_State* L, const Reflect& reflect);
-
-		//
-		static void setField(lua_State* L, const char* index, lua_Number value)
+	
+		static void setField(lua_State* L, const char* index, std::floating_point auto value)
 		{
 			lua_pushnumber(L, value);
 			lua_setfield(L, -2, index);
 		}
 
-		static void setField(lua_State* L, const char* index, const std::string& value)
+		static void setField(lua_State* L, const char* index, IntLuaType auto value)
+		{
+			lua_pushinteger(L, value);
+			lua_setfield(L, -2, index);
+		}
+
+		static void setField(lua_State* L, const char* index, Boolean auto value)
+		{
+			lua_pushboolean(L, value);
+			lua_setfield(L, -2, index);
+		}
+	        
+		static void setField(lua_State* L, const char* index, StringType auto value)
 		{
 			pushString(L, value);
 			lua_setfield(L, -2, index);
@@ -775,12 +805,6 @@ class LuaScriptInterface
 		static int luaItemSetStoreItem(lua_State* L);
 		static int luaItemIsStoreItem(lua_State* L);
 
-		static int luaItemSetReflect(lua_State* L);
-		static int luaItemGetReflect(lua_State* L);
-
-		static int luaItemSetBoostPercent(lua_State* L);
-		static int luaItemGetBoostPercent(lua_State* L);
-
 		static int luaItemGetImbuementSlots(lua_State* L);
 		static int luaItemGetFreeImbuementSlots(lua_State* L);
 		static int luaItemCanImbue(lua_State* L);
@@ -792,6 +816,13 @@ class LuaScriptInterface
 		static int luaItemAddImbuement(lua_State* L);
 		static int luaItemRemoveImbuement(lua_State* L);
 		static int luaItemGetImbuements(lua_State* L);
+
+		static int luaItemAddAugment(lua_State* L);
+		static int luaItemRemoveAugment(lua_State* L);
+		static int luaItemIsAugmented(lua_State* L);
+		static int luaItemHasAugment(lua_State* L);
+		static int luaItemGetAugments(lua_State* L);
+
 
 		// Imbuement
 
@@ -810,6 +841,24 @@ class LuaScriptInterface
 		static int luaImbuementSetInfightDecay(lua_State* L);
 		static int luaImbuementIsEquipDecay(lua_State* L);
 		static int luaImbuementIsInfightDecay(lua_State* L);
+
+		// DamageModifier
+		static int luaDamageModifierCreate(lua_State* L);
+		static int luaDamageModifierSetValue(lua_State* L);
+		static int luaDamageModifierSetRateFactor(lua_State* L);
+		static int luaDamageModifierSetCombatFilter(lua_State* L);
+		static int luaDamageModifierSetOriginFilter(lua_State* L);
+
+		// Augment
+		static int luaAugmentCreate(lua_State* L);
+		static int luaAugmentSetName(lua_State* L);
+		static int luaAugmentSetDescription(lua_State* L);
+		static int luaAugmentGetName(lua_State* L);
+		static int luaAugmentGetDescription(lua_State* L);
+		static int luaAugmentAddDamageModifier(lua_State* L);
+		static int luaAugmentRemoveDamageModifier(lua_State* L);
+		static int luaAugmentGetAttackModifiers(lua_State* L);
+		static int luaAugmentGetDefenseModifiers(lua_State* L);
 
 		// Container
 		static int luaContainerCreate(lua_State* L);
@@ -1097,6 +1146,12 @@ class LuaScriptInterface
 
 		static int luaPlayerSendCreatureSquare(lua_State* L);
 
+		static int luaPlayerAddAugment(lua_State* L);
+		static int luaPlayerRemoveAugment(lua_State* L);
+		static int luaPlayerIsAugmented(lua_State* L);
+		static int luaPlayerHasAugment(lua_State* L);
+		static int luaPlayerGetAugments(lua_State* L);
+
 		// Monster
 		static int luaMonsterCreate(lua_State* L);
 
@@ -1371,6 +1426,7 @@ class LuaScriptInterface
 		static int luaMonsterTypeCreate(lua_State* L);
 
 		static int luaMonsterTypeIsAttackable(lua_State* L);
+		static int luaMonsterTypeIsRewardBoss(lua_State* L);
 		static int luaMonsterTypeIsChallengeable(lua_State* L);
 		static int luaMonsterTypeIsConvinceable(lua_State* L);
 		static int luaMonsterTypeIsSummonable(lua_State* L);

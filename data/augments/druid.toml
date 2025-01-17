@@ -1,0 +1,36 @@
+[DruidicBlessing]
+name = "Druidic Blessing"
+description = "A vital blessing from the Great Meridan to only those worthy of such favor!"
+modifiers = [
+	# Mana gained from poison (earth) spell damage
+	{ mod = "manasteal", value = 20, damage = "poison", origin = "spell" },
+	# Stamina gain from earth (poison) conditions
+	{ mod = "staminasteal", value = 1, chance = 5, factor = "flat", damage = "earth", origin = "condition" },
+	# Soul gain from ice spells
+	{ mod = "soulsteal", chance = 10, damage = "ice", origin = "spell" },
+]
+
+[LightsEmbrace]
+name = "Light's Embrace"
+description = "The great cleansing power of the Light"
+modifiers = [
+	# Undead Killer
+	{ mod = "piercing", value = 100, damage = "holy", origin = "all", race = "undead" },
+	{ mod = "critical", value = 50, damage = "holy", origin = "all", race = "undead" },
+]
+
+[WisdomOfAges]
+name = "Wisdom of Ages"
+description = "The knowledge to embrace holy power's abundance of life!"
+modifiers = [
+	# Absorb holy damage
+	{ mod = "absorb", value = 100, damage = "holy"},
+	# Convert Damages to Holy
+	{ mod = "reform", value = 100, chance = 100, damage = "physical", toDamage = "holy"},
+	{ mod = "reform", value = 30, chance = 25, damage = "death", toDamage = "holy"},
+	{ mod = "reform", value = 25, chance = 25, damage = "fire", toDamage = "holy"},
+	{ mod = "reform", value = 20, chance = 25, damage = "energy", toDamage = "holy"},
+	{ mod = "reform", value = 10, chance = 25, damage = "earth", toDamage = "holy"},
+	{ mod = "reform", value = 10, chance = 25, damage = "ice", toDamage = "holy"},
+
+]

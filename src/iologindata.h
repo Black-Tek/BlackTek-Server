@@ -50,6 +50,9 @@ class IOLoginData
 
 		static void loadItems(ItemMap& itemMap, DBResult_ptr result);
 		static bool saveItems(const Player* player, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream, std::map<Container*, int>& openContainers);
+		static bool saveItems(const Player* player, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream);
+		static bool saveAugments(const Player* player, DBInsert& query_insert, PropWriteStream& augmentStream);
+		static void loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augmentList, DBResult_ptr result);
 };
 
 #endif

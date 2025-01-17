@@ -135,41 +135,6 @@ function Player:onTradeCompleted(target, item, targetItem, isSuccess)
 	end
 end
 
-local soulCondition = Condition(CONDITION_SOUL, CONDITIONID_DEFAULT)
-soulCondition:setTicks(4 * 60 * 1000)
-soulCondition:setParameter(CONDITION_PARAM_SOULGAIN, 1)
-
-local function useStamina(player)
-	local staminaMinutes = player:getStamina()
-	if staminaMinutes == 0 then
-		return
-	end
-
-	local playerId = player:getId()
-	if not nextUseStaminaTime[playerId] then
-		nextUseStaminaTime[playerId] = 0
-	end
-
-	local currentTime = os.time()
-	local timePassed = currentTime - nextUseStaminaTime[playerId]
-	if timePassed <= 0 then
-		return
-	end
-
-	if timePassed > 60 then
-		if staminaMinutes > 2 then
-			staminaMinutes = staminaMinutes - 2
-		else
-			staminaMinutes = 0
-		end
-		nextUseStaminaTime[playerId] = currentTime + 120
-	else
-		staminaMinutes = staminaMinutes - 1
-		nextUseStaminaTime[playerId] = currentTime + 60
-	end
-	player:setStamina(staminaMinutes)
-end
-
 function Player:onGainExperience(source, exp, rawExp, sendText)
 	local onGainExperience = EventCallback.onGainExperience
 	return onGainExperience and onGainExperience(self, source, exp, rawExp, sendText) or exp
@@ -253,4 +218,18 @@ function Player:onSpellTry(spell, spellType)
 		return onSpellTry(self, spell, spellType)
 	end
 	return true
+end
+
+function Player:onAugment(augment)
+	local onAugment = EventCallback.onPlayerAugment
+	if onAugment then
+		onAugment(self, augment)
+	end
+end
+
+function Player:onRemoveAugment(augment)
+	local onRemoveAugment = EventCallback.onRemovePlayerAugment
+	if onRemoveAugment then
+		onRemoveAugment(self, augment)
+	end
 end

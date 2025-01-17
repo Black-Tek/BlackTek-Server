@@ -122,6 +122,10 @@ bool Events::load()
 				info.playerOnRotateItem = event;
 			} else if (methodName == "onSpellTry") {
 				info.playerOnSpellTry = event;
+			} else if (methodName == "onAugment") {
+				info.playerOnAugment = event;
+			} else if (methodName == "onRemoveAugment") {
+				info.playerOnRemoveAugment = event;
 			} else {
 				std::cout << "[Warning - Events::load] Unknown player method: " << methodName << std::endl;
 			}
@@ -142,7 +146,11 @@ bool Events::load()
 				info.itemOnAttack = event;
 			} else if (methodName == "onDefend") {
 				info.itemOnDefend = event;
-			}
+			} else if (methodName == "onAugment") {
+				info.itemOnAugment = event;
+			} else if (methodName == "onRemoveAugment") {
+				info.itemOnRemoveAugment = event;
+			} 
 		} else {
 			std::cout << "[Warning - Events::load] Unknown class: " << className << std::endl;
 		}
@@ -314,7 +322,7 @@ void Events::eventCreatureOnHear(Creature* creature, Creature* speaker, const st
 	LuaScriptInterface::setCreatureMetatable(L, -1, speaker);
 
 	LuaScriptInterface::pushString(L, words);
-	lua_pushnumber(L, type);
+	lua_pushinteger(L, type);
 
 	scriptInterface.callVoidFunction(4);
 }
@@ -343,9 +351,9 @@ void Events::eventCreatureOnAttack(Creature* attacker, Creature* target, BlockTy
 	LuaScriptInterface::pushUserdata<Creature>(L, target);
 	LuaScriptInterface::setCreatureMetatable(L, -1, target);
 
-	lua_pushnumber(L, static_cast<uint8_t>(blockType));
-	lua_pushnumber(L, static_cast<uint8_t>(combatType));
-	lua_pushnumber(L, static_cast<uint8_t>(origin));
+	lua_pushinteger(L, static_cast<uint8_t>(blockType));
+	lua_pushinteger(L, static_cast<uint8_t>(combatType));
+	lua_pushinteger(L, static_cast<uint8_t>(origin));
 
 	lua_pushboolean(L, criticalDamage);
 	lua_pushboolean(L, leechedDamage);
@@ -377,9 +385,9 @@ void Events::eventCreatureOnDefend(Creature* defender, Creature* attacker, Block
 	LuaScriptInterface::pushUserdata<Creature>(L, attacker);
 	LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
 
-	lua_pushnumber(L, static_cast<uint8_t>(blockType));
-	lua_pushnumber(L, static_cast<uint8_t>(combatType));
-	lua_pushnumber(L, static_cast<uint8_t>(origin));
+	lua_pushinteger(L, static_cast<uint8_t>(blockType));
+	lua_pushinteger(L, static_cast<uint8_t>(combatType));
+	lua_pushinteger(L, static_cast<uint8_t>(origin));
 
 	lua_pushboolean(L, criticalDamage);
 	lua_pushboolean(L, leechedDamage);
@@ -487,7 +495,7 @@ void Events::eventPartyOnShareExperience(Party* party, uint64_t& exp)
 	LuaScriptInterface::pushUserdata<Party>(L, party);
 	LuaScriptInterface::setMetatable(L, -1, "Party");
 
-	lua_pushnumber(L, exp);
+	lua_pushinteger(L, exp);
 
 	if (scriptInterface.protectedCall(L, 2, 1) != 0) {
 		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
@@ -639,7 +647,7 @@ void Events::eventPlayerOnLook(Player* player, const Position& position, Thing* 
 	}
 
 	LuaScriptInterface::pushPosition(L, position, stackpos);
-	lua_pushnumber(L, lookDistance);
+	lua_pushinteger(L, lookDistance);
 
 	scriptInterface.callVoidFunction(4);
 }
@@ -668,7 +676,7 @@ void Events::eventPlayerOnLookInBattleList(Player* player, Creature* creature, i
 	LuaScriptInterface::pushUserdata<Creature>(L, creature);
 	LuaScriptInterface::setCreatureMetatable(L, -1, creature);
 
-	lua_pushnumber(L, lookDistance);
+	lua_pushinteger(L, lookDistance);
 
 	scriptInterface.callVoidFunction(3);
 }
@@ -700,7 +708,7 @@ void Events::eventPlayerOnLookInTrade(Player* player, Player* partner, Item* ite
 	LuaScriptInterface::pushUserdata<Item>(L, item);
 	LuaScriptInterface::setItemMetatable(L, -1, item);
 
-	lua_pushnumber(L, lookDistance);
+	lua_pushinteger(L, lookDistance);
 
 	scriptInterface.callVoidFunction(4);
 }
@@ -729,7 +737,7 @@ bool Events::eventPlayerOnLookInShop(Player* player, const ItemType* itemType, u
 	LuaScriptInterface::pushUserdata<const ItemType>(L, itemType);
 	LuaScriptInterface::setMetatable(L, -1, "ItemType");
 
-	lua_pushnumber(L, count);
+	lua_pushinteger(L, count);
 	lua_pushstring(L, description.c_str());
 
 	return scriptInterface.callFunction(4);
@@ -759,7 +767,7 @@ ReturnValue Events::eventPlayerOnMoveItem(Player* player, Item* item, uint16_t c
 	LuaScriptInterface::pushUserdata<Item>(L, item);
 	LuaScriptInterface::setItemMetatable(L, -1, item);
 
-	lua_pushnumber(L, count);
+	lua_pushinteger(L, count);
 	LuaScriptInterface::pushPosition(L, fromPosition);
 	LuaScriptInterface::pushPosition(L, toPosition);
 
@@ -803,7 +811,7 @@ void Events::eventPlayerOnItemMoved(Player* player, Item* item, uint16_t count, 
 	LuaScriptInterface::pushUserdata<Item>(L, item);
 	LuaScriptInterface::setItemMetatable(L, -1, item);
 
-	lua_pushnumber(L, count);
+	lua_pushinteger(L, count);
 	LuaScriptInterface::pushPosition(L, fromPosition);
 	LuaScriptInterface::pushPosition(L, toPosition);
 
@@ -866,8 +874,8 @@ void Events::eventPlayerOnReportRuleViolation(Player* player, const std::string&
 
 	LuaScriptInterface::pushString(L, targetName);
 
-	lua_pushnumber(L, reportType);
-	lua_pushnumber(L, reportReason);
+	lua_pushinteger(L, reportType);
+	lua_pushinteger(L, reportReason);
 
 	LuaScriptInterface::pushString(L, comment);
 	LuaScriptInterface::pushString(L, translation);
@@ -898,7 +906,7 @@ bool Events::eventPlayerOnReportBug(Player* player, const std::string& message, 
 
 	LuaScriptInterface::pushString(L, message);
 	LuaScriptInterface::pushPosition(L, position);
-	lua_pushnumber(L, category);
+	lua_pushinteger(L, category);
 
 	return scriptInterface.callFunction(4);
 }
@@ -924,7 +932,7 @@ bool Events::eventPlayerOnTurn(Player* player, Direction direction)
 	LuaScriptInterface::pushUserdata<Player>(L, player);
 	LuaScriptInterface::setMetatable(L, -1, "Player");
 
-	lua_pushnumber(L, direction);
+	lua_pushinteger(L, direction);
 
 	return scriptInterface.callFunction(2);
 }
@@ -1056,8 +1064,8 @@ void Events::eventPlayerOnGainExperience(Player* player, Creature* source, uint6
 		lua_pushnil(L);
 	}
 
-	lua_pushnumber(L, exp);
-	lua_pushnumber(L, rawExp);
+	lua_pushinteger(L, exp);
+	lua_pushinteger(L, rawExp);
 
 	if (scriptInterface.protectedCall(L, 4, 1) != 0) {
 		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
@@ -1090,7 +1098,7 @@ void Events::eventPlayerOnLoseExperience(Player* player, uint64_t& exp)
 	LuaScriptInterface::pushUserdata<Player>(L, player);
 	LuaScriptInterface::setMetatable(L, -1, "Player");
 
-	lua_pushnumber(L, exp);
+	lua_pushinteger(L, exp);
 
 	if (scriptInterface.protectedCall(L, 2, 1) != 0) {
 		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
@@ -1123,8 +1131,8 @@ void Events::eventPlayerOnGainSkillTries(Player* player, skills_t skill, uint64_
 	LuaScriptInterface::pushUserdata<Player>(L, player);
 	LuaScriptInterface::setMetatable(L, -1, "Player");
 
-	lua_pushnumber(L, skill);
-	lua_pushnumber(L, tries);
+	lua_pushinteger(L, skill);
+	lua_pushinteger(L, tries);
 
 	if (scriptInterface.protectedCall(L, 3, 1) != 0) {
 		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
@@ -1187,7 +1195,7 @@ void Events::eventPlayerOnInventoryUpdate(Player* player, Item* item, slots_t sl
 	LuaScriptInterface::pushUserdata<Item>(L, item);
 	LuaScriptInterface::setItemMetatable(L, -1, item);
 
-	lua_pushnumber(L, slot);
+	lua_pushinteger(L, slot);
 	LuaScriptInterface::pushBoolean(L, equip);
 
 	scriptInterface.callVoidFunction(4);
@@ -1217,7 +1225,7 @@ void Events::eventPlayerOnRotateItem(Player* player, Item* item)
 	LuaScriptInterface::pushUserdata<Item>(L, item);
 	LuaScriptInterface::setItemMetatable(L, -1, item);
 
-	scriptInterface.callFunction(2);
+	scriptInterface.callVoidFunction(2);
 }
 
 bool Events::eventPlayerOnSpellTry(Player* player, const Spell* spell, SpellType_t spellType)
@@ -1243,9 +1251,62 @@ bool Events::eventPlayerOnSpellTry(Player* player, const Spell* spell, SpellType
 
 	LuaScriptInterface::pushSpell(L, *spell);
 
-	return scriptInterface.callFunction(2);
+	return scriptInterface.callFunction(3);
 }
 
+void Events::eventPlayerOnAugment(Player* player, std::shared_ptr<Augment> augment)
+{
+	// Player:onAugment(augment)
+	if (info.playerOnAugment == -1) {
+		return;
+	}
+
+	if (!scriptInterface.reserveScriptEnv()) {
+		std::cout << "[Error - Events::eventPlayerOnAugment] Call stack overflow" << std::endl;
+		return;
+	}
+
+	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+	env->setScriptId(info.playerOnAugment, &scriptInterface);
+
+	lua_State* L = scriptInterface.getLuaState();
+	scriptInterface.pushFunction(info.playerOnAugment);
+
+	LuaScriptInterface::pushUserdata<Player>(L, player);
+	LuaScriptInterface::setMetatable(L, -1, "Player");
+
+	LuaScriptInterface::pushSharedPtr<Augment>(L, augment);
+	LuaScriptInterface::setMetatable(L, -1, "Augment");
+
+	scriptInterface.callVoidFunction(2);
+}
+
+void Events::eventPlayerOnRemoveAugment(Player* player, std::shared_ptr<Augment> augment)
+{
+	// Player:onRemoveAugment(augment)
+	if (info.playerOnRemoveAugment == -1) {
+		return;
+	}
+
+	if (!scriptInterface.reserveScriptEnv()) {
+		std::cout << "[Error - Events::eventPlayerOnRemoveAugment] Call stack overflow" << std::endl;
+		return;
+	}
+
+	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+	env->setScriptId(info.playerOnRemoveAugment, &scriptInterface);
+
+	lua_State* L = scriptInterface.getLuaState();
+	scriptInterface.pushFunction(info.playerOnRemoveAugment);
+
+	LuaScriptInterface::pushUserdata<Player>(L, player);
+	LuaScriptInterface::setMetatable(L, -1, "Player");
+
+	LuaScriptInterface::pushSharedPtr<Augment>(L, augment);
+	LuaScriptInterface::setMetatable(L, -1, "Augment");
+
+	scriptInterface.callVoidFunction(2);
+}
 
 void Events::eventMonsterOnDropLoot(Monster* monster, Container* corpse)
 {
@@ -1271,7 +1332,7 @@ void Events::eventMonsterOnDropLoot(Monster* monster, Container* corpse)
 	LuaScriptInterface::pushUserdata<Container>(L, corpse);
 	LuaScriptInterface::setMetatable(L, -1, "Container");
 
-	return scriptInterface.callVoidFunction(2);
+	scriptInterface.callVoidFunction(2);
 }
 
 bool Events::eventItemOnImbue(Item* item, std::shared_ptr<Imbuement> imbuement, bool created)
@@ -1324,10 +1385,10 @@ void Events::eventItemOnRemoveImbue(Item* item, ImbuementType imbueType, bool de
 	LuaScriptInterface::pushUserdata<Item>(L, item);
 	LuaScriptInterface::setItemMetatable(L, -1, item);
 
-	lua_pushnumber(L, static_cast<uint8_t>(imbueType));
+	lua_pushinteger(L, static_cast<uint8_t>(imbueType));
 	LuaScriptInterface::pushBoolean(L, decayed);
 
-	return scriptInterface.callVoidFunction(3);
+	scriptInterface.callVoidFunction(3);
 }
 
 void Events::eventItemOnAttack(Item* item, Player* itemHolder, Creature* defender, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage, bool leechedDamage)
@@ -1357,14 +1418,14 @@ void Events::eventItemOnAttack(Item* item, Player* itemHolder, Creature* defende
 	LuaScriptInterface::pushUserdata<Creature>(L, defender);
 	LuaScriptInterface::setCreatureMetatable(L, -1, defender);
 
-	lua_pushnumber(L, static_cast<uint8_t>(blockType));
-	lua_pushnumber(L, static_cast<uint8_t>(combatType));
-	lua_pushnumber(L, static_cast<uint8_t>(origin));
+	lua_pushinteger(L, static_cast<uint8_t>(blockType));
+	lua_pushinteger(L, static_cast<uint8_t>(combatType));
+	lua_pushinteger(L, static_cast<uint8_t>(origin));
 
-	lua_pushboolean(L, criticalDamage);
-	lua_pushboolean(L, leechedDamage);
+	lua_pushinteger(L, criticalDamage);
+	lua_pushinteger(L, leechedDamage);
 
-	return scriptInterface.callVoidFunction(8);
+	scriptInterface.callVoidFunction(8);
 }
 
 void Events::eventItemOnDefend(Item* item, Player* itemHolder, Creature* attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage, bool leechedDamage)
@@ -1394,12 +1455,66 @@ void Events::eventItemOnDefend(Item* item, Player* itemHolder, Creature* attacke
 	LuaScriptInterface::pushUserdata<Creature>(L, attacker);
 	LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
 
-	lua_pushnumber(L, static_cast<uint8_t>(blockType));
-	lua_pushnumber(L, static_cast<uint8_t>(combatType));
-	lua_pushnumber(L, static_cast<uint8_t>(origin));
+	lua_pushinteger(L, blockType);
+	lua_pushinteger(L, static_cast<uint8_t>(combatType));
+	lua_pushinteger(L, static_cast<uint8_t>(origin));
 
-	lua_pushboolean(L, criticalDamage);
-	lua_pushboolean(L, leechedDamage);
+	lua_pushinteger(L, criticalDamage);
+	lua_pushinteger(L, leechedDamage);
 
-	return scriptInterface.callVoidFunction(8);
+	scriptInterface.callVoidFunction(8);
+}
+
+void Events::eventItemOnAugment(Item* item, std::shared_ptr<Augment> augment)
+{
+	// Item:onAugment(augment)
+	if (info.itemOnAugment == -1) {
+		return;
+	}
+
+	if (!scriptInterface.reserveScriptEnv()) {
+		std::cout << "[Error - Events::eventItemOnAugment] Call stack overflow" << std::endl;
+		return;
+	}
+
+	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+	env->setScriptId(info.itemOnAugment, &scriptInterface);
+
+	lua_State* L = scriptInterface.getLuaState();
+	scriptInterface.pushFunction(info.itemOnAugment);
+
+	LuaScriptInterface::pushUserdata<Item>(L, item);
+	LuaScriptInterface::setMetatable(L, -1, "Item");
+
+	LuaScriptInterface::pushSharedPtr<Augment>(L, augment);
+	LuaScriptInterface::setMetatable(L, -1, "Augment");
+
+	scriptInterface.callVoidFunction(2);
+}
+
+void Events::eventItemOnRemoveAugment(Item* item, std::shared_ptr<Augment> augment)
+{
+	// Item:onRemoveAugment(augment)
+	if (info.itemOnRemoveAugment == -1) {
+		return;
+	}
+
+	if (!scriptInterface.reserveScriptEnv()) {
+		std::cout << "[Error - Events::eventItemOnRemoveAugment] Call stack overflow" << std::endl;
+		return;
+	}
+
+	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+	env->setScriptId(info.itemOnRemoveAugment, &scriptInterface);
+
+	lua_State* L = scriptInterface.getLuaState();
+	scriptInterface.pushFunction(info.itemOnRemoveAugment);
+
+	LuaScriptInterface::pushUserdata<Item>(L, item);
+	LuaScriptInterface::setMetatable(L, -1, "Item");
+
+	LuaScriptInterface::pushSharedPtr<Augment>(L, augment);
+	LuaScriptInterface::setMetatable(L, -1, "Augment");
+
+	scriptInterface.callVoidFunction(2);
 }

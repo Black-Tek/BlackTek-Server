@@ -1952,29 +1952,6 @@ void ProtocolGame::sendMarketDetail(uint16_t itemId)
 		msg.add<uint16_t>(0x00);
 	}
 
-	if (it.abilities) {
-		std::ostringstream ss;
-		bool separator = false;
-
-		for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->absorbPercent[i] == 0) {
-				continue;
-			}
-
-			if (separator) {
-				ss << ", ";
-			} else {
-				separator = true;
-			}
-
-			ss << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << it.abilities->absorbPercent[i] << std::noshowpos << '%';
-		}
-
-		msg.addString(ss.str());
-	} else {
-		msg.add<uint16_t>(0x00);
-	}
-
 	if (it.minReqLevel != 0) {
 		msg.addString(std::to_string(it.minReqLevel));
 	} else {
@@ -2983,7 +2960,7 @@ void ProtocolGame::AddCreature(NetworkMessage& msg, const Creature* creature, bo
 				if (masterPlayer == player) {
 					creatureType = CREATURETYPE_SUMMON_OWN;
 				} else {
-					creatureType = CREATURETYPE_SUMMON_OTHERS;
+					creatureType = CREATURETYPE_SUMMON_HOSTILE;
 				}
 			}
 		}

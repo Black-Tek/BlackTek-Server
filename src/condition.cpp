@@ -5,6 +5,7 @@
 
 #include "condition.h"
 #include "game.h"
+#include "monster.h"
 
 extern Game g_game;
 
@@ -1375,6 +1376,61 @@ bool ConditionDamage::doDamage(Creature* creature, int32_t healthChange)
 
 	if (g_game.combatBlockHit(damage, attacker, creature, false, false, field)) {
 		return false;
+	}
+
+	if (Player* player = creature->getPlayer()) {
+
+		if (attacker) {
+			auto creatureType = CREATURETYPE_ATTACKABLE;
+
+			if (Player* attackPlayer = attacker->getPlayer()) {
+				creatureType = CREATURETYPE_PLAYER;
+			} else if (Monster* attackMonster = attacker->getMonster()) {
+				creatureType = player->getCreatureType(*attackMonster);
+			}
+			auto reformTotals = player->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, ORIGIN_CONDITION, creatureType, attacker->getRace(), attacker->getName());
+			if (!reformTotals.empty()) {
+				std::cout << "Reform Modifier Activated on " << damage.primary.value << " damage \n";
+				player->reformDamage(*attacker, damage, reformTotals);
+				if (damage.primary.value == 0) {
+					return true;
+				}
+			}
+
+			auto defenseModData = player->getDefenseModifierTotals(damage.primary.type, ORIGIN_CONDITION, creatureType, attacker->getRace(), attacker->getName());
+			if (!defenseModData.empty()) {
+				for (const auto& [modkind, modTotals] : defenseModData) {
+					if (modTotals.percentTotal || modTotals.flatTotal) {
+						Combat::applyDamageReductionModifier(modkind, damage, *player, *attacker, static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), ORIGIN_CONDITION);
+					}
+					if (damage.primary.value == 0) {
+						return true;
+					}
+				}
+			}
+		} else { // no attacker
+
+			auto reformTotals = player->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, ORIGIN_CONDITION, CREATURETYPE_ATTACKABLE, RACE_NONE, "none");
+			if (!reformTotals.empty()) {
+				std::cout << "Reform Modifier Activated on " << damage.primary.value << " damage \n";
+				player->reformDamage(std::nullopt, damage, reformTotals);
+				if (damage.primary.value == 0) {
+					return true;
+				}
+			}
+
+			auto defenseModData = player->getDefenseModifierTotals(damage.primary.type, ORIGIN_CONDITION, CREATURETYPE_ATTACKABLE, RACE_NONE, "none");
+			if (!defenseModData.empty()) {
+				for (const auto& [modkind, modTotals] : defenseModData) {
+					if (modTotals.percentTotal || modTotals.flatTotal) {
+						Combat::applyDamageReductionModifier(modkind, damage, *player, std::nullopt, static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), ORIGIN_CONDITION);
+					}
+					if (damage.primary.value == 0) {
+						return true;
+					}
+				}
+			}
+		}
 	}
 
 	return g_game.combatChangeHealth(attacker, creature, damage);

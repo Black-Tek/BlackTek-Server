@@ -1623,6 +1623,11 @@ Item* Game::transformItem(Item* item, uint16_t newId, int32_t newCount /*= -1*/)
 		return item;
 	}
 
+	if (item->isAugmented() || item->hasImbuements()) {
+		std::cout << "Warning! Attempted to transform imbued/augmented item : " << item->getName() << " \n";
+		return item;
+	}
+
 	Cylinder* cylinder = item->getParent();
 	if (cylinder == nullptr) {
 		return nullptr;
@@ -4064,12 +4069,17 @@ void Game::combatGetTypeInfo(CombatType_t combatType, Creature* target, TextColo
 
 bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage& damage)
 {
+	// Get the position of the target for later use in displaying messages and effects
 	const Position& targetPos = target->getPosition();
+
+	// If the damage value is positive (indicating healing or positive health change)
 	if (damage.primary.value > 0) {
+		// Early exit if the target is already dead
 		if (target->getHealth() <= 0) {
 			return false;
 		}
 
+		// Determine if the attacker is a player, if not, set to nullptr
 		Player* attackerPlayer;
 		if (attacker) {
 			attackerPlayer = attacker->getPlayer();
@@ -4077,22 +4087,31 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			attackerPlayer = nullptr;
 		}
 
+		// Check if the target is a player
 		Player* targetPlayer = target->getPlayer();
+
+		// If the attacker is a player with a black skull and the target is not marked with a skull,
+		// the attack should not proceed.
 		if (attackerPlayer && targetPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
 			return false;
 		}
 
+		// Handle health change events if any exist
 		if (damage.origin != ORIGIN_NONE) {
 			const auto& events = target->getCreatureEvents(CREATURE_EVENT_HEALTHCHANGE);
 			if (!events.empty()) {
+				// Execute each health change event
 				for (CreatureEvent* creatureEvent : events) {
 					creatureEvent->executeHealthChange(target, attacker, damage);
 				}
+				// Reset the damage origin to prevent recursive calls from re-triggering the event
 				damage.origin = ORIGIN_NONE;
+				// Recursively call the function to process the final health change
 				return combatChangeHealth(attacker, target, damage);
 			}
 		}
 
+		// Calculate the actual health change and apply it to the target
 		int32_t realHealthChange = target->getHealth();
 		target->gainHealth(attacker, damage.primary.value);
 		realHealthChange = target->getHealth() - realHealthChange;
@@ -4113,16 +4132,19 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			}
 		}
 
+		// If health was gained and the target is not in ghost mode, send notifications to spectators
 		if (realHealthChange > 0 && !target->isInGhostMode()) {
 			auto damageString = fmt::format("{:d} hitpoint{:s}", realHealthChange, realHealthChange != 1 ? "s" : "");
 
 			std::string spectatorMessage;
 
+			// Prepare the message for spectators about the healing
 			TextMessage message;
 			message.position = targetPos;
 			message.primary.value = realHealthChange;
 			message.primary.color = TEXTCOLOR_PASTELRED;
 
+			// Get all spectators around the target
 			SpectatorVec spectators;
 			map.getSpectators(spectators, targetPos, false, true);
 			for (Creature* spectator : spectators) {
@@ -4159,6 +4181,9 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			}
 		}
 	} else {
+		// If the damage value is non-positive (indicating damage or negative health change)
+
+		// Check if the target is attackable; if not, create a visual effect and return
 		if (!target->isAttackable()) {
 			if (!target->isInGhostMode()) {
 				addMagicEffect(targetPos, CONST_ME_POFF);
@@ -4166,6 +4191,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			return true;
 		}
 
+		// Similar logic for attacker and target player checks as before
 		Player* attackerPlayer;
 		if (attacker) {
 			attackerPlayer = attacker->getPlayer();
@@ -4178,6 +4204,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			return false;
 		}
 
+		// Convert the damage values to positive for health reduction
 		damage.primary.value = std::abs(damage.primary.value);
 		damage.secondary.value = std::abs(damage.secondary.value);
 
@@ -4186,10 +4213,13 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			return true;
 		}
 
+		// Prepare message for spectators about the damage
 		TextMessage message;
 		message.position = targetPos;
 
 		SpectatorVec spectators;
+
+		// Check if the target has a mana shield, which can absorb some or all of the damage
 		if (targetPlayer && target->hasCondition(CONDITION_MANASHIELD) && damage.primary.type != COMBAT_UNDEFINEDDAMAGE) {
 			int32_t manaDamage = std::min<int32_t>(targetPlayer->getMana(), healthChange);
 			if (manaDamage != 0) {
@@ -4207,6 +4237,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 					}
 				}
 
+				// Drain mana from the target and create a visual effect
 				targetPlayer->drainMana(attacker, manaDamage);
 				map.getSpectators(spectators, targetPos, true, true);
 				addMagicEffect(spectators, targetPos, CONST_ME_LOSEENERGY);
@@ -4216,6 +4247,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 				message.primary.value = manaDamage;
 				message.primary.color = TEXTCOLOR_BLUE;
 
+				// Notify spectators about the mana drain
 				for (Creature* spectator : spectators) {
 					assert(dynamic_cast<Player*>(spectator) != nullptr);
 
@@ -4254,6 +4286,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 					spectatorPlayer->sendTextMessage(message);
 				}
 
+				// Adjust the damage values after mana absorption
 				damage.primary.value -= manaDamage;
 				if (damage.primary.value < 0) {
 					damage.secondary.value = std::max<int32_t>(0, damage.secondary.value + damage.primary.value);
@@ -4262,11 +4295,13 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			}
 		}
 
+		// Calculate the total damage remaining after any mana absorption
 		int32_t realDamage = damage.primary.value + damage.secondary.value;
 		if (realDamage == 0) {
 			return true;
 		}
 
+		// Handle health change events again if necessary
 		if (damage.origin != ORIGIN_NONE) {
 			const auto& events = target->getCreatureEvents(CREATURE_EVENT_HEALTHCHANGE);
 			if (!events.empty()) {
@@ -4278,6 +4313,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			}
 		}
 
+		// Cap the primary damage at the target's current health
 		int32_t targetHealth = target->getHealth();
 		if (damage.primary.value >= targetHealth) {
 			damage.primary.value = targetHealth;
@@ -4286,11 +4322,13 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			damage.secondary.value = std::min<int32_t>(damage.secondary.value, targetHealth - damage.primary.value);
 		}
 
+		// Recalculate total damage after adjustments
 		realDamage = damage.primary.value + damage.secondary.value;
 		if (realDamage == 0) {
 			return true;
 		}
 
+		// Get spectators if not already done
 		if (spectators.empty()) {
 			map.getSpectators(spectators, targetPos, true, true);
 		}
@@ -4354,8 +4392,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 				tmpPlayer->sendTextMessage(message);
 			}
 		}
-
-		// rewardboss player attacking boss
+// rewardboss player attacking boss
 		if (target && target->getMonster() && target->getMonster()->isRewardBoss()) {
 			uint32_t monsterId = target->getMonster()->getID();
 
@@ -4382,7 +4419,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realDamage * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN);
 			}
 		}
-
+		// If the damage is enough to kill the target, execute death preparation events
 		if (realDamage >= targetHealth) {
 			for (CreatureEvent* creatureEvent : target->getCreatureEvents(CREATURE_EVENT_PREPAREDEATH)) {
 				if (!creatureEvent->executeOnPrepareDeath(target, attacker)) {
@@ -4391,12 +4428,14 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			}
 		}
 
+		// Apply the damage to the target's health and update spectators
 		target->drainHealth(attacker, realDamage);
 		addCreatureHealth(spectators, target);
 	}
 
 	return true;
 }
+
 
 bool Game::combatChangeMana(Creature* attacker, Creature* target, CombatDamage& damage)
 {
@@ -4893,7 +4932,7 @@ void Game::updateCreatureType(Creature* creature)
 		if (master) {
 			masterPlayer = master->getPlayer();
 			if (masterPlayer) {
-				creatureType = CREATURETYPE_SUMMON_OTHERS;
+				creatureType = CREATURETYPE_SUMMON_HOSTILE;
 			}
 		}
 	}
@@ -4902,7 +4941,7 @@ void Game::updateCreatureType(Creature* creature)
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
 
-	if (creatureType == CREATURETYPE_SUMMON_OTHERS) {
+	if (creatureType == CREATURETYPE_SUMMON_HOSTILE) {
 		for (Creature* spectator : spectators) {
 			Player* player = spectator->getPlayer();
 			if (masterPlayer == player) {
@@ -6078,3 +6117,4 @@ bool Game::playerUpdateAutoLoot(uint32_t playerId, uint16_t clientId, const std:
 	player->updateAutoLoot(clientId, name, remove);
 	return true;
 }
+

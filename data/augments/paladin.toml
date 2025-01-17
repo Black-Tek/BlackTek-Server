@@ -1,0 +1,47 @@
+[VitalShot]
+name = "Vital Shot"
+description = "An experienced marksman's ability to hit vital locations on a target"
+modifiers = [
+	# Piercing Shot
+	{ mod = "piercing", value = 20, factor = "flat", origin = "ranged"}
+]
+
+[HeavyShot]
+name = "Heavy Shot"
+description = "The secret to making it hurt... bigger munitions!"
+modifiers = [
+	# Heavy Shot
+	{ mod = "critical", value = 50, factor = "flat", chance = 50, origin = "ranged"}
+]
+
+[LightningShot]
+name = "Lightning Shot"
+description = "This special ability allows your shots such speed your ammo sometimes summons lightning itself"
+modifiers = [
+	# Electric Shot
+	{ damage = "physical", mod = "conversion", value = 20, chance = 30, toDamage = "energy", origin = "ranged"}
+]
+
+[RighteousRejuvination]
+name = "Righteous Rejuvination"
+description = "The devout warriors rite achieved through pain and suffering"
+modifiers = [
+	# Soul restore from all damage
+	{ mod = "revive", value = 1, chance = 80}
+]
+
+[DragonHunter]
+name = "Dragon Hunter"
+description = "The secret of slaying dragons passed down from the ancient hunters"
+modifiers = [
+	# All Fire Resistance
+	{ damage = "fire", mod = "resist", value = 45, chance = 60},
+	# Dragon Piercing shots
+	{ monster = "Dragon", mod = "piercing", value = 100, chance = 50, origin = "ranged"},
+	{ monster = "DragonLord", mod = "piercing", value = 75, chance = 30, origin = "ranged"},
+	# Dragon shots extra damage
+	{ monster = "Dragon", mod = "critical", value = 65, factor = "flat", chance = 60, origin = "ranged"},
+	# Ricochet some damage from Dragon Fire attacks
+	{ monster = "Dragon", damage = "fire", mod = "ricochet", value = 95, chance = 25},
+	{ monster = "DragonLord", damage = "fire", mod = "ricochet", value = 35, chance = 10},
+]

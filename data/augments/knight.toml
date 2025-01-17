@@ -1,0 +1,33 @@
+[LancelotsLance]
+name = "Lancelot's Lance"
+description = "a powerful ability whose origins trace back to the White Knight Lancelot"
+modifiers = [
+	# Lifesteal
+	{ mod = "lifesteal", value = 35, chance = 85, damage = "physical", origin = "melee"},
+	# Melee Crits
+	{ mod = "critical", value = 35, chance = 98, damage = "physical", origin = "melee"},
+]
+
+[GuardiansShield]
+name = "Guardian's Shield"
+description = "This enhancement comes from years of skilled craftsmanship, and just a touch of magic"
+modifiers = [
+	# Deflection
+	{ mod = "deflect", value = 100, chance = 10 },
+	{ mod = "ricochet", value = 100, chance = 30 },
+]
+
+[WardensCalling]
+name = "Warden's Calling"
+description = "Great power bestowed to the protectors of the meak!"
+modifiers = [
+	# Absorb physical damage
+	{ mod = "absorb", value = 100, damage = "physical"},
+	# High Defenses
+	{ mod = "resist", value = 30, chance = "25", damage = "death"},
+	{ mod = "resist", value = 25, chance = "25", damage = "fire"},
+	{ mod = "reflect", value = 20, chance = "10", damage = "energy"},
+	{ mod = "deflect", value = 10, chance = "10", damage = "earth"},
+	{ mod = "ricochet", value = 10, chance = "10", damage = "ice"},
+
+]

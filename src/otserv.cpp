@@ -21,6 +21,7 @@
 #include "script.h"
 #include <fstream>
 #include <fmt/color.h>
+#include "augments.h"
 #if __has_include("gitmetadata.h")
 	#include "gitmetadata.h"
 #endif
@@ -97,44 +98,42 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
+#include <fmt/color.h>
+#include <fmt/core.h>
+
 void printServerVersion()
 {
 #if defined(GIT_RETRIEVED_STATE) && GIT_RETRIEVED_STATE
-	std::cout << STATUS_SERVER_NAME << " - Version " << GIT_DESCRIBE << std::endl;
-	std::cout << "Git SHA1 " << GIT_SHORT_SHA1  << " dated " << GIT_COMMIT_DATE_ISO8601 << std::endl;
-	#if GIT_IS_DIRTY
-	std::cout << "*** DIRTY - NOT OFFICIAL RELEASE ***" << std::endl;
-	#endif
-#else
-	std::cout << STATUS_SERVER_NAME << " - Version " << STATUS_SERVER_VERSION << std::endl;
+	std::cout << STATUS_SERVER_NAME << std::endl;
+	std::cout << "    Version: " << GIT_DESCRIBE << std::endl;
+	std::cout << "    Git SHA1 " << GIT_SHORT_SHA1  << " dated " << GIT_COMMIT_DATE_ISO8601 << std::endl;
+#if GIT_IS_DIRTY
+	std::cout << "    Status: Unofficial (dirty version)" << std::endl;
 #endif
-	std::cout << std::endl;
+#else
+	std::cout << "|| " << STATUS_SERVER_NAME << " ||" << std::endl;
+	std::cout << "    Version: " << STATUS_SERVER_VERSION << std::endl;
+	std::cout << "    Status: Official (clean version)" << std::endl;
+#endif
 
-	std::cout << "Compiled with " << BOOST_COMPILER << std::endl;
-	std::cout << "Compiled on " << __DATE__ << ' ' << __TIME__ << " for platform ";
-#if defined(__amd64__) || defined(_M_X64)
-	std::cout << "x64" << std::endl;
-#elif defined(__i386__) || defined(_M_IX86) || defined(_X86_)
-	std::cout << "x86" << std::endl;
-#elif defined(__arm__)
-	std::cout << "ARM" << std::endl;
-#else
-	std::cout << "unknown" << std::endl;
-#endif
-#if defined(LUAJIT_VERSION)
-	std::cout << "Linked with " << LUAJIT_VERSION << " for Lua support" << std::endl;
-#else
-	std::cout << "Linked with " << LUA_RELEASE << " for Lua support"  << std::endl;
-#endif
-	std::cout << std::endl;
+	// todo: make a function.. printPlatformInfo()
 
-	std::cout << "A server developed by " << STATUS_SERVER_DEVELOPERS << std::endl;
-	std::cout << std::endl;
+	std::cout << "    Compiler: " << BOOST_COMPILER << std::endl;
+	std::cout << "    Date: " << __DATE__ << ' ' << __TIME__ << " " << std::endl;
+	
+	// Todo: determine if there is more information worth having here.
+	std::cout << "    Developer: " << STATUS_SERVER_DEVELOPERS << std::endl;
+	std::cout << "    Maintainer: " << STATUS_SERVER_MAINTAINER << std::endl;
+	std::cout << "    Community: " << STATUS_SERVER_COMMUNITY_LINK << std::endl;
+	std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
 }
 
 void mainLoader(int, char*[], ServiceManager* services)
-{
-	//dispatcher thread
+{   // Todo : Rewrite all the loading prints to print confirmation.
+	//		: write timings for each thing and all things.
+	//		: colorize all the prints.
+	
+	// dispatcher thread
 	g_game.setGameState(GAME_STATE_STARTUP);
 
 	srand(static_cast<unsigned int>(OTSYS_TIME()));
@@ -168,6 +167,7 @@ void mainLoader(int, char*[], ServiceManager* services)
 	}
 
 	// read global config
+	std::cout << ":: Initializing Game Server..." << std::endl;
 	std::cout << ">> Loading config" << std::endl;
 	if (!g_config.load()) {
 		startupErrorMessage("Unable to load " + configFile + "!");
@@ -285,6 +285,9 @@ void mainLoader(int, char*[], ServiceManager* services)
 		startupErrorMessage("Failed to load map");
 		return;
 	}
+
+	std::cout << ">> Loading augments" << std::endl;
+	Augments::loadAll();
 
 	std::cout << ">> Initializing gamestate" << std::endl;
 	g_game.setGameState(GAME_STATE_INIT);

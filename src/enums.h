@@ -1,5 +1,8 @@
-// Copyright 2024 Black Tek Server Authors. All rights reserved.
-// Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
+// Credits: BlackTek Server Creator Codinablack@github.com.
+// This project is based of otland's The Forgottenserver.
+// Any and all code taken from otland's The Forgottenserver is licensed under GPL 2.0
+// Any code Authored by: Codinablack or BlackTek contributers, that is not already licensed, is hereby licesned MIT. 
+// The GPL 2.0 License that can be found in the LICENSE file.
 
 #ifndef FS_ENUMS_H
 #define FS_ENUMS_H
@@ -135,7 +138,12 @@ enum CreatureType_t : uint8_t {
 	CREATURETYPE_MONSTER = 1,
 	CREATURETYPE_NPC = 2,
 	CREATURETYPE_SUMMON_OWN = 3,
-	CREATURETYPE_SUMMON_OTHERS = 4,
+	CREATURETYPE_SUMMON_HOSTILE = 4,
+	CREATURETYPE_SUMMON_GUILD = 5,
+	CREATURETYPE_SUMMON_PARTY = 6,
+	CREATURETYPE_BOSS = 7,
+	CREATURETYPE_ATTACKABLE = 8,
+	CREATURETYPE_SUMMON_ALL,
 };
 
 enum OperatingSystem_t : uint8_t {
@@ -156,6 +164,8 @@ enum SpellGroup_t : uint8_t {
 	SPELLGROUP_HEALING = 2,
 	SPELLGROUP_SUPPORT = 3,
 	SPELLGROUP_SPECIAL = 4,
+
+	SPELLGROUP_UNKNOWN = 255 // when no group set in revscript
 };
 
 enum SpellType_t : uint8_t {
@@ -593,8 +603,14 @@ enum CombatOrigin
 	ORIGIN_SPELL,
 	ORIGIN_MELEE,
 	ORIGIN_RANGED,
+	ORIGIN_ABSORB,
+	ORIGIN_RESTORE,
 	ORIGIN_REFLECT,
+	ORIGIN_DEFLECT,
+	ORIGIN_RICOCHET,
+	ORIGIN_PIERCING,
 	ORIGIN_IMBUEMENT,
+	ORIGIN_AUGMENT,
 };
 
 struct CombatDamage
@@ -621,20 +637,6 @@ enum MonstersEvent_t : uint8_t {
 	MONSTERS_EVENT_DISAPPEAR = 3,
 	MONSTERS_EVENT_MOVE = 4,
 	MONSTERS_EVENT_SAY = 5,
-};
-
-struct Reflect {
-	Reflect() = default;
-	Reflect(uint16_t percent, uint16_t chance) : percent(percent), chance(chance) {};
-
-	Reflect& operator+=(const Reflect& other) {
-		percent += other.percent;
-		chance = static_cast<uint16_t>(std::min(100, chance + other.chance));
-		return *this;
-	}
-
-	uint16_t percent = 0;
-	uint16_t chance = 0;
 };
 
 #endif // FS_ENUMS_H_

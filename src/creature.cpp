@@ -605,7 +605,12 @@ void Creature::onCreatureMove(Creature* creature, const Tile* newTile, const Pos
 
 	if (creature == followCreature || (creature == this && followCreature)) {
 		if (hasFollowPath) {
-			isUpdatingPath = true;
+			if ((creature == followCreature) && listWalkDir.empty()) {
+				isUpdatingPath = false;
+				goToFollowCreature();
+			} else {
+				isUpdatingPath = true;
+			}
 		}
 
 		if (newPos.z != oldPos.z || !canSee(followCreature->getPosition())) {
@@ -870,83 +875,6 @@ BlockType_t Creature::blockHit(Creature* attacker, CombatType_t combatType, int3
 		}
 	}
 	
-	if (attacker)
-	{
-		Player* attackerPlayer = attacker->getPlayer();
-		if (attackerPlayer) {
-			for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-
-				Item* item = attackerPlayer->getInventoryItem(static_cast<slots_t>(slot));
-				if (!item) {
-					continue;
-				}
-
-				const uint16_t boostPercent = item->getBoostPercent(combatType);
-				if (boostPercent != 0) {
-					damage += std::round(damage * (boostPercent / 100.));
-				}
-
-				if (item->hasImbuements() && blockType == BLOCK_NONE) {
-					
-					for (auto& imbuement : item->getImbuements()) {
-
-						auto conversionAmount = std::abs(std::round(damage * (imbuement->value / 100.)));
-
-						if (conversionAmount > 0) {
-							auto trueDamage = std::abs(damage);
-							auto difference = (trueDamage - conversionAmount);
-
-							CombatDamage imbueDamage;
-							imbueDamage.blockType = BLOCK_NONE;
-							imbueDamage.origin = ORIGIN_IMBUEMENT;
-
-							switch (imbuement->imbuetype) {
-								case IMBUEMENT_TYPE_FIRE_DAMAGE:
-									imbueDamage.primary.type = COMBAT_FIREDAMAGE;
-									break;
-								case IMBUEMENT_TYPE_ENERGY_DAMAGE:
-									imbueDamage.primary.type = COMBAT_ENERGYDAMAGE;
-									break;
-								case IMBUEMENT_TYPE_EARTH_DAMAGE:
-									imbueDamage.primary.type = COMBAT_EARTHDAMAGE;
-									break;
-								case IMBUEMENT_TYPE_ICE_DAMAGE:
-									imbueDamage.primary.type = COMBAT_ICEDAMAGE;
-									break;
-								case IMBUEMENT_TYPE_HOLY_DAMAGE:
-									imbueDamage.primary.type = COMBAT_HOLYDAMAGE;
-									break;
-								case IMBUEMENT_TYPE_DEATH_DAMAGE:
-									imbueDamage.primary.type = COMBAT_DEATHDAMAGE;
-									break;
-								default:
-									break;
-							}
-							
-							// Here we keep the damage from being reduced so much it becomes healing,
-							// while also considering the damage the imbuement does, and limiting it
-							// to only do as much as actually convertable.
-							if (difference <= 0) {
-								if (difference < 0) {
-									imbueDamage.primary.value = (0 - trueDamage);
-								} else {
-									imbueDamage.primary.value = (0 - conversionAmount);
-								}
-								damage = 0;
-							} else {
-								imbueDamage.primary.value = (0 - conversionAmount);
-								// this might be confusing, but since we know damage is a negative number
-								// and we know that the conversion is positive, we can add them to reduce the damage.
-								damage += conversionAmount;
-							}
-							g_game.combatChangeHealth(attacker, this, imbueDamage);
-						}
-					}
-				}
-			}
-		}
-	}
-
 	if (damage <= 0) {
 		damage = 0;
 		blockType = BLOCK_ARMOR;
@@ -1060,7 +988,12 @@ bool Creature::setFollowCreature(Creature* creature)
 		hasFollowPath = false;
 		forceUpdateFollowPath = false;
 		followCreature = creature;
-		isUpdatingPath = true;
+		if (getMonster()) {
+			isUpdatingPath = false;
+			goToFollowCreature();
+		} else {
+			isUpdatingPath = true;
+		}
 	} else {
 		isUpdatingPath = false;
 		followCreature = nullptr;

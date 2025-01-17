@@ -200,9 +200,9 @@ bool MoveEvents::registerLuaFunction(MoveEvent* event)
 		}
 	}
 
-	if (isValid(itemIdRange, event)) {
-		const auto& range = getItemIdRange(event);
-		for (auto& id : range) {
+	if (moveEvent->getItemIdRange().size() > 0) {
+		if (moveEvent->getItemIdRange().size() == 1) {
+			uint32_t id = moveEvent->getItemIdRange().at(0);
 			addEvent(*moveEvent, id, itemIdMap);
 			if (moveEvent->getEventType() == MOVE_EVENT_EQUIP) {
 				ItemType& it = Item::items.getItemType(id);
@@ -211,7 +211,18 @@ bool MoveEvents::registerLuaFunction(MoveEvent* event)
 				it.minReqMagicLevel = moveEvent->getReqMagLv();
 				it.vocationString = moveEvent->getVocationString();
 			}
-		addEvent(*moveEvent, id, itemIdMap);
+		} else {
+			uint32_t iterId = 0;
+			while (++iterId < moveEvent->getItemIdRange().size()) {
+				if (moveEvent->getEventType() == MOVE_EVENT_EQUIP) {
+					ItemType& it = Item::items.getItemType(moveEvent->getItemIdRange().at(iterId));
+					it.wieldInfo = moveEvent->getWieldInfo();
+					it.minReqLevel = moveEvent->getReqLevel();
+					it.minReqMagicLevel = moveEvent->getReqMagLv();
+					it.vocationString = moveEvent->getVocationString();
+				}
+				addEvent(*moveEvent, moveEvent->getItemIdRange().at(iterId), itemIdMap);
+			}
 		}
 	} else {
 		return false;
@@ -239,9 +250,9 @@ bool MoveEvents::registerLuaEvent(MoveEvent* event)
 		}
 	}
 
-	if (isValid(itemIdRange, event)) {
-		const auto& range = getItemIdRange(event);
-		for (auto& id : range) {
+	if (moveEvent->getItemIdRange().size() > 0) {
+		if (moveEvent->getItemIdRange().size() == 1) {
+			uint32_t id = moveEvent->getItemIdRange().at(0);
 			addEvent(*moveEvent, id, itemIdMap);
 			if (moveEvent->getEventType() == MOVE_EVENT_EQUIP) {
 				ItemType& it = Item::items.getItemType(id);
@@ -250,22 +261,48 @@ bool MoveEvents::registerLuaEvent(MoveEvent* event)
 				it.minReqMagicLevel = moveEvent->getReqMagLv();
 				it.vocationString = moveEvent->getVocationString();
 			}
-			addEvent(*moveEvent, id, itemIdMap);
+		} else {
+			auto v = moveEvent->getItemIdRange();
+			for (auto i = v.begin(); i != v.end(); i++) {
+				if (moveEvent->getEventType() == MOVE_EVENT_EQUIP) {
+					ItemType& it = Item::items.getItemType(*i);
+					it.wieldInfo = moveEvent->getWieldInfo();
+					it.minReqLevel = moveEvent->getReqLevel();
+					it.minReqMagicLevel = moveEvent->getReqMagLv();
+					it.vocationString = moveEvent->getVocationString();
+				}
+				addEvent(*moveEvent, *i, itemIdMap);
+			}
 		}
-	} else if (isValid(actionIdRange, event)) {
-		const auto& range = getActionIdRange(event);
-		for (auto& id : range) {
+	} else if (moveEvent->getActionIdRange().size() > 0) {
+		if (moveEvent->getActionIdRange().size() == 1) {
+			int32_t id = moveEvent->getActionIdRange().at(0);
 			addEvent(*moveEvent, id, actionIdMap);
+		} else {
+			auto v = moveEvent->getActionIdRange();
+			for (auto i = v.begin(); i != v.end(); i++) {
+				addEvent(*moveEvent, *i, actionIdMap);
+			}
 		}
-	} else if (isValid(uniqueIdRange, event)) {
-		const auto& range = getUniqueIdRange(event);
-		for (auto& id : range) {
+	} else if (moveEvent->getUniqueIdRange().size() > 0) {
+		if (moveEvent->getUniqueIdRange().size() == 1) {
+			int32_t id = moveEvent->getUniqueIdRange().at(0);
 			addEvent(*moveEvent, id, uniqueIdMap);
+		} else {
+			auto v = moveEvent->getUniqueIdRange();
+			for (auto i = v.begin(); i != v.end(); i++) {
+				addEvent(*moveEvent, *i, uniqueIdMap);
+			}
 		}
-	} else if (isValidPos(posList, event)) {
-		const auto& range = getPosList(event);
-		for (auto& pos : range) {
+	} else if (moveEvent->getPosList().size() > 0) {
+		if (moveEvent->getPosList().size() == 1) {
+			Position pos = moveEvent->getPosList().at(0);
 			addEvent(*moveEvent, pos, positionMap);
+		} else {
+			auto v = moveEvent->getPosList();
+			for (auto i = v.begin(); i != v.end(); i++) {
+				addEvent(*moveEvent, *i, positionMap);
+			}
 		}
 	} else {
 		return false;
@@ -961,7 +998,7 @@ bool MoveEvent::executeEquip(Player* player, Item* item, slots_t slot, bool isCh
 	LuaScriptInterface::pushUserdata<Player>(L, player);
 	LuaScriptInterface::setMetatable(L, -1, "Player");
 	LuaScriptInterface::pushThing(L, item);
-	lua_pushnumber(L, slot);
+	lua_pushinteger(L, slot);
 	LuaScriptInterface::pushBoolean(L, isCheck);
 
 	return scriptInterface->callFunction(4);

@@ -21,8 +21,10 @@
 #include "mounts.h"
 #include "storeinbox.h"
 #include "rewardchest.h"
+#include "augments.h"
 
 #include <bitset>
+#include <optional>
 
 class House;
 class NetworkMessage;
@@ -33,6 +35,8 @@ class Party;
 class SchedulerTask;
 class Bed;
 class Guild;
+
+constexpr uint16_t MaximumStamina = 2520;
 
 enum skillsid_t {
 	SKILLVALUE_LEVEL = 0,
@@ -60,6 +64,32 @@ enum tradestate_t : uint8_t {
 	TRADE_ACKNOWLEDGE,
 	TRADE_TRANSFER,
 };
+
+static constexpr SlotPositionBits getPositionForSlot(slots_t constSlot) {
+	switch (constSlot) {
+	case CONST_SLOT_HEAD:
+		return SLOTP_HEAD;
+	case CONST_SLOT_NECKLACE:
+		return SLOTP_NECKLACE;
+	case CONST_SLOT_BACKPACK:
+		return SLOTP_BACKPACK;
+	case CONST_SLOT_ARMOR:
+		return SLOTP_ARMOR;
+	case CONST_SLOT_RIGHT:
+		return SLOTP_RIGHT;
+	case CONST_SLOT_LEFT:
+		return SLOTP_LEFT;
+	case CONST_SLOT_LEGS:
+		return SLOTP_LEGS;
+	case CONST_SLOT_FEET:
+		return SLOTP_FEET;
+	case CONST_SLOT_AMMO:
+		return SLOTP_AMMO;
+	case CONST_SLOT_RING:
+		return SLOTP_RING;
+	default: throw std::invalid_argument("Invalid ConstSlot value");
+	}
+}
 
 struct VIPEntry {
 	VIPEntry(uint32_t guid, std::string_view name, std::string_view description, uint32_t icon, bool notify) : guid{ guid }, name{ name }, description{ description }, icon{ icon }, notify{ notify } {}
@@ -598,6 +628,9 @@ class Player final : public Creature, public Cylinder
 		void changeHealth(int32_t healthChange, bool sendHealthChange = true) override;
 		void changeMana(int32_t manaChange);
 		void changeSoul(int32_t soulChange);
+		void addSoul(uint8_t soulChange);
+		void addStamina(uint16_t gain);
+		void changeStamina(int32_t amount);
 
 		bool isPzLocked() const {
 			return pzLocked;
@@ -1187,6 +1220,7 @@ class Player final : public Creature, public Cylinder
 		}
 
 		void updateRegeneration();
+
 		void addItemImbuements(Item* item);
 		void removeItemImbuements(Item* item);
 		void addImbuementEffect(std::shared_ptr<Imbuement> imbue);
@@ -1197,6 +1231,46 @@ class Player final : public Creature, public Cylinder
 		void addAutoLootItems(Item* item);
 		void updateAutoLoot(uint16_t clientId, const std::string& name, bool remove);
 		const std::map<uint16_t, std::string> getAutolootItems() const;
+
+		CreatureType_t getCreatureType(Monster& monster);
+
+		// To-do : Make all these methods into const
+		std::unordered_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> getAttackModifiers();
+		std::unordered_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> getDefenseModifiers();
+
+		std::unordered_map<uint8_t, ModifierTotals> getConvertedTotals(const uint8_t modType, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName);
+
+		std::unordered_map<uint8_t, ModifierTotals> getAttackModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName);
+		std::unordered_map<uint8_t, ModifierTotals> getDefenseModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName);
+
+		std::vector<Position> getOpenPositionsInRadius(int radius) const;
+
+		const bool addAugment(std::string_view augmentName);
+		const bool addAugment(std::shared_ptr<Augment>& augment);
+
+		const bool removeAugment(std::string_view augmentName);
+		const bool removeAugment(std::shared_ptr<Augment>& augment);
+
+		const bool isAugmented();
+		const bool hasAugment(const std::string_view augmentName, const bool checkItems);
+		const bool hasAugment(const std::shared_ptr<Augment>& augmentName, const bool checkItems);
+		const std::vector<std::shared_ptr<Augment>> getPlayerAugments() const;
+
+		// To-do : convert all these params to const and ref.
+		void absorbDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
+		void restoreManaFromDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
+		void reviveSoulFromDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
+		void replenishStaminaFromDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
+		void resistDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
+		void reflectDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
+		void deflectDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, CombatOrigin paramOrigin, uint8_t areaEffect, uint8_t distanceEffect);
+		void ricochetDamage(CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
+		void convertDamage(Creature* target, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList);
+		void reformDamage(std::optional<std::reference_wrapper<Creature>> attackerOpt, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList);
+
+		Position generateAttackPosition(std::optional<std::reference_wrapper<Creature>> attacker, Position& defensePosition, CombatOrigin origin);
+
+		std::unique_ptr<AreaCombat> generateDeflectArea(std::optional<std::reference_wrapper<Creature>> attacker, int32_t targetCount);
 
 	private:
 		std::forward_list<Condition*> getMuteConditions() const;
@@ -1250,6 +1324,8 @@ class Player final : public Creature, public Cylinder
 		std::map<uint8_t, OpenContainer> openContainers;
 		std::map<uint32_t, DepotChest*> depotChests;
 		std::map<uint32_t, int32_t> storageMap;
+
+		std::vector<std::shared_ptr<Augment>> augments;
 
 		std::vector<OutfitEntry> outfits;
 		std::vector<uint16_t> autoLootItems;

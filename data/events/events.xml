@@ -39,6 +39,8 @@
 	<event class="Player" method="onInventoryUpdate" enabled="1" />
 	<event class="Player" method="onRotateItem" enabled="1" />
 	<event class="Player" method="onSpellTry" enabled="0" />
+	<event class="Player" method="onAugment" enabled="1" />
+	<event class="Player" method="onRemoveAugment" enabled="1" />
 
 	<!-- Monster methods -->
 	<event class="Monster" method="onDropLoot" enabled="1" />
@@ -47,7 +49,9 @@
 	<!-- Item methods -->
 	<event class="Item" method="onImbue" enabled="1"/>
 	<event class="Item" method="onRemoveImbue" enabled="1"/>
-	<!-- Offensive -->
 	<event class="Item" method="onAttack" enabled="0"/>
 	<event class="Item" method="onDefend" enabled="0"/>
+	<event class="Item" method="onAugment" enabled="1"/>
+	<event class="Item" method="onRemoveAugment" enabled="1"/>
+
 </events>

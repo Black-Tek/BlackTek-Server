@@ -157,6 +157,10 @@ class Creature : virtual public Thing
 			hiddenHealth = b;
 		}
 
+		bool isBoss() const {
+			return false;
+		}
+
 		int32_t getThrowRange() const override final {
 			return 1;
 		}
