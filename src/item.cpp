@@ -700,23 +700,6 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 			break;
 		}
 
-		case ATTR_IMBUEMENTS: {
-			uint16_t size;
-			if (!propStream.read<uint16_t>(size)) {
-				return ATTR_READ_ERROR;
-			}
-
-			for (uint16_t i = 0; i < size; ++i) {
-				std::shared_ptr<Imbuement> imb = std::make_shared<Imbuement>();
-				if (!imb->unserialize(propStream)) {
-					return ATTR_READ_ERROR;
-				}
-
-				addImbuement(imb, false);
-			}
-			break;
-		}
-
 		//12+ compatibility
 		case ATTR_OPENCONTAINER:
 		case ATTR_PODIUMOUTFIT: {
@@ -1984,7 +1967,6 @@ void Item::decayImbuements(bool infight) {
 	}
 }
 
-
 void handleRuneDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType) {
 	if (RuneSpell* rune = g_spells->getRuneSpell(it.id)) {
 		int32_t tmpSubType = subType;
@@ -2188,102 +2170,10 @@ void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begi
 	}
 }
 
-
-void handleReflectPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
-	int16_t show = it.abilities->reflect[0].percent;
-	if (show != 0) {
-		for (size_t i = 1; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->reflect[i].percent != show) {
-				show = 0;
-				break;
-			}
-		}
-	}
-
-	if (show == 0) {
-		bool tmp = true;
-
-		for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-			if (it.abilities->reflect[i].percent == 0) {
-				continue;
-			}
-
-			if (tmp) {
-				tmp = false;
-
-				if (begin) {
-					begin = false;
-					s << " (";
-				} else {
-					s << ", ";
-				}
-
-				s << "reflect ";
-			} else {
-				s << ", ";
-			}
-
-			s << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << it.abilities->reflect[i].percent << std::noshowpos << '%';
-		}
-	} else {
-		if (begin) {
-			begin = false;
-			s << " (";
-		} else {
-			s << ", ";
-		}
-
-		s << "reflect all " << std::showpos << show << std::noshowpos << '%';
-	}
-}
-
-
 void handleAbilitiesDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
 	handleSkillsDescription(s, it, begin);
 	handleStatsDescription(s, it, begin);
 	handleStatsPercentDescription(s, it, begin);
-	handleMiscDescription(s, it, begin);
-}
-
-LootCategory_t Item::getLootCategoryId() const
-{
-    uint16_t category = items[id].lootType;
-
-	if (!(category & (LOOT_CATEGORY_NONE | LOOT_CATEGORY_GOLD | LOOT_CATEGORY_VALUABLES | LOOT_CATEGORY_EQUIPMENT |
-					LOOT_CATEGORY_POTIONS | LOOT_CATEGORY_AMMUNITION | LOOT_CATEGORY_CREATURE_PRODUCTS |
-					LOOT_CATEGORY_FOOD | LOOT_CATEGORY_SPECIAL | LOOT_CATEGORY_MISC))) {
-		return LOOT_CATEGORY_NONE; // Default to NONE if invalid or unset
-	}
-
-    return static_cast<LootCategory_t>(category);
-}
-
-				s << "reflect ";
-			} else {
-				s << ", ";
-			}
-
-			s << getCombatName(indexToCombatType(i)) << ' ' << std::showpos << it.abilities->reflect[i].percent << std::noshowpos << '%';
-		}
-	} else {
-		if (begin) {
-			begin = false;
-			s << " (";
-		} else {
-			s << ", ";
-		}
-
-		s << "reflect all " << std::showpos << show << std::noshowpos << '%';
-	}
-}
-
-void handleAbilitiesDescription(std::ostringstream& s, const ItemType& it, bool& begin) {
-	handleSkillsDescription(s, it, begin);
-	handleStatsDescription(s, it, begin);
-	handleStatsPercentDescription(s, it, begin);
-	handleReflectPercentDescription(s, it, begin);
-	handleAbsorbsPercentDescription(s, it, begin);
-	handleAbsorbsFieldsPercentDescription(s, it, begin);
 	handleMiscDescription(s, it, begin);
 }
 

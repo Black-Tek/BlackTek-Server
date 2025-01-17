@@ -101,7 +101,6 @@ enum AttrTypes_t {
 	ATTR_OPENCONTAINER = 46,
 	ATTR_PODIUMOUTFIT = 47,
 	ATTR_IMBUEMENTS = 48,
-	ATTR_IMBUEMENTS,
 };
 
 enum Attr_ReadValue {
