@@ -6,26 +6,25 @@
 
 #include "container.h"
 
-using RewardChest_ptr = std::shared_ptr<RewardChest>;
-
 class RewardChest final : public Container
 {
 public:
 	explicit RewardChest(uint16_t type, bool paginated = true);
 
-	RewardChest* getRewardChest() override {
-		return this;
+	RewardChestPtr getRewardChest() override {
+		return {shared_from_this(), this};
 	}
-	const RewardChest* getRewardChest() const override {
-		return this;
+	
+	RewardChestConstPtr getRewardChest() const override {
+		return dynamic_shared_this<RewardChest>();
 	}
 
 	//cylinder implementations
-	ReturnValue queryAdd(int32_t index, const Thing& thing, uint32_t count,
-		uint32_t flags, Creature* actor = nullptr) const override;
+	ReturnValue queryAdd(int32_t index, const ThingPtr& thing, uint32_t count,
+	                     uint32_t flags, CreaturePtr actor = nullptr) override;
 
-	void postAddNotification(Thing* thing, const Cylinder* oldParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
-	void postRemoveNotification(Thing* thing, const Cylinder* newParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
+	void postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
+	void postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
 
 };
 

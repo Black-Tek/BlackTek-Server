@@ -25,7 +25,7 @@ class ValueCallback final : public CallBack
 {
 	public:
 		explicit ValueCallback(formulaType_t type): type(type) {}
-		void getMinMaxValues(Player* player, CombatDamage& damage) const;
+		void getMinMaxValues(const PlayerPtr& player, CombatDamage& damage) const;
 
 	private:
 		formulaType_t type;
@@ -34,13 +34,13 @@ class ValueCallback final : public CallBack
 class TileCallback final : public CallBack
 {
 	public:
-		void onTileCombat(Creature* creature, Tile* tile) const;
+		void onTileCombat(const CreaturePtr& creature, const TilePtr& tile) const;
 };
 
 class TargetCallback final : public CallBack
 {
 	public:
-		void onTargetCombat(Creature* creature, Creature* target) const;
+		void onTargetCombat(const CreaturePtr& creature, const CreaturePtr& target) const;
 };
 
 struct CombatParams {
@@ -91,9 +91,9 @@ class Combat
 		Combat(const Combat&) = delete;
 		Combat& operator=(const Combat&) = delete;
 
-		static bool isInPvpZone(const Creature* attacker, const Creature* target);
-		static bool isProtected(const Player* attacker, const Player* target);
-		static bool isPlayerCombat(const Creature* target);
+		static bool isInPvpZone(const CreatureConstPtr& attacker, const CreatureConstPtr& target);
+		static bool isProtected(const PlayerConstPtr& attacker, const PlayerConstPtr& target);
+		static bool isPlayerCombat(const CreatureConstPtr& target);
 		static CombatType_t ConditionToDamageType(ConditionType_t type);
 		static ConditionType_t DamageToConditionType(CombatType_t type);
 		// To-do : follow this call stack and improve it.
@@ -101,41 +101,45 @@ class Combat
 		// to remove those same checks out of game::combatHealthChange
 		// with the breaking down of the smaller parts of combatHealthChange as well
 		// we can eliminate the need in it all together and provide cleaner code.
-		static ReturnValue canTargetCreature(Player* attacker, Creature* target);
-		static ReturnValue canDoCombat(Creature* caster, Tile* tile, bool aggressive);
-		static ReturnValue canDoCombat(Creature* attacker, Creature* target);
-		static void postCombatEffects(Creature* caster, const Position& pos, const CombatParams& params);
+		static ReturnValue canTargetCreature(const PlayerPtr& attacker, const CreaturePtr& target);
+		static ReturnValue canDoCombat(const CreaturePtr& caster, const TilePtr& tile, bool aggressive);
+		static ReturnValue canDoCombat(const CreaturePtr& attacker, const CreaturePtr& target);
+		static void postCombatEffects(const CreaturePtr& caster, const Position& pos, const CombatParams& params);
 
-		static void addDistanceEffect(Creature* caster, const Position& fromPos, const Position& toPos, uint8_t effect);
+		static void addDistanceEffect(const CreaturePtr& caster, const Position& fromPos, const Position& toPos, uint8_t effect);
 
-		void doCombat(Creature* caster, Creature* target) const;
-		void doCombat(Creature* caster, const Position& position) const;
+		void doCombat(const CreaturePtr& caster,const CreaturePtr& target) const;
+		void doCombat(const CreaturePtr& caster, const Position& position) const;
 
-		static void doTargetCombat(Creature* caster, Creature* target, CombatDamage& damage, const CombatParams& params, bool sendDistanceEffect = true);
-		static void doAreaCombat(Creature* caster, const Position& position, const AreaCombat* area, CombatDamage& damage, const CombatParams& params);
+		static void doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target, CombatDamage& damage, const CombatParams& params, bool sendDistanceEffect = true);
+		static void doAreaCombat(const CreaturePtr& caster, const Position& position, const AreaCombat* area, const CombatDamage& damage, const CombatParams& params);
 
 		static void applyDamageIncreaseModifier(uint8_t modifierType, CombatDamage& damage, int32_t percentValue, int32_t flatValue);
-		static void applyDamageReductionModifier(uint8_t modifierType, CombatDamage& damage, Player& damageTarget, std::optional<std::reference_wrapper<Creature>> attacker, int32_t percentValue, int32_t flatValue, CombatOrigin paramOrigin,  uint8_t areaEffect = CONST_ME_NONE, uint8_t distanceEffect = CONST_ANI_NONE);
+		static void applyDamageReductionModifier(uint8_t modifierType, CombatDamage& damage, const PlayerPtr& damageTarget, const std::optional<CreaturePtr>& attacker, int32_t percentValue, int32_t flatValue, CombatOrigin paramOrigin,  uint8_t areaEffect = CONST_ME_NONE, uint8_t distanceEffect = CONST_ANI_NONE);
 
 		bool setCallback(CallBackParam_t key);
-		CallBack* getCallback(CallBackParam_t key);
+		CallBack* getCallback(CallBackParam_t key) const;
 
 		bool setParam(CombatParam_t param, uint32_t value);
-		int32_t getParam(CombatParam_t param);
+		int32_t getParam(CombatParam_t param) const;
 
 		void setArea(AreaCombat* area);
 
 		bool hasArea() const {
 			return area != nullptr;
 		}
+	
 		void addCondition(const Condition* condition) {
 			params.conditionList.emplace_front(condition);
 		}
+	
 		void clearConditions() {
 			params.conditionList.clear();
 		}
+	
 		void setPlayerCombatValues(formulaType_t formulaType, double mina, double minb, double maxa, double maxb);
-		void postCombatEffects(Creature* caster, const Position& pos) const {
+	
+		void postCombatEffects(CreaturePtr& caster, const Position& pos) const {
 			postCombatEffects(caster, pos, params);
 		}
 
@@ -144,8 +148,8 @@ class Combat
 		}
 
 	private:
-		static void combatTileEffects(const SpectatorVec& spectators, Creature* caster, Tile* tile, const CombatParams& params);
-		CombatDamage getCombatDamage(Creature* creature, Creature* target) const;
+		static void combatTileEffects(const SpectatorVec& spectators,const CreaturePtr& caster, TilePtr tile, const CombatParams& params);
+		CombatDamage getCombatDamage(const CreaturePtr& creature, const CreaturePtr& target) const;
 
 		//configurable
 		CombatParams params;
@@ -165,20 +169,23 @@ class MagicField final : public Item
 	public:
 		explicit MagicField(uint16_t type) : Item(type), createTime(OTSYS_TIME()) {}
 
-		MagicField* getMagicField() override {
-			return this;
+		MagicFieldPtr getMagicField() override {
+			return dynamic_shared_this<MagicField>();
 		}
-		const MagicField* getMagicField() const override {
-			return this;
+	
+		MagicFieldConstPtr getMagicField() const override {
+			return dynamic_shared_this<MagicField>();
 		}
 
 		bool isReplaceable() const {
 			return Item::items[getID()].replaceable;
 		}
+	
 		CombatType_t getCombatType() const {
 			const ItemType& it = items[getID()];
 			return it.combatType;
 		}
+	
 		int32_t getDamage() const {
 			const ItemType& it = items[getID()];
 			if (it.conditionDamage) {
@@ -186,7 +193,7 @@ class MagicField final : public Item
 			}
 			return 0;
 		}
-		void onStepInField(Creature* creature);
+		void onStepInField(const CreaturePtr& creature);
 
 	private:
 		int64_t createTime;

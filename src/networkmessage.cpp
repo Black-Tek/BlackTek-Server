@@ -98,7 +98,7 @@ void NetworkMessage::addItem(uint16_t id, uint8_t count)
 	}
 }
 
-void NetworkMessage::addItem(const Item* item)
+void NetworkMessage::addItem(const ItemConstPtr& item)
 {
 	const ItemType& it = Item::items[item->getID()];
 

@@ -53,6 +53,7 @@ class GlobalEvents final : public BaseEvents
 		LuaScriptInterface& getScriptInterface() override {
 			return scriptInterface;
 		}
+	
 		LuaScriptInterface scriptInterface;
 
 		GlobalEventMap thinkMap, serverMap, timerMap;
@@ -66,12 +67,13 @@ class GlobalEvent final : public Event
 
 		bool configureEvent(const pugi::xml_node& node) override;
 
-		bool executeRecord(uint32_t current, uint32_t old);
+		bool executeRecord(uint32_t current, uint32_t old) const;
 		bool executeEvent() const;
 
 		GlobalEvent_t getEventType() const {
 			return eventType;
 		}
+	
 		void setEventType(GlobalEvent_t type) {
 			eventType = type;
 		}
@@ -79,13 +81,15 @@ class GlobalEvent final : public Event
 		const std::string& getName() const {
 			return name;
 		}
-		void setName(std::string eventName) {
+	
+		void setName(const std::string& eventName) {
 			name = eventName;
 		}
 
 		uint32_t getInterval() const {
 			return interval;
 		}
+	
 		void setInterval(uint32_t eventInterval) {
 			interval |= eventInterval;
 		}
@@ -93,6 +97,7 @@ class GlobalEvent final : public Event
 		int64_t getNextExecution() const {
 			return nextExecution;
 		}
+	
 		void setNextExecution(int64_t time) {
 			nextExecution = time;
 		}

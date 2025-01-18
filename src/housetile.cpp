@@ -11,10 +11,10 @@
 extern Game g_game;
 extern ConfigManager g_config;
 
-HouseTile::HouseTile(int32_t x, int32_t y, int32_t z, House* house) :
+HouseTile::HouseTile(const int32_t x, int32_t y, const int32_t z, House* house) :
 	DynamicTile(x, y, z), house(house) {}
 
-void HouseTile::addThing(int32_t index, Thing* thing)
+void HouseTile::addThing(int32_t index, ThingPtr thing)
 {
 	Tile::addThing(index, thing);
 
@@ -22,12 +22,12 @@ void HouseTile::addThing(int32_t index, Thing* thing)
 		return;
 	}
 
-	if (Item* item = thing->getItem()) {
+	if (const auto item = thing->getItem()) {
 		updateHouse(item);
 	}
 }
 
-void HouseTile::internalAddThing(uint32_t index, Thing* thing)
+void HouseTile::internalAddThing(uint32_t index, ThingPtr thing)
 {
 	Tile::internalAddThing(index, thing);
 
@@ -35,44 +35,42 @@ void HouseTile::internalAddThing(uint32_t index, Thing* thing)
 		return;
 	}
 
-	if (Item* item = thing->getItem()) {
+	if (const auto item = thing->getItem()) {
 		updateHouse(item);
 	}
 }
 
-void HouseTile::updateHouse(Item* item)
+void HouseTile::updateHouse(const ItemPtr& item)
 {
-	if (item->getParent() != this) {
+	if (item->getParent() != getParent()) {
 		return;
 	}
 
-	Door* door = item->getDoor();
-	if (door) {
+	if (auto door = item->getDoor()) {
 		if (door->getDoorId() != 0) {
 			house->addDoor(door);
 		}
 	} else {
-		BedItem* bed = item->getBed();
-		if (bed) {
+		if (const auto bed = item->getBed()) {
 			house->addBed(bed);
 		}
 	}
 }
 
-ReturnValue HouseTile::queryAdd(int32_t index, const Thing& thing, uint32_t count, uint32_t flags, Creature* actor/* = nullptr*/) const
+ReturnValue HouseTile::queryAdd(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor/* = nullptr*/)
 {
-	if (const Creature* creature = dynamic_cast<const Creature*>(&thing)) {
-		if (const Player* player = creature->getPlayer()) {
+	if (CreaturePtr creature = std::dynamic_pointer_cast<Creature>(thing)) {
+		if (const auto player = creature->getPlayer()) {
 			if (!house->isInvited(player)) {
 				return RETURNVALUE_PLAYERISNOTINVITED;
 			}
 		} else {
 			return RETURNVALUE_NOTPOSSIBLE;
 		}
-		return Tile::queryAdd(*creature, flags);
+		return Tile::queryAdd(creature, flags);
 	}
 
-	if (const Item* item = dynamic_cast<const Item*>(&thing)) {
+	if (ItemPtr item = std::dynamic_pointer_cast<Item>(thing)) {
 		if (item->isStoreItem() && !item->hasAttribute(ITEM_ATTRIBUTE_WRAPID)) {
 			return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
 		}
@@ -82,18 +80,18 @@ ReturnValue HouseTile::queryAdd(int32_t index, const Thing& thing, uint32_t coun
 				return RETURNVALUE_PLAYERISNOTINVITED;
 			}
 		}
-		return Tile::queryAdd(*item, flags);
+		return Tile::queryAdd(item, flags);
 	}
 	return RETURNVALUE_NOERROR;
 }
 
-Tile* HouseTile::queryDestination(int32_t& index, const Thing& thing, Item** destItem, uint32_t& flags)
+CylinderPtr HouseTile::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr* destItem, uint32_t& flags)
 {
-	if (const Creature* creature = thing.getCreature()) {
-		if (const Player* player = creature->getPlayer()) {
+	if (const auto creature = thing->getCreature()) {
+		if (const auto player = creature->getPlayer()) {
 			if (!house->isInvited(player)) {
 				const Position& entryPos = house->getEntryPosition();
-				Tile* destTile = g_game.map.getTile(entryPos);
+				auto destTile = g_game.map.getTile(entryPos);
 				if (!destTile) {
 					std::cout << "Error: [HouseTile::queryDestination] House entry not correct"
 					          << " - Name: " << house->getName()
@@ -102,7 +100,7 @@ Tile* HouseTile::queryDestination(int32_t& index, const Thing& thing, Item** des
 
 					destTile = g_game.map.getTile(player->getTemplePosition());
 					if (!destTile) {
-						destTile = &(Tile::nullptr_tile);
+						destTile = std::make_shared<StaticTile>(0xFFFF, 0xFFFF, 0xFF);
 					}
 				}
 
@@ -116,9 +114,9 @@ Tile* HouseTile::queryDestination(int32_t& index, const Thing& thing, Item** des
 	return Tile::queryDestination(index, thing, destItem, flags);
 }
 
-ReturnValue HouseTile::queryRemove(const Thing& thing, uint32_t count, uint32_t flags, Creature* actor /*= nullptr*/) const
+ReturnValue HouseTile::queryRemove(const ThingPtr& thing, const uint32_t count, const uint32_t flags, CreaturePtr actor /*= nullptr*/)
 {
-	const Item* item = thing.getItem();
+	const auto item = thing->getItem();
 	if (!item) {
 		return RETURNVALUE_NOTPOSSIBLE;
 	}

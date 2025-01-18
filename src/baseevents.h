@@ -20,6 +20,7 @@ class Event
 		bool checkScript(const std::string& basePath, const std::string& scriptsName, const std::string& scriptFile) const;
 		bool loadScript(const std::string& scriptFile);
 		bool loadCallback();
+	
 		virtual bool loadFunction(const pugi::xml_attribute&, bool) {
 			return false;
 		}
@@ -31,7 +32,8 @@ class Event
 		bool scripted = false;
 		bool fromLua = false;
 
-		int32_t getScriptId() {
+		int32_t getScriptId() const
+		{
 			return scriptId;
 		}
 

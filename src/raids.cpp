@@ -159,7 +159,7 @@ bool Raids::reload()
 	return loadFromXml();
 }
 
-Raid* Raids::getRaidByName(const std::string& name)
+Raid* Raids::getRaidByName(const std::string& name) const
 {
 	for (Raid* raid : raidList) {
 		if (caseInsensitiveEqual(raid->getName(), name)) {
@@ -262,7 +262,7 @@ void Raid::stopEvents()
 	}
 }
 
-RaidEvent* Raid::getNextRaidEvent()
+RaidEvent* Raid::getNextRaidEvent() const
 {
 	if (nextEvent < raidEvents.size()) {
 		return raidEvents[nextEvent];
@@ -368,14 +368,13 @@ bool SingleSpawnEvent::configureRaidEvent(const pugi::xml_node& eventNode)
 
 bool SingleSpawnEvent::executeEvent()
 {
-	Monster* monster = Monster::createMonster(monsterName);
+	auto monster = Monster::createMonster(monsterName);
 	if (!monster) {
 		std::cout << "[Error] Raids: Cant create monster " << monsterName << std::endl;
 		return false;
 	}
 
-	if (!g_game.placeCreature(monster, position, false, true)) {
-		delete monster;
+	if (!g_game.placeCreature(std::move(monster), position, false, true)) {
 		std::cout << "[Error] Raids: Cant place monster " << monsterName << std::endl;
 		return false;
 	}
@@ -509,7 +508,7 @@ bool AreaSpawnEvent::executeEvent()
 	for (const MonsterSpawn& spawn : spawnList) {
 		uint32_t amount = uniform_random(spawn.minAmount, spawn.maxAmount);
 		for (uint32_t i = 0; i < amount; ++i) {
-			Monster* monster = Monster::createMonster(spawn.name);
+			auto monster = Monster::createMonster(spawn.name);
 			if (!monster) {
 				std::cout << "[Error - AreaSpawnEvent::executeEvent] Can't create monster " << spawn.name << std::endl;
 				return false;
@@ -517,7 +516,7 @@ bool AreaSpawnEvent::executeEvent()
 
 			bool success = false;
 			for (int32_t tries = 0; tries < MAXIMUM_TRIES_PER_MONSTER; tries++) {
-				Tile* tile = g_game.map.getTile(uniform_random(fromPos.x, toPos.x), uniform_random(fromPos.y, toPos.y), uniform_random(fromPos.z, toPos.z));
+				const auto& tile = g_game.map.getTile(uniform_random(fromPos.x, toPos.x), uniform_random(fromPos.y, toPos.y), uniform_random(fromPos.z, toPos.z));
 				if (tile && !tile->isMoveableBlocking() && !tile->hasFlag(TILESTATE_PROTECTIONZONE) && tile->getTopCreature() == nullptr && g_game.placeCreature(monster, tile->getPosition(), false, true)) {
 					success = true;
 					break;
@@ -525,7 +524,7 @@ bool AreaSpawnEvent::executeEvent()
 			}
 
 			if (!success) {
-				delete monster;
+				monster.reset();
 			}
 		}
 	}

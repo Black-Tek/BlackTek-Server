@@ -15,11 +15,13 @@ class Vocation
 		const std::string& getVocName() const {
 			return name;
 		}
+	
 		const std::string& getVocDescription() const {
 			return description;
 		}
-		uint64_t getReqSkillTries(uint8_t skill, uint16_t level);
-		uint64_t getReqMana(uint32_t magLevel);
+	
+		uint64_t getReqSkillTries(uint8_t skill, uint16_t level) const;
+		uint64_t getReqMana(uint32_t magLevel) const;
 
 		uint16_t getId() const {
 			return id;
@@ -32,9 +34,11 @@ class Vocation
 		uint32_t getHPGain() const {
 			return gainHP;
 		}
+	
 		uint32_t getManaGain() const {
 			return gainMana;
 		}
+	
 		uint32_t getCapGain() const {
 			return gainCap;
 		}
@@ -42,12 +46,15 @@ class Vocation
 		uint32_t getManaGainTicks() const {
 			return gainManaTicks;
 		}
+	
 		uint32_t getManaGainAmount() const {
 			return gainManaAmount;
 		}
+	
 		uint32_t getHealthGainTicks() const {
 			return gainHealthTicks;
 		}
+	
 		uint32_t getHealthGainAmount() const {
 			return gainHealthAmount;
 		}
@@ -55,6 +62,7 @@ class Vocation
 		uint8_t getSoulMax() const {
 			return soulMax;
 		}
+	
 		uint16_t getSoulGainTicks() const {
 			return gainSoulTicks;
 		}
@@ -62,6 +70,7 @@ class Vocation
 		uint32_t getAttackSpeed() const {
 			return attackSpeed;
 		}
+	
 		uint32_t getBaseSpeed() const {
 			return baseSpeed;
 		}

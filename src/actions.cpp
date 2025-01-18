@@ -224,7 +224,7 @@ bool Actions::registerLuaEvent(Action* event)
 	return false;
 }
 
-ReturnValue Actions::canUse(const Player* player, const Position& pos)
+ReturnValue Actions::canUse(const PlayerConstPtr& player, const Position& pos)
 {
 	if (pos.x != 0xFFFF) {
 		const Position& playerPos = player->getPosition();
@@ -239,16 +239,16 @@ ReturnValue Actions::canUse(const Player* player, const Position& pos)
 	return RETURNVALUE_NOERROR;
 }
 
-ReturnValue Actions::canUse(const Player* player, const Position& pos, const Item* item)
+ReturnValue Actions::canUse(const PlayerConstPtr& player, const Position& pos, const ItemConstPtr& item)
 {
-	Action* action = getAction(item);
+	auto action = getAction(item);
 	if (action) {
 		return action->canExecuteAction(player, pos);
 	}
 	return RETURNVALUE_NOERROR;
 }
 
-ReturnValue Actions::canUseFar(const Creature* creature, const Position& toPos, bool checkLineOfSight, bool checkFloor)
+ReturnValue Actions::canUseFar(const CreatureConstPtr& creature, const Position& toPos, bool checkLineOfSight, bool checkFloor)
 {
 	if (toPos.x == 0xFFFF) {
 		return RETURNVALUE_NOERROR;
@@ -270,7 +270,7 @@ ReturnValue Actions::canUseFar(const Creature* creature, const Position& toPos, 
 	return RETURNVALUE_NOERROR;
 }
 
-Action* Actions::getAction(const Item* item)
+Action* Actions::getAction(const ItemConstPtr& item)
 {
 	if (item->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)) {
 		auto it = uniqueItemMap.find(item->getUniqueId());
@@ -295,15 +295,15 @@ Action* Actions::getAction(const Item* item)
 	return g_spells->getRuneSpell(item->getID());
 }
 
-ReturnValue Actions::internalUseItem(Player* player, const Position& pos, uint8_t index, Item* item, bool isHotkey)
+ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint8_t index, const ItemPtr& item, bool isHotkey)
 {
-	if (Door* door = item->getDoor()) {
+	if (auto door = item->getDoor()) {
 		if (!door->canUse(player)) {
 			return RETURNVALUE_NOTPOSSIBLE;
 		}
 	}
 
-	Action* action = getAction(item);
+	auto action = getAction(item);
 	if (action) {
 		if (action->isScripted()) {
 			if (action->executeUse(player, item, pos, nullptr, pos, isHotkey)) {
@@ -318,7 +318,7 @@ ReturnValue Actions::internalUseItem(Player* player, const Position& pos, uint8_
 		}
 	}
 
-	if (BedItem* bed = item->getBed()) {
+	if (BedItemPtr bed = item->getBed()) {
 		if (!bed->canUse(player)) {
 			if (!bed->getHouse()) {
 				return RETURNVALUE_YOUCANNOTUSETHISBED;
@@ -336,7 +336,7 @@ ReturnValue Actions::internalUseItem(Player* player, const Position& pos, uint8_
 				g_game.sendOfflineTrainingDialog(player);
 			}
 			else {
-				BedItem* bedItem = player->getBedItem();
+				auto bedItem = player->getBedItem();
 				if (bedItem) {
 					bedItem->sleep(player);
 				}
@@ -346,28 +346,28 @@ ReturnValue Actions::internalUseItem(Player* player, const Position& pos, uint8_
 		return RETURNVALUE_NOERROR;
 	}
 
-	if (Container* container = item->getContainer()) {
-		Container* openContainer;
+	if (auto container = item->getContainer()) {
+		ContainerPtr openContainer;
 
 		//depot container
-		if (DepotLocker* depot = container->getDepotLocker()) {
-			DepotLocker& myDepotLocker = player->getDepotLocker();
-			myDepotLocker.setParent(depot->getParent()->getTile());
-			openContainer = &myDepotLocker;
+		if (auto depot = container->getDepotLocker()) {
+			DepotLockerPtr& myDepotLocker = player->getDepotLocker();
+			myDepotLocker->setParent(depot->getParent());
+			openContainer = myDepotLocker;
 		} else {
 			openContainer = container;
 		}
 
 		uint32_t corpseOwner = container->getCorpseOwner();
 		if (container->isRewardCorpse()) {
-			RewardChest& myRewardChest = player->getRewardChest();
+			auto& myRewardChest = player->getRewardChest();
 
-			for (Item* subItem : container->getItemList()) {
+			for (auto subItem : container->getItemList()) {
 				if (subItem->getID() == ITEM_REWARD_CONTAINER) {
 					int64_t rewardDate = subItem->getIntAttr(ITEM_ATTRIBUTE_DATE);
 
 					bool foundMatch = false;
-					for (Item* rewardItem : myRewardChest.getItemList()) {
+					for (auto rewardItem : myRewardChest->getItemList()) {
 						if (rewardItem->getID() == ITEM_REWARD_CONTAINER && rewardItem->getIntAttr(ITEM_ATTRIBUTE_DATE) == rewardDate) {
 							foundMatch = true;
 							break;
@@ -385,32 +385,31 @@ ReturnValue Actions::internalUseItem(Player* player, const Position& pos, uint8_
 		}
 
 		// Reward chest
-		if (RewardChest* rewardchest = container->getRewardChest()) {
-			RewardChest& myRewardChest = player->getRewardChest();
-			myRewardChest.setParent(rewardchest->getParent()->getTile());
+		if (auto rewardchest = container->getRewardChest()) {
+			auto& myRewardChest = player->getRewardChest();
+			myRewardChest->setParent(myRewardChest->getParent());
 
-			if (myRewardChest.getItemList().empty()) {
+			if (myRewardChest->getItemList().empty()) {
 				return RETURNVALUE_REWARDCHESTEMPTY;
 			}
 
-			for (Item* rewardItem : myRewardChest.getItemList()) {
+			for (auto rewardItem : myRewardChest->getItemList()) {
 				if (rewardItem->getID() == ITEM_REWARD_CONTAINER) {
-					Container* rewardContainer = rewardItem->getContainer();
+					auto rewardContainer = rewardItem->getContainer();
 					if (rewardContainer) {
-						rewardContainer->setParent(&myRewardChest);
+						rewardContainer->setParent(myRewardChest);
 					}
 				}
 			}
-			openContainer = &myRewardChest;
+			openContainer = myRewardChest;
 		}
 		else if (item->getID() == ITEM_REWARD_CONTAINER)  {				
-			RewardChest& myRewardChest = player->getRewardChest();
+			auto& myRewardChest = player->getRewardChest();
 			int64_t rewardDate = item->getIntAttr(ITEM_ATTRIBUTE_DATE);
 
-			for (Item* rewardItem : myRewardChest.getItemList()) {
+			for (auto rewardItem : myRewardChest->getItemList()) {
 				if (rewardItem->getID() == ITEM_REWARD_CONTAINER && rewardItem->getIntAttr(ITEM_ATTRIBUTE_DATE) == rewardDate && rewardItem->getIntAttr(ITEM_ATTRIBUTE_REWARDID) == item->getIntAttr(ITEM_ATTRIBUTE_REWARDID)) {
-				  Container* rewardContainer = rewardItem->getContainer();
-					if (rewardContainer) {
+					if (const auto rewardContainer = rewardItem->getContainer()) {
 						rewardContainer->setParent(container->getRealParent());
 						openContainer = rewardContainer;
 					}
@@ -420,7 +419,7 @@ ReturnValue Actions::internalUseItem(Player* player, const Position& pos, uint8_
 		}
 
 		//open/close container
-		int32_t oldContainerId = player->getContainerID(openContainer);
+		int32_t oldContainerId = player->getContainerID(std::static_pointer_cast<const Container>(openContainer));
 		if (oldContainerId == -1) {
 			player->addContainer(index, openContainer);
 			player->onSendContainer(openContainer);
@@ -449,7 +448,7 @@ ReturnValue Actions::internalUseItem(Player* player, const Position& pos, uint8_
 }
 
 
-static void showUseHotkeyMessage(Player* player, const Item* item, uint32_t count)
+static void showUseHotkeyMessage(const PlayerPtr& player, const ItemConstPtr& item, uint32_t count)
 {
 	const ItemType& it = Item::items[item->getID()];
 	if (!it.showCount) {
@@ -461,7 +460,7 @@ static void showUseHotkeyMessage(Player* player, const Item* item, uint32_t coun
 	}
 }
 
-bool Actions::useItem(Player* player, const Position& pos, uint8_t index, Item* item, bool isHotkey)
+bool Actions::useItem(PlayerPtr player, const Position& pos, uint8_t index, const ItemPtr& item, bool isHotkey)
 {
 	player->setNextAction(OTSYS_TIME() + g_config.getNumber(ConfigManager::ACTIONS_DELAY_INTERVAL));
 
@@ -471,7 +470,7 @@ bool Actions::useItem(Player* player, const Position& pos, uint8_t index, Item* 
 	}
 
 	if (g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
-		if (const HouseTile* const houseTile = dynamic_cast<const HouseTile*>(item->getTile())) {
+		if (const auto& houseTile = std::dynamic_pointer_cast<const HouseTile>(item->getTile())) {
 			if (!item->getTopParent()->getCreature() && !houseTile->getHouse()->isInvited(player)) {
 				player->sendCancelMessage(RETURNVALUE_PLAYERISNOTINVITED);
 				return false;
@@ -493,8 +492,8 @@ bool Actions::useItem(Player* player, const Position& pos, uint8_t index, Item* 
 	return true;
 }
 
-bool Actions::useItemEx(Player* player, const Position& fromPos, const Position& toPos,
-                        uint8_t toStackPos, Item* item, bool isHotkey, Creature* creature/* = nullptr*/)
+bool Actions::useItemEx(const PlayerPtr& player, const Position& fromPos, const Position& toPos,
+                        uint8_t toStackPos, const ItemPtr& item, bool isHotkey, const CreaturePtr& creature/* = nullptr*/)
 {
 	player->setNextAction(OTSYS_TIME() + g_config.getNumber(ConfigManager::EX_ACTIONS_DELAY_INTERVAL));
 
@@ -516,7 +515,7 @@ bool Actions::useItemEx(Player* player, const Position& fromPos, const Position&
 	}
 
 	if (g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
-		if (const HouseTile* const houseTile = dynamic_cast<const HouseTile*>(item->getTile())) {
+		if (const auto& houseTile = std::static_pointer_cast<const HouseTile>(item->getTile())) {
 			if (!item->getTopParent()->getCreature() && !houseTile->getHouse()->isInvited(player)) {
 				player->sendCancelMessage(RETURNVALUE_PLAYERISNOTINVITED);
 				return false;
@@ -560,7 +559,7 @@ bool Action::configureEvent(const pugi::xml_node& node)
 
 namespace {
 
-bool enterMarket(Player* player, Item*, const Position&, Thing*, const Position&, bool)
+bool enterMarket(const PlayerPtr& player, ItemPtr, const Position&, ThingPtr, const Position&, bool)
 {
 	player->sendMarketEnter();
 	return true;
@@ -586,7 +585,7 @@ bool Action::loadFunction(const pugi::xml_attribute& attr, bool isScripted)
 	return true;
 }
 
-ReturnValue Action::canExecuteAction(const Player* player, const Position& toPos)
+ReturnValue Action::canExecuteAction(const PlayerConstPtr& player, const Position& toPos)
 {
 	if (allowFarUse) {
 		return g_actions->canUseFar(player, toPos, checkLineOfSight, checkFloor);
@@ -594,7 +593,7 @@ ReturnValue Action::canExecuteAction(const Player* player, const Position& toPos
 	return g_actions->canUse(player, toPos);
 }
 
-Thing* Action::getTarget(Player* player, Creature* targetCreature, const Position& toPosition, uint8_t toStackPos) const
+ThingPtr Action::getTarget(const PlayerPtr& player, const CreaturePtr& targetCreature, const Position& toPosition, uint8_t toStackPos) const
 {
 	if (targetCreature) {
 		return targetCreature;
@@ -602,7 +601,7 @@ Thing* Action::getTarget(Player* player, Creature* targetCreature, const Positio
 	return g_game.internalGetThing(player, toPosition, toStackPos, 0, STACKPOS_USETARGET);
 }
 
-bool Action::executeUse(Player* player, Item* item, const Position& fromPosition, Thing* target, const Position& toPosition, bool isHotkey)
+bool Action::executeUse(const PlayerPtr& player, const ItemPtr& item, const Position& fromPosition, const ThingPtr& target, const Position& toPosition, bool isHotkey)
 {
 	//onUse(player, item, fromPosition, target, toPosition, isHotkey)
 	if (!scriptInterface->reserveScriptEnv()) {
@@ -617,7 +616,7 @@ bool Action::executeUse(Player* player, Item* item, const Position& fromPosition
 
 	scriptInterface->pushFunction(scriptId);
 
-	LuaScriptInterface::pushUserdata<Player>(L, player);
+	LuaScriptInterface::pushSharedPtr(L, player);
 	LuaScriptInterface::setMetatable(L, -1, "Player");
 
 	LuaScriptInterface::pushThing(L, item);

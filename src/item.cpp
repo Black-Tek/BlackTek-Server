@@ -25,84 +25,80 @@ extern Events* g_events;
 Items Item::items;
 
 // Description Utility Functions
-void handleRuneDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType);
-void handleWeaponDistanceDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType);
-void handleWeaponMeleeDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType, bool& begin);
+void handleRuneDescription(std::ostringstream& s, const ItemType& it, const ItemConstPtr& item, int32_t& subType);
+void handleWeaponDistanceDescription(std::ostringstream& s, const ItemType& it, const ItemConstPtr& item, int32_t& subType);
+void handleWeaponMeleeDescription(std::ostringstream& s, const ItemType& it, const ItemConstPtr& item, int32_t& subType, bool& begin);
 void handleSkillsDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleStatsDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleStatsPercentDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleAbilitiesDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begin);
 
-Item* Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
+ItemPtr Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
 {
-	Item* newItem = nullptr;
+    const ItemType& it = Item::items[type];
+    if (it.group == ITEM_GROUP_DEPRECATED) {
+        return nullptr;
+    }
 
-	const ItemType& it = Item::items[type];
-	if (it.group == ITEM_GROUP_DEPRECATED) {
-		return nullptr;
-	}
+    if (it.stackable && count == 0) {
+        count = 1;
+    }
 
-	if (it.stackable && count == 0) {
-		count = 1;
-	}
+    if (it.id == 0) {
+        return nullptr;
+    }
 
-	if (it.id != 0) {
-		if (it.isDepot()) {
-			newItem = new DepotLocker(type);
-		} else if (it.isRewardChest()) {
-			newItem = new RewardChest(type);
-		} else if (it.isContainer()) {
-			newItem = new Container(type);
-		} else if (it.isTeleport()) {
-			newItem = new Teleport(type);
-		} else if (it.isMagicField()) {
-			newItem = new MagicField(type);
-		} else if (it.isDoor()) {
-			newItem = new Door(type);
-		} else if (it.isTrashHolder()) {
-			newItem = new TrashHolder(type);
-		} else if (it.isMailbox()) {
-			newItem = new Mailbox(type);
-		} else if (it.isBed()) {
-			newItem = new BedItem(type);
-		} else if (it.id >= 2210 && it.id <= 2212) { // magic rings
-			newItem = new Item(type - 3, count);
-		} else if (it.id == 2215 || it.id == 2216) { // magic rings
-			newItem = new Item(type - 2, count);
-		} else if (it.id >= 2202 && it.id <= 2206) { // magic rings
-			newItem = new Item(type - 37, count);
-		} else if (it.id == 2640) { // soft boots
-			newItem = new Item(6132, count);
-		} else if (it.id == 6301) { // death ring
-			newItem = new Item(6300, count);
-		} else if (it.id == 18528) { // prismatic ring
-			newItem = new Item(18408, count);
-		} else {
-			newItem = new Item(type, count);
-		}
+    ItemPtr newItem;
 
-		
-
-		newItem->incrementReferenceCounter();
-	}
-
-	return newItem;
+	if (it.isDepot()) {
+		return std::make_shared<DepotLocker>(type);
+	} else if (it.isRewardChest()) {
+		return std::make_shared<RewardChest>(type);
+	} else if (it.isContainer()) {
+		return std::make_shared<Container>(type);
+	} else if (it.isTeleport()) {
+		return std::make_shared<Teleport>(type);
+	} else if (it.isMagicField()) {
+		return std::make_shared<MagicField>(type);
+	} else if (it.isDoor()) {
+		return std::make_shared<Door>(type);
+	} else if (it.isTrashHolder()) {
+		return std::make_shared<TrashHolder>(type);
+	} else if (it.isMailbox()) {
+		return std::make_shared<Mailbox>(type);
+	} else if (it.isBed()) {
+		return std::make_shared<BedItem>(type);
+    } else if (it.id >= 2210 && it.id <= 2212) { // magic rings
+		return std::make_shared<Item>(type - 3, count);
+    } else if (it.id == 2215 || it.id == 2216) { // magic rings
+		return std::make_shared<Item>(type - 2, count);
+    } else if (it.id >= 2202 && it.id <= 2206) { // magic rings
+		return std::make_shared<Item>(type - 37, count);
+    } else if (it.id == 2640) { // soft boots
+		return std::make_shared<Item>(6132, count);
+    } else if (it.id == 6301) { // death ring
+		return std::make_shared<Item>(6300, count);
+    } else if (it.id == 18528) { // prismatic ring
+		return std::make_shared<Item>(18408, count);
+    } else {
+		return std::make_shared<Item>(type, count);
+    }
+    return nullptr;
 }
 
-Container* Item::CreateItemAsContainer(const uint16_t type, uint16_t size)
+ContainerPtr Item::CreateItemAsContainer(const uint16_t type, uint16_t size)
 {
 	const ItemType& it = Item::items[type];
 	if (it.id == 0 || it.group == ITEM_GROUP_DEPRECATED || it.stackable || it.useable || it.moveable || it.pickupable || it.isDepot() || it.isSplash() || it.isDoor()) {
 		return nullptr;
 	}
 
-	Container* newItem = new Container(type, size);
-	newItem->incrementReferenceCounter();
+	auto newItem = std::make_shared<Container>(type, size);
 	return newItem;
 }
 
-Item* Item::CreateItem(PropStream& propStream)
+ItemPtr Item::CreateItem(PropStream& propStream)
 {
 	uint16_t id;
 	if (!propStream.read<uint16_t>(id)) {
@@ -181,13 +177,12 @@ Item::Item(const Item& i) :
 	}
 }
 
-Item* Item::clone() const
+ItemPtr Item::clone() const
 {
-	Item* item = Item::CreateItem(id, count);
+	auto item = Item::CreateItem(id, count);
 	if (attributes) {
 		item->attributes.reset(new ItemAttributes(*attributes));
 		if (item->getDuration() > 0) {
-			item->incrementReferenceCounter();
 			item->setDecaying(DECAYING_TRUE);
 			g_game.toDecayItems.push_front(item);
 		}
@@ -195,7 +190,7 @@ Item* Item::clone() const
 	return item;
 }
 
-bool Item::equals(const Item* otherItem) const
+bool Item::equals(const ItemConstPtr& otherItem) const
 {
 	if (!otherItem || id != otherItem->id) {
 		return false;
@@ -255,10 +250,10 @@ void Item::setDefaultSubtype()
 
 void Item::onRemoved()
 {
-	ScriptEnvironment::removeTempItem(this);
+	ScriptEnvironment::removeTempItem(std::dynamic_pointer_cast<Item>(shared_from_this()));
 
 	if (hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)) {
-		g_game.removeUniqueItem(getUniqueId());
+		g_game.removeUniqueItem(getUniqueId());	
 	}
 }
 
@@ -283,10 +278,10 @@ void Item::setID(uint16_t newid)
 	}
 }
 
-Cylinder* Item::getTopParent()
+CylinderPtr Item::getTopParent()
 {
-	Cylinder* aux = getParent();
-	Cylinder* prevaux = dynamic_cast<Cylinder*>(this);
+	CylinderPtr aux = getParent();
+	CylinderPtr prevaux = std::dynamic_pointer_cast<Cylinder>(shared_from_this());
 	if (!aux) {
 		return prevaux;
 	}
@@ -302,43 +297,15 @@ Cylinder* Item::getTopParent()
 	return aux;
 }
 
-const Cylinder* Item::getTopParent() const
+
+TilePtr Item::getTile()
 {
-	const Cylinder* aux = getParent();
-	const Cylinder* prevaux = dynamic_cast<const Cylinder*>(this);
-	if (!aux) {
-		return prevaux;
-	}
-
-	while (aux->getParent() != nullptr) {
-		prevaux = aux;
-		aux = aux->getParent();
-	}
-
-	if (prevaux) {
-		return prevaux;
-	}
-	return aux;
-}
-
-Tile* Item::getTile()
-{
-	Cylinder* cylinder = getTopParent();
+	auto cylinder = getTopParent();
 	//get root cylinder
 	if (cylinder && cylinder->getParent()) {
 		cylinder = cylinder->getParent();
 	}
-	return dynamic_cast<Tile*>(cylinder);
-}
-
-const Tile* Item::getTile() const
-{
-	const Cylinder* cylinder = getTopParent();
-	//get root cylinder
-	if (cylinder && cylinder->getParent()) {
-		cylinder = cylinder->getParent();
-	}
-	return dynamic_cast<const Tile*>(cylinder);
+	return cylinder->getTile();
 }
 
 uint16_t Item::getSubType() const
@@ -354,9 +321,9 @@ uint16_t Item::getSubType() const
 	return count;
 }
 
-Player* Item::getHoldingPlayer() const
+PlayerPtr Item::getHoldingPlayer()
 {
-	Cylinder* p = getParent();
+	CylinderPtr p = getParent();
 	while (p) {
 		if (p->getCreature()) {
 			return p->getCreature()->getPlayer();
@@ -1041,7 +1008,7 @@ uint32_t Item::getWeight() const
 }
 
 std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
-                                 const Item* item /*= nullptr*/, int32_t subType /*= -1*/, bool addArticle /*= true*/)
+                                 const ItemConstPtr& item /*= nullptr*/, int32_t subType /*= -1*/, bool addArticle /*= true*/)
 {
 	const std::string* text = nullptr;
 
@@ -1336,10 +1303,10 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 std::string Item::getDescription(int32_t lookDistance) const
 {
 	const ItemType& it = items[id];
-	return getDescription(it, lookDistance, this);
+	return getDescription(it, lookDistance, getItem());
 }
 
-std::string Item::getNameDescription(const ItemType& it, const Item* item /*= nullptr*/, int32_t subType /*= -1*/, bool addArticle /*= true*/)
+std::string Item::getNameDescription(const ItemType& it, const ItemConstPtr& item /*= nullptr*/, int32_t subType /*= -1*/, bool addArticle /*= true*/)
 {
 	if (item) {
 		subType = item->getSubType();
@@ -1377,7 +1344,7 @@ std::string Item::getNameDescription(const ItemType& it, const Item* item /*= nu
 std::string Item::getNameDescription() const
 {
 	const ItemType& it = items[id];
-	return getNameDescription(it, this);
+	return getNameDescription(it, getItem());
 }
 
 std::string Item::getWeightDescription(const ItemType& it, uint32_t weight, uint32_t count /*= 1*/)
@@ -1424,12 +1391,12 @@ void Item::setUniqueId(uint16_t n)
 		return;
 	}
 
-	if (g_game.addUniqueItem(n, this)) {
+	if (g_game.addUniqueItem(n, getItem())) {
 		getAttributes()->setUniqueId(n);
 	}
 }
 
-bool Item::canDecay() const
+bool Item::canDecay()
 {
 	if (isRemoved()) {
 		return false;
@@ -1573,7 +1540,7 @@ ItemAttributes::Attribute& ItemAttributes::getAttr(itemAttrTypes type)
 
 void Item::startDecaying()
 {
-	g_game.startDecay(this);
+	g_game.startDecay(getItem());
 }
 
 bool Item::hasMarketAttributes() const
@@ -1637,11 +1604,10 @@ const bool& ItemAttributes::CustomAttribute::get<bool>() {
 	return emptyBool;
 }
 
-const bool Item::isEquipped() const {
-	Player* player = getHoldingPlayer();
-	if (player) {
+const bool Item::isEquipped() {
+	if (auto player = getHoldingPlayer()) {
 		for (uint32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; slot++) {
-			if(player->getInventoryItem(slot) == this) {
+			if(player->getInventoryItem(slot).get() == this) {
 				return true;
 			}
 		}
@@ -1661,7 +1627,7 @@ uint16_t Item::getFreeImbuementSlots() const
 	return (imbuementSlots - (static_cast<uint16_t>(imbuements.size())));
 }
 
-bool Item::canImbue() const
+bool Item::canImbue()
 {
 	// todo: known bug, stackables are imbueable, but no protection is offered for someone copying items with imbuements,
 	// unless the stackables are items created a new, in that case, the imbuements don't carry over when broken down,
@@ -1736,7 +1702,7 @@ bool Item::removeImbuementSlots(const uint16_t amount, const bool destroyImbues)
 bool Item::hasImbuementType(const ImbuementType imbuetype) const
 {
 	// item:hasImbuementType(type)
-	return std::any_of(imbuements.begin(), imbuements.end(), [imbuetype](std::shared_ptr<Imbuement> elem) {
+	return std::any_of(imbuements.begin(), imbuements.end(), [imbuetype](const std::shared_ptr<Imbuement>& elem) {
 		return elem->imbuetype == imbuetype;
 		});
 }
@@ -1759,14 +1725,14 @@ bool Item::hasImbuements() const
 bool Item::addImbuement(std::shared_ptr<Imbuement>  imbuement, bool created)
 {
 	// item:addImbuement(imbuement) -- returns true if it successfully adds the imbuement
-	if (canImbue() && getFreeImbuementSlots() > 0 && g_events->eventItemOnImbue(this, imbuement, created))
+	if (canImbue() && getFreeImbuementSlots() > 0 && g_events->eventItemOnImbue(getItem(), imbuement, created))
 	{
 
 		imbuements.push_back(imbuement);
 
 		for (auto imbue : imbuements) {
 			if (imbue == imbuement) {
-				Player* player = getHoldingPlayer();
+				auto player = getHoldingPlayer();
 				if (player && isEquipped()) {
 					player->addImbuementEffect(imbue);
 				}
@@ -1777,19 +1743,19 @@ bool Item::addImbuement(std::shared_ptr<Imbuement>  imbuement, bool created)
 	return false;
 }
 
-bool Item::removeImbuement(std::shared_ptr<Imbuement> imbuement, bool decayed)
+bool Item::removeImbuement(const std::shared_ptr<Imbuement>& imbuement, bool decayed)
 {
     // item:removeImbuement(imbuement) -- returns true if it found and removed the imbuement
 	for (auto imbue : imbuements) {
 		if (imbue == imbuement) {
 
-			Player* player = getHoldingPlayer();
+			auto player = getHoldingPlayer();
 			if (player && isEquipped()) {
 				player->removeImbuementEffect(imbue);
 			}
 
-			g_events->eventItemOnRemoveImbue(this, imbuement->imbuetype, decayed);
-			imbuements.erase(std::remove(imbuements.begin(), imbuements.end(), imbue), imbuements.end());
+			g_events->eventItemOnRemoveImbue(getItem(), imbuement->imbuetype, decayed);
+			std::erase(imbuements, imbue);
 
 			return true;
 		}
@@ -1806,14 +1772,14 @@ const std::vector<std::shared_ptr<Imbuement>>& Item::getImbuements() const
 	return imbuements;
 }
 
-const bool Item::addAugment(std::shared_ptr<Augment>& augment)
+const bool Item::addAugment(const std::shared_ptr<Augment>& augment)
 {
-	if (std::find(augments.begin(), augments.end(), augment) != augments.end()) {
+	if (std::ranges::find(augments, augment) != augments.end()) {
 		return false;
 	}
 
 	augments.push_back(augment);
-	g_events->eventItemOnAugment(this, augment);
+	g_events->eventItemOnAugment(getItem(), augment);
 	return true;
 }
 
@@ -1821,7 +1787,7 @@ const bool Item::addAugment(std::string_view augmentName)
 {
 	if (auto augment = Augments::GetAugment(augmentName)) {
 		augments.emplace_back(augment);
-		g_events->eventItemOnAugment(this, augment);
+		g_events->eventItemOnAugment(std::dynamic_pointer_cast<Item>(shared_from_this()), augment);
 		return true;
 	}
 	return false;
@@ -1830,10 +1796,10 @@ const bool Item::addAugment(std::string_view augmentName)
 const bool Item::removeAugment(std::shared_ptr<Augment>& augment)
 {
 	auto originalSize = augments.size();
-	augments.erase(std::remove(augments.begin(), augments.end(), augment), augments.end());
-	auto removed = (augments.size() - originalSize) > 0 ? true : false;
+	std::erase(augments, augment);
+	const auto removed = (augments.size() - originalSize) > 0 ? true : false;
 	if (removed) {
-		g_events->eventItemOnRemoveAugment(this, augment);
+		g_events->eventItemOnRemoveAugment(std::dynamic_pointer_cast<Item>(shared_from_this()), augment);
 	}
 	return removed;
 }
@@ -1841,14 +1807,14 @@ const bool Item::removeAugment(std::shared_ptr<Augment>& augment)
 const bool Item::removeAugment(std::string_view name) {
 	auto originalSize = augments.size();
     
-	augments.erase(std::remove_if(augments.begin(), augments.end(),
-		[this, &name](const std::shared_ptr<Augment>& augment) {
-			auto match = augment->getName() == name;
-			if (match) {
-				g_events->eventItemOnRemoveAugment(this, augment);
-			}
-			return match;
-		}), augments.end());
+	std::erase_if(augments,
+          [this, &name](const std::shared_ptr<Augment>& augment) {
+              const auto match = augment->getName() == name;
+              if (match) {
+	              g_events->eventItemOnRemoveAugment(std::dynamic_pointer_cast<Item>(shared_from_this()), augment);
+              }
+              return match;
+          });
         
 	return augments.size() < originalSize;
 }
@@ -1904,7 +1870,7 @@ void Item::decayImbuements(bool infight) {
 	}
 }
 
-void handleRuneDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType) {
+void handleRuneDescription(std::ostringstream& s, const ItemType& it, const ItemConstPtr& item, int32_t& subType) {
 	if (RuneSpell* rune = g_spells->getRuneSpell(it.id)) {
 		int32_t tmpSubType = subType;
 		if (item) {
@@ -1958,7 +1924,7 @@ void handleRuneDescription(std::ostringstream& s, const ItemType& it, const Item
 	}
 }
 
-void handleWeaponDistanceDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType) {
+void handleWeaponDistanceDescription(std::ostringstream& s, const ItemType& it, const ItemConstPtr& item, int32_t& subType) {
 	s << " (Range:" << static_cast<uint16_t>(item ? item->getShootRange() : it.shootRange);
 
 	int32_t attack;
@@ -1980,7 +1946,7 @@ void handleWeaponDistanceDescription(std::ostringstream& s, const ItemType& it, 
 	}
 }
 
-void handleWeaponMeleeDescription(std::ostringstream& s, const ItemType& it, const Item* item, int32_t& subType, bool& begin) {
+void handleWeaponMeleeDescription(std::ostringstream& s, const ItemType& it, const ItemConstPtr& item, int32_t& subType, bool& begin) {
 	int32_t attack, defense, extraDefense;
 	if (item) {
 		attack = item->getAttack();

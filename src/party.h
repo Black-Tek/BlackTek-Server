@@ -10,7 +10,7 @@
 class Player;
 class Party;
 
-using PlayerVector = std::vector<Player*>;
+using PlayerVector = std::vector<PlayerPtr>;
 
 static constexpr int32_t EXPERIENCE_SHARE_RANGE = 30;
 static constexpr int32_t EXPERIENCE_SHARE_FLOORS = 1;
@@ -26,65 +26,74 @@ enum SharedExpStatus_t : uint8_t {
 class Party
 {
 	public:
-		explicit Party(Player* leader);
+		explicit Party(const PlayerPtr& leader);
 
-		Player* getLeader() const {
+		PlayerPtr getLeader() const {
 			return leader;
 		}
+	
 		PlayerVector& getMembers() {
 			return memberList;
 		}
+	
 		const PlayerVector& getInvitees() const {
 			return inviteList;
 		}
+	
 		size_t getMemberCount() const {
 			return memberList.size();
 		}
+	
 		size_t getInvitationCount() const {
 			return inviteList.size();
 		}
 
 		void disband();
-		bool invitePlayer(Player& player);
-		bool joinParty(Player& player);
-		void revokeInvitation(Player& player);
-		bool passPartyLeadership(Player* player, bool forceRemove = false);
-		bool leaveParty(Player* player, bool forceRemove = false);
+		bool invitePlayer(const PlayerPtr& player);
+		bool joinParty(const PlayerPtr& player);
+		void revokeInvitation(const PlayerPtr& player);
+		bool passPartyLeadership(const PlayerPtr& player, bool forceRemove = false);
+		bool leaveParty(const PlayerPtr& player, bool forceRemove = false);
 
-		bool removeInvite(Player& player, bool removeFromPlayer = true);
+		bool removeInvite(const PlayerPtr& player, bool removeFromPlayer = true);
 
-		bool isPlayerInvited(const Player* player) const;
+		bool isPlayerInvited(const PlayerConstPtr& player) const;
 		void updateAllPartyIcons();
-		void broadcastPartyMessage(MessageClasses msgClass, const std::string& msg, bool sendToInvitations = false);
+		void broadcastPartyMessage(MessageClasses msgClass, const std::string& msg, bool sendToInvitations = false) const;
+	
 		bool empty() const {
 			return memberList.empty() && inviteList.empty();
 		}
+	
 		bool canOpenCorpse(uint32_t ownerId) const;
 
-		void shareExperience(uint64_t experience, Creature* source = nullptr);
-		bool setSharedExperience(Player* player, bool sharedExpActive);
+		void shareExperience(uint64_t experience, const CreaturePtr& source = nullptr);
+		bool setSharedExperience(const PlayerPtr& player, bool sharedExpActive);
+	
 		bool isSharedExperienceActive() const {
 			return sharedExpActive;
 		}
+	
 		bool isSharedExperienceEnabled() const {
 			return sharedExpEnabled;
 		}
-		bool canUseSharedExperience(const Player* player) const;
-		SharedExpStatus_t getMemberSharedExperienceStatus(const Player* player) const;
+	
+		bool canUseSharedExperience(const PlayerConstPtr& player) const;
+		SharedExpStatus_t getMemberSharedExperienceStatus(const PlayerConstPtr& player) const;
 		void updateSharedExperience();
 
-		void updatePlayerTicks(Player* player, uint32_t points);
-		void clearPlayerPoints(Player* player);
+		void updatePlayerTicks(const PlayerPtr& player, uint32_t points);
+		void clearPlayerPoints(const PlayerPtr& player);
 
 	private:
-		SharedExpStatus_t getSharedExperienceStatus();
+		SharedExpStatus_t getSharedExperienceStatus() const;
 
 		std::map<uint32_t, int64_t> ticksMap;
 
 		PlayerVector memberList;
 		PlayerVector inviteList;
 
-		Player* leader;
+		PlayerPtr leader;
 
 		bool sharedExpActive = false;
 		bool sharedExpEnabled = false;

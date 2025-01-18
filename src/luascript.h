@@ -94,6 +94,56 @@ class LuaScriptInterface;
 class Cylinder;
 class Game;
 
+using PlayerPtr = std::shared_ptr<Player>;
+using PlayerConstPtr = std::shared_ptr<const Player>;
+
+using MonsterPtr = std::shared_ptr<Monster>;
+using MonsterConstPtr = std::shared_ptr<const Monster>;
+
+using NpcPtr = std::shared_ptr<Npc>;
+using NpcConstPtr = std::shared_ptr<const Npc>;
+class Depot;
+using DepotPtr = std::shared_ptr<Depot>;
+using DepotConstPtr = std::shared_ptr<const Depot>;
+class Teleport;
+using TeleportPtr = std::shared_ptr<Teleport>;
+using TeleportConstPtr = std::shared_ptr<const Teleport>;
+class TrashHolder;
+using TrashHolderPtr = std::shared_ptr<TrashHolder>;
+using TrashHolderConstPtr = std::shared_ptr<const TrashHolder>;
+class Mailbox;
+using MailboxPtr = std::shared_ptr<Mailbox>;
+using MailboxConstPtr = std::shared_ptr<const Mailbox>;
+class Door;
+using DoorPtr = std::shared_ptr<Door>;
+using DoorConstPtr = std::shared_ptr<const Door>;
+class MagicField;
+using MagicFieldPtr = std::shared_ptr<MagicField>;
+using MagicFieldConstPtr = std::shared_ptr<const MagicField>;
+class BedItem;
+using BedItemPtr = std::shared_ptr<BedItem>;
+using BedItemConstPtr = std::shared_ptr<const BedItem>;
+
+using ThingPtr = std::shared_ptr<class Thing>;
+using ThingConstPtr = std::shared_ptr<const class Thing>;
+class Tile;
+using TilePtr = std::shared_ptr<Tile>;
+using TileConstPtr = std::shared_ptr<const Tile>;
+using TileWeakPtr = std::weak_ptr<Tile>;
+
+using CylinderPtr = std::shared_ptr<Cylinder>;
+using CylinderConstPtr = std::shared_ptr<const Cylinder>;
+using CylinderWeakPtr = std::weak_ptr<Cylinder>;
+
+using ItemPtr = std::shared_ptr<Item>;
+using ItemConstPtr = std::shared_ptr<const Item>;
+class Container;
+using ContainerPtr = std::shared_ptr<Container>;
+using ContainerConstPtr = std::shared_ptr<const Container>;
+class Creature;
+using CreaturePtr = std::shared_ptr<Creature>;
+using CreatureConstPtr = std::shared_ptr<const Creature>;
+
 struct LootBlock;
 
 class ScriptEnvironment
@@ -112,12 +162,14 @@ class ScriptEnvironment
 			this->scriptId = scriptId;
 			interface = scriptInterface;
 		}
+	
 		bool setCallbackId(int32_t callbackId, LuaScriptInterface* scriptInterface);
 
 		int32_t getScriptId() const {
 			return scriptId;
 		}
-		LuaScriptInterface* getScriptInterface() {
+	
+		LuaScriptInterface* getScriptInterface() const {
 			return interface;
 		}
 
@@ -127,25 +179,26 @@ class ScriptEnvironment
 
 		void getEventInfo(int32_t& scriptId, LuaScriptInterface*& scriptInterface, int32_t& callbackId, bool& timerEvent) const;
 
-		void addTempItem(Item* item);
-		static void removeTempItem(Item* item);
-		uint32_t addThing(Thing* thing);
-		void insertItem(uint32_t uid, Item* item);
+		void addTempItem(const ItemPtr& item);
+		static void removeTempItem(const ItemPtr& item);
+		uint32_t addThing(const ThingPtr& thing);
+		void insertItem(uint32_t uid, const ItemPtr& item);
 
 		static DBResult_ptr getResultByID(uint32_t id);
-		static uint32_t addResult(DBResult_ptr res);
+		static uint32_t addResult(const DBResult_ptr& res);
 		static bool removeResult(uint32_t id);
 
-		void setNpc(Npc* npc) {
+		void setNpc(const NpcPtr& npc) {
 			curNpc = npc;
 		}
-		Npc* getNpc() const {
+	
+		NpcPtr getNpc() const {
 			return curNpc;
 		}
 
-		Thing* getThingByUID(uint32_t uid);
-		Item* getItemByUID(uint32_t uid);
-		Container* getContainerByUID(uint32_t uid);
+		ThingPtr getThingByUID(uint32_t uid);
+		ItemPtr getItemByUID(uint32_t uid);
+		ContainerPtr getContainerByUID(uint32_t uid);
 		void removeItemByUID(uint32_t uid);
 
 	private:
@@ -156,13 +209,13 @@ class ScriptEnvironment
 		LuaScriptInterface* interface;
 
 		//for npc scripts
-		Npc* curNpc = nullptr;
+		NpcPtr curNpc = nullptr;
 
 		//temporary item list
-		static std::multimap<ScriptEnvironment*, Item*> tempItems;
+		static std::multimap<ScriptEnvironment*, ItemPtr> tempItems;
 
 		//local item map
-		std::unordered_map<uint32_t, Item*> localMap;
+		std::unordered_map<uint32_t, ItemPtr> localMap;
 		uint32_t lastUID = std::numeric_limits<uint16_t>::max();
 
 		//script file id
@@ -206,7 +259,7 @@ class LuaScriptInterface
 		virtual bool initState();
 		bool reInitState();
 
-		int32_t loadFile(const std::string& file, Npc* npc = nullptr);
+		int32_t loadFile(const std::string& file, std::optional<NpcPtr> npc = std::nullopt);
 
 		const std::string& getFileById(int32_t scriptId);
 		int32_t getEvent(std::string_view eventName);
@@ -232,6 +285,7 @@ class LuaScriptInterface
 		const std::string& getInterfaceName() const {
 			return interfaceName;
 		}
+	
 		const std::string& getLastLuaError() const {
 			return lastLuaError;
 		}
@@ -240,18 +294,18 @@ class LuaScriptInterface
 			return luaState;
 		}
 
-		bool pushFunction(int32_t functionId);
+		bool pushFunction(int32_t functionId) const;
 
 		static int luaErrorHandler(lua_State* L);
-		bool callFunction(int params);
-		void callVoidFunction(int params);
+		bool callFunction(int params) const;
+		void callVoidFunction(int params) const;
 
 		//push/pop common structures
-		static void pushThing(lua_State* L, Thing* thing);
+		static void pushThing(lua_State* L, const ThingPtr& thing);
 		static void pushVariant(lua_State* L, const LuaVariant& var);
 		static void pushString(lua_State* L, std::string_view value);
 		static void pushCallback(lua_State* L, int32_t callback);
-		static void pushCylinder(lua_State* L, Cylinder* cylinder);
+		static void pushCylinder(lua_State* L, const CylinderPtr& cylinder);
 
 		static std::string popString(lua_State* L);
 		static int32_t popCallback(lua_State* L);
@@ -275,8 +329,8 @@ class LuaScriptInterface
 		static void setMetatable(lua_State* L, int32_t index, const std::string& name);
 		static void setWeakMetatable(lua_State* L, int32_t index, const std::string& name);
 
-		static void setItemMetatable(lua_State* L, int32_t index, const Item* item);
-		static void setCreatureMetatable(lua_State* L, int32_t index, const Creature* creature);
+		static void setItemMetatable(lua_State* L, int32_t index, const ItemConstPtr& item);
+		static void setCreatureMetatable(lua_State* L, int32_t index, const CreatureConstPtr& creature);
 
 		// Get
 		template<typename T>
@@ -319,6 +373,7 @@ class LuaScriptInterface
 			}
 			return getNumber<T>(L, arg);
 		}
+	
 		template<class T>
 		static T* getUserdata(lua_State* L, int32_t arg)
 		{
@@ -328,11 +383,13 @@ class LuaScriptInterface
 			}
 			return *userdata;
 		}
+	
 		template<class T>
 		static T** getRawUserdata(lua_State* L, int32_t arg)
 		{
 			return static_cast<T**>(lua_touserdata(L, arg));
 		}
+	
 		template<class T>
 		static std::shared_ptr<T>& getSharedPtr(lua_State* L, int32_t arg)
 		{
@@ -343,6 +400,7 @@ class LuaScriptInterface
 		{
 			return lua_toboolean(L, arg) != 0;
 		}
+	
 		static bool getBoolean(lua_State* L, int32_t arg, bool defaultValue)
 		{
 			const auto parameters = lua_gettop(L);
@@ -360,9 +418,9 @@ class LuaScriptInterface
 	
 		static InstantSpell* getInstantSpell(lua_State* L, int32_t arg);
 
-		static Thing* getThing(lua_State* L, int32_t arg);
-		static Creature* getCreature(lua_State* L, int32_t arg);
-		static Player* getPlayer(lua_State* L, int32_t arg);
+		static ThingPtr getThing(lua_State* L, int32_t arg);
+		static CreaturePtr getCreature(lua_State* L, int32_t arg);
+		static PlayerPtr getPlayer(lua_State* L, int32_t arg);
 
 		template<typename T>
 		static T getField(lua_State* L, int32_t arg, const std::string& key)
@@ -387,22 +445,27 @@ class LuaScriptInterface
 		{
 			return lua_type(L, arg) == LUA_TNUMBER;
 		}
+	
 		static bool isString(lua_State* L, int32_t arg)
 		{
 			return lua_isstring(L, arg) != 0;
 		}
+	
 		static bool isBoolean(lua_State* L, int32_t arg)
 		{
 			return lua_isboolean(L, arg);
 		}
+	
 		static bool isTable(lua_State* L, int32_t arg)
 		{
 			return lua_istable(L, arg);
 		}
+	
 		static bool isFunction(lua_State* L, int32_t arg)
 		{
 			return lua_isfunction(L, arg);
 		}
+	
 		static bool isUserdata(lua_State* L, int32_t arg)
 		{
 			return lua_isuserdata(L, arg) != 0;
@@ -459,7 +522,7 @@ class LuaScriptInterface
 
 		void registerFunctions();
 
-		void registerMethod(const std::string& globalName, const std::string& methodName, lua_CFunction func);
+		void registerMethod(const std::string& globalName, const std::string& methodName, lua_CFunction func) const;
 
 		static std::string getErrorDesc(ErrorCode_t code);
 
@@ -472,13 +535,13 @@ class LuaScriptInterface
 		std::map<int32_t, std::string> cacheFiles;
 
 	private:
-		void registerClass(const std::string& className, const std::string& baseClass, lua_CFunction newFunction = nullptr);
-		void registerTable(const std::string& tableName);
-		void registerMetaMethod(const std::string& className, const std::string& methodName, lua_CFunction func);
-		void registerGlobalMethod(const std::string& functionName, lua_CFunction func);
-		void registerVariable(const std::string& tableName, const std::string& name, lua_Number value);
-		void registerGlobalVariable(const std::string& name, lua_Number value);
-		void registerGlobalBoolean(const std::string& name, bool value);
+		void registerClass(const std::string& className, const std::string& baseClass, lua_CFunction newFunction = nullptr) const;
+		void registerTable(const std::string& tableName) const;
+		void registerMetaMethod(const std::string& className, const std::string& methodName, lua_CFunction func) const;
+		void registerGlobalMethod(const std::string& functionName, lua_CFunction func) const;
+		void registerVariable(const std::string& tableName, const std::string& name, lua_Number value) const;
+		void registerGlobalVariable(const std::string& name, lua_Number value) const;
+		void registerGlobalBoolean(const std::string& name, bool value) const;
 
 		static std::string getStackTrace(lua_State* L, const std::string& error_desc);
 
@@ -1715,7 +1778,7 @@ class LuaEnvironment : public LuaScriptInterface
 {
 	public:
 		LuaEnvironment();
-		~LuaEnvironment();
+		~LuaEnvironment() override;
 
 		// non-copyable
 		LuaEnvironment(const LuaEnvironment&) = delete;

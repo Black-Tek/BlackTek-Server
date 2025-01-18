@@ -18,7 +18,7 @@ class ProtocolOld final : public Protocol
 		static const char* protocol_name() {
 			return "old login protocol";
 		}
-
+		// todo: use reference on connection
 		explicit ProtocolOld(Connection_ptr connection) : Protocol(connection) {}
 
 		void onRecvFirstMessage(NetworkMessage& msg) override;

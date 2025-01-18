@@ -327,7 +327,7 @@ std::string_view GlobalEvent::getScriptEventName() const
 	}
 }
 
-bool GlobalEvent::executeRecord(uint32_t current, uint32_t old)
+bool GlobalEvent::executeRecord(uint32_t current, uint32_t old) const
 {
 	//onRecord(current, old)
 	if (!scriptInterface->reserveScriptEnv()) {

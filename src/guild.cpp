@@ -9,21 +9,21 @@
 
 extern Game g_game;
 
-void Guild::addMember(Player* player)
+void Guild::addMember(const PlayerPtr& player)
 {
 	membersOnline.push_back(player);
-	for (Player* member : membersOnline) {
-		g_game.updatePlayerHelpers(*member);
+	for (const auto member : membersOnline) {
+		g_game.updatePlayerHelpers(member);
 	}
 }
 
-void Guild::removeMember(Player* player)
+void Guild::removeMember(const PlayerPtr& player)
 {
 	membersOnline.remove(player);
-	for (Player* member : membersOnline) {
-		g_game.updatePlayerHelpers(*member);
+	for (const auto member : membersOnline) {
+		g_game.updatePlayerHelpers(member);
 	}
-	g_game.updatePlayerHelpers(*player);
+	g_game.updatePlayerHelpers(player);
 
 	if (membersOnline.empty()) {
 		g_game.removeGuild(id);
@@ -31,7 +31,7 @@ void Guild::removeMember(Player* player)
 	}
 }
 
-GuildRank_ptr Guild::getRankById(uint32_t rankId)
+GuildRank_ptr Guild::getRankById(const uint32_t rankId) const
 {
 	for (auto rank : ranks) {
 		if (rank->id == rankId) {

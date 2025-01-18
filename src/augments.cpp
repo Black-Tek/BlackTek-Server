@@ -331,7 +331,7 @@ void Augments::AddAugment(std::shared_ptr<Augment> augment) {
     }
 }
 
-void Augments::RemoveAugment(std::shared_ptr<Augment> augment) {
+void Augments::RemoveAugment(const std::shared_ptr<Augment>& augment) {
     auto it = global_augments.find(augment->getName().data());
     if (it != global_augments.end()) {
         global_augments.erase(it);
@@ -345,7 +345,7 @@ void Augments::RemoveAugment(std::string_view augName) {
     }
 }
 
-void Augments::RemoveAugment(std::string augName) {
+void Augments::RemoveAugment(const std::string& augName) {
     auto it = global_augments.find(augName);
     if (it != global_augments.end()) {
         global_augments.erase(it);

@@ -8,19 +8,17 @@
 
 const Position& Thing::getPosition() const
 {
-	const Tile* tile = getTile();
+	const auto tile = getTile();
 	if (!tile) {
-		return Tile::nullptr_tile.getPosition();
+		return std::make_shared<StaticTile>(0xFFFF, 0xFFFF, 0xFF)->getPosition();
 	}
 	return tile->getPosition();
 }
 
-Tile* Thing::getTile()
-{
-	return dynamic_cast<Tile*>(this);
+TilePtr Thing::getTile() {
+	return nullptr;
 }
 
-const Tile* Thing::getTile() const
-{
-	return dynamic_cast<const Tile*>(this);
+TileConstPtr Thing::getTile() const {
+	return nullptr;
 }

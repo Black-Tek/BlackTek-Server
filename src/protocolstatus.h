@@ -18,6 +18,7 @@ class ProtocolStatus final : public Protocol
 			return "status protocol";
 		}
 
+		// todo: change connection to reference
 		explicit ProtocolStatus(Connection_ptr connection) : Protocol(connection) {}
 
 		void onRecvFirstMessage(NetworkMessage& msg) override;
