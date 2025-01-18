@@ -144,7 +144,7 @@ public:
 	DamageModifier(const DamageModifier&) = default;
 	DamageModifier& operator=(const DamageModifier&) = default;
 
-	DamageModifier(uint8_t stance, uint8_t modType, uint16_t amount, ModFactor factorType, uint8_t chance, CombatType_t combatType = COMBAT_NONE , CombatOrigin source = ORIGIN_NONE, CreatureType_t creatureType = CREATURETYPE_ATTACKABLE,  RaceType_t race = RACE_NONE, std::string creatureName = "none") :
+	DamageModifier(uint8_t stance, uint8_t modType, uint16_t amount, ModFactor factorType, uint8_t chance, CombatType_t combatType = COMBAT_NONE , CombatOrigin source = ORIGIN_NONE, CreatureType_t creatureType = CREATURETYPE_ATTACKABLE,  RaceType_t race = RACE_NONE, const std::string& creatureName = "none") :
 		m_mod_stance(stance),					// attack / defense
 		m_mod_type(modType),					// the enum specific type
 		m_value(amount),						// value to modify; default = percent

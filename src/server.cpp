@@ -86,7 +86,7 @@ void ServicePort::accept()
 	acceptor->async_accept(connection->getSocket(), [=, thisPtr = shared_from_this()](const boost::system::error_code& error) { thisPtr->onAccept(connection, error); });
 }
 
-void ServicePort::onAccept(Connection_ptr connection, const boost::system::error_code& error)
+void ServicePort::onAccept(const Connection_ptr& connection, const boost::system::error_code& error)
 {
 	if (!error) {
 		if (services.empty()) {
@@ -135,7 +135,7 @@ void ServicePort::onStopServer()
 	close();
 }
 
-void ServicePort::openAcceptor(std::weak_ptr<ServicePort> weak_service, uint16_t port)
+void ServicePort::openAcceptor(const std::weak_ptr<ServicePort>& weak_service, uint16_t port)
 {
 	if (auto service = weak_service.lock()) {
 		service->open(port);
@@ -169,7 +169,7 @@ void ServicePort::open(uint16_t port)
 	}
 }
 
-void ServicePort::close()
+void ServicePort::close() const
 {
 	if (acceptor && acceptor->is_open()) {
 		boost::system::error_code error;

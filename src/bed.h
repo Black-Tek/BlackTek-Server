@@ -14,11 +14,12 @@ class BedItem final : public Item
 	public:
 		explicit BedItem(uint16_t id);
 
-		BedItem* getBed() override {
-			return this;
+		BedItemPtr getBed() override {
+			return dynamic_shared_this<BedItem>();
 		}
-		const BedItem* getBed() const override {
-			return this;
+	
+		BedItemConstPtr getBed() const override {
+			return dynamic_shared_this<const BedItem>();
 		}
 
 		Attr_ReadValue readAttr(AttrTypes_t attr, PropStream& propStream) override;
@@ -35,22 +36,23 @@ class BedItem final : public Item
 		House* getHouse() const {
 			return house;
 		}
+	
 		void setHouse(House* h) {
 			house = h;
 		}
 
-		bool canUse(Player* player);
+		bool canUse(PlayerPtr player) const;
 
-		bool trySleep(Player* player);
-		bool sleep(Player* player);
-		void wakeUp(Player* player);
+		bool trySleep(const PlayerPtr& player);
+		bool sleep(const PlayerPtr& player);
+		void wakeUp(const PlayerPtr& player);
 
-		BedItem* getNextBedItem() const;
+		BedItemPtr getNextBedItem() const;
 
 	private:
-		void updateAppearance(const Player* player);
-		void regeneratePlayer(Player* player) const;
-		void internalSetSleeper(const Player* player);
+		void updateAppearance(const PlayerConstPtr& player);
+		void regeneratePlayer(const PlayerPtr& player) const;
+		void internalSetSleeper(const PlayerConstPtr& player);
 		void internalRemoveSleeper();
 
 		House* house = nullptr;

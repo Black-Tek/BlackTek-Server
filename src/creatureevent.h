@@ -4,9 +4,9 @@
 #ifndef FS_CREATUREEVENT_H
 #define FS_CREATUREEVENT_H
 
-#include "luascript.h"
 #include "baseevents.h"
 #include "enums.h"
+#include "luascript.h"
 
 class CreatureEvent;
 using CreatureEvent_ptr = std::unique_ptr<CreatureEvent>;
@@ -54,21 +54,21 @@ class CreatureEvent final : public Event
 		}
 
 		void clearEvent();
-		void copyEvent(CreatureEvent* creatureEvent);
+		void copyEvent(const CreatureEvent_ptr& creatureEvent);
 
 		//scripting
-		bool executeOnLogin(Player* player) const;
-		bool executeOnLogout(Player* player) const;
-		bool executeOnThink(Creature* creature, uint32_t interval);
-		bool executeOnPrepareDeath(Creature* creature, Creature* killer);
-		bool executeOnDeath(Creature* creature, Item* corpse, Creature* killer, Creature* mostDamageKiller, bool lastHitUnjustified, bool mostDamageUnjustified);
-		void executeOnKill(Creature* creature, Creature* target);
-		bool executeAdvance(Player* player, skills_t, uint32_t, uint32_t);
-		void executeModalWindow(Player* player, uint32_t modalWindowId, uint8_t buttonId, uint8_t choiceId);
-		bool executeTextEdit(Player* player, Item* item, const std::string& text);
-		void executeHealthChange(Creature* creature, Creature* attacker, CombatDamage& damage);
-		void executeManaChange(Creature* creature, Creature* attacker, CombatDamage& damage);
-		void executeExtendedOpcode(Player* player, uint8_t opcode, const std::string& buffer);
+		bool executeOnLogin(const PlayerPtr& player) const;
+		bool executeOnLogout(const PlayerPtr& player) const;
+		bool executeOnThink(const CreaturePtr& creature, uint32_t interval) const;
+		bool executeOnPrepareDeath(const CreaturePtr& creature, const CreaturePtr& killer) const;
+		bool executeOnDeath(const CreaturePtr& creature, const ItemPtr& corpse, const CreaturePtr& killer, const CreaturePtr& mostDamageKiller, bool lastHitUnjustified, bool mostDamageUnjustified) const;
+		void executeOnKill(const CreaturePtr& creature, const CreaturePtr& target) const;
+		bool executeAdvance(const PlayerPtr& player, skills_t, uint32_t, uint32_t) const;
+		void executeModalWindow(const PlayerPtr& player, uint32_t modalWindowId, uint8_t buttonId, uint8_t choiceId) const;
+		bool executeTextEdit(const PlayerPtr& player, const ItemPtr& item, const std::string& text) const;
+		void executeHealthChange(const CreaturePtr& creature, const CreaturePtr& attacker, CombatDamage& damage) const;
+		void executeManaChange(const CreaturePtr& creature, const CreaturePtr& attacker, CombatDamage& damage) const;
+		void executeExtendedOpcode(const PlayerPtr& player, uint8_t opcode, const std::string& buffer) const;
 		//
 
 	private:
@@ -89,9 +89,9 @@ class CreatureEvents final : public BaseEvents
 		CreatureEvents& operator=(const CreatureEvents&) = delete;
 
 		// global events
-		bool playerLogin(Player* player) const;
-		bool playerLogout(Player* player) const;
-		bool playerAdvance(Player* player, skills_t, uint32_t, uint32_t);
+		bool playerLogin(const PlayerPtr& player) const;
+		bool playerLogout(const PlayerPtr& player) const;
+		bool playerAdvance(const PlayerPtr& player, skills_t, uint32_t, uint32_t);
 
 		CreatureEvent* getEventByName(const std::string& name, bool forceLoaded = true);
 

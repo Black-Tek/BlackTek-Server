@@ -188,12 +188,15 @@ class ItemType
 		bool isGroundTile() const {
 			return group == ITEM_GROUP_GROUND;
 		}
+	
 		bool isContainer() const {
 			return group == ITEM_GROUP_CONTAINER;
 		}
+	
 		bool isSplash() const {
 			return group == ITEM_GROUP_SPLASH;
 		}
+	
 		bool isFluidContainer() const {
 			return group == ITEM_GROUP_FLUID;
 		}
@@ -201,42 +204,55 @@ class ItemType
 		bool isDoor() const {
 			return (type == ITEM_TYPE_DOOR);
 		}
+	
 		bool isMagicField() const {
 			return (type == ITEM_TYPE_MAGICFIELD);
 		}
+	
 		bool isTeleport() const {
 			return (type == ITEM_TYPE_TELEPORT);
 		}
+	
 		bool isKey() const {
 			return (type == ITEM_TYPE_KEY);
 		}
+	
 		bool isDepot() const {
 			return (type == ITEM_TYPE_DEPOT);
 		}
+	
 		bool isRewardChest() const {
 			return (type == ITEM_TYPE_REWARDCHEST);
 		}
+	
 		bool isRewardContainer() const {
 			return (type == ITEM_TYPE_REWARDCONTAINER);
 		}
+	
 		bool isMailbox() const {
 			return (type == ITEM_TYPE_MAILBOX);
 		}
+	
 		bool isTrashHolder() const {
 			return (type == ITEM_TYPE_TRASHHOLDER);
 		}
+	
 		bool isBed() const {
 			return (type == ITEM_TYPE_BED);
 		}
+	
 		bool isRune() const {
 			return (type == ITEM_TYPE_RUNE);
 		}
+	
 		bool isPickupable() const {
 			return (allowPickupable || pickupable);
 		}
+	
 		bool isUseable() const {
 			return (useable);
 		}
+	
 		bool hasSubType() const {
 			return (isFluidContainer() || isSplash() || stackable || charges != 0);
 		}
@@ -389,6 +405,7 @@ class Items
 		const ItemType& operator[](size_t id) const {
 			return getItemType(id);
 		}
+	
 		const ItemType& getItemType(size_t id) const;
 		ItemType& getItemType(size_t id);
 		const ItemType& getItemIdByClientId(uint16_t spriteId) const;
@@ -403,6 +420,7 @@ class Items
 		void parseItemNode(const pugi::xml_node& itemNode, uint16_t id);
 
 		void buildInventoryList();
+	
 		const InventoryVector& getInventory() const {
 			return inventory;
 		}
@@ -428,6 +446,7 @@ class Items
 					if (clientId >= vec.size()) {
 						vec.resize(clientId + 1, 0);
 					}
+					
 					if (vec[clientId] == 0) {
 						vec[clientId] = serverId;
 					}

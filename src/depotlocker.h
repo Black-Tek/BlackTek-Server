@@ -7,21 +7,20 @@
 #include "container.h"
 #include "inbox.h"
 
-using DepotLocker_ptr = std::shared_ptr<DepotLocker>;
-
 class DepotLocker final : public Container
 {
 	public:
 		explicit DepotLocker(uint16_t type);
 
-		DepotLocker* getDepotLocker() override {
-			return this;
+		DepotLockerPtr getDepotLocker() override {
+			return dynamic_shared_this<DepotLocker>();
 		}
-		const DepotLocker* getDepotLocker() const override {
-			return this;
+	
+		DepotLockerConstPtr getDepotLocker() const override {
+			return dynamic_shared_this<const DepotLocker>();
 		}
 
-		void removeInbox(Inbox* inbox);
+		void removeInbox(const InboxPtr& inbox);
 
 		//serialization
 		Attr_ReadValue readAttr(AttrTypes_t attr, PropStream& propStream) override;
@@ -29,16 +28,17 @@ class DepotLocker final : public Container
 		uint16_t getDepotId() const {
 			return depotId;
 		}
+	
 		void setDepotId(uint16_t depotId) {
 			this->depotId = depotId;
 		}
 
 		//cylinder implementations
-		ReturnValue queryAdd(int32_t index, const Thing& thing, uint32_t count,
-				uint32_t flags, Creature* actor = nullptr) const override;
+		ReturnValue queryAdd(int32_t index, const ThingPtr& thing, uint32_t count,
+		                     uint32_t flags, CreaturePtr actor = nullptr) override;
 
-		void postAddNotification(Thing* thing, const Cylinder* oldParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
-		void postRemoveNotification(Thing* thing, const Cylinder* newParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
+		void postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
+		void postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
 
 		bool canRemove() const override {
 			return false;

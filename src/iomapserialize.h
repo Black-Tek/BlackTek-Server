@@ -19,11 +19,11 @@ class IOMapSerialize
 		static bool saveHouse(House* house);
 
 	private:
-		static void saveItem(PropWriteStream& stream, const Item* item);
-		static void saveTile(PropWriteStream& stream, const Tile* tile);
+		static void saveItem(PropWriteStream& stream, const ItemPtr& item);
+		static void saveTile(PropWriteStream& stream, const TilePtr& tile);
 
-		static bool loadContainer(PropStream& propStream, Container* container);
-		static bool loadItem(PropStream& propStream, Cylinder* parent);
+		static bool loadContainer(PropStream& propStream, const ContainerPtr& container);
+		static bool loadItem(PropStream& propStream, const CylinderPtr& parent);
 };
 
 #endif

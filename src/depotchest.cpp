@@ -9,10 +9,10 @@
 DepotChest::DepotChest(uint16_t type, bool paginated /*= true*/) :
 	Container{ type, items[type].maxItems, true, paginated } {}
 
-ReturnValue DepotChest::queryAdd(int32_t index, const Thing& thing, uint32_t count,
-		uint32_t flags, Creature* actor/* = nullptr*/) const
+ReturnValue DepotChest::queryAdd(int32_t index, const ThingPtr& thing, uint32_t count,
+                                 uint32_t flags, CreaturePtr actor/* = nullptr*/)
 {
-	const Item* item = thing.getItem();
+	auto item = thing->getItem();
 	if (item == nullptr) {
 		return RETURNVALUE_NOTPOSSIBLE;
 	}
@@ -25,8 +25,8 @@ ReturnValue DepotChest::queryAdd(int32_t index, const Thing& thing, uint32_t cou
 			addCount = 1;
 		}
 
-		if (item->getTopParent() != this) {
-			if (const Container* container = item->getContainer()) {
+		if (item->getTopParent().get() != this) {
+			if (const auto container = item->getContainer()) {
 				addCount = container->getItemHoldingCount() + 1;
 			} else {
 				addCount = 1;
@@ -41,26 +41,24 @@ ReturnValue DepotChest::queryAdd(int32_t index, const Thing& thing, uint32_t cou
 	return Container::queryAdd(index, thing, count, flags, actor);
 }
 
-void DepotChest::postAddNotification(Thing* thing, const Cylinder* oldParent, int32_t index, cylinderlink_t)
+void DepotChest::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t index, cylinderlink_t)
 {
-	Cylinder* parent = getParent();
-	if (parent != nullptr) {
-		parent->postAddNotification(thing, oldParent, index, LINK_PARENT);
+	if (getParent()) {
+		getParent()->postAddNotification(thing, oldParent, index, LINK_PARENT);
 	}
 }
 
-void DepotChest::postRemoveNotification(Thing* thing, const Cylinder* newParent, int32_t index, cylinderlink_t)
+void DepotChest::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t index, cylinderlink_t)
 {
-	Cylinder* parent = getParent();
-	if (parent != nullptr) {
-		parent->postRemoveNotification(thing, newParent, index, LINK_PARENT);
+	if (getParent()) {
+		getParent()->postRemoveNotification(thing, newParent, index, LINK_PARENT);
 	}
 }
 
-Cylinder* DepotChest::getParent() const
+CylinderPtr DepotChest::getParent()
 {
-	if (parent) {
-		return parent->getParent();
+	if (parent.lock()) {
+		return parent.lock()->getParent();
 	}
 	return nullptr;
 }

@@ -16,7 +16,7 @@ MatrixArea MatrixArea::rotate90() const
 MatrixArea MatrixArea::rotate180() const
 {
 	Container newArr(arr.size());
-	std::reverse_copy(std::begin(arr), std::end(arr), std::begin(newArr));
+	std::ranges::reverse_copy(arr, std::begin(newArr));
 	auto &&[centerX, centerY] = center;
 	return {{cols - centerX - 1, rows - centerY - 1}, rows, cols, std::move(newArr)};
 }
@@ -32,7 +32,7 @@ MatrixArea MatrixArea::rotate270() const
 	return {{centerY, cols - centerX - 1}, cols, rows, std::move(newArr)};
 }
 
-MatrixArea createArea(const std::vector<uint32_t> &vec, uint32_t rows)
+MatrixArea createArea(const std::vector<uint32_t> &vec, const uint32_t rows)
 {
 	uint32_t cols;
 	if (rows == 0) {
@@ -46,7 +46,7 @@ MatrixArea createArea(const std::vector<uint32_t> &vec, uint32_t rows)
 	uint32_t x = 0;
 	uint32_t y = 0;
 
-	for (uint32_t value : vec) {
+	for (const uint32_t& value : vec) {
 		if (value == 1 || value == 3) {
 			area(y, x) = true;
 		}

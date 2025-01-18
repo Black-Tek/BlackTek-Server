@@ -19,28 +19,28 @@ Attr_ReadValue DepotLocker::readAttr(AttrTypes_t attr, PropStream& propStream)
 	return Item::readAttr(attr, propStream);
 }
 
-ReturnValue DepotLocker::queryAdd(int32_t, const Thing&, uint32_t, uint32_t, Creature*) const
+ReturnValue DepotLocker::queryAdd(int32_t, const ThingPtr&, uint32_t, uint32_t, CreaturePtr)
 {
 	return RETURNVALUE_NOTENOUGHROOM;
 }
 
-void DepotLocker::postAddNotification(Thing* thing, const Cylinder* oldParent, int32_t index, cylinderlink_t)
+void DepotLocker::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t index, cylinderlink_t)
 {
-	if (parent != nullptr) {
-		parent->postAddNotification(thing, oldParent, index, LINK_PARENT);
+	if (getParent()) {
+		getParent()->postAddNotification(thing, oldParent, index, LINK_PARENT);
 	}
 }
 
-void DepotLocker::postRemoveNotification(Thing* thing, const Cylinder* newParent, int32_t index, cylinderlink_t)
+void DepotLocker::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t index, cylinderlink_t)
 {
-	if (parent != nullptr) {
-		parent->postRemoveNotification(thing, newParent, index, LINK_PARENT);
+	if (getParent()) {
+		getParent()->postRemoveNotification(thing, newParent, index, LINK_PARENT);
 	}
 }
 
-void DepotLocker::removeInbox(Inbox* inbox)
+void DepotLocker::removeInbox(const InboxPtr& inbox)
 {
-	auto cit = std::find(itemlist.begin(), itemlist.end(), inbox);
+	auto cit = std::ranges::find(itemlist, inbox);
 	if (cit == itemlist.end()) {
 		return;
 	}

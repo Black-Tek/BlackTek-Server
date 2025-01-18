@@ -47,7 +47,7 @@ class ProtocolGame final : public Protocol
 		static const char* protocol_name() {
 			return "gameworld protocol";
 		}
-
+		// todo: use reference for connection
 		explicit ProtocolGame(Connection_ptr connection) : Protocol(connection) {}
 
 		void login(uint32_t characterId, uint32_t accountId, OperatingSystem_t operatingSystem);
@@ -70,7 +70,7 @@ class ProtocolGame final : public Protocol
 		void checkCreatureAsKnown(uint32_t id, bool& known, uint32_t& removedKnown);
 
 		bool canSee(int32_t x, int32_t y, int32_t z) const;
-		bool canSee(const Creature*) const;
+		bool canSee(const CreatureConstPtr&) const;
 		bool canSee(const Position& pos) const;
 
 		// we have all the parse methods
@@ -156,27 +156,27 @@ class ProtocolGame final : public Protocol
 		void sendChannelsDialog();
 		void sendChannel(uint16_t channelId, const std::string& channelName, const UsersMap* channelUsers, const InvitedMap* invitedUsers);
 		void sendOpenPrivateChannel(const std::string& receiver);
-		void sendToChannel(const Creature* creature, SpeakClasses type, const std::string& text, uint16_t channelId);
-		void sendPrivateMessage(const Player* speaker, SpeakClasses type, const std::string& text);
+		void sendToChannel(const CreatureConstPtr& creature, SpeakClasses type, const std::string& text, uint16_t channelId);
+		void sendPrivateMessage(const PlayerConstPtr& speaker, SpeakClasses type, const std::string& text);
 		void sendIcons(uint16_t icons);
 		void sendFYIBox(const std::string& message);
 
 		void sendDistanceShoot(const Position& from, const Position& to, uint8_t type);
 		void sendMagicEffect(const Position& pos, uint8_t type);
-		void sendCreatureHealth(const Creature* creature);
+		void sendCreatureHealth(const CreatureConstPtr& creature);
 		void sendSkills();
 		void sendPing();
 		void sendPingBack();
-		void sendCreatureTurn(const Creature* creature, uint32_t stackPos);
-		void sendCreatureSay(const Creature* creature, SpeakClasses type, const std::string& text, const Position* pos = nullptr);
+		void sendCreatureTurn(const CreatureConstPtr& creature, uint32_t stackPos);
+		void sendCreatureSay(const CreatureConstPtr& creature, SpeakClasses type, const std::string& text, const Position* pos = nullptr);
 
 		void sendQuestLog();
 		void sendQuestLine(const Quest* quest);
 
 		void sendCancelWalk();
-		void sendChangeSpeed(const Creature* creature, uint32_t speed);
+		void sendChangeSpeed(const CreatureConstPtr& creature, uint32_t speed);
 		void sendCancelTarget();
-		void sendCreatureOutfit(const Creature* creature, const Outfit_t& outfit);
+		void sendCreatureOutfit(const CreatureConstPtr& creature, const Outfit_t& outfit);
 		void sendStats();
 		void sendBasicData();
 		void sendTextMessage(const TextMessage& message);
@@ -185,13 +185,13 @@ class ProtocolGame final : public Protocol
 		void sendTutorial(uint8_t tutorialId);
 		void sendAddMarker(const Position& pos, uint8_t markType, const std::string& desc);
 
-		void sendCreatureWalkthrough(const Creature* creature, bool walkthrough);
-		void sendCreatureShield(const Creature* creature);
-		void sendCreatureSkull(const Creature* creature);
+		void sendCreatureWalkthrough(const CreatureConstPtr& creature, bool walkthrough);
+		void sendCreatureShield(const CreatureConstPtr& creature);
+		void sendCreatureSkull(const CreatureConstPtr& creature);
 		void sendCreatureType(uint32_t creatureId, uint8_t creatureType);
 		void sendCreatureHelpers(uint32_t creatureId, uint16_t helpers);
 
-		void sendShop(Npc* npc, const ShopInfoList& itemList);
+		void sendShop(const NpcPtr& npc, const ShopInfoList& itemList);
 		void sendCloseShop();
 		void sendSaleItemList(const std::list<ShopInfo>& shop);
 		void sendMarketEnter();
@@ -202,10 +202,10 @@ class ProtocolGame final : public Protocol
 		void sendMarketCancelOffer(const MarketOfferEx& offer);
 		void sendMarketBrowseOwnHistory(const HistoryMarketOfferList& buyOffers, const HistoryMarketOfferList& sellOffers);
 		void sendMarketDetail(uint16_t itemId);
-		void sendTradeItemRequest(const std::string& traderName, const Item* item, bool ack);
+		void sendTradeItemRequest(const std::string& traderName, const ItemConstPtr& item, bool ack);
 		void sendCloseTrade();
 
-		void sendTextWindow(uint32_t windowTextId, Item* item, uint16_t maxlen, bool canWrite);
+		void sendTextWindow(uint32_t windowTextId, const ItemPtr& item, uint16_t maxlen, bool canWrite);
 		void sendTextWindow(uint32_t windowTextId, uint32_t itemId, const std::string& text);
 		void sendHouseWindow(uint32_t windowTextId, const std::string& text);
 		void sendOutfitWindow();
@@ -219,10 +219,10 @@ class ProtocolGame final : public Protocol
 
 		void sendFightModes();
 
-		void sendCreatureLight(const Creature* creature);
+		void sendCreatureLight(const CreatureConstPtr& creature);
 		void sendWorldLight(LightInfo lightInfo);
 
-		void sendCreatureSquare(const Creature* creature, SquareColor_t color);
+		void sendCreatureSquare(const CreatureConstPtr& creature, SquareColor_t color);
 
 		void sendSpellCooldown(uint8_t spellId, uint32_t time);
 		void sendSpellGroupCooldown(SpellGroup_t groupId, uint32_t time);
@@ -230,27 +230,27 @@ class ProtocolGame final : public Protocol
 		//tiles
 		void sendMapDescription(const Position& pos);
 
-		void sendAddTileItem(const Position& pos, uint32_t stackpos, const Item* item);
-		void sendUpdateTileItem(const Position& pos, uint32_t stackpos, const Item* item);
+		void sendAddTileItem(const Position& pos, uint32_t stackpos, const ItemConstPtr& item);
+		void sendUpdateTileItem(const Position& pos, uint32_t stackpos, const ItemConstPtr& item);
 		void sendRemoveTileThing(const Position& pos, uint32_t stackpos);
-		void sendUpdateTileCreature(const Position& pos, uint32_t stackpos, const Creature* creature);
-		void sendRemoveTileCreature(const Creature* creature, const Position& pos, uint32_t stackpos);
-		void sendUpdateTile(const Tile* tile, const Position& pos);
+		void sendUpdateTileCreature(const Position& pos, uint32_t stackpos, const CreatureConstPtr& creature);
+		void sendRemoveTileCreature(const CreatureConstPtr& creature, const Position& pos, uint32_t stackpos);
+		void sendUpdateTile(const TileConstPtr& tile, const Position& pos);
 
-		void sendAddCreature(const Creature* creature, const Position& pos, int32_t stackpos, MagicEffectClasses magicEffect = CONST_ME_NONE);
-		void sendMoveCreature(const Creature* creature, const Position& newPos, int32_t newStackPos,
+		void sendAddCreature(const CreatureConstPtr& creature, const Position& pos, int32_t stackpos, MagicEffectClasses magicEffect = CONST_ME_NONE);
+		void sendMoveCreature(const CreatureConstPtr& creature, const Position& newPos, int32_t newStackPos,
 		                      const Position& oldPos, int32_t oldStackPos, bool teleport);
 
 		//containers
-		void sendAddContainerItem(uint8_t cid, uint16_t slot, const Item* item);
-		void sendUpdateContainerItem(uint8_t cid, uint16_t slot, const Item* item);
-		void sendRemoveContainerItem(uint8_t cid, uint16_t slot, const Item* lastItem);
+		void sendAddContainerItem(uint8_t cid, uint16_t slot, const ItemConstPtr& item);
+		void sendUpdateContainerItem(uint8_t cid, uint16_t slot, const ItemConstPtr& item);
+		void sendRemoveContainerItem(uint8_t cid, uint16_t slot, const ItemConstPtr& lastItem);
 
-		void sendContainer(uint8_t cid, const Container* container, bool hasParent, uint16_t firstIndex);
+		void sendContainer(uint8_t cid, const ContainerConstPtr& container, bool hasParent, uint16_t firstIndex);
 		void sendCloseContainer(uint8_t cid);
 
 		//inventory
-		void sendInventoryItem(slots_t slot, const Item* item);
+		void sendInventoryItem(slots_t slot, const ItemConstPtr& item);
 		void sendItems();
 
 		//messages
@@ -259,7 +259,7 @@ class ProtocolGame final : public Protocol
 		//Help functions
 
 		// translate a tile to client-readable format
-		void GetTileDescription(const Tile* tile, NetworkMessage& msg);
+		void GetTileDescription(const TileConstPtr& tile, NetworkMessage& msg);
 
 		// translate a floor to client-readable format
 		void GetFloorDescription(NetworkMessage& msg, int32_t x, int32_t y, int32_t z,
@@ -269,19 +269,19 @@ class ProtocolGame final : public Protocol
 		void GetMapDescription(int32_t x, int32_t y, int32_t z,
 		                       int32_t width, int32_t height, NetworkMessage& msg);
 
-		void AddCreature(NetworkMessage& msg, const Creature* creature, bool known, uint32_t remove);
-		void AddPlayerStats(NetworkMessage& msg);
+		void AddCreature(NetworkMessage& msg, const CreatureConstPtr& creature, bool known, uint32_t remove);
+		void AddPlayerStats(NetworkMessage& msg) const;
 		void AddOutfit(NetworkMessage& msg, const Outfit_t& outfit);
-		void AddPlayerSkills(NetworkMessage& msg);
-		void AddWorldLight(NetworkMessage& msg, LightInfo lightInfo);
-		void AddCreatureLight(NetworkMessage& msg, const Creature* creature);
+		void AddPlayerSkills(NetworkMessage& msg) const;
+		void AddWorldLight(NetworkMessage& msg, LightInfo lightInfo) const;
+		void AddCreatureLight(NetworkMessage& msg, const CreatureConstPtr& creature) const;
 
 		//tiles
 		static void RemoveTileThing(NetworkMessage& msg, const Position& pos, uint32_t stackpos);
-		static void RemoveTileCreature(NetworkMessage& msg, const Creature* creature, const Position& pos, uint32_t stackpos);
+		static void RemoveTileCreature(NetworkMessage& msg, const CreatureConstPtr& creature, const Position& pos, uint32_t stackpos);
 
-		void MoveUpCreature(NetworkMessage& msg, const Creature* creature, const Position& newPos, const Position& oldPos);
-		void MoveDownCreature(NetworkMessage& msg, const Creature* creature, const Position& newPos, const Position& oldPos);
+		void MoveUpCreature(NetworkMessage& msg, const CreatureConstPtr& creature, const Position& newPos, const Position& oldPos);
+		void MoveDownCreature(NetworkMessage& msg, const CreatureConstPtr& creature, const Position& newPos, const Position& oldPos);
 
 		//shop
 		void AddShopItem(NetworkMessage& msg, const ShopInfo& item);
@@ -303,7 +303,7 @@ class ProtocolGame final : public Protocol
 		}
 
 		std::unordered_set<uint32_t> knownCreatureSet;
-		Player* player = nullptr;
+		PlayerPtr player = nullptr;
 
 		uint32_t eventConnect = 0;
 		uint32_t challengeTimestamp = 0;

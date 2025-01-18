@@ -37,12 +37,12 @@ class TalkAction : public Event
 		std::string getSeparator() const {
 			return separator;
 		}
-		void setSeparator(std::string sep) {
+		void setSeparator(const std::string& sep) {
 			separator = sep;
 		}
 
 		//scripting
-		bool executeSay(Player* player, const std::string& words, const std::string& param, SpeakClasses type) const;
+		bool executeSay(const PlayerPtr& player, const std::string& words, const std::string& param, SpeakClasses type) const;
 
 		AccountType_t getRequiredAccountType() const {
 			return requiredAccountType;
@@ -74,13 +74,13 @@ class TalkActions final : public BaseEvents
 {
 	public:
 		TalkActions();
-		~TalkActions();
+		~TalkActions() override;
 
 		// non-copyable
 		TalkActions(const TalkActions&) = delete;
 		TalkActions& operator=(const TalkActions&) = delete;
 
-		TalkActionResult_t playerSaySpell(Player* player, SpeakClasses type, const std::string& words) const;
+		TalkActionResult_t playerSaySpell(const PlayerPtr& player, SpeakClasses type, const std::string& words) const;
 
 		bool registerLuaEvent(TalkAction* event);
 		void clear(bool fromLua) override final;

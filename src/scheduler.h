@@ -17,6 +17,7 @@ class SchedulerTask : public Task
 		void setEventId(uint32_t id) {
 			eventId = id;
 		}
+	
 		uint32_t getEventId() const {
 			return eventId;
 		}
@@ -24,6 +25,7 @@ class SchedulerTask : public Task
 		uint32_t getDelay() const {
 			return delay;
 		}
+	
 	private:
 		SchedulerTask(uint32_t delay, TaskFunc&& f) : Task(std::move(f)), delay(delay) {}
 

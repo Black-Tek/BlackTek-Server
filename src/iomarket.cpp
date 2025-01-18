@@ -95,7 +95,7 @@ HistoryMarketOfferList IOMarket::getOwnHistory(MarketAction_t action, uint32_t p
 	return offerList;
 }
 
-void IOMarket::processExpiredOffers(DBResult_ptr result, bool)
+void IOMarket::processExpiredOffers(const DBResult_ptr& result, bool)
 {
 	if (!result) {
 		return;
@@ -114,11 +114,10 @@ void IOMarket::processExpiredOffers(DBResult_ptr result, bool)
 				continue;
 			}
 
-			Player* player = g_game.getPlayerByGUID(playerId);
+			auto player = g_game.getPlayerByGUID(playerId);
 			if (!player) {
-				player = new Player(nullptr);
+				player = std::make_shared<Player>(nullptr);
 				if (!IOLoginData::loadPlayerById(player, playerId)) {
-					delete player;
 					continue;
 				}
 			}
@@ -127,9 +126,8 @@ void IOMarket::processExpiredOffers(DBResult_ptr result, bool)
 				uint16_t tmpAmount = amount;
 				while (tmpAmount > 0) {
 					uint16_t stackCount = std::min<uint16_t>(100, tmpAmount);
-					Item* item = Item::CreateItem(itemType.id, stackCount);
-					if (g_game.internalAddItem(player->getInbox(), item, INDEX_WHEREEVER, FLAG_NOLIMIT) != RETURNVALUE_NOERROR) {
-						delete item;
+					auto item = Item::CreateItem(itemType.id, stackCount);
+					if (CylinderPtr inbox = player->getInbox(); g_game.internalAddItem(inbox, item, INDEX_WHEREEVER, FLAG_NOLIMIT) != RETURNVALUE_NOERROR) {
 						break;
 					}
 
@@ -144,9 +142,8 @@ void IOMarket::processExpiredOffers(DBResult_ptr result, bool)
 				}
 
 				for (uint16_t i = 0; i < amount; ++i) {
-					Item* item = Item::CreateItem(itemType.id, subType);
-					if (g_game.internalAddItem(player->getInbox(), item, INDEX_WHEREEVER, FLAG_NOLIMIT) != RETURNVALUE_NOERROR) {
-						delete item;
+					auto item = Item::CreateItem(itemType.id, subType);
+					if (CylinderPtr inbox = player->getInbox(); g_game.internalAddItem(inbox, item, INDEX_WHEREEVER, FLAG_NOLIMIT) != RETURNVALUE_NOERROR) {
 						break;
 					}
 				}
@@ -154,13 +151,11 @@ void IOMarket::processExpiredOffers(DBResult_ptr result, bool)
 
 			if (player->isOffline()) {
 				IOLoginData::savePlayer(player);
-				delete player;
 			}
 		} else {
 			uint64_t totalPrice = result->getNumber<uint64_t>("price") * amount;
 
-			Player* player = g_game.getPlayerByGUID(playerId);
-			if (player) {
+			if (const auto player = g_game.getPlayerByGUID(playerId)) {
 				player->setBankBalance(player->getBankBalance() + totalPrice);
 			} else {
 				IOLoginData::increaseBankBalance(playerId, totalPrice);

@@ -28,7 +28,7 @@ Attr_ReadValue BedItem::readAttr(AttrTypes_t attr, PropStream& propStream)
 				std::string name = IOLoginData::getNameByGuid(guid);
 				if (!name.empty()) {
 					setSpecialDescription(name + " is sleeping there.");
-					g_game.setBedSleeper(this, guid);
+					g_game.setBedSleeper(this->getBed(), guid);
 					sleeperGUID = guid;
 				}
 			}
@@ -65,19 +65,19 @@ void BedItem::serializeAttr(PropWriteStream& propWriteStream) const
 	}
 }
 
-BedItem* BedItem::getNextBedItem() const
+BedItemPtr BedItem::getNextBedItem() const
 {
 	Direction dir = Item::items[id].bedPartnerDir;
 	Position targetPos = getNextPosition(dir, getPosition());
 
-	Tile* tile = g_game.map.getTile(targetPos);
+	auto tile = g_game.map.getTile(targetPos);
 	if (!tile) {
 		return nullptr;
 	}
 	return tile->getBedItem();
 }
 
-bool BedItem::canUse(Player* player)
+bool BedItem::canUse(PlayerPtr player) const
 {
 	if (!player || !house || !player->isPremium() || player->getZone() != ZONE_PROTECTION) {
 		return false;
@@ -91,18 +91,18 @@ bool BedItem::canUse(Player* player)
 		return true;
 	}
 
-	Player sleeper(nullptr);
-	if (!IOLoginData::loadPlayerById(&sleeper, sleeperGUID)) {
+	PlayerPtr sleeper(nullptr);
+	if (!IOLoginData::loadPlayerById(sleeper, sleeperGUID)) {
 		return false;
 	}
 
-	if (house->getHouseAccessLevel(&sleeper) > house->getHouseAccessLevel(player)) {
+	if (house->getHouseAccessLevel(sleeper) > house->getHouseAccessLevel(player)) {
 		return false;
 	}
 	return true;
 }
 
-bool BedItem::trySleep(Player* player)
+bool BedItem::trySleep(const PlayerPtr& player)
 {
 	if (!house || player->isRemoved()) {
 		return false;
@@ -119,7 +119,7 @@ bool BedItem::trySleep(Player* player)
 	return true;
 }
 
-bool BedItem::sleep(Player* player)
+bool BedItem::sleep(const PlayerPtr& player)
 {
 	if (!house) {
 		return false;
@@ -129,7 +129,7 @@ bool BedItem::sleep(Player* player)
 		return false;
 	}
 
-	BedItem* nextBedItem = getNextBedItem();
+	auto nextBedItem = getNextBedItem();
 
 	internalSetSleeper(player);
 
@@ -138,10 +138,12 @@ bool BedItem::sleep(Player* player)
 	}
 
 	// update the bedSleepersMap
-	g_game.setBedSleeper(this, player->getGUID());
+	g_game.setBedSleeper(this->getBed(), player->getGUID());
 
 	// make the player walk onto the bed
-	g_game.map.moveCreature(*player, *getTile());
+	auto creature = player->getCreature();
+	auto tile = getTile();
+	g_game.map.moveCreature(creature, tile);
 
 	// display 'Zzzz'/sleep effect
 	g_game.addMagicEffect(player->getPosition(), CONST_ME_SLEEP);
@@ -158,7 +160,7 @@ bool BedItem::sleep(Player* player)
 	return true;
 }
 
-void BedItem::wakeUp(Player* player)
+void BedItem::wakeUp(const PlayerPtr& player)
 {
 	if (!house) {
 		return;
@@ -166,10 +168,10 @@ void BedItem::wakeUp(Player* player)
 
 	if (sleeperGUID != 0) {
 		if (!player) {
-			Player regenPlayer(nullptr);
-			if (IOLoginData::loadPlayerById(&regenPlayer, sleeperGUID)) {
-				regeneratePlayer(&regenPlayer);
-				IOLoginData::savePlayer(&regenPlayer);
+			PlayerPtr regenPlayer(nullptr);
+			if (IOLoginData::loadPlayerById(regenPlayer, sleeperGUID)) {
+				regeneratePlayer(regenPlayer);
+				IOLoginData::savePlayer(regenPlayer);
 			}
 		} else {
 			regeneratePlayer(player);
@@ -180,7 +182,7 @@ void BedItem::wakeUp(Player* player)
 	// update the bedSleepersMap
 	g_game.removeBedSleeper(sleeperGUID);
 
-	BedItem* nextBedItem = getNextBedItem();
+	BedItemPtr nextBedItem = getNextBedItem();
 
 	// unset sleep info
 	internalRemoveSleeper();
@@ -197,11 +199,11 @@ void BedItem::wakeUp(Player* player)
 	}
 }
 
-void BedItem::regeneratePlayer(Player* player) const
+void BedItem::regeneratePlayer(const PlayerPtr& player) const
 {
 	const uint32_t sleptTime = time(nullptr) - sleepStart;
 
-	Condition* condition = player->getCondition(CONDITION_REGENERATION, CONDITIONID_DEFAULT);
+	auto condition = player->getCondition(CONDITION_REGENERATION, CONDITIONID_DEFAULT);
 	if (condition) {
 		uint32_t regen;
 		if (condition->getTicks() != -1) {
@@ -224,25 +226,25 @@ void BedItem::regeneratePlayer(Player* player) const
 	player->changeSoul(soulRegen);
 }
 
-void BedItem::updateAppearance(const Player* player)
+void BedItem::updateAppearance(const PlayerConstPtr& player)
 {
 	const ItemType& it = Item::items[id];
 	if (it.type == ITEM_TYPE_BED) {
 		if (player && it.transformToOnUse[player->getSex()] != 0) {
 			const ItemType& newType = Item::items[it.transformToOnUse[player->getSex()]];
 			if (newType.type == ITEM_TYPE_BED) {
-				g_game.transformItem(this, it.transformToOnUse[player->getSex()]);
+				g_game.transformItem(getItem(), it.transformToOnUse[player->getSex()]);
 			}
 		} else if (it.transformToFree != 0) {
 			const ItemType& newType = Item::items[it.transformToFree];
 			if (newType.type == ITEM_TYPE_BED) {
-				g_game.transformItem(this, it.transformToFree);
+				g_game.transformItem(getItem(), it.transformToFree);
 			}
 		}
 	}
 }
 
-void BedItem::internalSetSleeper(const Player* player)
+void BedItem::internalSetSleeper(const PlayerConstPtr& player)
 {
 	std::string desc_str = player->getName() + " is sleeping there.";
 

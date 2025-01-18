@@ -19,7 +19,7 @@ class ProtocolLogin : public Protocol
 		static const char* protocol_name() {
 			return "login protocol";
 		}
-
+		// todo: use reference on connection
 		explicit ProtocolLogin(Connection_ptr connection) : Protocol(connection) {}
 
 		void onRecvFirstMessage(NetworkMessage& msg) override;

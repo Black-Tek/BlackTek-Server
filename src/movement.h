@@ -1,8 +1,8 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_MOVEMENT_H_5E0D2626D4634ACA83AC6509518E5F49
-#define FS_MOVEMENT_H_5E0D2626D4634ACA83AC6509518E5F49
+#ifndef FS_MOVEMENT_H_
+#define FS_MOVEMENT_H_
 
 #include "baseevents.h"
 #include "item.h"
@@ -38,18 +38,18 @@ class MoveEvents final : public BaseEvents
 {
 	public:
 		MoveEvents();
-		~MoveEvents();
+		~MoveEvents() override;
 
 		// non-copyable
 		MoveEvents(const MoveEvents&) = delete;
 		MoveEvents& operator=(const MoveEvents&) = delete;
 
-		uint32_t onCreatureMove(Creature* creature, const Tile* tile, MoveEvent_t eventType);
-		ReturnValue onPlayerEquip(Player* player, Item* item, slots_t slot, bool isCheck);
-		ReturnValue onPlayerDeEquip(Player* player, Item* item, slots_t slot);
-		uint32_t onItemMove(Item* item, Tile* tile, bool isAdd);
+		uint32_t onCreatureMove(const CreaturePtr& creature, const TilePtr& tile, MoveEvent_t eventType);
+		ReturnValue onPlayerEquip(const PlayerPtr& player, const ItemPtr& item, slots_t slot, bool isCheck);
+		ReturnValue onPlayerDeEquip(const PlayerPtr& player, const ItemPtr& item, slots_t slot);
+		uint32_t onItemMove(const ItemPtr& item, const TilePtr& tile, bool isAdd);
 
-		MoveEvent* getEvent(Item* item, MoveEvent_t eventType);
+		MoveEvent* getEvent(const ItemPtr& item, MoveEvent_t eventType);
 
 		bool registerLuaEvent(MoveEvent* event);
 		bool registerLuaFunction(MoveEvent* event);
@@ -69,9 +69,9 @@ class MoveEvents final : public BaseEvents
 		void addEvent(MoveEvent moveEvent, int32_t id, MoveListMap& map);
 
 		void addEvent(MoveEvent moveEvent, const Position& pos, MovePosListMap& map);
-		MoveEvent* getEvent(const Tile* tile, MoveEvent_t eventType);
+		MoveEvent* getEvent(const TileConstPtr& tile, MoveEvent_t eventType);
 
-		MoveEvent* getEvent(Item* item, MoveEvent_t eventType, slots_t slot);
+		MoveEvent* getEvent(const ItemPtr& item, MoveEvent_t eventType, slots_t slot);
 
 		MoveListMap uniqueIdMap;
 		MoveListMap actionIdMap;
@@ -81,9 +81,9 @@ class MoveEvents final : public BaseEvents
 		LuaScriptInterface scriptInterface;
 };
 
-using StepFunction = std::function<uint32_t(Creature* creature, Item* item, const Position& pos)>;
-using MoveFunction = std::function<uint32_t(Item* item, Item* tileItem, const Position& pos)>;
-using EquipFunction = std::function<ReturnValue(MoveEvent* moveEvent, Player* player, Item* item, slots_t slot, bool boolean)>;
+using StepFunction = std::function<uint32_t(const CreaturePtr& creature, const ItemPtr& item, const Position& pos)>;
+using MoveFunction = std::function<uint32_t(const ItemPtr& item, const ItemPtr& tileItem, const Position& pos)>;
+using EquipFunction = std::function<ReturnValue(MoveEvent* moveEvent, const PlayerPtr& player, const ItemPtr& item, slots_t slot, bool boolean)>;
 
 class MoveEvent final : public Event
 {
@@ -96,126 +96,159 @@ class MoveEvent final : public Event
 		bool configureEvent(const pugi::xml_node& node) override;
 		bool loadFunction(const pugi::xml_attribute& attr, bool isScripted) override;
 
-		uint32_t fireStepEvent(Creature* creature, Item* item, const Position& pos);
-		uint32_t fireAddRemItem(Item* item, Item* tileItem, const Position& pos);
-		ReturnValue fireEquip(Player* player, Item* item, slots_t slot, bool isCheck);
+		uint32_t fireStepEvent(const CreaturePtr& creature, const ItemPtr& item, const Position& pos);
+		uint32_t fireAddRemItem(const ItemPtr& item, const ItemPtr& tileItem, const Position& pos);
+		ReturnValue fireEquip(const PlayerPtr& player, const ItemPtr& item, slots_t slot, bool isCheck);
 
 		uint32_t getSlot() const {
 			return slot;
 		}
 
 		//scripting
-		bool executeStep(Creature* creature, Item* item, const Position& pos);
-		bool executeEquip(Player* player, Item* item, slots_t slot, bool isCheck);
-		bool executeAddRemItem(Item* item, Item* tileItem, const Position& pos);
+		bool executeStep(const CreaturePtr& creature, const ItemPtr& item, const Position& pos);
+		bool executeEquip(const PlayerPtr& player, const ItemPtr& item, slots_t slot, bool isCheck);
+		bool executeAddRemItem(const ItemPtr& item, const ItemPtr& tileItem, const Position& pos);
 		//
 
 		//onEquip information
 		uint32_t getReqLevel() const {
 			return reqLevel;
 		}
+	
 		uint32_t getReqMagLv() const {
 			return reqMagLevel;
 		}
+	
 		bool isPremium() const {
 			return premium;
 		}
+	
 		const std::string& getVocationString() const {
 			return vocationString;
 		}
+	
 		void setVocationString(const std::string& str) {
 			vocationString = str;
 		}
+	
 		uint32_t getWieldInfo() const {
 			return wieldInfo;
 		}
+	
 		const VocEquipMap& getVocEquipMap() const {
 			return vocEquipMap;
 		}
-		void addVocEquipMap(std::string vocName) {
+	
+		void addVocEquipMap(const std::string& vocName) {
 			int32_t vocationId = g_vocations.getVocationId(vocName);
 			if (vocationId != -1) {
 				vocEquipMap[vocationId] = true;
 			}
 		}
+	
 		bool getTileItem() const {
 			return tileItem;
 		}
-		void setTileItem(bool b) {
+	
+		void setTileItem(const bool b) {
 			tileItem = b;
 		}
+	
 		void clearItemIdRange() {
 			return itemIdRange.clear();
 		}
+	
 		const std::vector<uint32_t>& getItemIdRange() const {
 			return itemIdRange;
 		}
+	
 		void addItemId(uint32_t id) {
 			itemIdRange.emplace_back(id);
 		}
+	
 		void clearActionIdRange() {
 			return actionIdRange.clear();
 		}
+	
 		const std::vector<uint32_t>& getActionIdRange() const {
 			return actionIdRange;
 		}
+	
 		void addActionId(uint32_t id) {
 			actionIdRange.emplace_back(id);
 		}
+	
 		void clearUniqueIdRange() {
 			return uniqueIdRange.clear();
 		}
+	
 		const std::vector<uint32_t>& getUniqueIdRange() const {
 			return uniqueIdRange;
 		}
+	
 		void addUniqueId(uint32_t id) {
 			uniqueIdRange.emplace_back(id);
 		}
+	
 		void clearPosList() {
 			return posList.clear();
 		}
+	
 		const std::vector<Position>& getPosList() const {
 			return posList;
 		}
+	
 		void addPosList(Position pos) {
 			posList.emplace_back(pos);
 		}
+	
 		void setSlot(uint32_t s) {
 			slot = s;
 		}
-		uint32_t getRequiredLevel() {
+	
+		uint32_t getRequiredLevel() const
+		{
 			return reqLevel;
 		}
+	
 		void setRequiredLevel(uint32_t level) {
 			reqLevel = level;
 		}
-		uint32_t getRequiredMagLevel() {
+	
+		uint32_t getRequiredMagLevel() const
+		{
 			return reqMagLevel;
 		}
-		void setRequiredMagLevel(uint32_t level) {
+	
+		void setRequiredMagLevel(const uint32_t level) {
 			reqMagLevel = level;
 		}
-		bool needPremium() {
+	
+		bool needPremium() const
+		{
 			return premium;
 		}
-		void setNeedPremium(bool b) {
+	
+		void setNeedPremium(const bool b) {
 			premium = b;
 		}
+	
 		uint32_t getWieldInfo() {
 			return wieldInfo;
 		}
-		void setWieldInfo(WieldInfo_t info) {
+	
+		void setWieldInfo(const WieldInfo_t info) {
 			wieldInfo |= info;
 		}
 
-		static uint32_t StepInField(Creature* creature, Item* item, const Position& pos);
-		static uint32_t StepOutField(Creature* creature, Item* item, const Position& pos);
+		static uint32_t StepInField(const CreaturePtr& creature, const ItemPtr& item, const Position& pos);
+		static uint32_t StepOutField(const CreaturePtr& creature, const ItemPtr& item, const Position& pos);
 
-		static uint32_t AddItemField(Item* item, Item* tileItem, const Position& pos);
-		static uint32_t RemoveItemField(Item* item, Item* tileItem, const Position& pos);
+		static uint32_t AddItemField(const ItemPtr& item, const ItemPtr& tileItem, const Position& pos);
+		static uint32_t RemoveItemField(const ItemPtr& item, const ItemPtr& tileItem, const Position& pos);
 
-		static ReturnValue EquipItem(MoveEvent* moveEvent, Player* player, Item* item, slots_t slot, bool isCheck);
-		static ReturnValue DeEquipItem(MoveEvent* moveEvent, Player* player, Item* item, slots_t slot, bool);
+		static ReturnValue EquipItem(MoveEvent* moveEvent, const PlayerPtr& player, const ItemPtr& item, slots_t slot, bool isCheck);
+		static ReturnValue DeEquipItem(MoveEvent* moveEvent, const PlayerPtr& player, const ItemPtr& item, slots_t slot, bool);
 
 		MoveEvent_t eventType = MOVE_EVENT_NONE;
 		StepFunction stepFunction;

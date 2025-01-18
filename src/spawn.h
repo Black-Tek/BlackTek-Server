@@ -32,9 +32,9 @@ class Spawn
 		Spawn(const Spawn&) = delete;
 		Spawn& operator=(const Spawn&) = delete;
 
-		bool addBlock(spawnBlock_t sb);
+		bool addBlock(const spawnBlock_t& sb);
 		bool addMonster(const std::string& name, const Position& pos, Direction dir, uint32_t interval);
-		void removeMonster(Monster* monster);
+		void removeMonster(const MonsterPtr& monster);
 
 		uint32_t getInterval() const {
 			return interval;
@@ -47,7 +47,7 @@ class Spawn
 
 	private:
 		//map of the spawned creatures
-		using SpawnedMap = std::multimap<uint32_t, Monster*>;
+		using SpawnedMap = std::multimap<uint32_t, MonsterPtr>;
 		SpawnedMap spawnedMap;
 
 		//map of creatures in the spawn
@@ -60,7 +60,7 @@ class Spawn
 		uint32_t checkSpawnEvent = 0;
 
 		static bool findPlayer(const Position& pos);
-		bool spawnMonster(uint32_t spawnId, spawnBlock_t sb, bool startup = false);
+		bool spawnMonster(uint32_t spawnId, const spawnBlock_t& sb, bool startup = false);
 		bool spawnMonster(uint32_t spawnId, MonsterType* mType, const Position& pos, Direction dir, bool startup = false);
 		void checkSpawn();
 };
@@ -79,7 +79,7 @@ class Spawns
 		}
 
 	private:
-		std::forward_list<Npc*> npcList;
+		std::forward_list<NpcPtr> npcList;
 		std::forward_list<Spawn> spawnList;
 		std::string filename;
 		bool loaded = false;

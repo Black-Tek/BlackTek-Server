@@ -86,62 +86,62 @@ class Events
 		bool load();
 
 		// Creature
-		bool eventCreatureOnChangeOutfit(Creature* creature, const Outfit_t& outfit);
-		ReturnValue eventCreatureOnAreaCombat(Creature* creature, Tile* tile, bool aggressive);
-		ReturnValue eventCreatureOnTargetCombat(Creature* creature, Creature* target);
-		void eventCreatureOnHear(Creature* creature, Creature* speaker, const std::string& words, SpeakClasses type);
-		void eventCreatureOnAttack(Creature* attacker, Creature* target, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
-		void eventCreatureOnDefend(Creature* defender, Creature* attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
+		bool eventCreatureOnChangeOutfit(const CreaturePtr& creature, const Outfit_t& outfit);
+		ReturnValue eventCreatureOnAreaCombat(const CreaturePtr& creature, const TilePtr& tile, bool aggressive);
+		ReturnValue eventCreatureOnTargetCombat(const CreaturePtr& creature, const CreaturePtr& target);
+		void eventCreatureOnHear(const CreaturePtr& creature, const CreaturePtr& speaker, const std::string& words, SpeakClasses type);
+		void eventCreatureOnAttack(const CreaturePtr& attacker, const CreaturePtr& target, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
+		void eventCreatureOnDefend(const CreaturePtr& defender, const CreaturePtr& attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
 
 		// Party
-		bool eventPartyOnJoin(Party* party, Player* player);
-		bool eventPartyOnLeave(Party* party, Player* player);
+		bool eventPartyOnJoin(Party* party, const PlayerPtr& player);
+		bool eventPartyOnLeave(Party* party, const PlayerPtr& player);
 		bool eventPartyOnDisband(Party* party);
 		void eventPartyOnShareExperience(Party* party, uint64_t& exp);
-		bool eventPartyOnInvite(Party* party, Player* player);
-		bool eventPartyOnRevokeInvitation(Party* party, Player* player);
-		bool eventPartyOnPassLeadership(Party* party, Player* player);
+		bool eventPartyOnInvite(Party* party, const PlayerPtr& player);
+		bool eventPartyOnRevokeInvitation(Party* party, const PlayerPtr& player);
+		bool eventPartyOnPassLeadership(Party* party, const PlayerPtr& player);
 
 		// Player
-		bool eventPlayerOnBrowseField(Player* player, const Position& position);
-		void eventPlayerOnLook(Player* player, const Position& position, Thing* thing, uint8_t stackpos, int32_t lookDistance);
-		void eventPlayerOnLookInBattleList(Player* player, Creature* creature, int32_t lookDistance);
-		void eventPlayerOnLookInTrade(Player* player, Player* partner, Item* item, int32_t lookDistance);
-		bool eventPlayerOnLookInShop(Player* player, const ItemType* itemType, uint8_t count, const std::string& description);
-		ReturnValue eventPlayerOnMoveItem(Player* player, Item* item, uint16_t count, const Position& fromPosition, const Position& toPosition, Cylinder* fromCylinder, Cylinder* toCylinder);
-		void eventPlayerOnItemMoved(Player* player, Item* item, uint16_t count, const Position& fromPosition, const Position& toPosition, Cylinder* fromCylinder, Cylinder* toCylinder);
-		bool eventPlayerOnMoveCreature(Player* player, Creature* creature, const Position& fromPosition, const Position& toPosition);
-		void eventPlayerOnReportRuleViolation(Player* player, const std::string& targetName, uint8_t reportType, uint8_t reportReason, const std::string& comment, const std::string& translation);
-		bool eventPlayerOnReportBug(Player* player, const std::string& message, const Position& position, uint8_t category);
-		bool eventPlayerOnTurn(Player* player, Direction direction);
-		bool eventPlayerOnTradeRequest(Player* player, Player* target, Item* item);
-		bool eventPlayerOnTradeAccept(Player* player, Player* target, Item* item, Item* targetItem);
-		void eventPlayerOnTradeCompleted(Player* player, Player* target, Item* item, Item* targetItem, bool isSuccess);
-		void eventPlayerOnGainExperience(Player* player, Creature* source, uint64_t& exp, uint64_t rawExp);
-		void eventPlayerOnLoseExperience(Player* player, uint64_t& exp);
-		void eventPlayerOnGainSkillTries(Player* player, skills_t skill, uint64_t& tries);
-		void eventPlayerOnWrapItem(Player* player, Item* item);
-		void eventPlayerOnInventoryUpdate(Player* player, Item* item, slots_t slot, bool equip);
-		void eventPlayerOnRotateItem(Player* player, Item* item);
-		bool eventPlayerOnSpellTry(Player* player, const Spell* spell, SpellType_t spellType);
-		void eventPlayerOnAugment(Player* player, std::shared_ptr<Augment> augment);
-		void eventPlayerOnRemoveAugment(Player* player, std::shared_ptr<Augment> augment);
+		bool eventPlayerOnBrowseField(const PlayerPtr& player, const Position& position);
+		void eventPlayerOnLook(const PlayerPtr& player, const Position& position, const ThingPtr& thing, uint8_t stackpos, int32_t lookDistance);
+		void eventPlayerOnLookInBattleList(const PlayerPtr& player, const CreaturePtr& creature, int32_t lookDistance);
+		void eventPlayerOnLookInTrade(const PlayerPtr& player, const PlayerPtr& partner, const ItemPtr& item, int32_t lookDistance);
+		bool eventPlayerOnLookInShop(const PlayerPtr& player, const ItemType* itemType, uint8_t count, const std::string& description);
+		ReturnValue eventPlayerOnMoveItem(const PlayerPtr& player, const ItemPtr& item, uint16_t count, const Position& fromPosition, const Position& toPosition, const CylinderPtr& fromCylinder, const CylinderPtr& toCylinder);
+		void eventPlayerOnItemMoved(const PlayerPtr& player, const ItemPtr& item, uint16_t count, const Position& fromPosition, const Position& toPosition, const CylinderPtr& fromCylinder, const CylinderPtr& toCylinder);
+		bool eventPlayerOnMoveCreature(const PlayerPtr& player, const CreaturePtr& creature, const Position& fromPosition, const Position& toPosition);
+		void eventPlayerOnReportRuleViolation(const PlayerPtr& player, const std::string& targetName, uint8_t reportType, uint8_t reportReason, const std::string& comment, const std::string& translation);
+		bool eventPlayerOnReportBug(const PlayerPtr& player, const std::string& message, const Position& position, uint8_t category);
+		bool eventPlayerOnTurn(const PlayerPtr& player, Direction direction);
+		bool eventPlayerOnTradeRequest(const PlayerPtr& player, const PlayerPtr& target, const ItemPtr& item);
+		bool eventPlayerOnTradeAccept(const PlayerPtr& player, const PlayerPtr& target, const ItemPtr& item, const ItemPtr& targetItem);
+		void eventPlayerOnTradeCompleted(const PlayerPtr& player, const PlayerPtr& target, const ItemPtr& item, const ItemPtr& targetItem, bool isSuccess);
+		void eventPlayerOnGainExperience(const PlayerPtr& player, const CreaturePtr& source, uint64_t& exp, uint64_t rawExp);
+		void eventPlayerOnLoseExperience(const PlayerPtr& player, uint64_t& exp);
+		void eventPlayerOnGainSkillTries(const PlayerPtr& player, skills_t skill, uint64_t& tries);
+		void eventPlayerOnWrapItem(const PlayerPtr& player, const ItemPtr& item);
+		void eventPlayerOnInventoryUpdate(const PlayerPtr& player, const ItemPtr& item, slots_t slot, bool equip);
+		void eventPlayerOnRotateItem(const PlayerPtr& player, const ItemPtr& item);
+		bool eventPlayerOnSpellTry(const PlayerPtr& player, const Spell* spell, SpellType_t spellType);
+		void eventPlayerOnAugment(const PlayerPtr& player, std::shared_ptr<Augment> augment);
+		void eventPlayerOnRemoveAugment(const PlayerPtr& player, std::shared_ptr<Augment> augment);
 
 		// Monster
-		void eventMonsterOnDropLoot(Monster* monster, Container* corpse);
-		bool eventMonsterOnSpawn(Monster* monster, const Position& position, bool startup, bool artificial);
+		void eventMonsterOnDropLoot(const MonsterPtr& monster, const ContainerPtr& corpse);
+		bool eventMonsterOnSpawn(const MonsterPtr& monster, const Position& position, bool startup, bool artificial);
 
 		// Item
-		bool eventItemOnImbue(Item* item, std::shared_ptr<Imbuement> imbuement, bool created = true);
-		void eventItemOnRemoveImbue(Item* item, ImbuementType imbueType, bool decayed = false);
+		bool eventItemOnImbue(const ItemPtr& item, const std::shared_ptr<Imbuement>& imbuement, bool created = true);
+		void eventItemOnRemoveImbue(const ItemPtr& item, ImbuementType imbueType, bool decayed = false);
 
-		void eventItemOnAttack(Item* item, Player* itemHolder, Creature* defender, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
-		void eventItemOnDefend(Item* item, Player* itemHolder, Creature* attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
-		void eventItemOnAugment(Item* item, std::shared_ptr<Augment> augment);
-		void eventItemOnRemoveAugment(Item* item, std::shared_ptr<Augment> augment);
+		void eventItemOnAttack(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& defender, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
+		void eventItemOnDefend(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
+		void eventItemOnAugment(const ItemPtr& item, std::shared_ptr<Augment> augment);
+		void eventItemOnRemoveAugment(const ItemPtr& item, std::shared_ptr<Augment> augment);
 		
 
-		int32_t getScriptId(EventInfoId eventInfoId) {
+		constexpr auto getScriptId(EventInfoId eventInfoId) const {
 			switch (eventInfoId)
 			{
 			case EventInfoId::CREATURE_ONHEAR:
