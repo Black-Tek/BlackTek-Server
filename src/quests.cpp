@@ -83,9 +83,6 @@ bool Mission::isCompleted(Player* player) const
 
 std::string Mission::getName(Player* player) const
 {
-	if (isCompleted(player)) {
-		return name + " (completed)";
-	}
 	return name;
 }
 
