@@ -11,7 +11,9 @@
 #include "tile.h"
 #include "enums.h"
 #include "creatureevent.h"
+#include "declarations.h"
 
+class Map;
 using ConditionList = std::list<Condition*>;
 using CreatureEventList = std::list<CreatureEvent*>;
 
@@ -42,24 +44,6 @@ struct FindPathParams {
 	int32_t minTargetDist = -1;
 	int32_t maxTargetDist = -1;
 };
-
-class Map;
-class Thing;
-class Container;
-class Player;
-class Monster;
-class Npc;
-class Item;
-class Tile;
-
-using PlayerPtr = std::shared_ptr<Player>;
-using PlayerConstPtr = std::shared_ptr<const Player>;
-
-using MonsterPtr = std::shared_ptr<Monster>;
-using MonsterConstPtr = std::shared_ptr<const Monster>;
-
-using NpcPtr = std::shared_ptr<Npc>;
-using NpcConstPtr = std::shared_ptr<const Npc>;
 
 static constexpr int32_t EVENT_CREATURECOUNT = 10;
 static constexpr int32_t EVENT_CREATURE_THINK_INTERVAL = 1000;
