@@ -8,62 +8,7 @@
 #include "item.h"
 #include "tools.h"
 #include "spectators.h"
-
-class Creature;
-class Teleport;
-class TrashHolder;
-class Mailbox;
-class MagicField;
-class QTreeLeafNode;
-class BedItem;
-class TileItemVector;
-
-class Creature;
-using CreaturePtr = std::shared_ptr<Creature>;
-using CreatureConstPtr = std::shared_ptr<const Creature>;
-class Player;
-using PlayerPtr = std::shared_ptr<Player>;
-using PlayerConstPtr = std::shared_ptr<const Player>;
-class Monster;
-using MonsterPtr = std::shared_ptr<Monster>;
-using MonsterConstPtr = std::shared_ptr<const Monster>;
-class Npc;
-using NpcPtr = std::shared_ptr<Npc>;
-using NpcConstPtr = std::shared_ptr<const Npc>;
-
-using CreatureVector = std::vector<CreaturePtr>;
-using ItemVector = std::vector<ItemPtr>;
-
-using TileItemsPtr = std::shared_ptr<TileItemVector>;
-using TileItemsConstPtr = std::shared_ptr<const TileItemVector>;
-using TileCreaturesPtr = std::shared_ptr<CreatureVector>;
-using TileCreaturesConstPtr = std::shared_ptr<const CreatureVector>;
-
-class Depot;
-using DepotPtr = std::shared_ptr<Depot>;
-using DepotConstPtr = std::shared_ptr<const Depot>;
-class Teleport;
-using TeleportPtr = std::shared_ptr<Teleport>;
-using TeleportConstPtr = std::shared_ptr<const Teleport>;
-class TrashHolder;
-using TrashHolderPtr = std::shared_ptr<TrashHolder>;
-using TrashHolderConstPtr = std::shared_ptr<const TrashHolder>;
-
-using MailboxPtr = std::shared_ptr<Mailbox>;
-using MailboxConstPtr = std::shared_ptr<const Mailbox>;
-class Door;
-using DoorPtr = std::shared_ptr<Door>;
-using DoorConstPtr = std::shared_ptr<const Door>;
-
-using MagicFieldPtr = std::shared_ptr<MagicField>;
-using MagicFieldConstPtr = std::shared_ptr<const MagicField>;
-
-using BedItemPtr = std::shared_ptr<BedItem>;
-using BedItemConstPtr = std::shared_ptr<const BedItem>;
-
-class HouseTile;
-using HouseTilePtr = std::shared_ptr<HouseTile>;
-using HouseTileConstPtr = std::shared_ptr<const HouseTile>;
+#include "declarations.h"
 
 enum tileflags_t : uint32_t {
 	TILESTATE_NONE = 0,

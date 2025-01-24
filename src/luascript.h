@@ -27,20 +27,17 @@
 #include "mounts.h"
 #include "luavariant.h"
 #include <fmt/format.h>
+#include "declarations.h"
 
-class Thing;
-class Creature;
-class Player;
-class Item;
-class Container;
 class AreaCombat;
 class Combat;
 using Combat_ptr = std::shared_ptr<Combat>;
 class Condition;
-class Npc;
-class Monster;
 class InstantSpell;
 class Spell;
+class LuaScriptInterface;
+class Game;
+struct LootBlock;
 
 template<typename T>
 concept EnumType = std::is_enum_v<T> && !std::is_same_v<T, bool>;
@@ -89,62 +86,6 @@ struct LuaTimerEventDesc {
 	LuaTimerEventDesc() = default;
 	LuaTimerEventDesc(LuaTimerEventDesc&& other) = default;
 };
-
-class LuaScriptInterface;
-class Cylinder;
-class Game;
-
-using PlayerPtr = std::shared_ptr<Player>;
-using PlayerConstPtr = std::shared_ptr<const Player>;
-
-using MonsterPtr = std::shared_ptr<Monster>;
-using MonsterConstPtr = std::shared_ptr<const Monster>;
-
-using NpcPtr = std::shared_ptr<Npc>;
-using NpcConstPtr = std::shared_ptr<const Npc>;
-class Depot;
-using DepotPtr = std::shared_ptr<Depot>;
-using DepotConstPtr = std::shared_ptr<const Depot>;
-class Teleport;
-using TeleportPtr = std::shared_ptr<Teleport>;
-using TeleportConstPtr = std::shared_ptr<const Teleport>;
-class TrashHolder;
-using TrashHolderPtr = std::shared_ptr<TrashHolder>;
-using TrashHolderConstPtr = std::shared_ptr<const TrashHolder>;
-class Mailbox;
-using MailboxPtr = std::shared_ptr<Mailbox>;
-using MailboxConstPtr = std::shared_ptr<const Mailbox>;
-class Door;
-using DoorPtr = std::shared_ptr<Door>;
-using DoorConstPtr = std::shared_ptr<const Door>;
-class MagicField;
-using MagicFieldPtr = std::shared_ptr<MagicField>;
-using MagicFieldConstPtr = std::shared_ptr<const MagicField>;
-class BedItem;
-using BedItemPtr = std::shared_ptr<BedItem>;
-using BedItemConstPtr = std::shared_ptr<const BedItem>;
-
-using ThingPtr = std::shared_ptr<class Thing>;
-using ThingConstPtr = std::shared_ptr<const class Thing>;
-class Tile;
-using TilePtr = std::shared_ptr<Tile>;
-using TileConstPtr = std::shared_ptr<const Tile>;
-using TileWeakPtr = std::weak_ptr<Tile>;
-
-using CylinderPtr = std::shared_ptr<Cylinder>;
-using CylinderConstPtr = std::shared_ptr<const Cylinder>;
-using CylinderWeakPtr = std::weak_ptr<Cylinder>;
-
-using ItemPtr = std::shared_ptr<Item>;
-using ItemConstPtr = std::shared_ptr<const Item>;
-class Container;
-using ContainerPtr = std::shared_ptr<Container>;
-using ContainerConstPtr = std::shared_ptr<const Container>;
-class Creature;
-using CreaturePtr = std::shared_ptr<Creature>;
-using CreatureConstPtr = std::shared_ptr<const Creature>;
-
-struct LootBlock;
 
 class ScriptEnvironment
 {

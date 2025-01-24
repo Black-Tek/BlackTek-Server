@@ -8,33 +8,7 @@
 #include <memory>
 #include <string>
 #include "sharedobject.h"
-
-
-class Tile;
-class Cylinder;
-class Item;
-class Creature;
-class Container;
-
-using ThingPtr = std::shared_ptr<class Thing>;
-using ThingConstPtr = std::shared_ptr<const Thing>;
-
-using TilePtr = std::shared_ptr<Tile>;
-using TileConstPtr = std::shared_ptr<const Tile>;
-using TileWeakPtr = std::weak_ptr<Tile>;
-
-using CylinderPtr = std::shared_ptr<Cylinder>;
-using CylinderConstPtr = std::shared_ptr<const Cylinder>;
-using CylinderWeakPtr = std::weak_ptr<Cylinder>;
-
-using ItemPtr = std::shared_ptr<Item>;
-using ItemConstPtr = std::shared_ptr<const Item>;
-
-using CreaturePtr = std::shared_ptr<Creature>;
-using CreatureConstPtr = std::shared_ptr<const Creature>;
-
-using ContainerPtr = std::shared_ptr<Container>;
-using ContainerConstPtr = std::shared_ptr<const Container>;
+#include "declarations.h"
 
 class Thing
 {
