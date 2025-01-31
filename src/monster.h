@@ -53,7 +53,7 @@ class Monster final : public Creature
 		void removeList() override;
 
 		// Returns name that was used in monsters.xml, not the real creature name
-		const std::string& getRegisteredName() { return mType->registeredName; };
+		const std::string& getRegisteredName() const override { return mType->registeredName; };
 
 		const std::string& getName() const override;
 		void setName(const std::string& name);
