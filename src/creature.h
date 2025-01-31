@@ -114,7 +114,7 @@ class Creature : virtual public Thing, public SharedObject
 			return nullptr;
 		}
 
-		virtual const std::string& getRegisteredName() const = { return getName(); };
+		virtual const std::string& getRegisteredName() const = 0;
 
 		virtual const std::string& getName() const = 0;
 		virtual const std::string& getNameDescription() const = 0;
