@@ -29,7 +29,7 @@ Container::Container(const TilePtr& tile) : Container(ITEM_BROWSEFIELD, 30, fals
 			}
 		}
 	}
-	Item::setParent(tile);
+	setParent(tile);
 }
 
 Container::~Container()
@@ -431,17 +431,18 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 {
 	if (!unlocked) {
 		*destItem = nullptr;
-		return {std::move(shared_from_this()), this};
+		return getContainer();
 	}
 
 	if (index == 254 /*move up*/) {
 		index = INDEX_WHEREEVER;
 		*destItem = nullptr;
 
-		if (const auto& parentContainer = std::dynamic_pointer_cast<Cylinder>(getParent())) {
+		if (auto parentContainer = std::dynamic_pointer_cast<Cylinder>(getParent())) {
 			return parentContainer;
 		}
-		return {shared_from_this(), this};
+
+		return getContainer();
 	}
 
 	if (index == 255 /*add wherever*/) {
@@ -461,7 +462,7 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 
 	const auto item = thing->getItem();
 	if (!item) {
-		return {shared_from_this(), this};
+		return getContainer();
 	}
 
 	if (index != INDEX_WHEREEVER) {
@@ -479,7 +480,7 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 	bool autoStack = !hasBitSet(FLAG_IGNOREAUTOSTACK, flags);
 	if (autoStack && item->isStackable() && item->getParent().get() != this) {
 		if (*destItem && (*destItem)->equals(item) && (*destItem)->getItemCount() < 100) {
-			return {shared_from_this(), this};
+			return getContainer();
 		}
 
 		//try find a suitable item to stack with
@@ -488,12 +489,12 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 			if (listItem != item && listItem->equals(item) && listItem->getItemCount() < 100) {
 				*destItem = listItem;
 				index = n;
-				return {std::move(shared_from_this()), this};
+				return getContainer();
 			}
 			++n;
 		}
 	}
-	return {std::move(shared_from_this()), this};
+	return getContainer();
 }
 
 void Container::addThing(ThingPtr thing)
@@ -589,7 +590,7 @@ void Container::replaceThing(uint32_t index, ThingPtr thing)
 
 void Container::removeThing(ThingPtr thing, uint32_t count)
 {
-	const auto item = thing->getItem();
+	auto item = thing->getItem();
 	if (item == nullptr) {
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
 	}
@@ -703,11 +704,17 @@ void Container::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, in
 {
 	auto topParent = getTopParent();
 	if (topParent->getCreature()) {
+		std::cout << ":: Container :: TopParent is saying its a creature \n";
 		topParent->postRemoveNotification(thing, newParent, index, LINK_TOPPARENT);
 	} else if (topParent.get() == this) {
 		//let the tile class notify surrounding players
+		std::cout << ":: Container :: TopParent is saying its also container \n";
 		if (topParent->getParent()) {
+			std::cout << ":: Container :: TopParent found parent to send notification \n";
 			topParent->getParent()->postRemoveNotification(thing, newParent, index, LINK_NEAR);
+		}
+		else {
+			std::cout << ":: Container :: hitting that else print \n";
 		}
 	} else {
 		topParent->postRemoveNotification(thing, newParent, index, LINK_PARENT);

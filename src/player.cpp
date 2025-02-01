@@ -2008,12 +2008,12 @@ void Player::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile,
 }
 
 //container
-void Player::onAddContainerItem(const ItemPtr& item)
+void Player::onAddContainerItem(ItemPtr item)
 {
 	checkTradeState(item);
 }
 
-void Player::onUpdateContainerItem(const ContainerPtr& container, const ItemPtr& oldItem, const ItemPtr& newItem)
+void Player::onUpdateContainerItem(ContainerPtr container, ItemPtr oldItem, ItemPtr newItem)
 {
 	if (oldItem != newItem) {
 		onRemoveContainerItem(container, oldItem);
@@ -2024,7 +2024,7 @@ void Player::onUpdateContainerItem(const ContainerPtr& container, const ItemPtr&
 	}
 }
 
-void Player::onRemoveContainerItem(const ContainerPtr& container, const ItemPtr& item)
+void Player::onRemoveContainerItem(ContainerPtr container, ItemPtr item)
 {
 	if (tradeState != TRADE_TRANSFER) {
 		checkTradeState(item);
@@ -2037,28 +2037,28 @@ void Player::onRemoveContainerItem(const ContainerPtr& container, const ItemPtr&
 	}
 }
 
-void Player::onCloseContainer(const ContainerConstPtr& container) const
+void Player::onCloseContainer(ContainerPtr container)
 {
 	if (!client) {
 		return;
 	}
 
-	for (const auto& it : openContainers) {
+	for (auto it : openContainers) {
 		if (it.second.container == container) {
 			client->sendCloseContainer(it.first);
 		}
 	}
 }
 
-void Player::onSendContainer(const ContainerPtr& container) const
+void Player::onSendContainer(ContainerPtr container)
 {
 	if (!client) {
 		return;
 	}
 
 	const bool hasParent = container->hasParent();
-	for (const auto& it : openContainers) {
-		const OpenContainer& openContainer = it.second;
+	for (auto it : openContainers) {
+		OpenContainer openContainer = it.second;
 		if (openContainer.container == container) {
 			client->sendContainer(it.first, container, hasParent, openContainer.index);
 		}
@@ -2066,7 +2066,7 @@ void Player::onSendContainer(const ContainerPtr& container) const
 }
 
 //inventory
-void Player::onUpdateInventoryItem(const ItemPtr& oldItem, const ItemPtr& newItem)
+void Player::onUpdateInventoryItem(ItemPtr oldItem, ItemPtr newItem)
 {
 	if (oldItem != newItem) {
 		onRemoveInventoryItem(oldItem);
@@ -2077,7 +2077,7 @@ void Player::onUpdateInventoryItem(const ItemPtr& oldItem, const ItemPtr& newIte
 	}
 }
 
-void Player::onRemoveInventoryItem(const ItemPtr& item)
+void Player::onRemoveInventoryItem(ItemPtr item)
 {
 	if (tradeState != TRADE_TRANSFER) {
 		checkTradeState(item);
@@ -2922,7 +2922,7 @@ bool Player::editVIP(const uint32_t vipGuid, const std::string& description, con
 }
 
 //close container and its child containers
-void Player::autoCloseContainers(const ContainerConstPtr& container)
+void Player::autoCloseContainers(ContainerPtr container)
 {
 	std::vector<uint32_t> closeList;
 	for (const auto& it : openContainers) {
@@ -3686,21 +3686,21 @@ void Player::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t 
 
 		// Check if we owned the old container too, so we don't need to do anything,
 		// as the list was updated in postRemoveNotification
-		/* assert(i ? i->getContainer() != nullptr : true);
+		assert(i ? i->getContainer() != nullptr : true);
 
 		if (i) {
-			requireListUpdate = static_cast<const Container*>(i)->getHoldingPlayer() != this;
+			requireListUpdate = std::static_pointer_cast<Container>(i)->getHoldingPlayer() != getPlayer();
 		} else {
-			requireListUpdate = oldParent != this;
-		} */
-		requireListUpdate = true;
+			requireListUpdate = oldParent != getPlayer();
+		}
+
 		updateInventoryWeight();
 		updateItemsLight();
 		sendStats();
 	}
 
-	if (const auto& item = thing->getItem()) {
-		if (const auto& container = item->getContainer()) {
+	if (auto item = thing->getItem()) {
+		if (auto container = item->getContainer()) {
 			onSendContainer(container);
 		}
 
@@ -3713,13 +3713,12 @@ void Player::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t 
 			std::vector<ContainerPtr> containers;
 
 			for (const auto& val : openContainers | std::views::values) {
-				const auto& container = val.container;
-				if (!Position::areInRange<1, 1, 0>(container->getPosition(), getPosition())) {
-					containers.push_back(container);
+				if (!Position::areInRange<1, 1, 0>(val.container->getPosition(), getPosition())) {
+					containers.push_back(val.container);
 				}
 			}
 
-			for (const auto& container : containers) {
+			for (auto& container : containers) {
 				autoCloseContainers(container);
 			}
 		}
@@ -3733,7 +3732,7 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 		g_moveEvents->onPlayerDeEquip(this->getPlayer(), thing->getItem(), static_cast<slots_t>(index));
 		g_events->eventPlayerOnInventoryUpdate(this->getPlayer(), thing->getItem(), static_cast<slots_t>(index), false);
 		if (isInventorySlot(static_cast<slots_t>(index))) {
-			const auto& item = thing->getItem();
+			auto item = thing->getItem();
 			if (item && item->hasImbuements()) {
 				removeItemImbuements(thing->getItem());
 			}
@@ -3743,32 +3742,31 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 	bool requireListUpdate = false;
 
 	if (link == LINK_OWNER || link == LINK_TOPPARENT) {
-		// const Item* i = (newParent ? newParent->getItem() : nullptr);
+		const auto& i = (newParent ? newParent->getItem() : nullptr);
 
 		// Check if we owned the old container too, so we don't need to do anything,
 		// as the list was updated in postRemoveNotification
-		/* assert(i ? i->getContainer() != nullptr : true);
+		assert(i ? i->getContainer() != nullptr : true);
 
 		if (i) {
-			requireListUpdate = static_cast<const Container*>(i)->getHoldingPlayer() != this;
+			requireListUpdate = std::dynamic_pointer_cast<Container>(i)->getHoldingPlayer() != getPlayer();
 		} else {
-			requireListUpdate = newParent != this;
-		} */
+			requireListUpdate = newParent != getPlayer();
+		} 
 		
-		requireListUpdate = true;
 		updateInventoryWeight();
 		updateItemsLight();
 		sendStats();
 	}
 
-	if (const auto& item = thing->getItem()) {
-		if (const auto& container = item->getContainer()) {
+	if (auto item = thing->getItem()) {
+		if (auto container = item->getContainer()) {
 			if (container->isRemoved() || !Position::areInRange<1, 1, 0>(getPosition(), container->getPosition())) {
 				autoCloseContainers(container);
 			} else if (container->getItem()->getTopParent() == this->getPlayer()) {
 				onSendContainer(container);
-			} else if (const auto& topContainer = std::dynamic_pointer_cast<Container>(container->getItem()->getTopParent())) {
-				if (const auto& depotChest = std::dynamic_pointer_cast<DepotChest>(topContainer)) {
+			} else if (auto topContainer = std::dynamic_pointer_cast<Container>(container->getItem()->getTopParent())) {
+				if (auto depotChest = std::dynamic_pointer_cast<DepotChest>(topContainer)) {
 					bool isOwner = false;
 
 					for (const auto& it : depotChests) {
@@ -3781,7 +3779,7 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 					if (!isOwner) {
 						autoCloseContainers(container);
 					}
-				} else if (const auto& inboxContainer = std::dynamic_pointer_cast<Inbox>(topContainer)) {
+				} else if (auto inboxContainer = std::dynamic_pointer_cast<Inbox>(topContainer)) {
 					if (inboxContainer == inbox) {
 						onSendContainer(container);
 					} else {

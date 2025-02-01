@@ -1069,8 +1069,8 @@ int NpcScriptInterface::luaNpcCloseShopWindow(lua_State* L)
 	return 1;
 }
 
-NpcEventsHandler::NpcEventsHandler(const std::string& file, const NpcPtr& og) :
-	scriptInterface(std::make_unique<NpcScriptInterface>())
+NpcEventsHandler::NpcEventsHandler(const std::string& file, NpcPtr og) :
+	scriptInterface(std::make_unique<NpcScriptInterface>()), npc(og)
 {
 	if (!scriptInterface->loadNpcLib("data/npc/lib/npc.lua")) {
 		std::cout << "[Warning - NpcLib::NpcLib] Can not load lib: " << file << std::endl;
@@ -1090,7 +1090,6 @@ NpcEventsHandler::NpcEventsHandler(const std::string& file, const NpcPtr& og) :
 		playerEndTradeEvent = scriptInterface->getEvent("onPlayerEndTrade");
 		thinkEvent = scriptInterface->getEvent("onThink");
 	}
-	npc = og;
 }
 
 bool NpcEventsHandler::isLoaded() const

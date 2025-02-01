@@ -1037,17 +1037,17 @@ class Player final : public Creature, public Cylinder
 		void onFollowCreatureDisappear(bool isLogout) override;
 
 		//container
-		void onAddContainerItem(const ItemPtr& item);
-		void onUpdateContainerItem(const ContainerPtr& container, const ItemPtr& oldItem, const ItemPtr& newItem);
-		void onRemoveContainerItem(const ContainerPtr& container, const ItemPtr& item);
+		void onAddContainerItem(ItemPtr item);
+		void onUpdateContainerItem(ContainerPtr container, ItemPtr oldItem, ItemPtr newItem);
+		void onRemoveContainerItem(ContainerPtr container, ItemPtr item);
 
-		void onCloseContainer(const ContainerConstPtr& container) const;
-		void onSendContainer(const ContainerPtr& container) const;
-		void autoCloseContainers(const ContainerConstPtr& container);
+		void onCloseContainer(ContainerPtr container);
+		void onSendContainer(ContainerPtr container);
+		void autoCloseContainers(ContainerPtr container);
 
 		//inventory
-		void onUpdateInventoryItem(const ItemPtr& oldItem, const ItemPtr& newItem);
-		void onRemoveInventoryItem(const ItemPtr& item);
+		void onUpdateInventoryItem(ItemPtr oldItem, ItemPtr newItem);
+		void onRemoveInventoryItem(ItemPtr item);
 
 		void sendCancelMessage(const std::string& msg) const {
 			if (client) {

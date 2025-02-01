@@ -2,6 +2,11 @@
 #define BT_SHARED_OBJECT_H
 
 #include <memory>
+#include "declarations.h"
+
+template <typename T>
+concept GameObject = std::is_base_of_v<Thing, T>&& std::is_class_v<T>;
+
 
 class SharedObject : public std::enable_shared_from_this<SharedObject>
 {
@@ -10,7 +15,7 @@ public:
 
     SharedObject& operator=(const SharedObject&) = delete;
 	
-	template <class T, class... Args>
+	template <GameObject T, class... Args>
 	static std::shared_ptr<T> Instantiate_Shared(Args... args) {
     	//std::cout << "## Debug Info : " << typeid(T).name() << " created with Instantiate_Shared()." << "\n";
     	return std::make_shared<T>(std::forward<Args>(args)...);

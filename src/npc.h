@@ -58,7 +58,7 @@ class NpcScriptInterface final : public LuaScriptInterface
 class NpcEventsHandler
 {
 	public:
-		NpcEventsHandler(const std::string& file, const NpcPtr& npc);
+		NpcEventsHandler(const std::string& file, NpcPtr npc);
 
 		std::unique_ptr<NpcScriptInterface> scriptInterface;
 

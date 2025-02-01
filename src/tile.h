@@ -378,12 +378,12 @@ class StaticTile final : public Tile
 			return creatures;
 		}
 
-	void postAddNotification(ThingPtr, CylinderPtr, int32_t, cylinderlink_t) override {
-			
+	void postAddNotification(ThingPtr thing, CylinderPtr parent, int32_t index, cylinderlink_t link) override {
+			Tile::postAddNotification(thing, parent, index, link);
 		}
 
-	void postRemoveNotification(ThingPtr, CylinderPtr, int32_t, cylinderlink_t) override {
-			
+	void postRemoveNotification(ThingPtr thing, CylinderPtr parent, int32_t index, cylinderlink_t link) override {
+			Tile::postRemoveNotification(thing, parent, index, link);
 		}
 
 };

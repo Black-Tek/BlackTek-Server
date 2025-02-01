@@ -268,13 +268,13 @@ class Game
 		ReturnValue internalMoveCreature(CreaturePtr creature, Direction direction, uint32_t flags = 0);
 		ReturnValue internalMoveCreature(CreaturePtr creature, TilePtr toTile, uint32_t flags = 0);
 
-		ReturnValue internalMoveItem(CylinderPtr& fromCylinder, CylinderPtr& toCylinder, int32_t index,
-		                             ItemPtr item, uint32_t count, ItemPtr* _moveItem, uint32_t flags = 0, const std::optional<CreaturePtr>& actor = std::nullopt, const std::optional<ItemPtr>& tradeItem = std::nullopt, const Position* fromPos = nullptr, const Position* toPos = nullptr);
+		ReturnValue internalMoveItem(CylinderPtr fromCylinder, CylinderPtr toCylinder, int32_t index,
+		                             ItemPtr item, uint32_t count, ItemPtr* _moveItem, uint32_t flags = 0, CreaturePtr actor = nullptr, ItemPtr tradeItem = nullptr, const Position* fromPos = nullptr, const Position* toPos = nullptr);
 							// another spot to use a ref wrapper and possibly optional for ItemPtr* above
 
-		ReturnValue internalAddItem(CylinderPtr& toCylinder, ItemPtr item, int32_t index = INDEX_WHEREEVER,
+		ReturnValue internalAddItem(CylinderPtr toCylinder, ItemPtr item, int32_t index = INDEX_WHEREEVER,
 		                            uint32_t flags = 0, bool test = false);
-		ReturnValue internalAddItem(CylinderPtr& toCylinder, ItemPtr& item, int32_t index,
+		ReturnValue internalAddItem(CylinderPtr toCylinder, ItemPtr item, int32_t index,
 		                            uint32_t flags, bool test, uint32_t& remainderCount);
 		ReturnValue internalRemoveItem(ItemPtr item, int32_t count = -1, bool test = false, uint32_t flags = 0);
 
@@ -366,7 +366,7 @@ class Game
 		void playerMoveCreature(PlayerPtr& player, CreaturePtr& movingCreature, const Position& movingCreatureOrigPos, TilePtr& toTile);
 		void playerMoveItemByPlayerID(uint32_t playerId, const Position& fromPos, uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count);
 		void playerMoveItem(const PlayerPtr& player, const Position& fromPos,
-		                    uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count, ItemPtr& item, CylinderPtr& toCylinder);
+		                    uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count, ItemPtr item, CylinderPtr& toCylinder);
 		void playerEquipItem(uint32_t playerId, uint16_t spriteId);
 		void playerMove(uint32_t playerId, Direction direction);
 		void playerCreatePrivateChannel(uint32_t playerId);
@@ -509,7 +509,7 @@ class Game
 		void addPlayer(PlayerPtr player);
 		void removePlayer(const PlayerPtr& player);
 
-		void addNpc(NpcPtr npc);
+		void addNpc(const NpcPtr& npc);
 		void removeNpc(const NpcPtr& npc);
 
 		void addMonster(MonsterPtr monster);

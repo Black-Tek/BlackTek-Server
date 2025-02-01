@@ -288,7 +288,7 @@ int LuaScriptInterface::protectedCall(lua_State* L, int nargs, int nresults)
 	return ret;
 }
 
-int32_t LuaScriptInterface::loadFile(const std::string& file, std::optional<NpcPtr> npc /* = std::nullopt*/)
+int32_t LuaScriptInterface::loadFile(const std::string& file, NpcPtr npc /* = std::nullopt*/)
 {
 	//loads file as a chunk at stack top
 	int ret = luaL_loadfile(luaState, file.c_str());
@@ -312,11 +312,7 @@ int32_t LuaScriptInterface::loadFile(const std::string& file, std::optional<NpcP
 
 	ScriptEnvironment* env = getScriptEnv();
 	env->setScriptId(EVENT_ID_LOADING, this);
-	if (npc.has_value()) {
-		// probably need to use move here??
-		env->setNpc(npc.value());
-	}
-	
+	env->setNpc(npc);
 
 	//execute it
 	ret = protectedCall(luaState, 0, 0);

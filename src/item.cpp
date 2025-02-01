@@ -305,7 +305,7 @@ TilePtr Item::getTile()
 	if (cylinder && cylinder->getParent()) {
 		cylinder = cylinder->getParent();
 	}
-	return cylinder->getTile();
+	return std::dynamic_pointer_cast<Tile>(cylinder);
 }
 
 uint16_t Item::getSubType() const

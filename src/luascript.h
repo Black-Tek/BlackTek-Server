@@ -129,7 +129,7 @@ class ScriptEnvironment
 		static uint32_t addResult(const DBResult_ptr& res);
 		static bool removeResult(uint32_t id);
 
-		void setNpc(const NpcPtr& npc) {
+		void setNpc(NpcPtr npc) {
 			curNpc = npc;
 		}
 	
@@ -200,7 +200,7 @@ class LuaScriptInterface
 		virtual bool initState();
 		bool reInitState();
 
-		int32_t loadFile(const std::string& file, std::optional<NpcPtr> npc = std::nullopt);
+		int32_t loadFile(const std::string& file, NpcPtr npc = nullptr);
 
 		const std::string& getFileById(int32_t scriptId);
 		int32_t getEvent(std::string_view eventName);

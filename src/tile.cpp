@@ -655,7 +655,7 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags) {
 
 ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags) {
     // Tile's item stack is at its numeric limit can't add anything
-    const auto items = getItemList();
+    const auto& items = getItemList();
     if (items && items->size() >= 0xFFFF) {
         return RETURNVALUE_NOTPOSSIBLE;
     }
@@ -677,10 +677,11 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags) {
     }
 
     // If there is any creature there, who is not in ghost mode... don't think this should be here...
-    const auto creatures = getCreatures();
+    const auto& creatures = getCreatures();
     if (creatures && !creatures->empty() && item->isBlocking() && !hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags)) {
         for (const auto tileCreature : *creatures) {
             if (!tileCreature->isInGhostMode()) {
+				std::cout << "creature detected? issue \n";
                 return RETURNVALUE_NOTENOUGHROOM;
             }
         }
@@ -707,10 +708,12 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags) {
             if (iiType.blockSolid) {
                 if (!iiType.allowPickupable || item->isMagicField() || item->isBlocking()) {
                     if (!item->isPickupable()) {
+						std::cout << "Pickupable issue \n";
                         return RETURNVALUE_NOTENOUGHROOM;
                     }
 
                     if (!iiType.hasHeight || iiType.pickupable || iiType.isBed()) {
+						std::cout << "isBed problem \n";
                         return RETURNVALUE_NOTENOUGHROOM;
                     }
                 }
@@ -718,7 +721,7 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags) {
         }
 		// We can move this into the previous check and combine the loops. 
         if (items) {
-            for (const auto tileItem : *items) {
+            for (const auto& tileItem : *items) {
                 const ItemType& iiType = Item::items[tileItem->getID()];
                 if (!iiType.blockSolid) {
                     continue;
@@ -729,10 +732,12 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags) {
                 }
 
                 if (!item->isPickupable()) {
+					std::cout << "Pickupable second issue \n";
                     return RETURNVALUE_NOTENOUGHROOM;
                 }
 
                 if (!iiType.hasHeight || iiType.pickupable || iiType.isBed()) {
+					std::cout << "another bed issue \n";
                     return RETURNVALUE_NOTENOUGHROOM;
                 }
             }
@@ -843,7 +848,9 @@ CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, I
 	}
 
 	if (destTile) {
-		if (const auto& destThing = destTile->getTopDownItem()) {
+		if (auto destThing = destTile->getTopDownItem()) {
+			std::cout << "assigning the destItem \n";
+			std::cout << "destItem is : " << destThing->getItem()->getName() << " \n";
 			*destItem = destThing->getItem();
 		}
 	}
@@ -1346,14 +1353,14 @@ void Tile::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t in
 {
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), true, true);
-	for (const auto& spectator : spectators) {
+	for (auto spectator : spectators) {
 		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
 		std::static_pointer_cast<Player>(spectator)->postAddNotification(thing, oldParent, index, LINK_NEAR);
 	}
 
 	//add a reference to this item, it may be deleted after being added (mailbox for example)
 	auto creature = thing->getCreature();
-	ItemPtr item = creature ? nullptr : thing->getItem();
+	auto item = thing->getItem();
 
 	if (link == LINK_OWNER) {
 		if (hasFlag(TILESTATE_TELEPORT)) {
@@ -1374,8 +1381,9 @@ void Tile::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t in
 		if (creature) {
 			g_moveEvents->onCreatureMove(creature, getTile(), MOVE_EVENT_STEP_IN);
 		} else if (item) {
-			TilePtr tile = item->getTile();
-			g_moveEvents->onItemMove(item, tile, true);
+			if (TilePtr tile = item->getTile()) {
+				g_moveEvents->onItemMove(item, tile, true);
+			}
 		}
 	}
 }
@@ -1388,16 +1396,17 @@ void Tile::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t
 		onUpdateTile(spectators);
 	}
 
-	for (const auto& spectator : spectators) {
+	for (auto spectator : spectators) {
 		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+		std::cout << "Found a player spectator " << std::static_pointer_cast<Player>(spectator)->getName() << " for tile:postRemoveNotification  \n";
 		std::static_pointer_cast<Player>(spectator)->postRemoveNotification(thing, newParent, index, LINK_NEAR);
 	}
 
 	//calling movement scripts
-	if (const auto& creature = thing->getCreature()) {
+	if (auto creature = thing->getCreature()) {
 		g_moveEvents->onCreatureMove(creature, getTile(), MOVE_EVENT_STEP_OUT);
 	} else {
-		if (const auto& item = thing->getItem()) {
+		if (auto item = thing->getItem()) {
 			g_moveEvents->onItemMove(item, getTile(), false);
 		}
 	}

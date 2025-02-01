@@ -10,6 +10,8 @@
 #include "sharedobject.h"
 #include "declarations.h"
 
+class ObjectHandle;
+
 class Thing
 {
     public:
@@ -19,12 +21,11 @@ class Thing
         Thing(const Thing&) = delete;
         Thing& operator=(const Thing&) = delete;
 
-        // Factory method to create shared instances
-        template<typename T, typename... Args>
-        static std::shared_ptr<T> createThing(Args&&... args) {
-            return std::make_shared<T>(std::forward<Args>(args)...);
-        }
+        template <class T>
+        static ObjectHandle _Self_Index() {
 
+        }
+       
         virtual std::string getDescription(int32_t lookDistance) const = 0;
 
         virtual CylinderPtr getParent() {

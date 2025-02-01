@@ -137,8 +137,12 @@ class QTreeNode
 		template<typename Leaf, typename Node>
 		static Leaf getLeafStatic(Node node, uint32_t x, uint32_t y)
 		{
+
+			uint32_t mask = 0x8000;
+
 			do {
-				node = node->child[((x & 0x8000) >> 15) | ((y & 0x8000) >> 14)];
+
+				node = node->child[((x & mask) >> 15) | ((y & mask) >> 14)];
 				if (!node) {
 					return nullptr;
 				}
