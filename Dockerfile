@@ -22,7 +22,7 @@ COPY premake5.lua vcpkg.json /usr/src/bts/
 WORKDIR /usr/src/bts
 
 # install C++ libraries from vcpkg
-RUN apt install -y pkg-config
+RUN apt install -y pkg-config python3
 RUN cd /usr/src/bts && /bts/vcpkg/vcpkg install
 
 # compile project
@@ -32,7 +32,7 @@ FROM ubuntu:22.04
 
 COPY --from=build /usr/src/bts/Black-Tek-Server /bin/bts
 COPY data /srv/data/
-COPY LICENSE README.md *.dist *.sql key.pem /srv/
+COPY README.md *.dist *.sql key.pem /srv/
 
 EXPOSE 7171 7172
 WORKDIR /srv
