@@ -25,7 +25,7 @@ class TrashHolder final : public Item, public Cylinder
 		ReturnValue queryAdd(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
 		ReturnValue queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t& maxQueryCount, uint32_t flags) override;
 		ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
-		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr* destItem, uint32_t& flags) override; // another place to put a ref wrapper or optional or both
+		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags) override; // another place to put a ref wrapper or optional or both
 
 		void addThing(ThingPtr thing) override;
 		void addThing(int32_t index, ThingPtr thing) override;

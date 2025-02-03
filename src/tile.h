@@ -230,7 +230,7 @@ class Tile : public Cylinder, public SharedObject
 		ReturnValue queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count,
 				uint32_t& maxQueryCount, uint32_t flags) override final;
 		ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
-		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr* destItem, uint32_t& flags) override; // another optional wrap ref
+		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags) override; // another optional wrap ref
 
 		ReturnValue queryAdd(CreaturePtr creature, uint32_t flags);
 		ReturnValue queryAdd(ItemPtr item, uint32_t flags);

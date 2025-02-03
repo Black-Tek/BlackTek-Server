@@ -791,9 +791,9 @@ ReturnValue Tile::queryRemove(const ThingPtr& thing, const uint32_t count, uint3
 
 #include <iostream> // For debug output
 
-CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, ItemPtr* destItem, uint32_t& flags) {
+CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, ItemPtr& destItem, uint32_t& flags) {
 	TilePtr destTile = nullptr;
-	*destItem = nullptr;
+	destItem = nullptr;
 	
 	if (hasFlag(TILESTATE_FLOORCHANGE_DOWN)) {
 		uint16_t dx = tilePos.x;
@@ -851,7 +851,7 @@ CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, I
 		if (auto destThing = destTile->getTopDownItem()) {
 			std::cout << "assigning the destItem \n";
 			std::cout << "destItem is : " << destThing->getItem()->getName() << " \n";
-			*destItem = destThing->getItem();
+			destItem = destThing->getItem();
 		}
 	}
 

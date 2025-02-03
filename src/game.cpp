@@ -862,7 +862,7 @@ ReturnValue Game::internalMoveCreature(CreaturePtr creature, TilePtr toTile, uin
 	uint32_t n = 0;
 	
 
-	while ((subCylinder = toCylinder->queryDestination(index, creature, &toItem, flags)) != toCylinder) {
+	while ((subCylinder = toCylinder->queryDestination(index, creature, toItem, flags)) != toCylinder) {
 		const auto subTile = std::dynamic_pointer_cast<Tile>(subCylinder);
 		map.moveCreature(creature, subTile);
 
@@ -1029,7 +1029,7 @@ void Game::playerMoveItem(const PlayerPtr& player,
 				//need to pickup the item first
 				ItemPtr moveItem = nullptr;
 				CylinderPtr p_cylinder = std::dynamic_pointer_cast<Cylinder>(player);
-				ReturnValue ret = internalMoveItem(fromCylinder, p_cylinder, INDEX_WHEREEVER, item, count, &moveItem, 0, player, nullptr, &fromPos, &toPos);
+				ReturnValue ret = internalMoveItem(fromCylinder, p_cylinder, INDEX_WHEREEVER, item, count, std::ref(moveItem), 0, player, nullptr, &fromPos, &toPos);
 				if (ret != RETURNVALUE_NOERROR) {
 					player->sendCancelMessage(ret);
 					return;
@@ -1080,7 +1080,7 @@ void Game::playerMoveItem(const PlayerPtr& player,
 		}
 	}
 
-	ReturnValue ret = internalMoveItem(fromCylinder, toCylinder, toIndex, item, count, nullptr, 0, player, nullptr, &fromPos, &toPos);
+	ReturnValue ret = internalMoveItem(fromCylinder, toCylinder, toIndex, item, count, std::nullopt, 0, player, nullptr, &fromPos, &toPos);
 	if (ret != RETURNVALUE_NOERROR) {
 		player->sendCancelMessage(ret);
 	}
@@ -1091,7 +1091,7 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 									int32_t index,
 									ItemPtr item,
 									uint32_t count,
-									ItemPtr* _moveItem,
+									std::optional<std::reference_wrapper<ItemPtr>> _moveItem,
 									uint32_t flags				/* = 0*/,
 									CreaturePtr actor			/* = nullptr*/,
 									ItemPtr tradeItem			/* = nullptr*/,
@@ -1117,7 +1117,7 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 	CylinderPtr subCylinder;
 	int floorN = 0;
 
-	while ((subCylinder = toCylinder->queryDestination(index, item, &toItem, flags)) != toCylinder) {
+	while ((subCylinder = toCylinder->queryDestination(index, item, toItem, flags)) != toCylinder) {
 		toCylinder = subCylinder;
 		std::cout << "ToItem first assigned to : " << toItem->getName() << " \n";
 		//to prevent infinite loop
@@ -1342,7 +1342,7 @@ ReturnValue Game::internalAddItem(CylinderPtr toCylinder, ItemPtr item, int32_t 
 
 	auto destCylinder = toCylinder;
 	ItemPtr toItem = nullptr;
-	toCylinder = toCylinder->queryDestination(index, item, &toItem, flags);
+	toCylinder = toCylinder->queryDestination(index, item, toItem, flags);
 
 	//check if we can add this item
 	ReturnValue ret = toCylinder->queryAdd(index, item, item->getItemCount(), flags);
@@ -1825,7 +1825,7 @@ ReturnValue Game::internalTeleport(const ThingPtr& thing, const Position& newPos
 		return RETURNVALUE_NOERROR;
 	} else if (const auto item = thing->getItem()) {
 		auto t_parent = item->getParent();
-		return internalMoveItem(t_parent, toCylinder, INDEX_WHEREEVER, item, item->getItemCount(), nullptr, flags);
+		return internalMoveItem(t_parent, toCylinder, INDEX_WHEREEVER, item, item->getItemCount(), std::nullopt, flags);
 	}
 	return RETURNVALUE_NOTPOSSIBLE;
 }
@@ -1906,11 +1906,11 @@ void Game::playerEquipItem(const uint32_t playerId, const uint16_t spriteId)
 	if (slotItem && slotItem->getID() == it.id && (!it.stackable || slotItem->getItemCount() == 100 || !equipItem)) {
 		CylinderPtr t_slot = slotItem->getParent();
 		CylinderPtr p_slot = player;
-		internalMoveItem(t_slot, p_slot, CONST_SLOT_WHEREEVER, slotItem, slotItem->getItemCount(), nullptr, 0, player, nullptr, &fromPos, &toPos);
+		internalMoveItem(t_slot, p_slot, CONST_SLOT_WHEREEVER, slotItem, slotItem->getItemCount(), std::nullopt, 0, player, nullptr, &fromPos, &toPos);
 	} else if (equipItem) {
 		CylinderPtr t_slot = equipItem->getParent();
 		CylinderPtr p_slot = player;
-		internalMoveItem(t_slot, p_slot, slot, equipItem, equipItem->getItemCount(), nullptr, 0, player, nullptr, &fromPos, &toPos);
+		internalMoveItem(t_slot, p_slot, slot, equipItem, equipItem->getItemCount(), std::nullopt, 0, player, nullptr, &fromPos, &toPos);
 	}
 }
 
@@ -2175,7 +2175,7 @@ void Game::playerUseItemEx(const uint32_t playerId, const Position& fromPos, con
 				CylinderPtr t_cylinder = item->getParent();
 				CylinderPtr p_cylinder = player;
 
-				ret = internalMoveItem(t_cylinder, p_cylinder, INDEX_WHEREEVER, item, item->getItemCount(), &moveItem, 0, player, nullptr, &fromPos, &toPos);
+				ret = internalMoveItem(t_cylinder, p_cylinder, INDEX_WHEREEVER, item, item->getItemCount(), std::ref(moveItem), 0, player, nullptr, &fromPos, &toPos);
 				if (ret != RETURNVALUE_NOERROR) {
 					player->sendCancelMessage(ret);
 					return;
@@ -2327,7 +2327,7 @@ void Game::playerUseWithCreature(const uint32_t playerId, const Position& fromPo
 				CylinderPtr t_cylinder = item->getParent();
 				CylinderPtr p_cylinder = player;
 				
-				ret = internalMoveItem(t_cylinder, p_cylinder, INDEX_WHEREEVER, item, item->getItemCount(), &moveItem, 0, player, nullptr, &fromPos, &toPos);
+				ret = internalMoveItem(t_cylinder, p_cylinder, INDEX_WHEREEVER, item, item->getItemCount(), std::ref(moveItem), 0, player, nullptr, &fromPos, &toPos);
 				if (ret != RETURNVALUE_NOERROR) {
 					player->sendCancelMessage(ret);
 					return;
@@ -2864,10 +2864,10 @@ void Game::playerAcceptTrade(const uint32_t playerId)
 				if (tradePartnerRet == RETURNVALUE_NOERROR && playerRet == RETURNVALUE_NOERROR) {
 					CylinderPtr t_parent = playerTradeItem->getParent();
 					CylinderPtr c_parent = tradePartner;
-					tradePartnerRet = internalMoveItem(t_parent, c_parent, INDEX_WHEREEVER, playerTradeItem, playerTradeItem->getItemCount(), nullptr, FLAG_IGNOREAUTOSTACK, nullptr, partnerTradeItem);
+					tradePartnerRet = internalMoveItem(t_parent, c_parent, INDEX_WHEREEVER, playerTradeItem, playerTradeItem->getItemCount(), std::nullopt, FLAG_IGNOREAUTOSTACK, nullptr, partnerTradeItem);
 					if (tradePartnerRet == RETURNVALUE_NOERROR) {
 						CylinderPtr pt_parent = partnerTradeItem->getParent();
-						internalMoveItem(pt_parent, c_player, INDEX_WHEREEVER, partnerTradeItem, partnerTradeItem->getItemCount(), nullptr, FLAG_IGNOREAUTOSTACK);
+						internalMoveItem(pt_parent, c_player, INDEX_WHEREEVER, partnerTradeItem, partnerTradeItem->getItemCount(), std::nullopt, FLAG_IGNOREAUTOSTACK);
 						playerTradeItem->onTradeEvent(ON_TRADE_TRANSFER, tradePartner);
 						partnerTradeItem->onTradeEvent(ON_TRADE_TRANSFER, player);
 						isSuccess = true;

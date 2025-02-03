@@ -1059,7 +1059,7 @@ bool Monster::pushItem(const ItemPtr& item)
 		if (tile && g_game.canThrowObjectTo(centerPos, tryPos, true, true)) {
 			CylinderPtr n_parent = item->getParent();
 			CylinderPtr t_parent = tile;
-			if (g_game.internalMoveItem(n_parent, t_parent, INDEX_WHEREEVER, item, item->getItemCount(), nullptr) == RETURNVALUE_NOERROR) {
+			if (g_game.internalMoveItem(n_parent, t_parent, INDEX_WHEREEVER, item, item->getItemCount(), std::nullopt) == RETURNVALUE_NOERROR) {
 				return true;
 			}
 		}

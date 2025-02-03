@@ -24,7 +24,7 @@ ReturnValue TrashHolder::queryRemove(const ThingPtr&, uint32_t, uint32_t, Creatu
 	return RETURNVALUE_NOTPOSSIBLE;
 }
 
-CylinderPtr TrashHolder::queryDestination(int32_t&, const ThingPtr&, ItemPtr*, uint32_t&)
+CylinderPtr TrashHolder::queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&)
 {
 	return CylinderPtr(this);
 }

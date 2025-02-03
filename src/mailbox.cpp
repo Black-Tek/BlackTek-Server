@@ -28,7 +28,7 @@ ReturnValue Mailbox::queryRemove(const ThingPtr&, uint32_t, uint32_t, CreaturePt
 	return RETURNVALUE_NOTPOSSIBLE;
 }
 
-CylinderPtr Mailbox::queryDestination(int32_t&, const ThingPtr&, ItemPtr*, uint32_t&)
+CylinderPtr Mailbox::queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&)
 {
 	return CylinderPtr(this);
 }
@@ -87,7 +87,7 @@ bool Mailbox::sendItem(const ItemPtr& item) const
 		CylinderPtr newParent = CylinderPtr(item->getParent());
 		CylinderPtr inbox = CylinderPtr(player->getInbox());
 		if (g_game.internalMoveItem(newParent, inbox, INDEX_WHEREEVER,
-		                            item, item->getItemCount(), nullptr, FLAG_NOLIMIT) == RETURNVALUE_NOERROR) {
+		                            item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT) == RETURNVALUE_NOERROR) {
 			g_game.transformItem(item, item->getID() + 1);
 			player->onReceiveMail();
 			return true;
@@ -100,7 +100,7 @@ bool Mailbox::sendItem(const ItemPtr& item) const
 		CylinderPtr newParent = CylinderPtr(item->getParent());
 		CylinderPtr inbox = CylinderPtr(tmpPlayer->getInbox());
 		if (g_game.internalMoveItem(newParent, inbox, INDEX_WHEREEVER,
-		                            item, item->getItemCount(), nullptr, FLAG_NOLIMIT) == RETURNVALUE_NOERROR) {
+		                            item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT) == RETURNVALUE_NOERROR) {
 			g_game.transformItem(item, item->getID() + 1);
 			IOLoginData::savePlayer(tmpPlayer);
 			return true;

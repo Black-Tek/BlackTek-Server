@@ -269,7 +269,7 @@ class Game
 		ReturnValue internalMoveCreature(CreaturePtr creature, TilePtr toTile, uint32_t flags = 0);
 
 		ReturnValue internalMoveItem(CylinderPtr fromCylinder, CylinderPtr toCylinder, int32_t index,
-		                             ItemPtr item, uint32_t count, ItemPtr* _moveItem, uint32_t flags = 0, CreaturePtr actor = nullptr, ItemPtr tradeItem = nullptr, const Position* fromPos = nullptr, const Position* toPos = nullptr);
+		                             ItemPtr item, uint32_t count, std::optional<std::reference_wrapper<ItemPtr>> _moveItem, uint32_t flags = 0, CreaturePtr actor = nullptr, ItemPtr tradeItem = nullptr, const Position* fromPos = nullptr, const Position* toPos = nullptr);
 							// another spot to use a ref wrapper and possibly optional for ItemPtr* above
 
 		ReturnValue internalAddItem(CylinderPtr toCylinder, ItemPtr item, int32_t index = INDEX_WHEREEVER,

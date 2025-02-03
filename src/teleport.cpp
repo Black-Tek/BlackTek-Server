@@ -44,7 +44,7 @@ ReturnValue Teleport::queryRemove(const ThingPtr&, uint32_t, uint32_t, CreatureP
 	return RETURNVALUE_NOERROR;
 }
 
-CylinderPtr Teleport::queryDestination(int32_t&, const ThingPtr&, ItemPtr*, uint32_t&)
+CylinderPtr Teleport::queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&)
 {
 	return this->getTile();
 }
@@ -103,7 +103,7 @@ void Teleport::addThing(int32_t, ThingPtr thing)
 		}
 		CylinderPtr f_cylinder = getTile();
 		CylinderPtr t_cylinder = destTile;
-		g_game.internalMoveItem(f_cylinder, t_cylinder, INDEX_WHEREEVER, item, item->getItemCount(), nullptr, FLAG_NOLIMIT);
+		g_game.internalMoveItem(f_cylinder, t_cylinder, INDEX_WHEREEVER, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT);
 	}
 }
 

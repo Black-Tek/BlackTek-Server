@@ -147,7 +147,7 @@ class Container : public Item, public Cylinder
 		ReturnValue queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t& maxQueryCount,
 				uint32_t flags)  override final;
 		ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override final;
-		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr* destItem,
+		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem,
 				uint32_t& flags) override final; // again optional ref wrapper
 
 		void addThing(ThingPtr thing) override final;

@@ -85,7 +85,7 @@ ReturnValue HouseTile::queryAdd(int32_t index, const ThingPtr& thing, uint32_t c
 	return RETURNVALUE_NOERROR;
 }
 
-CylinderPtr HouseTile::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr* destItem, uint32_t& flags)
+CylinderPtr HouseTile::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags)
 {
 	if (const auto creature = thing->getCreature()) {
 		if (const auto player = creature->getPlayer()) {
@@ -105,7 +105,7 @@ CylinderPtr HouseTile::queryDestination(int32_t& index, const ThingPtr& thing, I
 				}
 
 				index = -1;
-				*destItem = nullptr;
+				destItem = nullptr;
 				return destTile;
 			}
 		}

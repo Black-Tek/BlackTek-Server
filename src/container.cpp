@@ -426,18 +426,18 @@ ReturnValue Container::queryRemove(const ThingPtr& thing, uint32_t count, uint32
 	return RETURNVALUE_NOERROR;
 }
 
-CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr* destItem,
+CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem,
 		uint32_t& flags)
 {
 	std::cout << "Is a container destination query \n";
 	if (!unlocked) {
-		*destItem = nullptr;
+		destItem = nullptr;
 		return getContainer();
 	}
 
 	if (index == 254 /*move up*/) {
 		index = INDEX_WHEREEVER;
-		*destItem = nullptr;
+		destItem = nullptr;
 
 		if (auto parentContainer = std::dynamic_pointer_cast<Cylinder>(getParent())) {
 			return parentContainer;
@@ -448,7 +448,7 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 
 	if (index == 255 /*add wherever*/) {
 		index = INDEX_WHEREEVER;
-		*destItem = nullptr;
+		destItem = nullptr;
 	} else if (index >= static_cast<int32_t>(capacity())) {
 		/*
 		if you have a container, maximize it to show all 20 slots
@@ -458,7 +458,7 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 		the client calculates the slot position as if the bag has 20 slots
 		*/
 		index = INDEX_WHEREEVER;
-		*destItem = nullptr;
+		destItem = nullptr;
 	}
 
 	auto item = thing->getItem();
@@ -468,19 +468,19 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 
 	if (index != INDEX_WHEREEVER) {
 		if (auto itemFromIndex = getItemByIndex(index)) {
-			*destItem = itemFromIndex;
+			destItem = itemFromIndex;
 		}
 
-		if (CylinderPtr subCylinder = std::dynamic_pointer_cast<Cylinder>(*destItem)) {
+		if (CylinderPtr subCylinder = std::dynamic_pointer_cast<Cylinder>(destItem)) {
 			index = INDEX_WHEREEVER;
-			*destItem = nullptr;
+			destItem = nullptr;
 			return subCylinder;
 		}
 	}
 
 	bool autoStack = !hasBitSet(FLAG_IGNOREAUTOSTACK, flags);
 	if (autoStack && item->isStackable() && item->getParent().get() != this) {
-		if (*destItem && (*destItem)->equals(item) && (*destItem)->getItemCount() < 100) {
+		if (destItem && (destItem)->equals(item) && (destItem)->getItemCount() < 100) {
 			return getContainer();
 		}
 
@@ -488,7 +488,7 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 		uint32_t n = 0;
 		for (auto listItem : itemlist) {
 			if (listItem != item && listItem->equals(item) && listItem->getItemCount() < 100) {
-				*destItem = listItem;
+				destItem = listItem;
 				index = n;
 				return getContainer();
 			}

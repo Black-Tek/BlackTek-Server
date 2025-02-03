@@ -236,7 +236,7 @@ bool House::transferToDepot(const PlayerPtr& player) const
 	CylinderPtr inbox = player->getInbox();
 	for (const auto item : moveItemList) {
 		CylinderPtr parent = item->getParent();
-		g_game.internalMoveItem(parent, inbox, INDEX_WHEREEVER, item, item->getItemCount(), nullptr, FLAG_NOLIMIT);
+		g_game.internalMoveItem(parent, inbox, INDEX_WHEREEVER, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT);
 	}
 	return true;
 }

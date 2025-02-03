@@ -455,7 +455,7 @@ void Weapon::onUsedWeapon(const PlayerPtr& player, const ItemPtr& item, const Ti
 		}
 
 		case WEAPONACTION_MOVE:
-			g_game.internalMoveItem(f_holder, t_holder, INDEX_WHEREEVER, item, 1, nullptr, FLAG_NOLIMIT);
+			g_game.internalMoveItem(f_holder, t_holder, INDEX_WHEREEVER, item, 1, std::nullopt, FLAG_NOLIMIT);
 			break;
 
 		default:

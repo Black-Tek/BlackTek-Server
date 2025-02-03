@@ -7172,7 +7172,7 @@ int LuaScriptInterface::luaItemMoveTo(lua_State* L)
 	} else {
 		ItemPtr moveItem = nullptr;
 		CylinderPtr i_parent = item->getParent();
-		ReturnValue ret = g_game.internalMoveItem(i_parent, toCylinder, INDEX_WHEREEVER, item, item->getItemCount(), &moveItem, flags);
+		ReturnValue ret = g_game.internalMoveItem(i_parent, toCylinder, INDEX_WHEREEVER, item, item->getItemCount(), std::ref(moveItem), flags);
 		if (moveItem) {
 			itemPtr = moveItem;
 		}

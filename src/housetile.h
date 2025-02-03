@@ -17,7 +17,7 @@ class HouseTile final : public DynamicTile
 		ReturnValue queryAdd(int32_t index, const ThingPtr& thing, uint32_t count,
 		                     uint32_t flags, CreaturePtr actor = nullptr) override;
 
-		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr* destItem,
+		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem,
 				uint32_t& flags) override; // another optional ref wrapper
 
 		ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
