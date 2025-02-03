@@ -654,7 +654,7 @@ class LuaScriptInterface
 
 		// Tile
 		static int luaTileCreate(lua_State* L);
-
+		static int luaTileDelete(lua_State* L);
 		static int luaTileRemove(lua_State* L);
 
 		static int luaTileGetPosition(lua_State* L);
@@ -754,6 +754,7 @@ class LuaScriptInterface
 
 		// Item
 		static int luaItemCreate(lua_State* L);
+		static int luaItemDelete(lua_State* L);
 
 		static int luaItemIsItem(lua_State* L);
 
@@ -863,6 +864,7 @@ class LuaScriptInterface
 
 		// Container
 		static int luaContainerCreate(lua_State* L);
+		static int luaContainerDelete(lua_State* L);
 
 		static int luaContainerGetSize(lua_State* L);
 		static int luaContainerGetCapacity(lua_State* L);
@@ -880,12 +882,14 @@ class LuaScriptInterface
 
 		// Teleport
 		static int luaTeleportCreate(lua_State* L);
+		static int luaTeleportDelete(lua_State* L);
 
 		static int luaTeleportGetDestination(lua_State* L);
 		static int luaTeleportSetDestination(lua_State* L);
 
 		// Creature
 		static int luaCreatureCreate(lua_State* L);
+		static int luaCreatureDelete(lua_State* L);
 
 		static int luaCreatureGetEvents(lua_State* L);
 		static int luaCreatureRegisterEvent(lua_State* L);
@@ -968,6 +972,7 @@ class LuaScriptInterface
 
 		// Player
 		static int luaPlayerCreate(lua_State* L);
+		static int luaPlayerDelete(lua_State* L);
 
 		static int luaPlayerIsPlayer(lua_State* L);
 
@@ -1155,6 +1160,7 @@ class LuaScriptInterface
 
 		// Monster
 		static int luaMonsterCreate(lua_State* L);
+		static int luaMonsterDelete(lua_State* L);
 
 		static int luaMonsterIsMonster(lua_State* L);
 		static int luaMonsterGetId(lua_State* L);
@@ -1191,6 +1197,7 @@ class LuaScriptInterface
 
 		// Npc
 		static int luaNpcCreate(lua_State* L);
+		static int luaNpcDelete(lua_State* L);
 
 		static int luaNpcIsNpc(lua_State* L);
 

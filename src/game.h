@@ -366,7 +366,7 @@ class Game
 		void playerMoveCreature(PlayerPtr& player, CreaturePtr& movingCreature, const Position& movingCreatureOrigPos, TilePtr& toTile);
 		void playerMoveItemByPlayerID(uint32_t playerId, const Position& fromPos, uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count);
 		void playerMoveItem(const PlayerPtr& player, const Position& fromPos,
-		                    uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count, ItemPtr item, CylinderPtr& toCylinder);
+		                    uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count, ItemPtr item, CylinderPtr toCylinder);
 		void playerEquipItem(uint32_t playerId, uint16_t spriteId);
 		void playerMove(uint32_t playerId, Direction direction);
 		void playerCreatePrivateChannel(uint32_t playerId);

@@ -3314,11 +3314,14 @@ ReturnValue Player::queryRemove(const ThingPtr& thing, uint32_t count, uint32_t 
 CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr* destItem,
 		uint32_t& flags)
 {
+	std::cout << "Is a player destination query \n";
 	if (index == 0 /*drop to capacity window*/ || index == INDEX_WHEREEVER) {
 		*destItem = nullptr;
 
 		ItemPtr item = thing->getItem();
 		if (item == nullptr) {
+			std::cout << "Player queryDestination says thing->getItem() is nullptr, returning "
+				<< getPlayer()->getName() << " as the CylinderPtr \n";
 			return this->getPlayer();
 		}
 
@@ -3347,14 +3350,15 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 						}
 					}
 
-					if (const auto& subContainer = inventoryItem->getContainer()) {
+					if (auto subContainer = inventoryItem->getContainer()) {
 						containers.push_back(subContainer);
 					}
-				} else if (const auto& subContainer = inventoryItem->getContainer()) {
+				} else if (auto subContainer = inventoryItem->getContainer()) {
 					containers.push_back(subContainer);
 				}
 			} else if (queryAdd(slotIndex, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) { //empty slot
 				index = slotIndex;
+				std::cout << "Almost certainly the call path in player query destination.. it returns nullptr to destitem after successful query add \n";
 				*destItem = nullptr;
 				return this->getPlayer();
 			}
@@ -3376,8 +3380,8 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 					--n;
 				}
 
-				for (const auto& tmpContainerItem : tmpContainer->getItemList()) {
-					if (const auto& subContainer = tmpContainerItem->getContainer()) {
+				for (auto tmpContainerItem : tmpContainer->getItemList()) {
+					if (auto subContainer = tmpContainerItem->getContainer()) {
 						containers.push_back(subContainer);
 					}
 				}
@@ -3403,7 +3407,7 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 					return tmpContainer;
 				}
 
-				if (const auto& subContainer = tmpItem->getContainer()) {
+				if (auto subContainer = tmpItem->getContainer()) {
 					containers.push_back(subContainer);
 				}
 
@@ -3420,12 +3424,12 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 		return this->getPlayer();
 	}
 
-	const auto& destThing = getThing(index);
+	auto destThing = getThing(index);
 	if (destThing) {
 		*destItem = destThing->getItem();
 	}
 
-	if (const auto& subCylinder = std::dynamic_pointer_cast<Cylinder>(destThing)) {
+	if (auto subCylinder = std::dynamic_pointer_cast<Cylinder>(destThing)) {
 		index = INDEX_WHEREEVER;
 		*destItem = nullptr;
 		return subCylinder;

@@ -915,7 +915,7 @@ void Game::playerMoveItem(const PlayerPtr& player,
 							const Position& toPos,
 							uint8_t count,
 							ItemPtr item,
-							CylinderPtr& toCylinder)
+							CylinderPtr toCylinder)
 {
 	if (!player->canDoAction()) {
 		uint32_t delay = player->getNextActionTime();
@@ -1417,6 +1417,8 @@ ReturnValue Game::internalAddItem(CylinderPtr toCylinder, ItemPtr item, int32_t 
 
 ReturnValue Game::internalRemoveItem(ItemPtr item, int32_t count /*= -1*/, bool test /*= false*/, uint32_t flags /*= 0*/)
 {
+	
+	
 	auto cylinder = item->getParent();
 	if (cylinder == nullptr) {
 		return RETURNVALUE_NOTPOSSIBLE;
@@ -1445,7 +1447,9 @@ ReturnValue Game::internalRemoveItem(ItemPtr item, int32_t count /*= -1*/, bool 
 
 	if (!test) {
 		int32_t index = cylinder->getThingIndex(item);
-
+		auto location = std::source_location::current();
+		std::cout << "Game::InternalRemoveItem called from : " << location.function_name() << "  \n";
+		std::cout << "Item up for removal : " << item->getName() << " \n";
 		//remove the item
 		cylinder->removeThing(item, count);
 		std::cout << "Successful removal \n";

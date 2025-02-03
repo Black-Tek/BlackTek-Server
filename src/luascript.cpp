@@ -2211,6 +2211,7 @@ void LuaScriptInterface::registerFunctions()
 	// Tile
 	registerClass("Tile", "", LuaScriptInterface::luaTileCreate);
 	registerMetaMethod("Tile", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMetaMethod("Tile", "__gc", LuaScriptInterface::luaTileDelete);
 
 	registerMethod("Tile", "remove", LuaScriptInterface::luaTileRemove);
 
@@ -2316,6 +2317,7 @@ void LuaScriptInterface::registerFunctions()
 	// Item
 	registerClass("Item", "", LuaScriptInterface::luaItemCreate);
 	registerMetaMethod("Item", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMetaMethod("Item", "__gc", LuaScriptInterface::luaItemDelete);
 
 	registerMethod("Item", "isItem", LuaScriptInterface::luaItemIsItem);
 
@@ -2426,6 +2428,7 @@ void LuaScriptInterface::registerFunctions()
 	// Container
 	registerClass("Container", "Item", LuaScriptInterface::luaContainerCreate);
 	registerMetaMethod("Container", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMetaMethod("Container", "__gc", LuaScriptInterface::luaContainerDelete);
 
 	registerMethod("Container", "getSize", LuaScriptInterface::luaContainerGetSize);
 	registerMethod("Container", "getCapacity", LuaScriptInterface::luaContainerGetCapacity);
@@ -2444,6 +2447,7 @@ void LuaScriptInterface::registerFunctions()
 	// Teleport
 	registerClass("Teleport", "Item", LuaScriptInterface::luaTeleportCreate);
 	registerMetaMethod("Teleport", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMetaMethod("Teleport", "__gc", LuaScriptInterface::luaTeleportDelete);
 
 	registerMethod("Teleport", "getDestination", LuaScriptInterface::luaTeleportGetDestination);
 	registerMethod("Teleport", "setDestination", LuaScriptInterface::luaTeleportSetDestination);
@@ -2451,6 +2455,7 @@ void LuaScriptInterface::registerFunctions()
 	// Creature
 	registerClass("Creature", "", LuaScriptInterface::luaCreatureCreate);
 	registerMetaMethod("Creature", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMetaMethod("Creature", "__gc", LuaScriptInterface::luaCreatureDelete);
 
 	registerMethod("Creature", "getEvents", LuaScriptInterface::luaCreatureGetEvents);
 	registerMethod("Creature", "registerEvent", LuaScriptInterface::luaCreatureRegisterEvent);
@@ -2534,6 +2539,7 @@ void LuaScriptInterface::registerFunctions()
 	// Player
 	registerClass("Player", "Creature", LuaScriptInterface::luaPlayerCreate);
 	registerMetaMethod("Player", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMetaMethod("Player", "__gc", LuaScriptInterface::luaPlayerDelete);
 
 	registerMethod("Player", "isPlayer", LuaScriptInterface::luaPlayerIsPlayer);
 
@@ -2721,6 +2727,7 @@ void LuaScriptInterface::registerFunctions()
 	// Monster
 	registerClass("Monster", "Creature", LuaScriptInterface::luaMonsterCreate);
 	registerMetaMethod("Monster", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMetaMethod("Monster", "__gc", LuaScriptInterface::luaMonsterDelete);
 
 	registerMethod("Monster", "getId", LuaScriptInterface::luaMonsterGetId);
 	registerMethod("Monster", "isMonster", LuaScriptInterface::luaMonsterIsMonster);
@@ -2758,6 +2765,7 @@ void LuaScriptInterface::registerFunctions()
 	// Npc
 	registerClass("Npc", "Creature", LuaScriptInterface::luaNpcCreate);
 	registerMetaMethod("Npc", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMetaMethod("Npc", "__gc", LuaScriptInterface::luaNpcDelete);
 
 	registerMethod("Npc", "isNpc", LuaScriptInterface::luaNpcIsNpc);
 
@@ -5351,6 +5359,14 @@ int LuaScriptInterface::luaTileCreate(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaTileDelete(lua_State* L) 
+{
+	if (auto& tile = getSharedPtr<Tile>(L, 1)) {
+		tile.reset();
+	}
+	return 0;
+}
+
 int LuaScriptInterface::luaTileRemove(lua_State* L)
 {
 	// tile:remove()
@@ -6589,6 +6605,14 @@ int LuaScriptInterface::luaItemCreate(lua_State* L)
 		lua_pushnil(L);
 	}
 	return 1;
+}
+
+int LuaScriptInterface::luaItemDelete(lua_State* L)
+{
+	if (auto& item = getSharedPtr<Item>(L, 1)) {
+		item.reset();
+	}
+	return 0;
 }
 
 int LuaScriptInterface::luaItemIsItem(lua_State* L)
@@ -8058,6 +8082,14 @@ int LuaScriptInterface::luaContainerCreate(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaContainerDelete(lua_State* L)
+{
+	if (auto& container = getSharedPtr<Container>(L, 1)) {
+		container.reset();
+	}
+	return 0;
+}
+
 int LuaScriptInterface::luaContainerGetSize(lua_State* L)
 {
 	// container:getSize()
@@ -8342,6 +8374,14 @@ int LuaScriptInterface::luaTeleportCreate(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaTeleportDelete(lua_State* L)
+{
+	if (auto& teleport = getSharedPtr<Teleport>(L, 1)) {
+		teleport.reset();
+	}
+	return 0;
+}
+
 int LuaScriptInterface::luaTeleportGetDestination(lua_State* L)
 {
 	// teleport:getDestination()
@@ -8391,6 +8431,14 @@ int LuaScriptInterface::luaCreatureCreate(lua_State* L)
 		lua_pushnil(L);
 	}
 	return 1;
+}
+
+int LuaScriptInterface::luaCreatureDelete(lua_State* L)
+{
+	if (auto& creature = getSharedPtr<Creature>(L, 1)) {
+		creature.reset();
+	}
+	return 0;
 }
 
 int LuaScriptInterface::luaCreatureGetEvents(lua_State* L)
@@ -9349,6 +9397,14 @@ int LuaScriptInterface::luaPlayerCreate(lua_State* L)
 		lua_pushnil(L);
 	}
 	return 1;
+}
+
+int LuaScriptInterface::luaPlayerDelete(lua_State* L)
+{
+	if (auto& player = getSharedPtr<Player>(L, 1)) {
+		player.reset();
+	}
+	return 0;
 }
 
 int LuaScriptInterface::luaPlayerIsPlayer(lua_State* L)
@@ -11599,10 +11655,18 @@ int LuaScriptInterface::luaMonsterCreate(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaMonsterDelete(lua_State* L)
+{
+	if (auto& monster = getSharedPtr<Monster>(L, 1)) {
+		monster.reset();
+	}
+	return 0;
+}
+
 int LuaScriptInterface::luaMonsterGetId(lua_State* L)
 {
 	// monster:getId()
-	if (const auto monster = getSharedPtr<Monster>(L, 1)) {
+	if (auto& monster = getSharedPtr<Monster>(L, 1)) {
 		// Set monster id if it's not set yet (only for onSpawn event)
 		if (getScriptEnv()->getScriptId() == g_events->getScriptId(EventInfoId::MONSTER_ONSPAWN)) {
 			monster->setID();
@@ -11980,6 +12044,14 @@ int LuaScriptInterface::luaNpcCreate(lua_State* L)
 		lua_pushnil(L);
 	}
 	return 1;
+}
+
+int LuaScriptInterface::luaNpcDelete(lua_State* L)
+{
+	if (auto& npc = getSharedPtr<Npc>(L, 1)) {
+		npc.reset();
+	}
+	return 0;
 }
 
 int LuaScriptInterface::luaNpcIsNpc(lua_State* L)

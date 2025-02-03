@@ -429,6 +429,7 @@ ReturnValue Container::queryRemove(const ThingPtr& thing, uint32_t count, uint32
 CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr* destItem,
 		uint32_t& flags)
 {
+	std::cout << "Is a container destination query \n";
 	if (!unlocked) {
 		*destItem = nullptr;
 		return getContainer();
@@ -460,13 +461,13 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 		*destItem = nullptr;
 	}
 
-	const auto item = thing->getItem();
+	auto item = thing->getItem();
 	if (!item) {
 		return getContainer();
 	}
 
 	if (index != INDEX_WHEREEVER) {
-		if (const auto itemFromIndex = getItemByIndex(index)) {
+		if (auto itemFromIndex = getItemByIndex(index)) {
 			*destItem = itemFromIndex;
 		}
 
