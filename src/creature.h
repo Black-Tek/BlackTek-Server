@@ -488,9 +488,14 @@ class Creature : virtual public Thing, public SharedObject
 			[[likely]] if (auto shared_ptr = tile.lock())
 			{
 				return shared_ptr;
-				// this was never casted;
-				// It is a TilePtr which is a derived class of CylinderPtr
-				// is it implicitly casted here?
+			}
+			[[unlikely]] return nullptr;
+		}
+
+		CylinderConstPtr getParent() const override final {
+			[[likely]] if (auto shared_ptr = tile.lock())
+			{
+				return shared_ptr;
 			}
 			[[unlikely]] return nullptr;
 		}

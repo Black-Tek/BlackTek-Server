@@ -218,6 +218,13 @@ void Container::onAddContainerItem(ItemPtr& item)
 		{
 			const auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
 			c_player->sendAddContainerItem(t_container, item);
+		}
+	}
+
+	for (auto spectator : spectators) {
+		if (const auto c_player = spectator->getPlayer())
+		{
+			const auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
 			c_player->onAddContainerItem(item);
 		}
 	}
@@ -233,6 +240,13 @@ void Container::onUpdateContainerItem(uint32_t index, const ItemPtr& oldItem, co
 		{
 			auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
 			c_player->sendUpdateContainerItem(t_container, index, newItem);
+		}
+	}
+
+	for (auto spectator : spectators) {
+		if (const auto c_player = spectator->getPlayer())
+		{
+			auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
 			c_player->onUpdateContainerItem(t_container, oldItem, newItem);
 		}
 	}
@@ -248,6 +262,13 @@ void Container::onRemoveContainerItem(uint32_t index, const ItemPtr& item)
 		{
 			auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
 			c_player->sendRemoveContainerItem(t_container, index);
+		}
+	}
+
+	for (auto spectator : spectators) {
+		if (const auto c_player = spectator->getPlayer())
+		{
+			auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
 			c_player->onRemoveContainerItem(t_container, item);
 		}
 	}
@@ -705,17 +726,11 @@ void Container::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, in
 {
 	auto topParent = getTopParent();
 	if (topParent->getCreature()) {
-		std::cout << ":: Container :: TopParent is saying its a creature \n";
 		topParent->postRemoveNotification(thing, newParent, index, LINK_TOPPARENT);
 	} else if (topParent.get() == this) {
 		//let the tile class notify surrounding players
-		std::cout << ":: Container :: TopParent is saying its also container \n";
 		if (topParent->getParent()) {
-			std::cout << ":: Container :: TopParent found parent to send notification \n";
 			topParent->getParent()->postRemoveNotification(thing, newParent, index, LINK_NEAR);
-		}
-		else {
-			std::cout << ":: Container :: hitting that else print \n";
 		}
 	} else {
 		topParent->postRemoveNotification(thing, newParent, index, LINK_PARENT);

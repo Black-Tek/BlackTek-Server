@@ -10,15 +10,16 @@ const Position& Thing::getPosition() const
 {
 	const auto tile = getTile();
 	if (!tile) {
-		return std::make_shared<StaticTile>(0xFFFF, 0xFFFF, 0xFF)->getPosition();
+		static Position null_position(0xFFFF, 0xFFFF, 0xFF);
+		return null_position;
 	}
 	return tile->getPosition();
 }
 
-TilePtr Thing::getTile() {
+std::shared_ptr<Tile> Thing::getTile() {
 	return nullptr;
 }
 
-TileConstPtr Thing::getTile() const {
+std::shared_ptr<const Tile> Thing::getTile() const {
 	return nullptr;
 }

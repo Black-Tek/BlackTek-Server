@@ -3711,12 +3711,12 @@ void Player::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t 
 		if (shopOwner && requireListUpdate) {
 			updateSaleShopList(item);
 		}
-	} else if (const auto& creature = thing->getCreature()) {
+	} else if (auto creature = thing->getCreature()) {
 		if (creature == getCreature()) {
 			//check containers
 			std::vector<ContainerPtr> containers;
 
-			for (const auto& val : openContainers | std::views::values) {
+			for (auto& val : openContainers | std::views::values) {
 				if (!Position::areInRange<1, 1, 0>(val.container->getPosition(), getPosition())) {
 					containers.push_back(val.container);
 				}

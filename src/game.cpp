@@ -1119,7 +1119,6 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 
 	while ((subCylinder = toCylinder->queryDestination(index, item, toItem, flags)) != toCylinder) {
 		toCylinder = subCylinder;
-		std::cout << "ToItem first assigned to : " << toItem->getName() << " \n";
 		//to prevent infinite loop
 		if (++floorN >= MAP_MAX_LAYERS) {
 			break;
@@ -1295,9 +1294,9 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 
 	if (_moveItem) {
 		if (moveItem) {
-			*_moveItem = moveItem;
+			_moveItem = moveItem;
 		} else {
-			*_moveItem = item;
+			_moveItem = item;
 		}
 	}
 

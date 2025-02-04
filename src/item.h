@@ -1163,6 +1163,10 @@ class Item : virtual public Thing, public SharedObject
 		CylinderPtr getParent() override {
 			return parent.lock();
 		}
+
+		CylinderConstPtr getParent() const override {
+			return parent.lock();
+		}
 	
 		void setParent(std::weak_ptr<Cylinder> cylinder) override {
 			parent = cylinder;
@@ -1174,7 +1178,9 @@ class Item : virtual public Thing, public SharedObject
 		};
 	
 		CylinderPtr getTopParent();
+		CylinderConstPtr getTopParent() const;
 		TilePtr getTile() override;
+		std::shared_ptr<const Tile> getTile() const override;
 	
 		bool isRemoved() {
 			if (parent.lock()) {

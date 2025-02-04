@@ -297,6 +297,24 @@ CylinderPtr Item::getTopParent()
 	return aux;
 }
 
+CylinderConstPtr Item::getTopParent() const
+{
+	CylinderConstPtr aux = getParent();
+	CylinderConstPtr prevaux = std::dynamic_pointer_cast<const Cylinder>(shared_from_this());
+	if (!aux) {
+		return prevaux;
+	}
+
+	while (aux->getParent() != nullptr) {
+		prevaux = aux;
+		aux = aux->getParent();
+	}
+
+	if (prevaux) {
+		return prevaux;
+	}
+	return aux;
+}
 
 TilePtr Item::getTile()
 {
@@ -306,6 +324,16 @@ TilePtr Item::getTile()
 		cylinder = cylinder->getParent();
 	}
 	return std::dynamic_pointer_cast<Tile>(cylinder);
+}
+
+std::shared_ptr<const Tile> Item::getTile() const
+{
+	auto cylinder = getTopParent();
+	//get root cylinder
+	if (cylinder && cylinder->getParent()) {
+		cylinder = cylinder->getParent();
+	}
+	return std::dynamic_pointer_cast<const Tile>(cylinder);
 }
 
 uint16_t Item::getSubType() const

@@ -10,7 +10,6 @@
 #include "sharedobject.h"
 #include "declarations.h"
 
-class ObjectHandle;
 
 class Thing
 {
@@ -20,15 +19,14 @@ class Thing
         // non-copyable
         Thing(const Thing&) = delete;
         Thing& operator=(const Thing&) = delete;
-
-        template <class T>
-        static ObjectHandle _Self_Index() {
-
-        }
        
         virtual std::string getDescription(int32_t lookDistance) const = 0;
 
         virtual CylinderPtr getParent() {
+            return nullptr;
+        }
+
+        virtual CylinderConstPtr getParent() const {
             return nullptr;
         }
     

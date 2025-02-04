@@ -273,7 +273,7 @@ class Tile : public Cylinder, public SharedObject
 			return ground;
 		}
 
-		std::shared_ptr<Tile> getTile() final {
+		TilePtr getTile() final {
 			return static_shared_this<Tile>();
 		}
 	
