@@ -10,6 +10,7 @@
 class Protocol : public std::enable_shared_from_this<Protocol>
 {
 	public:
+		// todo: use reference for connections
 		explicit Protocol(Connection_ptr connection) : connection(connection) {}
 		virtual ~Protocol() = default;
 
@@ -40,7 +41,7 @@ class Protocol : public std::enable_shared_from_this<Protocol>
 		OutputMessage_ptr& getCurrentBuffer() {
 			return outputBuffer;
 		}
-
+		// todo: use reference for message maybe?
 		void send(OutputMessage_ptr msg) const {
 			if (auto connection = getConnection()) {
 				connection->send(msg);
@@ -53,12 +54,15 @@ class Protocol : public std::enable_shared_from_this<Protocol>
 				connection->close();
 			}
 		}
+	
 		void enableXTEAEncryption() {
 			encryptionEnabled = true;
 		}
+	
 		void setXTEAKey(const xtea::key& key) {
 			this->key = xtea::expand_key(key);
 		}
+	
 		void disableChecksum() {
 			checksumEnabled = false;
 		}

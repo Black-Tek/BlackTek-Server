@@ -5,65 +5,80 @@
 #define FS_THING_H
 
 #include "position.h"
+#include <memory>
+#include <string>
+#include "sharedobject.h"
+#include "declarations.h"
 
-class Tile;
-class Cylinder;
-class Item;
-class Creature;
-class Container;
 
 class Thing
 {
-	public:
-		constexpr Thing() = default;
-		virtual ~Thing() = default;
+    public:
+        virtual ~Thing() = default;
 
-		// non-copyable
-		Thing(const Thing&) = delete;
-		Thing& operator=(const Thing&) = delete;
+        // non-copyable
+        Thing(const Thing&) = delete;
+        Thing& operator=(const Thing&) = delete;
+       
+        virtual std::string getDescription(int32_t lookDistance) const = 0;
 
-		virtual std::string getDescription(int32_t lookDistance) const = 0;
+        virtual CylinderPtr getParent() {
+            return nullptr;
+        }
 
-		virtual Cylinder* getParent() const {
-			return nullptr;
-		}
-		virtual Cylinder* getRealParent() const {
-			return getParent();
-		}
+        virtual CylinderConstPtr getParent() const {
+            return nullptr;
+        }
+    
+        virtual CylinderPtr getRealParent() {
+            return getParent();
+        }
 
-		virtual void setParent(Cylinder*) {
-			//
-		}
+        virtual void setParent(std::weak_ptr<Cylinder> cylinder) {
+            // Implementation in derived classes
+        }
 
-		virtual Tile* getTile();
-		virtual const Tile* getTile() const;
+        virtual void clearParent() {
 
-		virtual const Position& getPosition() const;
-		virtual int32_t getThrowRange() const = 0;
-		virtual bool isPushable() const = 0;
+        }
 
-		virtual Container* getContainer() {
-			return nullptr;
-		}
-		virtual const Container* getContainer() const {
-			return nullptr;
-		}
-		virtual Item* getItem() {
-			return nullptr;
-		}
-		virtual const Item* getItem() const {
-			return nullptr;
-		}
-		virtual Creature* getCreature() {
-			return nullptr;
-		}
-		virtual const Creature* getCreature() const {
-			return nullptr;
-		}
+        virtual TilePtr getTile();
+        virtual TileConstPtr getTile() const;
 
-		virtual bool isRemoved() const {
-			return true;
-		}
+        virtual const Position& getPosition() const;
+        virtual int32_t getThrowRange() const = 0;
+        virtual bool isPushable() const = 0;
+
+        virtual ContainerPtr getContainer() {
+            return nullptr;
+        }
+    
+        virtual ContainerConstPtr getContainer() const {
+            return nullptr;
+        }
+    
+        virtual ItemPtr getItem() {
+            return nullptr;
+        }
+    
+        virtual ItemConstPtr getItem() const {
+            return nullptr;
+        }
+    
+        virtual CreaturePtr getCreature() {
+            return nullptr;
+        }
+    
+        virtual CreatureConstPtr getCreature() const {
+            return nullptr;
+        }
+
+        virtual bool isRemoved() const {
+            return true;
+        }
+    
+    protected:
+        constexpr Thing() = default;
 };
 
 #endif

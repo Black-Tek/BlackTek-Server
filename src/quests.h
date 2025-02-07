@@ -19,17 +19,19 @@ class Mission
 		Mission(std::string name, int32_t storageID, int32_t startValue, int32_t endValue, bool ignoreEndValue) :
 			name(std::move(name)), storageID(storageID), startValue(startValue), endValue(endValue), ignoreEndValue(ignoreEndValue) {}
 
-		bool isCompleted(Player* player) const;
-		bool isStarted(Player* player) const;
-		std::string getName(Player* player) const;
-		std::string getDescription(Player* player) const;
+		bool isCompleted(const PlayerPtr& player) const;
+		bool isStarted(const PlayerPtr& player) const;
+		std::string getName(const PlayerPtr& player) const;
+		std::string getDescription(const PlayerPtr& player) const;
 
 		uint32_t getStorageId() const {
 			return storageID;
 		}
+	
 		int32_t getStartStorageValue() const {
 			return startValue;
 		}
+	
 		int32_t getEndStorageValue() const {
 			return endValue;
 		}
@@ -50,19 +52,23 @@ class Quest
 		Quest(std::string name, uint16_t id, int32_t startStorageID, int32_t startStorageValue) :
 			name(std::move(name)), startStorageID(startStorageID), startStorageValue(startStorageValue), id(id) {}
 
-		bool isCompleted(Player* player) const;
-		bool isStarted(Player* player) const;
+		bool isCompleted(const PlayerPtr& player) const;
+		bool isStarted(const PlayerPtr& player) const;
+	
 		uint16_t getID() const {
 			return id;
 		}
+	
 		std::string getName() const {
 			return name;
 		}
-		uint16_t getMissionsCount(Player* player) const;
+	
+		uint16_t getMissionsCount(const PlayerPtr& player) const;
 
 		uint32_t getStartStorageId() const {
 			return startStorageID;
 		}
+	
 		int32_t getStartStorageValue() const {
 			return startStorageValue;
 		}
@@ -93,7 +99,7 @@ class Quests
 		bool loadFromXml();
 		Quest* getQuestByID(uint16_t id);
 		bool isQuestStorage(const uint32_t key, const int32_t value, const int32_t oldValue) const;
-		uint16_t getQuestsCount(Player* player) const;
+		uint16_t getQuestsCount(const PlayerPtr& player) const;
 		bool reload();
 
 	private:

@@ -5,10 +5,9 @@
 #define FS_NETWORKMESSAGE_H
 
 #include "const.h"
+#include "thing.h"
 
 class Item;
-class Creature;
-class Player;
 struct Position;
 class RSA;
 
@@ -33,7 +32,7 @@ class NetworkMessage
 			info = {};
 		}
 
-		// simply read functions for incoming message
+		// simple read functions for incoming message
 		uint8_t getByte() {
 			if (!canRead(1)) {
 				return 0;
@@ -97,7 +96,7 @@ class NetworkMessage
 		// write functions for complex types
 		void addPosition(const Position& pos);
 		void addItem(uint16_t id, uint8_t count);
-		void addItem(const Item* item);
+		void addItem(const ItemConstPtr& item);
 		void addItemId(uint16_t itemId);
 
 		MsgSize_t getLength() const {

@@ -8,46 +8,46 @@
 
 extern Game g_game;
 
-ReturnValue TrashHolder::queryAdd(int32_t, const Thing&, uint32_t, uint32_t, Creature*) const
+ReturnValue TrashHolder::queryAdd(int32_t, const ThingPtr&, uint32_t, uint32_t, CreaturePtr)
 {
 	return RETURNVALUE_NOERROR;
 }
 
-ReturnValue TrashHolder::queryMaxCount(int32_t, const Thing&, uint32_t count, uint32_t& maxQueryCount, uint32_t) const
+ReturnValue TrashHolder::queryMaxCount(int32_t, const ThingPtr&, uint32_t count, uint32_t& maxQueryCount, uint32_t)
 {
 	maxQueryCount = std::max<uint32_t>(1, count);
 	return RETURNVALUE_NOERROR;
 }
 
-ReturnValue TrashHolder::queryRemove(const Thing&, uint32_t, uint32_t, Creature* /*= nullptr*/) const
+ReturnValue TrashHolder::queryRemove(const ThingPtr&, uint32_t, uint32_t, CreaturePtr /*= nullptr*/)
 {
 	return RETURNVALUE_NOTPOSSIBLE;
 }
 
-Cylinder* TrashHolder::queryDestination(int32_t&, const Thing&, Item**, uint32_t&)
+CylinderPtr TrashHolder::queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&)
 {
-	return this;
+	return CylinderPtr(this);
 }
 
-void TrashHolder::addThing(Thing* thing)
+void TrashHolder::addThing(ThingPtr thing)
 {
 	return addThing(0, thing);
 }
 
-void TrashHolder::addThing(int32_t, Thing* thing)
+void TrashHolder::addThing(int32_t, ThingPtr thing)
 {
-	Item* item = thing->getItem();
+	const auto& item = thing->getItem();
 	if (!item) {
 		return;
 	}
 
-	if (item == this || !item->hasProperty(CONST_PROP_MOVEABLE)) {
+	if (item == this->getItem() || !item->hasProperty(CONST_PROP_MOVEABLE)) {
 		return;
 	}
 
 	const ItemType& it = Item::items[id];
 	if (item->isHangable() && it.isGroundTile()) {
-		Tile* tile = dynamic_cast<Tile*>(getParent());
+		const auto& tile = std::dynamic_pointer_cast<Tile>(getParent());
 		if (tile && tile->hasFlag(TILESTATE_SUPPORTS_HANGABLE)) {
 			return;
 		}
@@ -60,27 +60,31 @@ void TrashHolder::addThing(int32_t, Thing* thing)
 	}
 }
 
-void TrashHolder::updateThing(Thing*, uint16_t, uint32_t)
+void TrashHolder::updateThing(ThingPtr, uint16_t, uint32_t)
 {
 	//
 }
 
-void TrashHolder::replaceThing(uint32_t, Thing*)
+void TrashHolder::replaceThing(uint32_t, ThingPtr)
 {
 	//
 }
 
-void TrashHolder::removeThing(Thing*, uint32_t)
+void TrashHolder::removeThing(ThingPtr, uint32_t)
 {
 	//
 }
 
-void TrashHolder::postAddNotification(Thing* thing, const Cylinder* oldParent, int32_t index, cylinderlink_t)
+void TrashHolder::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t index, cylinderlink_t)
 {
-	getParent()->postAddNotification(thing, oldParent, index, LINK_PARENT);
+	if (parent.lock()) {
+		parent.lock()->postAddNotification(thing, oldParent, index, LINK_PARENT);
+	}
 }
 
-void TrashHolder::postRemoveNotification(Thing* thing, const Cylinder* newParent, int32_t index, cylinderlink_t)
+void TrashHolder::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t index, cylinderlink_t)
 {
-	getParent()->postRemoveNotification(thing, newParent, index, LINK_PARENT);
+	if (parent.lock()) {
+		parent.lock()->postRemoveNotification(thing, newParent, index, LINK_PARENT);
+	}
 }

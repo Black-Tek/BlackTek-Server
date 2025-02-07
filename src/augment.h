@@ -15,7 +15,7 @@ class Augment : public std::enable_shared_from_this<Augment> {
 
 public:
 	Augment() = default;
-	Augment(std::string name, std::string description = "");
+	Augment(const std::string& name, const std::string& description = "");
 	Augment(std::shared_ptr<Augment>& original);
 
 	~Augment() = default;
@@ -30,8 +30,8 @@ public:
 	const std::string getName() const;
 	const std::string getDescription() const;
 
-	void setName(std::string name);
-	void setDescription(std::string description);
+	void setName(const std::string& name);
+	void setDescription(const std::string& description);
 
 	static std::shared_ptr<Augment> MakeAugment(std::string augmentName, std::string description = "");
 	static std::shared_ptr<Augment> MakeAugment(std::shared_ptr<Augment>& originalPointer);
@@ -146,11 +146,11 @@ inline const std::string Augment::getDescription() const
 	return m_description;
 }
 
-inline void Augment::setName(std::string name) {
+inline void Augment::setName(const std::string& name) {
 	m_name = name;
 }
 
-inline void Augment::setDescription(std::string description) {
+inline void Augment::setDescription(const std::string& description) {
 	m_description = description;
 }
 

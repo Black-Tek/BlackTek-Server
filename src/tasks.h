@@ -21,7 +21,8 @@ class Task
 			expiration(std::chrono::system_clock::now() + std::chrono::milliseconds(ms)), func(std::move(f)) {}
 
 		virtual ~Task() = default;
-		void operator()() {
+		void operator()() const
+		{
 			func();
 		}
 

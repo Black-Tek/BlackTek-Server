@@ -33,22 +33,22 @@
 	|--- OTBM_ITEM_DEF (not implemented)
 */
 
-Tile* IOMap::createTile(Item*& ground, Item* item, uint16_t x, uint16_t y, uint8_t z)
+TilePtr IOMap::createTile(ItemPtr& ground, ItemPtr item, uint16_t x, uint16_t y, uint8_t z)
 {
 	if (!ground) {
-		return new StaticTile(x, y, z);
+		return std::make_shared<StaticTile>(x, y, z);
 	}
 
-	Tile* tile;
+	TilePtr tile;
 	if ((item && item->isBlocking()) || ground->isBlocking()) {
-		tile = new StaticTile(x, y, z);
+		tile = std::make_shared<StaticTile>(x, y, z);
 	} else {
-		tile = new DynamicTile(x, y, z);
+		tile = std::make_shared<DynamicTile>(x, y, z);
 	}
 
 	tile->internalAddThing(ground);
 	ground->startDecaying();
-	ground = nullptr;
+	ground.reset();
 	return tile;
 }
 
@@ -232,8 +232,8 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 
 		bool isHouseTile = false;
 		House* house = nullptr;
-		Tile* tile = nullptr;
-		Item* ground_item = nullptr;
+		TilePtr tile = nullptr;
+		ItemPtr ground_item = nullptr;
 		uint32_t tileflags = TILESTATE_NONE;
 
 		if (tileNode.type == OTBM_HOUSETILE) {
@@ -248,9 +248,10 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 				setLastErrorString(fmt::format("[x:{:d}, y:{:d}, z:{:d}] Could not create house id: {:d}", x, y, z, houseId));
 				return false;
 			}
-
-			tile = new HouseTile(x, y, z, house);
-			house->addTile(static_cast<HouseTile*>(tile));
+			
+			HouseTilePtr houseTile = std::make_shared<HouseTile>(x, y, z, house);
+			tile = houseTile;
+			house->addTile(houseTile);
 			isHouseTile = true;
 		}
 
@@ -280,7 +281,7 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 				}
 
 				case OTBM_ATTR_ITEM: {
-					Item* item = Item::CreateItem(propStream);
+					auto item = Item::CreateItem(propStream);
 					if (!item) {
 						setLastErrorString(fmt::format("[x:{:d}, y:{:d}, z:{:d}] Failed to create item.", x, y, z));
 						return false;
@@ -288,7 +289,7 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 
 					if (isHouseTile && item->isMoveable()) {
 						std::cout << "[Warning - IOMap::loadMap] Moveable item with ID: " << item->getID() << ", in house: " << house->getId() << ", at position [x: " << x << ", y: " << y << ", z: " << z << "]." << std::endl;
-						delete item;
+						item.reset();
 					} else {
 						if (item->getItemCount() == 0) {
 							item->setItemCount(1);
@@ -299,7 +300,7 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 							item->startDecaying();
 							item->setLoadedFromMap(true);
 						} else if (item->isGroundTile()) {
-							delete ground_item;
+							ground_item.reset();
 							ground_item = item;
 						} else {
 							tile = createTile(ground_item, item, x, y, z);
@@ -329,7 +330,7 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 				return false;
 			}
 
-			Item* item = Item::CreateItem(stream);
+			auto item = Item::CreateItem(stream);
 			if (!item) {
 				setLastErrorString(fmt::format("[x:{:d}, y:{:d}, z:{:d}] Failed to create item.", x, y, z));
 				return false;
@@ -337,13 +338,13 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 
 			if (!item->unserializeItemNode(loader, itemNode, stream)) {
 				setLastErrorString(fmt::format("[x:{:d}, y:{:d}, z:{:d}] Failed to load item {:d}.", x, y, z, item->getID()));
-				delete item;
+				item.reset();
 				return false;
 			}
 
 			if (isHouseTile && item->isMoveable()) {
 				std::cout << "[Warning - IOMap::loadMap] Moveable item with ID: " << item->getID() << ", in house: " << house->getId() << ", at position [x: " << x << ", y: " << y << ", z: " << z << "]." << std::endl;
-				delete item;
+				item.reset();
 			} else {
 				if (item->getItemCount() == 0) {
 					item->setItemCount(1);
@@ -354,7 +355,7 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 					item->startDecaying();
 					item->setLoadedFromMap(true);
 				} else if (item->isGroundTile()) {
-					delete ground_item;
+					ground_item.reset();
 					ground_item = item;
 				} else {
 					tile = createTile(ground_item, item, x, y, z);
@@ -396,7 +397,7 @@ bool IOMap::parseTowns(OTB::Loader& loader, const OTB::Node& townsNode, Map& map
 			return false;
 		}
 
-		Town* town = map.towns.getTown(townId);
+		auto town = map.towns.getTown(townId);
 		if (!town) {
 			town = new Town(townId);
 			map.towns.addTown(townId, town);

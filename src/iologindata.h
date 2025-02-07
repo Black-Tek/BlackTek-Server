@@ -8,7 +8,7 @@
 #include "player.h"
 #include "database.h"
 
-using ItemBlockList = std::list<std::pair<int32_t, Item*>>;
+using ItemBlockList = std::list<std::pair<int32_t, ItemPtr>>;
 
 class IOLoginData
 {
@@ -23,12 +23,12 @@ class IOLoginData
 		static AccountType_t getAccountType(uint32_t accountId);
 		static void setAccountType(uint32_t accountId, AccountType_t accountType);
 		static void updateOnlineStatus(uint32_t guid, bool login);
-		static bool preloadPlayer(Player* player);
+		static bool preloadPlayer(const PlayerPtr& player);
 
-		static bool loadPlayerById(Player* player, uint32_t id);
-		static bool loadPlayerByName(Player* player, const std::string& name);
-		static bool loadPlayer(Player* player, DBResult_ptr result);
-		static bool savePlayer(Player* player);
+		static bool loadPlayerById(const PlayerPtr& player, uint32_t id);
+		static bool loadPlayerByName(const PlayerPtr& player, const std::string& name);
+		static bool loadPlayer(const PlayerPtr& player, DBResult_ptr result);
+		static bool savePlayer(const PlayerPtr& player);
 		static uint32_t getGuidByName(const std::string& name);
 		static bool getGuidByNameEx(uint32_t& guid, bool& specialVip, std::string& name);
 		static std::string getNameByGuid(uint32_t guid);
@@ -46,12 +46,12 @@ class IOLoginData
 		static bool addRewardItems(uint32_t playerId, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream);
 
 	private:
-		using ItemMap = std::map<uint32_t, std::pair<Item*, uint32_t>>;
+		using ItemMap = std::map<uint32_t, std::pair<ItemPtr, uint32_t>>;
 
-		static void loadItems(ItemMap& itemMap, DBResult_ptr result);
-		static bool saveItems(const Player* player, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream);
-		static bool saveAugments(const Player* player, DBInsert& query_insert, PropWriteStream& augmentStream);
-		static void loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augmentList, DBResult_ptr result);
+		static void loadItems(ItemMap& itemMap, const DBResult_ptr& result);
+		static bool saveItems(const PlayerConstPtr& player, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream);
+		static bool saveAugments(const PlayerConstPtr& player, DBInsert& query_insert, PropWriteStream& augmentStream);
+		static void loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augmentList, const DBResult_ptr& result);
 };
 
 #endif

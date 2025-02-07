@@ -7,7 +7,7 @@
 
 #include "pugicast.h"
 
-std::string Mission::getDescription(Player* player) const
+std::string Mission::getDescription(const PlayerPtr& player) const
 {
 	int32_t value;
 	player->getStorageValue(storageID, value);
@@ -41,7 +41,7 @@ std::string Mission::getDescription(Player* player) const
 	return "An error has occurred, please contact a gamemaster.";
 }
 
-bool Mission::isStarted(Player* player) const
+bool Mission::isStarted(const PlayerPtr& player) const
 {
 	if (!player) {
 		return false;
@@ -63,7 +63,7 @@ bool Mission::isStarted(Player* player) const
 	return true;
 }
 
-bool Mission::isCompleted(Player* player) const
+bool Mission::isCompleted(const PlayerPtr& player) const
 {
 	if (!player) {
 		return false;
@@ -81,7 +81,7 @@ bool Mission::isCompleted(Player* player) const
 	return value == endValue;
 }
 
-std::string Mission::getName(Player* player) const
+std::string Mission::getName(const PlayerPtr& player) const
 {
 	if (isCompleted(player)) {
 		return name + " (completed)";
@@ -89,7 +89,7 @@ std::string Mission::getName(Player* player) const
 	return name;
 }
 
-uint16_t Quest::getMissionsCount(Player* player) const
+uint16_t Quest::getMissionsCount(const PlayerPtr& player) const
 {
 	uint16_t count = 0;
 	for (const Mission& mission : missions) {
@@ -100,7 +100,7 @@ uint16_t Quest::getMissionsCount(Player* player) const
 	return count;
 }
 
-bool Quest::isCompleted(Player* player) const
+bool Quest::isCompleted(const PlayerPtr& player) const
 {
 	for (const Mission& mission : missions) {
 		if (!mission.isCompleted(player)) {
@@ -110,7 +110,7 @@ bool Quest::isCompleted(Player* player) const
 	return true;
 }
 
-bool Quest::isStarted(Player* player) const
+bool Quest::isStarted(const PlayerPtr& player) const
 {
 	if (!player) {
 		return false;
@@ -184,7 +184,7 @@ Quest* Quests::getQuestByID(uint16_t id)
 	return nullptr;
 }
 
-uint16_t Quests::getQuestsCount(Player* player) const
+uint16_t Quests::getQuestsCount(const PlayerPtr& player) const
 {
 	uint16_t count = 0;
 	for (const Quest& quest : quests) {

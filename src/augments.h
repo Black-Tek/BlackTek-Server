@@ -38,9 +38,9 @@ public:
 	static void clearAll();
 	static void reload();
 	static void AddAugment(std::shared_ptr<Augment> augment);
-	static void RemoveAugment(std::shared_ptr<Augment> augment);
+	static void RemoveAugment(const std::shared_ptr<Augment>& augment);
 	static void RemoveAugment(std::string_view augName);
-	static void RemoveAugment(std::string augName);
+	static void RemoveAugment(const std::string& augName);
 	static std::shared_ptr<Augment> GetAugment(std::string_view augName);
 };
 

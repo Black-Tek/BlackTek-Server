@@ -44,7 +44,9 @@ struct alignas(16) ChunkKey {
 		return std::memcmp(this, &other, sizeof(ChunkKey)) == 0;
 	}
 };
+
 static ChunkKey chunkKey;
+
 struct ChunkKeyHash {
 	std::size_t operator()(const ChunkKey& key) const noexcept {
 		std::size_t hash = 0;
@@ -80,13 +82,13 @@ class AStarNodes
 
 		AStarNode* createOpenNode(AStarNode* parent, uint32_t x, uint32_t y, int_fast32_t f);
 		AStarNode* getBestNode();
-		void closeNode(AStarNode* node);
-		void openNode(AStarNode* node);
+		void closeNode(const AStarNode* node);
+		void openNode(const AStarNode* node);
 		int_fast32_t getClosedNodes() const;
 		AStarNode* getNodeByPosition(uint32_t x, uint32_t y);
 
-		static int_fast32_t getMapWalkCost(AStarNode* node, const Position& neighborPos);
-		static int_fast32_t getTileWalkCost(const Creature& creature, const Tile* tile);
+		static int_fast32_t getMapWalkCost(const AStarNode* node, const Position& neighborPos);
+		static int_fast32_t getTileWalkCost(const CreaturePtr creature, const TileConstPtr& tile);
 
 	private:
 		AStarNode nodes[MAX_NODES];
@@ -110,7 +112,7 @@ struct Floor {
 	Floor(const Floor&) = delete;
 	Floor& operator=(const Floor&) = delete;
 
-	Tile* tiles[FLOOR_SIZE][FLOOR_SIZE] = {};
+	TilePtr tiles[FLOOR_SIZE][FLOOR_SIZE] = {};
 };
 
 class FrozenPathingConditionCall;
@@ -135,8 +137,12 @@ class QTreeNode
 		template<typename Leaf, typename Node>
 		static Leaf getLeafStatic(Node node, uint32_t x, uint32_t y)
 		{
+
+			uint32_t mask = 0x8000;
+
 			do {
-				node = node->child[((x & 0x8000) >> 15) | ((y & 0x8000) >> 14)];
+
+				node = node->child[((x & mask) >> 15) | ((y & mask) >> 14)];
 				if (!node) {
 					return nullptr;
 				}
@@ -162,19 +168,20 @@ class QTreeLeafNode final : public QTreeNode
 {
 	public:
 		QTreeLeafNode() { leaf = true; newLeaf = true; }
-		~QTreeLeafNode();
+		~QTreeLeafNode() override;
 
 		// non-copyable
 		QTreeLeafNode(const QTreeLeafNode&) = delete;
 		QTreeLeafNode& operator=(const QTreeLeafNode&) = delete;
 
 		Floor* createFloor(uint32_t z);
+	
 		Floor* getFloor(uint8_t z) const {
 			return array[z];
 		}
 
-		void addCreature(Creature* c);
-		void removeCreature(Creature* c);
+		void addCreature(const CreaturePtr& c);
+		void removeCreature(const CreaturePtr& c);
 
 	private:
 		static bool newLeaf;
@@ -201,13 +208,14 @@ class Map
 		static constexpr int32_t maxClientViewportX = 8;
 		static constexpr int32_t maxClientViewportY = 6;
 
-		uint32_t clean() const;
+		static uint32_t clean();
 
 		/**
 		  * Load a map.
 		  * \returns true if the map was loaded successfully
 		  */
 		bool loadMap(const std::string& identifier, bool loadHouses);
+	
 		void clearChunkSpectatorCache()	{
 			playersSpectatorCache.clear();
 			chunksSpectatorCache.clear();
@@ -223,23 +231,26 @@ class Map
 		  * Get a single tile.
 		  * \returns A pointer to that tile.
 		  */
-		Tile* getTile(uint16_t x, uint16_t y, uint8_t z) const;
-		Tile* getTile(const Position& pos) const {
+		TilePtr getTile(uint16_t x, uint16_t y, uint8_t z);
+	
+		TilePtr getTile(const Position& pos) {
 			return getTile(pos.x, pos.y, pos.z);
 		}
 
 		/**
 		  * Set a single tile.
 		  */
-		void setTile(uint16_t x, uint16_t y, uint8_t z, Tile* newTile);
-		void setTile(const Position& pos, Tile* newTile) {
+		void setTile(uint16_t x, uint16_t y, uint8_t z, TilePtr& newTile);
+	
+		void setTile(const Position& pos, TilePtr& newTile) {
 			setTile(pos.x, pos.y, pos.z, newTile);
 		}
 
 		/**
 		  * Removes a single tile.
 		  */
-		void removeTile(uint16_t x, uint16_t y, uint8_t z);
+		void removeTile(uint16_t x, uint16_t y, uint8_t z) const;
+	
 		void removeTile(const Position& pos) {
 			removeTile(pos.x, pos.y, pos.z);
 		}
@@ -251,9 +262,9 @@ class Map
 		  * \param extendedPos If true, the creature will in first-hand be placed 2 tiles away
 		  * \param forceLogin If true, placing the creature will not fail because of obstacles (creatures/chests)
 		  */
-		bool placeCreature(const Position& centerPos, Creature* creature, bool extendedPos = false, bool forceLogin = false);
+		bool placeCreature(const Position& centerPos, CreaturePtr creature, bool extendedPos = false, bool forceLogin = false);
 
-		void moveCreature(Creature& creature, Tile& newTile, bool forceTeleport = false);
+		void moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool forceTeleport = false);
 
 		void getSpectators(SpectatorVec& spectators, const Position& centerPos, bool multifloor = false, bool onlyPlayers = false,
 		                   int32_t minRangeX = 0, int32_t maxRangeX = 0,
@@ -273,14 +284,14 @@ class Map
 		  *	\returns The result if you can throw there or not
 		  */
 		bool canThrowObjectTo(const Position& fromPos, const Position& toPos, bool checkLineOfSight = true, bool sameFloor = false,
-		                      int32_t rangex = Map::maxClientViewportX, int32_t rangey = Map::maxClientViewportY) const;
+		                      int32_t rangex = Map::maxClientViewportX, int32_t rangey = Map::maxClientViewportY);
 
 		/**
 		  * Checks if there are no obstacles on that position
 		  *	\param blockFloor counts the ground tile as an obstacle
 		  *	\returns The result if there is an obstacle or not
 		  */
-		bool isTileClear(uint16_t x, uint16_t y, uint8_t z, bool blockFloor = false) const;
+		bool isTileClear(uint16_t x, uint16_t y, uint8_t z, bool blockFloor = false);
 
 		/**
 		  * Checks if path is clear from fromPos to toPos
@@ -290,13 +301,13 @@ class Map
 		  *	\param sameFloor checks if the destination is on same floor
 		  *	\returns The result if there is no obstacles
 		  */
-		bool isSightClear(const Position& fromPos, const Position& toPos, bool sameFloor = false) const;
-		bool checkSightLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t z) const;
+		bool isSightClear(const Position& fromPos, const Position& toPos, bool sameFloor = false);
+		static bool checkSightLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t z);
 
-		const Tile* canWalkTo(const Creature& creature, const Position& pos) const;
+		TilePtr canWalkTo(CreaturePtr& creature, const Position& pos);
 
-		bool getPathMatching(const Creature& creature, std::vector<Direction>& dirList,
-		                     const FrozenPathingConditionCall& pathCondition, const FindPathParams& fpp) const;
+		bool getPathMatching(CreaturePtr& creature, std::vector<Direction>& dirList,
+		                     const FrozenPathingConditionCall& pathCondition, const FindPathParams& fpp);
 
 		std::map<std::string, Position> waypoints;
 

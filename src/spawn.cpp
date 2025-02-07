@@ -171,7 +171,7 @@ bool Spawns::loadFromXml(const std::string& filename)
 					continue;
 				}
 
-				Npc* npc = Npc::createNpc(nameAttribute.as_string());
+				const auto& npc = Npc::createNpc(nameAttribute.as_string());
 				if (!npc) {
 					continue;
 				}
@@ -199,10 +199,9 @@ void Spawns::startup()
 		return;
 	}
 
-	for (Npc* npc : npcList) {
+	for (const auto& npc : npcList) {
 		if (!g_game.placeCreature(npc, npc->getMasterPos(), false, true)) {
 			std::cout << "[Warning - Spawns::startup] Couldn't spawn npc \"" << npc->getName() << "\" on position: " << npc->getMasterPos() << '.' << std::endl;
-			delete npc;
 		}
 	}
 	npcList.clear();
@@ -245,10 +244,9 @@ void Spawn::startSpawnCheck()
 
 Spawn::~Spawn()
 {
-	for (const auto& it : spawnedMap) {
-		Monster* monster = it.second;
+	for (const auto& val : spawnedMap | std::views::values) {
+		const auto& monster = val;
 		monster->setSpawn(nullptr);
-		monster->decrementReferenceCounter();
 	}
 }
 
@@ -256,10 +254,10 @@ bool Spawn::findPlayer(const Position& pos)
 {
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, pos, false, true);
-	for (Creature* spectator : spectators) {
-		assert(dynamic_cast<Player*>(spectator) != nullptr);
+	for (const auto& spectator : spectators) {
+		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
 
-		Player* spectatorPlayer = static_cast<Player*>(spectator);
+		const auto& spectatorPlayer = std::static_pointer_cast<Player>(spectator);
 		if (!spectatorPlayer->hasFlag(PlayerFlag_IgnoredByMonsters)) {
 			return true;
 		}
@@ -267,7 +265,7 @@ bool Spawn::findPlayer(const Position& pos)
 	return false;
 }
 
-bool Spawn::spawnMonster(uint32_t spawnId, spawnBlock_t sb, bool startup/* = false*/)
+bool Spawn::spawnMonster(uint32_t spawnId, const spawnBlock_t& sb, bool startup/* = false*/)
 {
 	bool isBlocked = !startup && findPlayer(sb.pos);
 	size_t monstersCount = sb.mTypes.size(), blockedMonsters = 0;
@@ -307,31 +305,27 @@ bool Spawn::spawnMonster(uint32_t spawnId, spawnBlock_t sb, bool startup/* = fal
 
 bool Spawn::spawnMonster(uint32_t spawnId, MonsterType* mType, const Position& pos, Direction dir, bool startup/*= false*/)
 {
-	std::unique_ptr<Monster> monster_ptr(new Monster(mType));
-	if (!g_events->eventMonsterOnSpawn(monster_ptr.get(), pos, startup, false)) {
-		monster_ptr.reset();
+
+	auto monster = std::make_shared<Monster>(mType);
+	if (!g_events->eventMonsterOnSpawn(monster, pos, startup, false)) {
 		return false;
 	}
 
 	if (startup) {
 		//No need to send out events to the surrounding since there is no one out there to listen!
-		if (!g_game.internalPlaceCreature(monster_ptr.get(), pos, true)) {
-			std::cout << "[Warning - Spawns::startup] Couldn't spawn monster \"" << monster_ptr->getName() << "\" on position: " << pos << '.' << std::endl;
-			monster_ptr.reset();
+		if (!g_game.internalPlaceCreature(monster, pos, true)) {
+			std::cout << "[Warning - Spawns::startup] Couldn't spawn monster \"" << monster->getName() << "\" on position: " << pos << '.' << std::endl;
 			return false;
 		}
 	} else {
-		if (!g_game.placeCreature(monster_ptr.get(), pos, false, true)) {
-			monster_ptr.reset();
+		if (!g_game.placeCreature(monster, pos, false, true)) {
 			return false;
 		}
 	}
-
-	Monster* monster = monster_ptr.release();
+	
 	monster->setDirection(dir);
 	monster->setSpawn(this);
 	monster->setMasterPos(pos);
-	monster->incrementReferenceCounter();
 
 	spawnedMap.insert({spawnId, monster});
 	spawnMap[spawnId].lastSpawn = OTSYS_TIME();
@@ -383,9 +377,8 @@ void Spawn::cleanup()
 {
 	auto it = spawnedMap.begin();
 	while (it != spawnedMap.end()) {
-		Monster* monster = it->second;
+		const auto& monster = it->second;
 		if (monster->isRemoved()) {
-			monster->decrementReferenceCounter();
 			it = spawnedMap.erase(it);
 		} else {
 			++it;
@@ -393,7 +386,7 @@ void Spawn::cleanup()
 	}
 }
 
-bool Spawn::addBlock(spawnBlock_t sb)
+bool Spawn::addBlock(const spawnBlock_t& sb)
 {
 	interval = std::min(interval, sb.interval);
 	spawnMap[spawnMap.size() + 1] = sb;
@@ -419,11 +412,10 @@ bool Spawn::addMonster(const std::string& name, const Position& pos, Direction d
 	return addBlock(sb);
 }
 
-void Spawn::removeMonster(Monster* monster)
+void Spawn::removeMonster(const MonsterPtr& monster)
 {
 	for (auto it = spawnedMap.begin(), end = spawnedMap.end(); it != end; ++it) {
 		if (it->second == monster) {
-			monster->decrementReferenceCounter();
 			spawnedMap.erase(it);
 			break;
 		}

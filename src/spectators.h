@@ -10,7 +10,7 @@ class Creature;
 
 class SpectatorVec
 {
-	using Vec = std::vector<Creature*>;
+	using Vec = std::vector<CreaturePtr>;
 	using Iterator = Vec::iterator;
 	using ConstIterator = Vec::const_iterator;
 public:
@@ -19,17 +19,16 @@ public:
 	}
 
 	void addSpectators(const SpectatorVec& spectators) {
-		for (Creature* spectator : spectators.vec) {
-			auto it = std::find(vec.begin(), vec.end(), spectator);
-			if (it != end()) {
+		for (CreaturePtr spectator : spectators.vec) {
+			if (auto it = std::ranges::find(vec, spectator); it != end()) {
 				continue;
 			}
 			vec.emplace_back(spectator);
 		}
 	}
 
-	void erase(Creature* spectator) {
-		auto it = std::find(vec.begin(), vec.end(), spectator);
+	void erase(const CreaturePtr& spectator) {
+		const auto it = std::ranges::find(vec, spectator);
 		if (it == end()) {
 			return;
 		}
@@ -37,7 +36,7 @@ public:
 		vec.pop_back();
 	}
 
-	Creature* operator[] (uint8_t index) {
+	CreaturePtr operator[] (const uint8_t index) {
 		return vec[index];
 	}
 
@@ -47,7 +46,7 @@ public:
 	ConstIterator begin() const { return vec.begin(); }
 	Iterator end() { return vec.end(); }
 	ConstIterator end() const { return vec.end(); }
-	void emplace_back(Creature* c) { vec.emplace_back(c); }
+	void emplace_back(CreaturePtr c) { vec.emplace_back(c); }
 
 private:
 	Vec vec;

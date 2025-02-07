@@ -151,7 +151,7 @@ uint16_t Vocations::getPromotedVocation(uint16_t id) const
 
 static const uint32_t skillBase[SKILL_LAST + 1] = {50, 50, 50, 50, 30, 100, 20};
 
-uint64_t Vocation::getReqSkillTries(uint8_t skill, uint16_t level)
+uint64_t Vocation::getReqSkillTries(uint8_t skill, uint16_t level) const
 {
 	if (skill > SKILL_LAST) {
 		return 0;
@@ -159,7 +159,7 @@ uint64_t Vocation::getReqSkillTries(uint8_t skill, uint16_t level)
 	return skillBase[skill] * std::pow(skillMultipliers[skill], static_cast<int32_t>(level - (MINIMUM_SKILL_LEVEL + 1)));
 }
 
-uint64_t Vocation::getReqMana(uint32_t magLevel)
+uint64_t Vocation::getReqMana(uint32_t magLevel) const
 {
 	if (magLevel == 0) {
 		return 0;
