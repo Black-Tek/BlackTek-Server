@@ -1,12 +1,37 @@
-version: "3.7"
-
 services:
+  server-db:
+    image: mysql:8.0
+    pull_policy: always
+    restart: always
+    command: [ "--default-authentication-plugin=mysql_native_password" ]
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_DATABASE: blacktekserver
+      MYSQL_USER: blacktekserver
+      MYSQL_PASSWORD: blacktekserver
+    volumes:
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      - server-db-data:/var/lib/mysql
+    networks:
+      - blacktek-net
+
   server:
     build:
       context: .
     restart: always
-    volumes:
-      - .:/srv
     ports:
       - "7171:7171"
       - "7172:7172"
+    volumes:
+      - .:/srv
+    networks:
+      - blacktek-net
+    depends_on:
+      - server-db
+
+volumes:
+  server-db-data:
+
+networks:
+  blacktek-net:
+    driver: bridge
