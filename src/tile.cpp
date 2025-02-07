@@ -789,8 +789,6 @@ ReturnValue Tile::queryRemove(const ThingPtr& thing, const uint32_t count, uint3
 	return RETURNVALUE_NOERROR;
 }
 
-#include <iostream> // For debug output
-
 CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, ItemPtr& destItem, uint32_t& flags) {
 	TilePtr destTile = nullptr;
 	destItem = nullptr;
@@ -840,7 +838,6 @@ CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, I
 	if (destTile == nullptr) {
 		TilePtr temp = this->getTile();
 		if (!temp) {
-			std::cerr << "Fallback also returned nullptr!" << std::endl;
 		}
 		destTile = temp;
 	} else {
@@ -849,8 +846,6 @@ CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, I
 
 	if (destTile) {
 		if (auto destThing = destTile->getTopDownItem()) {
-			std::cout << "assigning the destItem \n";
-			std::cout << "destItem is : " << destThing->getItem()->getName() << " \n";
 			destItem = destThing->getItem();
 		}
 	}
@@ -901,7 +896,6 @@ void Tile::addThing(int32_t, ThingPtr thing)
 			}
 		} else if (itemType.alwaysOnTop) {
 			if (itemType.isSplash() && items) {
-				//remove old splash if exists
 				for (ItemVector::const_iterator it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it) {
 					const auto oldSplash = *it;
 					if (!Item::items[oldSplash->getID()].isSplash()) {
@@ -910,7 +904,6 @@ void Tile::addThing(int32_t, ThingPtr thing)
 
 					removeThing(oldSplash, 1);
 					oldSplash->clearParent();
-					// g_game.ReleaseItem(oldSplash);
 					postRemoveNotification(oldSplash, nullptr, 0);
 					break;
 				}
@@ -928,7 +921,7 @@ void Tile::addThing(int32_t, ThingPtr thing)
 					}
 				}
 			} else {
-				std::cout << "Hitting where should be unreachable in tile addthing!" << std::endl;
+				// std::unreachable()
 			}
 
 			if (!isInserted) {
@@ -944,24 +937,17 @@ void Tile::addThing(int32_t, ThingPtr thing)
 						if (const auto oldField = (*it)->getMagicField()) {
 							if (oldField->isReplaceable()) {
 								removeThing(oldField, 1);
-
 								oldField->clearParent();
-								// g_game.ReleaseItem(oldField);
 								postRemoveNotification(oldField, nullptr, 0);
 								break;
 							} else {
 								//This magic field cannot be replaced.
 								item->clearParent();
-								// g_game.ReleaseItem(item);
 								return;
 							}
 						}
 					}
 				}
-			}
-
-			if (!items) {
-				std::cout << "Getting to end of tile add thing and still not items list!" << std::endl;
 			}
 
 			items->insert(items->getBeginDownItem(), item);
@@ -1398,7 +1384,6 @@ void Tile::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t
 
 	for (auto spectator : spectators) {
 		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
-		std::cout << "Found a player spectator " << std::static_pointer_cast<Player>(spectator)->getName() << " for tile:postRemoveNotification  \n";
 		std::static_pointer_cast<Player>(spectator)->postRemoveNotification(thing, newParent, index, LINK_NEAR);
 	}
 

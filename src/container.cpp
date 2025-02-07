@@ -450,7 +450,6 @@ ReturnValue Container::queryRemove(const ThingPtr& thing, uint32_t count, uint32
 CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem,
 		uint32_t& flags)
 {
-	std::cout << "Is a container destination query \n";
 	if (!unlocked) {
 		destItem = nullptr;
 		return getContainer();

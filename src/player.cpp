@@ -2155,8 +2155,6 @@ void Player::onThink(const uint32_t interval)
 		addMessageBuffer();
 	}
 
-	if (!getTile()) { std::cout << "Tile is gone!" << std::endl; }
-
 	if (!getTile()->hasFlag(TILESTATE_NOLOGOUT) && !isAccessPlayer()) {
 		idleTime += interval;
 		const int32_t kickAfterMinutes = g_config.getNumber(ConfigManager::KICK_AFTER_MINUTES);
@@ -3314,14 +3312,11 @@ ReturnValue Player::queryRemove(const ThingPtr& thing, uint32_t count, uint32_t 
 CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem,
 		uint32_t& flags)
 {
-	std::cout << "Is a player destination query \n";
 	if (index == 0 /*drop to capacity window*/ || index == INDEX_WHEREEVER) {
 		destItem = nullptr;
 
 		ItemPtr item = thing->getItem();
 		if (item == nullptr) {
-			std::cout << "Player queryDestination says thing->getItem() is nullptr, returning "
-				<< getPlayer()->getName() << " as the CylinderPtr \n";
 			return this->getPlayer();
 		}
 
@@ -3358,7 +3353,6 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 				}
 			} else if (queryAdd(slotIndex, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) { //empty slot
 				index = slotIndex;
-				std::cout << "Almost certainly the call path in player query destination.. it returns nullptr to destitem after successful query add \n";
 				destItem = nullptr;
 				return this->getPlayer();
 			}

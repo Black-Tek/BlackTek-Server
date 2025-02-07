@@ -1147,11 +1147,9 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 	if (ret == RETURNVALUE_NEEDEXCHANGE) {
 		//check if we can add it to source cylinder
 		ret = fromCylinder->queryAdd(fromCylinder->getThingIndex(item), toItem, toItem->getItemCount(), 0);
-		std::cout << "ToItem after the queryAdd inside needexchange : " << toItem->getName() << " \n";
 		if (ret == RETURNVALUE_NOERROR) {
 			if (actorPlayer && fromPos && toPos) {
 				const ReturnValue eventRet = g_events->eventPlayerOnMoveItem(actorPlayer, toItem, toItem->getItemCount(), *toPos, *fromPos, toCylinder, fromCylinder);
-				std::cout << "ToItem after the player event on move item in lua, inside needexchange : " << toItem->getName() << " \n";
 				if (eventRet != RETURNVALUE_NOERROR) {
 					return eventRet;
 				}
@@ -1160,17 +1158,14 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 			//check how much we can move
 			uint32_t maxExchangeQueryCount = 0;
 			ReturnValue retExchangeMaxCount = fromCylinder->queryMaxCount(INDEX_WHEREEVER, toItem, toItem->getItemCount(), maxExchangeQueryCount, 0);
-			std::cout << "ToItem after the exchange count inside needexchange : " << toItem->getName() << " \n";
 
 			if (retExchangeMaxCount != RETURNVALUE_NOERROR && maxExchangeQueryCount == 0) {
 				return retExchangeMaxCount;
 			}
 
 			if (toCylinder->queryRemove(toItem, toItem->getItemCount(), flags, actor) == RETURNVALUE_NOERROR) {
-				std::cout << "ToItem after the queryRemove inside needexchange : " << toItem->getName() << " \n";
 				int32_t oldToItemIndex = toCylinder->getThingIndex(toItem);
 				toCylinder->removeThing(toItem, toItem->getItemCount());
-				std::cout << "ToItem after the Remove thing inside needexchange : " << toItem->getName() << " \n";
 				fromCylinder->addThing(toItem);
 
 				if (oldToItemIndex != -1) {
@@ -1186,7 +1181,6 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 
 				if (actorPlayer && fromPos && toPos && !toItem->isRemoved()) {
 					g_events->eventPlayerOnItemMoved(actorPlayer, toItem, toItem->getItemCount(), *toPos, *fromPos, toCylinder, fromCylinder);
-					std::cout << "ToItem after the player item remove on move again tho, quite long, inside needexchange : " << toItem->getName() << " \n";
 				}
 
 				toItem = nullptr;
@@ -1222,16 +1216,12 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 
 	if (tradeItem) {
 		if (toCylinder->getItem() == tradeItem) {
-			std::cout << "Trade item is apparently : " << tradeItem->getName() << " \n";
-			std::cout << "toCylinder Item is apparently : " << tradeItem->getName() << " \n";
-			std::cout << "trade item is matching" << std::endl;
 			return RETURNVALUE_NOTENOUGHROOM;
 		}
 
 		auto tmpCylinder = toCylinder->getParent();
 		while (tmpCylinder) {
 			if (tmpCylinder->getItem() == tradeItem) {
-				std::cout << "tmpcylinder item is matching" << std::endl;
 				return RETURNVALUE_NOTENOUGHROOM;
 			}
 
@@ -1357,7 +1347,6 @@ ReturnValue Game::internalAddItem(CylinderPtr toCylinder, ItemPtr item, int32_t 
 	ret = destCylinder->queryMaxCount(INDEX_WHEREEVER, item, item->getItemCount(), maxQueryCount, flags);
 
 	if (ret != RETURNVALUE_NOERROR) {
-		std::cout << "getting error trying to add item \n";
 		return ret;
 	}
 
@@ -1416,8 +1405,6 @@ ReturnValue Game::internalAddItem(CylinderPtr toCylinder, ItemPtr item, int32_t 
 
 ReturnValue Game::internalRemoveItem(ItemPtr item, int32_t count /*= -1*/, bool test /*= false*/, uint32_t flags /*= 0*/)
 {
-	
-	
 	auto cylinder = item->getParent();
 	if (cylinder == nullptr) {
 		return RETURNVALUE_NOTPOSSIBLE;
@@ -1436,7 +1423,6 @@ ReturnValue Game::internalRemoveItem(ItemPtr item, int32_t count /*= -1*/, bool 
 	//check if we can remove this item
 	ReturnValue ret = cylinder->queryRemove(item, count, flags | FLAG_IGNORENOTMOVEABLE);
 	if (ret != RETURNVALUE_NOERROR) {
-		std::cout << "Item count on failed removal : " << item->getItemCount() << " \n";
 		return ret;
 	}
 
@@ -1446,37 +1432,15 @@ ReturnValue Game::internalRemoveItem(ItemPtr item, int32_t count /*= -1*/, bool 
 
 	if (!test) {
 		int32_t index = cylinder->getThingIndex(item);
-		auto location = std::source_location::current();
-		std::cout << "Game::InternalRemoveItem called from : " << location.function_name() << "  \n";
-		std::cout << "Item up for removal : " << item->getName() << " \n";
 		//remove the item
 		cylinder->removeThing(item, count);
-		std::cout << "Successful removal \n";
 
 		if (item->isRemoved()) {
 			item->onRemoved();
 			if (item->canDecay()) {
 				decayItems->remove(item);
 			}
-			// ReleaseItem(item);
 		}
-
-		if (auto pl = std::dynamic_pointer_cast<Player>(cylinder)) {
-			std::cout << "------------------------------------------------------ \n";
-			std::cout << "Cylinder is a player : " << pl->getName() << " \n";
-			std::cout << "Item for removal : " << item->getName()
-				<< " count to take : " << count
-				<< " current count: " << item->getItemCount() << " \n";
-		}
-
-		if (auto cl = std::dynamic_pointer_cast<Container>(cylinder)) {
-			std::cout << "------------------------------------------------------ \n";
-			std::cout << "Cylinder is a container : " << cl->getName() << " \n";
-			std::cout << "Item for removal : " << item->getName()
-				<< " count to take : " << count
-				<< " current count: " << item->getItemCount() << " \n";
-		}
-
 		cylinder->postRemoveNotification(item, nullptr, index);
 	}
 

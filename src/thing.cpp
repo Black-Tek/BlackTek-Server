@@ -16,10 +16,10 @@ const Position& Thing::getPosition() const
 	return tile->getPosition();
 }
 
-std::shared_ptr<Tile> Thing::getTile() {
+TilePtr Thing::getTile() {
 	return nullptr;
 }
 
-std::shared_ptr<const Tile> Thing::getTile() const {
+TileConstPtr Thing::getTile() const {
 	return nullptr;
 }

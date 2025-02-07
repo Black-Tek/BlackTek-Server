@@ -326,7 +326,7 @@ TilePtr Item::getTile()
 	return std::dynamic_pointer_cast<Tile>(cylinder);
 }
 
-std::shared_ptr<const Tile> Item::getTile() const
+TileConstPtr Item::getTile() const
 {
 	auto cylinder = getTopParent();
 	//get root cylinder
