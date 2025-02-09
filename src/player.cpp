@@ -963,40 +963,40 @@ int32_t Player::getDefense() const
 	int32_t defenseSkill = getSkillLevel(SKILL_FIST);
 	int32_t defenseValue = 7;
 
-	std::optional<ItemConstPtr> leftHand = inventory[CONST_SLOT_LEFT];
-	std::optional<ItemConstPtr> rightHand = inventory[CONST_SLOT_RIGHT];
-	std::optional<ItemConstPtr> shield = std::nullopt;
-	std::optional<ItemConstPtr> weapon = std::nullopt;
+	ItemPtr leftHand = getInventoryItem(CONST_SLOT_LEFT);
+	ItemPtr rightHand = getInventoryItem(CONST_SLOT_RIGHT);
+	ItemPtr shield;
+	ItemPtr weapon;
 
 	// We aren't going to waste precious CPU cycles or memory trying to determine which item
 	// has highest defense if you happen to have two shields, two quivers, or a shield
 	// and a quiver in each hand... in this case we are just gonna end up using left hand
 	// So if this is something that concerns you, you can go back to looping and using switches
 	// and storing variables to keep track of highest defense and do the math and all that yourself.
-	if (leftHand && (leftHand.value()->getWeaponType() == WEAPON_SHIELD || leftHand.value()->getWeaponType() == WEAPON_QUIVER))
+	if (leftHand && (leftHand->getWeaponType() == WEAPON_SHIELD || leftHand->getWeaponType() == WEAPON_QUIVER))
 	{
-		shield = leftHand.value();
+		shield = leftHand;
 		if (rightHand)
 		{
-			weapon = rightHand.value();
+			weapon = rightHand;
 		}
 	}
-	else if (rightHand && (rightHand.value()->getWeaponType() == WEAPON_SHIELD || rightHand.value()->getWeaponType() == WEAPON_QUIVER))
+	else if (rightHand && (rightHand->getWeaponType() == WEAPON_SHIELD || rightHand->getWeaponType() == WEAPON_QUIVER))
 	{
-		shield = rightHand.value();
+		shield = rightHand;
 		if (leftHand)
 		{
-			weapon = leftHand.value();
+			weapon = leftHand;
 		}
 	}
 	
-	if (weapon.has_value()) {
-		defenseValue = weapon.value()->getDefense() + weapon.value()->getExtraDefense();
-		defenseSkill = getWeaponSkill(weapon.value());
+	if (weapon) {
+		defenseValue = weapon->getDefense() + weapon->getExtraDefense();
+		defenseSkill = getWeaponSkill(weapon);
 	}
 
-	if (shield.has_value()) {
-		defenseValue = weapon != nullptr ? shield.value()->getDefense() + weapon.value()->getExtraDefense() : shield.value()->getDefense();
+	if (shield) {
+		defenseValue = weapon != nullptr ? shield->getDefense() + weapon->getExtraDefense() : shield->getDefense();
 		defenseSkill = getSkillLevel(SKILL_SHIELD);
 	}
 
