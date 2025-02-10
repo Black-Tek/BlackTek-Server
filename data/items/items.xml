@@ -9375,9 +9375,7 @@
     </item>
     <item fromid="5852" toid="5853" article="a" name="weapon rack" />
     <item fromid="5854" toid="5855" article="a" name="lance" />
-    <item fromid="5856" toid="5857" article="a" name="sword">
-        <attribute key="imbuementslots" value="2" />
-    </item>
+    <item fromid="5856" toid="5857" article="a" name="sword"/>
     <item fromid="5858" toid="5859" article="a" name="scimitar" />
     <item fromid="5860" toid="5861" article="an" name="armor rack" />
     <item fromid="5862" toid="5863" article="an" name="armor" />
