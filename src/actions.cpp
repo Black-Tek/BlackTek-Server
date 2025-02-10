@@ -515,7 +515,7 @@ bool Actions::useItemEx(const PlayerPtr& player, const Position& fromPos, const 
 	}
 
 	if (g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
-		if (const auto& houseTile = std::static_pointer_cast<const HouseTile>(item->getTile())) {
+		if (const auto& houseTile = std::dynamic_pointer_cast<HouseTile>(item->getTile())) {
 			if (!item->getTopParent()->getCreature() && !houseTile->getHouse()->isInvited(player)) {
 				player->sendCancelMessage(RETURNVALUE_PLAYERISNOTINVITED);
 				return false;
