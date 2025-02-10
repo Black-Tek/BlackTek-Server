@@ -11,6 +11,7 @@ using ThingConstPtr = std::shared_ptr<const Thing>;
 class Creature;
 using CreaturePtr = std::shared_ptr<Creature>;
 using CreatureConstPtr = std::shared_ptr<const Creature>;
+using CreatureWeakPtr = std::weak_ptr<Creature>;
 
 class Player;
 using PlayerPtr = std::shared_ptr<Player>;

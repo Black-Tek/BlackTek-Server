@@ -127,12 +127,12 @@ void Creature::onThink(uint32_t interval)
 		updateMapCache();
 	}
 
-	if (followCreature && master != followCreature && !canSeeCreature(followCreature)) {
-		onCreatureDisappear(followCreature, false);
+	if (getFollowCreature() && getMaster() != getFollowCreature() && !canSeeCreature(getFollowCreature())) {
+		onCreatureDisappear(getFollowCreature(), false);
 	}
 
-	if (attackedCreature && master != attackedCreature && !canSeeCreature(attackedCreature)) {
-		onCreatureDisappear(attackedCreature, false);
+	if (getAttackedCreature() && getMaster() != getAttackedCreature() && !canSeeCreature(getAttackedCreature())) {
+		onCreatureDisappear(getAttackedCreature(), false);
 	}
 
 	blockTicks += interval;
@@ -141,7 +141,7 @@ void Creature::onThink(uint32_t interval)
 		blockTicks = 0;
 	}
 
-	if (followCreature) {
+	if (getFollowCreature()) {
 		walkUpdateTicks += interval;
 		if (forceUpdateFollowPath || walkUpdateTicks >= 2000) {
 			walkUpdateTicks = 0;
@@ -164,14 +164,14 @@ void Creature::onThink(uint32_t interval)
 
 void Creature::onAttacking(uint32_t interval)
 {
-	if (!attackedCreature) {
+	if (!getAttackedCreature()) {
 		return;
 	}
 
 	onAttacked();
-	attackedCreature->onAttacked();
+	getAttackedCreature()->onAttacked();
 
-	if (g_game.isSightClear(getPosition(), attackedCreature->getPosition(), true)) {
+	if (g_game.isSightClear(getPosition(), getAttackedCreature()->getPosition(), true)) {
 		doAttacking(interval);
 	}
 }
@@ -447,12 +447,12 @@ void Creature::onRemoveCreature(const CreaturePtr& creature, bool)
 
 void Creature::onCreatureDisappear(const CreatureConstPtr& creature, bool isLogout)
 {
-	if (attackedCreature == creature) {
+	if (getAttackedCreature() == creature) {
 		setAttackedCreature(nullptr);
 		onAttackedCreatureDisappear(isLogout);
 	}
 
-	if (followCreature == creature) {
+	if (getFollowCreature() == creature) {
 		setFollowCreature(nullptr);
 		onFollowCreatureDisappear(isLogout);
 	}
@@ -460,15 +460,15 @@ void Creature::onCreatureDisappear(const CreatureConstPtr& creature, bool isLogo
 
 void Creature::onChangeZone(ZoneType_t zone)
 {
-	if (attackedCreature && zone == ZONE_PROTECTION) {
-		onCreatureDisappear(attackedCreature, false);
+	if (getAttackedCreature() && zone == ZONE_PROTECTION) {
+		onCreatureDisappear(getAttackedCreature(), false);
 	}
 }
 
 void Creature::onAttackedCreatureChangeZone(ZoneType_t zone)
 {
 	if (zone == ZONE_PROTECTION) {
-		onCreatureDisappear(attackedCreature, false);
+		onCreatureDisappear(getAttackedCreature(), false);
 	}
 }
 
@@ -610,9 +610,9 @@ void Creature::onCreatureMove(const CreaturePtr& creature,
 		}
 	}
 
-	if (creature == followCreature || (creature == shared_from_this() && followCreature)) {
+	if (creature == getFollowCreature() || (creature == shared_from_this() && getFollowCreature())) {
 		if (hasFollowPath) {
-			if ((creature == followCreature) && listWalkDir.empty()) {
+			if ((creature == getFollowCreature()) && listWalkDir.empty()) {
 				isUpdatingPath = false;
 				goToFollowCreature();
 			} else {
@@ -620,14 +620,14 @@ void Creature::onCreatureMove(const CreaturePtr& creature,
 			}
 		}
 
-		if (newPos.z != oldPos.z || !canSee(followCreature->getPosition())) {
-			onCreatureDisappear(followCreature, false);
+		if (newPos.z != oldPos.z || !canSee(getFollowCreature()->getPosition())) {
+			onCreatureDisappear(getFollowCreature(), false);
 		}
 	}
 
-	if (creature == attackedCreature || (creature == shared_from_this() && attackedCreature)) {
-		if (newPos.z != oldPos.z || !canSee(attackedCreature->getPosition())) {
-			onCreatureDisappear(attackedCreature, false);
+	if (creature == getAttackedCreature() || (creature == shared_from_this() && getAttackedCreature())) {
+		if (newPos.z != oldPos.z || !canSee(getAttackedCreature()->getPosition())) {
+			onCreatureDisappear(getAttackedCreature(), false);
 		} else {
 			if (hasExtraSwing()) {
 				//our target is moving lets see if we can get in hit
@@ -635,7 +635,7 @@ void Creature::onCreatureMove(const CreaturePtr& creature,
 			}
 
 			if (newTile->getZone() != oldTile->getZone()) {
-				onAttackedCreatureChangeZone(attackedCreature->getZone());
+				onAttackedCreatureChangeZone(getAttackedCreature()->getZone());
 			}
 		}
 	}
@@ -719,7 +719,7 @@ void Creature::onDeath()
 	bool droppedCorpse = dropCorpse(lastHitCreature, mostDamageCreature, lastHitUnjustified, mostDamageUnjustified);
 	death(lastHitCreature);
 
-	if (master) {
+	if (getMaster()) {
 		setMaster(nullptr);
 	}
 
@@ -731,7 +731,7 @@ void Creature::onDeath()
 bool Creature::dropCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr& mostDamageCreature, bool lastHitUnjustified, bool mostDamageUnjustified)
 {
 	if (!lootDrop && getMonster()) {
-		if (master) {
+		if (getMaster()) {
 			//scripting event - onDeath
 			const CreatureEventList& deathEvents = getCreatureEvents(CREATURE_EVENT_DEATH);
 			for (CreatureEvent* deathEvent : deathEvents) {
@@ -899,15 +899,15 @@ bool Creature::setAttackedCreature(const CreaturePtr& creature)
 	if (creature) {
 		const Position& creaturePos = creature->getPosition();
 		if (creaturePos.z != getPosition().z || !canSee(creaturePos)) {
-			attackedCreature = nullptr;
+			attackedCreature.reset();
 			return false;
 		}
 
 		attackedCreature = creature;
-		onAttackedCreature(attackedCreature);
-		attackedCreature->onAttacked();
+		onAttackedCreature(getAttackedCreature());
+		getAttackedCreature()->onAttacked();
 	} else {
-		attackedCreature = nullptr;
+		attackedCreature.reset();
 	}
 
 	for (CreaturePtr summon : summons) {
@@ -927,21 +927,21 @@ void Creature::getPathSearchParams(const CreatureConstPtr&, FindPathParams& fpp)
 
 void Creature::goToFollowCreature()
 {
-	if (followCreature) {
+	if (getFollowCreature()) {
 		FindPathParams fpp;
-		getPathSearchParams(followCreature, fpp);
+		getPathSearchParams(getFollowCreature(), fpp);
 
 		auto monster = getMonster();
 		if (monster && !monster->getMaster() && (monster->isFleeing() || fpp.maxTargetDist > 1)) {
 			Direction dir = DIRECTION_NONE;
 
 			if (monster->isFleeing()) {
-				monster->getDistanceStep(followCreature->getPosition(), dir, true);
+				monster->getDistanceStep(getFollowCreature()->getPosition(), dir, true);
 			} else { // maxTargetDist > 1
-				if (!monster->getDistanceStep(followCreature->getPosition(), dir)) {
+				if (!monster->getDistanceStep(getFollowCreature()->getPosition(), dir)) {
 					// if we can't get anything then let the A* calculate
 					listWalkDir.clear();
-					if (getPathTo(followCreature->getPosition(), listWalkDir, fpp)) {
+					if (getPathTo(getFollowCreature()->getPosition(), listWalkDir, fpp)) {
 						hasFollowPath = true;
 						startAutoWalk();
 					} else {
@@ -960,7 +960,7 @@ void Creature::goToFollowCreature()
 			}
 		} else {
 			listWalkDir.clear();
-			if (getPathTo(followCreature->getPosition(), listWalkDir, fpp)) {
+			if (getPathTo(getFollowCreature()->getPosition(), listWalkDir, fpp)) {
 				hasFollowPath = true;
 				startAutoWalk();
 			} else {
@@ -969,19 +969,19 @@ void Creature::goToFollowCreature()
 		}
 	}
 
-	onFollowCreatureComplete(followCreature);
+	onFollowCreatureComplete(getFollowCreature());
 }
 
 bool Creature::setFollowCreature(const CreaturePtr& creature)
 {
 	if (creature) {
-		if (followCreature == creature) {
+		if (getFollowCreature() == creature) {
 			return true;
 		}
 
 		const Position& creaturePos = creature->getPosition();
 		if (creaturePos.z != getPosition().z || !canSee(creaturePos)) {
-			followCreature = nullptr;
+			followCreature.reset();
 			return false;
 		}
 
@@ -1001,7 +1001,7 @@ bool Creature::setFollowCreature(const CreaturePtr& creature)
 		}
 	} else {
 		isUpdatingPath = false;
-		followCreature = nullptr;
+		followCreature.reset();
 	}
 
 	onFollowCreature(creature);
@@ -1121,8 +1121,8 @@ void Creature::onAttackedCreatureDrainHealth(const CreaturePtr& target, int32_t 
 
 bool Creature::onKilledCreature(const CreaturePtr& target, bool)
 {
-	if (master) {
-		master->onKilledCreature(target);
+	if (getMaster()) {
+		getMaster()->onKilledCreature(target);
 	}
 
 	//scripting event - onKill
@@ -1135,12 +1135,12 @@ bool Creature::onKilledCreature(const CreaturePtr& target, bool)
 
 void Creature::onGainExperience(uint64_t gainExp, const CreaturePtr& target)
 {
-	if (gainExp == 0 || !master) {
+	if (gainExp == 0 || !getMaster()) {
 		return;
 	}
 
 	gainExp /= 2;
-	master->onGainExperience(gainExp, target);
+	getMaster()->onGainExperience(gainExp, target);
 
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, position, false, true);
@@ -1163,7 +1163,7 @@ void Creature::onGainExperience(uint64_t gainExp, const CreaturePtr& target)
 }
 
 bool Creature::setMaster(const CreaturePtr& newMaster) {
-	if (!newMaster && !master) {
+	if (!newMaster && !getMaster()) {
 		return false;
 	}
 
@@ -1171,7 +1171,7 @@ bool Creature::setMaster(const CreaturePtr& newMaster) {
 		newMaster->summons.push_back(std::dynamic_pointer_cast<Creature>(shared_from_this()));
 	}
 
-	CreaturePtr oldMaster = master;
+	CreaturePtr oldMaster = getMaster();
 	master = newMaster;
 
 	if (oldMaster) {

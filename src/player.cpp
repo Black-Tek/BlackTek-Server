@@ -1552,7 +1552,7 @@ void Player::sendPing()
 	}
 
 	int64_t noPongTime = timeNow - lastPong;
-	if ((hasLostConnection || noPongTime >= 7000) && attackedCreature && attackedCreature->getPlayer()) {
+	if ((hasLostConnection || noPongTime >= 7000) && getAttackedCreature() && getAttackedCreature()->getPlayer()) {
 		setAttackedCreature(nullptr);
 	}
 
@@ -1810,7 +1810,7 @@ void Player::onFollowCreatureDisappear(const bool isLogout)
 void Player::onChangeZone(const ZoneType_t zone)
 {
 	if (zone == ZONE_PROTECTION) {
-		if (attackedCreature && !hasFlag(PlayerFlag_IgnoreProtectionZone)) {
+		if (getAttackedCreature() && !hasFlag(PlayerFlag_IgnoreProtectionZone)) {
 			setAttackedCreature(nullptr);
 			onAttackedCreatureDisappear(false);
 		}
@@ -1839,7 +1839,7 @@ void Player::onAttackedCreatureChangeZone(const ZoneType_t zone)
 			onAttackedCreatureDisappear(false);
 		}
 	} else if (zone == ZONE_NOPVP) {
-		if (attackedCreature->getPlayer()) {
+		if (getAttackedCreature()->getPlayer()) {
 			if (!hasFlag(PlayerFlag_IgnoreProtectionZone)) {
 				setAttackedCreature(nullptr);
 				onAttackedCreatureDisappear(false);
@@ -1848,7 +1848,7 @@ void Player::onAttackedCreatureChangeZone(const ZoneType_t zone)
 	} else if (zone == ZONE_NORMAL) {
 		//attackedCreature can leave a pvp zone if not pzlocked
 		if (g_game.getWorldType() == WORLD_TYPE_NO_PVP) {
-			if (attackedCreature->getPlayer()) {
+			if (getAttackedCreature()->getPlayer()) {
 				setAttackedCreature(nullptr);
 				onAttackedCreatureDisappear(false);
 			}
@@ -1956,7 +1956,7 @@ void Player::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile,
 {
 	Creature::onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
 
-	if (hasFollowPath && (creature == followCreature || (creature == this->getPlayer() && followCreature))) {
+	if (hasFollowPath && (creature == getFollowCreature() || (creature == this->getPlayer() && getFollowCreature()))) {
 		isUpdatingPath = false;
 		g_dispatcher.addTask(createTask([id = getID()]() { g_game.updateCreatureWalk(id); }));
 	}
@@ -3882,11 +3882,11 @@ bool Player::setAttackedCreature(const CreaturePtr& creature)
 	}
 
 	if (chaseMode && creature) {
-		if (followCreature != creature) {
+		if (getFollowCreature() != creature) {
 			//chase opponent
 			setFollowCreature(creature);
 		}
-	} else if (followCreature) {
+	} else if (getFollowCreature()) {
 		setFollowCreature(nullptr);
 	}
 
@@ -3905,7 +3905,7 @@ void Player::goToFollowCreature()
 
 		Creature::goToFollowCreature();
 
-		if (followCreature && !hasFollowPath) {
+		if (getFollowCreature() && !hasFollowPath) {
 			lastFailedFollow = OTSYS_TIME();
 		}
 	}
@@ -3937,14 +3937,14 @@ void Player::doAttacking(uint32_t)
 
 		if (weapon) {
 			if (!weapon->interruptSwing()) {
-				result = weapon->useWeapon(this->getPlayer(), tool, attackedCreature);
+				result = weapon->useWeapon(this->getPlayer(), tool, getAttackedCreature());
 			} else if (!classicSpeed && !canDoAction()) {
 				delay = getNextActionTime();
 			} else {
-				result = weapon->useWeapon(this->getPlayer(), tool, attackedCreature);
+				result = weapon->useWeapon(this->getPlayer(), tool, getAttackedCreature());
 			}
 		} else {
-			result = Weapon::useFist(this->getPlayer(), attackedCreature);
+			result = Weapon::useFist(this->getPlayer(), getAttackedCreature());
 		}
 
 		SchedulerTask* task = createSchedulerTask(std::max<uint32_t>(SCHEDULER_MINTICKS, delay), [id = getID()]() { g_game.checkCreatureAttack(id); });
@@ -3986,11 +3986,11 @@ void Player::setChaseMode(const bool mode)
 
 	if (prevChaseMode != chaseMode) {
 		if (chaseMode) {
-			if (!followCreature && attackedCreature) {
+			if (!getFollowCreature() && getAttackedCreature()) {
 				//chase opponent
-				setFollowCreature(attackedCreature);
+				setFollowCreature(getAttackedCreature());
 			}
-		} else if (attackedCreature) {
+		} else if (getAttackedCreature()) {
 			setFollowCreature(nullptr);
 			cancelNextWalk = true;
 		}

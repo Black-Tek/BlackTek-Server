@@ -305,7 +305,11 @@ class Creature : virtual public Thing, public SharedObject
 
 		//follow functions
 		CreaturePtr getFollowCreature() const {
-			return followCreature;
+			if (auto f_target = followCreature.lock())
+			{
+				return f_target;
+			}
+			return nullptr;
 		}
 	
 		virtual bool setFollowCreature(const CreaturePtr& creature);
@@ -315,8 +319,13 @@ class Creature : virtual public Thing, public SharedObject
 		virtual void onFollowCreatureComplete(const CreatureConstPtr&) {}
 
 		//combat functions
-		CreaturePtr getAttackedCreature() {
-			return attackedCreature;
+		CreaturePtr getAttackedCreature() 
+		{
+			if (auto a_target = attackedCreature.lock())
+			{
+				return a_target;
+			}
+			return nullptr;
 		}
 		virtual bool setAttackedCreature(const CreaturePtr& creature);
 		virtual BlockType_t blockHit(const CreaturePtr& attacker, CombatType_t combatType, int32_t& damage,
@@ -325,18 +334,21 @@ class Creature : virtual public Thing, public SharedObject
 		bool setMaster(const CreaturePtr& newMaster);
 
 		void removeMaster() {
-			if (master) {
+			if (master.lock()) {
 				master.reset();
 			}
 		}
 
 		bool isSummon() const {
-			// could use an optional here
-			return master != nullptr;
+			return master.lock() != nullptr;
 		}
 	
 		CreaturePtr getMaster() const {
-			return master;
+			if (auto owner = master.lock())
+			{
+				return owner;
+			}
+			return nullptr;
 		}
 
 		const std::list<CreaturePtr>& getSummons() const {
@@ -572,9 +584,9 @@ class Creature : virtual public Thing, public SharedObject
 		std::vector<Direction> listWalkDir;
 
 		TileWeakPtr tile;
-		CreaturePtr attackedCreature = nullptr;
-		CreaturePtr master = nullptr;
-		CreaturePtr followCreature = nullptr;
+		CreatureWeakPtr attackedCreature;
+		CreatureWeakPtr master;
+		CreatureWeakPtr followCreature;
 
 		uint64_t lastStep = 0;
 		uint32_t id = 0;

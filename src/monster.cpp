@@ -258,8 +258,8 @@ void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile
 		updateIdleStatus();
 
 		if (!isSummon()) {
-			if (followCreature) {
-				const Position& followPosition = followCreature->getPosition();
+			if (getFollowCreature()) {
+				const Position& followPosition = getFollowCreature()->getPosition();
 				const Position& position = getPosition();
 
 				const int32_t offset_x = Position::getDistanceX(followPosition, position);
@@ -270,7 +270,7 @@ void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile
 
 					if (const auto& tile = g_game.map.getTile(checkPosition)) {
 						const auto& topCreature = tile->getTopCreature();
-						if (topCreature && followCreature != topCreature && isOpponent(topCreature)) {
+						if (topCreature && getFollowCreature() != topCreature && isOpponent(topCreature)) {
 							selectTarget(topCreature);
 						}
 					}
@@ -495,7 +495,7 @@ bool Monster::searchTarget(TargetSearchType_t searchType /*= TARGETSEARCH_DEFAUL
 	const Position& myPos = getPosition();
 
 	for (const auto& creature : targetList) {
-		if (followCreature != creature && isTarget(creature)) {
+		if (getFollowCreature() != creature && isTarget(creature)) {
 			if (searchType == TARGETSEARCH_RANDOM || canUseAttack(myPos, creature)) {
 				resultList.push_back(creature);
 			}
@@ -564,7 +564,7 @@ bool Monster::searchTarget(TargetSearchType_t searchType /*= TARGETSEARCH_DEFAUL
 
 	//lets just pick the first target in the list
 	for (const auto& target : targetList) {
-		if (followCreature != target && selectTarget(target)) {
+		if (getFollowCreature() != target && selectTarget(target)) {
 			return true;
 		}
 	}
@@ -735,25 +735,25 @@ void Monster::onThink(const uint32_t interval)
 			addEventWalk();
 
 			if (isSummon()) {
-				if (!attackedCreature) {
+				if (!getAttackedCreature()) {
 					if (getMaster() && getMaster()->getAttackedCreature()) {
 						//This happens if the monster is summoned during combat
 						selectTarget(getMaster()->getAttackedCreature());
-					} else if (getMaster() != followCreature) {
+					} else if (getMaster() != getFollowCreature()) {
 						//Our master has not ordered us to attack anything, lets follow him around instead.
 						setFollowCreature(getMaster());
 					}
-				} else if (attackedCreature == this->getCreature()) {
+				} else if (getAttackedCreature() == this->getCreature()) {
 					setFollowCreature(nullptr);
-				} else if (followCreature != attackedCreature) {
+				} else if (getFollowCreature() != getAttackedCreature()) {
 					//This happens just after a master orders an attack, so lets follow it as well.
-					setFollowCreature(attackedCreature);
+					setFollowCreature(getAttackedCreature());
 				}
 			} else if (!targetList.empty()) {
-				if (!followCreature || !hasFollowPath) {
+				if (!getFollowCreature() || !hasFollowPath) {
 					searchTarget();
 				} else if (isFleeing()) {
-					if (attackedCreature && !canUseAttack(getPosition(), attackedCreature)) {
+					if (getAttackedCreature() && !canUseAttack(getPosition(), getAttackedCreature())) {
 						searchTarget(TARGETSEARCH_ATTACKRANGE);
 					}
 				}
@@ -768,7 +768,7 @@ void Monster::onThink(const uint32_t interval)
 
 void Monster::doAttacking(const uint32_t interval)
 {
-	if (!attackedCreature || (isSummon() && attackedCreature == this->getCreature())) {
+	if (!getAttackedCreature() || (isSummon() && getAttackedCreature() == this->getCreature())) {
 		return;
 	}
 
@@ -777,12 +777,12 @@ void Monster::doAttacking(const uint32_t interval)
 	attackTicks += interval;
 
 	const Position& myPos = getPosition();
-	const Position& targetPos = attackedCreature->getPosition();
+	const Position& targetPos = getAttackedCreature()->getPosition();
 
 	for (const spellBlock_t& spellBlock : mType->info.attackSpells) {
 		bool inRange = false;
 
-		if (attackedCreature == nullptr) {
+		if (getAttackedCreature() == nullptr) {
 			break;
 		}
 
@@ -795,7 +795,7 @@ void Monster::doAttacking(const uint32_t interval)
 
 				minCombatValue = spellBlock.minCombatValue;
 				maxCombatValue = spellBlock.maxCombatValue;
-				spellBlock.spell->castSpell(this->getCreature(), attackedCreature);
+				spellBlock.spell->castSpell(this->getCreature(), getAttackedCreature());
 
 				if (spellBlock.isMelee) {
 					lastMeleeAttack = OTSYS_TIME();
@@ -1153,14 +1153,14 @@ bool Monster::getNextStep(Direction& direction, uint32_t& flags)
 	}
 
 	bool result = false;
-	if (!walkingToSpawn && (!followCreature || !hasFollowPath) && (!isSummon() || !isMasterInRange)) {
+	if (!walkingToSpawn && (!getFollowCreature() || !hasFollowPath) && (!isSummon() || !isMasterInRange)) {
 		if (getTimeSinceLastMove() >= 1000) {
 			randomStepping = true;
 			// choose a random direction
 			result = getRandomStep(getPosition(), direction);
 		}
 	}
-	else if ((isSummon() && isMasterInRange) || followCreature || walkingToSpawn) {
+	else if ((isSummon() && isMasterInRange) || getFollowCreature() || walkingToSpawn) {
 		if (!hasFollowPath && getMaster() && !getMaster()->getPlayer()) {
 			randomStepping = true;
 			result = getRandomStep(getPosition(), direction);
@@ -1177,7 +1177,7 @@ bool Monster::getNextStep(Direction& direction, uint32_t& flags)
 					updateMapCache();
 				}
 				// target dancing
-				if (attackedCreature && attackedCreature == followCreature) {
+				if (getAttackedCreature() && getAttackedCreature() == getFollowCreature()) {
 					if (isFleeing()) {
 						result = getDanceStep(getPosition(), direction, false, false);
 					}
@@ -1219,10 +1219,10 @@ bool Monster::getRandomStep(const Position& creaturePos, Direction& direction)
 bool Monster::getDanceStep(const Position& creaturePos, Direction& direction,
                            const bool keepAttack /*= true*/, const bool keepDistance /*= true*/)
 {
-	const bool canDoAttackNow = canUseAttack(creaturePos, attackedCreature);
+	const bool canDoAttackNow = canUseAttack(creaturePos, getAttackedCreature());
 
-	assert(attackedCreature != nullptr);
-	const Position& centerPos = attackedCreature->getPosition();
+	assert(getAttackedCreature() != nullptr);
+	const Position& centerPos = getAttackedCreature()->getPosition();
 
 	const int_fast32_t offset_x = Position::getOffsetX(creaturePos, centerPos);
 	const int_fast32_t offset_y = Position::getOffsetY(creaturePos, centerPos);
@@ -1240,7 +1240,7 @@ bool Monster::getDanceStep(const Position& creaturePos, Direction& direction,
 			bool result = true;
 
 			if (keepAttack) {
-				result = (!canDoAttackNow || canUseAttack(Position(creaturePos.x, creaturePos.y - 1, creaturePos.z), attackedCreature));
+				result = (!canDoAttackNow || canUseAttack(Position(creaturePos.x, creaturePos.y - 1, creaturePos.z), getAttackedCreature()));
 			}
 
 			if (result) {
@@ -1254,7 +1254,7 @@ bool Monster::getDanceStep(const Position& creaturePos, Direction& direction,
 			bool result = true;
 
 			if (keepAttack) {
-				result = (!canDoAttackNow || canUseAttack(Position(creaturePos.x, creaturePos.y + 1, creaturePos.z), attackedCreature));
+				result = (!canDoAttackNow || canUseAttack(Position(creaturePos.x, creaturePos.y + 1, creaturePos.z), getAttackedCreature()));
 			}
 
 			if (result) {
@@ -1268,7 +1268,7 @@ bool Monster::getDanceStep(const Position& creaturePos, Direction& direction,
 			bool result = true;
 
 			if (keepAttack) {
-				result = (!canDoAttackNow || canUseAttack(Position(creaturePos.x + 1, creaturePos.y, creaturePos.z), attackedCreature));
+				result = (!canDoAttackNow || canUseAttack(Position(creaturePos.x + 1, creaturePos.y, creaturePos.z), getAttackedCreature()));
 			}
 
 			if (result) {
@@ -1282,7 +1282,7 @@ bool Monster::getDanceStep(const Position& creaturePos, Direction& direction,
 			bool result = true;
 
 			if (keepAttack) {
-				result = (!canDoAttackNow || canUseAttack(Position(creaturePos.x - 1, creaturePos.y, creaturePos.z), attackedCreature));
+				result = (!canDoAttackNow || canUseAttack(Position(creaturePos.x - 1, creaturePos.y, creaturePos.z), getAttackedCreature()));
 			}
 
 			if (result) {
@@ -1979,9 +1979,9 @@ void Monster::updateLookDirection()
 {
 	Direction newDir = getDirection();
 
-	if (attackedCreature) {
+	if (getAttackedCreature()) {
 		const Position& pos = getPosition();
-		const Position& attackedCreaturePos = attackedCreature->getPosition();
+		const Position& attackedCreaturePos = getAttackedCreature()->getPosition();
 		const int_fast32_t offsetx = Position::getOffsetX(attackedCreaturePos, pos);
 		const int_fast32_t offsety = Position::getOffsetY(attackedCreaturePos, pos);
 
@@ -2111,7 +2111,7 @@ void Monster::getPathSearchParams(const CreatureConstPtr& creature, FindPathPara
 
 bool Monster::canPushItems() const
 {
-	if (const auto& master = this->master ? this->master->getMonster() : nullptr) {
+	if (const auto& master = getMaster() ? getMaster()->getMonster() : nullptr) {
 		return master->mType->info.canPushItems;
 	}
 
