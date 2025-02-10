@@ -378,7 +378,7 @@ void Spawn::cleanup()
 	auto it = spawnedMap.begin();
 	while (it != spawnedMap.end()) {
 		const auto& monster = it->second;
-		if (monster->isRemoved()) {
+		if (!monster || monster->isRemoved()) {
 			it = spawnedMap.erase(it);
 		} else {
 			++it;
