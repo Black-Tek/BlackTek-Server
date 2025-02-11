@@ -19,6 +19,9 @@ BlackTek Server's origins started first with [OpenTibia](https://github.com/open
 <br> Having had my fun growing up tinkering with OpenTibia servers like TFS, I always wished they were not built so strict (explicitly emulating tibia), and allowed much more custom types of things. Since that never happened, I decided to do it myself! <br> 
 <br> BlackTek Server's starting codebase is [The Forgottenserver 1.4.2](https://github.com/otland/forgottenserver/releases/tag/v1.4.2), and BlackTek Server [1.0]() and [1.1]() were built to be almost completely backwards compatible with TFS 1.4.2.
 
+## BlackTek Goals
+If you would like to get an understanding for the future plans of BlackTek Server, take a look [here](https://github.com/Black-Tek/BlackTek-Server/wiki/Official-To%E2%80%90Do-List)
+
 ## Getting Started
 ____________
 If you wish to get started immediately you may download all the binaries along with the datapack and other required files from our [Release Section](https://github.com/Black-Tek/BlackTek-Server/releases).
