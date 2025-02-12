@@ -2092,43 +2092,66 @@ void ProtocolGame::sendQuestLine(const Quest* quest)
 	writeToOutputBuffer(msg);
 }
 
-void ProtocolGame::sendTradeItemRequest(const std::string& traderName, const ItemConstPtr& item, bool ack)
+void ProtocolGame::sendTradeItemRequest(const std::string& traderName, const ItemPtr& item, bool ack)
 {
-	NetworkMessage msg;
-
-	if (ack) {
-		msg.addByte(0x7D);
-	} else {
-		msg.addByte(0x7E);
+	if (!item) {
+		std::cout << "Error: item is null!" << std::endl;
+		return;
 	}
 
+	NetworkMessage msg;
+	msg.addByte(ack ? 0x7D : 0x7E);
 	msg.addString(traderName);
 
-	if (const auto& tradeContainer = item->getContainer()) {
-		std::list<ContainerConstPtr> listContainer {tradeContainer};
-		std::list<ItemConstPtr> itemList {tradeContainer};
-		while (!listContainer.empty()) {
-			const auto& container = listContainer.front();
-			listContainer.pop_front();
+	if (auto tradeContainer = item->getContainer()) {
 
-			for (const auto& containerItem : container->getItemList()) {
-				if (const auto& tmpContainer = containerItem->getContainer()) {
-					listContainer.push_back(tmpContainer);
+		std::vector<ContainerPtr> containerStack;
+		std::vector<ItemPtr> itemList;
+
+		itemList.push_back(item);
+
+		if (!tradeContainer->getItemList().empty()) {
+			containerStack.push_back(tradeContainer);
+		}
+
+		while (!containerStack.empty()) {
+			auto container = containerStack.back();
+			containerStack.pop_back();
+
+			if (!container) {
+				continue;
+			}
+
+			for (auto& containerItem : container->getItemList()) {
+				if (!containerItem) {
+					continue;
 				}
+
+				if (auto tmpContainer = containerItem->getContainer()) {
+					containerStack.push_back(tmpContainer);
+				}
+
 				itemList.push_back(containerItem);
 			}
 		}
 
-		msg.addByte(itemList.size());
+		msg.addByte(static_cast<uint8_t>(itemList.size()));
+
 		for (const auto& listItem : itemList) {
-			msg.addItem(listItem);
+			if (listItem) {
+				msg.addItem(listItem);
+			}
 		}
-	} else {
+	}
+	else {
 		msg.addByte(0x01);
 		msg.addItem(item);
 	}
+
 	writeToOutputBuffer(msg);
 }
+
+
 
 void ProtocolGame::sendCloseTrade()
 {

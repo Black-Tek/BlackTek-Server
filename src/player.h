@@ -1233,7 +1233,7 @@ class Player final : public Creature, public Cylinder
 			}
 		}
 	
-		void sendTradeItemRequest(const std::string& traderName, const ItemConstPtr& item, bool ack) const {
+		void sendTradeItemRequest(const std::string& traderName, const ItemPtr& item, bool ack) const {
 			if (client) {
 				client->sendTradeItemRequest(traderName, item, ack);
 			}

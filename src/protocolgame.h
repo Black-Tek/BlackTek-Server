@@ -202,7 +202,7 @@ class ProtocolGame final : public Protocol
 		void sendMarketCancelOffer(const MarketOfferEx& offer);
 		void sendMarketBrowseOwnHistory(const HistoryMarketOfferList& buyOffers, const HistoryMarketOfferList& sellOffers);
 		void sendMarketDetail(uint16_t itemId);
-		void sendTradeItemRequest(const std::string& traderName, const ItemConstPtr& item, bool ack);
+		void sendTradeItemRequest(const std::string& traderName, const ItemPtr& item, bool ack);
 		void sendCloseTrade();
 
 		void sendTextWindow(uint32_t windowTextId, const ItemPtr& item, uint16_t maxlen, bool canWrite);
