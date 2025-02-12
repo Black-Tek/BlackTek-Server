@@ -48,6 +48,7 @@ class Container : public Item, public Cylinder
 		explicit Container(uint16_t type);
 		Container(uint16_t type, uint16_t size, bool unlocked = true, bool pagination = false);
 		explicit Container(const TilePtr& tile);
+		void setParentToTileItems(const TilePtr& tile);
 		~Container() override;
 
 		// non-copyable

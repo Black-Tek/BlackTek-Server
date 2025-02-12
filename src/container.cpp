@@ -19,18 +19,23 @@ Container::Container(uint16_t type, uint16_t size, bool unlocked /*= true*/, boo
 	pagination(pagination)
 {}
 
-Container::Container(const TilePtr& tile) : Container(ITEM_BROWSEFIELD, 30, false, true)
+Container::Container(const TilePtr& tile) : Container(ITEM_BROWSEFIELD, 30, false, true) { setParent(tile); }
+
+void Container::setParentToTileItems(const TilePtr& tile)
 {
-	if (const auto& itemVector = tile->getItemList()) {
-		for (const auto& item : *itemVector) {
-			if ((item->getContainer() || item->hasProperty(CONST_PROP_MOVEABLE)) && !item->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)) {
+	auto itemVector = tile->getItemList();
+	if (itemVector) {
+		auto self = getContainer();
+		for (const ItemPtr& item : *itemVector) {
+			if ((item->getContainer() || item->hasProperty(CONST_PROP_MOVEABLE)) &&
+				!item->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)) {
 				itemlist.push_front(item);
-				item->setParent(getContainer());
+				item->setParent(self);
 			}
 		}
 	}
-	setParent(tile);
 }
+
 
 Container::~Container()
 {

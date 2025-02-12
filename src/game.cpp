@@ -2366,9 +2366,10 @@ void Game::playerMoveUpContainer(const uint32_t playerId, uint8_t cid)
 		if (const auto it = browseFields.find(tile); it == browseFields.end()) {
 			parentContainer = std::make_shared<Container>(tile);
 			browseFields[tile] = parentContainer;
-			g_scheduler.addEvent(createSchedulerTask(30000, [this, position = tile->getPosition()]() { decreaseBrowseFieldRef(position); }));
+			parentContainer->setParentToTileItems(tile);
 		} else {
 			parentContainer = it->second;
+			parentContainer->setParentToTileItems(tile);
 		}
 	}
 
@@ -2523,9 +2524,10 @@ void Game::playerBrowseField(const uint32_t playerId, const Position& pos)
 	if (const auto it = browseFields.find(tile); it == browseFields.end()) {
 		container = std::make_shared<Container>(tile);
 		browseFields[tile] = container;
-		g_scheduler.addEvent(createSchedulerTask(30000, [this, position = tile->getPosition()]() { decreaseBrowseFieldRef(position); }));
+		container->setParentToTileItems(tile);
 	} else {
 		container = it->second;
+		container->setParentToTileItems(tile);
 	}
 
 	const uint8_t dummyContainerId = 0xF - ((pos.x % 3) * 3 + (pos.y % 3));
@@ -5767,19 +5769,6 @@ void Game::addGuild(Guild* guild)
 void Game::removeGuild(uint32_t guildId)
 {
 	guilds.erase(guildId);
-}
-
-void Game::decreaseBrowseFieldRef(const Position& pos)
-{
-	const auto tile = map.getTile(pos.x, pos.y, pos.z);
-	if (!tile) {
-		return;
-	}
-
-	auto it = browseFields.find(tile);
-	if (it != browseFields.end()) {
-
-	}
 }
 
 void Game::internalRemoveItems(const std::vector<ItemPtr>& itemList, uint32_t amount, const bool stackable)
