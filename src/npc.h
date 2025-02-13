@@ -124,6 +124,10 @@ class Npc final : public Creature
 		bool load();
 		void reload();
 
+		const std::string& getRegisteredName() const override {
+			return getName();
+		}
+
 		const std::string& getName() const override {
 			return name;
 		}

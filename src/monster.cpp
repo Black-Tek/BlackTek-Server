@@ -951,8 +951,11 @@ void Monster::onThinkDefense(const uint32_t interval)
 			}
 
 			uint32_t summonCount = 0;
+			std::string lowerSummonName = summonBlock.name;
+			toLowerCaseString(lowerSummonName);
+
 			for (const auto& summon : summons) {
-				if (summon->getName() == summonBlock.name) {
+				if (summon->getRegisteredName() == lowerSummonName) {
 					++summonCount;
 				}
 			}

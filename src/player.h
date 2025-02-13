@@ -160,6 +160,10 @@ class Player final : public Creature, public Cylinder
 
 		static MuteCountMap muteCountMap;
 
+		const std::string& getRegisteredName() const override {
+			return getName();
+		}
+
 		const std::string& getName() const override {
 			return name;
 		}
