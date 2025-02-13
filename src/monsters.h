@@ -163,6 +163,7 @@ class MonsterType
 
 		std::string name;
 		std::string nameDescription;
+		std::string registeredName;
 
 		MonsterInfo info;
 
