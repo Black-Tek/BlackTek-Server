@@ -681,7 +681,6 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags) {
     if (creatures && !creatures->empty() && item->isBlocking() && !hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags)) {
         for (const auto tileCreature : *creatures) {
             if (!tileCreature->isInGhostMode()) {
-				std::cout << "creature detected? issue \n";
                 return RETURNVALUE_NOTENOUGHROOM;
             }
         }
@@ -708,12 +707,10 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags) {
             if (iiType.blockSolid) {
                 if (!iiType.allowPickupable || item->isMagicField() || item->isBlocking()) {
                     if (!item->isPickupable()) {
-						std::cout << "Pickupable issue \n";
                         return RETURNVALUE_NOTENOUGHROOM;
                     }
 
                     if (!iiType.hasHeight || iiType.pickupable || iiType.isBed()) {
-						std::cout << "isBed problem \n";
                         return RETURNVALUE_NOTENOUGHROOM;
                     }
                 }
@@ -732,12 +729,10 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags) {
                 }
 
                 if (!item->isPickupable()) {
-					std::cout << "Pickupable second issue \n";
                     return RETURNVALUE_NOTENOUGHROOM;
                 }
 
                 if (!iiType.hasHeight || iiType.pickupable || iiType.isBed()) {
-					std::cout << "another bed issue \n";
                     return RETURNVALUE_NOTENOUGHROOM;
                 }
             }
