@@ -41,6 +41,7 @@ Monster::Monster(MonsterType* mType) :
 	baseSpeed = mType->info.baseSpeed;
 	internalLight = mType->info.light;
 	hiddenHealth = mType->info.hiddenHealth;
+	targetList.reserve(24);
 
 	// register creature events
 	for (const std::string& scriptName : mType->info.scripts) {
@@ -327,13 +328,21 @@ void Monster::removeFriend(const CreaturePtr& creature)
 	}
 }
 
-void Monster::addTarget(const CreaturePtr& creature, bool pushFront/* = false*/)
+void Monster::addTarget(const CreaturePtr& creature, bool pushFront /* = false */)
 {
 	assert(creature != this->getCreature());
-	if (std::ranges::find(targetList, creature) == targetList.end()) {
+
+	// Ensure the creature is not already in targetList
+	auto it = std::ranges::find_if(targetList, [&](const CreatureWeakPtr& weakTarget) {
+		auto target = weakTarget.lock();
+		return target && target == creature;
+		});
+
+	if (it == targetList.end()) {
 		if (pushFront) {
-			targetList.push_front(creature);
-		} else {
+			targetList.insert(targetList.begin(), creature);
+		}
+		else {
 			targetList.push_back(creature);
 		}
 	}
@@ -341,10 +350,16 @@ void Monster::addTarget(const CreaturePtr& creature, bool pushFront/* = false*/)
 
 void Monster::removeTarget(const CreaturePtr& creature)
 {
-	if (const auto& it = std::ranges::find(targetList, creature); it != targetList.end()) {
+	auto it = std::ranges::find_if(targetList, [&](const CreatureWeakPtr& weakTarget) {
+		auto target = weakTarget.lock();
+		return target && target == creature;
+		});
+
+	if (it != targetList.end()) {
 		targetList.erase(it);
 	}
 }
+
 
 void Monster::updateTargetList()
 {
@@ -353,21 +368,25 @@ void Monster::updateTargetList()
 		const auto& creature = *friendIterator;
 		if (creature->getHealth() <= 0 || !canSee(creature->getPosition())) {
 			friendIterator = friendList.erase(friendIterator);
-		} else {
+		}
+		else {
 			++friendIterator;
 		}
 	}
 
+	// Clean up targetList with expired or invalid targets
 	auto targetIterator = targetList.begin();
 	while (targetIterator != targetList.end()) {
-		const auto& creature = *targetIterator;
-		if (creature->getHealth() <= 0 || !canSee(creature->getPosition())) {
-			targetIterator = targetList.erase(targetIterator);
-		} else {
+		CreaturePtr creature = targetIterator->lock();
+		if (!creature || creature->getHealth() <= 0 || !canSee(creature->getPosition())) {
+			targetIterator = targetList.erase(targetIterator); // Remove expired/null entries
+		}
+		else {
 			++targetIterator;
 		}
 	}
 
+	// Update with new spectators
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, position, true);
 	spectators.erase(this->getCreature());
@@ -494,8 +513,10 @@ bool Monster::searchTarget(TargetSearchType_t searchType /*= TARGETSEARCH_DEFAUL
 	std::list<CreaturePtr> resultList;
 	const Position& myPos = getPosition();
 
-	for (const auto& creature : targetList) {
-		if (getFollowCreature() != creature && isTarget(creature)) {
+	// First, collect valid targets from targetList
+	for (const auto& weakCreature : targetList) {
+		CreaturePtr creature = weakCreature.lock();
+		if (creature && getFollowCreature() != creature && isTarget(creature)) {
 			if (searchType == TARGETSEARCH_RANDOM || canUseAttack(myPos, creature)) {
 				resultList.push_back(creature);
 			}
@@ -503,89 +524,101 @@ bool Monster::searchTarget(TargetSearchType_t searchType /*= TARGETSEARCH_DEFAUL
 	}
 
 	switch (searchType) {
-		case TARGETSEARCH_NEAREST: {
-			CreaturePtr target = nullptr;
-			if (!resultList.empty()) {
-				auto it = resultList.begin();
-				target = *it;
+	case TARGETSEARCH_NEAREST: {
+		CreaturePtr target = nullptr;
 
-				if (++it != resultList.end()) {
-					const Position& targetPosition = target->getPosition();
-					int32_t minRange = Position::getDistanceX(myPos, targetPosition) + Position::getDistanceY(myPos, targetPosition);
-					do {
-						const Position& pos = (*it)->getPosition();
+		if (!resultList.empty()) {
+			auto it = resultList.begin();
+			target = *it;
 
-						const int32_t distance = Position::getDistanceX(myPos, pos) + Position::getDistanceY(myPos, pos);
-						if (distance < minRange) {
-							target = *it;
-							minRange = distance;
-						}
-					} while (++it != resultList.end());
-				}
-			} else {
-				int32_t minRange = std::numeric_limits<int32_t>::max();
-				for (const auto& creature : targetList) {
-					if (!isTarget(creature)) {
-						continue;
-					}
-
-					const Position& pos = creature->getPosition();
-					int32_t distance = Position::getDistanceX(myPos, pos) + Position::getDistanceY(myPos, pos);
+			if (++it != resultList.end()) {
+				const Position& targetPosition = target->getPosition();
+				int32_t minRange = Position::getDistanceX(myPos, targetPosition) + Position::getDistanceY(myPos, targetPosition);
+				do {
+					const Position& pos = (*it)->getPosition();
+					const int32_t distance = Position::getDistanceX(myPos, pos) + Position::getDistanceY(myPos, pos);
 					if (distance < minRange) {
-						target = creature;
+						target = *it;
 						minRange = distance;
 					}
+				} while (++it != resultList.end());
+			}
+		}
+		else {
+			int32_t minRange = std::numeric_limits<int32_t>::max();
+			for (const auto& weakCreature : targetList) {
+				CreaturePtr creature = weakCreature.lock();
+				if (!creature || !isTarget(creature)) {
+					continue;
+				}
+
+				const Position& pos = creature->getPosition();
+				int32_t distance = Position::getDistanceX(myPos, pos) + Position::getDistanceY(myPos, pos);
+				if (distance < minRange) {
+					target = creature;
+					minRange = distance;
 				}
 			}
-
-			if (target && selectTarget(target)) {
-				return true;
-			}
-			break;
 		}
 
-		case TARGETSEARCH_DEFAULT:
-		case TARGETSEARCH_ATTACKRANGE:
-		case TARGETSEARCH_RANDOM:
-		default: {
-			if (!resultList.empty()) {
-				auto it = resultList.begin();
-				std::advance(it, uniform_random(0, resultList.size() - 1));
-				return selectTarget(*it);
-			}
-
-			if (searchType == TARGETSEARCH_ATTACKRANGE) {
-				return false;
-			}
-
-			break;
+		if (target && selectTarget(target)) {
+			return true;
 		}
+		break;
 	}
 
-	//lets just pick the first target in the list
-	for (const auto& target : targetList) {
-		if (getFollowCreature() != target && selectTarget(target)) {
+	case TARGETSEARCH_DEFAULT:
+	case TARGETSEARCH_ATTACKRANGE:
+	case TARGETSEARCH_RANDOM:
+	default: {
+		if (!resultList.empty()) {
+			auto it = resultList.begin();
+			std::advance(it, uniform_random(0, resultList.size() - 1));
+			return selectTarget(*it);
+		}
+
+		if (searchType == TARGETSEARCH_ATTACKRANGE) {
+			return false;
+		}
+
+		break;
+	}
+	}
+
+	// Pick the first valid target in the list
+	for (const auto& weakTarget : targetList) {
+		CreaturePtr target = weakTarget.lock();
+		if (target && getFollowCreature() != target && selectTarget(target)) {
 			return true;
 		}
 	}
 	return false;
 }
 
+
 void Monster::onFollowCreatureComplete(const CreatureConstPtr& creature)
 {
 	if (creature) {
-		if (const auto it = std::ranges::find(targetList, creature); it != targetList.end()) {
-			const CreaturePtr target = (*it);
+		auto it = std::ranges::find_if(targetList, [&](const CreatureWeakPtr& weakTarget) {
+			auto target = weakTarget.lock();
+			return target && target == creature;
+			});
+
+		if (it != targetList.end()) {
+			CreaturePtr target = it->lock();
 			targetList.erase(it);
 
 			if (hasFollowPath) {
-				targetList.push_front(target);
-			} else if (!isSummon()) {
+				targetList.insert(targetList.begin(), target);
+			}
+			else if (!isSummon()) {
 				targetList.push_back(target);
 			}
 		}
 	}
 }
+
+
 
 BlockType_t Monster::blockHit(const CreaturePtr& attacker, CombatType_t combatType, int32_t& damage,
                               bool checkDefense /* = false*/, bool checkArmor /* = false*/, bool /* field = false */, bool /* ignoreResistances = false */)
@@ -629,8 +662,12 @@ bool Monster::selectTarget(const CreaturePtr& creature)
 		return false;
 	}
 
-	if (const auto it = std::ranges::find(targetList, creature); it == targetList.end()) {
-		//Target not found in our target list.
+	auto it = std::ranges::find_if(targetList, [&](const CreatureWeakPtr& weakTarget) {
+		auto target = weakTarget.lock();
+		return target && target == creature;
+		});
+
+	if (it == targetList.end()) {
 		return false;
 	}
 
@@ -639,8 +676,10 @@ bool Monster::selectTarget(const CreaturePtr& creature)
 			g_dispatcher.addTask(createTask([id = getID()]() { g_game.checkCreatureAttack(id); }));
 		}
 	}
+
 	return setFollowCreature(creature);
 }
+
 
 void Monster::setIdle(const bool idle)
 {

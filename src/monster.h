@@ -12,7 +12,7 @@ class Game;
 class Spawn;
 
 using CreatureHashSet = std::unordered_set<CreaturePtr>;
-using CreatureList = std::list<CreaturePtr>;
+using CreatureList = std::vector<CreatureWeakPtr>;
 
 enum TargetSearchType_t {
 	TARGETSEARCH_DEFAULT,

@@ -11943,10 +11943,12 @@ int LuaScriptInterface::luaMonsterGetTargetList(lua_State* L)
 	lua_createtable(L, targetList.size(), 0);
 
 	int index = 0;
-	for (const auto creature : targetList) {
-		pushSharedPtr(L, creature);
-		setCreatureMetatable(L, -1, creature);
-		lua_rawseti(L, -2, ++index);
+	for (const auto weakTarget : targetList) {
+		if (auto creature = weakTarget.lock()) {
+			pushSharedPtr(L, creature);
+			setCreatureMetatable(L, -1, creature);
+			lua_rawseti(L, -2, ++index);
+		}
 	}
 	return 1;
 }
