@@ -3310,33 +3310,29 @@ ReturnValue Player::queryRemove(const ThingPtr& thing, uint32_t count, uint32_t 
 }
 
 CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem,
-		uint32_t& flags)
+	uint32_t& flags)
 {
 	if (index == 0 /*drop to capacity window*/ || index == INDEX_WHEREEVER) {
-		destItem = nullptr;
+		destItem.reset();
 
-		ItemPtr item = thing->getItem();
-		if (item == nullptr) {
+		ItemPtr item = thing ? thing->getItem() : nullptr;
+		if (!item) {
 			return this->getPlayer();
 		}
 
-		const bool autoStack = !((flags & FLAG_IGNOREAUTOSTACK) == FLAG_IGNOREAUTOSTACK);
+		const bool autoStack = !(flags & FLAG_IGNOREAUTOSTACK);
 		const bool isStackable = item->isStackable();
 
 		std::vector<ContainerPtr> containers;
 
 		for (uint32_t slotIndex = CONST_SLOT_FIRST; slotIndex <= CONST_SLOT_LAST; ++slotIndex) {
 			if (auto inventoryItem = inventory[slotIndex]) {
-				if (inventoryItem == tradeItem) {
-					continue;
-				}
-
-				if (inventoryItem == item) {
+				if (inventoryItem == tradeItem || inventoryItem == item) {
 					continue;
 				}
 
 				if (autoStack && isStackable) {
-					//try find an already existing item to stack with
+					// Try to find an already existing item to stack with
 					if (queryAdd(slotIndex, item, item->getItemCount(), 0) == RETURNVALUE_NOERROR) {
 						if (inventoryItem->equals(item) && inventoryItem->getItemCount() < 100) {
 							index = slotIndex;
@@ -3344,16 +3340,15 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 							return this->getPlayer();
 						}
 					}
+				}
 
-					if (auto subContainer = inventoryItem->getContainer()) {
-						containers.push_back(subContainer);
-					}
-				} else if (auto subContainer = inventoryItem->getContainer()) {
+				if (auto subContainer = inventoryItem->getContainer()) {
 					containers.push_back(subContainer);
 				}
-			} else if (queryAdd(slotIndex, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) { //empty slot
+			}
+			else if (queryAdd(slotIndex, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) {
 				index = slotIndex;
-				destItem = nullptr;
+				destItem.reset();
 				return this->getPlayer();
 			}
 		}
@@ -3362,55 +3357,36 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 		while (i < containers.size()) {
 			const auto& tmpContainer = containers[i++];
 			if (!autoStack || !isStackable) {
-				//we need to find first empty container as fast as we can for non-stackable items
 				uint32_t n = tmpContainer->capacity() - std::min(tmpContainer->capacity(), static_cast<uint32_t>(tmpContainer->size()));
 				while (n) {
 					if (tmpContainer->queryAdd(tmpContainer->capacity() - n, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) {
 						index = tmpContainer->capacity() - n;
-						destItem = nullptr;
+						destItem.reset();
 						return tmpContainer;
 					}
-
 					--n;
 				}
-
-				for (auto tmpContainerItem : tmpContainer->getItemList()) {
-					if (auto subContainer = tmpContainerItem->getContainer()) {
-						containers.push_back(subContainer);
-					}
-				}
-
-				continue;
 			}
 
-			uint32_t n = 0;
-
-			for (auto tmpItem : tmpContainer->getItemList()) {
-				if (tmpItem == tradeItem) {
+			for (const auto& tmpContainerItem : tmpContainer->getItemList()) {
+				if (tmpContainerItem == tradeItem || tmpContainerItem == item) {
 					continue;
 				}
 
-				if (tmpItem == item) {
-					continue;
-				}
-
-				//try find an already existing item to stack with
-				if (tmpItem->equals(item) && tmpItem->getItemCount() < 100) {
-					index = n;
-					destItem = tmpItem;
+				if (autoStack && isStackable && tmpContainerItem->equals(item) && tmpContainerItem->getItemCount() < 100) {
+					index = tmpContainer->size();
+					destItem = tmpContainerItem;
 					return tmpContainer;
 				}
 
-				if (auto subContainer = tmpItem->getContainer()) {
+				if (auto subContainer = tmpContainerItem->getContainer()) {
 					containers.push_back(subContainer);
 				}
-
-				n++;
 			}
 
-			if (n < tmpContainer->capacity() && tmpContainer->queryAdd(n, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) {
-				index = n;
-				destItem = nullptr;
+			if (tmpContainer->size() < tmpContainer->capacity() && tmpContainer->queryAdd(tmpContainer->size(), item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) {
+				index = tmpContainer->size();
+				destItem.reset();
 				return tmpContainer;
 			}
 		}
@@ -3425,11 +3401,11 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 
 	if (auto subCylinder = std::dynamic_pointer_cast<Cylinder>(destThing)) {
 		index = INDEX_WHEREEVER;
-		destItem = nullptr;
+		destItem.reset();
 		return subCylinder;
-	} else {
-		return this->getPlayer();
 	}
+
+	return this->getPlayer();
 }
 
 void Player::addThing(int32_t index, ThingPtr thing)

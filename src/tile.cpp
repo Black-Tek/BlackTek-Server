@@ -785,25 +785,28 @@ ReturnValue Tile::queryRemove(const ThingPtr& thing, const uint32_t count, uint3
 }
 
 CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, ItemPtr& destItem, uint32_t& flags) {
-	TilePtr destTile = nullptr;
-	destItem = nullptr;
-	
+	TilePtr destTile;
+	destItem.reset();
+
+	if (!thingPtr) {
+		return getTile();
+	}
+
 	if (hasFlag(TILESTATE_FLOORCHANGE_DOWN)) {
 		uint16_t dx = tilePos.x;
 		uint16_t dy = tilePos.y;
 		uint8_t dz = tilePos.z + 1;
-		
-		if (const auto southDownTile = g_game.map.getTile(dx, dy - 1, dz); southDownTile && southDownTile->hasFlag(TILESTATE_FLOORCHANGE_SOUTH_ALT)) {
+
+		if (auto southDownTile = g_game.map.getTile(dx, dy - 1, dz); southDownTile && southDownTile->hasFlag(TILESTATE_FLOORCHANGE_SOUTH_ALT)) {
 			dy -= 2;
 			destTile = g_game.map.getTile(dx, dy, dz);
 		}
-		else if (const auto eastDownTile = g_game.map.getTile(dx - 1, dy, dz); eastDownTile && eastDownTile->hasFlag(TILESTATE_FLOORCHANGE_EAST_ALT)) {
+		else if (auto eastDownTile = g_game.map.getTile(dx - 1, dy, dz); eastDownTile && eastDownTile->hasFlag(TILESTATE_FLOORCHANGE_EAST_ALT)) {
 			dx -= 2;
 			destTile = g_game.map.getTile(dx, dy, dz);
 		}
 		else {
-			if (const auto downTile = g_game.map.getTile(dx, dy, dz)) {
-
+			if (auto downTile = g_game.map.getTile(dx, dy, dz)) {
 				if (downTile->hasFlag(TILESTATE_FLOORCHANGE_NORTH)) ++dy;
 				if (downTile->hasFlag(TILESTATE_FLOORCHANGE_SOUTH)) --dy;
 				if (downTile->hasFlag(TILESTATE_FLOORCHANGE_SOUTH_ALT)) dy -= 2;
@@ -819,7 +822,7 @@ CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, I
 		uint16_t dx = tilePos.x;
 		uint16_t dy = tilePos.y;
 		uint8_t dz = tilePos.z - 1;
-		
+
 		if (hasFlag(TILESTATE_FLOORCHANGE_NORTH)) --dy;
 		if (hasFlag(TILESTATE_FLOORCHANGE_SOUTH)) ++dy;
 		if (hasFlag(TILESTATE_FLOORCHANGE_EAST)) ++dx;
@@ -830,12 +833,10 @@ CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, I
 		destTile = g_game.map.getTile(dx, dy, dz);
 	}
 
-	if (destTile == nullptr) {
-		TilePtr temp = this->getTile();
-		if (!temp) {
-		}
-		destTile = temp;
-	} else {
+	if (!destTile) {
+		destTile = this->getTile();
+	}
+	else {
 		flags |= FLAG_NOLIMIT;
 	}
 
@@ -847,6 +848,7 @@ CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, I
 
 	return destTile;
 }
+
 
 void Tile::addThing(ThingPtr thing)
 {

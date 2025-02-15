@@ -100,7 +100,7 @@ CylinderPtr HouseTile::queryDestination(int32_t& index, const ThingPtr& thing, I
 				}
 
 				index = -1;
-				destItem = nullptr;
+				destItem.reset();
 				return destTile;
 			}
 		}

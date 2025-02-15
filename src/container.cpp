@@ -453,40 +453,29 @@ ReturnValue Container::queryRemove(const ThingPtr& thing, uint32_t count, uint32
 }
 
 CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem,
-		uint32_t& flags)
+	uint32_t& flags)
 {
 	if (!unlocked) {
-		destItem = nullptr;
+		destItem.reset();
 		return getContainer();
 	}
 
 	if (index == 254 /*move up*/) {
 		index = INDEX_WHEREEVER;
-		destItem = nullptr;
+		destItem.reset();
 
 		if (auto parentContainer = std::dynamic_pointer_cast<Cylinder>(getParent())) {
 			return parentContainer;
 		}
-
 		return getContainer();
 	}
 
-	if (index == 255 /*add wherever*/) {
+	if (index == 255 /*add wherever*/ || index >= static_cast<int32_t>(capacity())) {
 		index = INDEX_WHEREEVER;
-		destItem = nullptr;
-	} else if (index >= static_cast<int32_t>(capacity())) {
-		/*
-		if you have a container, maximize it to show all 20 slots
-		then you open a bag that is inside the container you will have a bag with 8 slots
-		and a "grey" area where the other 12 slots where from the container
-		if you drop the item on that grey area
-		the client calculates the slot position as if the bag has 20 slots
-		*/
-		index = INDEX_WHEREEVER;
-		destItem = nullptr;
+		destItem.reset();
 	}
 
-	auto item = thing->getItem();
+	ItemPtr item = thing ? thing->getItem() : nullptr;
 	if (!item) {
 		return getContainer();
 	}
@@ -496,22 +485,21 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 			destItem = itemFromIndex;
 		}
 
-		if (CylinderPtr subCylinder = std::dynamic_pointer_cast<Cylinder>(destItem)) {
+		if (destItem && std::dynamic_pointer_cast<Cylinder>(destItem)) {
 			index = INDEX_WHEREEVER;
-			destItem = nullptr;
-			return subCylinder;
+			return std::dynamic_pointer_cast<Cylinder>(destItem);
 		}
 	}
 
 	bool autoStack = !hasBitSet(FLAG_IGNOREAUTOSTACK, flags);
 	if (autoStack && item->isStackable() && item->getParent().get() != this) {
-		if (destItem && (destItem)->equals(item) && (destItem)->getItemCount() < 100) {
+		if (destItem && destItem->equals(item) && destItem->getItemCount() < 100) {
 			return getContainer();
 		}
 
-		//try find a suitable item to stack with
+		// Try to find a suitable item to stack with
 		uint32_t n = 0;
-		for (auto listItem : itemlist) {
+		for (const auto& listItem : itemlist) {
 			if (listItem != item && listItem->equals(item) && listItem->getItemCount() < 100) {
 				destItem = listItem;
 				index = n;
@@ -522,6 +510,7 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 	}
 	return getContainer();
 }
+
 
 void Container::addThing(ThingPtr thing)
 {
