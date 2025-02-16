@@ -1690,8 +1690,12 @@ void ProtocolGame::sendMarketEnter()
 	}
 
 	do {
-		ContainerPtr& container = containerList.front();
+		ContainerPtr container = containerList.front();
 		containerList.pop_front();
+
+		if (!container) {
+			continue;
+		}
 
 		for (const auto& item : container->getItemList()) {
 			const auto& c = item->getContainer();
