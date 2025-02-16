@@ -1700,6 +1700,10 @@ void ProtocolGame::sendMarketEnter()
 		Container* container = containerList.front();
 		containerList.pop_front();
 
+		if (!container) {
+			continue;
+		}
+
 		for (Item* item : container->getItemList()) {
 			Container* c = item->getContainer();
 			if (c && !c->empty()) {
