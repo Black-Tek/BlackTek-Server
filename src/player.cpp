@@ -1397,7 +1397,7 @@ bool Player::canWalkthrough(const CreatureConstPtr& creature) const
 		return false;
 	}
 
-	const auto& thisPlayer = const_cast<Player*>(this);
+	auto thisPlayer = std::static_pointer_cast<Player>(std::const_pointer_cast<SharedObject>(shared_from_this()));
 	if ((OTSYS_TIME() - lastWalkthroughAttempt) > 2000) {
 		thisPlayer->setLastWalkthroughAttempt(OTSYS_TIME());
 		return false;

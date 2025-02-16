@@ -5628,7 +5628,7 @@ int LuaScriptInterface::luaTileGetItemByType(lua_State* L)
 int LuaScriptInterface::luaTileGetItemByTopOrder(lua_State* L)
 {
 	// tile:getItemByTopOrder(topOrder)
-	Tile* tile = getUserdata<Tile>(L, 1);
+	TilePtr tile = getSharedPtr<Tile>(L, 1);
 	if (!tile) {
 		lua_pushnil(L);
 		return 1;

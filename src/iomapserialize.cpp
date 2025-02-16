@@ -179,7 +179,7 @@ bool IOMapSerialize::loadItem(PropStream& propStream, const CylinderPtr& parent)
 					if (!loadContainer(propStream, container)) {
 						return false;
 					}
-				} else if (auto bedItem = dynamic_cast<BedItem*>(dummy.get())) {
+				} else if (auto bedItem = std::dynamic_pointer_cast<BedItem>(dummy)) {
 					uint32_t sleeperGUID = bedItem->getSleeper();
 					if (sleeperGUID != 0) {
 						g_game.removeBedSleeper(sleeperGUID);
