@@ -9380,6 +9380,7 @@ int LuaScriptInterface::luaPlayerCreate(lua_State* L)
 			lua_pushinteger(L, ret);
 			return 2;
 		}
+		player = g_game.getPlayerByName(getString(L, 2));
 	} else if (isUserdata(L, 2)) {
 		if (getUserdataType(L, 2) != LuaData_Player) {
 			lua_pushnil(L);
