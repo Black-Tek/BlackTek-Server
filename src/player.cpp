@@ -3355,39 +3355,41 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 
 		size_t i = 0;
 		while (i < containers.size()) {
-			const auto& tmpContainer = containers[i++];
-			if (!autoStack || !isStackable) {
-				uint32_t n = tmpContainer->capacity() - std::min(tmpContainer->capacity(), static_cast<uint32_t>(tmpContainer->size()));
-				while (n) {
-					if (tmpContainer->queryAdd(tmpContainer->capacity() - n, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) {
-						index = tmpContainer->capacity() - n;
-						destItem.reset();
+			auto tmpContainer = containers[i++];
+			if (tmpContainer) {
+				if (!autoStack || !isStackable) {
+					uint32_t n = tmpContainer->capacity() - std::min(tmpContainer->capacity(), static_cast<uint32_t>(tmpContainer->size()));
+					while (n) {
+						if (tmpContainer->queryAdd(tmpContainer->capacity() - n, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) {
+							index = tmpContainer->capacity() - n;
+							destItem.reset();
+							return tmpContainer;
+						}
+						--n;
+					}
+				}
+
+				for (const auto& tmpContainerItem : tmpContainer->getItemList()) {
+					if (tmpContainerItem == tradeItem || tmpContainerItem == item) {
+						continue;
+					}
+
+					if (autoStack && isStackable && tmpContainerItem->equals(item) && tmpContainerItem->getItemCount() < 100) {
+						index = tmpContainer->size();
+						destItem = tmpContainerItem;
 						return tmpContainer;
 					}
-					--n;
-				}
-			}
 
-			for (const auto& tmpContainerItem : tmpContainer->getItemList()) {
-				if (tmpContainerItem == tradeItem || tmpContainerItem == item) {
-					continue;
+					if (auto subContainer = tmpContainerItem->getContainer()) {
+						containers.push_back(subContainer);
+					}
 				}
 
-				if (autoStack && isStackable && tmpContainerItem->equals(item) && tmpContainerItem->getItemCount() < 100) {
+				if (tmpContainer->size() < tmpContainer->capacity() && tmpContainer->queryAdd(tmpContainer->size(), item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) {
 					index = tmpContainer->size();
-					destItem = tmpContainerItem;
+					destItem.reset();
 					return tmpContainer;
 				}
-
-				if (auto subContainer = tmpContainerItem->getContainer()) {
-					containers.push_back(subContainer);
-				}
-			}
-
-			if (tmpContainer->size() < tmpContainer->capacity() && tmpContainer->queryAdd(tmpContainer->size(), item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) {
-				index = tmpContainer->size();
-				destItem.reset();
-				return tmpContainer;
 			}
 		}
 
@@ -5220,7 +5222,7 @@ uint64_t Player::getMoney() const
 	while (i < containers.size()) {
 		const auto& container = containers[i++];
 		for (const auto& item : container->getItemList()) {
-			if (const auto& tmpContainer = item->getContainer()) {
+			if (auto tmpContainer = item->getContainer()) {
 				containers.push_back(tmpContainer);
 			} else {
 				moneyCount += item->getWorth();
