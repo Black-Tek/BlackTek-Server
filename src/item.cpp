@@ -49,8 +49,6 @@ ItemPtr Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
         return nullptr;
     }
 
-    ItemPtr newItem;
-
 	if (it.isDepot()) {
 		return std::make_shared<DepotLocker>(type);
 	} else if (it.isRewardChest()) {
@@ -82,7 +80,14 @@ ItemPtr Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
     } else if (it.id == 18528) { // prismatic ring
 		return std::make_shared<Item>(18408, count);
     } else {
-		return std::make_shared<Item>(type, count);
+		auto normalItem = std::make_shared<Item>(type, count);
+		for (const auto& augName : it.augments) {
+			auto augment = Augments::GetAugment(augName);
+			if (augment) {
+				normalItem->addAugment(augment);
+			}
+		}
+		return normalItem;
     }
     return nullptr;
 }
@@ -165,7 +170,6 @@ Item::Item(const uint16_t type, uint16_t count /*= 0*/) :
 	if (it.imbuementslots != 0) {
 		addImbuementSlots(it.imbuementslots);
 	}
-
 	setDefaultDuration();
 }
 

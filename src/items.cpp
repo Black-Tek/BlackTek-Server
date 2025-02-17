@@ -117,6 +117,7 @@ const std::unordered_map<std::string, ItemParseAttributes_t> ItemParseAttributes
 	{"storeitem", ITEM_PARSE_STOREITEM},
 	{"imbuementslots", 	ITEM_PARSE_IMBUEMENT_SLOT},
 	{"worth", ITEM_PARSE_WORTH},
+	{"augment", ITEM_PARSE_AUGMENT},
 };
 
 const std::unordered_map<std::string, ItemTypes_t> ItemTypesMap = {
@@ -1275,6 +1276,15 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 					}
 					break;
 				}
+
+				case ITEM_PARSE_AUGMENT: {
+					auto name = valueAttribute.as_string();
+					if (std::find(it.augments.begin(), it.augments.end(), name) == it.augments.end()) {
+						it.augments.emplace(std::move(name));
+					}
+					break;
+				}
+
 
 				default: {
 					// It should not ever get to here, only if you add a new key to the map and don't configure a case for it.

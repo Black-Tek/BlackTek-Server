@@ -4,6 +4,8 @@
 #ifndef FS_ITEMS_H
 #define FS_ITEMS_H
 
+#include <unordered_set>
+
 #include "const.h"
 #include "enums.h"
 #include "itemloader.h"
@@ -141,6 +143,7 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_STOREITEM,
 	ITEM_PARSE_IMBUEMENT_SLOT,
 	ITEM_PARSE_WORTH,
+	ITEM_PARSE_AUGMENT,
 };
 
 struct Abilities {
@@ -302,6 +305,7 @@ class ItemType
 
 		std::unique_ptr<Abilities> abilities;
 		std::unique_ptr<ConditionDamage> conditionDamage;
+		std::unordered_set<std::string> augments;
 
 		uint32_t attackSpeed = 0;
 		uint32_t weight = 0;
