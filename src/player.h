@@ -1400,6 +1400,7 @@ class Player final : public Creature, public Cylinder
 		void ricochetDamage(CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
 		void convertDamage(const CreaturePtr& target, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList);
 		void reformDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList);
+		void increaseDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) const;
 
 		Position generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, CombatOrigin origin);
 

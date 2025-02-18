@@ -117,10 +117,11 @@ enum ModifierDefenseType : uint8_t {
 	DEFENSE_MODIFIER_DEFLECT,			// damage is negated on defender but hits all nearby enemies
 	DEFENSE_MODIFIER_RICOCHET,			// damage is negated on defender but hits one random enemy
 	DEFENSE_MODIFIER_RESIST,			// damage reduction
-	DEFENSE_MODIFIER_REFORM,			// convert damage to another type 
+	DEFENSE_MODIFIER_REFORM,			// convert damage to another type
+	DEFENSE_MODIFIER_WEAKNESS,			// increases damage taken
 
 	DEFENSE_MODIFIER_FIRST = DEFENSE_MODIFIER_NONE,
-	DEFENSE_MODIFIER_LAST = DEFENSE_MODIFIER_REFORM
+	DEFENSE_MODIFIER_LAST = DEFENSE_MODIFIER_WEAKNESS
 };
 
 enum ModFactor : uint8_t {

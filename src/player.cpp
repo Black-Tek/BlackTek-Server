@@ -5891,7 +5891,8 @@ std::unordered_map<uint8_t, ModifierTotals> Player::getDefenseModifierTotals(con
 	modMap.reserve(DEFENSE_MODIFIER_LAST);
 	
 	auto defenseMods = getDefenseModifiers();
-	for (uint8_t i = DEFENSE_MODIFIER_FIRST; i < DEFENSE_MODIFIER_LAST; ++i) {
+	// todo: skip reform in this loop
+	for (uint8_t i = DEFENSE_MODIFIER_FIRST; i <= DEFENSE_MODIFIER_LAST; ++i) {
 		auto modTotals = getValidatedTotals(defenseMods[i], damageType, originType, creatureType, race, creatureName);
 		modMap.try_emplace(i, modTotals);
 	}
@@ -6410,4 +6411,31 @@ std::unique_ptr<AreaCombat> Player::generateDeflectArea(std::optional<CreaturePt
 	}
 
 	return combatArea;
+}
+
+void Player::increaseDamage(	std::optional<CreaturePtr> attacker,
+								CombatDamage& originalDamage,
+								int32_t percent,
+								int32_t flat) const
+{
+	int32_t increasedDamage = 0;
+	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
+	if (percent) {
+		increasedDamage += originalDamageValue * percent / 100;
+	}
+
+	if (flat) {
+		increasedDamage += flat;
+	}
+
+	if (increasedDamage != 0) {
+		increasedDamage = std::min<int32_t>(increasedDamage, originalDamageValue);
+		originalDamage.primary.value -= increasedDamage;
+
+		auto message = (attacker.has_value()) ?
+			"You took an additional " + std::to_string(increasedDamage) + " damage from " + attacker.value()->getName() + "'s attack." :
+			"You took an additional " + std::to_string(increasedDamage) + " damage.";
+
+		sendTextMessage(MESSAGE_DAMAGE_RECEIVED, message);
+	}
 }
