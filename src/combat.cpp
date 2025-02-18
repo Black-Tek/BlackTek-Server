@@ -1383,6 +1383,10 @@ void Combat::applyDamageReductionModifier(uint8_t modifierType, CombatDamage& da
 			damageTarget->ricochetDamage(damage, percent, flat, areaEffect, distanceEffect);
 			return;
 
+		case DEFENSE_MODIFIER_WEAKNESS:
+			damageTarget->increaseDamage(attacker, damage, percent, flat);
+			return;
+
 		default:
 			return;
 	}

@@ -250,8 +250,8 @@ const ModifierAttackType Augments::ParseAttackModifier(std::string_view modName)
 
 const ModifierDefenseType Augments::ParseDefenseModifier(std::string_view modName) noexcept
 {   // Note : If you add values to the list you must increase the size manually
-    // current size is : 10
-    const std::array<std::pair<std::string_view, ModifierDefenseType>, 10> static_map{ {
+    // current size is : 11
+    const std::array<std::pair<std::string_view, ModifierDefenseType>, 11> static_map{ {
         {"none",            DEFENSE_MODIFIER_NONE},
         {"absorb",          DEFENSE_MODIFIER_ABSORB},
         {"restore",         DEFENSE_MODIFIER_RESTORE},
@@ -262,6 +262,7 @@ const ModifierDefenseType Augments::ParseDefenseModifier(std::string_view modNam
         {"ricochet",        DEFENSE_MODIFIER_RICOCHET},
         {"resist",          DEFENSE_MODIFIER_RESIST},
         {"reform",          DEFENSE_MODIFIER_REFORM},
+        {"weakness",        DEFENSE_MODIFIER_WEAKNESS},
     } };
 
     for (const auto& [key, value] : static_map) {

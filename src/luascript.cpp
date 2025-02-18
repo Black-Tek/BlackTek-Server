@@ -2011,7 +2011,8 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(DEFENSE_MODIFIER_DEFLECT)
 	registerEnum(DEFENSE_MODIFIER_RICOCHET)
 	registerEnum(DEFENSE_MODIFIER_RESIST)
-	registerEnum(DEFENSE_MODIFIER_RESIST)
+	registerEnum(DEFENSE_MODIFIER_REFORM)
+	registerEnum(DEFENSE_MODIFIER_WEAKNESS)
 	registerEnum(DEFENSE_MODIFIER_LAST)
 
 	// _G
