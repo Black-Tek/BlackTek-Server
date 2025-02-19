@@ -2590,33 +2590,6 @@ BlockType_t Player::blockHit(const CreaturePtr& attacker, CombatType_t combatTyp
 		sendCreatureSquare(attacker, SQ_COLOR_BLACK);
 	}
 
-	if (!ignoreResistances) {
-		
-		size_t combatIndex = combatTypeToIndex(combatType);
-		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-			if (!isItemAbilityEnabled(static_cast<slots_t>(slot))) {
-				continue;
-			}
-
-			auto item = inventory[slot];
-			if (!item) {
-				continue;
-			}
-
-			if (const ItemType& it = Item::items[item->getID()]; !it.abilities) {
-				if (damage <= 0) {
-					damage = 0;
-					return BLOCK_ARMOR;
-				}
-				continue;
-			}
-
-			if (const uint16_t charges = item->getCharges(); charges != 0) {
-				g_game.transformItem(item, item->getID(), charges - 1);
-			}
-		}
-	}
-
 	if (damage <= 0) {
 		damage = 0;
 		blockType = BLOCK_ARMOR;
