@@ -31,10 +31,6 @@ Creature::~Creature()
 		summon->removeMaster();
 	}
 
-	for (Condition* condition : conditions) {
-		condition->endCondition(std::dynamic_pointer_cast<Creature>(shared_from_this()));
-	}
-
 	for (auto condition : conditions) {
 		delete condition;
 	}
