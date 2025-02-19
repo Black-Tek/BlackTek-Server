@@ -830,7 +830,9 @@ bool Item::unserializeAugments(PropStream& propStream)
 		if (!result) {
 			return result;
 		} else {
-			this->addAugment(augment);
+			if (!hasAugment(augment->getName())) {
+				this->addAugment(augment);
+			}
 		}
 	}
 	return true;
