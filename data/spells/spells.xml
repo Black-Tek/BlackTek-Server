@@ -244,7 +244,7 @@
 		<vocation name="Paladin" />
 		<vocation name="Royal Paladin" />
 	</instant>
-	<instant group="healing" spellid="84" name="Heal Friend" words="exura sio" level="18" mana="140" premium="1" aggressive="0" blockwalls="1" needtarget="1" playernameparam="1" params="1" cooldown="1000" groupcooldown="1000" needlearn="0" script="healing/heal_friend.lua">
+	<instant group="healing" spellid="84" name="Heal Friend" words="exura sio" level="18" mana="140" premium="1" aggressive="0" blockwalls="1" needtarget="0" playernameparam="1" params="1" cooldown="1000" groupcooldown="1000" needlearn="0" script="healing/heal_friend.lua">
 		<vocation name="Druid" />
 		<vocation name="Elder Druid" />
 	</instant>
