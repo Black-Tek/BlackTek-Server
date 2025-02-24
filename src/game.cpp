@@ -344,8 +344,8 @@ void Game::internalGetPosition(const ItemPtr& item, Position& pos, uint8_t& stac
 	pos.z = 0;
 	stackpos = 0;
 
-	auto topParent = item->getTopParent();
-	if (topParent) {
+	
+	if (auto topParent = item->getTopParent()) {
 		if (auto player = std::dynamic_pointer_cast<Player>(topParent)) {
 			pos.x = 0xFFFF;
 
@@ -1284,9 +1284,9 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 
 	if (_moveItem) {
 		if (moveItem) {
-			_moveItem = moveItem;
+			_moveItem.value().get() = moveItem;
 		} else {
-			_moveItem = item;
+			_moveItem.value().get() = item;
 		}
 	}
 
@@ -2141,6 +2141,12 @@ void Game::playerUseItemEx(const uint32_t playerId, const Position& fromPos, con
 				ret = internalMoveItem(t_cylinder, p_cylinder, INDEX_WHEREEVER, item, item->getItemCount(), std::ref(moveItem), 0, player, nullptr, &fromPos, &toPos);
 				if (ret != RETURNVALUE_NOERROR) {
 					player->sendCancelMessage(ret);
+					return;
+				}
+
+				if (!moveItem) {
+					// to-do put a logger here, as this should never happen.
+					player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
 					return;
 				}
 

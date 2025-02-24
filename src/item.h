@@ -1161,12 +1161,21 @@ class Item : virtual public Thing, public SharedObject
 		}
 	
 		CylinderPtr getParent() override {
-			return parent.lock();
+			auto lockedParent = parent.lock();
+			if (!lockedParent) {
+				// todo add logger here
+			}
+			return lockedParent;
 		}
 
 		CylinderConstPtr getParent() const override {
-			return parent.lock();
+			auto lockedParent = parent.lock();
+			if (!lockedParent) {
+				// todo add logger here
+			}
+			return lockedParent;
 		}
+
 	
 		void setParent(std::weak_ptr<Cylinder> cylinder) override {
 			parent = cylinder;

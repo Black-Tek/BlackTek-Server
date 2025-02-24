@@ -282,10 +282,14 @@ void Item::setID(uint16_t newid)
 	}
 }
 
-CylinderPtr Item::getTopParent()
-{
+CylinderPtr Item::getTopParent() {
 	CylinderPtr aux = getParent();
-	CylinderPtr prevaux = std::dynamic_pointer_cast<Cylinder>(shared_from_this());
+	CylinderPtr prevaux;
+
+	if (auto self = weak_from_this().lock()) {
+		prevaux = std::dynamic_pointer_cast<Cylinder>(self);
+	}
+
 	if (!aux) {
 		return prevaux;
 	}
@@ -295,16 +299,18 @@ CylinderPtr Item::getTopParent()
 		aux = aux->getParent();
 	}
 
-	if (prevaux) {
-		return prevaux;
-	}
-	return aux;
+	return prevaux ? prevaux : aux;
 }
 
-CylinderConstPtr Item::getTopParent() const
-{
+
+CylinderConstPtr Item::getTopParent() const {
 	CylinderConstPtr aux = getParent();
-	CylinderConstPtr prevaux = std::dynamic_pointer_cast<const Cylinder>(shared_from_this());
+	CylinderConstPtr prevaux;
+
+	if (auto self = weak_from_this().lock()) {
+		prevaux = std::dynamic_pointer_cast<const Cylinder>(self);
+	}
+
 	if (!aux) {
 		return prevaux;
 	}
@@ -314,10 +320,7 @@ CylinderConstPtr Item::getTopParent() const
 		aux = aux->getParent();
 	}
 
-	if (prevaux) {
-		return prevaux;
-	}
-	return aux;
+	return prevaux ? prevaux : aux;
 }
 
 TilePtr Item::getTile()
