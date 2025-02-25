@@ -32,7 +32,7 @@ std::vector<TilePtr> getList(const MatrixArea& area, const Position& targetPos, 
 				if (g_game.isSightClear(casterPos, tmpPos, true)) {
 					auto tile = g_game.map.getTile(tmpPos);
 					if (!tile) {
-						tile = std::make_shared<StaticTile>(tmpPos.x, tmpPos.y, tmpPos.z);
+						tile = std::make_shared<Tile>(tmpPos.x, tmpPos.y, tmpPos.z);
 						g_game.map.setTile(tmpPos, tile);
 					}
 					vec.push_back(tile);
@@ -56,7 +56,7 @@ std::vector<TilePtr> getCombatArea(const Position& centerPos, const Position& ta
 
 	auto tile = g_game.map.getTile(targetPos);
 	if (!tile) {
-		tile = std::make_shared<StaticTile>(targetPos.x, targetPos.y, targetPos.z);
+		tile = std::make_shared<Tile>(targetPos.x, targetPos.y, targetPos.z);
 		g_game.map.setTile(targetPos, tile);
 	}
 	return {tile};

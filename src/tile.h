@@ -131,12 +131,23 @@ class TileItemVector : public ItemVector
 		uint16_t downItemCount = 0;
 };
 
+class House;
 
 class Tile : public Cylinder, public SharedObject
 {
 	public:
-		Tile(uint16_t x, uint16_t y, uint8_t z) : tilePos(x, y, z) {}
-		virtual ~Tile() {
+		Tile(uint16_t x, uint16_t y, uint8_t z) : tilePos(x, y, z) {
+			items = std::make_shared<TileItemVector>();
+			creatures = std::make_shared<CreatureVector>();
+		}
+
+		Tile(uint16_t x, uint16_t y, uint8_t z, House* house) : tilePos(x, y, z) {
+			items = std::make_shared<TileItemVector>();
+			creatures = std::make_shared<CreatureVector>();
+			this->house = house;
+		}
+
+		~Tile() {
 			ground.reset();
 		};
 
@@ -144,11 +155,26 @@ class Tile : public Cylinder, public SharedObject
 		Tile(const Tile&) = delete;
 		Tile& operator=(const Tile&) = delete;
 
-		virtual TileItemsPtr getItemList() = 0;
-		virtual TileItemsConstPtr getItemList() const = 0;
+		TileItemsPtr getItemList() {
+			return items;
+		}
 
-		virtual TileCreaturesPtr getCreatures() = 0;
-		virtual TileCreaturesConstPtr getCreatures() const = 0;
+		TileItemsConstPtr getItemList() const {
+			return items;
+		}
+
+		TileCreaturesPtr getCreatures() {
+			return creatures;
+		}
+
+
+		TileCreaturesConstPtr getCreatures() const {
+			return creatures;
+		}
+
+		House* getHouse() const {
+			return house;
+		}
 
 		int32_t getThrowRange() const override final {
 			return 0;
@@ -233,7 +259,7 @@ class Tile : public Cylinder, public SharedObject
 		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags) override; // another optional wrap ref
 
 		ReturnValue queryAdd(CreaturePtr creature, uint32_t flags);
-		ReturnValue queryAdd(ItemPtr item, uint32_t flags);
+		ReturnValue queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover);
 		ReturnValue queryAdd(PlayerPtr player, uint32_t flags);
 		ReturnValue queryAdd(MonsterPtr monster, uint32_t flags);
 
@@ -267,6 +293,10 @@ class Tile : public Cylinder, public SharedObject
 			return false;
 		}
 
+		bool isHouseTile() {
+			return house != nullptr;
+		}
+
 		ItemPtr getUseItem(int32_t index);
 
 		ItemPtr getGround() const {
@@ -286,106 +316,15 @@ class Tile : public Cylinder, public SharedObject
 		void onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType);
 		void onRemoveTileItem(const SpectatorVec& spectators, const std::vector<int32_t>& oldStackPosVector, const ItemPtr& item);
 		void onUpdateTile(const SpectatorVec& spectators);
-
 		void setTileFlags(const ItemConstPtr& item);
 		void resetTileFlags(const ItemPtr& item);
+		void updateHouse(const ItemPtr& item);
 
+		House* house = nullptr;
 		ItemPtr ground = nullptr;
 		Position tilePos;
 		uint32_t flags = 0;
+		TileItemsPtr items;
+		TileCreaturesPtr creatures;
 };
-
-// Used for walkable tiles, where there is high likeliness of
-// items being added/removed
-class DynamicTile : public Tile
-{
-	TileItemsPtr items;
-	TileCreaturesPtr creatures;
-
-public:
-	DynamicTile(uint16_t x, uint16_t y, uint8_t z) : Tile(x, y, z)
-	{
-		items = std::make_shared<TileItemVector>();
-		creatures = std::make_shared<CreatureVector>();
-	}
-
-	~DynamicTile() {
-		for (auto& item : *items) {
-			item.reset();
-		}
-	}
-
-	// non-copyable
-	DynamicTile(const DynamicTile&) = delete;
-	DynamicTile& operator=(const DynamicTile&) = delete;
-
-	TileItemsPtr getItemList() override {
-		return items;
-	}
-
-	TileItemsConstPtr getItemList() const override {
-		return items;
-	}
-
-	TileCreaturesPtr getCreatures() override {
-		return creatures;
-	}
-
-
-	TileCreaturesConstPtr getCreatures() const override {
-		return creatures;
-	}
-};
-
-// For blocking tiles, where we very rarely actually have items
-class StaticTile final : public Tile
-{
-	TileItemsPtr items;
-	TileCreaturesPtr creatures;
-
-	public:
-		StaticTile(uint16_t x, uint16_t y, uint8_t z) : Tile(x, y, z) 
-		{
-			items = std::make_shared<TileItemVector>();
-			creatures = std::make_shared<CreatureVector>();
-		}
-
-		~StaticTile() {
-			if (items) {
-				for (auto& item : *items) {
-					item.reset();
-				}
-			}
-		}
-
-		// non-copyable
-		StaticTile(const StaticTile&) = delete;
-		StaticTile& operator=(const StaticTile&) = delete;
-
-		TileItemsPtr getItemList() override {
-			return items;
-		}
-	
-		TileItemsConstPtr getItemList() const override {
-			return items;
-		}
-	
-		TileCreaturesPtr getCreatures() override {
-			return creatures;
-		}
-	
-		TileCreaturesConstPtr getCreatures() const override {
-			return creatures;
-		}
-
-	void postAddNotification(ThingPtr thing, CylinderPtr parent, int32_t index, cylinderlink_t link) override {
-			Tile::postAddNotification(thing, parent, index, link);
-		}
-
-	void postRemoveNotification(ThingPtr thing, CylinderPtr parent, int32_t index, cylinderlink_t link) override {
-			Tile::postRemoveNotification(thing, parent, index, link);
-		}
-
-};
-
 #endif

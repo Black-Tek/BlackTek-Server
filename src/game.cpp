@@ -2653,8 +2653,8 @@ void Game::playerRequestTrade(const uint32_t playerId, const Position& pos, uint
 	}
 
 	if (g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
-		if (const auto houseTile = std::dynamic_pointer_cast<const HouseTile>(tradeItem->getTile())) {
-			if (!tradeItem->getTopParent()->getCreature() && !houseTile->getHouse()->isInvited(player)) {
+		if (tradeItem->getTile()->isHouseTile()) {
+			if (!tradeItem->getTopParent()->getCreature() && !tradeItem->getTile()->getHouse()->isInvited(player)) {
 				player->sendCancelMessage(RETURNVALUE_PLAYERISNOTINVITED);
 				return;
 			}

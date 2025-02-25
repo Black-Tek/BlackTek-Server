@@ -665,7 +665,7 @@ bool Spell::playerInstantSpellCheck(const PlayerPtr& player, const Position& toP
 
 	auto tile = g_game.map.getTile(toPos);
 	if (!tile) {
-		tile = std::make_shared<StaticTile>(toPos.x, toPos.y, toPos.z);
+		tile = std::make_shared<Tile>(toPos.x, toPos.y, toPos.z);
 		g_game.map.setTile(toPos, tile);
 	}
 

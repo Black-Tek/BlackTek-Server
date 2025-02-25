@@ -21,7 +21,7 @@ extern Game g_game;
 extern MoveEvents* g_moveEvents;
 extern ConfigManager g_config;
 
-StaticTile real_nullptr_tile(0xFFFF, 0xFFFF, 0xFF);
+Tile real_nullptr_tile(0xFFFF, 0xFFFF, 0xFF);
 
 bool Tile::hasProperty(ITEMPROPERTY prop) const
 {
@@ -370,7 +370,7 @@ void Tile::onAddTileItem(ItemPtr& item)
 	}
 
 	if ((!hasFlag(TILESTATE_PROTECTIONZONE) || g_config.getBoolean(ConfigManager::CLEAN_PROTECTION_ZONES)) && item->isCleanable()) {
-		if (!std::dynamic_pointer_cast<HouseTile>(getTile())) {
+		if (!isHouseTile()) {
 			g_game.addTileToClean(getTile());
 		}
 	}
@@ -533,6 +533,10 @@ ReturnValue Tile::queryAdd(PlayerPtr player, uint32_t flags) {
 
 	const auto creatures = getCreatures();
 
+	if (isHouseTile() && !house->isInvited(player)) {
+		return RETURNVALUE_PLAYERISNOTINVITED;
+	}
+
 	// If we aren't a GM/Admin can't walk on a tile that has a creature, if we don't have walkthrough enabled.
 	if (creatures && !creatures->empty() && !hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags) && !player->isAccessPlayer()) {
 		for (const auto tileCreature : *creatures) {
@@ -584,6 +588,10 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags) {
 	// Monsters
 	// Monsters cannot enter pz, jump floors, or step into teleports
 	if (hasFlag(TILESTATE_PROTECTIONZONE | TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT)) {
+		return RETURNVALUE_NOTPOSSIBLE;
+	}
+
+	if (isHouseTile()) { // should we hardcode these things? I don't think so.
 		return RETURNVALUE_NOTPOSSIBLE;
 	}
 
@@ -653,7 +661,7 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags) {
     return RETURNVALUE_NOERROR;
 }
 
-ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags) {
+ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover) {
     // Tile's item stack is at its numeric limit can't add anything
     const auto& items = getItemList();
     if (items && items->size() >= 0xFFFF) {
@@ -675,6 +683,18 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags) {
     if (ground == nullptr && !itemIsHangable) {
         return RETURNVALUE_NOTPOSSIBLE;
     }
+
+	if (isHouseTile()) {
+		if (item->isStoreItem() && !item->hasAttribute(ITEM_ATTRIBUTE_WRAPID)) {
+			return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
+		}
+
+		if (mover && g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
+			if (!house->isInvited(mover->getPlayer())) {
+				return RETURNVALUE_PLAYERISNOTINVITED;
+			}
+		}
+	}
 
     // If there is any creature there, who is not in ghost mode... don't think this should be here...
     const auto& creatures = getCreatures();
@@ -741,13 +761,13 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags) {
     return RETURNVALUE_NOERROR;
 }
 
-ReturnValue Tile::queryAdd(int32_t, const ThingPtr& thing, uint32_t, uint32_t flags, CreaturePtr) {
+ReturnValue Tile::queryAdd(int32_t, const ThingPtr& thing, uint32_t, uint32_t flags, CreaturePtr mover) {
 	if (auto creature = std::dynamic_pointer_cast<Creature>(thing)) {
 		return queryAdd(creature, flags);
 	}
 
 	if (auto item = std::dynamic_pointer_cast<Item>(thing)) {
-		return queryAdd(item, flags);
+		return queryAdd(item, flags, mover);
 	}
 
 	std::cout << "|| WARNING || Tile::queryAdd() passed the object "<< typeid(thing).name() << ", that is not a creature or item! " << "\n";
@@ -761,7 +781,7 @@ ReturnValue Tile::queryMaxCount(int32_t, const ThingPtr&, const uint32_t count, 
 	return RETURNVALUE_NOERROR;
 }
 
-ReturnValue Tile::queryRemove(const ThingPtr& thing, const uint32_t count, uint32_t flags, CreaturePtr /*= nullptr */)
+ReturnValue Tile::queryRemove(const ThingPtr& thing, const uint32_t count, uint32_t flags, CreaturePtr actor/*= nullptr */)
 {
 	int32_t index = getThingIndex(thing);
 	if (index == -1) {
@@ -771,6 +791,12 @@ ReturnValue Tile::queryRemove(const ThingPtr& thing, const uint32_t count, uint3
 	const auto item = thing->getItem();
 	if (item == nullptr) {
 		return RETURNVALUE_NOTPOSSIBLE;
+	}
+
+	if (actor && g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
+		if (!house->isInvited(actor->getPlayer())) {
+			return RETURNVALUE_PLAYERISNOTINVITED;
+		}
 	}
 
 	if (count == 0 || (item->isStackable() && count > item->getItemCount())) {
@@ -787,6 +813,25 @@ ReturnValue Tile::queryRemove(const ThingPtr& thing, const uint32_t count, uint3
 CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, ItemPtr& destItem, uint32_t& flags) {
 	TilePtr destTile;
 	destItem.reset();
+
+	if (const auto creature = thingPtr->getCreature()) {
+		if (const auto player = creature->getPlayer()) {
+			if (!house->isInvited(player)) {
+				const Position& entryPos = house->getEntryPosition();
+				auto destTile = g_game.map.getTile(entryPos);
+				if (!destTile) {
+					destTile = g_game.map.getTile(player->getTemplePosition());
+					if (!destTile) {
+						destTile = std::make_shared<Tile>(0xFFFF, 0xFFFF, 0xFF);
+					}
+				}
+
+				someInt = -1;
+				destItem.reset();
+				return destTile;
+			}
+		}
+	}
 
 	if (!thingPtr) {
 		return getTile();
@@ -867,7 +912,9 @@ void Tile::addThing(int32_t, ThingPtr thing)
 		if (item == nullptr) {
 			return /*RETURNVALUE_NOTPOSSIBLE*/;
 		}
-
+		if (isHouseTile()) {
+			updateHouse(item); // this might should come after setParent a few lines below.
+		}
 		TileItemsPtr items = getItemList();
 		if (items && items->size() >= 0xFFFF) {
 			return /*RETURNVALUE_NOTPOSSIBLE*/;
@@ -1413,7 +1460,9 @@ void Tile::internalAddThing(uint32_t, ThingPtr thing)
 		if (item == nullptr) {
 			return;
 		}
-
+		if (isHouseTile()) {
+			updateHouse(item);
+		}
 		const ItemType& itemType = Item::items[item->getID()];
 		if (itemType.isGroundTile()) {
 			if (ground == nullptr) {
@@ -1600,4 +1649,23 @@ ItemPtr Tile::getUseItem(const int32_t index)
 	}
 
 	return nullptr;
+}
+
+
+void Tile::updateHouse(const ItemPtr& item)
+{
+	if (item->getParent() != getParent()) {
+		return;
+	}
+
+	if (auto door = item->getDoor()) {
+		if (door->getDoorId() != 0) {
+			house->addDoor(door);
+		}
+	}
+	else {
+		if (const auto bed = item->getBed()) {
+			house->addBed(bed);
+		}
+	}
 }

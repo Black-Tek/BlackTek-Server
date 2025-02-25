@@ -2249,7 +2249,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Tile", "hasProperty", LuaScriptInterface::luaTileHasProperty);
 	registerMethod("Tile", "hasFlag", LuaScriptInterface::luaTileHasFlag);
 
-	registerMethod("Tile", "queryAdd", LuaScriptInterface::luaTileQueryAdd);
 	registerMethod("Tile", "addItem", LuaScriptInterface::luaTileAddItem);
 	registerMethod("Tile", "addItemEx", LuaScriptInterface::luaTileAddItemEx);
 
@@ -4922,12 +4921,7 @@ int LuaScriptInterface::luaGameCreateTile(lua_State* L)
 
 	TilePtr tile = g_game.map.getTile(position);
 	if (!tile) {
-		if (isDynamic) {
-			tile = std::make_shared<DynamicTile>(position.x, position.y, position.z);
-		} else {
-			tile = std::make_shared<StaticTile>(position.x, position.y, position.z);
-		}
-
+		tile = std::make_shared<Tile>(position.x, position.y, position.z);
 		g_game.map.setTile(position, tile);
 	}
 
@@ -5919,37 +5913,6 @@ int LuaScriptInterface::luaTileHasFlag(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaTileQueryAdd(lua_State* L)
-{
-	// tile:queryAdd(thing[, flags])
-	const auto tile = getSharedPtr<Tile>(L, 1);
-	if (!tile) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	const auto thing = getThing(L, 2);
-	if (!thing) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	if (const auto creature = thing->getCreature()) {
-		uint32_t flags = getNumber<uint32_t>(L, 3, 0);
-		lua_pushinteger(L, tile->queryAdd(creature, flags));
-		return 1;
-	}
-
-	if (const auto item = thing->getItem()) {
-		uint32_t flags = getNumber<uint32_t>(L, 3, 0);
-		lua_pushinteger(L, tile->queryAdd(item, flags));
-		return 1;
-	}
-	
-	lua_pushnil(L);
-	return 1;
-}
-
 int LuaScriptInterface::luaTileAddItem(lua_State* L)
 {
 	// tile:addItem(itemId[, count/subType = 1[, flags = 0]])
@@ -6031,8 +5994,8 @@ int LuaScriptInterface::luaTileGetHouse(lua_State* L)
 		return 1;
 	}
 
-	if (HouseTilePtr houseTile = std::dynamic_pointer_cast<HouseTile>(tile)) {
-		pushUserdata<House>(L, houseTile->getHouse());
+	if (tile->isHouseTile()) {
+		pushUserdata<House>(L, tile->getHouse());
 		setMetatable(L, -1, "House");
 	} else {
 		lua_pushnil(L);

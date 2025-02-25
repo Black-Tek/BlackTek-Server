@@ -36,15 +36,10 @@
 TilePtr IOMap::createTile(ItemPtr& ground, ItemPtr item, uint16_t x, uint16_t y, uint8_t z)
 {
 	if (!ground) {
-		return std::make_shared<StaticTile>(x, y, z);
+		return std::make_shared<Tile>(x, y, z);
 	}
 
-	TilePtr tile;
-	if ((item && item->isBlocking()) || ground->isBlocking()) {
-		tile = std::make_shared<StaticTile>(x, y, z);
-	} else {
-		tile = std::make_shared<DynamicTile>(x, y, z);
-	}
+	TilePtr	tile = std::make_shared<Tile>(x, y, z);
 
 	tile->internalAddThing(ground);
 	ground->startDecaying();
@@ -249,7 +244,7 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 				return false;
 			}
 			
-			HouseTilePtr houseTile = std::make_shared<HouseTile>(x, y, z, house);
+			auto houseTile = std::make_shared<Tile>(x, y, z, house);
 			tile = houseTile;
 			house->addTile(houseTile);
 			isHouseTile = true;
