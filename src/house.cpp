@@ -18,7 +18,7 @@ extern Game g_game;
 
 House::House(const uint32_t houseId) : id(houseId) {}
 
-void House::addTile(const HouseTilePtr& tile)
+void House::addTile(const TilePtr& tile)
 {
 	tile->setFlag(TILESTATE_PROTECTIONZONE);
 	houseTiles.push_back(tile);
@@ -145,8 +145,7 @@ bool House::kickPlayer(const PlayerPtr& player, const PlayerPtr& target)
 		return false;
 	}
 
-	HouseTilePtr houseTile = std::dynamic_pointer_cast<HouseTile>(target->getTile());
-	if (!houseTile || houseTile->getHouse() != this) {
+	if (!target->getTile()->isHouseTile() || target->getTile()->getHouse() != this) {
 		return false;
 	}
 

@@ -355,8 +355,8 @@ ReturnValue Container::queryAdd(int32_t index, const ThingPtr& thing, uint32_t c
 
 	const auto topParent = getTopParent();
 	if (actor && g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
-		if (const auto& houseTile = std::dynamic_pointer_cast<const HouseTile>(topParent->getTile())) {
-			if (!topParent->getCreature() && !houseTile->getHouse()->isInvited(actor->getPlayer())) {
+		if (topParent->getTile()->isHouseTile()) {
+			if (!topParent->getCreature() && !topParent->getTile()->getHouse()->isInvited(actor->getPlayer())) {
 				return RETURNVALUE_PLAYERISNOTINVITED;
 			}
 		}
@@ -442,8 +442,8 @@ ReturnValue Container::queryRemove(const ThingPtr& thing, uint32_t count, uint32
 
 	if (actor && g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
 		const auto topParent = getTopParent();
-		if (const auto& houseTile = std::dynamic_pointer_cast<const HouseTile>(topParent->getTile())) {
-			if (!topParent->getCreature() && !houseTile->getHouse()->isInvited(actor->getPlayer())) {
+		if (topParent->getTile()->isHouseTile()) {
+			if (!topParent->getCreature() && !topParent->getTile()->getHouse()->isInvited(actor->getPlayer())) {
 				return RETURNVALUE_PLAYERISNOTINVITED;
 			}
 		}

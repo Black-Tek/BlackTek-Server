@@ -9,7 +9,6 @@
 #include <unordered_set>
 
 #include "container.h"
-#include "housetile.h"
 #include "position.h"
 
 class House;
@@ -95,7 +94,7 @@ enum AccessHouseLevel_t {
 	HOUSE_OWNER = 3,
 };
 
-using HouseTileList = std::list<HouseTilePtr>;
+using HouseTileList = std::list<TilePtr>;
 using HouseBedItemList = std::list<BedItemPtr>;
 
 class HouseTransferItem;
@@ -123,7 +122,7 @@ class House
 	public:
 		explicit House(const uint32_t houseId);
 
-		void addTile(const HouseTilePtr& tile);
+		void addTile(const TilePtr& tile);
 		void updateDoorDescription() const;
 
 		bool canEditAccessList(uint32_t listId, const PlayerConstPtr& player) const;

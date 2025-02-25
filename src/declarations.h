@@ -72,8 +72,8 @@ using BedItemPtr = std::shared_ptr<BedItem>;
 using BedItemConstPtr = std::shared_ptr<const BedItem>;
 
 class HouseTile;
-using HouseTilePtr = std::shared_ptr<HouseTile>;
-using HouseTileConstPtr = std::shared_ptr<const HouseTile>;
+using HouseTilePtr = std::shared_ptr<Tile>;
+using HouseTileConstPtr = std::shared_ptr<const Tile>;
 
 
 /// Object Containers

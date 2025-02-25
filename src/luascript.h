@@ -690,7 +690,6 @@ class LuaScriptInterface
 
 		static int luaTileGetThingIndex(lua_State* L);
 
-		static int luaTileQueryAdd(lua_State* L);
 		static int luaTileAddItem(lua_State* L);
 		static int luaTileAddItemEx(lua_State* L);
 
