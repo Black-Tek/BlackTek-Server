@@ -323,8 +323,8 @@ class Tile : public Cylinder, public SharedObject
 		TileItemsPtr items;
 		TileCreaturesPtr creatures;
 		ItemPtr ground;
-		Position tilePos;
 		House* house;
+		Position tilePos;
 		uint32_t flags;
 };
 #endif
