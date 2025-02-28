@@ -320,11 +320,11 @@ class Tile : public Cylinder, public SharedObject
 		void resetTileFlags(const ItemPtr& item);
 		void updateHouse(const ItemPtr& item);
 
+		House* house = nullptr;
+		ItemPtr ground = nullptr;
+		Position tilePos;
+		uint32_t flags = 0;
 		TileItemsPtr items;
 		TileCreaturesPtr creatures;
-		ItemPtr ground;
-		House* house;
-		Position tilePos;
-		uint32_t flags;
 };
 #endif
