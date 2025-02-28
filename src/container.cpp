@@ -441,10 +441,12 @@ ReturnValue Container::queryRemove(const ThingPtr& thing, uint32_t count, uint32
 	}
 
 	if (actor && g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
-		const auto topParent = getTopParent();
-		if (topParent->getTile()->isHouseTile()) {
-			if (!topParent->getCreature() && !topParent->getTile()->getHouse()->isInvited(actor->getPlayer())) {
-				return RETURNVALUE_PLAYERISNOTINVITED;
+		if (auto ground_tile = item->getTile(); ground_tile && ground_tile->isHouseTile()) {
+			const auto topParent = item->getTopParent();
+			if (const auto player = actor->getPlayer()) {
+				if (!topParent || (!topParent->getCreature() && !ground_tile->getHouse()->isInvited(player))) {
+					return RETURNVALUE_PLAYERISNOTINVITED;
+				}
 			}
 		}
 	}

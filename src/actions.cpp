@@ -464,14 +464,20 @@ bool Actions::useItem(PlayerPtr player, const Position& pos, uint8_t index, cons
 {
 	player->setNextAction(OTSYS_TIME() + g_config.getNumber(ConfigManager::ACTIONS_DELAY_INTERVAL));
 
+	if (!item) {
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return false;
+	}
+
 	if (isHotkey) {
 		uint16_t subType = item->getSubType();
 		showUseHotkeyMessage(player, item, player->getItemTypeCount(item->getID(), subType != item->getItemCount() ? subType : -1));
 	}
 
 	if (g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
-		if (item->getTile()->isHouseTile()) {
-			if (!item->getTopParent()->getCreature() && !item->getTile()->getHouse()->isInvited(player)) {
+		if (auto ground_tile = item->getTile(); ground_tile && ground_tile->isHouseTile()) {
+			auto topParent = item->getTopParent();
+			if (!topParent || (!topParent->getCreature() && !ground_tile->getHouse()->isInvited(player))) {
 				player->sendCancelMessage(RETURNVALUE_PLAYERISNOTINVITED);
 				return false;
 			}
