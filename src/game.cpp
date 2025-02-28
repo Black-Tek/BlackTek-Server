@@ -242,21 +242,6 @@ ThingPtr Game::internalGetThing(const PlayerPtr& player, const Position& pos, in
 				} else {
 					thing = tile->getTopVisibleCreature(player);
 				}
-				if (player && tile->hasFlag(TILESTATE_SUPPORTS_HANGABLE)) {
-					// do extra checks here if the thing is accessible
-					if (thing && thing->getItem()) {
-						if (tile->hasProperty(CONST_PROP_ISVERTICAL)) {
-							if (player->getPosition().x + 1 == tile->getPosition().x) {
-								thing = nullptr;
-							}
-						}
-						else { // horizontal
-							if (player->getPosition().y + 1 == tile->getPosition().y) {
-								thing = nullptr;
-							}
-						}
-					}
-				}
 				break;
 			}
 
@@ -281,6 +266,21 @@ ThingPtr Game::internalGetThing(const PlayerPtr& player, const Position& pos, in
 			default: {
 				thing = nullptr;
 				break;
+			}
+		}
+		if (player && tile->hasFlag(TILESTATE_SUPPORTS_HANGABLE)) {
+			// do extra checks here if the thing is accessible
+			if (thing && thing->getItem()) {
+				if (tile->hasProperty(CONST_PROP_ISVERTICAL)) {
+					if (player->getPosition().x + 1 == tile->getPosition().x) {
+						thing = nullptr;
+					}
+				}
+				else { // horizontal
+					if (player->getPosition().y + 1 == tile->getPosition().y) {
+						thing = nullptr;
+					}
+				}
 			}
 		}
 		return thing;
