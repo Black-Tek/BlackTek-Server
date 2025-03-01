@@ -2090,6 +2090,7 @@ void ProtocolGame::sendQuestLine(const Quest* quest)
 		if (mission.isStarted(player)) {
 			msg.addString(mission.getName(player));
 			msg.addString(mission.getDescription(player));
+			msg.addByte(mission.isCompleted(player));
 		}
 	}
 
