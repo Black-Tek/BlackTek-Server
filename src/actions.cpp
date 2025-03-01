@@ -387,7 +387,7 @@ ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint
 		// Reward chest
 		if (auto rewardchest = container->getRewardChest()) {
 			auto& myRewardChest = player->getRewardChest();
-			myRewardChest->setParent(myRewardChest->getParent());
+			myRewardChest->setParent(rewardchest->getParent());
 
 			if (myRewardChest->getItemList().empty()) {
 				return RETURNVALUE_REWARDCHESTEMPTY;
