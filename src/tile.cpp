@@ -816,7 +816,7 @@ CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, I
 
 	if (const auto creature = thingPtr->getCreature()) {
 		if (const auto player = creature->getPlayer()) {
-			if (!house->isInvited(player)) {
+			if (house && !house->isInvited(player)) {
 				const Position& entryPos = house->getEntryPosition();
 				auto destTile = g_game.map.getTile(entryPos);
 				if (!destTile) {
