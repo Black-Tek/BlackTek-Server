@@ -123,27 +123,28 @@ void Creature::onThink(uint32_t interval)
 		updateMapCache();
 	}
 
-	if (getFollowCreature() && getMaster() != getFollowCreature() && !canSeeCreature(getFollowCreature())) {
-		onCreatureDisappear(getFollowCreature(), false);
-	}
-
-	if (getAttackedCreature() && getMaster() != getAttackedCreature() && !canSeeCreature(getAttackedCreature())) {
-		onCreatureDisappear(getAttackedCreature(), false);
-	}
-
-	blockTicks += interval;
-	if (blockTicks >= 1000) {
-		blockCount = std::min<uint32_t>(blockCount + 1, 2);
-		blockTicks = 0;
-	}
-
-	if (getFollowCreature()) {
+	if (auto followTarget = getFollowCreature()) {
 		walkUpdateTicks += interval;
 		if (forceUpdateFollowPath || walkUpdateTicks >= 2000) {
 			walkUpdateTicks = 0;
 			forceUpdateFollowPath = false;
 			isUpdatingPath = true;
 		}
+		if (followTarget && getMaster() != followTarget && !canSeeCreature(followTarget)) {
+			onCreatureDisappear(followTarget, false);
+		}
+	}
+
+	if (auto attackTarget = getAttackedCreature()) {
+		if (attackTarget && getMaster() != attackTarget && !canSeeCreature(attackTarget)) {
+			onCreatureDisappear(attackTarget, false);
+		}
+	}
+
+	blockTicks += interval;
+	if (blockTicks >= 1000) {
+		blockCount = std::min<uint32_t>(blockCount + 1, 2);
+		blockTicks = 0;
 	}
 
 	if (isUpdatingPath) {
@@ -464,7 +465,9 @@ void Creature::onChangeZone(ZoneType_t zone)
 void Creature::onAttackedCreatureChangeZone(ZoneType_t zone)
 {
 	if (zone == ZONE_PROTECTION) {
-		onCreatureDisappear(getAttackedCreature(), false);
+		if (auto target = getAttackedCreature()) {
+			onCreatureDisappear(target, false);
+		}
 	}
 }
 
@@ -606,32 +609,38 @@ void Creature::onCreatureMove(const CreaturePtr& creature,
 		}
 	}
 
-	if (creature == getFollowCreature() || (creature == shared_from_this() && getFollowCreature())) {
-		if (hasFollowPath) {
-			if ((creature == getFollowCreature()) && listWalkDir.empty()) {
-				isUpdatingPath = false;
-				goToFollowCreature();
-			} else {
-				isUpdatingPath = true;
+	if (auto target = getFollowCreature()) {
+		if (creature == target || (creature == shared_from_this())) {
+			if (hasFollowPath) {
+				if ((creature == target) && listWalkDir.empty()) {
+					isUpdatingPath = false;
+					goToFollowCreature();
+				}
+				else {
+					isUpdatingPath = true;
+				}
 			}
-		}
 
-		if (newPos.z != oldPos.z || !canSee(getFollowCreature()->getPosition())) {
-			onCreatureDisappear(getFollowCreature(), false);
+			if (newPos.z != oldPos.z || !canSee(target->getPosition())) {
+				onCreatureDisappear(target, false);
+			}
 		}
 	}
 
-	if (creature == getAttackedCreature() || (creature == shared_from_this() && getAttackedCreature())) {
-		if (newPos.z != oldPos.z || !canSee(getAttackedCreature()->getPosition())) {
-			onCreatureDisappear(getAttackedCreature(), false);
-		} else {
-			if (hasExtraSwing()) {
-				//our target is moving lets see if we can get in hit
-				g_dispatcher.addTask(createTask([id = getID()]() { g_game.checkCreatureAttack(id); }));
+	if (auto target = getAttackedCreature()) {
+		if (creature == target || (creature == shared_from_this())) {
+			if (newPos.z != oldPos.z || !canSee(target->getPosition())) {
+				onCreatureDisappear(target, false);
 			}
+			else {
+				if (hasExtraSwing()) {
+					//our target is moving lets see if we can get in hit
+					g_dispatcher.addTask(createTask([id = getID()]() { g_game.checkCreatureAttack(id); }));
+				}
 
-			if (newTile->getZone() != oldTile->getZone()) {
-				onAttackedCreatureChangeZone(getAttackedCreature()->getZone());
+				if (newTile->getZone() != oldTile->getZone()) {
+					onAttackedCreatureChangeZone(target->getZone());
+				}
 			}
 		}
 	}
@@ -923,21 +932,22 @@ void Creature::getPathSearchParams(const CreatureConstPtr&, FindPathParams& fpp)
 
 void Creature::goToFollowCreature()
 {
-	if (getFollowCreature()) {
+	if (auto target = getFollowCreature()) {
 		FindPathParams fpp;
-		getPathSearchParams(getFollowCreature(), fpp);
+		getPathSearchParams(target, fpp);
 
 		auto monster = getMonster();
+		auto& targetPos = target->getPosition();
 		if (monster && !monster->getMaster() && (monster->isFleeing() || fpp.maxTargetDist > 1)) {
 			Direction dir = DIRECTION_NONE;
 
 			if (monster->isFleeing()) {
-				monster->getDistanceStep(getFollowCreature()->getPosition(), dir, true);
+				monster->getDistanceStep(targetPos, dir, true);
 			} else { // maxTargetDist > 1
-				if (!monster->getDistanceStep(getFollowCreature()->getPosition(), dir)) {
+				if (!monster->getDistanceStep(targetPos, dir)) {
 					// if we can't get anything then let the A* calculate
 					listWalkDir.clear();
-					if (getPathTo(getFollowCreature()->getPosition(), listWalkDir, fpp)) {
+					if (getPathTo(targetPos, listWalkDir, fpp)) {
 						hasFollowPath = true;
 						startAutoWalk();
 					} else {
@@ -956,7 +966,7 @@ void Creature::goToFollowCreature()
 			}
 		} else {
 			listWalkDir.clear();
-			if (getPathTo(getFollowCreature()->getPosition(), listWalkDir, fpp)) {
+			if (getPathTo(targetPos, listWalkDir, fpp)) {
 				hasFollowPath = true;
 				startAutoWalk();
 			} else {
