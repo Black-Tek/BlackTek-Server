@@ -666,7 +666,7 @@ void Game::playerMoveThing(const uint32_t playerId, const Position& fromPos,
 			return;
 		}
 
-		if (Position::areInRange<1, 1, 0>(movingCreature->getPosition(), player->getPosition())) {
+		if (Position::areInRange<1, 1, 0>(movingCreature->getPosition(), player->getPosition()) && !player->isAccessPlayer() ) {
 			SchedulerTask* task = createSchedulerTask(MOVE_CREATURE_INTERVAL, [=, this, playerID = player->getID(), creatureID = movingCreature->getID()]() {
 				playerMoveCreatureByID(playerID, creatureID, fromPos, toPos);
 				});
@@ -708,7 +708,7 @@ void Game::playerMoveCreatureByID(const uint32_t playerId, const uint32_t moving
 
 void Game::playerMoveCreature(PlayerPtr& player, CreaturePtr& movingCreature, const Position& movingCreatureOrigPos, TilePtr& toTile)
 {
-	if (!player->canDoAction()) {
+	if (!player->canDoAction() && !player->isAccessPlayer()) {
 		uint32_t delay = player->getNextActionTime();
 		SchedulerTask* task = createSchedulerTask(delay,
 			[=, this, playerID = player->getID(), movingCreatureID = movingCreature->getID(), toPos = toTile->getPosition()]() {
@@ -724,6 +724,19 @@ void Game::playerMoveCreature(PlayerPtr& player, CreaturePtr& movingCreature, co
 	}
 
 	player->setNextActionTask(nullptr);
+
+	if (player->isAccessPlayer()) {
+		if ((!movingCreature->isPushable() && !player->hasFlag(PlayerFlag_CanPushAllCreatures)) ||
+			(movingCreature->isInGhostMode() && !player->canSeeGhostMode(movingCreature))) {
+			player->sendCancelMessage(RETURNVALUE_NOTMOVEABLE);
+			return;
+		}
+		ReturnValue ret = internalMoveCreature(movingCreature, toTile);
+		if (ret != RETURNVALUE_NOERROR) {
+			player->sendCancelMessage(ret);
+		}
+		return;
+	}
 
 	if (!Position::areInRange<1, 1, 0>(movingCreatureOrigPos, player->getPosition())) {
 		//need to walk to the creature first before moving it
@@ -917,7 +930,7 @@ void Game::playerMoveItem(const PlayerPtr& player,
 							ItemPtr item,
 							CylinderPtr toCylinder)
 {
-	if (!player->canDoAction()) {
+	if (!player->canDoAction() && !player->isAccessPlayer()) {
 		uint32_t delay = player->getNextActionTime();
 		SchedulerTask* task = createSchedulerTask(delay, [=, this, playerID = player->getID()]() {
 			playerMoveItemByPlayerID(playerID, fromPos, spriteId, fromStackPos, toPos, count);
@@ -969,6 +982,21 @@ void Game::playerMoveItem(const PlayerPtr& player,
 
 	if (!item->isPushable() || item->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)) {
 		player->sendCancelMessage(RETURNVALUE_NOTMOVEABLE);
+		return;
+	}
+
+	if (player->isAccessPlayer()) {
+		uint8_t toIndex = 0;
+		if (toPos.x == 0xFFFF) {
+			if (toPos.y & 0x40) {
+				toIndex = toPos.z;
+			}
+			else {
+				toIndex = static_cast<uint8_t>(toPos.y);
+			}
+		}
+
+		ReturnValue ret = internalMoveItem(fromCylinder, toCylinder, toIndex, item, count, std::nullopt, 0, player, nullptr, &fromPos, &toPos);
 		return;
 	}
 
