@@ -794,7 +794,7 @@ ReturnValue Tile::queryRemove(const ThingPtr& thing, const uint32_t count, uint3
 	}
 
 	if (actor && g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
-		if (!house->isInvited(actor->getPlayer())) {
+		if (isHouseTile() && !house->isInvited(actor->getPlayer())) {
 			return RETURNVALUE_PLAYERISNOTINVITED;
 		}
 	}
@@ -816,7 +816,7 @@ CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, I
 
 	if (const auto creature = thingPtr->getCreature()) {
 		if (const auto player = creature->getPlayer()) {
-			if (house && !house->isInvited(player)) {
+			if (isHouseTile() && !house->isInvited(player)) {
 				const Position& entryPos = house->getEntryPosition();
 				auto destTile = g_game.map.getTile(entryPos);
 				if (!destTile) {
