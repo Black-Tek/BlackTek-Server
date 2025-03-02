@@ -390,6 +390,16 @@ class ItemType
 class Items
 {
 	public:
+		struct BagItemInfo {
+			std::string name = "";
+			uint16_t id = 0;
+			uint32_t chance = 0;
+			uint32_t minAmount = 1;
+			uint32_t maxAmount = 1;
+			uint64_t minRange = 0;
+			uint64_t maxRange = 0;
+		};
+
 		using NameMap = std::unordered_multimap<std::string, uint16_t>;
 		using InventoryVector = std::vector<uint16_t>;
 
@@ -422,6 +432,7 @@ class Items
 
 		bool loadFromXml();
 		void parseItemNode(const pugi::xml_node& itemNode, uint16_t id);
+		bool loadSurpriseBags();
 
 		void buildInventoryList();
 	
@@ -436,8 +447,12 @@ class Items
 		NameMap nameToItems;
 		CurrencyMap currencyItems;
 
+		std::vector<const BagItemInfo*> getAllBagItems() const;
+		void setItemBag(uint16_t itemId, const std::string &itemName, uint32_t chance, uint32_t minAmount, uint32_t maxAmount, uint64_t minRange, uint64_t maxRange);
+	
 	private:
 		std::vector<ItemType> items;
+		std::unordered_map<int32_t, BagItemInfo> bagItems;
 		InventoryVector inventory;
 		class ClientIdToServerIdMap
 		{

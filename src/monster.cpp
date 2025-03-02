@@ -2074,6 +2074,52 @@ void Monster::dropLoot(const ContainerPtr& corpse, const CreaturePtr&)
 	}
 	else if (corpse && lootDrop) {
 		g_events->eventMonsterOnDropLoot(this->getMonster(), corpse);
+
+		if (g_config.getBoolean(ConfigManager::SURPRISE_BAGS)) {
+			const auto allBagItems = Item::items.getAllBagItems();
+
+			// Filter out items with chance <= 0
+			std::vector<const Items::BagItemInfo*> validBagItems;
+			for (const auto &bagItem : allBagItems) {
+				if (bagItem->chance > 0) {
+					validBagItems.push_back(bagItem);
+				}
+			}
+
+			if (!validBagItems.empty()) {
+				// Iterate through valid items and drop them based on probability
+				for (const auto &bagItem : validBagItems) {
+					uint64_t minChance = bagItem->minRange;
+					uint64_t maxChance = bagItem->maxRange;
+
+					if (uniform_random(minChance, maxChance) <= bagItem->chance) {
+						auto chosenBagId = bagItem->id;
+						auto minAmount = bagItem->minAmount;
+						auto maxAmount = bagItem->maxAmount;
+						auto dropAmount = static_cast<uint16_t>(normal_random(minAmount, maxAmount));
+
+						if (chosenBagId != 0) {
+							std::shared_ptr<Item> newItem = nullptr;
+							if (dropAmount > 1) {
+								newItem = Item::CreateItem(chosenBagId, dropAmount);
+								if (newItem) {
+									if (g_game().internalAddItem(corpse, newItem) != RETURNVALUE_NOERROR) {
+										corpse->internalAddThing(newItem);
+									}
+								}
+							} else {
+								newItem = Item::CreateItem(chosenBagId, 1);
+								if (newItem) {
+									if (g_game().internalAddItem(corpse, newItem) != RETURNVALUE_NOERROR) {
+										corpse->internalAddThing(newItem);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 }
 

@@ -57,6 +57,7 @@ class ConfigManager
 			BED_OFFLINE_TRAINING,
 			AUGMENT_SLOT_PROTECTION,
 			AUGMENT_STAMINA_RULE,
+			SURPRISE_BAGS,
 
 			LAST_BOOLEAN_CONFIG /* this must be the last one */
 		};
