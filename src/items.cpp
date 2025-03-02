@@ -493,6 +493,73 @@ bool Items::loadFromXml()
 	return true;
 }
 
+bool Items::loadSurpriseBags()
+{
+	pugi::xml_document doc;
+	pugi::xml_parse_result result = doc.load_file("data/items/bags.xml");
+	if (!result) {
+		printXMLError("Error - Items::loadSurpriseBags", "data/items/bags.xml", result);
+		return false;
+	}
+
+	for (auto bagsNode : doc.child("bags").children()) {
+		pugi::xml_attribute bagItemidAttr = bagsNode.attribute("itemid");
+		if (!bagItemidAttr) {
+			std::cout << "[Warning - Items::loadSurpriseBags] - No item id found, use id" << std::endl;
+			continue;
+		}
+
+		pugi::xml_attribute bagNameAttr = bagsNode.attribute("name");
+		if (!bagNameAttr) {
+			std::cout << "[Warning - Items::loadSurpriseBags] - No item name found, use name" << std::endl;
+			continue;
+		}
+
+		uint16_t itemId = pugi::cast<uint16_t>(bagItemidAttr.value());
+		std::string itemName = bagNameAttr.as_string();
+		uint32_t chance = 0;
+
+		pugi::xml_attribute chanceAttr = bagsNode.attribute("chance");
+		if (chanceAttr) {
+			chance = pugi::cast<uint32_t>(chanceAttr.value());
+		}
+
+		uint32_t minAmount = 1;
+		pugi::xml_attribute minAmountAttr = bagsNode.attribute("minAmount");
+		if (minAmountAttr) {
+			minAmount = pugi::cast<uint32_t>(minAmountAttr.value());
+			if (minAmount <= 0) {
+				minAmount = 1;
+			}
+		}
+
+		uint32_t maxAmount = 1;
+		pugi::xml_attribute maxAmountAttr = bagsNode.attribute("maxAmount");
+		if (maxAmountAttr) {
+			maxAmount = pugi::cast<uint32_t>(maxAmountAttr.value());
+			if (maxAmount <= 0) {
+				maxAmount = 1;
+			}
+		}
+
+		uint64_t minRange = 0;
+		pugi::xml_attribute minRangeAttr = bagsNode.attribute("minRange");
+		if (minRangeAttr) {
+			minRange = pugi::cast<uint64_t>(minRangeAttr.value());
+		}
+
+		uint64_t maxRange = 0;
+		pugi::xml_attribute maxRangeAttr = bagsNode.attribute("maxRange");
+		if (maxRangeAttr) {
+			maxRange = pugi::cast<uint64_t>(maxRangeAttr.value());
+		}
+
+		setItemBag(itemId, itemName, chance, minAmount, maxAmount, minRange, maxRange);
+	}
+
+	return true;
+}
+
 void Items::buildInventoryList()
 {
 	inventory.reserve(items.size());
@@ -1337,4 +1404,25 @@ uint16_t Items::getItemIdByName(const std::string& name)
 		return 0;
 
 	return result->second;
+}
+
+void Items::setItemBag(uint16_t itemId, const std::string &itemName, uint32_t chance, uint32_t minAmount, uint32_t maxAmount, uint64_t minRange, uint64_t maxRange)
+{
+	BagItemInfo itemInfo;
+	itemInfo.name = itemName;
+	itemInfo.id = itemId;
+	itemInfo.chance = chance;
+	itemInfo.minAmount = minAmount;
+	itemInfo.maxAmount = maxAmount;
+	itemInfo.minRange = minRange;
+	itemInfo.maxRange = maxRange;
+	bagItems[itemId] = itemInfo;
+}
+
+std::vector<const BagItemInfo*> Items::getAllBagItems() const {
+	std::vector<const BagItemInfo*> allBagItems;
+	for (const auto &entry : bagItems) {
+		allBagItems.push_back(&(entry.second));
+	}
+	return allBagItems;
 }

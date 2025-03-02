@@ -235,6 +235,14 @@ void mainLoader(int, char*[], ServiceManager* services)
 		return;
 	}
 
+	// load surprise bags
+	if (g_config.getBoolean(ConfigManager::SURPRISE_BAGS)) {
+		if (!Item::items.loadSurpriseBags()) {
+			startupErrorMessage("Unable to load surprise bags!");
+			return;
+		}
+	}
+
 	std::cout << ">> Loading script systems" << std::endl;
 	if (!ScriptingManager::getInstance().loadScriptSystems()) {
 		startupErrorMessage("Failed to load script systems");
