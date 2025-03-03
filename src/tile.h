@@ -311,6 +311,8 @@ class Tile : public Cylinder, public SharedObject
 			ground = item;
 		}
 
+		void updateHouse(const ItemPtr& item);
+
 	private:
 		void onAddTileItem(ItemPtr& item);
 		void onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType);
@@ -318,7 +320,6 @@ class Tile : public Cylinder, public SharedObject
 		void onUpdateTile(const SpectatorVec& spectators);
 		void setTileFlags(const ItemConstPtr& item);
 		void resetTileFlags(const ItemPtr& item);
-		void updateHouse(const ItemPtr& item);
 
 		House* house = nullptr;
 		ItemPtr ground = nullptr;

@@ -912,14 +912,16 @@ void Tile::addThing(int32_t, ThingPtr thing)
 		if (item == nullptr) {
 			return /*RETURNVALUE_NOTPOSSIBLE*/;
 		}
-		if (isHouseTile()) {
-			updateHouse(item); // this might should come after setParent a few lines below.
-		}
+
+		updateHouse(item);
+
 		TileItemsPtr items = getItemList();
 		if (items && items->size() >= 0xFFFF) {
 			return /*RETURNVALUE_NOTPOSSIBLE*/;
 		}
 		item->setParent(getTile());
+
+		updateHouse(item);
 
 		const ItemType& itemType = Item::items[item->getID()];
 		if (itemType.isGroundTile()) {
@@ -1460,9 +1462,7 @@ void Tile::internalAddThing(uint32_t, ThingPtr thing)
 		if (item == nullptr) {
 			return;
 		}
-		if (isHouseTile()) {
-			updateHouse(item);
-		}
+		updateHouse(item);
 		const ItemType& itemType = Item::items[item->getID()];
 		if (itemType.isGroundTile()) {
 			if (ground == nullptr) {
@@ -1657,15 +1657,16 @@ void Tile::updateHouse(const ItemPtr& item)
 	if (item->getParent() != getParent()) {
 		return;
 	}
-
-	if (auto door = item->getDoor()) {
-		if (door->getDoorId() != 0) {
-			house->addDoor(door);
+	if (isHouseTile()) {
+		if (auto door = item->getDoor()) {
+			if (door->getDoorId() != 0) {
+				house->addDoor(door);
+			}
 		}
-	}
-	else {
-		if (const auto bed = item->getBed()) {
-			house->addBed(bed);
+		else {
+			if (const auto bed = item->getBed()) {
+				house->addBed(bed);
+			}
 		}
 	}
 }

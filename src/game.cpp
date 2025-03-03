@@ -197,7 +197,23 @@ void Game::saveGameState()
 
 bool Game::loadMainMap(const std::string& filename)
 {
-	return map.loadMap("data/world/" + filename + ".otbm", true);
+	if (map.loadMap("data/world/" + filename + ".otbm", true)) {
+		for (auto& [id, house] : g_game.map.houses.getHouses()) {
+			for (auto& tile : house->getTiles()) {
+				if (auto itemlist = tile->getItemList()) {
+					for (auto& item : *itemlist) {
+						if (item->getDoor() && !house->getDoorByPosition(item->getPosition())) {
+							if (item->getDoor()->getDoorId() != 0) {
+								house->addDoor(item->getDoor());
+							}
+						}
+					}
+				}
+			}
+		}
+		return true;
+	}
+	return false;
 }
 
 void Game::loadMap(const std::string& path)
