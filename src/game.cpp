@@ -5893,7 +5893,7 @@ bool Game::reload(const ReloadTypes_t reloadType)
 		case RELOAD_TYPE_ACTIONS: return g_actions->reload();
 		case RELOAD_TYPE_AUGMENTS: {
 			g_augments->reload();
-		   return true;
+			return true;
 	   }
 		case RELOAD_TYPE_CHAT: return g_chat->load();
 		case RELOAD_TYPE_CONFIG: return g_config.reload();
