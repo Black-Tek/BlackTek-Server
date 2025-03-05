@@ -30,6 +30,7 @@
 
 extern ConfigManager g_config;
 extern Actions* g_actions;
+extern Augments* g_augments;
 extern Chat* g_chat;
 extern TalkActions* g_talkActions;
 extern Spells* g_spells;
@@ -5890,6 +5891,10 @@ bool Game::reload(const ReloadTypes_t reloadType)
 {
 	switch (reloadType) {
 		case RELOAD_TYPE_ACTIONS: return g_actions->reload();
+		case RELOAD_TYPE_AUGMENTS: {
+			g_augments->reload();
+			return true;
+	   }
 		case RELOAD_TYPE_CHAT: return g_chat->load();
 		case RELOAD_TYPE_CONFIG: return g_config.reload();
 		case RELOAD_TYPE_CREATURESCRIPTS: {
@@ -5942,6 +5947,7 @@ bool Game::reload(const ReloadTypes_t reloadType)
 			g_spells->clear(true);
 			g_scripts->loadScripts("scripts", false, true);
 			g_creatureEvents->removeInvalidEvents();
+			g_augments->reload();
 			/*
 			Npcs::reload();
 			raids.reload() && raids.startup();

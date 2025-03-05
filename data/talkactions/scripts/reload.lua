@@ -4,6 +4,9 @@ local reloadTypes = {
 	["action"] = RELOAD_TYPE_ACTIONS,
 	["actions"] = RELOAD_TYPE_ACTIONS,
 
+	["augment"] = RELOAD_TYPE_AUGMENTS,
+	["augments"] = RELOAD_TYPE_AUGMENTS,
+
 	["chat"] = RELOAD_TYPE_CHAT,
 	["channel"] = RELOAD_TYPE_CHAT,
 	["chatchannels"] = RELOAD_TYPE_CHAT,
