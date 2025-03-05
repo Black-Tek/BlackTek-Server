@@ -1298,10 +1298,6 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 		} else {
 			moveItem = nullptr;
 		}
-
-		if (item->isRemoved()) {
-			item.reset();
-		}
 	}
 
 	//add item
