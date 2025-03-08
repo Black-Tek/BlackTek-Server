@@ -1,0 +1,51 @@
+[Paladin]
+id = 3
+cid = 2
+pvp = true
+name = "Paladin"
+description = "a paladin"
+speed = 220
+maxsoul = 100
+attackspeed = 2000
+promotedfrom = 3
+inactivekicktime = 50
+statsperlevel = [
+    {cap = 20, hp = 10, mana = 15}
+]
+regeneration = [
+    {hp = {amount = 5, interval = 4}},
+    {mana = {amount = 5, interval = 4}},
+    {soul = {amount = 1, interval = 120}}
+]
+damagemodifiers = [
+    {armor = 1.0, defense = 1.0, distance = 1.0, melee = 1.0}
+]
+skillrates = [
+    {magic = 1.4, fist = 1.2, club = 1.2, sword = 1.2, axe = 1.2, distance = 1.1, shield = 1.1, fishing = 1.1}
+]
+
+[RoyalPaladin]
+id = 7
+cid = 2
+pvp = true
+name = "Royal Paladin"
+description = "a royal paladin"
+speed = 220
+maxsoul = 200
+attackspeed = 2000
+promotedfrom = 3
+inactivekicktime = 50
+statsperlevel = [
+    {cap = 20, hp = 10, mana = 15}
+]
+regeneration = [
+    {hp = {amount = 10, interval = 3}},
+    {mana = {amount = 10, interval = 3}},
+    {soul = {amount = 1, interval = 15}}
+]
+damagemodifiers = [
+    {armor = 1.0, defense = 1.0, distance = 1.0, melee = 1.0}
+]
+skillrates = [
+    {magic = 1.4, fist = 1.2, club = 1.2, sword = 1.2, axe = 1.2, distance = 1.1, shield = 1.1, fishing = 1.1}
+]

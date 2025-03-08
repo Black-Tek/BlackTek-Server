@@ -127,8 +127,7 @@ using VocationMap = std::map<uint16_t, Vocation>;
 class Vocations
 {
 	public:
-		bool loadFromXml();
-
+		bool loadFromToml();
 		Vocation* getVocation(uint16_t id);
 		int32_t getVocationId(std::string_view name) const;
 		uint16_t getPromotedVocation(uint16_t vocationId) const;
@@ -136,6 +135,7 @@ class Vocations
 
 	private:
 		VocationMap vocationsMap;
+		static constexpr auto folder = "data/vocations/";
 };
 
 #endif

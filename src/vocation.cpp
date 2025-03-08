@@ -1,6 +1,7 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
+#include <toml++/toml.hpp>
 #include "otpch.h"
 
 #include "vocation.h"
@@ -8,105 +9,6 @@
 #include "player.h"
 #include "pugicast.h"
 #include "tools.h"
-
-bool Vocations::loadFromXml()
-{
-	pugi::xml_document doc;
-	pugi::xml_parse_result result = doc.load_file("data/XML/vocations.xml");
-	if (!result) {
-		printXMLError("Error - Vocations::loadFromXml", "data/XML/vocations.xml", result);
-		return false;
-	}
-
-	for (auto vocationNode : doc.child("vocations").children()) {
-		pugi::xml_attribute attr = vocationNode.attribute("id");
-		if (!attr) {
-			std::cout << "[Warning - Vocations::loadFromXml] Missing vocation id" << std::endl;
-			continue;
-		}
-
-		uint16_t id = pugi::cast<uint16_t>(attr.value());
-		auto res = vocationsMap.emplace(std::piecewise_construct,
-				std::forward_as_tuple(id), std::forward_as_tuple(id));
-		Vocation& voc = res.first->second;
-
-		vocationNode.remove_attribute("id");
-		for (auto attrNode : vocationNode.attributes()) {
-			const char* attrName = attrNode.name();
-			if (caseInsensitiveEqual(attrName, "name")) {
-				voc.name = attrNode.as_string();
-			} else if (caseInsensitiveEqual(attrName, "allowpvp")) {
-				voc.allowPvp = attrNode.as_bool();
-			} else if (caseInsensitiveEqual(attrName, "clientid")) {
-				voc.clientId = pugi::cast<uint16_t>(attrNode.value());
-			} else if (caseInsensitiveEqual(attrName, "description")) {
-				voc.description = attrNode.as_string();
-			} else if (caseInsensitiveEqual(attrName, "gaincap")) {
-				voc.gainCap = pugi::cast<uint32_t>(attrNode.value()) * 100;
-			} else if (caseInsensitiveEqual(attrName, "gainhp")) {
-				voc.gainHP = pugi::cast<uint32_t>(attrNode.value());
-			} else if (caseInsensitiveEqual(attrName, "gainmana")) {
-				voc.gainMana = pugi::cast<uint32_t>(attrNode.value());
-			} else if (caseInsensitiveEqual(attrName, "gainhpticks")) {
-				voc.gainHealthTicks = pugi::cast<uint32_t>(attrNode.value());
-			} else if (caseInsensitiveEqual(attrName, "gainhpamount")) {
-				voc.gainHealthAmount = pugi::cast<uint32_t>(attrNode.value());
-			} else if (caseInsensitiveEqual(attrName, "gainmanaticks")) {
-				voc.gainManaTicks = pugi::cast<uint32_t>(attrNode.value());
-			} else if (caseInsensitiveEqual(attrName, "gainmanaamount")) {
-				voc.gainManaAmount = pugi::cast<uint32_t>(attrNode.value());
-			} else if (caseInsensitiveEqual(attrName, "manamultiplier")) {
-				voc.manaMultiplier = pugi::cast<float>(attrNode.value());
-			} else if (caseInsensitiveEqual(attrName, "attackspeed")) {
-				voc.attackSpeed = pugi::cast<uint32_t>(attrNode.value());
-			} else if (caseInsensitiveEqual(attrName, "basespeed")) {
-				voc.baseSpeed = pugi::cast<uint32_t>(attrNode.value());
-			} else if (caseInsensitiveEqual(attrName, "soulmax")) {
-				voc.soulMax = pugi::cast<uint16_t>(attrNode.value());
-			} else if (caseInsensitiveEqual(attrName, "gainsoulticks")) {
-				voc.gainSoulTicks = pugi::cast<uint16_t>(attrNode.value());
-			} else if (caseInsensitiveEqual(attrName, "fromvoc")) {
-				voc.fromVocation = pugi::cast<uint32_t>(attrNode.value());
-			} else if (caseInsensitiveEqual(attrName, "nopongkicktime")) {
-				voc.noPongKickTime = pugi::cast<uint32_t>(attrNode.value()) * 1000;
-			} else {
-				std::cout << "[Notice - Vocations::loadFromXml] Unknown attribute: \"" << attrName << "\" for vocation: " << voc.id << std::endl;
-			}
-		}
-
-		for (auto childNode : vocationNode.children()) {
-			if (caseInsensitiveEqual(childNode.name(), "skill")) {
-				if ((attr = childNode.attribute("id"))) {
-					uint16_t skillId = pugi::cast<uint16_t>(attr.value());
-					if (skillId <= SKILL_LAST) {
-						voc.skillMultipliers[skillId] = pugi::cast<double>(childNode.attribute("multiplier").value());
-					} else {
-						std::cout << "[Notice - Vocations::loadFromXml] No valid skill id: " << skillId << " for vocation: " << voc.id << std::endl;
-					}
-				} else {
-					std::cout << "[Notice - Vocations::loadFromXml] Missing skill id for vocation: " << voc.id << std::endl;
-				}
-			} else if (caseInsensitiveEqual(childNode.name(), "formula")) {
-				if ((attr = childNode.attribute("meleeDamage"))) {
-					voc.meleeDamageMultiplier = pugi::cast<float>(attr.value());
-				}
-
-				if ((attr = childNode.attribute("distDamage"))) {
-					voc.distDamageMultiplier = pugi::cast<float>(attr.value());
-				}
-
-				if ((attr = childNode.attribute("defense"))) {
-					voc.defenseMultiplier = pugi::cast<float>(attr.value());
-				}
-
-				if ((attr = childNode.attribute("armor"))) {
-					voc.armorMultiplier = pugi::cast<float>(attr.value());
-				}
-			}
-		}
-	}
-	return true;
-}
 
 Vocation* Vocations::getVocation(uint16_t id)
 {
@@ -165,4 +67,105 @@ uint64_t Vocation::getReqMana(uint32_t magLevel) const
 		return 0;
 	}
 	return 1600 * std::pow(manaMultiplier, static_cast<int32_t>(magLevel - 1));
+}
+
+
+bool Vocations::loadFromToml() {
+	bool loaded = false;
+
+	for (const auto& file : std::filesystem::recursive_directory_iterator(folder)) {
+		if (file.is_regular_file() && file.path().extension() == ".toml") {
+			try {
+				auto vocation_file = toml::parse_file(file.path().string());
+
+				for (const auto& [index, entry] : vocation_file) {
+					if (!entry.is_table()) {
+						std::cerr << "Invalid entry in file: " << file.path() << "\n";
+						continue;
+					}
+
+					toml::table vocation_data = *entry.as_table();
+					const auto vocId = vocation_data["id"].value_or(0);
+					// to-do: I hate adding directly to the map here as a practice, it's technically slowing down the IO
+					// would be best practice to take non-blocking approach for IO's
+					auto res = vocationsMap.emplace(std::piecewise_construct, std::forward_as_tuple(vocId), std::forward_as_tuple(vocId));
+					Vocation& vocation = res.first->second;
+					vocation.name = vocation_data["name"].value_or("");
+					vocation.clientId = vocation_data["cid"].value_or(0);
+					vocation.allowPvp = vocation_data["pvp"].value_or(false);
+					vocation.description = vocation_data["description"].value_or("");
+					vocation.baseSpeed = vocation_data["speed"].value_or(220);
+					vocation.soulMax = vocation_data["maxsoul"].value_or(100);
+					vocation.attackSpeed = vocation_data["attackspeed"].value_or(2000);
+					vocation.fromVocation = vocation_data["promotedfrom"].value_or(0);
+					vocation.noPongKickTime = vocation_data["inactivekicktime"].value_or(0);
+
+					if (auto stats = vocation_data["statsperlevel"].as_array()) {
+						stats->for_each([&vocation](auto&& prop) {
+							if (prop.is_table()) {
+								auto& stat = *prop.as_table();
+								vocation.gainCap = stat["cap"].value_or(10);
+								vocation.gainHP = stat["hp"].value_or(5);
+								vocation.gainMana = stat["mana"].value_or(5);
+							}
+							});
+					}
+
+					if (auto regen = vocation_data["regeneration"].as_array()) {
+						regen->for_each([&vocation](auto&& prop) {
+							if (prop.is_table()) {
+								auto& r = *prop.as_table();
+								if (auto hp = r["hp"].as_table()) {
+									vocation.gainHealthAmount = hp->at("amount").value_or(1);
+									vocation.gainHealthTicks = hp->at("interval").value_or(6);
+								}
+								if (auto mana = r["mana"].as_table()) {
+									vocation.gainManaAmount = mana->at("amount").value_or(1);
+									vocation.gainManaTicks = mana->at("interval").value_or(6);
+								}
+								if (auto soul = r["soul"].as_table()) {
+									vocation.soulMax = soul->at("amount").value_or(1);
+									vocation.gainSoulTicks = soul->at("interval").value_or(120);
+								}
+							}
+							});
+					}
+
+					if (auto combat = vocation_data["combat"].as_array()) {
+						combat->for_each([&vocation](auto&& prop) {
+							if (prop.is_table()) {
+								auto& c = *prop.as_table();
+								vocation.armorMultiplier = c["armor"].value_or(1.0f);
+								vocation.defenseMultiplier = c["defense"].value_or(1.0f);
+								vocation.distDamageMultiplier = c["distance"].value_or(1.0f);
+								vocation.meleeDamageMultiplier = c["melee"].value_or(1.0f);
+							}
+							});
+					}
+
+					if (auto skills = vocation_data["skillrates"].as_array()) {
+						skills->for_each([&vocation](auto&& prop) {
+							if (prop.is_table()) {
+								auto& s = *prop.as_table();
+								vocation.manaMultiplier = s["magic"].value_or(4.0f);
+								vocation.skillMultipliers[SKILL_FIST] = s["fist"].value_or(1.5f);
+								vocation.skillMultipliers[SKILL_CLUB] = s["club"].value_or(2.0f);
+								vocation.skillMultipliers[SKILL_SWORD] = s["sword"].value_or(2.0f);
+								vocation.skillMultipliers[SKILL_AXE] = s["axe"].value_or(2.0f);
+								vocation.skillMultipliers[SKILL_DISTANCE] = s["distance"].value_or(2.0f);
+								vocation.skillMultipliers[SKILL_SHIELD] = s["shield"].value_or(1.5f);
+								vocation.skillMultipliers[SKILL_FISHING] = s["fishing"].value_or(1.1f);
+							}
+							});
+					}
+				}
+				loaded = true;
+			}
+			catch (const std::exception& e) {
+				std::cerr << "Failed to load TOML file: " << file.path() << " - " << e.what() << std::endl;
+			}
+		}
+	}
+
+	return loaded;
 }

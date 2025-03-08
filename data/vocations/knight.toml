@@ -1,0 +1,50 @@
+[Knight]
+id = 4
+cid = 1
+pvp = true
+name = "Knight"
+description = "a knight"
+speed = 220
+maxsoul = 100
+attackspeed = 2000
+promotedfrom = 4
+statsperlevel = [
+    {cap = 25, hp = 15, mana = 5}
+]
+regeneration = [
+    {hp = {amount = 5, interval = 3}},
+    {mana = {amount = 5, interval = 6}},
+    {soul = {amount = 1, interval = 120}}
+]
+damagemodifiers = [
+    {armor = 1.0, defense = 1.0, distance = 1.0, melee = 1.0}
+]
+skillrates = [
+    {magic = 3.0, fist = 1.1, club = 1.1, sword = 1.1, axe = 1.1, distance = 1.4, shield = 1.1, fishing = 1.1}
+]
+
+[EliteKnight]
+id = 8
+cid = 1
+pvp = true
+name = "Elite Knight"
+description = "an elite knight"
+speed = 220
+maxsoul = 200
+attackspeed = 2000
+promotedfrom = 4
+inactivekicktime = 50
+statsperlevel = [
+    {cap = 25, hp = 15, mana = 5}
+]
+regeneration = [
+    {hp = {amount = 10, interval = 2}},
+    {mana = {amount = 10, interval = 4}},
+    {soul = {amount = 1, interval = 15}}
+]
+damagemodifiers = [
+    {armor = 1.0, defense = 1.0, distance = 1.0, melee = 1.0}
+]
+skillrates = [
+    {magic = 3.0, fist = 1.1, club = 1.1, sword = 1.1, axe = 1.1, distance = 1.4, shield = 1.1, fishing = 1.1}
+]

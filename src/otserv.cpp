@@ -218,7 +218,7 @@ void mainLoader(int, char*[], ServiceManager* services)
 
 	//load vocations
 	std::cout << ">> Loading vocations" << std::endl;
-	if (!g_vocations.loadFromXml()) {
+	if (!g_vocations.loadFromToml()) {
 		startupErrorMessage("Unable to load vocations!");
 		return;
 	}

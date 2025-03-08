@@ -1,0 +1,24 @@
+[None]
+id = 0
+cid = 0
+pvp = false
+name = "None"
+description = "none"
+speed = 220
+maxsoul = 100
+attackspeed = 2000
+promotedfrom = 0
+statsperlevel = [
+    {cap = 10, hp = 5, mana = 5}
+]
+regeneration = [
+    {hp = {amount = 1, interval = 6}},
+    {mana = {amount = 1, interval = 6}},
+    {soul = {amount = 1, interval = 120}}
+]
+combat = [
+    {armor = 1.0, defense = 1.0, distance = 1.0, melee = 1.0}
+]
+skillrates = [
+    {magic = 4.0, fist = 1.5, club = 2.0, sword = 2.0, axe = 2.0, distance = 2.0, shield = 1.5, fishing = 1.1}
+]

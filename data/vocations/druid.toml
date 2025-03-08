@@ -1,0 +1,51 @@
+[Druid]
+id = 2
+cid = 4
+pvp = true
+name = "Druid"
+description = "a druid"
+speed = 220
+maxsoul = 100
+attackspeed = 2000
+promotedfrom = 2
+inactivekicktime = 40
+statsperlevel = [
+    {cap = 10, hp = 5, mana = 30}
+]
+regeneration = [
+    {hp = {amount = 5, interval = 6}},
+    {mana = {amount = 5, interval = 3}},
+    {soul = {amount = 1, interval = 120}}
+]
+damagemodifiers = [
+    {armor = 1.0, defense = 1.0, distance = 1.0, melee = 1.0}
+]
+skillrates = [
+    {magic = 1.1, fist = 1.5, club = 1.8, sword = 1.8, axe = 1.8, distance = 1.8, shield = 1.5, fishing = 1.1}
+]
+
+[ElderDruid]
+id = 6
+cid = 4
+pvp = true
+name = "Elder Druid"
+description = "an elder druid"
+speed = 220
+maxsoul = 200
+attackspeed = 2000
+promotedfrom = 2
+inactivekicktime = 40
+statsperlevel = [
+    {cap = 10, hp = 5, mana = 30}
+]
+regeneration = [
+    {hp = {amount = 10, interval = 4}},
+    {mana = {amount = 10, interval = 2}},
+    {soul = {amount = 1, interval = 15}}
+]
+damagemodifiers = [
+    {armor = 1.0, defense = 1.0, distance = 1.0, melee = 1.0}
+]
+skillrates = [
+    {magic = 1.1, fist = 1.5, club = 1.8, sword = 1.8, axe = 1.8, distance = 1.8, shield = 1.5, fishing = 1.1}
+]
