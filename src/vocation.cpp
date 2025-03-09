@@ -98,7 +98,7 @@ bool Vocations::loadFromToml() {
 					vocation.soulMax = vocation_data["maxsoul"].value_or(100);
 					vocation.attackSpeed = vocation_data["attackspeed"].value_or(2000);
 					vocation.fromVocation = vocation_data["promotedfrom"].value_or(0);
-					vocation.noPongKickTime = vocation_data["inactivekicktime"].value_or(0);
+					vocation.noPongKickTime = (vocation_data["inactivekicktime"].value_or(60) * 1000);
 
 					if (auto stats = vocation_data["statsperlevel"].as_array()) {
 						stats->for_each([&vocation](auto&& prop) {
