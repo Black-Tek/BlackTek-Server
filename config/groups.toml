@@ -1,0 +1,87 @@
+# Groups definition
+# Each group is defined as an array of tables with basic properties
+
+[Player]
+id = 1
+name = "Player"
+access = false
+maxdepotitems = 2000
+maxvipentries = 100
+
+[Tutor]
+id = 2
+name = "Tutor"
+access = true
+maxdepotitems = 2000
+maxvipentries = 200
+flags = [
+  "cantalkredprivate",
+  "talkorangehelpchannel"
+]
+
+[SeniorTutor]
+id = 3
+name = "Senior Tutor"
+access = true
+maxdepotitems = 2000
+maxvipentries = 300
+flags = [
+  "cantalkredprivate",
+  "cantalkredchannel",
+  "talkorangehelpchannel"
+]
+
+[Gamemaster]
+id = 4
+name = "Gamemaster"
+access = true
+maxdepotitems = 3000
+maxvipentries = 500
+flags = [
+  "cannotusecombat",
+  "cannotattackplayer",
+  "cannotattackmonster",
+  "cannotbeattacked",
+  "ignoredbymonsters",
+  "cansenseinvisibility",
+  "cannotbepushed",
+  "cantalkredprivate",
+  "cantalkredchannel",
+  "talkorangehelpchannel",
+  "notgaininfight"
+]
+
+[CommunityManager]
+id = 5
+name = "Community Manager"
+access = true
+maxdepotitems = 4000
+maxvipentries = 1000
+flags = [
+  "cannotusecombat",
+  "cannotattackplayer",
+  "cannotattackmonster",
+  "cannotbeattacked",
+  "canconvinceall",
+  "cansummonall",
+  "canillusionall",
+  "cansenseinvisibility",
+  "ignoredbymonsters",
+  "cannotbepushed",
+  "hasinfinitecapacity",
+  "canbroadcast",
+  "cantalkredprivate",
+  "cantalkredchannel",
+  "talkorangehelpchannel",
+  "notgaininfight",
+  "notgainexperience",
+  "isalwayspremium"
+]
+
+[Admin]
+id = 6
+name = "Administrator"
+access = true
+maxdepotitems = 10000
+maxvipentries = 2000
+flags = 127540697997306

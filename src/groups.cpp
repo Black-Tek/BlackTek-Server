@@ -1,10 +1,9 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
+#include <toml++/toml.hpp>
 #include "otpch.h"
-
 #include "groups.h"
-
 #include "pugicast.h"
 #include "tools.h"
 
@@ -50,36 +49,45 @@ const std::unordered_map<std::string, PlayerFlags> ParsePlayerFlagMap = {
 
 bool Groups::load()
 {
-	pugi::xml_document doc;
-	pugi::xml_parse_result result = doc.load_file("data/XML/groups.xml");
-	if (!result) {
-		printXMLError("Error - Groups::load", "data/XML/groups.xml", result);
-		return false;
-	}
 
-	for (auto groupNode : doc.child("groups").children()) {
-		Group group;
-		group.id = pugi::cast<uint32_t>(groupNode.attribute("id").value());
-		group.name = groupNode.attribute("name").as_string();
-		group.access = groupNode.attribute("access").as_bool();
-		group.maxDepotItems = pugi::cast<uint32_t>(groupNode.attribute("maxdepotitems").value());
-		group.maxVipEntries = pugi::cast<uint32_t>(groupNode.attribute("maxvipentries").value());
-		group.flags = pugi::cast<uint64_t>(groupNode.attribute("flags").value());
-		if (pugi::xml_node node = groupNode.child("flags")) {
-			for (auto flagNode : node.children()) {
-				pugi::xml_attribute attr = flagNode.first_attribute();
-				if (!attr || !attr.as_bool()) {
-					continue;
-				}
+	const auto file = std::filesystem::current_path().generic_string() + "/config/groups.toml";
+	try {
+		const auto tbl = toml::parse_file(file);
 
-				auto parseFlag = ParsePlayerFlagMap.find(attr.name());
-				if (parseFlag != ParsePlayerFlagMap.end()) {
-					group.flags |= parseFlag->second;
-				}
+		for (const auto& [index, entry] : tbl) {
+
+			if (!entry.is_table()) {
+				std::cerr << "Invalid entry in groups.toml! \n";
+				continue;
 			}
-		}
 
-		groups.push_back(group);
+			Group group;
+			toml::table group_data = *entry.as_table();
+			group.id = group_data["id"].value_or(1);
+			group.name = group_data["name"].value_or("");
+			group.access = group_data["access"].value_or(0);
+			group.maxDepotItems = group_data["maxdepotitems"].value_or(0);
+			group.maxVipEntries = group_data["maxvipentries"].value_or(0);
+
+			uint64_t t_flags = 0;
+			if (const auto flags = group_data["flags"].as_array()) {
+				flags->for_each([&t_flags, &group](auto&& prop) {
+					if constexpr (toml::is_string<decltype(prop)>) {
+						if (auto match_found = ParsePlayerFlagMap.find(prop.get()); match_found != ParsePlayerFlagMap.end()) {
+							group.flags |= match_found->second;
+						}
+					}
+					});
+			}
+			else if (auto flags = group_data["flags"].as_integer()) {
+				group.flags = flags->get();
+			}
+
+			groups.push_back(group);
+		}
+		// todo - trade out exceptions for parse errors to remove overheard of try-catch.
+	} catch (const std::exception& e) {
+		std::cerr << "Failed to load groups.toml - " << e.what() << std::endl;
 	}
 	return true;
 }
