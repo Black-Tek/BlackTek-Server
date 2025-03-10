@@ -65,19 +65,21 @@ bool Groups::load()
 			toml::table group_data = *entry.as_table();
 			group.id = group_data["id"].value_or(1);
 			group.name = group_data["name"].value_or("");
-			group.access = group_data["access"].value_or(0);
+			group.access = group_data["access"].value_or(false);
 			group.maxDepotItems = group_data["maxdepotitems"].value_or(0);
 			group.maxVipEntries = group_data["maxvipentries"].value_or(0);
+			group.flags = 0;
 
 			uint64_t t_flags = 0;
 			if (const auto flags = group_data["flags"].as_array()) {
 				flags->for_each([&t_flags, &group](auto&& prop) {
 					if constexpr (toml::is_string<decltype(prop)>) {
 						if (auto match_found = ParsePlayerFlagMap.find(prop.get()); match_found != ParsePlayerFlagMap.end()) {
-							group.flags |= match_found->second;
+							t_flags |= match_found->second;
 						}
 					}
-					});
+				});
+				group.flags = t_flags;
 			}
 			else if (auto flags = group_data["flags"].as_integer()) {
 				group.flags = flags->get();
