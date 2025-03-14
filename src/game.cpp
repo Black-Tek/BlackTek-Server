@@ -4138,18 +4138,11 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			return false;
 		}
 
-		// Handle health change events if any exist
-		if (damage.origin != ORIGIN_NONE) {
-			const auto& events = target->getCreatureEvents(CREATURE_EVENT_HEALTHCHANGE);
-			if (!events.empty()) {
-				// Execute each health change event
-				for (const auto creatureEvent : events) {
-					creatureEvent->executeHealthChange(target, attacker, damage);
-				}
-				// Reset the damage origin to prevent recursive calls from re-triggering the event
-				damage.origin = ORIGIN_NONE;
-				// Recursively call the function to process the final health change
-				return combatChangeHealth(attacker, target, damage);
+		// Handle health change events in a single pass
+		const auto& events = target->getCreatureEvents(CREATURE_EVENT_HEALTHCHANGE);
+		if (!events.empty()) {
+			for (const auto creatureEvent : events) {
+				creatureEvent->executeHealthChange(target, attacker, damage);
 			}
 		}
 
@@ -4261,17 +4254,15 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 		// Check if the target has a mana shield, which can absorb some or all of the damage
 		if (targetPlayer && target->hasCondition(CONDITION_MANASHIELD) && damage.primary.type != COMBAT_UNDEFINEDDAMAGE) {
 			if (int32_t manaDamage = std::min<int32_t>(targetPlayer->getMana(), healthChange); manaDamage != 0) {
-				if (damage.origin != ORIGIN_NONE) {
-					if (const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE); !events.empty()) {
-						for (const auto creatureEvent : events) {
-							creatureEvent->executeManaChange(target, attacker, damage);
-						}
-						healthChange = damage.primary.value + damage.secondary.value;
-						if (healthChange == 0) {
-							return true;
-						}
-						manaDamage = std::min<int32_t>(targetPlayer->getMana(), healthChange);
+				if (const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE); !events.empty()) {
+					for (const auto creatureEvent : events) {
+						creatureEvent->executeManaChange(target, attacker, damage);
 					}
+					healthChange = damage.primary.value + damage.secondary.value;
+					if (healthChange == 0) {
+						return true;
+					}
+					manaDamage = std::min<int32_t>(targetPlayer->getMana(), healthChange);
 				}
 
 				// Drain mana from the target and create a visual effect
@@ -4338,14 +4329,10 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			return true;
 		}
 
-		// Handle health change events again if necessary
-		if (damage.origin != ORIGIN_NONE) {
-			if (const auto& events = target->getCreatureEvents(CREATURE_EVENT_HEALTHCHANGE); !events.empty()) {
-				for (const auto creatureEvent : events) {
-					creatureEvent->executeHealthChange(target, attacker, damage);
-				}
-				damage.origin = ORIGIN_NONE;
-				return combatChangeHealth(attacker, target, damage);
+		// Try single pass again here
+		if (const auto& events = target->getCreatureEvents(CREATURE_EVENT_HEALTHCHANGE); !events.empty()) {
+			for (const auto creatureEvent : events) {
+				creatureEvent->executeHealthChange(target, attacker, damage);
 			}
 		}
 
@@ -4489,14 +4476,10 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 			}
 		}
 
-		if (damage.origin != ORIGIN_NONE) {
-			const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
-			if (!events.empty()) {
-				for (const auto creatureEvent : events) {
-					creatureEvent->executeManaChange(target, attacker, damage);
-				}
-				damage.origin = ORIGIN_NONE;
-				return combatChangeMana(attacker, target, damage);
+		const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
+		if (!events.empty()) {
+			for (const auto creatureEvent : events) {
+				creatureEvent->executeManaChange(target, attacker, damage);
 			}
 		}
 
@@ -4542,14 +4525,10 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 			return true;
 		}
 
-		if (damage.origin != ORIGIN_NONE) {
-			const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
-			if (!events.empty()) {
-				for (const auto creatureEvent : events) {
-					creatureEvent->executeManaChange(target, attacker, damage);
-				}
-				damage.origin = ORIGIN_NONE;
-				return combatChangeMana(attacker, target, damage);
+		const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
+		if (!events.empty()) {
+			for (const auto creatureEvent : events) {
+				creatureEvent->executeManaChange(target, attacker, damage);
 			}
 		}
 
