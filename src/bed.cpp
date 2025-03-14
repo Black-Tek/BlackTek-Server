@@ -218,8 +218,11 @@ void BedItem::regeneratePlayer(const PlayerPtr& player) const
 			regen = sleptTime / 30;
 		}
 
-		player->changeHealth(regen, false);
-		player->changeMana(regen);
+		CombatDamage statchange;
+		statchange.primary.value = static_cast<int32_t>(regen);
+		statchange.primary.type = COMBAT_HEALING;
+		g_game.combatChangeMana(nullptr, player, statchange);
+		g_game.combatChangeHealth(nullptr, player, statchange);
 	}
 
 	const int32_t soulRegen = sleptTime / (60 * 15);
