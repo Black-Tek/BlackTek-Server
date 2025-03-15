@@ -4121,13 +4121,11 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 	const auto attackerPlayer = attacker and attacker->getPlayer() ? attacker->getPlayer() : nullptr;
 	auto targetPlayer = target and target->getPlayer() ? target->getPlayer() : nullptr;
 
-	// If the attacker is a player with a black skull and the target is not marked with a skull,
-	// the attack should not proceed.
 	if (attackerPlayer && targetPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
 		return false;
 	}
 
-	// Early exit if the target is already dead
+	// Early exit incase the target is already dead
 	if (target->getHealth() <= 0) {
 		return false;
 	}
