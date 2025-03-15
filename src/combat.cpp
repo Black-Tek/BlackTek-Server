@@ -886,6 +886,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				if (!attackModData.empty()) {
 					percentTotal = attackModData[ATTACK_MODIFIER_CRITICAL].percentTotal;
 					flatTotal = attackModData[ATTACK_MODIFIER_CRITICAL].flatTotal;
+					damage.augmented = true;
 				}
 
 				// normal crits are the old ones and are percent based
@@ -972,7 +973,9 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 
 		if (target && caster && target != caster) {
 			if (damage.critical) {
-				g_game.addMagicEffect(target->getPosition(), CONST_ME_CRITICAL_DAMAGE);
+				if (damage.augmented and g_config.getBoolean(ConfigManager::AUGMENT_CRITICAL_ANIMIATION) or not damage.augmented) {
+					g_game.addMagicEffect(target->getPosition(), CONST_ME_CRITICAL_DAMAGE);
+				}
 			}
 
 			for (const auto& condition : params.conditionList)
