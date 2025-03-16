@@ -85,13 +85,13 @@ cd "!PREMAKE_PATH!"
 :: which does not fail to build using its bootstrap.bat
 :: but also supports our needed features.
 echo Downloading premake...
-curl -L "https://github.com/premake/premake-core/archive/490686ceb24b29f16c1ec817ed05c07c5cce89c6.zip" -o premake.zip || (
+curl -L "https://github.com/premake/premake-core/releases/download/v5.0.0-beta5/premake-5.0.0-beta5-src.zip" -o premake.zip || (
     echo Failed to download premake.
     exit /b
 )
 tar -xf premake.zip
 del premake.zip
-ren "premake-core-490686ceb24b29f16c1ec817ed05c07c5cce89c6" "premake-core"
+ren "premake-5.0.0-beta5-src" "premake-core"
 set premakeBin=!PREMAKE_PATH!\premake-core\bin\release\premake5.exe
 
 :: Build premake
