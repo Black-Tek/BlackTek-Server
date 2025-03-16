@@ -880,69 +880,20 @@ bool ConditionRegeneration::executeCondition(const CreaturePtr creature, int32_t
 
 	if (internalHealthTicks >= healthTicks) {
 		internalHealthTicks = 0;
-
-		int32_t realHealthGain = creature->getHealth();
-		creature->changeHealth(healthGain);
-		realHealthGain = creature->getHealth() - realHealthGain;
-
-		if (isBuff && realHealthGain > 0) {
-			if (const auto player = creature->getPlayer()) {
-				std::string healString = std::to_string(realHealthGain) + (realHealthGain != 1 ? " hitpoints." : " hitpoint.");
-
-				TextMessage message(MESSAGE_HEALED, "You were healed for " + healString);
-				message.position = player->getPosition();
-				message.primary.value = realHealthGain;
-				message.primary.color = TEXTCOLOR_MAYABLUE;
-				player->sendTextMessage(message);
-
-				SpectatorVec spectators;
-				g_game.map.getSpectators(spectators, player->getPosition(), false, true);
-				spectators.erase(player);
-				if (!spectators.empty()) {
-					message.type = MESSAGE_HEALED_OTHERS;
-					message.text = player->getName() + " was healed for " + healString;
-					for (auto spectator : spectators) {
-						if (auto t_player = spectator->getPlayer())
-						{
-							t_player->sendTextMessage(message);
-						}
-					}
-				}
-			}
-		}
+		CombatDamage regen;
+		regen.primary.value = static_cast<int32_t>(healthGain);
+		regen.primary.type = COMBAT_HEALING;
+		g_game.combatChangeHealth(nullptr, creature, regen);
 	}
 
 	if (internalManaTicks >= manaTicks) {
 		internalManaTicks = 0;
 
 		if (auto player = creature->getPlayer()) {
-			int32_t realManaGain = player->getMana();
-			player->changeMana(manaGain);
-			realManaGain = player->getMana() - realManaGain;
-
-			if (isBuff && realManaGain > 0) {
-				std::string manaGainString = std::to_string(realManaGain);
-
-				TextMessage message(MESSAGE_HEALED, "You gained " + manaGainString + " mana.");
-				message.position = player->getPosition();
-				message.primary.value = realManaGain;
-				message.primary.color = TEXTCOLOR_MAYABLUE;
-				player->sendTextMessage(message);
-
-				SpectatorVec spectators;
-				g_game.map.getSpectators(spectators, player->getPosition(), false, true);
-				spectators.erase(player);
-				if (!spectators.empty()) {
-					message.type = MESSAGE_HEALED_OTHERS;
-					message.text = player->getName() + " gained " + manaGainString + " mana.";
-					for (auto spectator : spectators) {
-						if (auto t_player = spectator->getPlayer())
-						{
-							t_player->sendTextMessage(message);
-						}
-					}
-				}
-			}
+			CombatDamage regen;
+			regen.primary.value = static_cast<int32_t>(manaGain);
+			regen.primary.type = COMBAT_HEALING;
+			g_game.combatChangeMana(nullptr, player, regen);
 		}
 	}
 

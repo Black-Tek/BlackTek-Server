@@ -4111,58 +4111,47 @@ void Game::combatGetTypeInfo(const CombatType_t combatType, const CreaturePtr& t
 
 bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& target, CombatDamage& damage)
 {
-	// Get the position of the target for later use in displaying messages and effects
+	// Target should always exist when calling this function, otherwise its pretty pointless..
+
+	// we can say true and do nothing with 0 damage, but maybe it should be false.. need to investigate further, later.
+	if (damage.primary.value == 0 and damage.secondary.value == 0) {
+		return true; 
+	}
+
+	const auto attackerPlayer = attacker and attacker->getPlayer() ? attacker->getPlayer() : nullptr;
+	auto targetPlayer = target and target->getPlayer() ? target->getPlayer() : nullptr;
+
+	if (attackerPlayer && targetPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
+		return false;
+	}
+
+	// Early exit incase the target is already dead
+	if (target->getHealth() <= 0) {
+		return false;
+	}
+
+	// Handle lua events immediately
+	if (const auto& events = target->getCreatureEvents(CREATURE_EVENT_HEALTHCHANGE); !events.empty()) {
+		for (const auto creatureEvent : events) {
+			creatureEvent->executeHealthChange(target, attacker, damage);
+		}
+	}
+
 	const Position& targetPos = target->getPosition();
 
 	// If the damage value is positive (indicating healing or positive health change)
 	if (damage.primary.value > 0) {
-		// Early exit if the target is already dead
-		if (target->getHealth() <= 0) {
-			return false;
-		}
-
-		// Determine if the attacker is a player, if not, set to nullptr
-		PlayerPtr attackerPlayer;
-		if (attacker) {
-			attackerPlayer = attacker->getPlayer();
-		} else {
-			attackerPlayer = nullptr;
-		}
-
-		// Check if the target is a player
-		auto targetPlayer = target->getPlayer();
-
-		// If the attacker is a player with a black skull and the target is not marked with a skull,
-		// the attack should not proceed.
-		if (attackerPlayer && targetPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
-			return false;
-		}
-
-		// Handle health change events if any exist
-		if (damage.origin != ORIGIN_NONE) {
-			const auto& events = target->getCreatureEvents(CREATURE_EVENT_HEALTHCHANGE);
-			if (!events.empty()) {
-				// Execute each health change event
-				for (const auto creatureEvent : events) {
-					creatureEvent->executeHealthChange(target, attacker, damage);
-				}
-				// Reset the damage origin to prevent recursive calls from re-triggering the event
-				damage.origin = ORIGIN_NONE;
-				// Recursively call the function to process the final health change
-				return combatChangeHealth(attacker, target, damage);
-			}
-		}
-
-		// Calculate the actual health change and apply it to the target
+		
 		int32_t realHealthChange = target->getHealth();
 		target->gainHealth(attacker, damage.primary.value);
 		realHealthChange = target->getHealth() - realHealthChange;
 		
 		// rewardboss healing contribution
-		if (target && target->getPlayer()) {
+		if (targetPlayer) {
 			for (const auto& monsterId : g_game.rewardBossTracking | std::views::keys) {
 				if (const auto monster = getMonsterByID(monsterId); monster && monster->isRewardBoss()) {
 					const Position& monsterPos = monster->getPosition();
+					// what da fuq is this formula for determining range eligibility?
 					if (double distBetweenTargetAndBoss = std::sqrt(std::pow(targetPos.x - monsterPos.x, 2) + std::pow(targetPos.y - monsterPos.y, 2)); distBetweenTargetAndBoss < 7) {
 						uint32_t playerGuid = target->getPlayer()->getGUID();
 						rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realHealthChange * g_config.getFloat(ConfigManager::REWARD_RATE_HEALING_DONE);
@@ -4227,20 +4216,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			if (!target->isInGhostMode()) {
 				addMagicEffect(targetPos, CONST_ME_POFF);
 			}
-			return true;
-		}
-
-		// Similar logic for attacker and target player checks as before
-		PlayerPtr attackerPlayer;
-		if (attacker) {
-			attackerPlayer = attacker->getPlayer();
-		} else {
-			attackerPlayer = nullptr;
-		}
-
-		const auto targetPlayer = target->getPlayer();
-		if (attackerPlayer && targetPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
-			return false;
+			return true; // should we return true here? We could be wasting attacks... perhaps we make it a config?
 		}
 
 		// Convert the damage values to positive for health reduction
@@ -4259,19 +4235,17 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 		SpectatorVec spectators;
 
 		// Check if the target has a mana shield, which can absorb some or all of the damage
-		if (targetPlayer && target->hasCondition(CONDITION_MANASHIELD) && damage.primary.type != COMBAT_UNDEFINEDDAMAGE) {
+		if (targetPlayer && targetPlayer->hasCondition(CONDITION_MANASHIELD) && damage.primary.type != COMBAT_UNDEFINEDDAMAGE) {
 			if (int32_t manaDamage = std::min<int32_t>(targetPlayer->getMana(), healthChange); manaDamage != 0) {
-				if (damage.origin != ORIGIN_NONE) {
-					if (const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE); !events.empty()) {
-						for (const auto creatureEvent : events) {
-							creatureEvent->executeManaChange(target, attacker, damage);
-						}
-						healthChange = damage.primary.value + damage.secondary.value;
-						if (healthChange == 0) {
-							return true;
-						}
-						manaDamage = std::min<int32_t>(targetPlayer->getMana(), healthChange);
+				if (const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE); !events.empty()) {
+					for (const auto creatureEvent : events) {
+						creatureEvent->executeManaChange(target, attacker, damage);
 					}
+					healthChange = damage.primary.value + damage.secondary.value;
+					if (healthChange == 0) {
+						return true;
+					}
+					manaDamage = std::min<int32_t>(targetPlayer->getMana(), healthChange);
 				}
 
 				// Drain mana from the target and create a visual effect
@@ -4336,17 +4310,6 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 		int32_t realDamage = damage.primary.value + damage.secondary.value;
 		if (realDamage == 0) {
 			return true;
-		}
-
-		// Handle health change events again if necessary
-		if (damage.origin != ORIGIN_NONE) {
-			if (const auto& events = target->getCreatureEvents(CREATURE_EVENT_HEALTHCHANGE); !events.empty()) {
-				for (const auto creatureEvent : events) {
-					creatureEvent->executeHealthChange(target, attacker, damage);
-				}
-				damage.origin = ORIGIN_NONE;
-				return combatChangeHealth(attacker, target, damage);
-			}
 		}
 
 		// Cap the primary damage at the target's current health
@@ -4428,7 +4391,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 				tmpPlayer->sendTextMessage(message);
 			}
 		}
-// rewardboss player attacking boss
+		// rewardboss player attacking boss
 		if (target && target->getMonster() && target->getMonster()->isRewardBoss()) {
 			uint32_t monsterId = target->getMonster()->getID();
 
@@ -4436,8 +4399,8 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 				rewardBossTracking[monsterId] = RewardBossContributionInfo();
 			}
 
-			if (attacker && attacker->getPlayer()) {
-				uint32_t playerGuid = attacker->getPlayer()->getGUID();
+			if (attackerPlayer) {
+				uint32_t playerGuid = attackerPlayer->getGUID();
 				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageDone += realDamage * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE);
 			}
 		}
@@ -4489,14 +4452,10 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 			}
 		}
 
-		if (damage.origin != ORIGIN_NONE) {
-			const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
-			if (!events.empty()) {
-				for (const auto creatureEvent : events) {
-					creatureEvent->executeManaChange(target, attacker, damage);
-				}
-				damage.origin = ORIGIN_NONE;
-				return combatChangeMana(attacker, target, damage);
+		const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
+		if (!events.empty()) {
+			for (const auto creatureEvent : events) {
+				creatureEvent->executeManaChange(target, attacker, damage);
 			}
 		}
 
@@ -4542,14 +4501,10 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 			return true;
 		}
 
-		if (damage.origin != ORIGIN_NONE) {
-			const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
-			if (!events.empty()) {
-				for (const auto creatureEvent : events) {
-					creatureEvent->executeManaChange(target, attacker, damage);
-				}
-				damage.origin = ORIGIN_NONE;
-				return combatChangeMana(attacker, target, damage);
+		const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
+		if (!events.empty()) {
+			for (const auto creatureEvent : events) {
+				creatureEvent->executeManaChange(target, attacker, damage);
 			}
 		}
 

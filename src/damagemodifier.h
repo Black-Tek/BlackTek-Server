@@ -1,7 +1,7 @@
 // Credits: BlackTek Server Creator Codinablack@github.com.
 // This project is based of otland's The Forgottenserver.
 // Any and all code taken from otland's The Forgottenserver is licensed under GPL 2.0
-// Any code Authored by: Codinablack or BlackTek contributers, that is not already licensed, is hereby licesned MIT. 
+// Any code Authored by: Codinablack or BlackTek contributers, that is not already licensed, is hereby licensed MIT. 
 // The GPL 2.0 License that can be found in the LICENSE file.
 // All code found in this file is licensed under MIT and can be found in the LICENSE file.
 
