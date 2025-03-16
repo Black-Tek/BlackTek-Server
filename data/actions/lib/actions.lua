@@ -166,10 +166,12 @@ function onUseRope(player, item, fromPosition, target, toPosition, isHotkey)
 		end
 
 		if thing:isPlayer() then
-			if Tile(toPosition:moveUpstairs()):queryAdd(thing) ~= RETURNVALUE_NOERROR then
+			local destinationTile = Tile(toPosition:moveUpstairs())
+			local ground = destinationTile:getGround()
+			local pathIsClear = not destinationTile:hasFlag(TILESTATE_IMMOVABLEBLOCKSOLID) and not destinationTile:hasFlag(TILESTATE_BLOCKSOLID)
+			if not ground or not destinationTile:getCreatureCount() == 0 or not pathIsClear then
 				return false
 			end
-
 			return thing:teleportTo(toPosition, false)
 		elseif thing:isItem() and thing:getType():isMovable() then
 			return thing:moveTo(toPosition:moveUpstairs())

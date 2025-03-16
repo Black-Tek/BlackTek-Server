@@ -1115,8 +1115,6 @@ function getTopCreature(position)
 	return pushThing(t:getTopCreature())
 end
 
-function queryTileAddThing(thing, position, ...) local t = Tile(position) return t and t:queryAdd(thing, ...) or false end
-
 function doTeleportThing(uid, dest, pushMovement)
 	if type(uid) == "userdata" then
 		if uid:isCreature() then
