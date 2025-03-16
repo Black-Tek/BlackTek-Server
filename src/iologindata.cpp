@@ -1107,7 +1107,6 @@ void IOLoginData::loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augm
 		auto augmentData = result->getString("augments");
 
 		if (augmentData.empty()) {
-			std::cout << "INFO: Empty augment data for player " << playerID << std::endl;
 			return;
 		}
 
@@ -1117,7 +1116,6 @@ void IOLoginData::loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augm
 		uint32_t augmentCount = 0;
 
 		if (!augmentStream.read<uint32_t>(augmentCount)) {
-			std::cout << "WARNING: Failed to read augment count for player " << playerID << std::endl;
 			return;
 		}
 		

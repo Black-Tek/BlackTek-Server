@@ -784,9 +784,7 @@ ReturnValue MoveEvent::EquipItem(MoveEvent* moveEvent, const PlayerPtr& player, 
 		}
 	}
 
-
 	if (needUpdateSkills) {
-		std::cout << "Skills updated!" << std::endl;
 		player->sendSkills();
 	}
 
