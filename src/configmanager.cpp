@@ -246,6 +246,7 @@ bool ConfigManager::load()
 	boolean[AUGMENT_SLOT_PROTECTION] = getGlobalBoolean(L, "augmentSlotProtection", true);
 	boolean[AUGMENT_STAMINA_RULE] = getGlobalBoolean(L, "augmentStaminInMinutes", false);
 	boolean[AUGMENT_CRITICAL_ANIMATION] = getGlobalBoolean(L, "showAnimationOnCritHitFromAugment", true);
+	boolean[NPC_PZ_WALKTHROUGH] = getGlobalBoolean(L, "allowNpcWalkthroughInPz", false);
 
 	string[DEFAULT_PRIORITY] = getGlobalString(L, "defaultPriority", "high");
 	string[SERVER_NAME] = getGlobalString(L, "serverName", "");

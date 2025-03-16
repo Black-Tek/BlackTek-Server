@@ -661,6 +661,29 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags) {
     return RETURNVALUE_NOERROR;
 }
 
+
+ReturnValue Tile::queryAdd(NpcPtr npc, uint32_t flags) {
+	if (npc->isPhaseable()) {
+		return RETURNVALUE_NOERROR;
+	}
+
+	if (g_config.getBoolean(ConfigManager::NPC_PZ_WALKTHROUGH) and this->hasFlag(TILESTATE_PVPZONE)) {
+		return RETURNVALUE_NOERROR;
+	}
+
+	const auto creatures = getCreatures();
+
+	if (creatures and not creatures->empty() and not hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags)) {
+		return RETURNVALUE_NOTENOUGHROOM;
+	}
+
+	// Here we can add more options specifically for NPC's
+	// realistically, there is likely more use cases not considered for NPC's that should probably
+	// be handled here, like perhaps fields and such, but I don't think its a huge concernt atm.
+
+	return RETURNVALUE_NOERROR;
+}
+
 ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover) {
     // Tile's item stack is at its numeric limit can't add anything
     const auto& items = getItemList();

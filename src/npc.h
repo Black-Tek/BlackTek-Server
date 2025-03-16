@@ -108,6 +108,10 @@ class Npc final : public Creature
 			return pushable && walkTicks != 0;
 		}
 
+		bool isPhaseable() const {
+			return phaseable;
+		}
+
 		void setID() override {
 			if (id == 0) {
 				id = ++npcAutoID;
@@ -116,6 +120,9 @@ class Npc final : public Creature
 
 		void removeList() override;
 		void addList() override;
+		void makePhaseable() {
+			phaseable = true;
+		}
 
 		static NpcPtr createNpc(const std::string& name);
 
@@ -247,6 +254,7 @@ class Npc final : public Creature
 		bool loaded;
 		bool isIdle;
 		bool pushable;
+		bool phaseable = false;
 
 		friend class Npcs;
 		friend class NpcScriptInterface;

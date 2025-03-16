@@ -58,6 +58,7 @@ class ConfigManager
 			AUGMENT_SLOT_PROTECTION,
 			AUGMENT_STAMINA_RULE,
 			AUGMENT_CRITICAL_ANIMATION,
+			NPC_PZ_WALKTHROUGH,
 
 			LAST_BOOLEAN_CONFIG /* this must be the last one */
 		};

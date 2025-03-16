@@ -262,6 +262,7 @@ class Tile : public Cylinder, public SharedObject
 		ReturnValue queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover);
 		ReturnValue queryAdd(PlayerPtr player, uint32_t flags);
 		ReturnValue queryAdd(MonsterPtr monster, uint32_t flags);
+		ReturnValue queryAdd(NpcPtr npc, uint32_t flags);
 
 		void addThing(ThingPtr thing) override final;
 		void addThing(int32_t index, ThingPtr thing) override;
