@@ -70,24 +70,20 @@ jobs:
           cd D:\a\BlackTek-Server
 
       - name: Cleanup Vcpkg_installed 
-        uses: JesseTG/rm@v1.0.3
-        with:
-            path: D:/a/BlackTek-Server/BlackTek-Server/vcpkg_installed
+        run: Remove-Item -Path "D:/a/BlackTek-Server/BlackTek-Server/vcpkg_installed" -Recurse -Force
+        shell: pwsh
 
       - name: Cleanup Intermediaries 
-        uses: JesseTG/rm@v1.0.3
-        with:
-            path: D:/a/BlackTek-Server/BlackTek-Server/build
+        run: Remove-Item -Path "D:/a/BlackTek-Server/BlackTek-Server/build" -Recurse -Force
+        shell: pwsh
 
       - name: Cleanup More VCPKG stuff 
-        uses: JesseTG/rm@v1.0.3
-        with:
-            path: D:/a/BlackTek-Server/BlackTek-Server/vcpkg
+        run: Remove-Item -Path "D:/a/BlackTek-Server/BlackTek-Server/vcpkg" -Recurse -Force
+        shell: pwsh
 
       - name: Cleanup Premake-Core 
-        uses: JesseTG/rm@v1.0.3
-        with:
-            path: D:/a/BlackTek-Server/BlackTek-Server/premake-core
+        run: Remove-Item -Path "D:/a/BlackTek-Server/BlackTek-Server/premake-core" -Recurse -Force
+        shell: pwsh
 
       - name: Prepare Compressed Assets
         run: |
