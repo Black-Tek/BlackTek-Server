@@ -88,7 +88,7 @@ struct OTBM_Tile_coords {
 
 class IOMap
 {
-	static TilePtr createTile(ItemPtr& ground, ItemPtr item, uint16_t x, uint16_t y, uint8_t z);
+	static TilePtr createTile(ItemPtr& ground, uint16_t x, uint16_t y, uint8_t z);
 
 	public:
 		bool loadMap(Map* map, const std::filesystem::path& fileName);
