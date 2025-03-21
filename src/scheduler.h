@@ -5,9 +5,9 @@
 #define FS_SCHEDULER_H
 
 #include "tasks.h"
-#include <unordered_map>
-
 #include "thread_holder_base.h"
+
+#include <phmap.hpp>
 
 static constexpr int32_t SCHEDULER_MINTICKS = 50;
 
@@ -48,7 +48,7 @@ class Scheduler : public ThreadHolder<Scheduler>
 		void threadMain() { io_context.run(); }
 	private:
 		std::atomic<uint32_t> lastEventId{0};
-		std::unordered_map<uint32_t, boost::asio::steady_timer> eventIdTimerMap;
+		gtl::node_hash_map<uint32_t, boost::asio::steady_timer> eventIdTimerMap;
 		boost::asio::io_context io_context;
 		boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work{ io_context.get_executor() };
 };

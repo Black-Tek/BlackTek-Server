@@ -14,6 +14,7 @@
 #include <utility>
 #include <optional>
 #include <functional>
+#include <phmap.hpp>
 
 class Condition;
 class Creature;

@@ -10,6 +10,7 @@
 #define FS_AUGMENTS_H
 
 #include "augment.h"
+#include <phmap.hpp>
 
 class Augments {
 

@@ -11,10 +11,11 @@
 #include "tools.h"
 #include "imbuement.h"
 #include "augments.h"
+
 #include <typeinfo>
 #include <boost/variant.hpp>
 #include <deque>
-
+#include <phmap.hpp>
 
 class Creature;
 class Player;
@@ -388,7 +389,7 @@ class ItemAttributes
 		static double emptyDouble;
 		static bool emptyBool;
 
-		typedef std::unordered_map<std::string, CustomAttribute> CustomAttributeMap;
+		typedef gtl::node_hash_map<std::string, CustomAttribute> CustomAttributeMap;
 
 		struct Attribute
 		{

@@ -6,7 +6,9 @@
 
 #include "connection.h"
 #include "signals.h"
+
 #include <memory>
+#include <phmap.hpp>
 
 class Protocol;
 
@@ -99,7 +101,7 @@ class ServiceManager
 	private:
 		void die();
 
-		std::unordered_map<uint16_t, ServicePort_ptr> acceptors;
+		gtl::node_hash_map<uint16_t, ServicePort_ptr> acceptors;
 
 		boost::asio::io_context io_context;
 		Signals signals{io_context};

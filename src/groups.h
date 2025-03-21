@@ -4,6 +4,8 @@
 #ifndef FS_GROUPS_H
 #define FS_GROUPS_H
 
+#include <phmap.hpp>
+
 struct Group {
 	std::string name;
 	uint64_t flags;

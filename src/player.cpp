@@ -36,8 +36,8 @@ uint32_t Player::playerAutoID = 0x10000000;
 
 using RawArea = std::vector<uint32_t>;
 using RawAreaVec = std::vector<RawArea>;
-using DeflectionEffectMap = std::unordered_map<int, RawAreaVec>;
-using DeflectAreaMap = std::unordered_map<Direction, const DeflectionEffectMap>;
+using DeflectionEffectMap = gtl::flat_hash_map<int, RawAreaVec>;
+using DeflectAreaMap = gtl::flat_hash_map<Direction, const DeflectionEffectMap>;
 
 static const DeflectionEffectMap _StandardDeflectionMap = DeflectionEffectMap{
 		{1, {{0, 0, 0, 0, 0,
@@ -227,7 +227,7 @@ static const DeflectAreaMap DeflectAreas = DeflectAreaMap{
 	{DIRECTION_SOUTHEAST, _DiagonalDeflectionMap},
 };
 
-std::unordered_map<int, RawAreaVec> deflectionAreas = {
+gtl::flat_hash_map<int, RawAreaVec> deflectionAreas = {
 	{1, {{0, 0, 0, 0, 0,
 		  0, 0, 0, 0, 0,
 		  0, 0, 3, 0, 0,
@@ -305,7 +305,7 @@ std::unordered_map<int, RawAreaVec> deflectionAreas = {
 		  0, 0, 0, 0, 0}}}
 };
 
-std::unordered_map<int, RawAreaVec> deflectionDiagonalAreas = {
+gtl::flat_hash_map<int, RawAreaVec> deflectionDiagonalAreas = {
 	{1,  {{0, 0, 0, 0, 0,
 		  0, 0, 0, 0, 0,
 		  0, 0, 3, 0, 0,
@@ -3587,7 +3587,7 @@ bool Player::removeItemOfType(const uint16_t itemId, uint32_t amount, int32_t su
 	return false;
 }
 
-std::map<uint32_t, uint32_t>& Player::getAllItemTypeCount(std::map<uint32_t, uint32_t>& countMap) const
+gtl::btree_map<uint32_t, uint32_t>& Player::getAllItemTypeCount(gtl::btree_map<uint32_t, uint32_t>& countMap) const
 {
 	for (int32_t i = CONST_SLOT_FIRST; i <= CONST_SLOT_LAST; i++) {
 		const auto& item = inventory[i];
@@ -5693,9 +5693,9 @@ static ModifierTotals getValidatedTotals(const std::vector<std::shared_ptr<Damag
 	return ModifierTotals(flat, percent);
 }
 
-std::unordered_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Player::getAttackModifiers() const
+gtl::node_hash_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Player::getAttackModifiers() const
 {
-	std::unordered_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> modifierMap;
+	gtl::node_hash_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> modifierMap;
 
 	if (!augments.empty()) {
 		for (const auto& aug : augments) {
@@ -5724,9 +5724,9 @@ std::unordered_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
 	return modifierMap;
 }
 
-std::unordered_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Player::getDefenseModifiers() const
+gtl::node_hash_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Player::getDefenseModifiers() const
 {
-	std::unordered_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> modifierMap;
+	gtl::node_hash_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> modifierMap;
 
 	if (!augments.empty()) {
 		for (const auto& aug : augments) {
@@ -5754,12 +5754,12 @@ std::unordered_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
 	return modifierMap;
 }
 
-std::unordered_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uint8_t modType, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName)
+gtl::node_hash_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uint8_t modType, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName)
 {
-	std::unordered_map<uint8_t, ModifierTotals> playerList;
+	gtl::node_hash_map<uint8_t, ModifierTotals> playerList;
 	playerList.reserve(COMBAT_COUNT);
 
-	std::unordered_map<uint8_t, ModifierTotals> itemList;
+	gtl::node_hash_map<uint8_t, ModifierTotals> itemList;
 	itemList.reserve(COMBAT_COUNT);
 	
 	[[unlikely]]
@@ -5843,10 +5843,10 @@ std::unordered_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uin
 	return playerList;
 }
 
-std::unordered_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const
+gtl::node_hash_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const
 {
 	
-	std::unordered_map<uint8_t, ModifierTotals> modMap;
+	gtl::node_hash_map<uint8_t, ModifierTotals> modMap;
 	modMap.reserve(ATTACK_MODIFIER_LAST);
 	
 	auto attackMods = getAttackModifiers();
@@ -5857,10 +5857,10 @@ std::unordered_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(cons
 	return modMap;
 }
 
-std::unordered_map<uint8_t, ModifierTotals> Player::getDefenseModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, std::string_view creatureName) const
+gtl::node_hash_map<uint8_t, ModifierTotals> Player::getDefenseModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, std::string_view creatureName) const
 {
 	
-	std::unordered_map<uint8_t, ModifierTotals> modMap;
+	gtl::node_hash_map<uint8_t, ModifierTotals> modMap;
 	modMap.reserve(DEFENSE_MODIFIER_LAST);
 	
 	auto defenseMods = getDefenseModifiers();
@@ -6205,7 +6205,7 @@ void Player::ricochetDamage(CombatDamage& originalDamage,
 	}
 }
 
-void Player::convertDamage(const CreaturePtr& target, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList) {
+void Player::convertDamage(const CreaturePtr& target, CombatDamage& originalDamage, gtl::node_hash_map<uint8_t, ModifierTotals> conversionList) {
 	auto iter = conversionList.begin();
 
 	while (originalDamage.primary.value < 0 && iter != conversionList.end()) {
@@ -6245,7 +6245,7 @@ void Player::convertDamage(const CreaturePtr& target, CombatDamage& originalDama
 	}
 }
 
-void Player::reformDamage(std::optional<CreaturePtr> attacker, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList) {
+void Player::reformDamage(std::optional<CreaturePtr> attacker, CombatDamage& originalDamage, gtl::node_hash_map<uint8_t, ModifierTotals> conversionList) {
 	auto iter = conversionList.begin();
 
 	while (originalDamage.primary.value < 0 && iter != conversionList.end()) {
