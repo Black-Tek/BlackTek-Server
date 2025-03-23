@@ -79,8 +79,8 @@ jobs:
         # Get the list of assets from the edge release
         ASSETS=$(gh release view Linux-Edge-Build --json assets -q '.assets[].name' | grep "BlackTek-Server-" | sort)
         
-        # Keep only the 5 most recent assets (adjust this number as needed)
-        KEEP_COUNT=5
+        # Keep only the X most recent assets
+        KEEP_COUNT=25
         TOTAL_COUNT=$(echo "$ASSETS" | wc -l)
         
         if [ $TOTAL_COUNT -gt $KEEP_COUNT ]; then
