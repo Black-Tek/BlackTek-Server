@@ -22,6 +22,7 @@ function onUse(player, item, fromPosition, target, toPosition, isHotkey)
 	local tile = Tile(item:getPosition())
 	if tile and tile:getHouse() then
 		if fromPosition.x ~= CONTAINER_POSITION or item:getParent():getId() == ITEM_BROWSEFIELD then
+			item:setAttribute("wrapid", item.itemid)
 			item:transform(kit)
 			fromPosition:sendMagicEffect(CONST_ME_POFF)
 		else
