@@ -28,7 +28,7 @@
 #include "luavariant.h"
 #include <fmt/format.h>
 #include "declarations.h"
-#include <phmap.hpp>
+#include <gtl/phmap.hpp>
 
 class AreaCombat;
 class Combat;

@@ -25,8 +25,8 @@
 
 #include <bitset>
 #include <optional>
-#include <phmap.hpp>
-#include <btree.hpp>
+#include <gtl/phmap.hpp>
+#include <gtl/btree.hpp>
 
 class House;
 class NetworkMessage;

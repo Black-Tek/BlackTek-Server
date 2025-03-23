@@ -14,7 +14,7 @@
 #include "house.h"
 #include "spawn.h"
 
-#include <phmap.hpp>
+#include <gtl/phmap.hpp>
 
 class Creature;
 class Player;

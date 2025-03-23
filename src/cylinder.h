@@ -7,7 +7,7 @@
 #include "enums.h"
 #include "thing.h"
 
-#include <btree.hpp>
+#include <gtl/btree.hpp>
 
 static constexpr int32_t INDEX_WHEREEVER = -1;
 

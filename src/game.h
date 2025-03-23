@@ -19,7 +19,7 @@
 #include "wildcardtree.h"
 #include "quests.h"
 
-#include <phmap.hpp>
+#include <gtl/phmap.hpp>
 
 class ServiceManager;
 class Creature;

@@ -15,7 +15,7 @@
 #include <typeinfo>
 #include <boost/variant.hpp>
 #include <deque>
-#include <phmap.hpp>
+#include <gtl/phmap.hpp>
 
 class Creature;
 class Player;
