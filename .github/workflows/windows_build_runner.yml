@@ -89,8 +89,8 @@ jobs:
           # Get the list of assets from the edge release
           $assets = gh release view Windows-Edge-Build --json assets -q '.assets[].name' | Where-Object { $_ -like "BlackTek-Server-*" } | Sort-Object
           
-          # Keep only the 5 most recent assets (adjust this number as needed)
-          $keepCount = 5
+          # Keep only the X most recent assets
+          $keepCount = 25
           $totalCount = ($assets | Measure-Object).Count
           
           if ($totalCount -gt $keepCount) {
