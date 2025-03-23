@@ -1,7 +1,5 @@
 name: Linux Build
-
 on: [workflow_dispatch, pull_request, push]
-
 jobs:
   linux_build:
     strategy:
@@ -15,7 +13,6 @@ jobs:
     steps:
     - name: Set up Git
       uses: actions/checkout@v4
-
     - name: Install Uuid
       run: |
         if ! pkg-config --exists uuid; then
@@ -25,13 +22,11 @@ jobs:
         else
           echo "libuuid is already installed."
         fi
-
     - name: Ensure Correct VCPKG Baseline
       uses: lukka/run-vcpkg@main
       with:
         vcpkgGitURL: "https://github.com/microsoft/vcpkg.git"
         vcpkgGitCommitId: ${{ steps.vcpkg-step.outputs.vcpkgGitCommitId }}
-
     - name: Setup Premake
       run: |
         git clone https://github.com/premake/premake-core
@@ -39,48 +34,68 @@ jobs:
         make -f Bootstrap.mak linux
         cd ..
         ./premake-core/bin/release/premake5 gmake2
-
     - name: Install Vcpkg Libraries
       run: |
         vcpkg install
-
     - name: Compile Release 64
       run: |
         make -j $(nproc) config=release_64
         cp Black-Tek-Server BlackTek-Server-Release
-
     - name: Compile Debug 64
       run: |
         make -j $(nproc) config=debug_64
         cp Black-Tek-Server BlackTek-Server-Debug
         rm Black-Tek-Server
-
     - name: Cleanup Vcpkg_installed
       uses: JesseTG/rm@v1.0.3
       with:
         path: ${{ github.workspace }}/vcpkg_installed
-
     - name: Cleanup Intermediaries
       uses: JesseTG/rm@v1.0.3
       with:
         path: ${{ github.workspace }}/build
-
     - name: Cleanup More VCPKG stuff
       uses: JesseTG/rm@v1.0.3
       with:
         path: ${{ github.workspace }}/vcpkg
-
     - name: Cleanup Premake-Core
       uses: JesseTG/rm@v1.0.3
       with:
         path: ${{ github.workspace }}/premake-core
-
     - name: Prepare Compressed Assets
       run: |
          echo "Commit SHA: ${{ github.sha }}" > version.info
          zip -r BlackTek-Server-${{ github.sha }}.zip ${{ github.workspace }}
          zip -r BlackTek-Server.zip version.info
-
+    - name: Cleanup Old Release Assets
+      if: (github.event_name == 'push') && (matrix.os == 'ubuntu-24.04') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && (matrix.os == 'ubuntu-24.04') && github.event.pull_request.merged == true)
+      run: |
+        # GH CLI is already installed on GitHub runners
+        # Use directly without setting GH_TOKEN as an environment variable
+        
+        # Authenticate using the GITHUB_TOKEN from the action
+        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+        
+        # Get the list of assets from the edge release
+        ASSETS=$(gh release view Linux-Edge-Build --json assets -q '.assets[].name' | grep "BlackTek-Server-" | sort)
+        
+        # Keep only the X most recent assets
+        KEEP_COUNT=25
+        TOTAL_COUNT=$(echo "$ASSETS" | wc -l)
+        
+        if [ $TOTAL_COUNT -gt $KEEP_COUNT ]; then
+          DELETE_COUNT=$((TOTAL_COUNT - KEEP_COUNT))
+          ASSETS_TO_DELETE=$(echo "$ASSETS" | head -n $DELETE_COUNT)
+          
+          echo "Found $TOTAL_COUNT assets, keeping $KEEP_COUNT, deleting $DELETE_COUNT"
+          
+          for ASSET in $ASSETS_TO_DELETE; do
+            echo "Deleting asset: $ASSET"
+            gh release delete-asset Linux-Edge-Build "$ASSET" --yes
+          done
+        else
+          echo "Only $TOTAL_COUNT assets found, no cleanup needed (keeping up to $KEEP_COUNT)"
+        fi
     - name: Upload Assets for Edge Build
       if: (github.event_name == 'push') && (matrix.os == 'ubuntu-24.04') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && (matrix.os == 'ubuntu-24.04') && github.event.pull_request.merged == true)
       uses: softprops/action-gh-release@v2
