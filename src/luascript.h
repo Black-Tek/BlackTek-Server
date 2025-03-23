@@ -28,6 +28,7 @@
 #include "luavariant.h"
 #include <fmt/format.h>
 #include "declarations.h"
+#include <gtl/phmap.hpp>
 
 class AreaCombat;
 class Combat;
@@ -156,7 +157,7 @@ class ScriptEnvironment
 		static std::multimap<ScriptEnvironment*, ItemPtr> tempItems;
 
 		//local item map
-		std::unordered_map<uint32_t, ItemPtr> localMap;
+		gtl::node_hash_map<uint32_t, ItemPtr> localMap;
 		uint32_t lastUID = std::numeric_limits<uint16_t>::max();
 
 		//script file id
@@ -1748,12 +1749,12 @@ class LuaEnvironment : public LuaScriptInterface
 	private:
 		void executeTimerEvent(uint32_t eventIndex);
 
-		std::unordered_map<uint32_t, LuaTimerEventDesc> timerEvents;
-		std::unordered_map<uint32_t, Combat_ptr> combatMap;
-		std::unordered_map<uint32_t, AreaCombat*> areaMap;
+		gtl::node_hash_map<uint32_t, LuaTimerEventDesc> timerEvents;
+		gtl::node_hash_map<uint32_t, Combat_ptr> combatMap;
+		gtl::node_hash_map<uint32_t, AreaCombat*> areaMap;
 
-		std::unordered_map<LuaScriptInterface*, std::vector<uint32_t>> combatIdMap;
-		std::unordered_map<LuaScriptInterface*, std::vector<uint32_t>> areaIdMap;
+		gtl::node_hash_map<LuaScriptInterface*, std::vector<uint32_t>> combatIdMap;
+		gtl::node_hash_map<LuaScriptInterface*, std::vector<uint32_t>> areaIdMap;
 
 		LuaScriptInterface* testInterface = nullptr;
 

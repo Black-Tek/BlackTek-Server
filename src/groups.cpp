@@ -7,7 +7,7 @@
 #include "pugicast.h"
 #include "tools.h"
 
-const std::unordered_map<std::string, PlayerFlags> ParsePlayerFlagMap = {
+const gtl::flat_hash_map<std::string, PlayerFlags> ParsePlayerFlagMap = {
 	{"cannotusecombat", PlayerFlag_CannotUseCombat},
 	{"cannotattackplayer", PlayerFlag_CannotAttackPlayer},
 	{"cannotattackmonster", PlayerFlag_CannotAttackMonster},

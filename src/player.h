@@ -25,6 +25,8 @@
 
 #include <bitset>
 #include <optional>
+#include <gtl/phmap.hpp>
+#include <gtl/btree.hpp>
 
 class House;
 class NetworkMessage;
@@ -121,7 +123,7 @@ struct Skill {
 	uint8_t percent = 0;
 };
 
-using MuteCountMap = std::map<uint32_t, uint32_t>;
+using MuteCountMap = gtl::btree_map<uint32_t, uint32_t>;
 
 static constexpr int32_t PLAYER_MAX_SPEED = 1500;
 static constexpr int32_t PLAYER_MIN_SPEED = 10;
@@ -1368,13 +1370,13 @@ class Player final : public Creature, public Cylinder
 		CreatureType_t getCreatureType(const MonsterPtr& monster) const;
 
 		// To-do : Make all these methods into const
-		std::unordered_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> getAttackModifiers() const;
-		std::unordered_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> getDefenseModifiers() const;
+		gtl::node_hash_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> getAttackModifiers() const;
+		gtl::node_hash_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> getDefenseModifiers() const;
 
-		std::unordered_map<uint8_t, ModifierTotals> getConvertedTotals(const uint8_t modType, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName);
+		gtl::node_hash_map<uint8_t, ModifierTotals> getConvertedTotals(const uint8_t modType, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName);
 
-		std::unordered_map<uint8_t, ModifierTotals> getAttackModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const;
-		std::unordered_map<uint8_t, ModifierTotals> getDefenseModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const;
+		gtl::node_hash_map<uint8_t, ModifierTotals> getAttackModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const;
+		gtl::node_hash_map<uint8_t, ModifierTotals> getDefenseModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const;
 
 		std::vector<Position> getOpenPositionsInRadius(int radius) const;
 
@@ -1398,8 +1400,8 @@ class Player final : public Creature, public Cylinder
 		void reflectDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
 		void deflectDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, CombatOrigin paramOrigin, uint8_t areaEffect, uint8_t distanceEffect);
 		void ricochetDamage(CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
-		void convertDamage(const CreaturePtr& target, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList);
-		void reformDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, std::unordered_map<uint8_t, ModifierTotals> conversionList);
+		void convertDamage(const CreaturePtr& target, CombatDamage& originalDamage, gtl::node_hash_map<uint8_t, ModifierTotals> conversionList);
+		void reformDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, gtl::node_hash_map<uint8_t, ModifierTotals> conversionList);
 		void increaseDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) const;
 
 		Position generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, CombatOrigin origin);
@@ -1446,7 +1448,7 @@ class Player final : public Creature, public Cylinder
 		size_t getFirstIndex() const override;
 		size_t getLastIndex() const override;
 		uint32_t getItemTypeCount(uint16_t itemId, int32_t subType = -1) const override;
-		std::map<uint32_t, uint32_t>& getAllItemTypeCount(std::map<uint32_t, uint32_t>& countMap) const override;
+		gtl::btree_map<uint32_t, uint32_t>& getAllItemTypeCount(gtl::btree_map<uint32_t, uint32_t>& countMap) const override;
 		ThingPtr getThing(size_t index) override;
 
 		void internalAddThing(ThingPtr thing) override;
@@ -1457,7 +1459,7 @@ class Player final : public Creature, public Cylinder
 
 		std::map<uint8_t, OpenContainer> openContainers;
 		std::map<uint32_t, DepotChestPtr> depotChests;
-		std::map<uint32_t, int32_t> storageMap;
+		gtl::btree_map<uint32_t, int32_t> storageMap;
 
 		std::vector<std::shared_ptr<Augment>> augments;
 

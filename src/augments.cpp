@@ -12,7 +12,7 @@
 
 #include "augments.h"
 
-static std::unordered_map<std::string, std::shared_ptr<Augment>> global_augments {};
+static gtl::node_hash_map<std::string, std::shared_ptr<Augment>> global_augments {};
 
 std::shared_ptr<Augment> Augments::MakeAugment(std::string_view augmentName)
 {

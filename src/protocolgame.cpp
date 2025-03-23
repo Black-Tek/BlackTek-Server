@@ -20,6 +20,7 @@
 #include "scheduler.h"
 
 #include <fmt/format.h>
+#include <gtl/btree.hpp>
 
 extern ConfigManager g_config;
 extern Actions actions;
@@ -1620,7 +1621,7 @@ void ProtocolGame::sendSaleItemList(const std::list<ShopInfo>& shop)
 		// Large shop, it's better to get a cached map of all item counts and use it
 		// We need a temporary map since the finished map should only contain items
 		// available in the shop
-		std::map<uint32_t, uint32_t> tempSaleMap;
+		gtl::btree_map<uint32_t, uint32_t> tempSaleMap;
 		player->getAllItemTypeCount(tempSaleMap);
 
 		// We must still check manually for the special items that require subtype matches
@@ -1650,7 +1651,7 @@ void ProtocolGame::sendSaleItemList(const std::list<ShopInfo>& shop)
 					saleMap[shopInfo.itemId] = count;
 				}
 			} else {
-				std::map<uint32_t, uint32_t>::const_iterator findIt = tempSaleMap.find(shopInfo.itemId);
+				gtl::btree_map<uint32_t, uint32_t>::const_iterator findIt = tempSaleMap.find(shopInfo.itemId);
 				if (findIt != tempSaleMap.end() && findIt->second > 0) {
 					saleMap[shopInfo.itemId] = findIt->second;
 				}

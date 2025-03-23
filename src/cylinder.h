@@ -7,6 +7,8 @@
 #include "enums.h"
 #include "thing.h"
 
+#include <gtl/btree.hpp>
+
 static constexpr int32_t INDEX_WHEREEVER = -1;
 
 enum cylinderflags_t {
@@ -168,7 +170,7 @@ class Cylinder : virtual public Thing
 		  * \param countMap a map to put the itemID:count mapping in
 		  * \returns a map mapping item id to count (same as first argument)
 		  */
-		virtual std::map<uint32_t, uint32_t>& getAllItemTypeCount(std::map<uint32_t, uint32_t>& countMap) const;
+		virtual gtl::btree_map<uint32_t, uint32_t>& getAllItemTypeCount(gtl::btree_map<uint32_t, uint32_t>& countMap) const;
 
 		/**
 		  * Adds an object to the cylinder without sending to the client(s)

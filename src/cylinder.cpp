@@ -27,7 +27,7 @@ uint32_t Cylinder::getItemTypeCount(uint16_t, int32_t) const
 	return 0;
 }
 
-std::map<uint32_t, uint32_t>& Cylinder::getAllItemTypeCount(std::map<uint32_t, uint32_t>& countMap) const
+gtl::btree_map<uint32_t, uint32_t>& Cylinder::getAllItemTypeCount(gtl::btree_map<uint32_t, uint32_t>& countMap) const
 {
 	return countMap;
 }

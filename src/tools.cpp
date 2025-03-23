@@ -8,6 +8,7 @@
 
 #include <chrono>
 #include <fmt/chrono.h>
+#include <gtl/phmap.hpp>
 
 extern ConfigManager g_config;
 
@@ -479,14 +480,14 @@ Direction getDirectionTo(const Position& from, const Position& to)
 	return dir;
 }
 
-using MagicEffectNames = std::unordered_map<std::string, MagicEffectClasses>;
-using ShootTypeNames = std::unordered_map<std::string, ShootType_t>;
-using CombatTypeNames = std::unordered_map<CombatType_t, std::string, std::hash<int32_t>>;
-using AmmoTypeNames = std::unordered_map<std::string, Ammo_t>;
-using WeaponActionNames = std::unordered_map<std::string, WeaponAction_t>;
-using SkullNames = std::unordered_map<std::string, Skulls_t>;
+using MagicEffectNames = gtl::flat_hash_map<std::string, MagicEffectClasses>;
+using ShootTypeNames = gtl::flat_hash_map<std::string, ShootType_t>;
+using CombatTypeNames = gtl::flat_hash_map<CombatType_t, std::string, std::hash<int32_t>>;
+using AmmoTypeNames = gtl::flat_hash_map<std::string, Ammo_t>;
+using WeaponActionNames = gtl::flat_hash_map<std::string, WeaponAction_t>;
+using SkullNames = gtl::flat_hash_map<std::string, Skulls_t>;
 
-MagicEffectNames magicEffectNames = {
+static MagicEffectNames magicEffectNames = {
 	{"redspark",		CONST_ME_DRAWBLOOD},
 	{"bluebubble",		CONST_ME_LOSEENERGY},
 	{"poff",		CONST_ME_POFF},
@@ -570,7 +571,7 @@ MagicEffectNames magicEffectNames = {
 	{"purplesmoke",		CONST_ME_PURPLESMOKE},
 };
 
-ShootTypeNames shootTypeNames = {
+static ShootTypeNames shootTypeNames = {
 	{"spear",		CONST_ANI_SPEAR},
 	{"bolt",		CONST_ANI_BOLT},
 	{"arrow",		CONST_ANI_ARROW},
@@ -623,7 +624,7 @@ ShootTypeNames shootTypeNames = {
 	{"simplearrow",		CONST_ANI_SIMPLEARROW},
 };
 
-CombatTypeNames combatTypeNames = {
+static CombatTypeNames combatTypeNames = {
 	{COMBAT_PHYSICALDAMAGE, 	"physical"},
 	{COMBAT_ENERGYDAMAGE, 		"energy"},
 	{COMBAT_EARTHDAMAGE, 		"earth"},
@@ -638,7 +639,7 @@ CombatTypeNames combatTypeNames = {
 	{COMBAT_DEATHDAMAGE, 		"death"},
 };
 
-AmmoTypeNames ammoTypeNames = {
+static AmmoTypeNames ammoTypeNames = {
 	{"spear",		AMMO_SPEAR},
 	{"bolt",		AMMO_BOLT},
 	{"arrow",		AMMO_ARROW},
@@ -664,13 +665,13 @@ AmmoTypeNames ammoTypeNames = {
 	{"eartharrow",		AMMO_ARROW},
 };
 
-WeaponActionNames weaponActionNames = {
+static WeaponActionNames weaponActionNames = {
 	{"move",		WEAPONACTION_MOVE},
 	{"removecharge",	WEAPONACTION_REMOVECHARGE},
 	{"removecount",		WEAPONACTION_REMOVECOUNT},
 };
 
-SkullNames skullNames = {
+static SkullNames skullNames = {
 	{"none",	SKULL_NONE},
 	{"yellow",	SKULL_YELLOW},
 	{"green",	SKULL_GREEN},

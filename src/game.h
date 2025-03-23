@@ -19,6 +19,8 @@
 #include "wildcardtree.h"
 #include "quests.h"
 
+#include <gtl/phmap.hpp>
+
 class ServiceManager;
 class Creature;
 class Monster;
@@ -126,11 +128,11 @@ class Game
 
 		// Struct to store contribution info for a rewardboss
 		struct RewardBossContributionInfo {
-			std::unordered_map<uint32_t, PlayerScoreInfo> playerScoreTable;  // Map of player GUIDs to PlayerScoreInfo
+			gtl::node_hash_map<uint32_t, PlayerScoreInfo> playerScoreTable;  // Map of player GUIDs to PlayerScoreInfo
 		};
 
 		// Map to track the contributions of players to different rewardbosses
-		std::unordered_map<uint32_t, RewardBossContributionInfo> rewardBossTracking;
+		gtl::node_hash_map<uint32_t, RewardBossContributionInfo> rewardBossTracking;
 
 		void resetDamageTracking(uint32_t monsterId);  // Function to reset damage tracking for a specific monster
 
@@ -502,7 +504,7 @@ class Game
 
 		void sendOfflineTrainingDialog(const PlayerPtr& player) const;
 
-		const std::unordered_map<uint32_t, PlayerPtr>& getPlayers() const { return players; }
+		const gtl::node_hash_map<uint32_t, PlayerPtr>& getPlayers() const { return players; }
 		const std::map<uint32_t, NpcPtr>& getNpcs() const { return npcs; }
 		const std::map<uint32_t, MonsterPtr>& getMonsters() const { return monsters; }
 
@@ -519,7 +521,7 @@ class Game
 		void addGuild(Guild* guild);
 		void removeGuild(uint32_t guildId);
 
-		std::unordered_map<TilePtr, ContainerPtr> browseFields;
+		gtl::node_hash_map<TilePtr, ContainerPtr> browseFields;
 
 		void internalRemoveItems(const std::vector<ItemPtr>& itemList, uint32_t amount, bool stackable);
 
@@ -574,15 +576,14 @@ class Game
 		void checkDecay();
 		void internalDecayItem(const ItemPtr& item);
 
-		std::unordered_map<uint32_t, PlayerPtr> players;
-		std::unordered_map<std::string, PlayerPtr> mappedPlayerNames;
-		std::unordered_map<uint32_t, PlayerPtr> mappedPlayerGuids;
-		std::unordered_map<uint32_t, Guild*> guilds;
+		gtl::node_hash_map<uint32_t, PlayerPtr> players;
+		gtl::node_hash_map<std::string, PlayerPtr> mappedPlayerNames;
+		gtl::node_hash_map<uint32_t, PlayerPtr> mappedPlayerGuids;
+		gtl::node_hash_map<uint32_t, Guild*> guilds;
 		std::vector<TilePtr> loaded_tiles;
 		std::vector<ItemPtr> loaded_tile_items;
-		std::unordered_map<uint16_t, ItemPtr> uniqueItems;
-		std::map<uint32_t, uint32_t> stages;
-		std::unordered_map<uint32_t, std::unordered_map<uint32_t, int32_t>> accountStorageMap;
+		gtl::node_hash_map<uint16_t, ItemPtr> uniqueItems;
+		gtl::node_hash_map<uint32_t, gtl::flat_hash_map<uint32_t, int32_t>> accountStorageMap;
 
 		std::list<ItemPtr> decayItems[EVENT_DECAY_BUCKETS];
 		std::list<CreaturePtr> checkCreatureLists[EVENT_CREATURECOUNT];

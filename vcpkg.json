@@ -10,6 +10,7 @@
     "fmt",
     "tomlplusplus",
     "openssl",
+    "gtl",
     {
       "name": "libiconv",
       "platform": "osx"

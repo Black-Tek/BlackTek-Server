@@ -807,7 +807,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 	std::optional<PlayerPtr> targetPlayer = target && target->getPlayer() ? std::optional<PlayerPtr>(target->getPlayer()) : std::nullopt;
 	std::optional<MonsterPtr> casterMonster = caster && caster->getMonster() ? std::optional<MonsterPtr>(caster->getMonster()) : std::nullopt;
 
-	std::unordered_map<uint8_t, ModifierTotals> attackModData;
+	gtl::node_hash_map<uint8_t, ModifierTotals> attackModData;
 	
 	if (casterPlayer.has_value() && target) {
 		attackModData.reserve(ATTACK_MODIFIER_LAST);
@@ -973,7 +973,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 
 		if (target && caster && target != caster) {
 			if (damage.critical) {
-				if (damage.augmented and g_config.getBoolean(ConfigManager::AUGMENT_CRITICAL_ANIMATION) or not damage.augmented) {
+				if ((damage.augmented and g_config.getBoolean(ConfigManager::AUGMENT_CRITICAL_ANIMATION)) or not (damage.augmented)) {
 					g_game.addMagicEffect(target->getPosition(), CONST_ME_CRITICAL_DAMAGE);
 				}
 			}
