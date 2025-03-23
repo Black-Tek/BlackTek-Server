@@ -2469,7 +2469,6 @@ void Game::playerRotateItem(const uint32_t playerId, const Position& pos, const 
 	}
 
 	if (const uint16_t newId = Item::items[item->getID()].rotateTo; newId != 0) {
-		transformItem(item, newId);
 		g_events->eventPlayerOnRotateItem(player, item);
 	}
 }
