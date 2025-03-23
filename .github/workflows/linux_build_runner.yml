@@ -70,18 +70,17 @@ jobs:
     - name: Cleanup Old Release Assets
       if: (github.event_name == 'push') && (matrix.os == 'ubuntu-24.04') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && (matrix.os == 'ubuntu-24.04') && github.event.pull_request.merged == true)
       run: |
-        # Install GitHub CLI
-        sudo apt-get update
-        sudo apt-get install -y gh
+        # GH CLI is already installed on GitHub runners
+        # Use directly without setting GH_TOKEN as an environment variable
         
-        # Configure gh
+        # Authenticate using the GITHUB_TOKEN from the action
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
         
         # Get the list of assets from the edge release
         ASSETS=$(gh release view Linux-Edge-Build --json assets -q '.assets[].name' | grep "BlackTek-Server-" | sort)
         
         # Keep only the 5 most recent assets (adjust this number as needed)
-        KEEP_COUNT=25
+        KEEP_COUNT=5
         TOTAL_COUNT=$(echo "$ASSETS" | wc -l)
         
         if [ $TOTAL_COUNT -gt $KEEP_COUNT ]; then
@@ -97,8 +96,6 @@ jobs:
         else
           echo "Only $TOTAL_COUNT assets found, no cleanup needed (keeping up to $KEEP_COUNT)"
         fi
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Upload Assets for Edge Build
       if: (github.event_name == 'push') && (matrix.os == 'ubuntu-24.04') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && (matrix.os == 'ubuntu-24.04') && github.event.pull_request.merged == true)
       uses: softprops/action-gh-release@v2
