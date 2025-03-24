@@ -595,7 +595,8 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream)
 {
 	using ContainerBlock = std::pair<ContainerPtr, int32_t>;
-	std::list<ContainerBlock> queue;
+	std::vector<ContainerBlock> containers;
+	containers.reserve(32);
 
 	int32_t runningId = 100;
 
@@ -629,15 +630,14 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 		}
 
 		if (auto container = item->getContainer()) {
-			queue.emplace_back(container, runningId);
+			containers.emplace_back(container, runningId);
 		}
 	}
 
-	while (!queue.empty()) {
-		const ContainerBlock& cb = queue.front();
+	for (size_t i = 0; i < containers.size(); i++) {
+		const ContainerBlock& cb = containers[i];
 		const auto container = cb.first;
 		int32_t parentId = cb.second;
-		queue.pop_front();
 
 		for (auto item : container->getItemList()) {
 			++runningId;
@@ -665,7 +665,7 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 			}
 
 			if (auto subContainer = item->getContainer()) {
-				queue.emplace_back(subContainer, runningId);
+				containers.emplace_back(subContainer, runningId);
 			}
 		}
 	}
@@ -712,7 +712,8 @@ bool IOLoginData::saveAugments(const PlayerConstPtr& player, DBInsert& query_ins
 bool IOLoginData::addRewardItems(uint32_t playerID, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream)
 {
 	using ContainerBlock = std::pair<ContainerPtr, int32_t>;
-	std::list<ContainerBlock> queue;
+	std::vector<ContainerBlock> containers;
+	containers.reserve(32);
 	int32_t runningId = 100;
 	Database& db = Database::getInstance();
 
@@ -741,15 +742,14 @@ bool IOLoginData::addRewardItems(uint32_t playerID, const ItemBlockList& itemLis
 		}
 
 		if (auto container = item->getContainer()) {
-			queue.emplace_back(container, runningId);
+			containers.emplace_back(container, runningId);
 		}
 	}
 
-	while (!queue.empty()) {
-		const ContainerBlock& cb = queue.front();
+	for (size_t i = 0; i < containers.size(); i++) {
+		const ContainerBlock& cb = containers[i];
 		auto container = cb.first;
 		int32_t parentId = cb.second;
-		queue.pop_front();
 
 		for (auto item : container->getItemList()) {
 			++runningId;
@@ -774,7 +774,7 @@ bool IOLoginData::addRewardItems(uint32_t playerID, const ItemBlockList& itemLis
 			}
 
 			if (auto subContainer = item->getContainer()) {
-				queue.emplace_back(subContainer, runningId);
+				containers.emplace_back(subContainer, runningId);
 			}
 		}
 	}
