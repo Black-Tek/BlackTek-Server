@@ -664,13 +664,18 @@ class Player final : public Creature, public Cylinder
 		bool hasShopItemForSale(uint32_t itemId, uint8_t subType) const;
 
 		bool isWearingImbuedItem() const {
+			return hasImbuedItemEquipped;
+		}
+
+		void checkForImbuedEquipment() {
+			bool found = false;
 			for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
 				ItemPtr item = getInventoryItem(static_cast<slots_t>(slot));
 				if (item && item->hasImbuements()) {
-					return true;
+					found = true;
 				}
 			}
-			return false;
+			hasImbuedItemEquipped = found;
 		}
 
 		void setChaseMode(bool mode);
@@ -1572,6 +1577,7 @@ class Player final : public Creature, public Cylinder
 		bool pzLocked = false;
 		bool isConnecting = false;
 		bool addAttackSkillPoint = false;
+		bool hasImbuedItemEquipped = false;
 		bool inventoryAbilities[CONST_SLOT_LAST + 1] = {};
 
 		static uint32_t playerAutoID;

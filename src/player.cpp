@@ -5442,6 +5442,7 @@ void Player::addItemImbuements(const ItemPtr& item) {
 			}
 		}
 	}
+	checkForImbuedEquipment();
 	sendSkills();
 	sendStats();
 }
@@ -5508,6 +5509,7 @@ void Player::removeItemImbuements(const ItemPtr& item) {
 			}
 		}
 	}
+	checkForImbuedEquipment();
 	sendSkills();
 	sendStats();
 }
