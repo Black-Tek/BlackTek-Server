@@ -4109,7 +4109,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 		return true;
 	}
 
-	const auto attackerPlayer = attacker && attacker->getPlayer() ? attacker->getPlayer() : nullptr;
+	const auto& attackerPlayer = attacker && attacker->getPlayer() ? attacker->getPlayer() : nullptr;
 	auto targetPlayer = target && target->getPlayer() ? target->getPlayer() : nullptr;
 
 	if (attackerPlayer && targetPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
@@ -4123,7 +4123,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 
 	// Handle Lua events immediately
 	if (const auto& events = target->getCreatureEvents(CREATURE_EVENT_HEALTHCHANGE); !events.empty()) {
-		for (const auto creatureEvent : events) {
+		for (const auto& creatureEvent : events) {
 			creatureEvent->executeHealthChange(target, attacker, damage);
 		}
 	}
@@ -4139,7 +4139,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 		// Reward boss healing contribution
 		if (targetPlayer) {
 			for (const auto& monsterId : g_game.rewardBossTracking | std::views::keys) {
-				if (const auto monster = getMonsterByID(monsterId); monster && monster->isRewardBoss()) {
+				if (const auto& monster = getMonsterByID(monsterId); monster && monster->isRewardBoss()) {
 					const Position& monsterPos = monster->getPosition();
 					if (monsterPos.z == targetPos.z) {
 						int32_t dx = targetPos.x - monsterPos.x;
@@ -4223,7 +4223,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 		if (targetPlayer && targetPlayer->hasCondition(CONDITION_MANASHIELD) && damage.primary.type != COMBAT_UNDEFINEDDAMAGE) {
 			if (int32_t manaDamage = std::min<int32_t>(targetPlayer->getMana(), healthChange); manaDamage != 0) {
 				if (const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE); !events.empty()) {
-					for (const auto creatureEvent : events) {
+					for (const auto& creatureEvent : events) {
 						creatureEvent->executeManaChange(target, attacker, damage);
 					}
 					healthChange = damage.primary.value + damage.secondary.value;
@@ -4256,7 +4256,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 				message.primary.color = TEXTCOLOR_BLUE;
 
 				// Notify spectators about mana loss
-				for (const auto spectator : spectators) {
+				for (const auto& spectator : spectators) {
 					PlayerPtr spectatorPlayer = std::static_pointer_cast<Player>(spectator);
 					if (spectatorPlayer->getPosition().z != targetPos.z) {
 						continue;
@@ -4344,8 +4344,8 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			}
 			spectatorMessage[0] = std::toupper(spectatorMessage[0]);
 
-			for (const auto spectator : spectators) {
-				const auto tmpPlayer = spectator->getPlayer();
+			for (const auto& spectator : spectators) {
+				const auto& tmpPlayer = spectator->getPlayer();
 				if (tmpPlayer->getPosition().z != targetPos.z) {
 					continue;
 				}
@@ -4395,7 +4395,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 
 		// Check for death and execute prepare-death events
 		if (realDamage >= targetHealth) {
-			for (const auto creatureEvent : target->getCreatureEvents(CREATURE_EVENT_PREPAREDEATH)) {
+			for (const auto& creatureEvent : target->getCreatureEvents(CREATURE_EVENT_PREPAREDEATH)) {
 				if (!creatureEvent->executeOnPrepareDeath(target, attacker)) {
 					return false;
 				}
