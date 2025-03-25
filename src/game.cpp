@@ -3931,28 +3931,23 @@ bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, con
 			g_events->eventCreatureOnAttack(attacker, target, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
 			g_events->eventCreatureOnDefend(target, attacker, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
 
-			if (const auto aggressor = attacker->getPlayer()) {
+			if (const auto& aggressor = attacker->getPlayer()) {
 				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-					const auto item = aggressor->getInventoryItem(static_cast<slots_t>(slot));
-					if (!item) {
+					const auto& item = aggressor->getInventoryItem(static_cast<slots_t>(slot));
+					if ((!item) or (item->getAttack() <= 0) ) {
 						continue;
 					}
-					if (item->getAttack() > 0) {
-						g_events->eventItemOnAttack(item, aggressor, target, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
-					}
+					g_events->eventItemOnAttack(item, aggressor, target, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
 				}
 			}
 
-			if (const auto victim = target->getPlayer()) {
+			if (const auto& victim = target->getPlayer()) {
 				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-					const auto item = victim->getInventoryItem(static_cast<slots_t>(slot));
-					if (!item) {
+					const auto& item = victim->getInventoryItem(static_cast<slots_t>(slot));
+					if ((!item) or (item->getDefense() <= 0 and item->getArmor() <= 0)  ){
 						continue;
 					}
-
-					if (item->getDefense() > 0 || item->getArmor() > 0) {
-						g_events->eventItemOnDefend(item, victim, attacker, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
-					}
+					g_events->eventItemOnDefend(item, victim, attacker, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
 				}
 			}
 		}
@@ -4110,115 +4105,107 @@ void Game::combatGetTypeInfo(const CombatType_t combatType, const CreaturePtr& t
 
 bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& target, CombatDamage& damage)
 {
-	// Target should always exist when calling this function, otherwise its pretty pointless..
-
-	// we can say true and do nothing with 0 damage, but maybe it should be false.. need to investigate further, later.
-	if (damage.primary.value == 0 and damage.secondary.value == 0) {
-		return true; 
+	if (damage.primary.value == 0 && damage.secondary.value == 0) {
+		return true;
 	}
 
-	const auto attackerPlayer = attacker and attacker->getPlayer() ? attacker->getPlayer() : nullptr;
-	auto targetPlayer = target and target->getPlayer() ? target->getPlayer() : nullptr;
+	const auto& attackerPlayer = attacker && attacker->getPlayer() ? attacker->getPlayer() : nullptr;
+	auto targetPlayer = target && target->getPlayer() ? target->getPlayer() : nullptr;
 
 	if (attackerPlayer && targetPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
 		return false;
 	}
 
-	// Early exit incase the target is already dead
+	// Early exit if the target is already dead
 	if (target->getHealth() <= 0) {
 		return false;
 	}
 
-	// Handle lua events immediately
+	// Handle Lua events immediately
 	if (const auto& events = target->getCreatureEvents(CREATURE_EVENT_HEALTHCHANGE); !events.empty()) {
-		for (const auto creatureEvent : events) {
+		for (const auto& creatureEvent : events) {
 			creatureEvent->executeHealthChange(target, attacker, damage);
 		}
 	}
 
 	const Position& targetPos = target->getPosition();
 
-	// If the damage value is positive (indicating healing or positive health change)
+	// Healing
 	if (damage.primary.value > 0) {
-		
 		int32_t realHealthChange = target->getHealth();
 		target->gainHealth(attacker, damage.primary.value);
 		realHealthChange = target->getHealth() - realHealthChange;
-		
-		// rewardboss healing contribution
+
+		// Reward boss healing contribution
 		if (targetPlayer) {
 			for (const auto& monsterId : g_game.rewardBossTracking | std::views::keys) {
-				if (const auto monster = getMonsterByID(monsterId); monster && monster->isRewardBoss()) {
+				if (const auto& monster = getMonsterByID(monsterId); monster && monster->isRewardBoss()) {
 					const Position& monsterPos = monster->getPosition();
-					// what da fuq is this formula for determining range eligibility?
-					if (double distBetweenTargetAndBoss = std::sqrt(std::pow(targetPos.x - monsterPos.x, 2) + std::pow(targetPos.y - monsterPos.y, 2)); distBetweenTargetAndBoss < 7) {
-						uint32_t playerGuid = target->getPlayer()->getGUID();
-						rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realHealthChange * g_config.getFloat(ConfigManager::REWARD_RATE_HEALING_DONE);
+					if (monsterPos.z == targetPos.z) {
+						int32_t dx = targetPos.x - monsterPos.x;
+						int32_t dy = targetPos.y - monsterPos.y;
+						if (dx * dx + dy * dy < 49) { // 7^2 = 49
+							uint32_t playerGuid = targetPlayer->getGUID();
+							rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realHealthChange * g_config.getFloat(ConfigManager::REWARD_RATE_HEALING_DONE);
+						}
 					}
 				}
 			}
 		}
 
-		// If health was gained and the target is not in ghost mode, send notifications to spectators
 		if (realHealthChange > 0 && !target->isInGhostMode()) {
-			auto damageString = fmt::format("{:d} hitpoint{:s}", realHealthChange, realHealthChange != 1 ? "s" : "");
-
+			const auto& damageString = std::to_string(realHealthChange) + " hitpoint" + ((realHealthChange != 1) ? "s" : "");
+			const auto& targetNameDesc = target->getNameDescription();
+			const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
 			std::string spectatorMessage;
 
-			// Prepare the message for spectators about the healing
+			if (!attacker) {
+				spectatorMessage = targetNameDesc + " was healed for " + damageString;
+			}
+			else if (attacker == target) {
+				spectatorMessage = attackerNameDesc + " healed " + (targetPlayer ? (targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "him") : "it") + "self for " + damageString + ".";
+			}
+			else {
+				spectatorMessage = attackerNameDesc + " healed " + targetNameDesc + " for " + damageString + ".";
+			}
+			spectatorMessage[0] = std::toupper(spectatorMessage[0]);
+
 			TextMessage message;
 			message.position = targetPos;
 			message.primary.value = realHealthChange;
 			message.primary.color = TEXTCOLOR_PASTELRED;
 
-			// Get all spectators around the target
 			SpectatorVec spectators;
 			map.getSpectators(spectators, targetPos, false, true);
-			for (const auto spectator : spectators) {
-				assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
 
+			for (const auto& spectator : spectators) {
 				auto spectatorPlayer = std::static_pointer_cast<Player>(spectator);
 				if (spectatorPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
 					message.type = MESSAGE_HEALED;
-					message.text = fmt::format("You heal {:s} for {:s}.", target->getNameDescription(), damageString);
-				} else if (spectatorPlayer == targetPlayer) {
+					message.text = "You heal " + targetNameDesc + " for " + damageString + ".";
+				}
+				else if (spectatorPlayer == targetPlayer) {
 					message.type = MESSAGE_HEALED;
-					if (!attacker) {
-						message.text = fmt::format("You were healed for {:s}.", damageString);
-					} else if (targetPlayer == attackerPlayer) {
-						message.text = fmt::format("You healed yourself for {:s}.", damageString);
-					} else {
-						message.text = fmt::format("You were healed by {:s} for {:s}.", attacker->getNameDescription(), damageString);
-					}
-				} else {
+					message.text = !attacker ? "You were healed for " + damageString + "." :
+						(targetPlayer == attackerPlayer ? "You healed yourself for " + damageString + "." :
+							"You were healed by " + attackerNameDesc + " for " + damageString + ".");
+				}
+				else {
 					message.type = MESSAGE_HEALED_OTHERS;
-					if (spectatorMessage.empty()) {
-						if (!attacker) {
-							spectatorMessage = fmt::format("{:s} was healed for {:s}.", target->getNameDescription(), damageString);
-						} else if (attacker == target) {
-							spectatorMessage = fmt::format("{:s} healed {:s}self for {:s}.", attacker->getNameDescription(), targetPlayer ? (targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "him") : "it", damageString);
-						} else {
-							spectatorMessage = fmt::format("{:s} healed {:s} for {:s}.", attacker->getNameDescription(), target->getNameDescription(), damageString);
-						}
-						spectatorMessage[0] = std::toupper(spectatorMessage[0]);
-					}
 					message.text = spectatorMessage;
 				}
 				spectatorPlayer->sendTextMessage(message);
 			}
 		}
-	} else {
-		// If the damage value is non-positive (indicating damage or negative health change)
-
-		// Check if the target is attackable; if not, create a visual effect and return
+	}
+	else {
 		if (!target->isAttackable()) {
 			if (!target->isInGhostMode()) {
 				addMagicEffect(targetPos, CONST_ME_POFF);
 			}
-			return true; // should we return true here? We could be wasting attacks... perhaps we make it a config?
+			return true;
 		}
 
-		// Convert the damage values to positive for health reduction
 		damage.primary.value = std::abs(damage.primary.value);
 		damage.secondary.value = std::abs(damage.secondary.value);
 
@@ -4227,17 +4214,16 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			return true;
 		}
 
-		// Prepare message for spectators about the damage
 		TextMessage message;
 		message.position = targetPos;
 
 		SpectatorVec spectators;
+		map.getSpectators(spectators, targetPos, true, true);
 
-		// Check if the target has a mana shield, which can absorb some or all of the damage
 		if (targetPlayer && targetPlayer->hasCondition(CONDITION_MANASHIELD) && damage.primary.type != COMBAT_UNDEFINEDDAMAGE) {
 			if (int32_t manaDamage = std::min<int32_t>(targetPlayer->getMana(), healthChange); manaDamage != 0) {
 				if (const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE); !events.empty()) {
-					for (const auto creatureEvent : events) {
+					for (const auto& creatureEvent : events) {
 						creatureEvent->executeManaChange(target, attacker, damage);
 					}
 					healthChange = damage.primary.value + damage.secondary.value;
@@ -4247,20 +4233,31 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 					manaDamage = std::min<int32_t>(targetPlayer->getMana(), healthChange);
 				}
 
-				// Drain mana from the target and create a visual effect
+				// Drain mana and add visual effect
 				targetPlayer->drainMana(attacker, manaDamage);
-				map.getSpectators(spectators, targetPos, true, true);
 				addMagicEffect(spectators, targetPos, CONST_ME_LOSEENERGY);
 
+				std::string targetNameDesc = target->getNameDescription();
+				std::string attackerNameDesc = attacker ? attacker->getNameDescription() : "";
 				std::string spectatorMessage;
+
+				if (!attacker) {
+					spectatorMessage = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana.";
+				}
+				else if (attacker == target) {
+					spectatorMessage = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana due to " +
+						(targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his") + " own attack.";
+				}
+				else {
+					spectatorMessage = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana due to an attack by " +	attackerNameDesc + ".";
+				}
+				spectatorMessage[0] = std::toupper(spectatorMessage[0]);
 
 				message.primary.value = manaDamage;
 				message.primary.color = TEXTCOLOR_BLUE;
 
-				// Notify spectators about the mana drain
-				for (const auto spectator : spectators) {
-					assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
-
+				// Notify spectators about mana loss
+				for (const auto& spectator : spectators) {
 					PlayerPtr spectatorPlayer = std::static_pointer_cast<Player>(spectator);
 					if (spectatorPlayer->getPosition().z != targetPos.z) {
 						continue;
@@ -4268,35 +4265,22 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 
 					if (spectatorPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
 						message.type = MESSAGE_DAMAGE_DEALT;
-						message.text = fmt::format("{:s} loses {:d} mana due to your attack.", target->getNameDescription(), manaDamage);
+						message.text = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana due to your attack.";
 						message.text[0] = std::toupper(message.text[0]);
-					} else if (spectatorPlayer == targetPlayer) {
+					}
+					else if (spectatorPlayer == targetPlayer) {
 						message.type = MESSAGE_DAMAGE_RECEIVED;
-						if (!attacker) {
-							message.text = fmt::format("You lose {:d} mana.", manaDamage);
-						} else if (targetPlayer == attackerPlayer) {
-							message.text = fmt::format("You lose {:d} mana due to your own attack.", manaDamage);
-						} else {
-							message.text = fmt::format("You lose {:d} mana due to an attack by {:s}.", manaDamage, attacker->getNameDescription());
-						}
-					} else {
+						message.text = !attacker ? "You lose " + std::to_string(manaDamage) + " mana." :
+							(targetPlayer == attackerPlayer ? "You lose " + std::to_string(manaDamage) + " mana due to your own attack." :
+								"You lose " + std::to_string(manaDamage) + " mana due to an attack by " + attackerNameDesc + ".");
+					}
+					else {
 						message.type = MESSAGE_DAMAGE_OTHERS;
-						if (spectatorMessage.empty()) {
-							if (!attacker) {
-								spectatorMessage = fmt::format("{:s} loses {:d} mana.", target->getNameDescription(), manaDamage);
-							} else if (attacker == target) {
-								spectatorMessage = fmt::format("{:s} loses {:d} mana due to {:s} own attack.", target->getNameDescription(), manaDamage, targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his");
-							} else {
-								spectatorMessage = fmt::format("{:s} loses {:d} mana due to an attack by {:s}.", target->getNameDescription(), manaDamage, attacker->getNameDescription());
-							}
-							spectatorMessage[0] = std::toupper(spectatorMessage[0]);
-						}
 						message.text = spectatorMessage;
 					}
 					spectatorPlayer->sendTextMessage(message);
 				}
 
-				// Adjust the damage values after mana absorption
 				damage.primary.value -= manaDamage;
 				if (damage.primary.value < 0) {
 					damage.secondary.value = std::max<int32_t>(0, damage.secondary.value + damage.primary.value);
@@ -4305,30 +4289,25 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			}
 		}
 
-		// Calculate the total damage remaining after any mana absorption
+		// Calculate total remaining damage
 		int32_t realDamage = damage.primary.value + damage.secondary.value;
 		if (realDamage == 0) {
 			return true;
 		}
 
-		// Cap the primary damage at the target's current health
+		// Cap damage at target's health
 		int32_t targetHealth = target->getHealth();
 		if (damage.primary.value >= targetHealth) {
 			damage.primary.value = targetHealth;
 			damage.secondary.value = 0;
-		} else if (damage.secondary.value) {
+		}
+		else if (damage.secondary.value) {
 			damage.secondary.value = std::min<int32_t>(damage.secondary.value, targetHealth - damage.primary.value);
 		}
 
-		// Recalculate total damage after adjustments
 		realDamage = damage.primary.value + damage.secondary.value;
 		if (realDamage == 0) {
 			return true;
-		}
-
-		// Get spectators if not already done
-		if (spectators.empty()) {
-			map.getSpectators(spectators, targetPos, true, true);
 		}
 
 		message.primary.value = damage.primary.value;
@@ -4351,82 +4330,81 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 
 		if (message.primary.color != TEXTCOLOR_NONE || message.secondary.color != TEXTCOLOR_NONE) {
 			auto damageString = fmt::format("{:d} hitpoint{:s}", realDamage, realDamage != 1 ? "s" : "");
-
+			std::string targetNameDesc = target->getNameDescription();
+			std::string attackerNameDesc = attacker ? attacker->getNameDescription() : "";
 			std::string spectatorMessage;
 
-			for (const auto spectator : spectators) {
-				const auto tmpPlayer = spectator->getPlayer();
+			if (!attacker) {
+				spectatorMessage = targetNameDesc + " loses " + damageString + ".";
+			}
+			else if (attacker == target) {
+				spectatorMessage = targetNameDesc + " loses " + damageString + " due to " +
+					(targetPlayer ? (targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his") : "its") +	" own attack.";
+			}
+			else {
+				spectatorMessage = targetNameDesc + " loses " + damageString + " due to an attack by " + attackerNameDesc + ".";
+			}
+			spectatorMessage[0] = std::toupper(spectatorMessage[0]);
+
+			for (const auto& spectator : spectators) {
+				const auto& tmpPlayer = spectator->getPlayer();
 				if (tmpPlayer->getPosition().z != targetPos.z) {
 					continue;
 				}
 
 				if (tmpPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
 					message.type = MESSAGE_DAMAGE_DEALT;
-					message.text = fmt::format("{:s} loses {:s} due to your attack.", target->getNameDescription(), damageString);
+					message.text = targetNameDesc + " loses " + damageString + " due to your attack.";
 					message.text[0] = std::toupper(message.text[0]);
-				} else if (tmpPlayer == targetPlayer) {
+				}
+				else if (tmpPlayer == targetPlayer) {
 					message.type = MESSAGE_DAMAGE_RECEIVED;
-					if (!attacker) {
-						message.text = fmt::format("You lose {:s}.", damageString);
-					} else if (targetPlayer == attackerPlayer) {
-						message.text = fmt::format("You lose {:s} due to your own attack.", damageString);
-					} else {
-						message.text = fmt::format("You lose {:s} due to an attack by {:s}.", damageString, attacker->getNameDescription());
-					}
-				} else {
+					message.text = !attacker ? "You lose " + damageString + "." :
+						(targetPlayer == attackerPlayer ? "You lose " + damageString + " due to your own attack." :
+							"You lose " + damageString + " due to an attack by " + attackerNameDesc + ".");
+				}
+				else {
 					message.type = MESSAGE_DAMAGE_OTHERS;
-					if (spectatorMessage.empty()) {
-						if (!attacker) {
-							spectatorMessage = fmt::format("{:s} loses {:s}.", target->getNameDescription(), damageString);
-						} else if (attacker == target) {
-							spectatorMessage = fmt::format("{:s} loses {:s} due to {:s} own attack.", target->getNameDescription(), damageString, targetPlayer ? (targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his") : "its");
-						} else {
-							spectatorMessage = fmt::format("{:s} loses {:s} due to an attack by {:s}.", target->getNameDescription(), damageString, attacker->getNameDescription());
-						}
-						spectatorMessage[0] = std::toupper(spectatorMessage[0]);
-					}
 					message.text = spectatorMessage;
 				}
 				tmpPlayer->sendTextMessage(message);
 			}
 		}
-		// rewardboss player attacking boss
+
+		// Reward boss tracking: player attacking boss
 		if (target && target->getMonster() && target->getMonster()->isRewardBoss()) {
 			uint32_t monsterId = target->getMonster()->getID();
-
 			if (!rewardBossTracking.contains(monsterId)) {
 				rewardBossTracking[monsterId] = RewardBossContributionInfo();
 			}
-
 			if (attackerPlayer) {
 				uint32_t playerGuid = attackerPlayer->getGUID();
 				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageDone += realDamage * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE);
 			}
 		}
 
-		// rewardboss boss attacking player
+		// Reward boss tracking: boss attacking player
 		if (attacker && attacker->getMonster() && attacker->getMonster()->isRewardBoss()) {
 			uint32_t monsterId = attacker->getMonster()->getID();
-
 			if (!rewardBossTracking.contains(monsterId)) {
 				rewardBossTracking[monsterId] = RewardBossContributionInfo();
 			}
-
 			if (target && target->getPlayer()) {
 				uint32_t playerGuid = target->getPlayer()->getGUID();
 				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realDamage * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN);
 			}
 		}
-		// If the damage is enough to kill the target, execute death preparation events
+
+		// Check for death and execute prepare-death events
 		if (realDamage >= targetHealth) {
-			for (const auto creatureEvent : target->getCreatureEvents(CREATURE_EVENT_PREPAREDEATH)) {
+			for (const auto& creatureEvent : target->getCreatureEvents(CREATURE_EVENT_PREPAREDEATH)) {
 				if (!creatureEvent->executeOnPrepareDeath(target, attacker)) {
 					return false;
 				}
 			}
 		}
 
-		// Apply the damage to the target's health and update spectators
+		// Apply damage and update spectators
 		target->drainHealth(attacker, realDamage);
 		addCreatureHealth(spectators, target);
 	}
@@ -4453,7 +4431,7 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 
 		const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
 		if (!events.empty()) {
-			for (const auto creatureEvent : events) {
+			for (const auto& creatureEvent : events) {
 				creatureEvent->executeManaChange(target, attacker, damage);
 			}
 		}
@@ -4463,13 +4441,14 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 		realManaChange = targetPlayer->getMana() - realManaChange;
 
 		if (realManaChange > 0 && !targetPlayer->isInGhostMode()) {
-			TextMessage message(MESSAGE_HEALED, "You gained " + std::to_string(realManaChange) + " mana.");
+			TextMessage message(MESSAGE_HEALED, fmt::format("You gained {:d} mana.", realManaChange));
 			message.position = target->getPosition();
 			message.primary.value = realManaChange;
 			message.primary.color = TEXTCOLOR_MAYABLUE;
 			targetPlayer->sendTextMessage(message);
 		}
-	} else {
+	}
+	else {
 		const Position& targetPos = target->getPosition();
 		if (!target->isAttackable()) {
 			if (!target->isInGhostMode()) {
@@ -4481,7 +4460,8 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 		PlayerPtr attackerPlayer;
 		if (attacker) {
 			attackerPlayer = attacker->getPlayer();
-		} else {
+		}
+		else {
 			attackerPlayer = nullptr;
 		}
 
@@ -4502,14 +4482,29 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 
 		const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
 		if (!events.empty()) {
-			for (const auto creatureEvent : events) {
+			for (const auto& creatureEvent : events) {
 				creatureEvent->executeManaChange(target, attacker, damage);
 			}
 		}
 
 		targetPlayer->drainMana(attacker, manaLoss);
 
+		const auto& targetNameDesc = target->getNameDescription();
+		const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
 		std::string spectatorMessage;
+
+		if (!attacker) {
+			spectatorMessage = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana.";
+		}
+		else if (attacker == target) {
+			spectatorMessage = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana due to " +
+				(targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his") + " own attack.";
+		}
+		else {
+			spectatorMessage = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana due to an attack by " +
+				attackerNameDesc + ".";
+		}
+		spectatorMessage[0] = std::toupper(spectatorMessage[0]);
 
 		TextMessage message;
 		message.position = targetPos;
@@ -4518,35 +4513,27 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 
 		SpectatorVec spectators;
 		map.getSpectators(spectators, targetPos, false, true);
-		for (const auto spectator : spectators) {
-			assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
-
+		for (const auto& spectator : spectators) {
 			PlayerPtr spectatorPlayer = std::static_pointer_cast<Player>(spectator);
 			if (spectatorPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
 				message.type = MESSAGE_DAMAGE_DEALT;
-				message.text = fmt::format("{:s} loses {:d} mana due to your attack.", target->getNameDescription(), manaLoss);
+				message.text = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana due to your attack.";
 				message.text[0] = std::toupper(message.text[0]);
-			} else if (spectatorPlayer == targetPlayer) {
+			}
+			else if (spectatorPlayer == targetPlayer) {
 				message.type = MESSAGE_DAMAGE_RECEIVED;
 				if (!attacker) {
-					message.text = fmt::format("You lose {:d} mana.", manaLoss);
-				} else if (targetPlayer == attackerPlayer) {
-					message.text = fmt::format("You lose {:d} mana due to your own attack.", manaLoss);
-				} else {
-					message.text = fmt::format("You lose {:d} mana due to an attack by {:s}.", manaLoss, attacker->getNameDescription());
+					message.text = "You lose " + std::to_string(manaLoss) + " mana.";
 				}
-			} else {
+				else if (targetPlayer == attackerPlayer) {
+					message.text = "You lose " + std::to_string(manaLoss) + " mana due to your own attack.";
+				}
+				else {
+					message.text = "You lose " + std::to_string(manaLoss) + " mana due to an attack by " + attackerNameDesc + ".";
+				}
+			}
+			else {
 				message.type = MESSAGE_DAMAGE_OTHERS;
-				if (spectatorMessage.empty()) {
-					if (!attacker) {
-						spectatorMessage = fmt::format("{:s} loses {:d} mana.", target->getNameDescription(), manaLoss);
-					} else if (attacker == target) {
-						spectatorMessage = fmt::format("{:s} loses {:d} mana due to {:s} own attack.", target->getNameDescription(), manaLoss, targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his");
-					} else {
-						spectatorMessage = fmt::format("{:s} loses {:d} mana due to an attack by {:s}.", target->getNameDescription(), manaLoss, attacker->getNameDescription());
-					}
-					spectatorMessage[0] = std::toupper(spectatorMessage[0]);
-				}
 				message.text = spectatorMessage;
 			}
 			spectatorPlayer->sendTextMessage(message);
