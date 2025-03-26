@@ -4329,7 +4329,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 		}
 
 		if (message.primary.color != TEXTCOLOR_NONE || message.secondary.color != TEXTCOLOR_NONE) {
-			auto damageString = fmt::format("{:d} hitpoint{:s}", realDamage, realDamage != 1 ? "s" : "");
+			const auto& damageString = std::to_string(realDamage) + " hitpoint" + (realDamage && realDamage != 1 ? "s" : "");
 			const auto& targetNameDesc = target->getNameDescription();
 			const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
 			std::string spectatorMessage;
@@ -4423,7 +4423,7 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 	int32_t manaChange = damage.primary.value + damage.secondary.value;
 	if (manaChange > 0) {
 		if (attacker) {
-			const auto attackerPlayer = attacker->getPlayer();
+			const auto& attackerPlayer = attacker->getPlayer();
 			if (attackerPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(target) == SKULL_NONE) {
 				return false;
 			}
@@ -4441,7 +4441,7 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 		realManaChange = targetPlayer->getMana() - realManaChange;
 
 		if (realManaChange > 0 && !targetPlayer->isInGhostMode()) {
-			TextMessage message(MESSAGE_HEALED, fmt::format("You gained {:d} mana.", realManaChange));
+			TextMessage message(MESSAGE_HEALED, "You gained " + std::to_string(realManaChange) + "mana.");
 			message.position = target->getPosition();
 			message.primary.value = realManaChange;
 			message.primary.color = TEXTCOLOR_MAYABLUE;
