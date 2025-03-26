@@ -4237,8 +4237,8 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 				targetPlayer->drainMana(attacker, manaDamage);
 				addMagicEffect(spectators, targetPos, CONST_ME_LOSEENERGY);
 
-				std::string targetNameDesc = target->getNameDescription();
-				std::string attackerNameDesc = attacker ? attacker->getNameDescription() : "";
+				const auto& targetNameDesc = target->getNameDescription();
+				const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
 				std::string spectatorMessage;
 
 				if (!attacker) {
@@ -4330,8 +4330,8 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 
 		if (message.primary.color != TEXTCOLOR_NONE || message.secondary.color != TEXTCOLOR_NONE) {
 			auto damageString = fmt::format("{:d} hitpoint{:s}", realDamage, realDamage != 1 ? "s" : "");
-			std::string targetNameDesc = target->getNameDescription();
-			std::string attackerNameDesc = attacker ? attacker->getNameDescription() : "";
+			const auto& targetNameDesc = target->getNameDescription();
+			const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
 			std::string spectatorMessage;
 
 			if (!attacker) {
