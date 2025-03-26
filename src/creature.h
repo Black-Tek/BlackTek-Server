@@ -194,9 +194,9 @@ class Creature : virtual public Thing, public SharedObject
 			return false;
 		}
 
-		virtual bool isPlayer() const = 0;
-		virtual bool isMonster() const = 0;
-		virtual bool isNpc() const = 0;
+		inline virtual bool isPlayer() const = 0;
+		inline virtual bool isMonster() const = 0;
+		inline virtual bool isNpc() const = 0;
 
 		int32_t getWalkDelay(Direction dir) const;
 		int32_t getWalkDelay() const;
