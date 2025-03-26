@@ -196,6 +196,9 @@ class Player final : public Creature, public Cylinder
 		bool untameMount(uint8_t mountId);
 		bool hasMount(const Mount* mount) const;
 		void dismount();
+		bool isPlayer() const override { return true; }
+		bool isMonster() const override { return false; }
+		bool isNpc() const override { return false; }
 
 		void sendFYIBox(const std::string& message) const
 		{

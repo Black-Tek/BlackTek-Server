@@ -127,6 +127,9 @@ class Npc final : public Creature
 		static NpcPtr createNpc(const std::string& name);
 
 		bool canSee(const Position& pos) const override;
+		bool isPlayer() const override { return false; }
+		bool isMonster() const override { return false; }
+		bool isNpc() const override { return true; }
 
 		bool load();
 		void reload();

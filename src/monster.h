@@ -167,6 +167,10 @@ class Monster final : public Creature
 		bool searchTarget(TargetSearchType_t searchType = TARGETSEARCH_DEFAULT);
 		bool selectTarget(const CreaturePtr& creature);
 
+		bool isPlayer() const override { return false; }
+		bool isMonster() const override { return true; }
+		bool isNpc() const override { return false; }
+
 		const CreatureList& getTargetList() const {
 			return targetList;
 		}
