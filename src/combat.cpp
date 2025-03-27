@@ -811,7 +811,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 	}
 
 	gtl::node_hash_map<uint8_t, ModifierTotals> attackModData;
-	
+	bool isAugmented = damage.augmented;
 	if (caster) {
 		if (caster->isPlayer() and target) {
 			const auto& casterPlayer = caster->getPlayer();
@@ -828,7 +828,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 			/// we do conversion here incase someone wants to convert say healing to mana or mana to death.
 
 			const auto& conversionTotals = casterPlayer->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage.primary.type, damage.origin, targetType, target->getRace(), target->getName());
-			if (!conversionTotals.empty() and params.origin != ORIGIN_AUGMENT) {
+			if (!conversionTotals.empty() and not isAugmented) {
 				casterPlayer->convertDamage(target->getCreature(), damage, conversionTotals);
 				if (damage.primary.value == 0) {
 					return;
@@ -875,7 +875,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					}
 				}
 
-				if (!damage.critical) {
+				if (not damage.critical) {
 					int32_t percentTotal = 0;
 					int32_t flatTotal = 0;
 					if (!attackModData.empty()) {
@@ -908,7 +908,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					}
 				}
 
-				if (target->isPlayer() and (caster != target) and params.origin != ORIGIN_AUGMENT) {
+				if (target->isPlayer() and (caster != target) and not isAugmented) {
 					const auto& targetPlayer = target->getPlayer();
 					const auto& reformTotals = targetPlayer->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
 					if (!reformTotals.empty()) {
@@ -943,14 +943,14 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				const auto& attackerType = targetPlayer->getCreatureType(casterMonster->getMonster());
 				const auto& defenseModData = targetPlayer->getDefenseModifierTotals(damage.primary.type, damage.origin, attackerType, casterMonster->getRace(), casterMonster->getName());
 				const auto& reformTotals = targetPlayer->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, attackerType, casterMonster->getRace(), casterMonster->getName());
-				if (!reformTotals.empty() and params.origin != ORIGIN_AUGMENT) {
+				if (!reformTotals.empty() and not isAugmented) {
 					targetPlayer->reformDamage(casterMonster->getCreature(), damage, reformTotals);
 					if (damage.primary.value == 0) {
 						return;
 					}
 				}
 
-				if (!defenseModData.empty() and params.origin != ORIGIN_AUGMENT) {
+				if (!defenseModData.empty() and not isAugmented) {
 					for (const auto& [modkind, modTotals] : defenseModData) {
 						if (modTotals.percentTotal or modTotals.flatTotal) {
 							applyDamageReductionModifier(modkind, damage, targetPlayer, caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.origin, params.impactEffect, params.distanceEffect);
@@ -1135,7 +1135,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				int32_t lifeStealGain = 0, manaStealGain = 0, soulGain = 0, staminaGain = 0;
 				
 				// Static cast everything to int32_t to ensure consistency
-				if (!attackModData.empty() and params.origin != ORIGIN_AUGMENT) {
+				if (!attackModData.empty() and not isAugmented) {
 					// Percents
 					lifeStealPercentTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_LIFESTEAL].percentTotal);
 					manaStealPercentTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_MANASTEAL].percentTotal);
