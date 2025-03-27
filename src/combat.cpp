@@ -726,8 +726,8 @@ void Combat::doCombat(const CreaturePtr& caster, const Position& position) const
 			}
 		}
 
-		const int32_t& rangeX = maxX + Map::maxViewportX;
-		const int32_t& rangeY = maxY + Map::maxViewportY;
+		const int32_t rangeX = maxX + Map::maxViewportX;
+		const int32_t rangeY = maxY + Map::maxViewportY;
 		g_game.map.getSpectators(spectators, position, true, true, rangeX, rangeX, rangeY, rangeY);
 
 		postCombatEffects(caster, position, params);
@@ -1001,9 +1001,9 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 							if (!imbuement->value) {
 								continue;
 							}
-							const auto& originalDamage = abs(damage.primary.value);
-							const auto& conversionAmount = (originalDamage * imbuement->value) / 100;
-							const int32_t& difference = (originalDamage - conversionAmount);
+							const auto originalDamage = abs(damage.primary.value);
+							const auto conversionAmount = (originalDamage * imbuement->value) / 100;
+							const int32_t difference = (originalDamage - conversionAmount);
 							
 							CombatDamage imbueDamage;
 							imbueDamage.blockType = BLOCK_NONE;
@@ -1054,11 +1054,11 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 						}
 
 						if (item->hasImbuements()) {
-							for (const auto& imbuement : item->getImbuements()) {
-								const auto& combatType = damage.primary.type;
-								const auto& originalDamage = abs(damage.primary.value);
-								const auto& resistance = (originalDamage * imbuement->value) / 100;
-								const int32_t& difference = (originalDamage - resistance);
+							for (const auto imbuement : item->getImbuements()) {
+								const auto combatType = damage.primary.type;
+								const auto originalDamage = abs(damage.primary.value);
+								const auto resistance = (originalDamage * imbuement->value) / 100;
+								const int32_t difference = (originalDamage - resistance);
 								switch (imbuement->imbuetype) {
 								case ImbuementType::IMBUEMENT_TYPE_FIRE_RESIST:
 									if (combatType == COMBAT_FIREDAMAGE) {
@@ -1207,12 +1207,12 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 
 				if (staminaGain) {
 					if (staminaGain <= std::numeric_limits<uint16_t>::max()) {
-						const uint16_t& trueStaminaGain = g_config.getBoolean(ConfigManager::AUGMENT_STAMINA_RULE) ?
+						const uint16_t trueStaminaGain = g_config.getBoolean(ConfigManager::AUGMENT_STAMINA_RULE) ?
 							static_cast<uint16_t>(staminaGain) :
 							static_cast<uint16_t>(staminaGain / 60);
 						
-						const uint16_t& currentStamina = casterPlayer->getStaminaMinutes();
-						const uint16_t& missingStamina = (MaximumStamina - currentStamina);
+						const uint16_t currentStamina = casterPlayer->getStaminaMinutes();
+						const uint16_t missingStamina = (MaximumStamina - currentStamina);
 						if ((trueStaminaGain + currentStamina) >= missingStamina) {
 							casterPlayer->addStamina(missingStamina);
 						} else {
@@ -1235,10 +1235,10 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 
 				if (soulGain) {
 					if (soulGain <= std::numeric_limits<uint8_t>::max()) {
-						const uint8_t& trueSoulGain = static_cast<uint8_t>(soulGain);
-						const uint8_t& currentSoul = casterPlayer->getSoul();
-						const uint8_t& maxSoul = casterPlayer->getVocation()->getSoulMax();
-						const uint8_t& missingSoul = (maxSoul - currentSoul);
+						const uint8_t trueSoulGain = static_cast<uint8_t>(soulGain);
+						const uint8_t currentSoul = casterPlayer->getSoul();
+						const uint8_t maxSoul = casterPlayer->getVocation()->getSoulMax();
+						const uint8_t missingSoul = (maxSoul - currentSoul);
 						if ((trueSoulGain + currentSoul) >= maxSoul) {
 							casterPlayer->addSoul(missingSoul);
 						} else {
@@ -1288,8 +1288,8 @@ void Combat::doAreaCombat(const CreaturePtr& caster, const Position& position, c
 		}
 	}
 
-	const int32_t& rangeX = maxX + Map::maxViewportX;
-	const int32_t& rangeY = maxY + Map::maxViewportY;
+	const int32_t rangeX = maxX + Map::maxViewportX;
+	const int32_t rangeY = maxY + Map::maxViewportY;
 
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, position, true, true, rangeX, rangeX, rangeY, rangeY);
@@ -1570,8 +1570,8 @@ void TargetCallback::onTargetCombat(const CreaturePtr& creature, const CreatureP
 }
 
 const MatrixArea& AreaCombat::getArea(const Position& centerPos, const Position& targetPos) const {
-	const int32_t& dx = Position::getOffsetX(targetPos, centerPos);
-	const int32_t& dy = Position::getOffsetY(targetPos, centerPos);
+	const int32_t dx = Position::getOffsetX(targetPos, centerPos);
+	const int32_t dy = Position::getOffsetY(targetPos, centerPos);
 
 	Direction dir;
 	if (dx < 0) {
@@ -1632,8 +1632,8 @@ void AreaCombat::setupArea(int32_t length, int32_t spread)
 	std::vector<uint32_t> vec;
 	vec.reserve(rows * cols);
 	for (uint32_t y = 1; y <= rows; ++y) {
-		const int32_t& mincol = cols - colSpread + 1;
-		const int32_t& maxcol = cols - (cols - colSpread);
+		const int32_t mincol = cols - colSpread + 1;
+		const int32_t maxcol = cols - (cols - colSpread);
 
 		for (int32_t x = 1; x <= cols; ++x) {
 			if (y == rows and x == ((cols - (cols % 2)) / 2) + 1) {
@@ -1725,7 +1725,7 @@ void MagicField::onStepInField(const CreaturePtr& creature)
 	const ItemType& it = items[getID()];
 	if (it.conditionDamage) {
 		auto conditionCopy = it.conditionDamage->clone();
-		const uint32_t& ownerId = getOwner();
+		const uint32_t ownerId = getOwner();
 		if (ownerId) {
 			bool harmfulField = true;
 
