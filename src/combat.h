@@ -95,7 +95,7 @@ class Combat
 		static bool isInPvpZone(const CreatureConstPtr& attacker, const CreatureConstPtr& target);
 		static bool isProtected(const PlayerConstPtr& attacker, const PlayerConstPtr& target);
 		static bool isPlayerCombat(const CreatureConstPtr& target);
-		static CombatType_t ConditionToDamageType(ConditionType_t type);
+		static constexpr CombatType_t ConditionToDamageType(ConditionType_t type);
 		static ConditionType_t DamageToConditionType(CombatType_t type);
 		// To-do : follow this call stack and improve it.
 		// Here we have a method that is under-utilized. It should be used in combats
