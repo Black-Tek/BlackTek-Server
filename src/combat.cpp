@@ -74,6 +74,7 @@ CombatDamage Combat::getCombatDamage(const CreaturePtr& creature, const Creature
 		);
 	} else if (creature) {
 		int32_t min, max;
+		// to-do rework : getCombatValues(min, max) to instead return {min, max}
 		if (creature->getCombatValues(min, max)) {
 			damage.primary.value = normal_random(min, max);
 		} else if (const auto& player = creature->getPlayer()) {
@@ -219,7 +220,7 @@ ReturnValue Combat::canTargetCreature(const PlayerPtr& attacker, const CreatureP
 			return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
 		}
 
-		if (attacker->hasSecureMode() and !Combat::isInPvpZone(attacker, target) and attacker->getSkullClient(target->getPlayer()) == SKULL_NONE) {
+		if (attacker->hasSecureMode() and not Combat::isInPvpZone(attacker, target) and attacker->getSkullClient(target->getPlayer()) == SKULL_NONE) {
 			return RETURNVALUE_TURNSECUREMODETOATTACKUNMARKEDPLAYERS;
 		}
 	}
@@ -277,7 +278,7 @@ bool Combat::isProtected(const PlayerConstPtr& attacker, const PlayerConstPtr& t
 		return true;
 	}
 
-	if (!attacker->getVocation()->allowsPvp() or !target->getVocation()->allowsPvp()) {
+	if (not attacker->getVocation()->allowsPvp() or not target->getVocation()->allowsPvp()) {
 		return true;
 	}
 
@@ -288,9 +289,9 @@ bool Combat::isProtected(const PlayerConstPtr& attacker, const PlayerConstPtr& t
 	return false;
 }
 
-ReturnValue Combat::canDoCombat(const CreaturePtr& attacker,const CreaturePtr& target)
+ReturnValue Combat::canDoCombat(const CreaturePtr& attacker, const CreaturePtr& target)
 {
-	if (!attacker) {
+	if (not attacker) {
 		return g_events->eventCreatureOnTargetCombat(attacker, target);
 	}
 
@@ -312,7 +313,7 @@ ReturnValue Combat::canDoCombat(const CreaturePtr& attacker,const CreaturePtr& t
 			const auto& targetPlayerTile = targetPlayer->getTile();
 			if (targetPlayerTile->hasFlag(TILESTATE_NOPVPZONE)) {
 				return RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE;
-			} else if (attackerPlayer->getTile()->hasFlag(TILESTATE_NOPVPZONE) and !targetPlayerTile->hasFlag(TILESTATE_NOPVPZONE | TILESTATE_PROTECTIONZONE)) {
+			} else if (attackerPlayer->getTile()->hasFlag(TILESTATE_NOPVPZONE) and not targetPlayerTile->hasFlag(TILESTATE_NOPVPZONE | TILESTATE_PROTECTIONZONE)) {
 				return RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE;
 			}
 		}
@@ -344,7 +345,7 @@ ReturnValue Combat::canDoCombat(const CreaturePtr& attacker,const CreaturePtr& t
 		} else if (attacker->getMonster()) {
 			const auto& targetMaster = target->getMaster();
 
-			if (!targetMaster or !targetMaster->getPlayer()) {
+			if (not targetMaster or not targetMaster->getPlayer()) {
 				const auto& attackerMaster = attacker->getMaster();
 
 				if (!attackerMaster or !attackerMaster->getPlayer()) {
@@ -611,7 +612,7 @@ void Combat::combatTileEffects(const SpectatorVec& spectators,const CreaturePtr&
 
 void Combat::postCombatEffects(const CreaturePtr& caster, const Position& pos, const CombatParams& params)
 {
-	if (caster and params.distanceEffect != CONST_ANI_NONE) {
+	if (caster and (params.distanceEffect != CONST_ANI_NONE)) {
 		addDistanceEffect(caster, caster->getPosition(), pos, params.distanceEffect);
 	}
 }
@@ -655,8 +656,8 @@ void Combat::doCombat(const CreaturePtr& caster,const CreaturePtr& target) const
 	if (params.combatType != COMBAT_NONE) {
 		CombatDamage damage = getCombatDamage(caster, target);
 
-		bool canCombat = !params.aggressive or (caster != target and Combat::canDoCombat(caster, target) == RETURNVALUE_NOERROR);
-		if ((caster == target or canCombat) and params.impactEffect != CONST_ME_NONE) {
+		bool canCombat = ((not params.aggressive or (caster != target)) and (Combat::canDoCombat(caster, target) == RETURNVALUE_NOERROR));
+		if ((caster == target or canCombat) and (params.impactEffect != CONST_ME_NONE)) {
 			g_game.addMagicEffect(target->getPosition(), params.impactEffect);
 		}
 
@@ -664,7 +665,7 @@ void Combat::doCombat(const CreaturePtr& caster,const CreaturePtr& target) const
 			doTargetCombat(caster, target, damage, params);
 		}
 	} else {
-		if (!params.aggressive or (caster != target and Combat::canDoCombat(caster, target) == RETURNVALUE_NOERROR)) {
+		if ((not params.aggressive or (caster != target)) and (Combat::canDoCombat(caster, target) == RETURNVALUE_NOERROR)) {
 			SpectatorVec spectators;
 			g_game.map.getSpectators(spectators, target->getPosition(), true, true);
 
@@ -689,12 +690,6 @@ void Combat::doCombat(const CreaturePtr& caster,const CreaturePtr& target) const
 			if (params.targetCallback) {
 				params.targetCallback->onTargetCombat(caster, target);
 			}
-
-			/*
-			if (params.impactEffect != CONST_ME_NONE) {
-				g_game.addMagicEffect(target->getPosition(), params.impactEffect);
-			}
-			*/
 
 			if (caster and params.distanceEffect != CONST_ANI_NONE) {
 				addDistanceEffect(caster, caster->getPosition(), target->getPosition(), params.distanceEffect);
@@ -1341,7 +1336,11 @@ void Combat::doAreaCombat(const CreaturePtr& caster, const Position& position, c
 	}
 }
 
-void Combat::applyDamageIncreaseModifier(uint8_t modifierType, CombatDamage& damage, int32_t percentValue, int32_t flatValue) {
+void Combat::applyDamageIncreaseModifier
+	(const uint8_t modifierType,
+	CombatDamage& damage,
+	const int32_t percentValue,
+	const int32_t flatValue) {
 
 	if (percentValue) {
 		if (percentValue <= 100) {
@@ -1355,7 +1354,16 @@ void Combat::applyDamageIncreaseModifier(uint8_t modifierType, CombatDamage& dam
 	}
 }
 
-void Combat::applyDamageReductionModifier(uint8_t modifierType, CombatDamage& damage,const PlayerPtr& damageTarget,const std::optional<CreaturePtr>& attacker, int32_t percent, int32_t flat, CombatOrigin paramOrigin, uint8_t areaEffect, uint8_t distanceEffect) {
+void Combat::applyDamageReductionModifier
+	(const uint8_t modifierType,
+	CombatDamage& damage, 
+	const PlayerPtr& damageTarget, 
+	const std::optional<CreaturePtr>& attacker,
+	const int32_t percent,
+	const int32_t flat,
+	const CombatOrigin paramOrigin,
+	uint8_t areaEffect,
+	uint8_t distanceEffect) {
 
 	switch (modifierType) {
 		case DEFENSE_MODIFIER_ABSORB:
@@ -1590,7 +1598,7 @@ const MatrixArea& AreaCombat::getArea(const Position& centerPos, const Position&
 
 	[[unlikely]]
 	if (dir >= areas.size()) {
-		// this should not happen. it means we forgot to call setupArea.
+		// log location
 		static MatrixArea empty;
 		return empty;
 	}
@@ -1694,8 +1702,6 @@ void AreaCombat::setupExtArea(const std::vector<uint32_t>& vec, uint32_t rows)
 	areas[DIRECTION_SOUTHWEST] = area.rotate270();
 	areas[DIRECTION_NORTHWEST] = std::move(area);
 }
-
-//**********************************************************//
 
 void MagicField::onStepInField(const CreaturePtr& creature)
 {

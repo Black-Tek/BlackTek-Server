@@ -116,7 +116,7 @@ class Combat
 		static void doAreaCombat(const CreaturePtr& caster, const Position& position, const AreaCombat* area, const CombatDamage& damage, const CombatParams& params);
 
 		static void applyDamageIncreaseModifier(uint8_t modifierType, CombatDamage& damage, int32_t percentValue, int32_t flatValue);
-		static void applyDamageReductionModifier(uint8_t modifierType, CombatDamage& damage, const PlayerPtr& damageTarget, const std::optional<CreaturePtr>& attacker, int32_t percentValue, int32_t flatValue, CombatOrigin paramOrigin,  uint8_t areaEffect = CONST_ME_NONE, uint8_t distanceEffect = CONST_ANI_NONE);
+		static void applyDamageReductionModifier(uint8_t modifierType, CombatDamage& damage, const PlayerPtr& damageTarget, const std::optional<CreaturePtr>& attacker, int32_t percentValue, int32_t flatValue, CombatOrigin paramOrigin, uint8_t areaEffect = CONST_ME_NONE, uint8_t distanceEffect = CONST_ANI_NONE);
 
 		bool setCallback(CallBackParam_t key);
 		CallBack* getCallback(CallBackParam_t key) const;
@@ -126,12 +126,13 @@ class Combat
 
 		void setArea(AreaCombat* area);
 
-		bool hasArea() const {
+		[[nodiscard]] 
+		inline bool hasArea() const noexcept {
 			return area != nullptr;
 		}
 	
-		void addCondition(const Condition* condition) {
-			params.conditionList.emplace_front(condition);
+		void addCondition(Condition* condition) {
+			params.conditionList.emplace_front(std::move(condition));
 		}
 	
 		void clearConditions() {
