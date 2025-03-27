@@ -858,19 +858,8 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					if (piercingDamage) {
 						piercingDamage = std::min<int32_t>(piercingDamage, originalDamage);
 						damage.primary.value += piercingDamage;
-
-						CombatDamage piercing;
-						piercing.origin = ORIGIN_AUGMENT;
-						piercing.primary.value = (0 - piercingDamage);
-						piercing.primary.type = COMBAT_UNDEFINEDDAMAGE;
-
-						CombatParams piercingParams;
-						piercingParams.origin = ORIGIN_AUGMENT;
-						piercingParams.combatType = COMBAT_UNDEFINEDDAMAGE;
-						piercingParams.impactEffect = CONST_ME_SKULLHORIZONTAL;
-
-						const auto& message = "You pierced " + target->getName() + " for " + std::to_string(piercingDamage) + " damage!";
-						casterPlayer->sendTextMessage(MESSAGE_EVENT_DEFAULT, message);
+						auto piercing = CombatDamage(COMBAT_UNDEFINEDDAMAGE, ORIGIN_AUGMENT, BLOCK_NONE, (0 - piercingDamage), false, true, true);
+						casterPlayer->sendTextMessage(MESSAGE_EVENT_DEFAULT, "You pierced " + target->getName() + " for " + std::to_string(piercingDamage) + " damage!");
 						g_game.combatChangeHealth(caster, target, piercing);
 
 						if (damage.primary.value == 0) {
@@ -1057,7 +1046,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				}
 			}
 
-				if (target->isPlayer() and damage.primary.type != COMBAT_HEALING and damage.primary.type != COMBAT_MANADRAIN) {
+			if (target->isPlayer() and damage.primary.type != COMBAT_HEALING and damage.primary.type != COMBAT_MANADRAIN) {
 					const auto& targetPlayer = target->getPlayer();
 					for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot)
 					{
@@ -1179,11 +1168,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				}
 
 				if (lifeStealGain) {
-					CombatDamage lifeStealCombat;
-					lifeStealCombat.origin = ORIGIN_AUGMENT;
-					lifeStealCombat.leeched = true;
-					lifeStealCombat.primary.type = COMBAT_LIFEDRAIN;
-					lifeStealCombat.primary.value = lifeStealGain;
+					auto lifeStealCombat = CombatDamage(COMBAT_LIFEDRAIN, ORIGIN_AUGMENT, BLOCK_NONE, lifeStealGain, damage.critical, true, true);
 					g_game.combatChangeHealth(target, caster, lifeStealCombat);
 				}
 
@@ -1201,11 +1186,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				}
 
 				if (manaStealGain) {
-					CombatDamage manaStealCombat;
-					manaStealCombat.origin = ORIGIN_AUGMENT;
-					manaStealCombat.leeched = true;
-					manaStealCombat.primary.type = COMBAT_MANADRAIN;
-					manaStealCombat.primary.value = manaStealGain;
+					auto manaStealCombat = CombatDamage(COMBAT_MANADRAIN, ORIGIN_AUGMENT, BLOCK_NONE, manaStealGain, damage.critical, true, true);
 					g_game.combatChangeMana(target, caster, manaStealCombat);
 				}
 
