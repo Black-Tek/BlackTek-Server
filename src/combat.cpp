@@ -838,12 +838,12 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 			if (damage.primary.type != COMBAT_MANADRAIN and damage.primary.type != COMBAT_HEALING) {
 				// to-do: checking against origin for augment is too limiting.. Lets make piercing like crit and leech, ect.
 				if (!attackModData.empty() and params.origin != ORIGIN_PIERCING) {
-					const auto& [piercingFlatTotal, piercingPercentTotal] = attackModData[ATTACK_MODIFIER_PIERCING];
+					const auto [piercingFlatTotal, piercingPercentTotal] = attackModData[ATTACK_MODIFIER_PIERCING];
 
 					int32_t piercingDamage = 0;
-					const auto& originalDamage = std::abs(damage.primary.value);
+					const auto originalDamage = std::abs(damage.primary.value);
 					if (piercingPercentTotal) {
-						const auto& piercePercent = static_cast<int32_t>(piercingPercentTotal);
+						const auto piercePercent = static_cast<int32_t>(piercingPercentTotal);
 
 						piercingDamage = (piercingPercentTotal <= 100)
 							? (originalDamage * piercePercent / 100)
@@ -880,7 +880,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				}
 
 				if (params.origin != ORIGIN_PIERCING) {
-					const auto& blocked = g_game.combatBlockHit(damage, caster, target, params.blockedByShield, params.blockedByArmor, params.itemId != 0, params.ignoreResistances);
+					const auto blocked = g_game.combatBlockHit(damage, caster, target, params.blockedByShield, params.blockedByArmor, params.itemId != 0, params.ignoreResistances);
 					if (blocked) {
 						return;
 					}
@@ -895,8 +895,8 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					}
 
 					// normal crits are the old ones and are percent based
-					const auto& normalCritChance = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE));
-					const auto& normalCritDamage = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT));
+					const auto normalCritChance = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE));
+					const auto normalCritDamage = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT));
 
 					// note : the way this works, its own damage increase is independent allowing for more than 100
 					// and also at the same time, its chance is independent, so it doesn't add to augmented crit's chance.
@@ -906,7 +906,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 
 					// we do percent based crits first, so that the flat damage doesn't add to the percent increase.
 					if (percentTotal) {
-						const auto& damageIncrease = std::abs(damage.primary.value * percentTotal / 100);
+						const auto damageIncrease = std::abs(damage.primary.value * percentTotal / 100);
 						damage.primary.value -= damageIncrease;
 						damage.critical = true;
 						damage.augmented = true;
@@ -980,7 +980,6 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 		g_game.combatChangeHealth(caster, target, damage);
 	
 	if (success) {
-
 		if (target and caster and target != caster) {
 			if (damage.critical) {
 				if ((damage.augmented and g_config.getBoolean(ConfigManager::AUGMENT_CRITICAL_ANIMATION)) or not (damage.augmented)) {
@@ -999,7 +998,6 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					target->addCombatCondition(conditionCopy);
 				}
 			}
-			// hopefully runes are counted as spells and not ranged
 			if (caster->isPlayer()
 				and (damage.origin == ORIGIN_MELEE or damage.origin == ORIGIN_RANGED)
 				and (damage.primary.type != COMBAT_HEALING and damage.primary.type != COMBAT_MANADRAIN )) {
@@ -1069,7 +1067,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 						}
 
 						if (item->hasImbuements()) {
-							for (const auto imbuement : item->getImbuements()) {
+							for (const auto& imbuement : item->getImbuements()) {
 								const auto combatType = damage.primary.type;
 								const auto originalDamage = abs(damage.primary.value);
 								const auto resistance = (originalDamage * imbuement->value) / 100;
@@ -1142,7 +1140,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				and caster->isPlayer()
 				and damage.origin != ORIGIN_CONDITION) {
 				const auto& casterPlayer = caster->getPlayer();
-				const auto& totalDamage = std::abs(damage.primary.value + damage.secondary.value);
+				const auto totalDamage = std::abs(damage.primary.value + damage.secondary.value);
 				int32_t lifeStealPercentTotal = 0, manaStealPercentTotal = 0, staminaStealPercentTotal = 0, soulStealPercentTotal = 0;
 				int32_t lifeStealFlatTotal = 0, manaStealFlatTotal = 0, staminaStealFlatTotal = 0, soulStealFlatTotal = 0;
 				int32_t lifeStealGain = 0, manaStealGain = 0, soulGain = 0, staminaGain = 0;
@@ -1162,10 +1160,10 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					soulStealFlatTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_SOULSTEAL].flatTotal);
 				}
 
-				const auto& lifeLeechChance = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_LIFELEECHCHANCE));
-				const auto& lifeLeechAmount = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT));
-				const auto& manaLeechChance = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_MANALEECHCHANCE));
-				const auto& manaLeechAmount = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT));
+				const auto lifeLeechChance = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_LIFELEECHCHANCE));
+				const auto lifeLeechAmount = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT));
+				const auto manaLeechChance = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_MANALEECHCHANCE));
+				const auto manaLeechAmount = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT));
 
 				// Lifesteal
 				if ((lifeLeechChance and lifeLeechAmount) and (normal_random(1, 100) <= lifeLeechChance)) {
