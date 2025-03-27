@@ -5927,6 +5927,7 @@ void Player::absorbDamage(const std::optional<CreaturePtr> attacker,
 		absorb.origin = ORIGIN_AUGMENT;
 		absorb.primary.type = COMBAT_HEALING;
 		absorb.primary.value = absorbDamage;
+		absorb.augmented = true;
 
 		auto absorbParams = CombatParams{};
 		absorbParams.origin = ORIGIN_AUGMENT;
@@ -5965,6 +5966,7 @@ void Player::restoreManaFromDamage(std::optional<CreaturePtr> attacker,
 		restore.origin = ORIGIN_AUGMENT;
 		restore.primary.type = COMBAT_MANADRAIN;
 		restore.primary.value = restoreDamage;
+		restore.augmented = true;
 
 		auto restoreParams = CombatParams{};
 		restoreParams.origin = ORIGIN_AUGMENT;
@@ -6092,6 +6094,7 @@ void Player::reflectDamage(std::optional<CreaturePtr> attacker,
 		reflect.primary.type = originalDamage.primary.type;
 		reflect.primary.value = (0 - reflectDamage);
 		reflect.origin = ORIGIN_AUGMENT;
+		reflect.augmented = true;
 
 		auto params = CombatParams{};
 		params.distanceEffect = distanceEffect;
@@ -6144,6 +6147,7 @@ void Player::deflectDamage(std::optional<CreaturePtr> attackerOpt,
         deflect.primary.type = originalDamage.primary.type;
         deflect.origin = ORIGIN_AUGMENT;
         deflect.primary.value = -1 * std::round<int32_t>(deflectDamage / calculatedTargets);
+		deflect.augmented = true;
     	
         auto params = CombatParams();
         params.origin = ORIGIN_AUGMENT;
@@ -6193,6 +6197,7 @@ void Player::ricochetDamage(CombatDamage& originalDamage,
 		ricochet.primary.type = originalDamage.primary.type;
 		ricochet.primary.value = (0 - ricochetDamage);
 		ricochet.origin = ORIGIN_AUGMENT;
+		ricochet.augmented = true;
 
 		auto params = CombatParams();
 		params.origin = ORIGIN_AUGMENT;
@@ -6234,6 +6239,7 @@ void Player::convertDamage(const CreaturePtr& target, CombatDamage& originalDama
 			converted.primary.type = combatType;
 			converted.primary.value = (0 - convertedDamage);
 			converted.origin = ORIGIN_AUGMENT;
+			converted.augmented = true;
 
 			auto params = CombatParams{};
 			params.combatType = combatType;
@@ -6274,6 +6280,7 @@ void Player::reformDamage(std::optional<CreaturePtr> attacker, CombatDamage& ori
 			reform.primary.type = combatType;
 			reform.primary.value = (0 - reformedDamage);
 			reform.origin = ORIGIN_AUGMENT;
+			reform.augmented = true;
 
 			auto params = CombatParams{};
 			params.combatType = combatType;
@@ -6353,7 +6360,7 @@ Position Player::generateAttackPosition(std::optional<CreaturePtr> attacker, Pos
 std::unique_ptr<AreaCombat> Player::generateDeflectArea(std::optional<CreaturePtr> attacker, int32_t targetCount) const
 {
 	auto combatArea = std::make_unique<AreaCombat>();
-	const auto defendersPosition = this->getPosition();
+	const auto& defendersPosition = this->getPosition();
 
 	switch (const auto direction = (attacker.has_value()) ? getDirectionTo(defendersPosition, attacker.value()->getPosition()) : getOppositeDirection(this->getDirection())) {
 	case DIRECTION_NORTH:

@@ -611,6 +611,21 @@ struct CombatDamage
 	bool critical = false;
 	bool leeched = false;
 	bool augmented = false; // we can use this to help with refactoring combat logic later, by giving more config options to end users for how augmented damage interacts with augments
+	CombatDamage(
+		CombatType_t type = COMBAT_NONE,
+		CombatOrigin origin = ORIGIN_NONE,
+		BlockType_t blockType = BLOCK_NONE,
+		int32_t value = 0,
+		bool crit = false,
+		bool leech = false,
+		bool augment = false ) :
+		origin(origin),
+		primary{ type, value },
+		critical(crit),
+		leeched(leech),
+		augmented(augment),
+		blockType(blockType) {
+	}
 };
 
 using MarketOfferList = std::list<MarketOffer>;

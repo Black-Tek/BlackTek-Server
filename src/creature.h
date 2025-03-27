@@ -194,6 +194,10 @@ class Creature : virtual public Thing, public SharedObject
 			return false;
 		}
 
+		inline virtual bool isPlayer() const = 0;
+		inline virtual bool isMonster() const = 0;
+		inline virtual bool isNpc() const = 0;
+
 		int32_t getWalkDelay(Direction dir) const;
 		int32_t getWalkDelay() const;
 		int64_t getTimeSinceLastMove() const;

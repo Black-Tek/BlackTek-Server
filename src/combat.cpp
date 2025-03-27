@@ -17,13 +17,13 @@ extern Weapons* g_weapons;
 extern ConfigManager g_config;
 extern Events* g_events;
 
-std::vector<TilePtr> getList(const MatrixArea& area, const Position& targetPos, const Direction dir)
+static std::vector<TilePtr> getList(const MatrixArea& area, const Position& targetPos, const Direction dir)
 {
-	auto casterPos = getNextPosition(dir, targetPos);
+	const auto& casterPos = getNextPosition(dir, targetPos);
 
 	std::vector<TilePtr> vec;
 
-	auto center = area.getCenter();
+	const auto& center = area.getCenter();
 
 	Position tmpPos(targetPos.x - center.first, targetPos.y - center.second, targetPos.z);
 	for (uint32_t row = 0; row < area.getRows(); ++row, ++tmpPos.y) {
@@ -74,16 +74,17 @@ CombatDamage Combat::getCombatDamage(const CreaturePtr& creature, const Creature
 		);
 	} else if (creature) {
 		int32_t min, max;
+		// to-do rework : getCombatValues(min, max) to instead return {min, max}
 		if (creature->getCombatValues(min, max)) {
 			damage.primary.value = normal_random(min, max);
-		} else if (auto player = creature->getPlayer()) {
+		} else if (const auto& player = creature->getPlayer()) {
 			if (params.valueCallback) {
 				params.valueCallback->getMinMaxValues(player, damage);
 			} else if (formulaType == COMBAT_FORMULA_LEVELMAGIC) {
 				int32_t levelFormula = player->getLevel() * 2 + player->getMagicLevel() * 3;
 				damage.primary.value = normal_random(std::fma(levelFormula, mina, minb), std::fma(levelFormula, maxa, maxb));
 			} else if (formulaType == COMBAT_FORMULA_SKILL) {
-				auto tool = player->getWeapon();
+				const auto& tool = player->getWeapon();
 				const Weapon* weapon = g_weapons->getWeapon(tool);
 				if (weapon) {
 					damage.primary.value = normal_random(minb, std::fma(weapon->getWeaponDamage(player, target, tool, true), maxa, maxb));
@@ -125,11 +126,10 @@ CombatType_t Combat::ConditionToDamageType(const ConditionType_t type)
 		case CONDITION_CURSED:
 			return COMBAT_DEATHDAMAGE;
 
+		[[unlikely]]
 		default:
-			break;
-	}
-
-	return COMBAT_NONE;
+			return COMBAT_NONE;
+	}	
 }
 
 ConditionType_t Combat::DamageToConditionType(const CombatType_t type)
@@ -159,6 +159,7 @@ ConditionType_t Combat::DamageToConditionType(const CombatType_t type)
 		case COMBAT_PHYSICALDAMAGE:
 			return CONDITION_BLEEDING;
 
+		[[unlikely]]
 		default:
 			return CONDITION_NONE;
 	}
@@ -170,7 +171,7 @@ bool Combat::isPlayerCombat(const CreatureConstPtr& target)
 		return true;
 	}
 
-	if (target->isSummon() && target->getMaster()->getPlayer()) {
+	if (target->isSummon() and target->getMaster()->getPlayer()) {
 		return true;
 	}
 
@@ -205,7 +206,7 @@ ReturnValue Combat::canTargetCreature(const PlayerPtr& attacker, const CreatureP
 		}
 	}
 
-	if (attacker->hasFlag(PlayerFlag_CannotUseCombat) || !target->isAttackable()) {
+	if (attacker->hasFlag(PlayerFlag_CannotUseCombat) or !target->isAttackable()) {
 		if (target->getPlayer()) {
 			return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
 		} else {
@@ -214,12 +215,12 @@ ReturnValue Combat::canTargetCreature(const PlayerPtr& attacker, const CreatureP
 	}
 	// we use implicit conversion here to get the const
 	// auto won't work for that as it will not know we need the const version
-	if (PlayerConstPtr p_target = target->getPlayer()) {
+	if (const PlayerConstPtr& p_target = target->getPlayer()) {
 		if (isProtected(attacker, p_target)) {
 			return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
 		}
 
-		if (attacker->hasSecureMode() && !Combat::isInPvpZone(attacker, target) && attacker->getSkullClient(target->getPlayer()) == SKULL_NONE) {
+		if (attacker->hasSecureMode() and not Combat::isInPvpZone(attacker, target) and attacker->getSkullClient(target->getPlayer()) == SKULL_NONE) {
 			return RETURNVALUE_TURNSECUREMODETOATTACKUNMARKEDPLAYERS;
 		}
 	}
@@ -250,7 +251,7 @@ ReturnValue Combat::canDoCombat(const CreaturePtr& caster, const TilePtr& tile, 
 			return RETURNVALUE_FIRSTGOUPSTAIRS;
 		}
 
-		if (const auto player = caster->getPlayer()) {
+		if (const auto& player = caster->getPlayer()) {
 			if (player->hasFlag(PlayerFlag_IgnoreProtectionZone)) {
 				return RETURNVALUE_NOERROR;
 			}
@@ -258,7 +259,7 @@ ReturnValue Combat::canDoCombat(const CreaturePtr& caster, const TilePtr& tile, 
 	}
 
 	//pz-zone
-	if (aggressive && tile->hasFlag(TILESTATE_PROTECTIONZONE)) {
+	if (aggressive and tile->hasFlag(TILESTATE_PROTECTIONZONE)) {
 		return RETURNVALUE_ACTIONNOTPERMITTEDINPROTECTIONZONE;
 	}
 
@@ -267,39 +268,39 @@ ReturnValue Combat::canDoCombat(const CreaturePtr& caster, const TilePtr& tile, 
 
 bool Combat::isInPvpZone(const CreatureConstPtr& attacker, const CreatureConstPtr& target)
 {
-	return attacker->getZone() == ZONE_PVP && target->getZone() == ZONE_PVP;
+	return attacker->getZone() == ZONE_PVP and target->getZone() == ZONE_PVP;
 }
 
 bool Combat::isProtected(const PlayerConstPtr& attacker, const PlayerConstPtr& target)
 {
 	uint32_t protectionLevel = g_config.getNumber(ConfigManager::PROTECTION_LEVEL);
-	if (target->getLevel() < protectionLevel || attacker->getLevel() < protectionLevel) {
+	if (target->getLevel() < protectionLevel or attacker->getLevel() < protectionLevel) {
 		return true;
 	}
 
-	if (!attacker->getVocation()->allowsPvp() || !target->getVocation()->allowsPvp()) {
+	if (not attacker->getVocation()->allowsPvp() or not target->getVocation()->allowsPvp()) {
 		return true;
 	}
 
-	if (attacker->getSkull() == SKULL_BLACK && attacker->getSkullClient(target) == SKULL_NONE) {
+	if (attacker->getSkull() == SKULL_BLACK and attacker->getSkullClient(target) == SKULL_NONE) {
 		return true;
 	}
 
 	return false;
 }
 
-ReturnValue Combat::canDoCombat(const CreaturePtr& attacker,const CreaturePtr& target)
+ReturnValue Combat::canDoCombat(const CreaturePtr& attacker, const CreaturePtr& target)
 {
-	if (!attacker) {
+	if (not attacker) {
 		return g_events->eventCreatureOnTargetCombat(attacker, target);
 	}
 
-	if (const auto targetPlayer = target->getPlayer()) {
+	if (const auto& targetPlayer = target->getPlayer()) {
 		if (targetPlayer->hasFlag(PlayerFlag_CannotBeAttacked)) {
 			return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
 		}
 
-		if (const auto attackerPlayer = attacker->getPlayer()) {
+		if (const auto& attackerPlayer = attacker->getPlayer()) {
 			if (attackerPlayer->hasFlag(PlayerFlag_CannotAttackPlayer)) {
 				return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
 			}
@@ -309,16 +310,16 @@ ReturnValue Combat::canDoCombat(const CreaturePtr& attacker,const CreaturePtr& t
 			}
 
 			//nopvp-zone
-			const auto targetPlayerTile = targetPlayer->getTile();
+			const auto& targetPlayerTile = targetPlayer->getTile();
 			if (targetPlayerTile->hasFlag(TILESTATE_NOPVPZONE)) {
 				return RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE;
-			} else if (attackerPlayer->getTile()->hasFlag(TILESTATE_NOPVPZONE) && !targetPlayerTile->hasFlag(TILESTATE_NOPVPZONE | TILESTATE_PROTECTIONZONE)) {
+			} else if (attackerPlayer->getTile()->hasFlag(TILESTATE_NOPVPZONE) and not targetPlayerTile->hasFlag(TILESTATE_NOPVPZONE | TILESTATE_PROTECTIONZONE)) {
 				return RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE;
 			}
 		}
 
 		if (attacker->isSummon()) {
-			if (const auto masterAttackerPlayer = attacker->getMaster()->getPlayer()) {
+			if (const auto& masterAttackerPlayer = attacker->getMaster()->getPlayer()) {
 				if (masterAttackerPlayer->hasFlag(PlayerFlag_CannotAttackPlayer)) {
 					return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
 				}
@@ -333,21 +334,21 @@ ReturnValue Combat::canDoCombat(const CreaturePtr& attacker,const CreaturePtr& t
 			}
 		}
 	} else if (target->getMonster()) {
-		if (const auto attackerPlayer = attacker->getPlayer()) {
+		if (const auto& attackerPlayer = attacker->getPlayer()) {
 			if (attackerPlayer->hasFlag(PlayerFlag_CannotAttackMonster)) {
 				return RETURNVALUE_YOUMAYNOTATTACKTHISCREATURE;
 			}
 
-			if (target->isSummon() && target->getMaster()->getPlayer() && target->getZone() == ZONE_NOPVP) {
+			if (target->isSummon() and target->getMaster()->getPlayer() and target->getZone() == ZONE_NOPVP) {
 				return RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE;
 			}
 		} else if (attacker->getMonster()) {
-			const auto targetMaster = target->getMaster();
+			const auto& targetMaster = target->getMaster();
 
-			if (!targetMaster || !targetMaster->getPlayer()) {
-				const auto attackerMaster = attacker->getMaster();
+			if (not targetMaster or not targetMaster->getPlayer()) {
+				const auto& attackerMaster = attacker->getMaster();
 
-				if (!attackerMaster || !attackerMaster->getPlayer()) {
+				if (!attackerMaster or !attackerMaster->getPlayer()) {
 					return RETURNVALUE_YOUMAYNOTATTACKTHISCREATURE;
 				}
 			}
@@ -355,14 +356,14 @@ ReturnValue Combat::canDoCombat(const CreaturePtr& attacker,const CreaturePtr& t
 	}
 
 	if (g_game.getWorldType() == WORLD_TYPE_NO_PVP) {
-		if (attacker->getPlayer() || (attacker->isSummon() && attacker->getMaster()->getPlayer())) {
+		if (attacker->getPlayer() or (attacker->isSummon() and attacker->getMaster()->getPlayer())) {
 			if (target->getPlayer()) {
 				if (!isInPvpZone(attacker, target)) {
 					return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
 				}
 			}
 
-			if (target->isSummon() && target->getMaster()->getPlayer()) {
+			if (target->isSummon() and target->getMaster()->getPlayer()) {
 				if (!isInPvpZone(attacker, target)) {
 					return RETURNVALUE_YOUMAYNOTATTACKTHISCREATURE;
 				}
@@ -571,7 +572,7 @@ void Combat::combatTileEffects(const SpectatorVec& spectators,const CreaturePtr&
 			}
 
 			if (casterPlayer) {
-				if (g_game.getWorldType() == WORLD_TYPE_NO_PVP || tile->hasFlag(TILESTATE_NOPVPZONE)) {
+				if (g_game.getWorldType() == WORLD_TYPE_NO_PVP or tile->hasFlag(TILESTATE_NOPVPZONE)) {
 					if (itemId == ITEM_FIREFIELD_PVP_FULL) {
 						itemId = ITEM_FIREFIELD_NOPVP;
 					} else if (itemId == ITEM_POISONFIELD_PVP) {
@@ -583,7 +584,7 @@ void Combat::combatTileEffects(const SpectatorVec& spectators,const CreaturePtr&
 					} else if (itemId == ITEM_WILDGROWTH) {
 						itemId = ITEM_WILDGROWTH_NOPVP;
 					}
-				} else if (itemId == ITEM_FIREFIELD_PVP_FULL || itemId == ITEM_POISONFIELD_PVP || itemId == ITEM_ENERGYFIELD_PVP) {
+				} else if (itemId == ITEM_FIREFIELD_PVP_FULL or itemId == ITEM_POISONFIELD_PVP or itemId == ITEM_ENERGYFIELD_PVP) {
 					casterPlayer->addInFightTicks();
 				}
 			}
@@ -597,8 +598,6 @@ void Combat::combatTileEffects(const SpectatorVec& spectators,const CreaturePtr&
 		ReturnValue ret = g_game.internalAddItem(holder, item);
 		if (ret == RETURNVALUE_NOERROR) {
 			g_game.startDecay(item);
-		} else {
-			//
 		}
 	}
 
@@ -613,7 +612,7 @@ void Combat::combatTileEffects(const SpectatorVec& spectators,const CreaturePtr&
 
 void Combat::postCombatEffects(const CreaturePtr& caster, const Position& pos, const CombatParams& params)
 {
-	if (caster && params.distanceEffect != CONST_ANI_NONE) {
+	if (caster and (params.distanceEffect != CONST_ANI_NONE)) {
 		addDistanceEffect(caster, caster->getPosition(), pos, params.distanceEffect);
 	}
 }
@@ -651,123 +650,131 @@ void Combat::addDistanceEffect(const CreaturePtr& caster, const Position& fromPo
 	}
 }
 
-void Combat::doCombat(const CreaturePtr& caster,const CreaturePtr& target) const
+void Combat::doCombat(const CreaturePtr& caster, const CreaturePtr& target) const
 {
-	//target combat callback function
+	// Early exit if no combat or effects are possible
+	if (params.combatType == COMBAT_NONE
+		and params.conditionList.empty()
+		and params.dispelType == 0
+		and params.impactEffect == CONST_ME_NONE
+		and params.distanceEffect == CONST_ANI_NONE) {
+		return;
+	}
+
+	// Consolidate combat check once
+	bool canCombat = (not params.aggressive or caster != target) and Combat::canDoCombat(caster, target) == RETURNVALUE_NOERROR;
+
 	if (params.combatType != COMBAT_NONE) {
 		CombatDamage damage = getCombatDamage(caster, target);
 
-		bool canCombat = !params.aggressive || (caster != target && Combat::canDoCombat(caster, target) == RETURNVALUE_NOERROR);
-		if ((caster == target || canCombat) && params.impactEffect != CONST_ME_NONE) {
+		// Apply impact effect only if valid
+		if ((caster == target or canCombat) and (params.impactEffect != CONST_ME_NONE)) {
 			g_game.addMagicEffect(target->getPosition(), params.impactEffect);
 		}
 
 		if (canCombat) {
 			doTargetCombat(caster, target, damage, params);
 		}
-	} else {
-		if (!params.aggressive || (caster != target && Combat::canDoCombat(caster, target) == RETURNVALUE_NOERROR)) {
-			SpectatorVec spectators;
-			g_game.map.getSpectators(spectators, target->getPosition(), true, true);
+	}
+	else if (canCombat) {
+		SpectatorVec spectators;
+		g_game.map.getSpectators(spectators, target->getPosition(), true, true);
 
-			if (params.origin != ORIGIN_MELEE) {
-				for (const auto& condition : params.conditionList) {
-					if (caster == target || !target->isImmune(condition->getType())) {
-						auto conditionCopy = condition->clone();
-						conditionCopy->setParam(CONDITION_PARAM_OWNER, caster->getID());
-						target->addCombatCondition(conditionCopy);
-					}
+		if (params.origin != ORIGIN_MELEE) {
+			for (const auto& condition : params.conditionList) {
+				if (caster == target or not target->isImmune(condition->getType())) {
+					auto conditionCopy = condition->clone();
+					conditionCopy->setParam(CONDITION_PARAM_OWNER, caster->getID());
+					target->addCombatCondition(conditionCopy);
 				}
 			}
+		}
 
-			if (params.dispelType & CONDITION_PARALYZE) {
-				target->removeCondition(CONDITION_PARALYZE);
-			} else {
-				target->removeCombatCondition(params.dispelType);
-			}
+		if (params.dispelType & CONDITION_PARALYZE) {
+			target->removeCondition(CONDITION_PARALYZE);
+		}
+		else {
+			target->removeCombatCondition(params.dispelType);
+		}
 
-			combatTileEffects(spectators, caster, target->getTile(), params);
+		combatTileEffects(spectators, caster, target->getTile(), params);
 
-			if (params.targetCallback) {
-				params.targetCallback->onTargetCombat(caster, target);
-			}
+		if (params.targetCallback) {
+			params.targetCallback->onTargetCombat(caster, target);
+		}
 
-			/*
-			if (params.impactEffect != CONST_ME_NONE) {
-				g_game.addMagicEffect(target->getPosition(), params.impactEffect);
-			}
-			*/
-
-			if (caster && params.distanceEffect != CONST_ANI_NONE) {
-				addDistanceEffect(caster, caster->getPosition(), target->getPosition(), params.distanceEffect);
-			}
+		if (caster and params.distanceEffect != CONST_ANI_NONE) {
+			addDistanceEffect(caster, caster->getPosition(), target->getPosition(), params.distanceEffect);
 		}
 	}
 }
 
 void Combat::doCombat(const CreaturePtr& caster, const Position& position) const
 {
-	//area combat callback function
+	// Early exit if no combat or effects are possible
+	if (params.combatType == COMBAT_NONE and params.conditionList.empty() and params.dispelType == 0) {
+		return;
+	}
+
 	if (params.combatType != COMBAT_NONE) {
 		CombatDamage damage = getCombatDamage(caster, nullptr);
 		doAreaCombat(caster, position, area.get(), damage, params);
-	} else {
-		auto tiles = caster ? getCombatArea(caster->getPosition(), position, area.get()) : getCombatArea(position, position, area.get());
+	}
+	else {
+		const auto& tiles = caster ? getCombatArea(caster->getPosition(), position, area.get()) : getCombatArea(position, position, area.get());
+		if (tiles.empty()) {
+			return;
+		}
 
-		SpectatorVec spectators;
 		uint32_t maxX = 0;
 		uint32_t maxY = 0;
-
-		//calculate the max viewable range
-		for (const auto tile : tiles) {
+		for (const auto& tile : tiles) {
 			const Position& tilePos = tile->getPosition();
-
-			uint32_t diff = Position::getDistanceX(tilePos, position);
-			if (diff > maxX) {
-				maxX = diff;
+			const uint32_t diffX = Position::getDistanceX(tilePos, position);
+			if (diffX > maxX) {
+				maxX = diffX;
 			}
-
-			diff = Position::getDistanceY(tilePos, position);
-			if (diff > maxY) {
-				maxY = diff;
+			const uint32_t diffY = Position::getDistanceY(tilePos, position);
+			if (diffY > maxY) {
+				maxY = diffY;
 			}
 		}
 
 		const int32_t rangeX = maxX + Map::maxViewportX;
 		const int32_t rangeY = maxY + Map::maxViewportY;
+		SpectatorVec spectators;
 		g_game.map.getSpectators(spectators, position, true, true, rangeX, rangeX, rangeY, rangeY);
 
 		postCombatEffects(caster, position, params);
 
-		for (auto tile : tiles) {
+		for (const auto& tile : tiles) {
 			if (canDoCombat(caster, tile, params.aggressive) != RETURNVALUE_NOERROR) {
 				continue;
 			}
 
 			combatTileEffects(spectators, caster, tile, params);
 
-			if (auto creatures = tile->getCreatures()) {
-				const auto topCreature = tile->getTopCreature();
-				for (auto creature : *creatures) {
+			if (const auto& creatures = tile->getCreatures()) {
+				const auto& topCreature = tile->getTopCreature();
+				for (const auto& creature : *creatures) {
 					if (params.targetCasterOrTopMost) {
-						if (caster && caster->getTile() == tile) {
+						if (caster and caster->getTile() == tile) {
 							if (creature != caster) {
 								continue;
 							}
-						} else if (creature != topCreature) {
+						}
+						else if (creature != topCreature) {
 							continue;
 						}
 					}
 
-					if (!params.aggressive || (caster != creature && Combat::canDoCombat(caster, creature) == RETURNVALUE_NOERROR)) {
+					if (not params.aggressive or (caster != creature && Combat::canDoCombat(caster, creature) == RETURNVALUE_NOERROR)) {
 						for (const auto& condition : params.conditionList) {
-							if (caster == creature || !creature->isImmune(condition->getType())) {
-								const auto conditionCopy = condition->clone();
+							if (caster == creature and not creature->isImmune(condition->getType())) {
+								const auto& conditionCopy = condition->clone();
 								if (caster) {
 									conditionCopy->setParam(CONDITION_PARAM_OWNER, caster->getID());
 								}
-
-								//TODO: infight condition until all aggressive conditions has ended
 								creature->addCombatCondition(conditionCopy);
 							}
 						}
@@ -775,7 +782,8 @@ void Combat::doCombat(const CreaturePtr& caster, const Position& position) const
 
 					if (params.dispelType & CONDITION_PARALYZE) {
 						creature->removeCondition(CONDITION_PARALYZE);
-					} else {
+					}
+					else {
 						creature->removeCombatCondition(params.dispelType);
 					}
 
@@ -798,134 +806,154 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 	// The thing that needs to happen is for augment based damage should not interact again with other aumgent
 	// based damage. Instead of using origin for this, would possibly be better as fields on the combat or combat params.
 	
-	if (params.distanceEffect != CONST_ANI_NONE && sendDistanceEffect) {
+	if (params.distanceEffect != CONST_ANI_NONE and sendDistanceEffect) {
 		addDistanceEffect(caster, caster->getPosition(), target->getPosition(), params.distanceEffect);
 	}
-	// To-do : Get rid of these optionals (unsure, but I think they are a leak)
-	// by adding isPlayer and isMonster member methods to all the Creature classes.
-	std::optional<PlayerPtr> casterPlayer = caster && caster->getPlayer() ? std::optional<PlayerPtr>(caster->getPlayer()) : std::nullopt;
-	std::optional<PlayerPtr> targetPlayer = target && target->getPlayer() ? std::optional<PlayerPtr>(target->getPlayer()) : std::nullopt;
-	std::optional<MonsterPtr> casterMonster = caster && caster->getMonster() ? std::optional<MonsterPtr>(caster->getMonster()) : std::nullopt;
 
 	gtl::node_hash_map<uint8_t, ModifierTotals> attackModData;
-	
-	if (casterPlayer.has_value() && target) {
-		attackModData.reserve(ATTACK_MODIFIER_LAST);
-		auto targetType = CREATURETYPE_ATTACKABLE;
-		// to-do: this is ugly, lets make it a function and assign its return to the variable above instead.
-		if (target->getMonster()) {
-			targetType = casterPlayer.value()->getCreatureType(target->getMonster());
-		} else if (target->getPlayer()) {
-			targetType = CREATURETYPE_PLAYER;
-		}
-		attackModData = casterPlayer.value()->getAttackModifierTotals(damage.primary.type, damage.origin, targetType, target->getRace(), target->getName());
-		/// we do conversion here incase someone wants to convert say healing to mana or mana to death.
-
-		const auto& conversionTotals = casterPlayer.value()->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage.primary.type, damage.origin, targetType, target->getRace(), target->getName()) ;
-		if (!conversionTotals.empty() && params.origin != ORIGIN_AUGMENT) {
-			casterPlayer.value()->convertDamage(target->getCreature(), damage, conversionTotals);
-			if (damage.primary.value == 0) {
-				return;
+	bool isAugmented = damage.augmented;
+	if (caster) {
+		if (caster->isPlayer() and target) {
+			const auto& casterPlayer = caster->getPlayer();
+			attackModData.reserve(ATTACK_MODIFIER_LAST);
+			auto targetType = CREATURETYPE_ATTACKABLE;
+			// to-do: this is ugly, lets make it a function and assign its return to the variable above instead.
+			if (target->getMonster()) {
+				targetType = casterPlayer->getCreatureType(target->getMonster());
 			}
-		}
-
-		if (damage.primary.type != COMBAT_MANADRAIN && damage.primary.type != COMBAT_HEALING) {
-			// to-do: checking against origin for augment is too limiting.. Lets make piercing like crit and leech, ect.
-			if (!attackModData.empty() && params.origin != ORIGIN_PIERCING) {
-				const auto& [piercingFlatTotal, piercingPercentTotal] = attackModData[ATTACK_MODIFIER_PIERCING];
-
-				int32_t piercingDamage = 0;
-				const auto& originalDamage = std::abs(damage.primary.value);
-				if (piercingPercentTotal) {
-					const auto& piercePercent = static_cast<int32_t>(piercingPercentTotal);
-
-					piercingDamage = (piercingPercentTotal <= 100)
-						? (originalDamage * piercePercent / 100)
-						: damage.primary.value;
-					
-				}
-
-				if (piercingFlatTotal) {
-					piercingDamage += static_cast<int32_t>(piercingFlatTotal);
-				}
-
-				if (piercingDamage) {
-					piercingDamage = std::min<int32_t>(piercingDamage, originalDamage);
-					damage.primary.value += piercingDamage;
-					
-					CombatDamage piercing;
-					piercing.origin = ORIGIN_AUGMENT;
-					piercing.primary.value = (0 - piercingDamage);
-					piercing.primary.type = COMBAT_UNDEFINEDDAMAGE;
-
-					CombatParams piercingParams;
-					piercingParams.origin = ORIGIN_AUGMENT;
-					piercingParams.combatType = COMBAT_UNDEFINEDDAMAGE;
-					piercingParams.impactEffect = CONST_ME_SKULLHORIZONTAL;
-
-					const auto message = "You pierced " + target->getName() + " for " + std::to_string(piercingDamage) + " damage!" ;
-					casterPlayer.value()->sendTextMessage(MESSAGE_EVENT_DEFAULT, message);
-					g_game.combatChangeHealth(caster, target, piercing);
-
-					if (damage.primary.value == 0) {
-						return;
-					}
-				}
+			else if (target->getPlayer()) {
+				targetType = CREATURETYPE_PLAYER;
 			}
+			attackModData = casterPlayer->getAttackModifierTotals(damage.primary.type, damage.origin, targetType, target->getRace(), target->getName());
+			/// we do conversion here incase someone wants to convert say healing to mana or mana to death.
 
-			if (params.origin != ORIGIN_PIERCING) {
-			auto blocked =g_game.combatBlockHit(damage, caster, target, params.blockedByShield, params.blockedByArmor, params.itemId != 0, params.ignoreResistances);
-				if (blocked) {
+			const auto& conversionTotals = casterPlayer->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage.primary.type, damage.origin, targetType, target->getRace(), target->getName());
+			if (!conversionTotals.empty() and not isAugmented) {
+				casterPlayer->convertDamage(target->getCreature(), damage, conversionTotals);
+				if (damage.primary.value == 0) {
 					return;
 				}
 			}
 
-			if (!damage.critical) {
-				int32_t percentTotal = 0;
-				int32_t flatTotal = 0;
-				if (!attackModData.empty()) {
-					percentTotal = attackModData[ATTACK_MODIFIER_CRITICAL].percentTotal;
-					flatTotal = attackModData[ATTACK_MODIFIER_CRITICAL].flatTotal;
-					damage.augmented = true;
+			if (damage.primary.type != COMBAT_MANADRAIN and damage.primary.type != COMBAT_HEALING) {
+				// to-do: checking against origin for augment is too limiting.. Lets make piercing like crit and leech, ect.
+				if (!attackModData.empty() and params.origin != ORIGIN_PIERCING) {
+					const auto [piercingFlatTotal, piercingPercentTotal] = attackModData[ATTACK_MODIFIER_PIERCING];
+
+					int32_t piercingDamage = 0;
+					const auto originalDamage = std::abs(damage.primary.value);
+					if (piercingPercentTotal) {
+						const auto piercePercent = static_cast<int32_t>(piercingPercentTotal);
+
+						piercingDamage = (piercingPercentTotal <= 100)
+							? (originalDamage * piercePercent / 100)
+							: damage.primary.value;
+
+					}
+
+					if (piercingFlatTotal) {
+						piercingDamage += static_cast<int32_t>(piercingFlatTotal);
+					}
+
+					if (piercingDamage) {
+						piercingDamage = std::min<int32_t>(piercingDamage, originalDamage);
+						damage.primary.value += piercingDamage;
+						auto piercing = CombatDamage(COMBAT_UNDEFINEDDAMAGE, ORIGIN_AUGMENT, BLOCK_NONE, (0 - piercingDamage), false, true, true);
+						casterPlayer->sendTextMessage(MESSAGE_EVENT_DEFAULT, "You pierced " + target->getName() + " for " + std::to_string(piercingDamage) + " damage!");
+						g_game.combatChangeHealth(caster, target, piercing);
+
+						if (damage.primary.value == 0) {
+							return;
+						}
+					}
 				}
 
-				// normal crits are the old ones and are percent based
-				const auto& normalCritChance = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE));
-				const auto& normalCritDamage = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT));
-
-				// note : the way this works, its own damage increase is independent allowing for more than 100
-				// and also at the same time, its chance is independent, so it doesn't add to augmented crit's chance.
-				if ((normalCritChance && normalCritDamage) && (normal_random(1, 100) <= normalCritChance)) {
-					percentTotal += normalCritDamage;
+				if (params.origin != ORIGIN_PIERCING) {
+					const auto blocked = g_game.combatBlockHit(damage, caster, target, params.blockedByShield, params.blockedByArmor, params.itemId != 0, params.ignoreResistances);
+					if (blocked) {
+						return;
+					}
 				}
 
-				// we do percent based crits first, so that the flat damage doesn't add to the percent increase.
-				if (percentTotal) {
-					auto damageIncrease = std::abs(damage.primary.value * percentTotal / 100);
-					damage.primary.value -= damageIncrease;
-					damage.critical = true;
+				if (not damage.critical) {
+					int32_t percentTotal = 0;
+					int32_t flatTotal = 0;
+					if (!attackModData.empty()) {
+						percentTotal = attackModData[ATTACK_MODIFIER_CRITICAL].percentTotal;
+						flatTotal = attackModData[ATTACK_MODIFIER_CRITICAL].flatTotal;
+					}
+
+					// normal crits are the old ones and are percent based
+					const auto normalCritChance = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE));
+					const auto normalCritDamage = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT));
+
+					// note : the way this works, its own damage increase is independent allowing for more than 100
+					// and also at the same time, its chance is independent, so it doesn't add to augmented crit's chance.
+					if ((normalCritChance and normalCritDamage) and (normal_random(1, 100) <= normalCritChance)) {
+						percentTotal += normalCritDamage;
+					}
+
+					// we do percent based crits first, so that the flat damage doesn't add to the percent increase.
+					if (percentTotal) {
+						const auto damageIncrease = std::abs(damage.primary.value * percentTotal / 100);
+						damage.primary.value -= damageIncrease;
+						damage.critical = true;
+						damage.augmented = true;
+					}
+
+					if (flatTotal) {
+						damage.primary.value -= flatTotal;
+						damage.critical = true;
+						damage.augmented = true;
+					}
 				}
 
-				if (flatTotal) {
-					damage.primary.value -= flatTotal;
-					damage.critical = true;
+				if (target->isPlayer() and (caster != target) and not isAugmented) {
+					const auto& targetPlayer = target->getPlayer();
+					const auto& reformTotals = targetPlayer->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
+					if (!reformTotals.empty()) {
+						targetPlayer->reformDamage(casterPlayer->getCreature(), damage, reformTotals);
+						if (damage.primary.value == 0) {
+							return;
+						}
+					}
+
+					const auto& defenseModData = targetPlayer->getDefenseModifierTotals(damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
+					if (!defenseModData.empty()) {
+						for (const auto& [modkind, modTotals] : defenseModData) {
+							if (modTotals.percentTotal or modTotals.flatTotal) {
+								applyDamageReductionModifier(modkind, damage, targetPlayer, caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.origin, params.impactEffect, params.distanceEffect);
+								if (damage.primary.value == 0) {
+									return;
+								}
+							}
+						}
+					}
 				}
 			}
+		}
+		else if (caster->isMonster()) {
+			const auto& casterMonster = caster->getMonster();
+			if (g_game.combatBlockHit(damage, caster, target, params.blockedByShield, params.blockedByArmor, params.itemId != 0, params.ignoreResistances)) {
+				return;
+			}
 
-			if (targetPlayer.has_value() && (casterPlayer.value() != targetPlayer.value()) && params.origin != ORIGIN_AUGMENT) {
-				const auto& reformTotals = targetPlayer.value()->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
-				if (!reformTotals.empty()) {
-					targetPlayer.value()->reformDamage(casterPlayer.value()->getCreature(), damage, reformTotals);
+			if (target and target->isPlayer()) {
+				const auto& targetPlayer = target->getPlayer();
+				const auto& attackerType = targetPlayer->getCreatureType(casterMonster->getMonster());
+				const auto& defenseModData = targetPlayer->getDefenseModifierTotals(damage.primary.type, damage.origin, attackerType, casterMonster->getRace(), casterMonster->getName());
+				const auto& reformTotals = targetPlayer->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, attackerType, casterMonster->getRace(), casterMonster->getName());
+				if (!reformTotals.empty() and not isAugmented) {
+					targetPlayer->reformDamage(casterMonster->getCreature(), damage, reformTotals);
 					if (damage.primary.value == 0) {
 						return;
 					}
 				}
 
-				const auto& defenseModData = targetPlayer.value()->getDefenseModifierTotals(damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
-				if (!defenseModData.empty()) {
+				if (!defenseModData.empty() and not isAugmented) {
 					for (const auto& [modkind, modTotals] : defenseModData) {
-						if (modTotals.percentTotal  || modTotals.flatTotal) {
-							applyDamageReductionModifier(modkind, damage, targetPlayer.value(), caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.origin, params.impactEffect, params.distanceEffect);
+						if (modTotals.percentTotal or modTotals.flatTotal) {
+							applyDamageReductionModifier(modkind, damage, targetPlayer, caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.origin, params.impactEffect, params.distanceEffect);
 							if (damage.primary.value == 0) {
 								return;
 							}
@@ -934,44 +962,14 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				}
 			}
 		}
-	} else if (casterMonster.has_value()) {
-		if (g_game.combatBlockHit(damage, caster, target, params.blockedByShield, params.blockedByArmor, params.itemId != 0, params.ignoreResistances)) {
-			return;
-		}
-
-		if (targetPlayer.has_value()) {
-			const auto& attackerType = targetPlayer.value()->getCreatureType(casterMonster.value()->getMonster());
-			const auto& defenseModData = targetPlayer.value()->getDefenseModifierTotals(damage.primary.type, damage.origin, attackerType, casterMonster.value()->getRace(), casterMonster.value()->getName());
-			auto reformTotals = targetPlayer.value()->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, attackerType, casterMonster.value()->getRace(), casterMonster.value()->getName());
-			if (!reformTotals.empty() && params.origin != ORIGIN_AUGMENT) {
-				targetPlayer.value()->reformDamage(casterMonster.value()->getCreature(), damage, reformTotals);
-				if (damage.primary.value == 0) {
-					return;
-				}
-			}
-
-			if (!defenseModData.empty() && params.origin != ORIGIN_AUGMENT) {
-				for (const auto& [modkind, modTotals] : defenseModData) {
-					if (modTotals.percentTotal || modTotals.flatTotal) {
-						applyDamageReductionModifier(modkind, damage, targetPlayer.value(), caster->getCreature(), static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), params.origin, params.impactEffect, params.distanceEffect);
-						if (damage.primary.value == 0) {
-							return;
-						}
-					}
-				}
-			}
-		}
-	} else [[unlikely]] {
-		std::cout << "Getting calls to doTargetCombat without a target. \n";
 	}
 
-	auto success = (damage.primary.type == COMBAT_MANADRAIN) ?
+	const auto& success = (damage.primary.type == COMBAT_MANADRAIN) ?
 		g_game.combatChangeMana(caster, target, damage) :
 		g_game.combatChangeHealth(caster, target, damage);
 	
 	if (success) {
-
-		if (target && caster && target != caster) {
+		if (target and caster and target != caster) {
 			if (damage.critical) {
 				if ((damage.augmented and g_config.getBoolean(ConfigManager::AUGMENT_CRITICAL_ANIMATION)) or not (damage.augmented)) {
 					g_game.addMagicEffect(target->getPosition(), CONST_ME_CRITICAL_DAMAGE);
@@ -989,13 +987,13 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					target->addCombatCondition(conditionCopy);
 				}
 			}
-			// hopefully runes are counted as spells and not ranged
-			if (casterPlayer.has_value()
-				&& (damage.origin == ORIGIN_MELEE || damage.origin == ORIGIN_RANGED)
-				&& (damage.primary.type != COMBAT_HEALING && damage.primary.type != COMBAT_MANADRAIN )) {
+			if (caster->isPlayer()
+				and (damage.origin == ORIGIN_MELEE or damage.origin == ORIGIN_RANGED)
+				and (damage.primary.type != COMBAT_HEALING and damage.primary.type != COMBAT_MANADRAIN )) {
+				auto casterPlayer = caster->getPlayer();
 				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
 
-					auto item = casterPlayer.value()->getInventoryItem(static_cast<slots_t>(slot));
+					auto item = casterPlayer->getInventoryItem(slot);
 					if (!item) {
 						continue;
 					}
@@ -1005,9 +1003,9 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 							if (!imbuement->value) {
 								continue;
 							}
-							const auto& originalDamage = abs(damage.primary.value);
-							const auto& conversionAmount = (originalDamage * imbuement->value) / 100;
-							const int32_t& difference = (originalDamage - conversionAmount);
+							const auto originalDamage = abs(damage.primary.value);
+							const auto conversionAmount = (originalDamage * imbuement->value) / 100;
+							const int32_t difference = (originalDamage - conversionAmount);
 							
 							CombatDamage imbueDamage;
 							imbueDamage.blockType = BLOCK_NONE;
@@ -1048,10 +1046,11 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				}
 			}
 
-				if (targetPlayer.has_value() && damage.primary.type != COMBAT_HEALING && damage.primary.type != COMBAT_MANADRAIN ) {
+			if (target->isPlayer() and damage.primary.type != COMBAT_HEALING and damage.primary.type != COMBAT_MANADRAIN) {
+					const auto& targetPlayer = target->getPlayer();
 					for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot)
 					{
-						auto item = targetPlayer.value()->getInventoryItem(static_cast<slots_t>(slot));
+						auto item = targetPlayer->getInventoryItem(slot);
 						if (!item) {
 							continue;
 						}
@@ -1059,9 +1058,9 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 						if (item->hasImbuements()) {
 							for (const auto& imbuement : item->getImbuements()) {
 								const auto combatType = damage.primary.type;
-								const auto& originalDamage = abs(damage.primary.value);
-								const auto& resistance = (originalDamage * imbuement->value) / 100;
-								const int32_t& difference = (originalDamage - resistance);
+								const auto originalDamage = abs(damage.primary.value);
+								const auto resistance = (originalDamage * imbuement->value) / 100;
+								const int32_t difference = (originalDamage - resistance);
 								switch (imbuement->imbuetype) {
 								case ImbuementType::IMBUEMENT_TYPE_FIRE_RESIST:
 									if (combatType == COMBAT_FIREDAMAGE) {
@@ -1125,16 +1124,18 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					}
 				}
 
-			if (!damage.leeched && damage.primary.type != COMBAT_HEALING
-				&& casterPlayer
-				&& damage.origin != ORIGIN_CONDITION) {
+			if (!damage.leeched 
+				and damage.primary.type != COMBAT_HEALING 
+				and caster->isPlayer()
+				and damage.origin != ORIGIN_CONDITION) {
+				const auto& casterPlayer = caster->getPlayer();
 				const auto totalDamage = std::abs(damage.primary.value + damage.secondary.value);
 				int32_t lifeStealPercentTotal = 0, manaStealPercentTotal = 0, staminaStealPercentTotal = 0, soulStealPercentTotal = 0;
 				int32_t lifeStealFlatTotal = 0, manaStealFlatTotal = 0, staminaStealFlatTotal = 0, soulStealFlatTotal = 0;
 				int32_t lifeStealGain = 0, manaStealGain = 0, soulGain = 0, staminaGain = 0;
 				
 				// Static cast everything to int32_t to ensure consistency
-				if (!attackModData.empty() && params.origin != ORIGIN_AUGMENT) {
+				if (!attackModData.empty() and not isAugmented) {
 					// Percents
 					lifeStealPercentTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_LIFESTEAL].percentTotal);
 					manaStealPercentTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_MANASTEAL].percentTotal);
@@ -1148,13 +1149,13 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					soulStealFlatTotal = static_cast<int32_t>(attackModData[ATTACK_MODIFIER_SOULSTEAL].flatTotal);
 				}
 
-				const auto lifeLeechChance = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_LIFELEECHCHANCE));
-				const auto lifeLeechAmount = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT));
-				const auto manaLeechChance = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_MANALEECHCHANCE));
-				const auto manaLeechAmount = static_cast<int32_t>(casterPlayer.value()->getSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT));
+				const auto lifeLeechChance = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_LIFELEECHCHANCE));
+				const auto lifeLeechAmount = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT));
+				const auto manaLeechChance = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_MANALEECHCHANCE));
+				const auto manaLeechAmount = static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT));
 
 				// Lifesteal
-				if ((lifeLeechChance && lifeLeechAmount) && (normal_random(1, 100) <= lifeLeechChance)) {
+				if ((lifeLeechChance and lifeLeechAmount) and (normal_random(1, 100) <= lifeLeechChance)) {
 					lifeStealGain += totalDamage * lifeLeechAmount / 100;
 				}
 
@@ -1167,16 +1168,12 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				}
 
 				if (lifeStealGain) {
-					CombatDamage lifeStealCombat;
-					lifeStealCombat.origin = ORIGIN_AUGMENT;
-					lifeStealCombat.leeched = true;
-					lifeStealCombat.primary.type = COMBAT_LIFEDRAIN;
-					lifeStealCombat.primary.value = lifeStealGain;
+					auto lifeStealCombat = CombatDamage(COMBAT_LIFEDRAIN, ORIGIN_AUGMENT, BLOCK_NONE, lifeStealGain, damage.critical, true, true);
 					g_game.combatChangeHealth(target, caster, lifeStealCombat);
 				}
 
 				/// Manasteal
-				if ((manaLeechChance && manaLeechAmount) && (normal_random(1, 100) <= manaLeechChance)) {
+				if ((manaLeechChance and manaLeechAmount) and (normal_random(1, 100) <= manaLeechChance)) {
 					manaStealGain += totalDamage * manaLeechAmount / 100;
 				}
 
@@ -1189,11 +1186,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				}
 
 				if (manaStealGain) {
-					CombatDamage manaStealCombat;
-					manaStealCombat.origin = ORIGIN_AUGMENT;
-					manaStealCombat.leeched = true;
-					manaStealCombat.primary.type = COMBAT_MANADRAIN;
-					manaStealCombat.primary.value = manaStealGain;
+					auto manaStealCombat = CombatDamage(COMBAT_MANADRAIN, ORIGIN_AUGMENT, BLOCK_NONE, manaStealGain, damage.critical, true, true);
 					g_game.combatChangeMana(target, caster, manaStealCombat);
 				}
 
@@ -1212,17 +1205,17 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 							static_cast<uint16_t>(staminaGain) :
 							static_cast<uint16_t>(staminaGain / 60);
 						
-						const uint16_t currentStamina = casterPlayer.value()->getStaminaMinutes();
+						const uint16_t currentStamina = casterPlayer->getStaminaMinutes();
 						const uint16_t missingStamina = (MaximumStamina - currentStamina);
 						if ((trueStaminaGain + currentStamina) >= missingStamina) {
-							casterPlayer.value()->addStamina(missingStamina);
+							casterPlayer->addStamina(missingStamina);
 						} else {
-							casterPlayer.value()->addStamina(trueStaminaGain);
+							casterPlayer->addStamina(trueStaminaGain);
 						}
 					} else {
-						casterPlayer.value()->addStamina(MaximumStamina - casterPlayer.value()->getStaminaMinutes());
+						casterPlayer->addStamina(MaximumStamina - casterPlayer->getStaminaMinutes());
 					}
-					g_game.addMagicEffect(casterPlayer.value()->getPosition(), CONST_ME_YELLOWENERGY);
+					g_game.addMagicEffect(casterPlayer->getPosition(), CONST_ME_YELLOWENERGY);
 				}
 
 				// Soulsteal
@@ -1237,19 +1230,19 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				if (soulGain) {
 					if (soulGain <= std::numeric_limits<uint8_t>::max()) {
 						const uint8_t trueSoulGain = static_cast<uint8_t>(soulGain);
-						const uint8_t currentSoul = casterPlayer.value()->getSoul();
-						const uint8_t maxSoul = casterPlayer.value()->getVocation()->getSoulMax();
+						const uint8_t currentSoul = casterPlayer->getSoul();
+						const uint8_t maxSoul = casterPlayer->getVocation()->getSoulMax();
 						const uint8_t missingSoul = (maxSoul - currentSoul);
 						if ((trueSoulGain + currentSoul) >= maxSoul) {
-							casterPlayer.value()->addSoul(missingSoul);
+							casterPlayer->addSoul(missingSoul);
 						} else {
-							casterPlayer.value()->addSoul(trueSoulGain);
+							casterPlayer->addSoul(trueSoulGain);
 						}
 					} else {
-						casterPlayer.value()->addSoul(casterPlayer.value()->getVocation()->getSoulMax() - casterPlayer.value()->getSoul());
+						casterPlayer->addSoul(casterPlayer->getVocation()->getSoulMax() - casterPlayer->getSoul());
 					}
 
-					g_game.addMagicEffect(casterPlayer.value()->getPosition(), CONST_ME_MAGIC_GREEN);
+					g_game.addMagicEffect(casterPlayer->getPosition(), CONST_ME_MAGIC_GREEN);
 				}
 			}
 		}
@@ -1267,15 +1260,15 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 
 void Combat::doAreaCombat(const CreaturePtr& caster, const Position& position, const AreaCombat* area, const CombatDamage& damage, const CombatParams& params)
 {
-	auto tiles = caster ? getCombatArea(caster->getPosition(), position, area) : getCombatArea(position, position, area);
+	const auto& tiles = caster ? getCombatArea(caster->getPosition(), position, area) : getCombatArea(position, position, area);
 
-	auto casterPlayer = caster ? caster->getPlayer() : nullptr;
+	const auto& casterPlayer = caster ? caster->getPlayer() : nullptr;
 
 	uint32_t maxX = 0;
 	uint32_t maxY = 0;
 
 	//calculate the max viewable range
-	for (const auto tile : tiles) {
+	for (const auto& tile : tiles) {
 		const Position& tilePos = tile->getPosition();
 
 		uint32_t diff = Position::getDistanceX(tilePos, position);
@@ -1300,18 +1293,18 @@ void Combat::doAreaCombat(const CreaturePtr& caster, const Position& position, c
 	std::vector<CreaturePtr> toDamageCreatures;
 	toDamageCreatures.reserve(100);
 
-	for (const auto tile : tiles) {
+	for (const auto& tile : tiles) {
 		if (canDoCombat(caster, tile, params.aggressive) != RETURNVALUE_NOERROR) {
 			continue;
 		}
 
 		combatTileEffects(spectators, caster, tile, params);
 
-		if (auto creatures = tile->getCreatures()) {
-			const auto topCreature = tile->getTopCreature();
-			for (auto creature : *creatures) {
+		if (const auto& creatures = tile->getCreatures()) {
+			const auto& topCreature = tile->getTopCreature();
+			for (const auto& creature : *creatures) {
 				if (params.targetCasterOrTopMost) {
-					if (caster && caster->getTile() == tile) {
+					if (caster and caster->getTile() == tile) {
 						if (creature != caster) {
 							continue;
 						}
@@ -1320,7 +1313,7 @@ void Combat::doAreaCombat(const CreaturePtr& caster, const Position& position, c
 					}
 				}
 
-				if (!params.aggressive || (caster != creature && Combat::canDoCombat(caster, creature) == RETURNVALUE_NOERROR)) {
+				if (!params.aggressive or (caster != creature and Combat::canDoCombat(caster, creature) == RETURNVALUE_NOERROR)) {
 					toDamageCreatures.push_back(creature);
 
 					if (params.targetCasterOrTopMost) {
@@ -1331,13 +1324,17 @@ void Combat::doAreaCombat(const CreaturePtr& caster, const Position& position, c
 		}
 	}
 
-	for (const auto target : toDamageCreatures) {
+	for (const auto& target : toDamageCreatures) {
 		CombatDamage damageCopy = damage; // we cannot avoid copying here, because we don't know if it's player combat or not, so we can't modify the initial damage.
 		Combat::doTargetCombat(caster, target, damageCopy, params, false);
 	}
 }
 
-void Combat::applyDamageIncreaseModifier(uint8_t modifierType, CombatDamage& damage, int32_t percentValue, int32_t flatValue) {
+void Combat::applyDamageIncreaseModifier
+	(const uint8_t modifierType,
+	CombatDamage& damage,
+	const int32_t percentValue,
+	const int32_t flatValue) {
 
 	if (percentValue) {
 		if (percentValue <= 100) {
@@ -1351,7 +1348,16 @@ void Combat::applyDamageIncreaseModifier(uint8_t modifierType, CombatDamage& dam
 	}
 }
 
-void Combat::applyDamageReductionModifier(uint8_t modifierType, CombatDamage& damage,const PlayerPtr& damageTarget,const std::optional<CreaturePtr>& attacker, int32_t percent, int32_t flat, CombatOrigin paramOrigin, uint8_t areaEffect, uint8_t distanceEffect) {
+void Combat::applyDamageReductionModifier
+	(const uint8_t modifierType,
+	CombatDamage& damage, 
+	const PlayerPtr& damageTarget, 
+	const std::optional<CreaturePtr>& attacker,
+	const int32_t percent,
+	const int32_t flat,
+	const CombatOrigin paramOrigin,
+	uint8_t areaEffect,
+	uint8_t distanceEffect) {
 
 	switch (modifierType) {
 		case DEFENSE_MODIFIER_ABSORB:
@@ -1558,8 +1564,8 @@ void TargetCallback::onTargetCombat(const CreaturePtr& creature, const CreatureP
 }
 
 const MatrixArea& AreaCombat::getArea(const Position& centerPos, const Position& targetPos) const {
-	int32_t dx = Position::getOffsetX(targetPos, centerPos);
-	int32_t dy = Position::getOffsetY(targetPos, centerPos);
+	const int32_t dx = Position::getOffsetX(targetPos, centerPos);
+	const int32_t dy = Position::getOffsetY(targetPos, centerPos);
 
 	Direction dir;
 	if (dx < 0) {
@@ -1573,19 +1579,20 @@ const MatrixArea& AreaCombat::getArea(const Position& centerPos, const Position&
 	}
 
 	if (hasExtArea) {
-		if (dx < 0 && dy < 0) {
+		if (dx < 0 and dy < 0) {
 			dir = DIRECTION_NORTHWEST;
-		} else if (dx > 0 && dy < 0) {
+		} else if (dx > 0 and dy < 0) {
 			dir = DIRECTION_NORTHEAST;
-		} else if (dx < 0 && dy > 0) {
+		} else if (dx < 0 and dy > 0) {
 			dir = DIRECTION_SOUTHWEST;
-		} else if (dx > 0 && dy > 0) {
+		} else if (dx > 0 and dy > 0) {
 			dir = DIRECTION_SOUTHEAST;
 		}
 	}
 
+	[[unlikely]]
 	if (dir >= areas.size()) {
-		// this should not happen. it means we forgot to call setupArea.
+		// log location
 		static MatrixArea empty;
 		return empty;
 	}
@@ -1619,20 +1626,20 @@ void AreaCombat::setupArea(int32_t length, int32_t spread)
 	std::vector<uint32_t> vec;
 	vec.reserve(rows * cols);
 	for (uint32_t y = 1; y <= rows; ++y) {
-		int32_t mincol = cols - colSpread + 1;
-		int32_t maxcol = cols - (cols - colSpread);
+		const int32_t mincol = cols - colSpread + 1;
+		const int32_t maxcol = cols - (cols - colSpread);
 
 		for (int32_t x = 1; x <= cols; ++x) {
-			if (y == rows && x == ((cols - (cols % 2)) / 2) + 1) {
+			if (y == rows and x == ((cols - (cols % 2)) / 2) + 1) {
 				vec.push_back(3);
-			} else if (x >= mincol && x <= maxcol) {
+			} else if (x >= mincol and x <= maxcol) {
 				vec.push_back(1);
 			} else {
 				vec.push_back(0);
 			}
 		}
 
-		if (spread > 0 && y % spread == 0) {
+		if (spread > 0 and y % spread == 0) {
 			--colSpread;
 		}
 	}
@@ -1642,7 +1649,7 @@ void AreaCombat::setupArea(int32_t length, int32_t spread)
 
 void AreaCombat::setupArea(int32_t radius)
 {
-	int32_t area[13][13] = {
+	constexpr int32_t area[13][13] = {
 		{0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0},
 		{0, 0, 0, 0, 8, 8, 7, 8, 8, 0, 0, 0, 0},
 		{0, 0, 0, 8, 7, 6, 6, 6, 7, 8, 0, 0, 0},
@@ -1660,11 +1667,11 @@ void AreaCombat::setupArea(int32_t radius)
 
 	std::vector<uint32_t> vec;
 	vec.reserve(13 * 13);
-	for (auto& row : area) {
-		for (int cell : row) {
+	for (const auto& row : area) {
+		for (const auto& cell : row) {
 			if (cell == 1) {
 				vec.push_back(3);
-			} else if (cell > 0 && cell <= radius) {
+			} else if (cell > 0 and cell <= radius) {
 				vec.push_back(1);
 			} else {
 				vec.push_back(0);
@@ -1690,12 +1697,10 @@ void AreaCombat::setupExtArea(const std::vector<uint32_t>& vec, uint32_t rows)
 	areas[DIRECTION_NORTHWEST] = std::move(area);
 }
 
-//**********************************************************//
-
 void MagicField::onStepInField(const CreaturePtr& creature)
 {
 	//remove magic walls/wild growth
-	if (id == ITEM_MAGICWALL || id == ITEM_WILDGROWTH || id == ITEM_MAGICWALL_SAFE || id == ITEM_WILDGROWTH_SAFE || isBlocking()) {
+	if (id == ITEM_MAGICWALL or id == ITEM_WILDGROWTH or id == ITEM_MAGICWALL_SAFE or id == ITEM_WILDGROWTH_SAFE or isBlocking()) {
 		if (!creature->isInGhostMode()) {
 			g_game.internalRemoveItem(getItem(), 1);
 		}
@@ -1704,8 +1709,8 @@ void MagicField::onStepInField(const CreaturePtr& creature)
 	}
 
 	//remove magic walls/wild growth (only nopvp tiles/world)
-	if (id == ITEM_MAGICWALL_NOPVP || id == ITEM_WILDGROWTH_NOPVP) {
-		if (g_game.getWorldType() == WORLD_TYPE_NO_PVP || getTile()->hasFlag(TILESTATE_NOPVPZONE)) {
+	if (id == ITEM_MAGICWALL_NOPVP or id == ITEM_WILDGROWTH_NOPVP) {
+		if (g_game.getWorldType() == WORLD_TYPE_NO_PVP or getTile()->hasFlag(TILESTATE_NOPVPZONE)) {
 			g_game.internalRemoveItem(getItem(), 1);
 		}
 		return;
@@ -1714,27 +1719,27 @@ void MagicField::onStepInField(const CreaturePtr& creature)
 	const ItemType& it = items[getID()];
 	if (it.conditionDamage) {
 		auto conditionCopy = it.conditionDamage->clone();
-		uint32_t ownerId = getOwner();
+		const uint32_t ownerId = getOwner();
 		if (ownerId) {
 			bool harmfulField = true;
 
-			if (g_game.getWorldType() == WORLD_TYPE_NO_PVP || getTile()->hasFlag(TILESTATE_NOPVPZONE)) {
-				if (auto owner = g_game.getCreatureByID(ownerId)) {
-					if (owner->getPlayer() || (owner->isSummon() && owner->getMaster()->getPlayer())) {
+			if (g_game.getWorldType() == WORLD_TYPE_NO_PVP or getTile()->hasFlag(TILESTATE_NOPVPZONE)) {
+				if (const auto& owner = g_game.getCreatureByID(ownerId)) {
+					if (owner->getPlayer() or (owner->isSummon() and owner->getMaster()->getPlayer())) {
 						harmfulField = false;
 					}
 				}
 			}
 
-			if (auto targetPlayer = creature->getPlayer()) {
-				if (auto attackerPlayer = g_game.getPlayerByID(ownerId)) {
+			if (const auto& targetPlayer = creature->getPlayer()) {
+				if (const auto& attackerPlayer = g_game.getPlayerByID(ownerId)) {
 					if (Combat::isProtected(attackerPlayer, targetPlayer)) {
 						harmfulField = false;
 					}
 				}
 			}
 
-			if (!harmfulField || (OTSYS_TIME() - createTime <= 5000) || creature->hasBeenAttacked(ownerId)) {
+			if (!harmfulField or (OTSYS_TIME() - createTime <= 5000) or creature->hasBeenAttacked(ownerId)) {
 				conditionCopy->setParam(CONDITION_PARAM_OWNER, ownerId);
 			}
 		}
