@@ -99,7 +99,7 @@ CombatDamage Combat::getCombatDamage(const CreaturePtr& creature, const Creature
 	return damage;
 }
 
-constexpr CombatType_t Combat::ConditionToDamageType(const ConditionType_t type)
+CombatType_t Combat::ConditionToDamageType(const ConditionType_t type)
 {
 	switch (type) {
 		case CONDITION_FIRE:
