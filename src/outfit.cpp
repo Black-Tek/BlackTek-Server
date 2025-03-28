@@ -8,47 +8,68 @@
 #include "pugicast.h"
 #include "tools.h"
 
-bool Outfits::loadFromXml()
+#include <toml++/toml.hpp>
+
+bool Outfits::load()
 {
-	pugi::xml_document doc;
-	pugi::xml_parse_result result = doc.load_file("data/XML/outfits.xml");
-	if (!result) {
-		printXMLError("Error - Outfits::loadFromXml", "data/XML/outfits.xml", result);
-		return false;
+
+	const auto file = std::filesystem::current_path().generic_string() + "/config/outfits.toml";
+	try 
+	{
+		const auto tbl = toml::parse_file(file);
+
+		for (const auto& [index, entry] : tbl) 
+		{
+
+			if (!entry.is_table()) 
+			{
+				std::cerr << "Invalid entry in outfits.toml! \n";
+				continue;
+			}
+
+			toml::table outfit_data = *entry.as_table();
+			int32_t sex = 0;
+			// Todo : Break the sexes down into two separate toml files.
+			if (auto sexType = outfit_data["sex"].as_string())
+			{
+				const auto& noun = sexType->get();
+				if (noun == "Man" or noun == "man" or noun == "male" or noun == "Male")
+				{
+					sex = 1;
+				}
+				// rather than throw exceptions, we default to female if you don't specify male
+			}
+			else if (auto sexType = outfit_data["sex"].as_integer()) 
+			{
+				sex = sexType->get();
+			}
+			else 
+			{
+				// log or throw here for debug mode
+				// remove from release builds
+			}
+
+			int32_t id = outfit_data["id"].value_or(0);
+			const auto& name = outfit_data["name"].value_or("none");
+			bool premium = outfit_data["premium"].value_or(false);
+			bool locked = outfit_data["locked"].value_or(false);
+
+			// todo, encapsulate entry parsing inside the below branch
+			// because if it's not enabled we are wasting resources
+			if (outfit_data["enabled"].value_or(true))
+			{
+				outfits[sex].emplace_back(name, id, premium, locked);
+			}
+		}
+		// todo - trade out exceptions for parse errors to remove overheard of try-catch.
 	}
-
-	for (auto outfitNode : doc.child("outfits").children()) {
-		pugi::xml_attribute attr;
-		if ((attr = outfitNode.attribute("enabled")) && !attr.as_bool()) {
-			continue;
-		}
-
-		if (!(attr = outfitNode.attribute("type"))) {
-			std::cout << "[Warning - Outfits::loadFromXml] Missing outfit type." << std::endl;
-			continue;
-		}
-
-		uint16_t type = pugi::cast<uint16_t>(attr.value());
-		if (type > PLAYERSEX_LAST) {
-			std::cout << "[Warning - Outfits::loadFromXml] Invalid outfit type " << type << "." << std::endl;
-			continue;
-		}
-
-		pugi::xml_attribute lookTypeAttribute = outfitNode.attribute("looktype");
-		if (!lookTypeAttribute) {
-			std::cout << "[Warning - Outfits::loadFromXml] Missing looktype on outfit." << std::endl;
-			continue;
-		}
-
-		outfits[type].emplace_back(
-			outfitNode.attribute("name").as_string(),
-			pugi::cast<uint16_t>(lookTypeAttribute.value()),
-			outfitNode.attribute("premium").as_bool(),
-			outfitNode.attribute("unlocked").as_bool(true)
-		);
+	catch (const std::exception& e) 
+	{
+		std::cerr << "Failed to load outfits.toml - " << e.what() << std::endl;
 	}
 	return true;
 }
+
 
 const Outfit* Outfits::getOutfitByLookType(PlayerSex_t sex, uint16_t lookType) const
 {

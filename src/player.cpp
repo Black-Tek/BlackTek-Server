@@ -4380,7 +4380,7 @@ bool Player::canWear(uint32_t lookType, uint8_t addons) const
 		return false;
 	}
 
-	if (outfit->unlocked && addons == 0) {
+	if (!outfit->locked && addons == 0) {
 		return true;
 	}
 
@@ -4402,7 +4402,7 @@ bool Player::hasOutfit(uint32_t lookType, uint8_t addons) const
 		return false;
 	}
 
-	if (outfit->unlocked && addons == 0) {
+	if (!outfit->locked && addons == 0) {
 		return true;
 	}
 
@@ -4480,7 +4480,7 @@ bool Player::getOutfitAddons(const Outfit& outfit, uint8_t& addons) const
 		return true;
 	}
 
-	if (!outfit.unlocked) {
+	if (outfit.locked) {
 		return false;
 	}
 
