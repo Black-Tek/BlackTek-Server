@@ -1,0 +1,703 @@
+# Female Outfits
+[Female_Citizen]
+id = 136
+sex = "female"
+name = "Citizen"
+
+[Female_Hunter]
+id = 137
+sex = "female"
+name = "Hunter"
+
+[Female_Mage]
+id = 138
+sex = "female"
+name = "Mage"
+
+[Female_Knight]
+id = 139
+sex = "female"
+name = "Knight"
+
+[Female_Noblewoman]
+id = 140
+sex = "female"
+name = "Noblewoman"
+premium = true
+
+[Female_Summoner]
+id = 141
+sex = "female"
+name = "Summoner"
+premium = true
+
+[Female_Warrior]
+id = 142
+sex = "female"
+name = "Warrior"
+premium = true
+
+[Female_Barbarian]
+id = 147
+sex = "female"
+name = "Barbarian"
+premium = true
+
+[Female_Druid]
+id = 148
+sex = "female"
+name = "Druid"
+premium = true
+
+[Female_Wizard]
+id = 149
+sex = "female"
+name = "Wizard"
+premium = true
+
+[Female_Oriental]
+id = 150
+sex = "female"
+name = "Oriental"
+premium = true
+
+[Female_Pirate]
+id = 155
+sex = "female"
+name = "Pirate"
+premium = true
+locked = true
+
+[Female_Assassin]
+id = 156
+sex = "female"
+name = "Assassin"
+premium = true
+locked = true
+
+[Female_Beggar]
+id = 157
+sex = "female"
+name = "Beggar"
+premium = true
+locked = true
+
+[Female_Shaman]
+id = 158
+sex = "female"
+name = "Shaman"
+premium = true
+locked = true
+
+[Female_Norsewoman]
+id = 252
+sex = "female"
+name = "Norsewoman"
+premium = true
+locked = true
+
+[Female_Nightmare]
+id = 269
+sex = "female"
+name = "Nightmare"
+premium = true
+locked = true
+
+[Female_Jester]
+id = 270
+sex = "female"
+name = "Jester"
+premium = true
+locked = true
+
+[Female_Brotherhood]
+id = 279
+sex = "female"
+name = "Brotherhood"
+premium = true
+locked = true
+
+[Female_Demon_Hunter]
+id = 288
+sex = "female"
+name = "Demon Hunter"
+premium = true
+locked = true
+
+[Female_Yalaharian]
+id = 324
+sex = "female"
+name = "Yalaharian"
+premium = true
+locked = true
+
+[Female_Newly_Wed]
+id = 329
+sex = "female"
+name = "Newly Wed"
+locked = true
+
+[Female_Warmaster]
+id = 336
+sex = "female"
+name = "Warmaster"
+premium = true
+locked = true
+
+[Female_Wayfarer]
+id = 366
+sex = "female"
+name = "Wayfarer"
+premium = true
+locked = true
+
+[Female_Afflicted]
+id = 431
+sex = "female"
+name = "Afflicted"
+premium = true
+locked = true
+
+[Female_Elementalist]
+id = 433
+sex = "female"
+name = "Elementalist"
+premium = true
+locked = true
+
+[Female_Deepling]
+id = 464
+sex = "female"
+name = "Deepling"
+premium = true
+locked = true
+
+[Female_Insectoid]
+id = 466
+sex = "female"
+name = "Insectoid"
+premium = true
+locked = true
+
+[Female_Entrepreneur]
+id = 471
+sex = "female"
+name = "Entrepreneur"
+premium = true
+locked = true
+
+[Female_Crystal_Warlord]
+id = 513
+sex = "female"
+name = "Crystal Warlord"
+premium = true
+locked = true
+
+[Female_Soil_Guardian]
+id = 514
+sex = "female"
+name = "Soil Guardian"
+premium = true
+locked = true
+
+[Female_Demon_Outfit]
+id = 542
+sex = "female"
+name = "Demon Outfit"
+premium = true
+locked = true
+
+[Female_Cave_Explorer]
+id = 575
+sex = "female"
+name = "Cave Explorer"
+premium = true
+locked = true
+
+[Female_Dream_Warden]
+id = 578
+sex = "female"
+name = "Dream Warden"
+premium = true
+locked = true
+
+[Female_Glooth_Engineer]
+id = 618
+sex = "female"
+name = "Glooth Engineer"
+premium = true
+locked = true
+
+[Female_Jersey]
+id = 620
+sex = "female"
+name = "Jersey"
+premium = true
+locked = true
+
+[Female_Champion]
+id = 632
+sex = "female"
+name = "Champion"
+locked = true
+
+[Female_Conjurer]
+id = 635
+sex = "female"
+name = "Conjurer"
+locked = true
+
+[Female_Beastmaster]
+id = 636
+sex = "female"
+name = "Beastmaster"
+locked = true
+
+[Female_Chaos_Acolyte]
+id = 664
+sex = "female"
+name = "Chaos Acolyte"
+locked = true
+
+[Female_Death_Herald]
+id = 666
+sex = "female"
+name = "Death Herald"
+locked = true
+
+[Female_Ranger]
+id = 683
+sex = "female"
+name = "Ranger"
+locked = true
+
+[Female_Ceremonial_Garb]
+id = 694
+sex = "female"
+name = "Ceremonial Garb"
+locked = true
+
+[Female_Puppeteer]
+id = 696
+sex = "female"
+name = "Puppeteer"
+locked = true
+
+[Female_Spirit_Caller]
+id = 698
+sex = "female"
+name = "Spirit Caller"
+locked = true
+
+[Female_Evoker]
+id = 724
+sex = "female"
+name = "Evoker"
+locked = true
+
+[Female_Seaweaver]
+id = 732
+sex = "female"
+name = "Seaweaver"
+locked = true
+
+[Female_Recruiter]
+id = 745
+sex = "female"
+name = "Recruiter"
+locked = true
+
+[Female_Sea_Dog]
+id = 749
+sex = "female"
+name = "Sea Dog"
+locked = true
+
+[Female_Royal_Pumpkin]
+id = 759
+sex = "female"
+name = "Royal Pumpkin"
+locked = true
+
+[Female_Rift_Warrior]
+id = 845
+sex = "female"
+name = "Rift Warrior"
+premium = true
+locked = true
+
+[Female_Winter_Warden]
+id = 852
+sex = "female"
+name = "Winter Warden"
+locked = true
+
+[Female_Philosopher]
+id = 874
+sex = "female"
+name = "Philosopher"
+locked = true
+
+[Female_Arena_Champion]
+id = 885
+sex = "female"
+name = "Arena Champion"
+locked = true
+
+[Female_Lupine_Warden]
+id = 900
+sex = "female"
+name = "Lupine Warden"
+locked = true
+
+# Male Outfits
+[Male_Citizen]
+id = 128
+sex = "male"
+name = "Citizen"
+
+[Male_Hunter]
+id = 129
+sex = "male"
+name = "Hunter"
+
+[Male_Mage]
+id = 130
+sex = "male"
+name = "Mage"
+
+[Male_Knight]
+id = 131
+sex = "male"
+name = "Knight"
+
+[Male_Nobleman]
+id = 132
+sex = "male"
+name = "Nobleman"
+premium = true
+
+[Male_Summoner]
+id = 133
+sex = "male"
+name = "Summoner"
+premium = true
+
+[Male_Warrior]
+id = 134
+sex = "male"
+name = "Warrior"
+premium = true
+
+[Male_Barbarian]
+id = 143
+sex = "male"
+name = "Barbarian"
+premium = true
+
+[Male_Druid]
+id = 144
+sex = "male"
+name = "Druid"
+premium = true
+
+[Male_Wizard]
+id = 145
+sex = "male"
+name = "Wizard"
+premium = true
+
+[Male_Oriental]
+id = 146
+sex = "male"
+name = "Oriental"
+premium = true
+
+[Male_Pirate]
+id = 151
+sex = "male"
+name = "Pirate"
+premium = true
+locked = true
+
+[Male_Assassin]
+id = 152
+sex = "male"
+name = "Assassin"
+premium = true
+locked = true
+
+[Male_Beggar]
+id = 153
+sex = "male"
+name = "Beggar"
+premium = true
+locked = true
+
+[Male_Shaman]
+id = 154
+sex = "male"
+name = "Shaman"
+premium = true
+locked = true
+
+[Male_Norseman]
+id = 251
+sex = "male"
+name = "Norseman"
+premium = true
+locked = true
+
+[Male_Nightmare]
+id = 268
+sex = "male"
+name = "Nightmare"
+premium = true
+locked = true
+
+[Male_Jester]
+id = 273
+sex = "male"
+name = "Jester"
+premium = true
+locked = true
+
+[Male_Brotherhood]
+id = 278
+sex = "male"
+name = "Brotherhood"
+premium = true
+locked = true
+
+[Male_Demon_Hunter]
+id = 289
+sex = "male"
+name = "Demon Hunter"
+premium = true
+locked = true
+
+[Male_Yalaharian]
+id = 325
+sex = "male"
+name = "Yalaharian"
+premium = true
+locked = true
+
+[Male_Newly_Wed]
+id = 328
+sex = "male"
+name = "Newly Wed"
+locked = true
+
+[Male_Warmaster]
+id = 335
+sex = "male"
+name = "Warmaster"
+premium = true
+locked = true
+
+[Male_Wayfarer]
+id = 367
+sex = "male"
+name = "Wayfarer"
+premium = true
+locked = true
+
+[Male_Afflicted]
+id = 430
+sex = "male"
+name = "Afflicted"
+premium = true
+locked = true
+
+[Male_Elementalist]
+id = 432
+sex = "male"
+name = "Elementalist"
+premium = true
+locked = true
+
+[Male_Deepling]
+id = 463
+sex = "male"
+name = "Deepling"
+premium = true
+locked = true
+
+[Male_Insectoid]
+id = 465
+sex = "male"
+name = "Insectoid"
+premium = true
+locked = true
+
+[Male_Entrepreneur]
+id = 472
+sex = "male"
+name = "Entrepreneur"
+premium = true
+locked = true
+
+[Male_Crystal_Warlord]
+id = 512
+sex = "male"
+name = "Crystal Warlord"
+premium = true
+locked = true
+
+[Male_Soil_Guardian]
+id = 516
+sex = "male"
+name = "Soil Guardian"
+premium = true
+locked = true
+
+[Male_Demon_Outfit]
+id = 541
+sex = "male"
+name = "Demon Outfit"
+premium = true
+locked = true
+
+[Male_Cave_Explorer]
+id = 574
+sex = "male"
+name = "Cave Explorer"
+premium = true
+locked = true
+
+[Male_Dream_Warden]
+id = 577
+sex = "male"
+name = "Dream Warden"
+premium = true
+locked = true
+
+[Male_Glooth_Engineer]
+id = 610
+sex = "male"
+name = "Glooth Engineer"
+premium = true
+locked = true
+
+[Male_Jersey]
+id = 619
+sex = "male"
+name = "Jersey"
+premium = true
+locked = true
+
+[Male_Champion]
+id = 633
+sex = "male"
+name = "Champion"
+locked = true
+
+[Male_Conjurer]
+id = 634
+sex = "male"
+name = "Conjurer"
+locked = true
+
+[Male_Beastmaster]
+id = 637
+sex = "male"
+name = "Beastmaster"
+locked = true
+
+[Male_Chaos_Acolyte]
+id = 665
+sex = "male"
+name = "Chaos Acolyte"
+locked = true
+
+[Male_Death_Herald]
+id = 667
+sex = "male"
+name = "Death Herald"
+locked = true
+
+[Male_Ranger]
+id = 684
+sex = "male"
+name = "Ranger"
+locked = true
+
+[Male_Ceremonial_Garb]
+id = 695
+sex = "male"
+name = "Ceremonial Garb"
+locked = true
+
+[Male_Puppeteer]
+id = 697
+sex = "male"
+name = "Puppeteer"
+locked = true
+
+[Male_Spirit_Caller]
+id = 699
+sex = "male"
+name = "Spirit Caller"
+locked = true
+
+[Male_Evoker]
+id = 725
+sex = "male"
+name = "Evoker"
+locked = true
+
+[Male_Seaweaver]
+id = 733
+sex = "male"
+name = "Seaweaver"
+locked = true
+
+[Male_Recruiter]
+id = 746
+sex = "male"
+name = "Recruiter"
+locked = true
+
+[Male_Sea_Dog]
+id = 750
+sex = "male"
+name = "Sea Dog"
+locked = true
+
+[Male_Royal_Pumpkin]
+id = 760
+sex = "male"
+name = "Royal Pumpkin"
+locked = true
+
+[Male_Rift_Warrior]
+id = 846
+sex = "male"
+name = "Rift Warrior"
+premium = true
+locked = true
+
+[Male_Winter_Warden]
+id = 853
+sex = "male"
+name = "Winter Warden"
+locked = true
+
+[Male_Philosopher]
+id = 873
+sex = "male"
+name = "Philosopher"
+locked = true
+
+[Male_Arena_Champion]
+id = 884
+sex = "male"
+name = "Arena Champion"
+locked = true
+
+[Male_Lupine_Warden]
+id = 899
+sex = "male"
+name = "Lupine Warden"
+locked = true
