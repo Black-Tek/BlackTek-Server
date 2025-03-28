@@ -969,7 +969,7 @@ void LuaScriptInterface::pushOutfit(lua_State* L, const Outfit* outfit)
 	setField(L, "lookType", outfit->lookType);
 	setField(L, "name", outfit->name);
 	setField(L, "premium", outfit->premium);
-	setField(L, "unlocked", outfit->unlocked);
+	setField(L, "locked", outfit->locked);
 	setMetatable(L, -1, "Outfit");
 }
 

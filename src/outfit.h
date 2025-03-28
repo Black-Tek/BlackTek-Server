@@ -7,18 +7,18 @@
 #include "enums.h"
 
 struct Outfit {
-	Outfit(std::string name, uint16_t lookType, bool premium, bool unlocked) :
-		name(std::move(name)), lookType(lookType), premium(premium), unlocked(unlocked) {}
+	Outfit(std::string name, uint16_t lookType, bool premium, bool locked) :
+		name(std::move(name)), lookType(lookType), premium(premium), locked(locked) {}
 
 	bool operator==(const Outfit& otherOutfit) const
 	{
-		return name == otherOutfit.name && lookType == otherOutfit.lookType && premium == otherOutfit.premium && unlocked == otherOutfit.unlocked;
+		return name == otherOutfit.name && lookType == otherOutfit.lookType && premium == otherOutfit.premium && locked == otherOutfit.locked;
 	}
 
 	std::string name;
 	uint16_t lookType;
 	bool premium;
-	bool unlocked;
+	bool locked;
 };
 
 struct ProtocolOutfit {
@@ -38,8 +38,7 @@ class Outfits
 			return instance;
 		}
 
-		bool loadFromXml();
-
+		bool load();
 		const Outfit* getOutfitByLookType(PlayerSex_t sex, uint16_t lookType) const;
 		const Outfit* getOutfitByLookType(uint16_t lookType) const;
 		const std::vector<Outfit>& getOutfits(PlayerSex_t sex) const {

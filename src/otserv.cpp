@@ -260,7 +260,7 @@ void mainLoader(int, char*[], ServiceManager* services)
 	}
 
 	std::cout << ">> Loading outfits" << std::endl;
-	if (!Outfits::getInstance().loadFromXml()) {
+	if (!Outfits::getInstance().load()) {
 		startupErrorMessage("Unable to load outfits!");
 		return;
 	}
