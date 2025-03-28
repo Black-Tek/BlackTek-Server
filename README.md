@@ -23,9 +23,8 @@ BlackTek Server's origins started first with [OpenTibia](https://github.com/open
 If you would like to get an understanding for the future plans of BlackTek Server, take a look [here](https://github.com/Black-Tek/BlackTek-Server/wiki/Official-To%E2%80%90Do-List)
 
 ## Contributing
-I haven't created official contribution guidelines just yet, but any bugs found and reported is very helpful. You can also support this project financially by buying me a coffee or two.
+I haven't created official contribution guidelines just yet, but any bugs found and reported is very helpful. You can also support this project financially through the discord.
 
-https://buymeacoffee.com/codinablack
 
 ## Getting Started
 ____________
