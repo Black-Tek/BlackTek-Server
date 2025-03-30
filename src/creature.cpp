@@ -890,9 +890,13 @@ BlockType_t Creature::blockHit(const CreaturePtr& attacker, CombatType_t combatT
 		blockType = BLOCK_ARMOR;
 	}
 
-	if (attacker) {
-		attacker->onAttackedCreature(std::dynamic_pointer_cast<Creature>(shared_from_this()));
+	if (attacker and combatType != COMBAT_HEALING) {
+		attacker->onAttackedCreature(getCreature());
 		attacker->onAttackedCreatureBlockHit(blockType);
+		if (attacker->getMaster() and attacker->getMaster()->getPlayer()) {
+			auto masterPlayer = attacker->getMaster()->getPlayer();
+			masterPlayer->onAttackedCreature(getCreature());
+		}
 	}
 
 	onAttacked();
