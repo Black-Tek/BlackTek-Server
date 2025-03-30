@@ -6,6 +6,7 @@
 
 #include "fileloader.h"
 #include "enums.h"
+#include "declarations.h"
 
 class PropStream;
 
