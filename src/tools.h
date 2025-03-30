@@ -4,12 +4,13 @@
 #ifndef FS_TOOLS_H
 #define FS_TOOLS_H
 
-#include <random>
-#include <string_view>
-
 #include "position.h"
 #include "const.h"
 #include "enums.h"
+
+#include <random>
+#include <string_view>
+#include <utility>
 
 static constexpr MagicEffectClasses CombatTypeToAreaEffect(CombatType_t combatType) {
 	switch (combatType) {
@@ -140,7 +141,7 @@ SpellGroup_t stringToSpellGroup(const std::string& value);
 
 namespace Titan {
 
-#if __has_cpp_attribute(__cpp_lib_to_underlying)
+#if defined(__cpp_lib_to_underlying) && (__cpp_lib_to_underlying >= 202102L)
 
 	inline constexpr auto to_underlying(auto e) noexcept { return std::to_underlying(e); }
 
