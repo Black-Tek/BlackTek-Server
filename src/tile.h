@@ -307,6 +307,10 @@ class Tile : public Cylinder, public SharedObject
 		TilePtr getTile() final {
 			return static_shared_this<Tile>();
 		}
+
+		TileConstPtr getTile() const final {
+			return static_shared_this<Tile>();
+		}
 	
 		void setGround(const ItemPtr& item) {
 			ground = item;

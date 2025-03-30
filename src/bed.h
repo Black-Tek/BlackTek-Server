@@ -15,11 +15,11 @@ class BedItem final : public Item
 		explicit BedItem(uint16_t id);
 
 		BedItemPtr getBed() override {
-			return dynamic_shared_this<BedItem>();
+			return static_shared_this<BedItem>();
 		}
 	
 		BedItemConstPtr getBed() const override {
-			return dynamic_shared_this<const BedItem>();
+			return static_shared_this<const BedItem>();
 		}
 
 		Attr_ReadValue readAttr(AttrTypes_t attr, PropStream& propStream) override;

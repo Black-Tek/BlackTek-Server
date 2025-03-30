@@ -14,11 +14,11 @@ class TrashHolder final : public Item, public Cylinder
 		explicit TrashHolder(uint16_t itemId) : Item(itemId) {}
 
 		TrashHolderPtr getTrashHolder() override {
-			return dynamic_shared_this<TrashHolder>();
+			return static_shared_this<TrashHolder>();
 		}
 	
 		TrashHolderConstPtr getTrashHolder() const override {
-			return dynamic_shared_this<const TrashHolder>();
+			return static_shared_this<const TrashHolder>();
 		}
 
 		//cylinder implementations

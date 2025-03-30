@@ -147,11 +147,11 @@ class Player final : public Creature, public Cylinder
 		Player& operator=(const Player&) = delete;
 
 		PlayerPtr getPlayer() override {
-			return dynamic_shared_this<Player>();
+			return static_shared_this<Player>();
 		}
 	
 		PlayerConstPtr getPlayer() const override {
-			return dynamic_shared_this<const Player>();
+			return static_shared_this<const Player>();
 		}
 
 		void setID() override {

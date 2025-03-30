@@ -13,11 +13,11 @@ class Mailbox final : public Item, public Cylinder
 		explicit Mailbox(const uint16_t itemId) : Item(itemId) {}
 
 		MailboxPtr getMailbox() override {
-			return dynamic_shared_this<Mailbox>();
+			return static_shared_this<Mailbox>();
 		}
 	
 		MailboxConstPtr getMailbox() const override {
-			return dynamic_shared_this<Mailbox>();
+			return static_shared_this<Mailbox>();
 		}
 
 		//cylinder implementations

@@ -12,11 +12,11 @@ class StoreInbox final : public Container
 		explicit StoreInbox(uint16_t type);
 
 		StoreInboxPtr getStoreInbox() override {
-			return dynamic_shared_this<StoreInbox>();
+			return static_shared_this<StoreInbox>();
 		}
 	
 		StoreInboxConstPtr getStoreInbox() const override {
-			return dynamic_shared_this<StoreInbox>();
+			return static_shared_this<StoreInbox>();
 		}
 
 		//cylinder implementations

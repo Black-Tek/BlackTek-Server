@@ -83,11 +83,11 @@ class Creature : virtual public Thing, public SharedObject
 		Creature& operator=(const Creature&) = delete;
 
 		CreaturePtr getCreature() override final {
-			return dynamic_shared_this<Creature>();
+			return static_shared_this<Creature>();
 		}
 	
 		CreatureConstPtr getCreature() const override final {
-			return dynamic_shared_this<Creature>();
+			return static_shared_this<Creature>();
 		}
 	
 		virtual PlayerPtr getPlayer() {

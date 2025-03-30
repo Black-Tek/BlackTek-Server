@@ -12,11 +12,11 @@ class Teleport final : public Item, public Cylinder
 		explicit Teleport(uint16_t type) : Item(type) {};
 
 		TeleportPtr getTeleport() override {
-			return {shared_from_this(), this};
+			return static_shared_this<Teleport>();
 		}
 	
 		TeleportConstPtr getTeleport() const override {
-			return {shared_from_this(), this};
+			return static_shared_this<const Teleport>();
 		}
 
 		//serialization

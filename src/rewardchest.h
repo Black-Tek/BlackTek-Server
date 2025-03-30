@@ -12,11 +12,11 @@ public:
 	explicit RewardChest(uint16_t type, bool paginated = true);
 
 	RewardChestPtr getRewardChest() override {
-		return {shared_from_this(), this};
+		return static_shared_this<RewardChest>();
 	}
 	
 	RewardChestConstPtr getRewardChest() const override {
-		return dynamic_shared_this<RewardChest>();
+		return static_shared_this<const RewardChest>();
 	}
 
 	//cylinder implementations

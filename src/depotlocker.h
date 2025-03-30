@@ -13,11 +13,11 @@ class DepotLocker final : public Container
 		explicit DepotLocker(uint16_t type);
 
 		DepotLockerPtr getDepotLocker() override {
-			return dynamic_shared_this<DepotLocker>();
+			return static_shared_this<DepotLocker>();
 		}
 	
 		DepotLockerConstPtr getDepotLocker() const override {
-			return dynamic_shared_this<const DepotLocker>();
+			return static_shared_this<const DepotLocker>();
 		}
 
 		void removeInbox(const InboxPtr& inbox);

@@ -43,11 +43,11 @@ class Container : public Item, public Cylinder
 		ItemPtr clone() const override final;
 
 		ContainerPtr getContainer() override final {
-			return dynamic_shared_this<Container>();
+			return static_shared_this<Container>();
 		}
 	
 		ContainerConstPtr getContainer() const override final {
-			return dynamic_shared_this<const Container>();
+			return static_shared_this<const Container>();
 		}
 
 		virtual DepotLockerPtr getDepotLocker() {

@@ -36,11 +36,11 @@ class Monster final : public Creature
 		Monster& operator=(const Monster&) = delete;
 
 		MonsterPtr getMonster() override {
-			return dynamic_shared_this<Monster>();
+			return static_shared_this<Monster>();
 		}
 	
 		MonsterConstPtr getMonster() const override {
-			return dynamic_shared_this<const Monster>();
+			return static_shared_this<const Monster>();
 		}
 
 		void setID() override {

@@ -575,11 +575,11 @@ class Item : virtual public Thing, public SharedObject
 		bool equals(const ItemConstPtr& otherItem) const;
 	
 		ItemPtr getItem() override final {
-			return dynamic_shared_this<Item>();
+			return static_shared_this<Item>();
 		}
 
 		ItemConstPtr getItem() const override final {
-			return dynamic_shared_this<const Item>();
+			return static_shared_this<const Item>();
 		}
 	
 		virtual TeleportPtr getTeleport() {

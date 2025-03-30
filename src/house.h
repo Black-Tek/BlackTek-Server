@@ -44,11 +44,11 @@ class Door final : public Item
 		Door& operator=(const Door&) = delete;
 
 		DoorPtr getDoor() override {
-			return dynamic_shared_this<Door>();
+			return static_shared_this<Door>();
 		}
 	
 		DoorConstPtr getDoor() const override {
-			return dynamic_shared_this<Door>();
+			return static_shared_this<Door>();
 		}
 
 		House* getHouse() const {

@@ -172,11 +172,11 @@ class MagicField final : public Item
 		explicit MagicField(uint16_t type) : Item(type), createTime(OTSYS_TIME()) {}
 
 		MagicFieldPtr getMagicField() override {
-			return dynamic_shared_this<MagicField>();
+			return static_shared_this<MagicField>();
 		}
 	
 		MagicFieldConstPtr getMagicField() const override {
-			return dynamic_shared_this<MagicField>();
+			return static_shared_this<MagicField>();
 		}
 
 		bool isReplaceable() const {

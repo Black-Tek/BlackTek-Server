@@ -97,11 +97,11 @@ class Npc final : public Creature
 		Npc& operator=(const Npc&) = delete;
 
 		NpcPtr getNpc() override {
-			return dynamic_shared_this<Npc>();
+			return static_shared_this<Npc>();
 		}
 	
 		NpcConstPtr getNpc() const override {
-			return dynamic_shared_this<Npc>();
+			return static_shared_this<Npc>();
 		}
 
 		bool isPushable() const override {
