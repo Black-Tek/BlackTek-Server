@@ -11,6 +11,7 @@
 #include "tools.h"
 #include "imbuement.h"
 #include "augments.h"
+#include "declarations.h"
 
 #include <typeinfo>
 #include <boost/variant.hpp>
@@ -28,26 +29,6 @@ class Door;
 class MagicField;
 class BedItem;
 
-using DepotPtr = std::shared_ptr<Depot>;
-using DepotConstPtr = std::shared_ptr<const Depot>;
-
-using TeleportPtr = std::shared_ptr<Teleport>;
-using TeleportConstPtr = std::shared_ptr<const Teleport>;
-
-using TrashHolderPtr = std::shared_ptr<TrashHolder>;
-using TrashHolderConstPtr = std::shared_ptr<const TrashHolder>;
-
-using MailboxPtr = std::shared_ptr<Mailbox>;
-using MailboxConstPtr = std::shared_ptr<const Mailbox>;
-
-using DoorPtr = std::shared_ptr<Door>;
-using DoorConstPtr = std::shared_ptr<const Door>;
-
-using MagicFieldPtr = std::shared_ptr<MagicField>;
-using MagicFieldConstPtr = std::shared_ptr<const MagicField>;
-
-using BedItemPtr = std::shared_ptr<BedItem>;
-using BedItemConstPtr = std::shared_ptr<const BedItem>;
 
 enum ITEMPROPERTY {
 	CONST_PROP_BLOCKSOLID = 0,

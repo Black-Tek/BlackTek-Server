@@ -8,40 +8,6 @@
 #include "enums.h"
 
 class PropStream;
-class Creature;
-using CreaturePtr = std::shared_ptr<Creature>;
-using CreatureConstPtr = std::shared_ptr<const Creature>;
-class Player;
-using PlayerPtr = std::shared_ptr<Player>;
-using PlayerConstPtr = std::shared_ptr<const Player>;
-class Monster;
-using MonsterPtr = std::shared_ptr<Monster>;
-using MonsterConstPtr = std::shared_ptr<const Monster>;
-class Npc;
-using NpcPtr = std::shared_ptr<Npc>;
-using NpcConstPtr = std::shared_ptr<const Npc>;
-class Depot;
-using DepotPtr = std::shared_ptr<Depot>;
-
-class Teleport;
-using TeleportPtr = std::shared_ptr<Teleport>;
-
-class TrashHolder;
-using TrashHolderPtr = std::shared_ptr<TrashHolder>;
-
-class Mailbox;
-using MailboxPtr = std::shared_ptr<Mailbox>;
-
-class Door;
-using DoorPtr = std::shared_ptr<Door>;
-
-class MagicField;
-using MagicFieldPtr = std::shared_ptr<MagicField>;
-
-class Bed;
-class BedItem;
-using BedItemPtr = std::shared_ptr<BedItem>;
-
 
 enum ConditionAttr_t {
 	CONDITIONATTR_TYPE = 1,

@@ -16,15 +16,6 @@ class DepotLocker;
 class StoreInbox;
 class RewardChest;
 
-using DepotLockerPtr = std::shared_ptr<DepotLocker>;
-using DepotLockerConstPtr = std::shared_ptr<const DepotLocker>;
-
-using StoreInboxPtr = std::shared_ptr<StoreInbox>;
-using StoreInboxConstPtr = std::shared_ptr<const StoreInbox>;
-
-using RewardChestPtr = std::shared_ptr<RewardChest>;
-using RewardChestConstPtr = std::shared_ptr<const RewardChest>;
-
 class ContainerIterator
 {
 	public:
