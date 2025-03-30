@@ -10,12 +10,6 @@
 #include "item.h"
 #include "tile.h"
 
-class Container;
-class DepotChest;
-class DepotLocker;
-class StoreInbox;
-class RewardChest;
-
 class ContainerIterator
 {
 	public:

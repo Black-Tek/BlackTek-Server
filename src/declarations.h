@@ -75,6 +75,18 @@ class HouseTile;
 using HouseTilePtr = std::shared_ptr<Tile>;
 using HouseTileConstPtr = std::shared_ptr<const Tile>;
 
+class DepotLocker;
+using DepotLockerPtr = std::shared_ptr<DepotLocker>;
+using DepotLockerConstPtr = std::shared_ptr<const DepotLocker>;
+
+class StoreInbox;
+using StoreInboxPtr = std::shared_ptr<StoreInbox>;
+using StoreInboxConstPtr = std::shared_ptr<const StoreInbox>;
+
+class RewardChest;
+using RewardChestPtr = std::shared_ptr<RewardChest>;
+using RewardChestConstPtr = std::shared_ptr<const RewardChest>;
+
 
 /// Object Containers
 class TileItemVector;
