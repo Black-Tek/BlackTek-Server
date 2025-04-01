@@ -241,7 +241,7 @@ function Player:addPartyCondition(combat, variant, condition, baseMana)
 		return false
 	end
 
-	local mana = math.ceil(#affectedMembers * math.pow(0.9, #affectedMembers - 1) * baseMana)
+	local mana = math.ceil(#affectedMembers * (0.9 ^ (#affectedMembers - 1)) * baseMana)
 	if self:getMana() < mana then
 		self:sendCancelMessage(RETURNVALUE_NOTENOUGHMANA)
 		self:getPosition():sendMagicEffect(CONST_ME_POFF)

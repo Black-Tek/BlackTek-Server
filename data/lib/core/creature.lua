@@ -135,7 +135,7 @@ function Creature:addDamageCondition(target, type, list, damage, period, rounds)
 	if list == DAMAGELIST_EXPONENTIAL_DAMAGE then
 		local exponent, value = -10, 0
 		while value < damage do
-			value = math.floor(10 * math.pow(1.2, exponent) + 0.5)
+			value = math.floor(10 * (1.2 ^ exponent) + 0.5)
 			condition:addDamage(1, period or 4000, -value)
 
 			if value >= damage then
@@ -148,7 +148,7 @@ function Creature:addDamageCondition(target, type, list, damage, period, rounds)
 	elseif list == DAMAGELIST_LOGARITHMIC_DAMAGE then
 		local n, value = 0, damage
 		while value > 0 do
-			value = math.floor(damage * math.pow(2.718281828459, -0.05 * n) + 0.5)
+			value = math.floor(damage * (2.718281828459 ^ (-0.05 * n)) + 0.5)
 			if value ~= 0 then
 				condition:addDamage(1, period or 4000, -value)
 				n = n + 1
