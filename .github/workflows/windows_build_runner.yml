@@ -24,14 +24,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@main
-      - name: Configure Custom Environment Settings
-        run: |
-          $env:VCPKG_BINARY_SOURCES="clear"
-      - name: Ensure Correct VCPKG Version
-        uses: lukka/run-vcpkg@main
-        with:
-          vcpkgGitURL: "https://github.com/microsoft/vcpkg.git"
-          vcpkgGitCommitId: "e2e3f654bc45c28f2696ace32d66f28429bb3b28"
       - name: Setup Premake & Generate Solution
         run: |
           git clone https://github.com/premake/premake-core
@@ -47,6 +39,8 @@ jobs:
       - name: Install Dependencies
         run: |
           cd D:\a\BlackTek-Server
+          git -C C:/vcpkg reset --hard HEAD
+          git -C C:/vcpkg clean -fd
           vcpkg install --triplet x64-windows
           vcpkg integrate install
       - name: Compile Release
