@@ -196,6 +196,7 @@ class Player final : public Creature, public Cylinder
 		bool untameMount(uint8_t mountId);
 		bool hasMount(const Mount* mount) const;
 		void dismount();
+		bool isAccountManager() const { return guid == 1; }
 		inline bool isPlayer() const override { return true; }
 		inline bool isMonster() const override { return false; }
 		inline bool isNpc() const override { return false; }

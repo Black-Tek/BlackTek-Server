@@ -184,13 +184,18 @@ void ProtocolLogin::onRecvFirstMessage(NetworkMessage& msg)
 	}
 
 	auto accountName = msg.getString();
-	if (accountName.empty()) {
+	auto password = msg.getString();
+
+	const bool accountNameEmpty = accountName.empty();
+	const bool passwordEmpty = password.empty();
+
+	if (accountNameEmpty and passwordEmpty and true) { // enable config option here
+		accountName = "1";
+		password = "1";
+	} else if (accountNameEmpty) {
 		disconnectClient("Invalid account name.", version);
 		return;
-	}
-
-	auto password = msg.getString();
-	if (password.empty()) {
+	} else if (passwordEmpty) {
 		disconnectClient("Invalid password.", version);
 		return;
 	}

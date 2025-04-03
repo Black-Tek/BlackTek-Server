@@ -1783,9 +1783,10 @@ void Player::onCreatureAppear(const CreaturePtr& creature, bool isLogin)
 				removeCondition(condition);
 			}
 		}
-
-		g_game.checkPlayersRecord();
-		IOLoginData::updateOnlineStatus(guid, true);
+		if (not isAccountManager()) {
+			g_game.checkPlayersRecord();
+			IOLoginData::updateOnlineStatus(guid, true);
+		}
 	}
 }
 
@@ -1898,7 +1899,9 @@ void Player::onRemoveCreature(const CreaturePtr& creature, bool isLogout)
 			guild->removeMember(this->getPlayer());
 		}
 
-		IOLoginData::updateOnlineStatus(guid, false);
+		if (not isAccountManager()) {
+			IOLoginData::updateOnlineStatus(guid, false);
+		}
 
 		bool saved = false;
 		for (uint32_t tries = 0; tries < 3; ++tries) {
