@@ -31,7 +31,7 @@ jobs:
         uses: lukka/run-vcpkg@main
         with:
           vcpkgGitURL: "https://github.com/microsoft/vcpkg.git"
-          vcpkgGitCommitId: "db1ddd074bd51bf01baf4c4672b82de9680835ca"
+          vcpkgGitCommitId: "e2e3f654bc45c28f2696ace32d66f28429bb3b28"
       - name: Setup Premake & Generate Solution
         run: |
           git clone https://github.com/premake/premake-core
