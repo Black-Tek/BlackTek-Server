@@ -95,7 +95,7 @@ workspace "Black-Tek-Server"
          openmp "On"
          characterset "MBCS"
          linkoptions {"/IGNORE:4099"}
-         buildoptions {"/bigobj"}
+         buildoptions {"/bigobj", "/utf-8"}
          vsprops { VcpkgEnableManifest = "true" }
          symbolspath '$(OutDir)$(TargetName).pdb'
       filter {}
