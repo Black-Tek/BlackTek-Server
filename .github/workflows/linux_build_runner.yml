@@ -31,9 +31,9 @@ jobs:
         ./premake-core/bin/release/premake5 gmake2
     - name: Install Vcpkg Libraries
       run: |
+        git -C /usr/local/share/vcpkg reset --hard HEAD
+        git -C /usr/local/share/vcpkg clean -fd
         git -C /usr/local/share/vcpkg pull
-        git -C /usr/local/share/vcpkg fetch --all
-        vcpkg update
         vcpkg install --manifest
     - name: Compile Release 64
       run: |
