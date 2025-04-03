@@ -39,8 +39,10 @@ jobs:
       - name: Install Dependencies
         run: |
           cd D:\a\BlackTek-Server
-          git -C C:/vcpkg reset --hard HEAD
-          git -C C:/vcpkg clean -fd
+          git -C C:/vcpkg fetch origin
+          git -C C:/vcpkg checkout master
+          git -C C:/vcpkg reset --hard origin/master
+          vcpkg remove --outdated --recurse
           vcpkg install --triplet x64-windows
           vcpkg integrate install
       - name: Compile Release
