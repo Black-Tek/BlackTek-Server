@@ -26,7 +26,8 @@ jobs:
       uses: lukka/run-vcpkg@main
       with:
         vcpkgGitURL: "https://github.com/microsoft/vcpkg.git"
-        vcpkgGitCommitId: ${{ steps.vcpkg-step.outputs.vcpkgGitCommitId }}
+        vcpkgGitCommitId: "HEAD"
+        doNotCache: true
     - name: Setup Premake
       run: |
         git clone https://github.com/premake/premake-core
