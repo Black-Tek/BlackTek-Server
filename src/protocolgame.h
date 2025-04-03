@@ -208,6 +208,7 @@ class ProtocolGame final : public Protocol
 		void sendTextWindow(uint32_t windowTextId, const ItemPtr& item, uint16_t maxlen, bool canWrite);
 		void sendTextWindow(uint32_t windowTextId, uint32_t itemId, const std::string& text);
 		void sendHouseWindow(uint32_t windowTextId, const std::string& text);
+		void sendAccountManagerTextBox(uint32_t windowTextId, const std::string& text);
 		void sendOutfitWindow();
 
 		void sendUpdatedVIPStatus(uint32_t guid, VipStatus_t newStatus);

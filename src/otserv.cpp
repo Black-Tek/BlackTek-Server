@@ -100,6 +100,7 @@ int main(int argc, char* argv[])
 
 #include <fmt/color.h>
 #include <fmt/core.h>
+#include "accountmanager.h"
 
 void printServerVersion()
 {
@@ -288,6 +289,11 @@ void mainLoader(int, char*[], ServiceManager* services)
 
 	std::cout << ">> Loading augments" << std::endl;
 	Augments::loadAll();
+
+	if (g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER)) {
+		std::cout << ">> Loading Account Manager.. \n";
+		AccountManager::initialize();
+	}
 
 	std::cout << ">> Initializing gamestate" << std::endl;
 	g_game.setGameState(GAME_STATE_INIT);

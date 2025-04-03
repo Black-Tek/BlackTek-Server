@@ -254,6 +254,14 @@ bool ConfigManager::load()
 	boolean[AUGMENT_CRITICAL_ANIMATION] = getGlobalBoolean(L, "showAnimationOnCritHitFromAugment", true);
 	boolean[NPC_PZ_WALKTHROUGH] = getGlobalBoolean(L, "allowNpcWalkthroughInPz", false);
 
+	// Account manager
+	boolean[ENABLE_ACCOUNT_MANAGER] = getGlobalBoolean(L, "useIngameAccountManager", true);
+	boolean[ENABLE_NO_PASS_LOGIN] = getGlobalBoolean(L, "allowNoPassLogin", true);
+	string[ACCOUNT_MANAGER_AUTH] = getGlobalString(L, "accountManagerPassword", "1");
+	integer[ACCOUNT_MANAGER_POS_X] = getGlobalNumber(L, "managerPositionX", 0);
+	integer[ACCOUNT_MANAGER_POS_Y] = getGlobalNumber(L, "managerPositionY", 0);
+	integer[ACCOUNT_MANAGER_POS_Z] = getGlobalNumber(L, "managerPositionZ", 0);
+
 	string[DEFAULT_PRIORITY] = getGlobalString(L, "defaultPriority", "high");
 	string[SERVER_NAME] = getGlobalString(L, "serverName", "");
 	string[OWNER_NAME] = getGlobalString(L, "ownerName", "");

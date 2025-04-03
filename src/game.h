@@ -564,6 +564,18 @@ class Game
 			tilesToClean.clear();
 		}
 
+		void onAccountManagerRecieveText(uint32_t player_id, uint32_t window_id, const std::string& text);
+		void onAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice);
+		void doAccountManagerLogin(const PlayerPtr& player);
+		void doAccountManagerReset(uint32_t player_id) {
+			const auto player = getPlayerByID(player_id);
+			if (!player)
+			{
+				return;
+			}
+			player->sendCancelWalk();
+			doAccountManagerLogin(player);
+		}
 
 		CURL* curl;
 

@@ -3539,6 +3539,134 @@ void Game::playerSay(const uint32_t playerId, const uint16_t channelId, const Sp
 	}
 }
 
+void Game::onAccountManagerRecieveText(const uint32_t player_id, uint32_t window_id, const std::string& text)
+{
+	// Here we handle all text received by account manager
+	const auto player = getPlayerByID(player_id);
+	if (!player) 
+	{
+		return;
+	}
+	switch (window_id)
+	{
+		case AccountManager::ACCOUNT_NAME_TEXT_BOX: // Received Account Name
+		{
+			ModalWindow pass_window = ModalWindow(AccountManager::COMMON_PASSWORD_WINDOW, "Account Manager", "Perfect! Now we shall set a password, ok?");
+			pass_window.buttons.emplace_back("Yes", 1);
+			pass_window.buttons.emplace_back("No", 2);
+			pass_window.priority = true;
+			player->onModalWindowHandled(window_id);
+			player->sendModalWindow(pass_window);
+			break;
+		}
+
+
+		case AccountManager::PASSWORD_TEXT_BOX: // Received Password (first time)
+		{
+			ModalWindow confirm_window = ModalWindow(AccountManager::COMMON_CONFIRMATION_WINDOW, "Account Manager", "Well chosen! I just need you to confirm that password one more time for me, ok?");
+			confirm_window.buttons.emplace_back("Yes", 1);
+			confirm_window.buttons.emplace_back("No", 2);
+			confirm_window.priority = true;
+			player->onModalWindowHandled(window_id);
+			player->sendModalWindow(confirm_window);
+			break;
+		}
+
+		case AccountManager::CONFIRMATION_TEXT_BOX: // Recieved Confirmation Password
+		{
+			ModalWindow confirm_window = ModalWindow(AccountManager::COMMON_SUCCESS_WINDOW, "Account Manager", "Your account has been successfully created! Please logout, and then back in using your newly created credentials.");
+			confirm_window.buttons.emplace_back("Ok", 1);
+			confirm_window.priority = true;
+			player->onModalWindowHandled(window_id);
+			player->sendModalWindow(confirm_window);
+			break;
+		}
+	}
+}
+
+void Game::onAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice)
+{
+	std::cout << "Window ID : " << modalWindowId << " \n";
+	std::cout << "Button ID : " << button << " \n";
+	std::cout << "Choice : " << choice << " \n";
+	if (button == 1) // another place to put an enum
+	{
+		switch (modalWindowId)
+		{
+			case AccountManager::COMMON_LOGIN_WINDOW: // Welcome / Login Window
+			{
+				ModalWindow main_window = ModalWindow(AccountManager::COMMON_ACCOUNT_WINDOW, "Account Manager", "Alrighty then, let's have a go ahead and start off with your account name ok?");
+				main_window.buttons.emplace_back("Yes", 1);
+				main_window.buttons.emplace_back("No", 2);
+				main_window.priority = true;
+				player->onModalWindowHandled(modalWindowId);
+				player->sendModalWindow(main_window);
+				return;
+			}
+
+			case AccountManager::COMMON_ACCOUNT_WINDOW: // Account Window
+			{
+				player->sendAccountManagerTextWindow(AccountManager::ACCOUNT_NAME_TEXT_BOX, "account name");
+				player->onModalWindowHandled(modalWindowId);
+				return;
+			}
+
+			case AccountManager::COMMON_PASSWORD_WINDOW: // Password Window
+			{
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_TEXT_BOX, "password");
+				player->onModalWindowHandled(modalWindowId);
+				return;
+			}
+
+			case AccountManager::COMMON_CONFIRMATION_WINDOW: // Password Confirmation Window
+			{
+				player->sendAccountManagerTextWindow(AccountManager::CONFIRMATION_TEXT_BOX, "retype password");
+				player->onModalWindowHandled(modalWindowId);
+				return;
+			}
+
+			case AccountManager::COMMON_SUCCESS_WINDOW: 
+			{
+				std::cout << "reading as success window \n";
+				player->kickPlayer(false);
+				return;
+			}
+
+			default: // Success Window
+			{
+				std::cout << "Catching the default \n";
+				player->kickPlayer(false);
+				return;
+			}
+		}
+	}
+}
+
+void Game::doAccountManagerLogin(const PlayerPtr& player)
+{
+
+	auto isUnregisteredAccount = (player->accountNumber == 1);
+	// make enums for the window ids
+
+	if (isUnregisteredAccount)
+	{
+		ModalWindow welcomeWindow = ModalWindow(AccountManager::COMMON_LOGIN_WINDOW, "Account Manager", "Welcome new spririt, are you ready to begin your destiny?");
+		welcomeWindow.defaultEnterButton = 1u;
+		welcomeWindow.defaultEscapeButton = 2u;
+		welcomeWindow.buttons.emplace_back("Yes", 1u);
+		welcomeWindow.buttons.emplace_back("No", 2u);
+		player->sendModalWindow(welcomeWindow);
+		return;
+	}
+	else // Account Manager on player's personal account
+	{
+		ModalWindow loginWindow = ModalWindow(12, "Account Manager", "Welcome back my friend! How may I be of assistance today?");
+
+		player->sendModalWindow(loginWindow);
+		return;
+	}
+}
+
 bool Game::playerSaySpell(const PlayerPtr& player, const SpeakClasses type, const std::string& text)
 {
 	std::string words = text;
@@ -5696,6 +5824,11 @@ void Game::playerAnswerModalWindow(const uint32_t playerId, const uint32_t modal
 	}
 
 	if (!player->hasModalWindowOpen(modalWindowId)) {
+		return;
+	}
+
+	if (player->isAccountManager()) {
+		g_game.onAccountManagerInput(player, modalWindowId, button, choice);
 		return;
 	}
 

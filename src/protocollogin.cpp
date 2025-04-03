@@ -189,9 +189,13 @@ void ProtocolLogin::onRecvFirstMessage(NetworkMessage& msg)
 	const bool accountNameEmpty = accountName.empty();
 	const bool passwordEmpty = password.empty();
 
-	if (accountNameEmpty and passwordEmpty and true) { // enable config option here
-		accountName = "1";
-		password = "1";
+	const bool m_enabled = g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER);
+	const bool quick_pass = g_config.getBoolean(ConfigManager::ENABLE_NO_PASS_LOGIN);
+	const auto& quick_auth = g_config.getString(ConfigManager::ACCOUNT_MANAGER_AUTH);
+
+	if (accountNameEmpty and passwordEmpty and m_enabled and quick_pass) {
+		accountName = quick_auth;
+		password = quick_auth;
 	} else if (accountNameEmpty) {
 		disconnectClient("Invalid account name.", version);
 		return;

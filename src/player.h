@@ -22,6 +22,7 @@
 #include "storeinbox.h"
 #include "rewardchest.h"
 #include "augments.h"
+#include "accountmanager.h"
 
 #include <bitset>
 #include <optional>
@@ -196,7 +197,7 @@ class Player final : public Creature, public Cylinder
 		bool untameMount(uint8_t mountId);
 		bool hasMount(const Mount* mount) const;
 		void dismount();
-		bool isAccountManager() const { return guid == 1; }
+		bool isAccountManager() const { return guid == 1 or name == "Account Manager"; }
 		inline bool isPlayer() const override { return true; }
 		inline bool isMonster() const override { return false; }
 		inline bool isNpc() const override { return false; }
@@ -1102,6 +1103,12 @@ class Player final : public Creature, public Cylinder
 			}
 		}
 		void sendHouseWindow(House* house, uint32_t listId) const;
+
+		void sendAccountManagerTextWindow(uint32_t id, const std::string& text) const {
+			if (client) {
+				client->sendAccountManagerTextBox(id, text);
+			}
+		}
 	
 		void sendCreatePrivateChannel(uint16_t channelId, const std::string& channelName) const {
 			if (client) {

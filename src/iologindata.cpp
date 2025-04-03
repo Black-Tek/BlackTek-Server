@@ -20,6 +20,7 @@ const size_t MAX_AUGMENT_DATA_SIZE = 1024 * 64; // 64 KB is the limit for BLOB
 const uint32_t MAX_AUGMENT_COUNT = 100; // Augments should not break size limit if we limit how many can go on a single player or item
 
 
+// perfect use case for std::expected <Account, bool>
 Account IOLoginData::loadAccount(uint32_t accno)
 {
 	Account account;
@@ -84,7 +85,7 @@ bool IOLoginData::loginserverAuthentication(const std::string& name, const std::
 	account.accountType = static_cast<AccountType_t>(result->getNumber<int32_t>("type"));
 	account.premiumEndsAt = result->getNumber<time_t>("premium_ends_at");
 
-	if (true && account.id != AccountManager::ID) { // place to use config
+	if (g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER) and account.id != AccountManager::ID) {
 		account.characters.push_back(AccountManager::NAME);
 	}
 
