@@ -34,7 +34,7 @@ jobs:
         git -C /usr/local/share/vcpkg reset --hard HEAD
         git -C /usr/local/share/vcpkg clean -fd
         git -C /usr/local/share/vcpkg pull
-        vcpkg install --manifest
+        vcpkg install
     - name: Compile Release 64
       run: |
         make -j $(nproc) config=release_64
