@@ -22,11 +22,6 @@ jobs:
         else
           echo "libuuid is already installed."
         fi
-    - name: Ensure Correct VCPKG Baseline
-      uses: lukka/run-vcpkg@main
-      with:
-        vcpkgGitURL: "https://github.com/microsoft/vcpkg.git"
-        vcpkgGitCommitId: "e2e3f654bc45c28f2696ace32d66f28429bb3b28"
     - name: Setup Premake
       run: |
         git clone https://github.com/premake/premake-core
@@ -54,41 +49,31 @@ jobs:
       uses: JesseTG/rm@v1.0.3
       with:
         path: ${{ github.workspace }}/build
-    - name: Cleanup More VCPKG stuff
-      uses: JesseTG/rm@v1.0.3
-      with:
-        path: ${{ github.workspace }}/vcpkg
     - name: Cleanup Premake-Core
       uses: JesseTG/rm@v1.0.3
       with:
         path: ${{ github.workspace }}/premake-core
     - name: Prepare Compressed Assets
       run: |
-         echo "Commit SHA: ${{ github.sha }}" > version.info
-         zip -r BlackTek-Server-${{ github.sha }}.zip ${{ github.workspace }}
-         zip -r BlackTek-Server.zip version.info
+        echo "Commit SHA: ${{ github.sha }}" > version.info
+        zip -r BlackTek-Server-${{ github.sha }}.zip ${{ github.workspace }}
+        zip -r BlackTek-Server.zip version.info
     - name: Cleanup Old Release Assets
       if: (github.event_name == 'push') && (matrix.os == 'ubuntu-24.04') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && (matrix.os == 'ubuntu-24.04') && github.event.pull_request.merged == true)
       run: |
         # GH CLI is already installed on GitHub runners
         # Use directly without setting GH_TOKEN as an environment variable
-        
         # Authenticate using the GITHUB_TOKEN from the action
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-        
         # Get the list of assets from the edge release
         ASSETS=$(gh release view Linux-Edge-Build --json assets -q '.assets[].name' | grep "BlackTek-Server-" | sort)
-        
         # Keep only the X most recent assets
         KEEP_COUNT=25
         TOTAL_COUNT=$(echo "$ASSETS" | wc -l)
-        
         if [ $TOTAL_COUNT -gt $KEEP_COUNT ]; then
           DELETE_COUNT=$((TOTAL_COUNT - KEEP_COUNT))
           ASSETS_TO_DELETE=$(echo "$ASSETS" | head -n $DELETE_COUNT)
-          
           echo "Found $TOTAL_COUNT assets, keeping $KEEP_COUNT, deleting $DELETE_COUNT"
-          
           for ASSET in $ASSETS_TO_DELETE; do
             echo "Deleting asset: $ASSET"
             gh release delete-asset Linux-Edge-Build "$ASSET" --yes
@@ -107,6 +92,5 @@ jobs:
         name: BlackTek Server Edge Build
         body: |
           This is an automated Linux Edge build for commit ${{ github.sha }}
-          OS-BuildType: ${{ matrix.buildtype }}
-          Build date: ${{ github.event.head_commit.timestamp }}
+          OS-BuildType: ${{ matrix.os }}  # Corrected from matrix.buildtype
         files: BlackTek-Server-${{ github.sha }}.zip
