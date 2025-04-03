@@ -11,6 +11,8 @@
 
 #include "player.h"
 
+#include "accountmanager.h"
+
 #include "configmanager.h"
 #include "actions.h"
 #include "game.h"
@@ -128,7 +130,7 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 {
 	//dispatcher thread
 	const auto& foundPlayer = g_game.getPlayerByGUID(characterId);
-	if (!foundPlayer || g_config.getBoolean(ConfigManager::ALLOW_CLONES)) {
+	if (!foundPlayer || g_config.getBoolean(ConfigManager::ALLOW_CLONES) || characterId == AccountManager::ID) {
 		player = Player::makePlayer(getThis());
 		
 		player->setID();
@@ -154,7 +156,7 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			return;
 		}
 
-		if (g_config.getBoolean(ConfigManager::ONE_PLAYER_ON_ACCOUNT) && player->getAccountType() < ACCOUNT_TYPE_GAMEMASTER && g_game.getPlayerByAccount(player->getAccount())) {
+		if (g_config.getBoolean(ConfigManager::ONE_PLAYER_ON_ACCOUNT) && characterId != AccountManager::ID && player->getAccountType() < ACCOUNT_TYPE_GAMEMASTER && g_game.getPlayerByAccount(player->getAccount())) {
 			disconnectClient("You may only login with one character\nof your account at the same time.");
 			return;
 		}
@@ -193,6 +195,11 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 
 		player->setOperatingSystem(operatingSystem);
 
+		if (characterId == AccountManager::ID) {
+			player->accountNumber = accountId;
+		}
+
+		// todo : here we change how to handle login position for account manager
 		if (!g_game.placeCreature(player, player->getLoginPosition())) {
 			if (!g_game.placeCreature(player, player->getTemplePosition(), false, true)) {
 				disconnectClient("Temple position is wrong. Contact the administrator.");
@@ -371,6 +378,11 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 		return;
 	}
 
+	if (accountName.empty() && password.empty()) {
+		accountName = "1";
+		password = "1";
+	}
+
 	if (g_game.getGameState() == GAME_STATE_STARTUP) {
 		disconnectClient("Gameworld is starting up. Please wait.");
 		return;
@@ -392,6 +404,11 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 	}
 
 	auto [accountId, characterId] = IOLoginData::gameworldAuthentication(accountName, password, characterName, token, tokenTime);
+	if (characterName == AccountManager::NAME) {
+		if (accountId == 0) {
+			std::tie(accountId, characterId) = IOLoginData::getAccountIdByAccountName(accountName, password, characterName);
+		}
+	}
 	if (accountId == 0) {
 		disconnectClient("Account name or password is not correct.");
 		return;
@@ -470,6 +487,57 @@ void ProtocolGame::parsePacket(NetworkMessage& msg)
 			return;
 		}
 	}
+
+	// Account Manager
+	if (player->isAccountManager()) {
+		switch (recvbyte) {
+		case 0x14:
+			g_dispatcher.addTask([thisPtr = getThis()]() { thisPtr->logout(true, false); });
+			break;
+		case 0x1E:
+			g_dispatcher.addTask([playerID = player->getID()]() { g_game.playerReceivePing(playerID); });
+			break;
+		case 0x32:
+			parseExtendedOpcode(msg);
+			break; // otclient extended opcode
+		case 0x64:
+		case 0x65:
+		case 0x66:
+		case 0x67:
+		case 0x68:
+		case 0x69:
+		case 0x6A:
+		case 0x6B:
+		case 0x6C:
+		case 0x6D:
+			g_dispatcher.addTask([playerID = player->getID()]() { g_game.playerCancelMove(playerID); });
+			break;
+		case 0x89:
+			parseTextWindow(msg);
+			break;
+		case 0x8A:
+			parseHouseWindow(msg);
+			break;
+		case 0x8C:
+			parseLookAt(msg);
+			break;
+		case 0x8E: /* join aggression */
+			break;
+		case 0x96:
+			parseSay(msg);
+			break;
+		case 0xC9: /* update tile */
+			break;
+		default:
+			break;
+		}
+
+		if (msg.isOverrun()) {
+			disconnect();
+		}
+		return;
+	}
+
 
 	switch (recvbyte) {
 		case 0x14: addGameTask([thisPtr = getThis()]() { thisPtr->logout(true, false); }); break;

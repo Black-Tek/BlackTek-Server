@@ -1936,6 +1936,17 @@ void Game::playerMove(const uint32_t playerId, const Direction direction)
 	player->startAutoWalk(direction);
 }
 
+// for account manager
+void Game::playerCancelMove(uint32_t playerId)
+{
+	auto player = getPlayerByID(playerId);
+	if (!player) {
+		return;
+	}
+
+	player->sendCancelWalk();
+}
+
 bool Game::playerBroadcastMessage(const PlayerPtr& player, const std::string& text) const
 {
 	if (!player->hasFlag(PlayerFlag_CanBroadcast)) {

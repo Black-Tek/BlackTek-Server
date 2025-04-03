@@ -6,6 +6,7 @@
 #include "iologindata.h"
 #include "configmanager.h"
 #include "game.h"
+#include "accountmanager.h"
 
 #include <fmt/format.h>
 
@@ -83,6 +84,10 @@ bool IOLoginData::loginserverAuthentication(const std::string& name, const std::
 	account.accountType = static_cast<AccountType_t>(result->getNumber<int32_t>("type"));
 	account.premiumEndsAt = result->getNumber<time_t>("premium_ends_at");
 
+	if (true && account.id != AccountManager::ID) { // place to use config
+		account.characters.push_back(AccountManager::NAME);
+	}
+
 	result = db.storeQuery(fmt::format("SELECT `name` FROM `players` WHERE `account_id` = {:d} AND `deletion` = 0 ORDER BY `name` ASC", account.id));
 	if (result) {
 		do {
@@ -159,6 +164,34 @@ AccountType_t IOLoginData::getAccountType(uint32_t accountId)
 void IOLoginData::setAccountType(uint32_t accountId, AccountType_t accountType)
 {
 	Database::getInstance().executeQuery(fmt::format("UPDATE `accounts` SET `type` = {:d} WHERE `id` = {:d}", static_cast<uint16_t>(accountType), accountId));
+}
+
+std::pair<uint32_t, uint32_t> IOLoginData::getAccountIdByAccountName(std::string_view accountName,
+	std::string_view password,
+	std::string_view characterName)
+{
+	Database& db = Database::getInstance();
+
+	DBResult_ptr result = db.storeQuery(
+		fmt::format("SELECT `id`, `password` FROM `accounts` WHERE `name` = {:s}", db.escapeString(accountName)));
+	if (!result) {
+		return {};
+	}
+
+	if (transformToSHA1(password) != result->getString("password")) {
+		return {};
+	}
+
+	uint32_t accountId = result->getNumber<uint32_t>("id");
+
+	result =
+		db.storeQuery(fmt::format("SELECT `id` FROM `players` WHERE `name` = {:s}", db.escapeString(characterName)));
+	if (!result) {
+		return {};
+	}
+
+	uint32_t characterId = result->getNumber<uint32_t>("id");
+	return std::make_pair(accountId, characterId);
 }
 
 void IOLoginData::updateOnlineStatus(uint32_t guid, bool login)

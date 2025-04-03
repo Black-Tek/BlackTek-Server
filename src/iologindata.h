@@ -22,6 +22,7 @@ class IOLoginData
 
 		static AccountType_t getAccountType(uint32_t accountId);
 		static void setAccountType(uint32_t accountId, AccountType_t accountType);
+		static std::pair<uint32_t, uint32_t> getAccountIdByAccountName(std::string_view accountName, std::string_view password, std::string_view characterName);
 		static void updateOnlineStatus(uint32_t guid, bool login);
 		static bool preloadPlayer(const PlayerPtr& player);
 

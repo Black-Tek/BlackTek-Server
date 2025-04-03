@@ -178,6 +178,12 @@ bool Map::placeCreature(const Position& centerPos, CreaturePtr creature, bool ex
 	auto tile = getTile(centerPos.x, centerPos.y, centerPos.z);
 	if (tile) {
 		placeInPZ = tile->hasFlag(TILESTATE_PROTECTIONZONE);
+		uint32_t flags = FLAG_IGNOREBLOCKITEM;
+		if (const auto& player = creature->getPlayer()) {
+			if (player->isAccountManager()) {
+				flags |= FLAG_IGNOREBLOCKCREATURE;
+			}
+		}
 		const ReturnValue ret = tile->queryAdd(creature, FLAG_IGNOREBLOCKITEM);
 		foundTile = forceLogin || ret == RETURNVALUE_NOERROR || ret == RETURNVALUE_PLAYERISNOTINVITED;
 	} else {
