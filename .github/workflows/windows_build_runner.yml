@@ -63,9 +63,6 @@ jobs:
       - name: Cleanup Intermediaries 
         run: Remove-Item -Path "D:/a/BlackTek-Server/BlackTek-Server/build" -Recurse -Force
         shell: pwsh
-      - name: Cleanup More VCPKG stuff 
-        run: Remove-Item -Path "D:/a/BlackTek-Server/BlackTek-Server/vcpkg" -Recurse -Force
-        shell: pwsh
       - name: Cleanup Premake-Core 
         run: Remove-Item -Path "D:/a/BlackTek-Server/BlackTek-Server/premake-core" -Recurse -Force
         shell: pwsh
