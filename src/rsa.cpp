@@ -21,7 +21,7 @@ void RSA::decrypt(char* msg) const
 		auto c = pk.CalculateInverse(prng, m);
 		c.Encode(reinterpret_cast<uint8_t*>(msg), 128);
 	} catch (const CryptoPP::Exception& e) {
-		fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, e.what(), "\n");
+		fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "{}\n", e.what());
 	}
 }
 
