@@ -14,6 +14,7 @@
 #include "game.h"
 #include "monster.h"
 #include "pugicast.h"
+#include <toml++/toml.h>
 
 #if LUA_VERSION_NUM >= 502
 #undef lua_strlen
@@ -117,44 +118,49 @@ ExperienceStages loadLuaStages(lua_State* L)
 	return stages;
 }
 
-ExperienceStages loadXMLStages()
+
+ExperienceStages loadTOMLStages()
 {
-	pugi::xml_document doc;
-	pugi::xml_parse_result result = doc.load_file("data/XML/stages.xml");
-	if (!result) {
-		printXMLError("Error - loadXMLStages", "data/XML/stages.xml", result);
-		return {};
-	}
+	const std::string filePath = "config/stages.toml";
 
 	ExperienceStages stages;
-	for (auto stageNode : doc.child("stages").children()) {
-		if (caseInsensitiveEqual(stageNode.name(), "config")) {
-			if (!stageNode.attribute("enabled").as_bool()) {
-				return {};
-			}
-		} else {
-			uint32_t minLevel = 1, maxLevel = std::numeric_limits<uint32_t>::max(), multiplier = 1;
 
-			if (auto minLevelAttribute = stageNode.attribute("minlevel")) {
-				minLevel = pugi::cast<uint32_t>(minLevelAttribute.value());
-			}
+	try {
+		auto tbl = toml::parse_file(filePath);
 
-			if (auto maxLevelAttribute = stageNode.attribute("maxlevel")) {
-				maxLevel = pugi::cast<uint32_t>(maxLevelAttribute.value());
+		// Handle config.enabled
+		if (auto config = tbl["config"].as_table()) {
+			if (auto enabledNode = config->get("enabled"); enabledNode && enabledNode->is_boolean()) {
+				if (!enabledNode->as_boolean()->get()) {
+					return {};
+				}
 			}
-
-			if (auto multiplierAttribute = stageNode.attribute("multiplier")) {
-				multiplier = pugi::cast<uint32_t>(multiplierAttribute.value());
-			}
-
-			stages.emplace_back(minLevel, maxLevel, multiplier);
 		}
+
+		// Handle stage array
+		if (auto stageArray = tbl["stage"].as_array()) {
+			for (const auto& elem : *stageArray) {
+				if (!elem.is_table()) {
+					continue;
+				}
+
+				const auto& stage = *elem.as_table();
+				uint32_t minLevel = stage["minlevel"].value_or(1u);
+				uint32_t maxLevel = stage["maxlevel"].value_or(std::numeric_limits<uint32_t>::max());
+				uint32_t multiplier = stage["multiplier"].value_or(1u);
+
+				stages.emplace_back(minLevel, maxLevel, multiplier);
+			}
+		}
+	}
+	catch (const toml::parse_error& err) {
+		std::cerr << "TOML parse error in " << filePath << ": " << err << "\n";
+		return {};
 	}
 
 	std::sort(stages.begin(), stages.end());
 	return stages;
 }
-
 }
 
 bool ConfigManager::load()
@@ -297,11 +303,9 @@ bool ConfigManager::load()
 	floats[REWARD_RATE_DAMAGE_TAKEN] = getGlobalFloat(L, "rewardRateDamageTaken", 1.0f);
 	floats[REWARD_RATE_HEALING_DONE] = getGlobalFloat(L, "rewardRateHealingDone", 1.0f);
 
-	expStages = loadXMLStages();
+	expStages = loadTOMLStages();
 	if (expStages.empty()) {
 		expStages = loadLuaStages(L);
-	} else {
-		std::cout << "[Warning - ConfigManager::load] XML stages are deprecated, consider moving to config.lua." << std::endl;
 	}
 	expStages.shrink_to_fit();
 
