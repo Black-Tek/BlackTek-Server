@@ -5082,7 +5082,12 @@ void Game::playerLeaveParty(const uint32_t playerId)
 	}
 
 	const auto party = player->getParty();
-	if (!party || player->hasCondition(CONDITION_INFIGHT)) {
+	if (!party) {
+		return;
+	}
+
+	if (player->hasCondition(CONDITION_INFIGHT)) {
+		player->sendCancelMessage("You may not leave the party during a fight.");
 		return;
 	}
 
@@ -5097,7 +5102,12 @@ void Game::playerEnableSharedPartyExperience(const uint32_t playerId, bool share
 	}
 
 	const auto party = player->getParty();
-	if (!party || (player->hasCondition(CONDITION_INFIGHT) && player->getZone() != ZONE_PROTECTION)) {
+	if (!party) {
+		return;
+	}
+
+	if (player->hasCondition(CONDITION_INFIGHT) && player->getZone() != ZONE_PROTECTION) {
+		player->sendCancelMessage("You cannot enable shared experience during a fight.");
 		return;
 	}
 
