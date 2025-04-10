@@ -7,45 +7,53 @@
 
 #include "pugicast.h"
 #include "tools.h"
+#include <toml++/toml.hpp>
 
 bool Mounts::reload()
 {
 	mounts.clear();
-	return loadFromXml();
+	return loadFromToml();
 }
 
-bool Mounts::loadFromXml()
+bool Mounts::loadFromToml()
 {
-	pugi::xml_document doc;
-	pugi::xml_parse_result result = doc.load_file("data/XML/mounts.xml");
-	if (!result) {
-		printXMLError("Error - Mounts::loadFromXml", "data/XML/mounts.xml", result);
+	try {
+		auto config = toml::parse_file("config/mounts.toml");
+
+		for (const auto& [key, value] : config) {
+			if (!value.is_table()) {
+				continue;
+			}
+
+			const auto& table = *value.as_table();
+			uint16_t id = table["id"].value_or(0);
+			if (id == 0 || id > std::numeric_limits<uint8_t>::max()) {
+				continue;
+			}
+
+			if (getMountByID(static_cast<uint8_t>(id))) {
+				continue;
+			}
+
+			mounts.emplace_back(
+				static_cast<uint8_t>(id),
+				table["clientid"].value_or(0),
+				std::string(key.str()),
+				table["speed"].value_or(0),
+				table["premium"].value_or(false)
+			);
+		}
+	}
+	catch (const toml::parse_error& err) {
+		std::cerr << "Error - Mounts::loadFromToml: " << err.description()
+			<< "\n  at " << err.source().begin << std::endl;
 		return false;
 	}
 
-	for (auto mountNode : doc.child("mounts").children()) {
-		uint16_t nodeId = pugi::cast<uint16_t>(mountNode.attribute("id").value());
-		if (nodeId == 0 || nodeId > std::numeric_limits<uint8_t>::max()) {
-			std::cout << "[Notice - Mounts::loadFromXml] Mount id \"" << nodeId << "\" is not within 1 and 255 range" <<  std::endl;
-			continue;
-		}
-
-		if (getMountByID(nodeId)) {
-			std::cout << "[Notice - Mounts::loadFromXml] Duplicate mount with id: " << nodeId << std::endl;
-			continue;
-		}
-
-		mounts.emplace_back(
-			static_cast<uint8_t>(nodeId),
-			pugi::cast<uint16_t>(mountNode.attribute("clientid").value()),
-			mountNode.attribute("name").as_string(),
-			pugi::cast<int32_t>(mountNode.attribute("speed").value()),
-			mountNode.attribute("premium").as_bool()
-		);
-	}
 	mounts.shrink_to_fit();
 	return true;
 }
+
 
 Mount* Mounts::getMountByID(uint8_t id)
 {
