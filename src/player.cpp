@@ -2896,25 +2896,41 @@ bool Player::editVIP(const uint32_t vipGuid, const std::string& description, con
 void Player::autoCloseContainers(ContainerPtr container)
 {
 	std::vector<uint32_t> closeList;
+
 	for (const auto& it : openContainers) {
-		auto tmpContainer = it.second.container;
-		while (tmpContainer) {
-			if (tmpContainer->isRemoved() || tmpContainer == container) {
-				closeList.push_back(it.first);
+		uint32_t cid = it.first;
+		const ContainerPtr& openContainer = it.second.container;
+
+		bool isChild = false;
+		auto parent = std::dynamic_pointer_cast<Container>(openContainer->getParent());
+		while (parent) {
+			if (parent == container) {
+				isChild = true;
 				break;
 			}
-
-			tmpContainer = std::dynamic_pointer_cast<Container>(tmpContainer->getParent());
+			parent = std::dynamic_pointer_cast<Container>(parent->getParent());
 		}
+
+		if (!isChild) {
+			continue;
+		}
+
+		auto top = openContainer->getTopParent();
+		if (top && top->getCreature().get() == this) {
+			continue;
+		}
+
+		closeList.push_back(cid);
 	}
 
-	for (uint32_t containerId : closeList) {
-		closeContainer(containerId);
+	for (uint32_t parentContainerCid : closeList) {
+		closeContainer(parentContainerCid);
 		if (client) {
-			client->sendCloseContainer(containerId);
+			client->sendCloseContainer(parentContainerCid);
 		}
 	}
 }
+
 
 bool Player::hasCapacity(const ItemPtr& item, uint32_t count) const
 {
