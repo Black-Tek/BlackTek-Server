@@ -20,7 +20,7 @@ class Mounts
 {
 	public:
 		bool reload();
-		bool loadFromXml();
+		bool loadFromToml();
 		Mount* getMountByID(uint8_t id);
 		Mount* getMountByName(const std::string& name);
 		Mount* getMountByClientID(uint16_t clientId);
