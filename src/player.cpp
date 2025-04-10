@@ -2893,25 +2893,34 @@ bool Player::editVIP(const uint32_t vipGuid, const std::string& description, con
 }
 
 //close container and its child containers
-void Player::autoCloseContainers(ContainerPtr container)
+void Player::autoCloseContainers(ContainerPtr /*unused*/)
 {
 	std::vector<uint32_t> closeList;
-	for (const auto& it : openContainers) {
-		auto tmpContainer = it.second.container;
-		while (tmpContainer) {
-			if (tmpContainer->isRemoved() || tmpContainer == container) {
-				closeList.push_back(it.first);
-				break;
-			}
 
-			tmpContainer = std::dynamic_pointer_cast<Container>(tmpContainer->getParent());
+	const Position& playerPos = getPosition();
+
+	for (const auto& [cid, containerData] : openContainers) {
+		const ContainerPtr& openContainer = containerData.container;
+
+		const ThingPtr& top = openContainer->getTopParent();
+		if (top) {
+			if (const CreaturePtr creature = top->getCreature()) {
+				if (creature.get() == this) {
+					continue; 
+				}
+			}
+		}
+
+		const Position& containerPos = openContainer->getPosition();
+		if (containerPos == Position() || !Position::areInRange<1, 1, 0>(playerPos, containerPos)) {
+			closeList.push_back(cid);
 		}
 	}
 
-	for (uint32_t containerId : closeList) {
-		closeContainer(containerId);
+	for (uint32_t cid : closeList) {
+		closeContainer(cid);
 		if (client) {
-			client->sendCloseContainer(containerId);
+			client->sendCloseContainer(cid);
 		}
 	}
 }
