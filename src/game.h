@@ -422,6 +422,7 @@ class Game
 		void playerShowQuestLine(uint32_t playerId, uint16_t questId);
 		void playerSay(uint32_t playerId, uint16_t channelId, SpeakClasses type,
 		               const std::string& receiver, const std::string& text);
+		static ModalWindow CreateAccountManagerWindow(const uint32_t modalWindowId);
 		void playerChangeOutfit(uint32_t playerId, Outfit_t outfit);
 		void playerInviteToParty(uint32_t playerId, uint32_t invitedId);
 		void playerJoinParty(uint32_t playerId, uint32_t leaderId);
@@ -573,7 +574,7 @@ class Game
 			{
 				return;
 			}
-			player->sendCancelWalk();
+			player->sendCancelWalk(); // this is needed
 			doAccountManagerLogin(player);
 		}
 

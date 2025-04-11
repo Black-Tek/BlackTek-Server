@@ -578,7 +578,6 @@ struct ModalWindow
 	uint32_t id;
 	uint8_t defaultEnterButton = 0xFF, defaultEscapeButton = 0xFF;
 	bool priority = false;
-
 	ModalWindow(uint32_t id, std::string title, std::string message): title(std::move(title)), message(std::move(message)), id(id) {}
 };
 

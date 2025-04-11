@@ -46,6 +46,8 @@ class IOLoginData
 
 		static bool addRewardItems(uint32_t playerId, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream);
 
+		static bool accountExists(const std::string& accountName);
+
 	private:
 		using ItemMap = std::map<uint32_t, std::pair<ItemPtr, uint32_t>>;
 

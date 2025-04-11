@@ -117,6 +117,8 @@ std::string getSpecialSkillName(uint8_t skillid);
 std::string getSkillName(uint8_t skillid);
 std::string getStatName(uint8_t id);
 
+bool isAllowedRegistration(std::string_view name);
+
 uint32_t adlerChecksum(const uint8_t* data, size_t length);
 
 std::string ucfirst(std::string str);
