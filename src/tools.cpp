@@ -10,6 +10,8 @@
 #include <fmt/chrono.h>
 #include <gtl/phmap.hpp>
 
+#include <regex>
+
 extern ConfigManager g_config;
 
 void printXMLError(const std::string& where, const std::string& fileName, const pugi::xml_parse_result& result)
@@ -1303,4 +1305,9 @@ std::string getStatName(uint8_t id)
 	default:
 		return "unknown";
 	}
+}
+
+bool isAllowedRegistration(std::string_view name) {
+	static const std::regex pattern("^[a-zA-Z0-9]{6,29}$");
+	return std::regex_match(name.begin(), name.end(), pattern);
 }

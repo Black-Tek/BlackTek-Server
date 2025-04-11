@@ -197,6 +197,11 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 
 		player->setOperatingSystem(operatingSystem);
 
+		// Todo : add back position spawn determined by config.lua
+		if (isAccountManager) {
+			player->accountNumber = accountId;
+		}
+
 		if (!g_game.placeCreature(player, player->getLoginPosition())) {
 			if (!g_game.placeCreature(player, player->getTemplePosition(), false, true)) {
 				disconnectClient("Temple position is wrong. Contact the administrator.");
@@ -406,6 +411,7 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 		}
 	}
 	if (accountId == 0) {
+		std::cout << "Says it's account id is 0 \n";
 		disconnectClient("Account name or password is not correct.");
 		return;
 	}
@@ -2818,7 +2824,7 @@ void ProtocolGame::sendAccountManagerTextBox(uint32_t windowTextId, const std::s
 	msg.addByte(0x96);
 	msg.add<uint32_t>(windowTextId);
 	msg.addItem(ITEM_LETTER, 1);
-	msg.add<uint16_t>(text.size());
+	msg.add<uint16_t>(15);
 	msg.addString(text);
 	msg.add<uint16_t>(0x00);
 	msg.add<uint16_t>(0x00);

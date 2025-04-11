@@ -1272,3 +1272,13 @@ void IOLoginData::updatePremiumTime(uint32_t accountId, time_t endTime)
 {
 	Database::getInstance().executeQuery(fmt::format("UPDATE `accounts` SET `premium_ends_at` = {:d} WHERE `id` = {:d}", endTime, accountId));
 }
+
+bool IOLoginData::accountExists(const std::string& accountName)
+{
+	Database& db = Database::getInstance();
+	std::ostringstream query;
+	query << "SELECT 1 FROM accounts WHERE name = " << db.escapeString(accountName) << " LIMIT 1";
+
+	DBResult_ptr result = db.storeQuery(query.str());
+	return result != nullptr;
+}

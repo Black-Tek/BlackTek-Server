@@ -1420,6 +1420,30 @@ class Player final : public Creature, public Cylinder
 		void reformDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, gtl::node_hash_map<uint8_t, ModifierTotals> conversionList);
 		void increaseDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) const;
 
+		uint8_t getAccountManagerLastState() {
+			return accountManagerState;
+		}
+
+		void setAccountManagerLastState(uint8_t state) {
+			accountManagerState = state;
+		}
+
+		void setTempAccountName(std::string name) {
+			tempAccountName = name;
+		}
+
+		void setTempPassword(std::string password) {
+			tempPassword = password;
+		}
+
+		const std::string& getTempAccountName() {
+			return tempAccountName;
+		}
+
+		const std::string& getTempPassword() {
+			return tempPassword;
+		}
+
 		Position generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, CombatOrigin origin);
 
 		std::unique_ptr<AreaCombat> generateDeflectArea(std::optional<CreaturePtr> attacker, int32_t targetCount) const;
@@ -1491,6 +1515,8 @@ class Player final : public Creature, public Cylinder
 
 		std::string name;
 		std::string guildNick;
+		std::string tempAccountName;
+		std::string tempPassword;
 
 		Skill skills[SKILL_LAST + 1];
 		LightInfo itemsLight;
@@ -1572,6 +1598,8 @@ class Player final : public Creature, public Cylinder
 		std::bitset<6> blessings;
 		uint8_t levelPercent = 0;
 		uint8_t magLevelPercent = 0;
+		uint8_t accountManagerState = 0;
+
 
 		PlayerSex_t sex = PLAYERSEX_FEMALE;
 		OperatingSystem_t operatingSystem = CLIENTOS_NONE;
