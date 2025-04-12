@@ -11,6 +11,8 @@
 #include "itemloader.h"
 #include "position.h"
 
+#include <toml++/toml.hpp>
+
 enum SlotPositionBits : uint32_t {
 	SLOTP_WHEREEVER = 0xFFFFFFFF,
 	SLOTP_HEAD = 1 << 0,
@@ -409,7 +411,7 @@ class Items
 		const ItemType& operator[](size_t id) const {
 			return getItemType(id);
 		}
-	
+
 		const ItemType& getItemType(size_t id) const;
 		ItemType& getItemType(size_t id);
 		const ItemType& getItemIdByClientId(uint16_t spriteId) const;
@@ -420,8 +422,8 @@ class Items
 		uint32_t minorVersion = 0;
 		uint32_t buildNumber = 0;
 
-		bool loadFromXml();
-		void parseItemNode(const pugi::xml_node& itemNode, uint16_t id);
+		bool loadFromToml();
+		void parseItemToml(const toml::table& itemTable, uint16_t id);
 
 		void buildInventoryList();
 	
@@ -441,34 +443,45 @@ class Items
 		InventoryVector inventory;
 		class ClientIdToServerIdMap
 		{
-			public:
-				ClientIdToServerIdMap() {
-					vec.reserve(30000);
+		public:
+			ClientIdToServerIdMap() {
+				vec.reserve(30000);
+			}
+
+			void emplace(uint16_t clientId, uint16_t serverId) {
+				if (clientId >= vec.size()) {
+					vec.resize(clientId + 1, 0);
 				}
 
-				void emplace(uint16_t clientId, uint16_t serverId) {
-					if (clientId >= vec.size()) {
-						vec.resize(clientId + 1, 0);
-					}
-					
-					if (vec[clientId] == 0) {
-						vec[clientId] = serverId;
-					}
+				if (vec[clientId] == 0) {
+					vec[clientId] = serverId;
 				}
+			}
 
-				uint16_t getServerId(uint16_t clientId) const {
-					uint16_t serverId = 0;
-					if (clientId < vec.size()) {
-						serverId = vec[clientId];
-					}
-					return serverId;
+			uint16_t getServerId(uint16_t clientId) const {
+				uint16_t serverId = 0;
+				if (clientId < vec.size()) {
+					serverId = vec[clientId];
 				}
+				return serverId;
+			}
 
-				void clear() {
-					vec.clear();
+			size_t size() const {
+				size_t count = 0;
+				for (const auto& id : vec) {
+					if (id != 0) {
+						++count;
+					}
 				}
-			private:
-				std::vector<uint16_t> vec;
+				return count;
+			}
+
+			void clear() {
+				vec.clear();
+			}
+
+		private:
+			std::vector<uint16_t> vec;
 		} clientIdToServerIdMap;
 };
 #endif

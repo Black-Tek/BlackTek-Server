@@ -1,0 +1,59 @@
+[[items]]
+id = 1
+article = ""
+name = "water"
+
+[[items]]
+id = 2
+article = ""
+name = "blood"
+
+[[items]]
+id = 3
+article = ""
+name = "beer"
+
+[[items]]
+id = 4
+article = ""
+name = "slime"
+
+[[items]]
+id = 5
+article = ""
+name = "lemonade"
+
+[[items]]
+id = 6
+article = ""
+name = "milk"
+
+[[items]]
+id = 7
+article = ""
+name = "manafluid"
+
+[[items]]
+id = 10
+article = ""
+name = "lifefluid"
+
+[[items]]
+id = 11
+article = ""
+name = "oil"
+
+[[items]]
+id = 13
+article = ""
+name = "urine"
+
+[[items]]
+id = 14
+article = ""
+name = "coconut milk"
+
+[[items]]
+id = 15
+article = ""
+name = "wine"
