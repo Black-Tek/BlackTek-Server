@@ -1527,6 +1527,7 @@ class Player final : public Creature, public Cylinder
 		time_t lastLogout = 0;
 		time_t premiumEndsAt = 0;
 
+		int32_t tempOptionId;
 		uint64_t experience = 0;
 		uint64_t manaSpent = 0;
 		uint64_t lastAttack = 0;

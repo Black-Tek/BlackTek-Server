@@ -1,8 +1,7 @@
 #include "accountmanager.h"
 #include <toml++/toml.hpp>
 #include "otpch.h"
-
-static std::vector<CharacterOption> character_options;
+#include "game.h"
 
 void AccountManager::initialize()
 {
@@ -10,7 +9,7 @@ void AccountManager::initialize()
 	try 
 	{
 		const auto tbl = toml::parse_file(file);
-
+		int32_t option_id = 0;
 		for (const auto& [index, entry] : tbl) 
 		{
 
@@ -21,7 +20,6 @@ void AccountManager::initialize()
 			}
 
 			CharacterOption option;
-
 			toml::table option_data = *entry.as_table();
 
 			option.vocation = option_data["vocation"].value_or(0);
@@ -87,8 +85,10 @@ void AccountManager::initialize()
 			std::cout << ">> Vocation : " << std::to_string(option.vocation) << " \n";
 			std::cout << ">> Towns : " << std::to_string(option.town_list.size()) << " \n";
 			std::cout << ">> LookMount : " << std::to_string(option.outfit[2]) << " \n";
-
-			character_options.push_back(option);
+			option.name = std::string(index.str());
+			option.id = option_id;
+			g_game.addCharacterOption(option);
+			++option_id;
 		}
 	}
 	catch (const std::exception& e) 
