@@ -3539,6 +3539,111 @@ void Game::playerSay(const uint32_t playerId, const uint16_t channelId, const Sp
 	}
 }
 
+ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId, const uint32_t optionId)
+{	// todo : trade out magic numbers here and below with enums
+	auto window = ModalWindow(modalWindowId, "Account Manager", "");
+	window.priority = true;
+	window.defaultEnterButton = 1;
+	window.defaultEscapeButton = 2;
+
+
+	switch (modalWindowId)
+	{
+		case AccountManager::PRIVATE_LOGIN_WINDOW:
+		{
+			window.message = "Welcome back my friend! How may I be of assistance today?";
+			window.choices.emplace_back("Create Character", 1); // enums
+			window.choices.emplace_back("Create New Account", 2);
+			window.choices.emplace_back("Change Password", 3);
+			window.buttons.emplace_back("Select", 1);
+			window.buttons.emplace_back("Quit", 2);
+			break;
+
+		}
+		case AccountManager::PRIVATE_CHARACTER_VOCATION_WINDOW: // asks for vocation
+		{
+			window.message = "This is a great day to be born anew! Which cast shall you take?";
+			auto options = 0;
+			for (const auto& choice : character_options) 
+			{
+				++options;
+				window.choices.emplace_back(choice.name, options);
+			}
+			window.buttons.emplace_back("Select", 1);
+			window.buttons.emplace_back("Back", 2);
+			break;
+		}
+		case AccountManager::PRIVATE_CHARACTER_WINDOW: // asks for name
+		{
+			window.message = "Ahhh, yes. A good fit for ye indeed!\nBut now, what shall we call you?\n\nYou ponder that and let me know when you are ready!";
+			window.buttons.emplace_back("Ready", 1);
+			window.buttons.emplace_back("Back", 2);
+			window.buttons.emplace_back("Main Menu", 3);
+			break;
+		}
+		case AccountManager::PRIVATE_CHARACTER_TOWN_WINDOW: // asks for town
+		{
+			window.message = "Now all that is left is to choose where to begin your adventure:\n\n";
+			auto options = 0;
+
+			for (const auto& town_id : character_options[optionId].town_list)
+			{
+				auto town = map.towns.getTown(town_id);
+				window.choices.emplace_back(town->getName(), town_id);
+			}
+			window.buttons.emplace_back("Select", 1);
+			window.buttons.emplace_back("Back", 2);
+			break;
+		}
+		case AccountManager::PRIVATE_CHARACTER_SUCCESS_WINDOW: // says you successfully created a character
+		{
+			window.message = "\nBy my Divine Power, It is done!\n";
+			window.buttons.emplace_back("Main Menu", 1);
+			window.buttons.emplace_back("Exit", 2);
+			break;
+		}
+		case AccountManager::PRIVATE_PASSWORD_WINDOW: // tells you password requirements
+		{
+			window.message = "Passwords must adhere to the following requirements\n\nCannot:\n\n-Contain symbols\n-Contain spaces\n-Contain more than 15 characters\n-Contain less than 6 characters\n\nDo you understand the requirements and wish to proceed?";
+			window.buttons.emplace_back("Yes", 1);
+			window.buttons.emplace_back("Back", 2);
+			break;
+		}
+		case AccountManager::PRIVATE_PASSWORD_CONFIRMATION_WINDOW: // tells you to confirm password
+		{
+			window.message = "Well chosen! I just need you to confirm that password one more time for me, ok?";
+			window.buttons.emplace_back("Yes", 1);
+			window.buttons.emplace_back("Back", 2);
+			window.buttons.emplace_back("Cancel", 3);
+			break;
+		}
+		case AccountManager::PRIVATE_PASSWORD_SUCCESS_WINDOW: // tells you password was successfully changed
+		{
+			window.message = "Excellent job, wise master! Your password has been successfully changed!\n\nWhat would you like to do now?";
+			window.buttons.emplace_back("Main Menu", 1);
+			window.buttons.emplace_back("Logout", 2);
+			break;
+		}
+		case AccountManager::PRIVATE_PASSWORD_FAILED_WINDOW: // says password doesn't meet requirements
+		{
+			window.message = "I'm sorry, but that didn't quite match what you entered the first time. Please ensure you enter the same password you entered before..\nAre you ready to proceed? Or shall we start again?";
+			window.buttons.emplace_back("Retry", 1);
+			window.buttons.emplace_back("New Password", 2);
+			window.buttons.emplace_back("Main Menu", 3);
+			break;
+		}
+		case AccountManager::PRIVATE_PASSSWORD_CONFIRMATION_FAILED: // says passwords don't match
+		{
+			window.title = "Invalid Password!";
+			window.message = "The password you have entered was not accepted because of one of the following reasons:\n\n-Contains symbols\n-Contains spaces\n-Contains more than 15 characters\n-Contains less than 6 characters\n\nAre you ready to try a different password?";
+			window.buttons.emplace_back("Yes", 1);
+			window.buttons.emplace_back("Cancel", 2);
+			break;
+		}
+	}
+	return window;
+}
+
 ModalWindow Game::CreateAccountManagerWindow(const uint32_t modalWindowId)
 {	// todo : trade out magic numbers here and below with enums
 	auto window = ModalWindow(modalWindowId, "Account Manager", "");
@@ -3809,6 +3914,11 @@ void Game::onAccountManagerInput(const PlayerPtr& player, const uint32_t modalWi
 	}
 }
 
+void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice)
+{
+
+}
+
 void Game::doAccountManagerLogin(const PlayerPtr& player)
 {
 
@@ -3829,8 +3939,7 @@ void Game::doAccountManagerLogin(const PlayerPtr& player)
 	}
 	else // Account Manager on player's personal account
 	{
-		ModalWindow loginWindow = ModalWindow(12, "Account Manager", "Welcome back my friend! How may I be of assistance today?");
-
+		auto loginWindow = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN_WINDOW);
 		player->sendModalWindow(loginWindow);
 		return;
 	}
@@ -5997,7 +6106,9 @@ void Game::playerAnswerModalWindow(const uint32_t playerId, const uint32_t modal
 	}
 
 	if (player->isAccountManager()) {
+		if (player->getAccount() == 1)
 		g_game.onAccountManagerInput(player, modalWindowId, button, choice);
+		g_game.onPrivateAccountManagerInput(player, modalWindowId, button, choice);
 		return;
 	}
 

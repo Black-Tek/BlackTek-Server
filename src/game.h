@@ -422,7 +422,8 @@ class Game
 		void playerShowQuestLine(uint32_t playerId, uint16_t questId);
 		void playerSay(uint32_t playerId, uint16_t channelId, SpeakClasses type,
 		               const std::string& receiver, const std::string& text);
-		static ModalWindow CreateAccountManagerWindow(const uint32_t modalWindowId);
+		ModalWindow CreatePrivateAccountManagerWindow(const uint32_t modalWindowId, const uint32_t optionId);
+		ModalWindow CreateAccountManagerWindow(const uint32_t modalWindowId);
 		void playerChangeOutfit(uint32_t playerId, Outfit_t outfit);
 		void playerInviteToParty(uint32_t playerId, uint32_t invitedId);
 		void playerJoinParty(uint32_t playerId, uint32_t leaderId);
@@ -565,8 +566,13 @@ class Game
 			tilesToClean.clear();
 		}
 
+		void addCharacterOption(CharacterOption& option)
+		{
+			character_options.emplace_back(option);
+		}
 		void onAccountManagerRecieveText(uint32_t player_id, uint32_t window_id, const std::string& text);
 		void onAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice);
+		void onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice);
 		void doAccountManagerLogin(const PlayerPtr& player);
 		void doAccountManagerReset(uint32_t player_id) {
 			const auto player = getPlayerByID(player_id);
@@ -596,6 +602,7 @@ class Game
 		gtl::node_hash_map<uint32_t, Guild*> guilds;
 		std::vector<TilePtr> loaded_tiles;
 		std::vector<ItemPtr> loaded_tile_items;
+		std::vector<CharacterOption> character_options;
 		gtl::node_hash_map<uint16_t, ItemPtr> uniqueItems;
 		gtl::node_hash_map<uint32_t, gtl::flat_hash_map<uint32_t, int32_t>> accountStorageMap;
 

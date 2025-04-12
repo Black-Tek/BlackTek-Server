@@ -11,6 +11,8 @@
 struct CharacterOption {
     // idea, maybe add groups here later? and even guilds? 
     // to enhance possibilities for accounts with VIP or registered to a guild or faction ect..
+    int32_t id = 0; // internal use only
+    std::string name = "";
     int32_t vocation = 0;
     bool premium = false;
     bool allowTowns = true;
@@ -72,13 +74,17 @@ public:
         COMMON_CONFIRMATION_FAILED,
         COMMON_CANCEL_WINDOW,
 
-        LOGIN_WINDOW,
-        CHARACTER_WINDOW,
-        PASSWORD_WINDOW,
-        PASSWORD_CONFIRMATION_WINDOW,
-        CHARACTER_SUCCESS_WINDOW,
-        PASSWORD_FAILED_WINDOW,
-        PASSSWORD_CONFIRMATION_FAILED,
+        PRIVATE_LOGIN_WINDOW,
+        PRIVATE_CHARACTER_VOCATION_WINDOW,
+        PRIVATE_CHARACTER_WINDOW,
+        PRIVATE_CHARACTER_TOWN_WINDOW,
+        PRIVATE_CHARACTER_SUCCESS_WINDOW,
+
+        PRIVATE_PASSWORD_WINDOW,
+        PRIVATE_PASSWORD_CONFIRMATION_WINDOW,
+        PRIVATE_PASSWORD_SUCCESS_WINDOW,
+        PRIVATE_PASSWORD_FAILED_WINDOW,
+        PRIVATE_PASSSWORD_CONFIRMATION_FAILED,
     };
 
 
