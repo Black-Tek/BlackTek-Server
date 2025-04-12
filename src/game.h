@@ -422,7 +422,8 @@ class Game
 		void playerShowQuestLine(uint32_t playerId, uint16_t questId);
 		void playerSay(uint32_t playerId, uint16_t channelId, SpeakClasses type,
 		               const std::string& receiver, const std::string& text);
-		ModalWindow CreatePrivateAccountManagerWindow(const uint32_t modalWindowId, const uint32_t optionId);
+		ModalWindow CreatePrivateAccountManagerWindow(const uint32_t modalWindowId, const uint32_t optionId = 0);
+		void HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice);
 		ModalWindow CreateAccountManagerWindow(const uint32_t modalWindowId);
 		void playerChangeOutfit(uint32_t playerId, Outfit_t outfit);
 		void playerInviteToParty(uint32_t playerId, uint32_t invitedId);
@@ -570,6 +571,21 @@ class Game
 		{
 			character_options.emplace_back(option);
 		}
+
+		CharacterOption getOptionById(const uint32_t id)
+		{
+			for (const auto& option : character_options) 
+			{
+				if (option.id == id)
+				{
+					return option;
+				}
+			}
+			// log here
+			[[unlikely]]
+			return CharacterOption();
+		}
+
 		void onAccountManagerRecieveText(uint32_t player_id, uint32_t window_id, const std::string& text);
 		void onAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice);
 		void onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice);
