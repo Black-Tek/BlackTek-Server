@@ -41,6 +41,7 @@ class BedItem final : public Item
 			house = h;
 		}
 
+		void updateHouse();
 		bool canUse(PlayerPtr player) const;
 
 		bool trySleep(const PlayerPtr& player);

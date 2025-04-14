@@ -7,6 +7,8 @@
 #include "game.h"
 #include "iologindata.h"
 #include "scheduler.h"
+#include "tile.h"
+#include "house.h"
 
 extern Game g_game;
 
@@ -77,8 +79,25 @@ BedItemPtr BedItem::getNextBedItem() const
 	return tile->getBedItem();
 }
 
+void BedItem::updateHouse()
+{
+	const TilePtr tile = getTile();
+	if (!tile || !tile->isHouseTile()) {
+		return;
+	}
+
+	House* h = tile->getHouse();
+	if (h) {
+		setHouse(h);
+	}
+}
+
 bool BedItem::canUse(PlayerPtr player) const
 {
+	if (!house) {
+		const_cast<BedItem*>(this)->updateHouse();
+	}
+
 	if (!player || !house || !player->isPremium() || player->getZone() != ZONE_PROTECTION) {
 		return false;
 	}
