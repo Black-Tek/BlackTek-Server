@@ -1429,19 +1429,19 @@ class Player final : public Creature, public Cylinder
 		}
 
 		void setTempAccountName(std::string name) {
-			tempAccountName = name;
+			client->setTempAccountName(name);
 		}
 
 		void setTempPassword(std::string password) {
-			tempPassword = password;
+			client->setTempPassword(password);
 		}
 
 		const std::string& getTempAccountName() {
-			return tempAccountName;
+			return client->getTempAccountName();
 		}
 
 		const std::string& getTempPassword() {
-			return tempPassword;
+			return client->getTempPassword();
 		}
 
 		Position generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, CombatOrigin origin);

@@ -290,6 +290,28 @@ class ProtocolGame final : public Protocol
 		//otclient
 		void parseExtendedOpcode(NetworkMessage& msg);
 
+
+		// account manager
+		std::string getTempAccountName()
+		{
+			return account_name;
+		}
+
+		void setTempAccountName(std::string& name)
+		{
+			account_name = name;
+		}
+
+		std::string getTempPassword()
+		{
+			return account_password;
+		}
+
+		void setTempPassword(std::string& password)
+		{
+			account_password = password;
+		}
+
 		friend class Player;
 
 		// Helpers so we don't need to bind every time
@@ -305,7 +327,8 @@ class ProtocolGame final : public Protocol
 
 		std::unordered_set<uint32_t> knownCreatureSet;
 		PlayerPtr player = nullptr;
-
+		std::string account_name{};
+		std::string account_password{};
 		uint32_t eventConnect = 0;
 		uint32_t challengeTimestamp = 0;
 		uint16_t version = CLIENT_VERSION_MIN;
