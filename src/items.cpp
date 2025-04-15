@@ -8,7 +8,8 @@
 #include "movement.h"
 #include "weapons.h"
 
-#include "pugicast.h"
+#include <toml++/toml.hpp>
+#include <filesystem>
 
 extern MoveEvents* g_moveEvents;
 extern Weapons* g_weapons;
@@ -205,7 +206,7 @@ bool Items::reload()
 	clear();
 	loadFromOtb("data/items/items.otb");
 
-	if (!loadFromXml()) {
+	if (!loadFromToml()) {
 		return false;
 	}
 
@@ -454,853 +455,1220 @@ bool Items::loadFromOtb(const std::string& file)
 	return true;
 }
 
-bool Items::loadFromXml()
+bool Items::loadFromToml()
 {
-	pugi::xml_document doc;
-	pugi::xml_parse_result result = doc.load_file("data/items/items.xml");
-	if (!result) {
-		printXMLError("Error - Items::loadFromXml", "data/items/items.xml", result);
-		return false;
-	}
+    namespace fs = std::filesystem;
+    const std::string itemsDir = "data/items/";
+    if (!fs::exists(itemsDir)) {
+        std::cout << "[Error - Items::loadFromToml] Directory " << itemsDir << " not found" << std::endl;
+        return false;
+    }
 
-	for (auto itemNode : doc.child("items").children()) {
-		pugi::xml_attribute idAttribute = itemNode.attribute("id");
-		if (idAttribute) {
-			parseItemNode(itemNode, pugi::cast<uint16_t>(idAttribute.value()));
-			continue;
-		}
+    bool success = true;
+    for (const auto& entry : fs::directory_iterator(itemsDir)) {
+        if (entry.path().extension() != ".toml") {
+            continue;
+        }
 
-		pugi::xml_attribute fromIdAttribute = itemNode.attribute("fromid");
-		if (!fromIdAttribute) {
-			std::cout << "[Warning - Items::loadFromXml] No item id found" << std::endl;
-			continue;
-		}
+        try {
+            toml::table tbl = toml::parse_file(entry.path().string());
+            auto itemsArray = tbl["items"].as_array(); // Changed from "item" to "items"
+            if (!itemsArray) {
+                std::cout << "[Warning - Items::loadFromToml] No 'items' array in " << entry.path() << std::endl;
+                continue;
+            }
 
-		pugi::xml_attribute toIdAttribute = itemNode.attribute("toid");
-		if (!toIdAttribute) {
-			std::cout << "[Warning - Items::loadFromXml] fromid (" << fromIdAttribute.value() << ") without toid" << std::endl;
-			continue;
-		}
+            for (const auto& item : *itemsArray) {
+                if (!item.is_table()) {
+                    std::cout << "[Warning - Items::loadFromToml] Invalid item entry in " << entry.path() << std::endl;
+                    continue;
+                }
 
-		uint16_t id = pugi::cast<uint16_t>(fromIdAttribute.value());
-		uint16_t toId = pugi::cast<uint16_t>(toIdAttribute.value());
-		while (id <= toId) {
-			parseItemNode(itemNode, id++);
-		}
-	}
+                const toml::table& itemTable = *item.as_table();
+                if (auto idNode = itemTable["id"]) {
+                    uint16_t id = static_cast<uint16_t>(idNode.as_integer()->get());
+                    parseItemToml(itemTable, id);
+                } else if (auto fromIdNode = itemTable["fromid"], toIdNode = itemTable["toid"]; fromIdNode && toIdNode) {
+                    uint16_t fromId = static_cast<uint16_t>(fromIdNode.as_integer()->get());
+                    uint16_t toId = static_cast<uint16_t>(toIdNode.as_integer()->get());
+                    if (fromId > toId) {
+                        std::cout << "[Warning - Items::loadFromToml] fromid (" << fromId << ") > toid (" << toId << ") in " << entry.path() << std::endl;
+                        continue;
+                    }
+                    for (uint16_t id = fromId; id <= toId; ++id) {
+                        parseItemToml(itemTable, id);
+                    }
+                } else {
+                    std::cout << "[Warning - Items::loadFromToml] Missing id or fromid/toid in " << entry.path() << std::endl;
+                }
+            }
+        } catch (const toml::parse_error& e) {
+            std::cout << "[Error - Items::loadFromToml] Parse error in " << entry.path() << ": " << e.description() << std::endl;
+            success = false;
+        }
+    }
 
-	buildInventoryList();
-	return true;
+    if (!success) {
+        return false;
+    }
+
+    buildInventoryList();
+    return true;
 }
 
 void Items::buildInventoryList()
 {
-	inventory.reserve(items.size());
-	for (const auto& type: items) {
-		if (type.weaponType != WEAPON_NONE || type.ammoType != AMMO_NONE ||
-			type.attack != 0 || type.defense != 0 ||
-			type.extraDefense != 0 || type.armor != 0 ||
-			type.slotPosition & SLOTP_NECKLACE ||
-			type.slotPosition & SLOTP_RING ||
-			type.slotPosition & SLOTP_AMMO ||
-			type.slotPosition & SLOTP_FEET ||
-			type.slotPosition & SLOTP_HEAD ||
-			type.slotPosition & SLOTP_ARMOR ||
-			type.slotPosition & SLOTP_LEGS)
-		{
-			inventory.push_back(type.clientId);
-		}
-	}
-	inventory.shrink_to_fit();
-	std::sort(inventory.begin(), inventory.end());
+    inventory.clear();
+    inventory.reserve(items.size() / 2); // Rough estimate to reduce reallocations
+    for (const auto& type : items) {
+        if (type.id == 0) {
+            continue; // Skip uninitialized items
+        }
+        if (type.weaponType != WEAPON_NONE || type.ammoType != AMMO_NONE ||
+            type.attack != 0 || type.defense != 0 || type.extraDefense != 0 ||
+            type.armor != 0 || (type.slotPosition & (SLOTP_NECKLACE | SLOTP_RING | SLOTP_AMMO | SLOTP_FEET | SLOTP_HEAD | SLOTP_ARMOR | SLOTP_LEGS))) {
+            inventory.push_back(type.clientId);
+        }
+    }
+    inventory.shrink_to_fit();
+    std::sort(inventory.begin(), inventory.end());
 }
 
-void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
+void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
 {
-	if (id > 0 && id < 100) {
-		ItemType& iType = items[id];
-		iType.id = id;
-	}
-
-	ItemType& it = getItemType(id);
-	if (it.id == 0) {
-		return;
-	}
-
-	if (!it.name.empty()) {
-		std::cout << "[Warning - Items::parseItemNode] Duplicate item with id: " << id << std::endl;
-		return;
-	}
-
-	it.name = itemNode.attribute("name").as_string();
-
-	nameToItems.insert({ asLowerCaseString(it.name), id });
-
-	pugi::xml_attribute articleAttribute = itemNode.attribute("article");
-	if (articleAttribute) {
-		it.article = articleAttribute.as_string();
-	}
-
-	pugi::xml_attribute pluralAttribute = itemNode.attribute("plural");
-	if (pluralAttribute) {
-		it.pluralName = pluralAttribute.as_string();
-	}
-
-	Abilities& abilities = it.getAbilities();
-
-	for (auto attributeNode : itemNode.children()) {
-		pugi::xml_attribute keyAttribute = attributeNode.attribute("key");
-		if (!keyAttribute) {
-			continue;
-		}
-
-		pugi::xml_attribute valueAttribute = attributeNode.attribute("value");
-		if (!valueAttribute) {
-			continue;
-		}
-
-		std::string tmpStrValue = asLowerCaseString(keyAttribute.as_string());
-		auto parseAttribute = ItemParseAttributesMap.find(tmpStrValue);
-		if (parseAttribute != ItemParseAttributesMap.end()) {
-			ItemParseAttributes_t parseType = parseAttribute->second;
-			switch (parseType) {
-				case ITEM_PARSE_TYPE: {
-					tmpStrValue = asLowerCaseString(valueAttribute.as_string());
-					auto it2 = ItemTypesMap.find(tmpStrValue);
-					if (it2 != ItemTypesMap.end()) {
-						it.type = it2->second;
-						if (it.type == ITEM_TYPE_CONTAINER) {
-							it.group = ITEM_GROUP_CONTAINER;
-						}
-					} else {
-						std::cout << "[Warning - Items::parseItemNode] Unknown type: " << valueAttribute.as_string() << std::endl;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_DESCRIPTION: {
-					it.description = valueAttribute.as_string();
-					break;
-				}
-
-				case ITEM_PARSE_RUNESPELLNAME: {
-					it.runeSpellName = valueAttribute.as_string();
-					break;
-				}
-
-				case ITEM_PARSE_WEIGHT: {
-					it.weight = pugi::cast<uint32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SHOWCOUNT: {
-					it.showCount = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_ARMOR: {
-					it.armor = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_DEFENSE: {
-					it.defense = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_EXTRADEF: {
-					it.extraDefense = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_ATTACK: {
-					it.attack = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_ATTACK_SPEED: {
-					it.attackSpeed = pugi::cast<uint32_t>(valueAttribute.value());
-					if (it.attackSpeed > 0 && it.attackSpeed < 100) {
-						std::cout << "[Warning - Items::parseItemNode] AttackSpeed lower than 100 for item: " << it.id << std::endl;
-						it.attackSpeed = 100;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_CLASSIFICATION: {
-					it.classification = valueAttribute.as_string();
-					break;
-				}
-
-				case ITEM_PARSE_TIER: {
-					it.tier = valueAttribute.as_string();
-					break;
-				}
-
-				case ITEM_PARSE_IMBUEMENT_SLOT: {
-					it.imbuementslots = pugi::cast<int16_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_ROTATETO: {
-					it.rotateTo = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MOVEABLE: {
-					it.moveable = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_BLOCKPROJECTILE: {
-					it.blockProjectile = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_PICKUPABLE: {
-					it.allowPickupable = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_FORCESERIALIZE: {
-					it.forceSerialize = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_FLOORCHANGE: {
-					tmpStrValue = asLowerCaseString(valueAttribute.as_string());
-					auto it2 = TileStatesMap.find(tmpStrValue);
-					if (it2 != TileStatesMap.end()) {
-						it.floorChange |= it2->second;
-					} else {
-						std::cout << "[Warning - Items::parseItemNode] Unknown floorChange: " << valueAttribute.as_string() << std::endl;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_CORPSETYPE: {
-					tmpStrValue = asLowerCaseString(valueAttribute.as_string());
-					auto it2 = RaceTypesMap.find(tmpStrValue);
-					if (it2 != RaceTypesMap.end()) {
-						it.corpseType = it2->second;
-					} else {
-						std::cout << "[Warning - Items::parseItemNode] Unknown corpseType: " << valueAttribute.as_string() << std::endl;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_CONTAINERSIZE: {
-					it.maxItems = pugi::cast<uint16_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_FLUIDSOURCE: {
-					tmpStrValue = asLowerCaseString(valueAttribute.as_string());
-					auto it2 = FluidTypesMap.find(tmpStrValue);
-					if (it2 != FluidTypesMap.end()) {
-						it.fluidSource = it2->second;
-					} else {
-						std::cout << "[Warning - Items::parseItemNode] Unknown fluidSource: " << valueAttribute.as_string() << std::endl;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_READABLE: {
-					it.canReadText = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_WRITEABLE: {
-					it.canWriteText = valueAttribute.as_bool();
-					it.canReadText = it.canWriteText;
-					break;
-				}
-
-				case ITEM_PARSE_MAXTEXTLEN: {
-					it.maxTextLen = pugi::cast<uint16_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_WRITEONCEITEMID: {
-					it.writeOnceItemId = pugi::cast<uint16_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_WEAPONTYPE: {
-					tmpStrValue = asLowerCaseString(valueAttribute.as_string());
-					auto it2 = WeaponTypesMap.find(tmpStrValue);
-					if (it2 != WeaponTypesMap.end()) {
-						it.weaponType = it2->second;
-					} else {
-						std::cout << "[Warning - Items::parseItemNode] Unknown weaponType: " << valueAttribute.as_string() << std::endl;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_SLOTTYPE: {
-					tmpStrValue = asLowerCaseString(valueAttribute.as_string());
-					if (tmpStrValue == "head") {
-						it.slotPosition |= SLOTP_HEAD;
-						it.equipSlot = SLOTP_HEAD;
-					} else if (tmpStrValue == "body") {
-						it.slotPosition |= SLOTP_ARMOR;
-						it.equipSlot = SLOTP_ARMOR;
-					} else if (tmpStrValue == "legs") {
-						it.slotPosition |= SLOTP_LEGS;
-						it.equipSlot = SLOTP_LEGS;
-					} else if (tmpStrValue == "feet") {
-						it.slotPosition |= SLOTP_FEET;
-						it.equipSlot = SLOTP_FEET;
-					} else if (tmpStrValue == "backpack") {
-						it.slotPosition |= SLOTP_BACKPACK;
-						it.equipSlot = SLOTP_BACKPACK;
-					} else if (tmpStrValue == "two-handed") {
-						it.slotPosition |= SLOTP_TWO_HAND;
-						it.equipSlot = SLOTP_TWO_HAND;
-					} else if (tmpStrValue == "right-hand") {
-						it.slotPosition &= ~SLOTP_LEFT;
-						it.equipSlot = SLOTP_LEFT;
-					} else if (tmpStrValue == "left-hand") {
-						it.slotPosition &= ~SLOTP_RIGHT;
-						it.equipSlot = SLOTP_RIGHT;
-					} else if (tmpStrValue == "necklace") {
-						it.slotPosition |= SLOTP_NECKLACE;
-						it.equipSlot = SLOTP_NECKLACE;
-					} else if (tmpStrValue == "ring") {
-						it.slotPosition |= SLOTP_RING;
-						it.equipSlot = SLOTP_RING;
-					} else if (tmpStrValue == "ammo") {
-						it.slotPosition |= SLOTP_AMMO;
-						it.equipSlot = SLOTP_AMMO;
-					} else if (tmpStrValue == "hand") {
-						it.slotPosition |= SLOTP_HAND;
-						it.equipSlot = SLOTP_HAND;
-					} else {
-						std::cout << "[Warning - Items::parseItemNode] Unknown slotType: " << valueAttribute.as_string() << std::endl;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_AMMOTYPE: {
-					it.ammoType = getAmmoType(asLowerCaseString(valueAttribute.as_string()));
-					if (it.ammoType == AMMO_NONE) {
-						std::cout << "[Warning - Items::parseItemNode] Unknown ammoType: " << valueAttribute.as_string() << std::endl;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_SHOOTTYPE: {
-					ShootType_t shoot = getShootType(asLowerCaseString(valueAttribute.as_string()));
-					if (shoot != CONST_ANI_NONE) {
-						it.shootType = shoot;
-					} else {
-						std::cout << "[Warning - Items::parseItemNode] Unknown shootType: " << valueAttribute.as_string() << std::endl;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_EFFECT: {
-					MagicEffectClasses effect = getMagicEffect(asLowerCaseString(valueAttribute.as_string()));
-					if (effect != CONST_ME_NONE) {
-						it.magicEffect = effect;
-					} else {
-						std::cout << "[Warning - Items::parseItemNode] Unknown effect: " << valueAttribute.as_string() << std::endl;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_RANGE: {
-					it.shootRange = pugi::cast<uint16_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_STOPDURATION: {
-					it.stopTime = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_DECAYTO: {
-					it.decayTo = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_TRANSFORMEQUIPTO: {
-					it.transformEquipTo = pugi::cast<uint16_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_TRANSFORMDEEQUIPTO: {
-					it.transformDeEquipTo = pugi::cast<uint16_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_DURATION: {
-					it.decayTime = pugi::cast<uint32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SHOWDURATION: {
-					it.showDuration = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_CHARGES: {
-					it.charges = pugi::cast<uint32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SHOWCHARGES: {
-					it.showCharges = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_SHOWATTRIBUTES: {
-					it.showAttributes = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_HITCHANCE: {
-					it.hitChance = std::min<int8_t>(100, std::max<int8_t>(-100, pugi::cast<int16_t>(valueAttribute.value())));
-					break;
-				}
-
-				case ITEM_PARSE_MAXHITCHANCE: {
-					it.maxHitChance = std::min<uint32_t>(100, pugi::cast<uint32_t>(valueAttribute.value()));
-					break;
-				}
-
-				case ITEM_PARSE_INVISIBLE: {
-					abilities.invisible = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_SPEED: {
-					abilities.speed = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_HEALTHGAIN: {
-					abilities.regeneration = true;
-					abilities.healthGain = pugi::cast<uint32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_HEALTHTICKS: {
-					abilities.regeneration = true;
-					abilities.healthTicks = pugi::cast<uint32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MANAGAIN: {
-					abilities.regeneration = true;
-					abilities.manaGain = pugi::cast<uint32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MANATICKS: {
-					abilities.regeneration = true;
-					abilities.manaTicks = pugi::cast<uint32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MANASHIELD: {
-					abilities.manaShield = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_SKILLSWORD: {
-					abilities.skills[SKILL_SWORD] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLAXE: {
-					abilities.skills[SKILL_AXE] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLCLUB: {
-					abilities.skills[SKILL_CLUB] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLDIST: {
-					abilities.skills[SKILL_DISTANCE] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLFISH: {
-					abilities.skills[SKILL_FISHING] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLSHIELD: {
-					abilities.skills[SKILL_SHIELD] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLFIST: {
-					abilities.skills[SKILL_FIST] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_CRITICALHITAMOUNT: {
-					abilities.specialSkills[SPECIALSKILL_CRITICALHITAMOUNT] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_CRITICALHITCHANCE: {
-					abilities.specialSkills[SPECIALSKILL_CRITICALHITCHANCE] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MANALEECHAMOUNT: {
-					abilities.specialSkills[SPECIALSKILL_MANALEECHAMOUNT] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MANALEECHCHANCE: {
-					abilities.specialSkills[SPECIALSKILL_MANALEECHCHANCE] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_LIFELEECHAMOUNT: {
-					abilities.specialSkills[SPECIALSKILL_LIFELEECHAMOUNT] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_LIFELEECHCHANCE: {
-					abilities.specialSkills[SPECIALSKILL_LIFELEECHCHANCE] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MAXHITPOINTS: {
-					abilities.stats[STAT_MAXHITPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MAXHITPOINTSPERCENT: {
-					abilities.statsPercent[STAT_MAXHITPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MAXMANAPOINTS: {
-					abilities.stats[STAT_MAXMANAPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MAXMANAPOINTSPERCENT: {
-					abilities.statsPercent[STAT_MAXMANAPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MAGICPOINTS: {
-					abilities.stats[STAT_MAGICPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MAGICPOINTSPERCENT: {
-					abilities.statsPercent[STAT_MAGICPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SUPPRESSDRUNK: {
-					if (valueAttribute.as_bool()) {
-						abilities.conditionSuppressions |= CONDITION_DRUNK;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_SUPPRESSENERGY: {
-					if (valueAttribute.as_bool()) {
-						abilities.conditionSuppressions |= CONDITION_ENERGY;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_SUPPRESSFIRE: {
-					if (valueAttribute.as_bool()) {
-						abilities.conditionSuppressions |= CONDITION_FIRE;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_SUPPRESSPOISON: {
-					if (valueAttribute.as_bool()) {
-						abilities.conditionSuppressions |= CONDITION_POISON;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_SUPPRESSDROWN: {
-					if (valueAttribute.as_bool()) {
-						abilities.conditionSuppressions |= CONDITION_DROWN;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_SUPPRESSPHYSICAL: {
-					if (valueAttribute.as_bool()) {
-						abilities.conditionSuppressions |= CONDITION_BLEEDING;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_SUPPRESSFREEZE: {
-					if (valueAttribute.as_bool()) {
-						abilities.conditionSuppressions |= CONDITION_FREEZING;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_SUPPRESSDAZZLE: {
-					if (valueAttribute.as_bool()) {
-						abilities.conditionSuppressions |= CONDITION_DAZZLED;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_SUPPRESSCURSE: {
-					if (valueAttribute.as_bool()) {
-						abilities.conditionSuppressions |= CONDITION_CURSED;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_FIELD: {
-					it.group = ITEM_GROUP_MAGICFIELD;
-					it.type = ITEM_TYPE_MAGICFIELD;
-
-					CombatType_t combatType = COMBAT_NONE;
-					ConditionDamage* conditionDamage = nullptr;
-
-					tmpStrValue = asLowerCaseString(valueAttribute.as_string());
-					if (tmpStrValue == "fire") {
-						conditionDamage = new ConditionDamage(CONDITIONID_COMBAT, CONDITION_FIRE);
-						combatType = COMBAT_FIREDAMAGE;
-					} else if (tmpStrValue == "energy") {
-						conditionDamage = new ConditionDamage(CONDITIONID_COMBAT, CONDITION_ENERGY);
-						combatType = COMBAT_ENERGYDAMAGE;
-					} else if (tmpStrValue == "poison") {
-						conditionDamage = new ConditionDamage(CONDITIONID_COMBAT, CONDITION_POISON);
-						combatType = COMBAT_EARTHDAMAGE;
-					} else if (tmpStrValue == "drown") {
-						conditionDamage = new ConditionDamage(CONDITIONID_COMBAT, CONDITION_DROWN);
-						combatType = COMBAT_DROWNDAMAGE;
-					} else if (tmpStrValue == "physical") {
-						conditionDamage = new ConditionDamage(CONDITIONID_COMBAT, CONDITION_BLEEDING);
-						combatType = COMBAT_PHYSICALDAMAGE;
-					} else {
-						std::cout << "[Warning - Items::parseItemNode] Unknown field value: " << valueAttribute.as_string() << std::endl;
-					}
-
-					if (combatType != COMBAT_NONE) {
-						it.combatType = combatType;
-						it.conditionDamage.reset(conditionDamage);
-
-						uint32_t ticks = 0;
-						int32_t start = 0;
-						int32_t count = 1;
-						int32_t initDamage = -1;
-						int32_t damage = 0;
-						for (auto subAttributeNode : attributeNode.children()) {
-							pugi::xml_attribute subKeyAttribute = subAttributeNode.attribute("key");
-							if (!subKeyAttribute) {
-								continue;
-							}
-
-							pugi::xml_attribute subValueAttribute = subAttributeNode.attribute("value");
-							if (!subValueAttribute) {
-								continue;
-							}
-
-							tmpStrValue = asLowerCaseString(subKeyAttribute.as_string());
-							if (tmpStrValue == "initdamage") {
-								initDamage = pugi::cast<int32_t>(subValueAttribute.value());
-							} else if (tmpStrValue == "ticks") {
-								ticks = pugi::cast<uint32_t>(subValueAttribute.value());
-							} else if (tmpStrValue == "count") {
-								count = std::max<int32_t>(1, pugi::cast<int32_t>(subValueAttribute.value()));
-							} else if (tmpStrValue == "start") {
-								start = std::max<int32_t>(0, pugi::cast<int32_t>(subValueAttribute.value()));
-							} else if (tmpStrValue == "damage") {
-								damage = -pugi::cast<int32_t>(subValueAttribute.value());
-								if (start > 0) {
-									std::list<int32_t> damageList;
-									ConditionDamage::generateDamageList(damage, start, damageList);
-									for (int32_t damageValue : damageList) {
-										conditionDamage->addDamage(1, ticks, -damageValue);
-									}
-
-									start = 0;
-								} else {
-									conditionDamage->addDamage(count, ticks, damage);
-								}
-							}
-						}
-
-						// datapack compatibility, presume damage to be initialdamage if initialdamage is not declared.
-						// initDamage = 0 (don't override initDamage with damage, don't set any initDamage)
-						// initDamage = -1 (undefined, override initDamage with damage)
-						if (initDamage > 0 || initDamage < -1) {
-							conditionDamage->setInitDamage(-initDamage);
-						} else if (initDamage == -1 && start != 0) {
-							conditionDamage->setInitDamage(start);
-						}
-
-						conditionDamage->setParam(CONDITION_PARAM_FIELD, 1);
-
-						if (conditionDamage->getTotalDamage() > 0) {
-							conditionDamage->setParam(CONDITION_PARAM_FORCEUPDATE, 1);
-						}
-					}
-					break;
-				}
-
-				case ITEM_PARSE_REPLACEABLE: {
-					it.replaceable = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_PARTNERDIRECTION: {
-					it.bedPartnerDir = getDirection(valueAttribute.as_string());
-					break;
-				}
-
-				case ITEM_PARSE_LEVELDOOR: {
-					it.levelDoor = pugi::cast<uint32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MALETRANSFORMTO: {
-					uint16_t value = pugi::cast<uint16_t>(valueAttribute.value());
-					it.transformToOnUse[PLAYERSEX_MALE] = value;
-					ItemType& other = getItemType(value);
-					if (other.transformToFree == 0) {
-						other.transformToFree = it.id;
-					}
-
-					if (it.transformToOnUse[PLAYERSEX_FEMALE] == 0) {
-						it.transformToOnUse[PLAYERSEX_FEMALE] = value;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_FEMALETRANSFORMTO: {
-					uint16_t value = pugi::cast<uint16_t>(valueAttribute.value());
-					it.transformToOnUse[PLAYERSEX_FEMALE] = value;
-
-					ItemType& other = getItemType(value);
-					if (other.transformToFree == 0) {
-						other.transformToFree = it.id;
-					}
-
-					if (it.transformToOnUse[PLAYERSEX_MALE] == 0) {
-						it.transformToOnUse[PLAYERSEX_MALE] = value;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_TRANSFORMTO: {
-					it.transformToFree = pugi::cast<uint16_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_DESTROYTO: {
-					it.destroyTo = pugi::cast<uint16_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_ELEMENTICE: {
-					abilities.elementDamage = pugi::cast<uint16_t>(valueAttribute.value());
-					abilities.elementType = COMBAT_ICEDAMAGE;
-					break;
-				}
-
-				case ITEM_PARSE_ELEMENTEARTH: {
-					abilities.elementDamage = pugi::cast<uint16_t>(valueAttribute.value());
-					abilities.elementType = COMBAT_EARTHDAMAGE;
-					break;
-				}
-
-				case ITEM_PARSE_ELEMENTFIRE: {
-					abilities.elementDamage = pugi::cast<uint16_t>(valueAttribute.value());
-					abilities.elementType = COMBAT_FIREDAMAGE;
-					break;
-				}
-
-				case ITEM_PARSE_ELEMENTENERGY: {
-					abilities.elementDamage = pugi::cast<uint16_t>(valueAttribute.value());
-					abilities.elementType = COMBAT_ENERGYDAMAGE;
-					break;
-				}
-
-				case ITEM_PARSE_ELEMENTDEATH: {
-					abilities.elementDamage = pugi::cast<uint16_t>(valueAttribute.value());
-					abilities.elementType = COMBAT_DEATHDAMAGE;
-					break;
-				}
-
-				case ITEM_PARSE_ELEMENTHOLY: {
-					abilities.elementDamage = pugi::cast<uint16_t>(valueAttribute.value());
-					abilities.elementType = COMBAT_HOLYDAMAGE;
-					break;
-				}
-
-				case ITEM_PARSE_WALKSTACK: {
-					it.walkStack = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_BLOCKING: {
-					it.blockSolid = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_ALLOWDISTREAD: {
-					it.allowDistRead = booleanString(valueAttribute.as_string());
-					break;
-				}
-
-				case ITEM_PARSE_STOREITEM: {
-					it.storeItem = booleanString(valueAttribute.as_string());
-					break;
-				}
-
-				case ITEM_PARSE_WORTH: {
-					uint64_t worth = pugi::cast<uint64_t>(valueAttribute.value());
-					if (currencyItems.find(worth) != currencyItems.end()) {
-						std::cout << "[Warning - Items::parseItemNode] Duplicated currency worth. Item " << id << " redefines worth " << worth << std::endl;
-					} else {
-						currencyItems.insert(CurrencyMap::value_type(worth, id));
-						it.worth = worth;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_AUGMENT: {
-					auto name = valueAttribute.as_string();
-					if (std::find(it.augments.begin(), it.augments.end(), name) == it.augments.end()) {
-						it.augments.emplace(std::move(name));
-					}
-					break;
-				}
-
-
-				default: {
-					// It should not ever get to here, only if you add a new key to the map and don't configure a case for it.
-					std::cout << "[Warning - Items::parseItemNode] Not configured key value: " << keyAttribute.as_string() << std::endl;
-					break;
-				}
-			}
-		} else {
-			std::cout << "[Warning - Items::parseItemNode] Unknown key value: " << keyAttribute.as_string() << std::endl;
-		}
-	}
-
-	//check bed items
-	if ((it.transformToFree != 0 || it.transformToOnUse[PLAYERSEX_FEMALE] != 0 || it.transformToOnUse[PLAYERSEX_MALE] != 0) && it.type != ITEM_TYPE_BED) {
-		std::cout << "[Warning - Items::parseItemNode] Item " << it.id << " is not set as a bed-type" << std::endl;
-	}
+    if (id >= items.size()) {
+        items.resize(id + 1);
+    }
+
+    ItemType& it = items[id];
+    if (it.id == 0) {
+        it.id = id;
+    } else if (!it.name.empty()) {
+        std::cout << "[Warning - Items::parseItemToml] Duplicate item definition for id: " << id << std::endl;
+        return;
+    }
+
+    // Handle top-level attributes explicitly
+    if (auto nameNode = itemTable["name"]) {
+        it.name = nameNode.as_string()->get();
+        nameToItems.emplace(asLowerCaseString(it.name), id);
+    }
+
+    if (auto articleNode = itemTable["article"]) {
+        it.article = articleNode.as_string()->get();
+    }
+
+    if (auto pluralNode = itemTable["plural"]) {
+        it.pluralName = pluralNode.as_string()->get();
+    }
+
+    Abilities& abilities = it.getAbilities();
+
+    // Handle the [items.attributes] table
+    if (auto attributesNode = itemTable["attributes"]) {
+        if (attributesNode.is_table()) {
+            const toml::table& attributesTable = *attributesNode.as_table();
+            for (const auto& [key, value] : attributesTable) {
+                std::string keyStr = asLowerCaseString(std::string(key));
+                auto parseAttribute = ItemParseAttributesMap.find(keyStr);
+                if (parseAttribute == ItemParseAttributesMap.end()) {
+                    std::cout << "[Warning - Items::parseItemToml] Unknown attribute '" << key << "' in attributes for item id: " << id << std::endl;
+                    continue;
+                }
+
+                switch (parseAttribute->second) {
+                    case ITEM_PARSE_TYPE:
+                        if (value.is_string()) {
+                            std::string typeStr = asLowerCaseString(value.as_string()->get());
+                            if (auto it2 = ItemTypesMap.find(typeStr); it2 != ItemTypesMap.end()) {
+                                it.type = it2->second;
+                                if (it.type == ITEM_TYPE_CONTAINER) {
+                                    it.group = ITEM_GROUP_CONTAINER;
+                                }
+                            }
+                        }
+                        break;
+
+                    case ITEM_PARSE_DESCRIPTION:
+                        if (value.is_string()) it.description = value.as_string()->get();
+                        break;
+
+                    case ITEM_PARSE_RUNESPELLNAME:
+                        if (value.is_string()) it.runeSpellName = value.as_string()->get();
+                        break;
+
+                    case ITEM_PARSE_WEIGHT:
+                        if (value.is_integer()) it.weight = static_cast<uint32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_SHOWCOUNT:
+                        if (value.is_boolean()) it.showCount = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_ARMOR:
+                        if (value.is_integer()) it.armor = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_DEFENSE:
+                        if (value.is_integer()) it.defense = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_EXTRADEF:
+                        if (value.is_integer()) it.extraDefense = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_ATTACK:
+                        if (value.is_integer()) it.attack = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_ATTACK_SPEED:
+                        if (value.is_integer()) {
+                            it.attackSpeed = static_cast<uint32_t>(value.as_integer()->get());
+                            if (it.attackSpeed > 0 && it.attackSpeed < 100) {
+                                std::cout << "[Warning - Items::parseItemToml] AttackSpeed < 100 for item " << id << ", setting to 100" << std::endl;
+                                it.attackSpeed = 100;
+                            }
+                        }
+                        break;
+
+                    case ITEM_PARSE_CLASSIFICATION:
+                        if (value.is_string()) it.classification = value.as_string()->get();
+                        break;
+
+                    case ITEM_PARSE_TIER:
+                        if (value.is_string()) it.tier = value.as_string()->get();
+                        break;
+
+                    case ITEM_PARSE_IMBUEMENT_SLOT:
+                        if (value.is_integer()) it.imbuementslots = static_cast<int16_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_ROTATETO:
+                        if (value.is_integer()) it.rotateTo = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_MOVEABLE:
+                        if (value.is_boolean()) it.moveable = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_BLOCKPROJECTILE:
+                        if (value.is_boolean()) it.blockProjectile = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_PICKUPABLE:
+                        if (value.is_boolean()) it.allowPickupable = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_FORCESERIALIZE:
+                        if (value.is_boolean()) it.forceSerialize = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_FLOORCHANGE:
+                        if (value.is_string()) {
+                            std::string floorChangeStr = asLowerCaseString(value.as_string()->get());
+                            if (auto it2 = TileStatesMap.find(floorChangeStr); it2 != TileStatesMap.end()) {
+                                it.floorChange |= it2->second;
+                            }
+                        }
+                        break;
+
+                    case ITEM_PARSE_CORPSETYPE:
+                        if (value.is_string()) {
+                            std::string corpseTypeStr = asLowerCaseString(value.as_string()->get());
+                            if (auto it2 = RaceTypesMap.find(corpseTypeStr); it2 != RaceTypesMap.end()) {
+                                it.corpseType = it2->second;
+                            }
+                        }
+                        break;
+
+                    case ITEM_PARSE_CONTAINERSIZE:
+                        if (value.is_integer()) it.maxItems = static_cast<uint16_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_FLUIDSOURCE:
+                        if (value.is_string()) {
+                            std::string fluidSourceStr = asLowerCaseString(value.as_string()->get());
+                            if (auto it2 = FluidTypesMap.find(fluidSourceStr); it2 != FluidTypesMap.end()) {
+                                it.fluidSource = it2->second;
+                            }
+                        }
+                        break;
+
+                    case ITEM_PARSE_READABLE:
+                        if (value.is_boolean()) it.canReadText = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_WRITEABLE:
+                        if (value.is_boolean()) {
+                            it.canWriteText = value.as_boolean()->get();
+                            it.canReadText |= it.canWriteText;
+                        }
+                        break;
+
+                    case ITEM_PARSE_MAXTEXTLEN:
+                        if (value.is_integer()) it.maxTextLen = static_cast<uint16_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_WRITEONCEITEMID:
+                        if (value.is_integer()) it.writeOnceItemId = static_cast<uint16_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_WEAPONTYPE:
+                        if (value.is_string()) {
+                            std::string weaponTypeStr = asLowerCaseString(value.as_string()->get());
+                            if (auto it2 = WeaponTypesMap.find(weaponTypeStr); it2 != WeaponTypesMap.end()) {
+                                it.weaponType = it2->second;
+                            }
+                        }
+                        break;
+
+                    case ITEM_PARSE_SLOTTYPE:
+                        if (value.is_string()) {
+                            std::string slotTypeStr = asLowerCaseString(value.as_string()->get());
+                            if (slotTypeStr == "head") { it.slotPosition |= SLOTP_HEAD; it.equipSlot = SLOTP_HEAD; }
+                            else if (slotTypeStr == "body") { it.slotPosition |= SLOTP_ARMOR; it.equipSlot = SLOTP_ARMOR; }
+                            else if (slotTypeStr == "legs") { it.slotPosition |= SLOTP_LEGS; it.equipSlot = SLOTP_LEGS; }
+                            else if (slotTypeStr == "feet") { it.slotPosition |= SLOTP_FEET; it.equipSlot = SLOTP_FEET; }
+                            else if (slotTypeStr == "backpack") { it.slotPosition |= SLOTP_BACKPACK; it.equipSlot = SLOTP_BACKPACK; }
+                            else if (slotTypeStr == "two-handed") { it.slotPosition |= SLOTP_TWO_HAND; it.equipSlot = SLOTP_TWO_HAND; }
+                            else if (slotTypeStr == "right-hand") { it.slotPosition &= ~SLOTP_LEFT; it.equipSlot = SLOTP_LEFT; }
+                            else if (slotTypeStr == "left-hand") { it.slotPosition &= ~SLOTP_RIGHT; it.equipSlot = SLOTP_RIGHT; }
+                            else if (slotTypeStr == "necklace") { it.slotPosition |= SLOTP_NECKLACE; it.equipSlot = SLOTP_NECKLACE; }
+                            else if (slotTypeStr == "ring") { it.slotPosition |= SLOTP_RING; it.equipSlot = SLOTP_RING; }
+                            else if (slotTypeStr == "ammo") { it.slotPosition |= SLOTP_AMMO; it.equipSlot = SLOTP_AMMO; }
+                            else if (slotTypeStr == "hand") { it.slotPosition |= SLOTP_HAND; it.equipSlot = SLOTP_HAND; }
+                        }
+                        break;
+
+                    case ITEM_PARSE_AMMOTYPE:
+                        if (value.is_string()) it.ammoType = getAmmoType(asLowerCaseString(value.as_string()->get()));
+                        break;
+
+                    case ITEM_PARSE_SHOOTTYPE:
+                        if (value.is_string()) it.shootType = getShootType(asLowerCaseString(value.as_string()->get()));
+                        break;
+
+                    case ITEM_PARSE_EFFECT:
+                        if (value.is_string()) it.magicEffect = getMagicEffect(asLowerCaseString(value.as_string()->get()));
+                        break;
+
+                    case ITEM_PARSE_RANGE:
+                        if (value.is_integer()) it.shootRange = static_cast<uint16_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_STOPDURATION:
+                        if (value.is_boolean()) it.stopTime = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_DECAYTO:
+                        if (value.is_integer()) it.decayTo = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_TRANSFORMEQUIPTO:
+                        if (value.is_integer()) it.transformEquipTo = static_cast<uint16_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_TRANSFORMDEEQUIPTO:
+                        if (value.is_integer()) it.transformDeEquipTo = static_cast<uint16_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_DURATION:
+                        if (value.is_integer()) it.decayTime = static_cast<uint32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_SHOWDURATION:
+                        if (value.is_boolean()) it.showDuration = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_CHARGES:
+                        if (value.is_integer()) it.charges = static_cast<uint32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_SHOWCHARGES:
+                        if (value.is_boolean()) it.showCharges = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_SHOWATTRIBUTES:
+                        if (value.is_boolean()) it.showAttributes = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_HITCHANCE:
+                        if (value.is_integer()) {
+                            int16_t val = static_cast<int16_t>(value.as_integer()->get());
+                            it.hitChance = (val < -100) ? -100 : (val > 100) ? 100 : val;
+                        }
+                        break;
+
+                    case ITEM_PARSE_MAXHITCHANCE:
+                        if (value.is_integer()) it.maxHitChance = std::min<uint32_t>(100, static_cast<uint32_t>(value.as_integer()->get()));
+                        break;
+
+                    case ITEM_PARSE_INVISIBLE:
+                        if (value.is_boolean()) abilities.invisible = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_SPEED:
+                        if (value.is_integer()) abilities.speed = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_HEALTHGAIN:
+                        if (value.is_integer()) {
+                            abilities.regeneration = true;
+                            abilities.healthGain = static_cast<uint32_t>(value.as_integer()->get());
+                        }
+                        break;
+
+                    case ITEM_PARSE_HEALTHTICKS:
+                        if (value.is_integer()) {
+                            abilities.regeneration = true;
+                            abilities.healthTicks = static_cast<uint32_t>(value.as_integer()->get());
+                        }
+                        break;
+
+                    case ITEM_PARSE_MANAGAIN:
+                        if (value.is_integer()) {
+                            abilities.regeneration = true;
+                            abilities.manaGain = static_cast<uint32_t>(value.as_integer()->get());
+                        }
+                        break;
+
+                    case ITEM_PARSE_MANATICKS:
+                        if (value.is_integer()) {
+                            abilities.regeneration = true;
+                            abilities.manaTicks = static_cast<uint32_t>(value.as_integer()->get());
+                        }
+                        break;
+
+                    case ITEM_PARSE_MANASHIELD:
+                        if (value.is_boolean()) abilities.manaShield = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_SKILLSWORD:
+                        if (value.is_integer()) abilities.skills[SKILL_SWORD] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_SKILLAXE:
+                        if (value.is_integer()) abilities.skills[SKILL_AXE] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_SKILLCLUB:
+                        if (value.is_integer()) abilities.skills[SKILL_CLUB] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_SKILLDIST:
+                        if (value.is_integer()) abilities.skills[SKILL_DISTANCE] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_SKILLFISH:
+                        if (value.is_integer()) abilities.skills[SKILL_FISHING] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_SKILLSHIELD:
+                        if (value.is_integer()) abilities.skills[SKILL_SHIELD] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_SKILLFIST:
+                        if (value.is_integer()) abilities.skills[SKILL_FIST] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_CRITICALHITAMOUNT:
+                        if (value.is_integer()) abilities.specialSkills[SPECIALSKILL_CRITICALHITAMOUNT] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_CRITICALHITCHANCE:
+                        if (value.is_integer()) abilities.specialSkills[SPECIALSKILL_CRITICALHITCHANCE] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_MANALEECHAMOUNT:
+                        if (value.is_integer()) abilities.specialSkills[SPECIALSKILL_MANALEECHAMOUNT] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_MANALEECHCHANCE:
+                        if (value.is_integer()) abilities.specialSkills[SPECIALSKILL_MANALEECHCHANCE] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_LIFELEECHAMOUNT:
+                        if (value.is_integer()) abilities.specialSkills[SPECIALSKILL_LIFELEECHAMOUNT] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_LIFELEECHCHANCE:
+                        if (value.is_integer()) abilities.specialSkills[SPECIALSKILL_LIFELEECHCHANCE] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_MAXHITPOINTS:
+                        if (value.is_integer()) abilities.stats[STAT_MAXHITPOINTS] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_MAXHITPOINTSPERCENT:
+                        if (value.is_integer()) abilities.statsPercent[STAT_MAXHITPOINTS] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_MAXMANAPOINTS:
+                        if (value.is_integer()) abilities.stats[STAT_MAXMANAPOINTS] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_MAXMANAPOINTSPERCENT:
+                        if (value.is_integer()) abilities.statsPercent[STAT_MAXMANAPOINTS] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_MAGICPOINTS:
+                        if (value.is_integer()) abilities.stats[STAT_MAGICPOINTS] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_MAGICPOINTSPERCENT:
+                        if (value.is_integer()) abilities.statsPercent[STAT_MAGICPOINTS] = static_cast<int32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_SUPPRESSDRUNK:
+                        if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_DRUNK;
+                        break;
+
+                    case ITEM_PARSE_SUPPRESSENERGY:
+                        if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_ENERGY;
+                        break;
+
+                    case ITEM_PARSE_SUPPRESSFIRE:
+                        if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_FIRE;
+                        break;
+
+                    case ITEM_PARSE_SUPPRESSPOISON:
+                        if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_POISON;
+                        break;
+
+                    case ITEM_PARSE_SUPPRESSDROWN:
+                        if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_DROWN;
+                        break;
+
+                    case ITEM_PARSE_SUPPRESSPHYSICAL:
+                        if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_BLEEDING;
+                        break;
+
+                    case ITEM_PARSE_SUPPRESSFREEZE:
+                        if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_FREEZING;
+                        break;
+
+                    case ITEM_PARSE_SUPPRESSDAZZLE:
+                        if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_DAZZLED;
+                        break;
+
+                    case ITEM_PARSE_SUPPRESSCURSE:
+                        if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_CURSED;
+                        break;
+
+                    case ITEM_PARSE_FIELD:
+                        if (value.is_table()) {
+                            const toml::table& fieldTable = *value.as_table();
+                            it.group = ITEM_GROUP_MAGICFIELD;
+                            it.type = ITEM_TYPE_MAGICFIELD;
+
+                            std::string fieldType = fieldTable["type"] ? asLowerCaseString(fieldTable["type"].as_string()->get()) : "";
+                            CombatType_t combatType = COMBAT_NONE;
+                            std::unique_ptr<ConditionDamage> conditionDamage;
+
+                            if (fieldType == "fire") { combatType = COMBAT_FIREDAMAGE; conditionDamage = std::make_unique<ConditionDamage>(CONDITIONID_COMBAT, CONDITION_FIRE); }
+                            else if (fieldType == "energy") { combatType = COMBAT_ENERGYDAMAGE; conditionDamage = std::make_unique<ConditionDamage>(CONDITIONID_COMBAT, CONDITION_ENERGY); }
+                            else if (fieldType == "poison") { combatType = COMBAT_EARTHDAMAGE; conditionDamage = std::make_unique<ConditionDamage>(CONDITIONID_COMBAT, CONDITION_POISON); }
+                            else if (fieldType == "drown") { combatType = COMBAT_DROWNDAMAGE; conditionDamage = std::make_unique<ConditionDamage>(CONDITIONID_COMBAT, CONDITION_DROWN); }
+                            else if (fieldType == "physical") { combatType = COMBAT_PHYSICALDAMAGE; conditionDamage = std::make_unique<ConditionDamage>(CONDITIONID_COMBAT, CONDITION_BLEEDING); }
+
+                            if (combatType != COMBAT_NONE) {
+                                it.combatType = combatType;
+                                it.conditionDamage = std::move(conditionDamage);
+
+                                uint32_t ticks = fieldTable["ticks"] ? static_cast<uint32_t>(fieldTable["ticks"].as_integer()->get()) : 0;
+                                int32_t start = fieldTable["start"] ? std::max<int32_t>(0, static_cast<int32_t>(fieldTable["start"].as_integer()->get())) : 0;
+                                int32_t count = fieldTable["count"] ? std::max<int32_t>(1, static_cast<int32_t>(fieldTable["count"].as_integer()->get())) : 1;
+                                int32_t initDamage = fieldTable["initdamage"] ? static_cast<int32_t>(fieldTable["initdamage"].as_integer()->get()) : -1;
+                                int32_t damage = fieldTable["damage"] ? -static_cast<int32_t>(fieldTable["damage"].as_integer()->get()) : 0;
+
+                                if (damage != 0) {
+                                    if (start > 0) {
+                                        std::list<int32_t> damageList;
+                                        ConditionDamage::generateDamageList(damage, start, damageList);
+                                        for (int32_t damageValue : damageList) {
+                                            it.conditionDamage->addDamage(1, ticks, -damageValue);
+                                        }
+                                    } else {
+                                        it.conditionDamage->addDamage(count, ticks, damage);
+                                    }
+                                }
+
+                                if (initDamage > 0 || initDamage < -1) {
+                                    it.conditionDamage->setInitDamage(-initDamage);
+                                } else if (initDamage == -1 && start != 0) {
+                                    it.conditionDamage->setInitDamage(start);
+                                }
+
+                                it.conditionDamage->setParam(CONDITION_PARAM_FIELD, 1);
+                                if (it.conditionDamage->getTotalDamage() > 0) {
+                                    it.conditionDamage->setParam(CONDITION_PARAM_FORCEUPDATE, 1);
+                                }
+                            }
+                        }
+                        break;
+
+                    case ITEM_PARSE_REPLACEABLE:
+                        if (value.is_boolean()) it.replaceable = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_PARTNERDIRECTION:
+                        if (value.is_string()) it.bedPartnerDir = getDirection(value.as_string()->get());
+                        break;
+
+                    case ITEM_PARSE_LEVELDOOR:
+                        if (value.is_integer()) it.levelDoor = static_cast<uint32_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_MALETRANSFORMTO:
+                    case ITEM_PARSE_FEMALETRANSFORMTO:
+                        if (value.is_integer()) {
+                            uint16_t transformId = static_cast<uint16_t>(value.as_integer()->get());
+                            PlayerSex_t sex = (parseAttribute->second == ITEM_PARSE_MALETRANSFORMTO) ? PLAYERSEX_MALE : PLAYERSEX_FEMALE;
+                            it.transformToOnUse[sex] = transformId;
+                            ItemType& other = getItemType(transformId);
+                            if (other.transformToFree == 0) {
+                                other.transformToFree = it.id;
+                            }
+                            if (it.transformToOnUse[sex == PLAYERSEX_MALE ? PLAYERSEX_FEMALE : PLAYERSEX_MALE] == 0) {
+                                it.transformToOnUse[sex == PLAYERSEX_MALE ? PLAYERSEX_FEMALE : PLAYERSEX_MALE] = transformId;
+                            }
+                        }
+                        break;
+
+                    case ITEM_PARSE_TRANSFORMTO:
+                        if (value.is_integer()) it.transformToFree = static_cast<uint16_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_DESTROYTO:
+                        if (value.is_integer()) it.destroyTo = static_cast<uint16_t>(value.as_integer()->get());
+                        break;
+
+                    case ITEM_PARSE_ELEMENTICE:
+                        if (value.is_integer()) { abilities.elementDamage = static_cast<uint16_t>(value.as_integer()->get()); abilities.elementType = COMBAT_ICEDAMAGE; }
+                        break;
+
+                    case ITEM_PARSE_ELEMENTEARTH:
+                        if (value.is_integer()) { abilities.elementDamage = static_cast<uint16_t>(value.as_integer()->get()); abilities.elementType = COMBAT_EARTHDAMAGE; }
+                        break;
+
+                    case ITEM_PARSE_ELEMENTFIRE:
+                        if (value.is_integer()) { abilities.elementDamage = static_cast<uint16_t>(value.as_integer()->get()); abilities.elementType = COMBAT_FIREDAMAGE; }
+                        break;
+
+                    case ITEM_PARSE_ELEMENTENERGY:
+                        if (value.is_integer()) { abilities.elementDamage = static_cast<uint16_t>(value.as_integer()->get()); abilities.elementType = COMBAT_ENERGYDAMAGE; }
+                        break;
+
+                    case ITEM_PARSE_ELEMENTDEATH:
+                        if (value.is_integer()) { abilities.elementDamage = static_cast<uint16_t>(value.as_integer()->get()); abilities.elementType = COMBAT_DEATHDAMAGE; }
+                        break;
+
+                    case ITEM_PARSE_ELEMENTHOLY:
+                        if (value.is_integer()) { abilities.elementDamage = static_cast<uint16_t>(value.as_integer()->get()); abilities.elementType = COMBAT_HOLYDAMAGE; }
+                        break;
+
+                    case ITEM_PARSE_WALKSTACK:
+                        if (value.is_boolean()) it.walkStack = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_BLOCKING:
+                        if (value.is_boolean()) it.blockSolid = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_ALLOWDISTREAD:
+                        if (value.is_string()) it.allowDistRead = booleanString(value.as_string()->get());
+                        else if (value.is_boolean()) it.allowDistRead = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_STOREITEM:
+                        if (value.is_string()) it.storeItem = booleanString(value.as_string()->get());
+                        else if (value.is_boolean()) it.storeItem = value.as_boolean()->get();
+                        break;
+
+                    case ITEM_PARSE_WORTH:
+                        if (value.is_integer()) {
+                            uint64_t worth = static_cast<uint64_t>(value.as_integer()->get());
+                            if (currencyItems.emplace(worth, id).second) {
+                                it.worth = worth;
+                            } else {
+                                std::cout << "[Warning - Items::parseItemToml] Duplicate currency worth " << worth << " for item " << id << std::endl;
+                            }
+                        }
+                        break;
+
+                    case ITEM_PARSE_AUGMENT:
+                        if (value.is_string()) {
+                            it.augments.emplace(value.as_string()->get());
+                        } else if (value.is_array()) {
+                            for (const auto& aug : *value.as_array()) {
+                                if (aug.is_string()) it.augments.emplace(aug.as_string()->get());
+                            }
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+        } else {
+            std::cout << "[Warning - Items::parseItemToml] 'attributes' is not a table for item id: " << id << std::endl;
+        }
+    }
+
+    // Process top-level attributes, skipping known ones
+    for (const auto& [key, value] : itemTable) {
+        std::string keyStr = asLowerCaseString(std::string(key));
+
+        // Skip attributes handled explicitly
+        if (keyStr == "id" || keyStr == "name" || keyStr == "article" || keyStr == "plural" || keyStr == "attributes") {
+            continue;
+        }
+
+        auto parseAttribute = ItemParseAttributesMap.find(keyStr);
+        if (parseAttribute == ItemParseAttributesMap.end()) {
+            std::cout << "[Warning - Items::parseItemToml] Unknown attribute '" << key << "' for item id: " << id << std::endl;
+            continue;
+        }
+
+        switch (parseAttribute->second) {
+            case ITEM_PARSE_TYPE:
+                if (value.is_string()) {
+                    std::string typeStr = asLowerCaseString(value.as_string()->get());
+                    if (auto it2 = ItemTypesMap.find(typeStr); it2 != ItemTypesMap.end()) {
+                        it.type = it2->second;
+                        if (it.type == ITEM_TYPE_CONTAINER) {
+                            it.group = ITEM_GROUP_CONTAINER;
+                        }
+                    }
+                }
+                break;
+
+            case ITEM_PARSE_DESCRIPTION:
+                if (value.is_string()) it.description = value.as_string()->get();
+                break;
+
+            case ITEM_PARSE_RUNESPELLNAME:
+                if (value.is_string()) it.runeSpellName = value.as_string()->get();
+                break;
+
+            case ITEM_PARSE_WEIGHT:
+                if (value.is_integer()) it.weight = static_cast<uint32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_SHOWCOUNT:
+                if (value.is_boolean()) it.showCount = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_ARMOR:
+                if (value.is_integer()) it.armor = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_DEFENSE:
+                if (value.is_integer()) it.defense = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_EXTRADEF:
+                if (value.is_integer()) it.extraDefense = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_ATTACK:
+                if (value.is_integer()) it.attack = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_ATTACK_SPEED:
+                if (value.is_integer()) {
+                    it.attackSpeed = static_cast<uint32_t>(value.as_integer()->get());
+                    if (it.attackSpeed > 0 && it.attackSpeed < 100) {
+                        std::cout << "[Warning - Items::parseItemToml] AttackSpeed < 100 for item " << id << ", setting to 100" << std::endl;
+                        it.attackSpeed = 100;
+                    }
+                }
+                break;
+
+            case ITEM_PARSE_CLASSIFICATION:
+                if (value.is_string()) it.classification = value.as_string()->get();
+                break;
+
+            case ITEM_PARSE_TIER:
+                if (value.is_string()) it.tier = value.as_string()->get();
+                break;
+
+            case ITEM_PARSE_IMBUEMENT_SLOT:
+                if (value.is_integer()) it.imbuementslots = static_cast<int16_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_ROTATETO:
+                if (value.is_integer()) it.rotateTo = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_MOVEABLE:
+                if (value.is_boolean()) it.moveable = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_BLOCKPROJECTILE:
+                if (value.is_boolean()) it.blockProjectile = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_PICKUPABLE:
+                if (value.is_boolean()) it.allowPickupable = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_FORCESERIALIZE:
+                if (value.is_boolean()) it.forceSerialize = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_FLOORCHANGE:
+                if (value.is_string()) {
+                    std::string floorChangeStr = asLowerCaseString(value.as_string()->get());
+                    if (auto it2 = TileStatesMap.find(floorChangeStr); it2 != TileStatesMap.end()) {
+                        it.floorChange |= it2->second;
+                    }
+                }
+                break;
+
+            case ITEM_PARSE_CORPSETYPE:
+                if (value.is_string()) {
+                    std::string corpseTypeStr = asLowerCaseString(value.as_string()->get());
+                    if (auto it2 = RaceTypesMap.find(corpseTypeStr); it2 != RaceTypesMap.end()) {
+                        it.corpseType = it2->second;
+                    }
+                }
+                break;
+
+            case ITEM_PARSE_CONTAINERSIZE:
+                if (value.is_integer()) it.maxItems = static_cast<uint16_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_FLUIDSOURCE:
+                if (value.is_string()) {
+                    std::string fluidSourceStr = asLowerCaseString(value.as_string()->get());
+                    if (auto it2 = FluidTypesMap.find(fluidSourceStr); it2 != FluidTypesMap.end()) {
+                        it.fluidSource = it2->second;
+                    }
+                }
+                break;
+
+            case ITEM_PARSE_READABLE:
+                if (value.is_boolean()) it.canReadText = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_WRITEABLE:
+                if (value.is_boolean()) {
+                    it.canWriteText = value.as_boolean()->get();
+                    it.canReadText |= it.canWriteText;
+                }
+                break;
+
+            case ITEM_PARSE_MAXTEXTLEN:
+                if (value.is_integer()) it.maxTextLen = static_cast<uint16_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_WRITEONCEITEMID:
+                if (value.is_integer()) it.writeOnceItemId = static_cast<uint16_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_WEAPONTYPE:
+                if (value.is_string()) {
+                    std::string weaponTypeStr = asLowerCaseString(value.as_string()->get());
+                    if (auto it2 = WeaponTypesMap.find(weaponTypeStr); it2 != WeaponTypesMap.end()) {
+                        it.weaponType = it2->second;
+                    }
+                }
+                break;
+
+            case ITEM_PARSE_SLOTTYPE:
+                if (value.is_string()) {
+                    std::string slotTypeStr = asLowerCaseString(value.as_string()->get());
+                    if (slotTypeStr == "head") { it.slotPosition |= SLOTP_HEAD; it.equipSlot = SLOTP_HEAD; }
+                    else if (slotTypeStr == "body") { it.slotPosition |= SLOTP_ARMOR; it.equipSlot = SLOTP_ARMOR; }
+                    else if (slotTypeStr == "legs") { it.slotPosition |= SLOTP_LEGS; it.equipSlot = SLOTP_LEGS; }
+                    else if (slotTypeStr == "feet") { it.slotPosition |= SLOTP_FEET; it.equipSlot = SLOTP_FEET; }
+                    else if (slotTypeStr == "backpack") { it.slotPosition |= SLOTP_BACKPACK; it.equipSlot = SLOTP_BACKPACK; }
+                    else if (slotTypeStr == "two-handed") { it.slotPosition |= SLOTP_TWO_HAND; it.equipSlot = SLOTP_TWO_HAND; }
+                    else if (slotTypeStr == "right-hand") { it.slotPosition &= ~SLOTP_LEFT; it.equipSlot = SLOTP_LEFT; }
+                    else if (slotTypeStr == "left-hand") { it.slotPosition &= ~SLOTP_RIGHT; it.equipSlot = SLOTP_RIGHT; }
+                    else if (slotTypeStr == "necklace") { it.slotPosition |= SLOTP_NECKLACE; it.equipSlot = SLOTP_NECKLACE; }
+                    else if (slotTypeStr == "ring") { it.slotPosition |= SLOTP_RING; it.equipSlot = SLOTP_RING; }
+                    else if (slotTypeStr == "ammo") { it.slotPosition |= SLOTP_AMMO; it.equipSlot = SLOTP_AMMO; }
+                    else if (slotTypeStr == "hand") { it.slotPosition |= SLOTP_HAND; it.equipSlot = SLOTP_HAND; }
+                }
+                break;
+
+            case ITEM_PARSE_AMMOTYPE:
+                if (value.is_string()) it.ammoType = getAmmoType(asLowerCaseString(value.as_string()->get()));
+                break;
+
+            case ITEM_PARSE_SHOOTTYPE:
+                if (value.is_string()) it.shootType = getShootType(asLowerCaseString(value.as_string()->get()));
+                break;
+
+            case ITEM_PARSE_EFFECT:
+                if (value.is_string()) it.magicEffect = getMagicEffect(asLowerCaseString(value.as_string()->get()));
+                break;
+
+            case ITEM_PARSE_RANGE:
+                if (value.is_integer()) it.shootRange = static_cast<uint16_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_STOPDURATION:
+                if (value.is_boolean()) it.stopTime = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_DECAYTO:
+                if (value.is_integer()) it.decayTo = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_TRANSFORMEQUIPTO:
+                if (value.is_integer()) it.transformEquipTo = static_cast<uint16_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_TRANSFORMDEEQUIPTO:
+                if (value.is_integer()) it.transformDeEquipTo = static_cast<uint16_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_DURATION:
+                if (value.is_integer()) it.decayTime = static_cast<uint32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_SHOWDURATION:
+                if (value.is_boolean()) it.showDuration = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_CHARGES:
+                if (value.is_integer()) it.charges = static_cast<uint32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_SHOWCHARGES:
+                if (value.is_boolean()) it.showCharges = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_SHOWATTRIBUTES:
+                if (value.is_boolean()) it.showAttributes = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_HITCHANCE:
+                if (value.is_integer()) {
+                    int16_t val = static_cast<int16_t>(value.as_integer()->get());
+                    it.hitChance = (val < -100) ? -100 : (val > 100) ? 100 : val;
+                }
+                break;
+
+            case ITEM_PARSE_MAXHITCHANCE:
+                if (value.is_integer()) it.maxHitChance = std::min<uint32_t>(100, static_cast<uint32_t>(value.as_integer()->get()));
+                break;
+
+            case ITEM_PARSE_INVISIBLE:
+                if (value.is_boolean()) abilities.invisible = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_SPEED:
+                if (value.is_integer()) abilities.speed = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_HEALTHGAIN:
+                if (value.is_integer()) {
+                    abilities.regeneration = true;
+                    abilities.healthGain = static_cast<uint32_t>(value.as_integer()->get());
+                }
+                break;
+
+            case ITEM_PARSE_HEALTHTICKS:
+                if (value.is_integer()) {
+                    abilities.regeneration = true;
+                    abilities.healthTicks = static_cast<uint32_t>(value.as_integer()->get());
+                }
+                break;
+
+            case ITEM_PARSE_MANAGAIN:
+                if (value.is_integer()) {
+                    abilities.regeneration = true;
+                    abilities.manaGain = static_cast<uint32_t>(value.as_integer()->get());
+                }
+                break;
+
+            case ITEM_PARSE_MANATICKS:
+                if (value.is_integer()) {
+                    abilities.regeneration = true;
+                    abilities.manaTicks = static_cast<uint32_t>(value.as_integer()->get());
+                }
+                break;
+
+            case ITEM_PARSE_MANASHIELD:
+                if (value.is_boolean()) abilities.manaShield = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_SKILLSWORD:
+                if (value.is_integer()) abilities.skills[SKILL_SWORD] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_SKILLAXE:
+                if (value.is_integer()) abilities.skills[SKILL_AXE] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_SKILLCLUB:
+                if (value.is_integer()) abilities.skills[SKILL_CLUB] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_SKILLDIST:
+                if (value.is_integer()) abilities.skills[SKILL_DISTANCE] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_SKILLFISH:
+                if (value.is_integer()) abilities.skills[SKILL_FISHING] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_SKILLSHIELD:
+                if (value.is_integer()) abilities.skills[SKILL_SHIELD] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_SKILLFIST:
+                if (value.is_integer()) abilities.skills[SKILL_FIST] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_CRITICALHITAMOUNT:
+                if (value.is_integer()) abilities.specialSkills[SPECIALSKILL_CRITICALHITAMOUNT] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_CRITICALHITCHANCE:
+                if (value.is_integer()) abilities.specialSkills[SPECIALSKILL_CRITICALHITCHANCE] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_MANALEECHAMOUNT:
+                if (value.is_integer()) abilities.specialSkills[SPECIALSKILL_MANALEECHAMOUNT] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_MANALEECHCHANCE:
+                if (value.is_integer()) abilities.specialSkills[SPECIALSKILL_MANALEECHCHANCE] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_LIFELEECHAMOUNT:
+                if (value.is_integer()) abilities.specialSkills[SPECIALSKILL_LIFELEECHAMOUNT] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_LIFELEECHCHANCE:
+                if (value.is_integer()) abilities.specialSkills[SPECIALSKILL_LIFELEECHCHANCE] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_MAXHITPOINTS:
+                if (value.is_integer()) abilities.stats[STAT_MAXHITPOINTS] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_MAXHITPOINTSPERCENT:
+                if (value.is_integer()) abilities.statsPercent[STAT_MAXHITPOINTS] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_MAXMANAPOINTS:
+                if (value.is_integer()) abilities.stats[STAT_MAXMANAPOINTS] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_MAXMANAPOINTSPERCENT:
+                if (value.is_integer()) abilities.statsPercent[STAT_MAXMANAPOINTS] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_MAGICPOINTS:
+                if (value.is_integer()) abilities.stats[STAT_MAGICPOINTS] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_MAGICPOINTSPERCENT:
+                if (value.is_integer()) abilities.statsPercent[STAT_MAGICPOINTS] = static_cast<int32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_SUPPRESSDRUNK:
+                if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_DRUNK;
+                break;
+
+            case ITEM_PARSE_SUPPRESSENERGY:
+                if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_ENERGY;
+                break;
+
+            case ITEM_PARSE_SUPPRESSFIRE:
+                if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_FIRE;
+                break;
+
+            case ITEM_PARSE_SUPPRESSPOISON:
+                if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_POISON;
+                break;
+
+            case ITEM_PARSE_SUPPRESSDROWN:
+                if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_DROWN;
+                break;
+
+            case ITEM_PARSE_SUPPRESSPHYSICAL:
+                if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_BLEEDING;
+                break;
+
+            case ITEM_PARSE_SUPPRESSFREEZE:
+                if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_FREEZING;
+                break;
+
+            case ITEM_PARSE_SUPPRESSDAZZLE:
+                if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_DAZZLED;
+                break;
+
+            case ITEM_PARSE_SUPPRESSCURSE:
+                if (value.is_boolean() && value.as_boolean()->get()) abilities.conditionSuppressions |= CONDITION_CURSED;
+                break;
+
+            case ITEM_PARSE_FIELD:
+                if (value.is_table()) {
+                    const toml::table& fieldTable = *value.as_table();
+                    it.group = ITEM_GROUP_MAGICFIELD;
+                    it.type = ITEM_TYPE_MAGICFIELD;
+
+                    std::string fieldType = fieldTable["type"] ? asLowerCaseString(fieldTable["type"].as_string()->get()) : "";
+                    CombatType_t combatType = COMBAT_NONE;
+                    std::unique_ptr<ConditionDamage> conditionDamage;
+
+                    if (fieldType == "fire") { combatType = COMBAT_FIREDAMAGE; conditionDamage = std::make_unique<ConditionDamage>(CONDITIONID_COMBAT, CONDITION_FIRE); }
+                    else if (fieldType == "energy") { combatType = COMBAT_ENERGYDAMAGE; conditionDamage = std::make_unique<ConditionDamage>(CONDITIONID_COMBAT, CONDITION_ENERGY); }
+                    else if (fieldType == "poison") { combatType = COMBAT_EARTHDAMAGE; conditionDamage = std::make_unique<ConditionDamage>(CONDITIONID_COMBAT, CONDITION_POISON); }
+                    else if (fieldType == "drown") { combatType = COMBAT_DROWNDAMAGE; conditionDamage = std::make_unique<ConditionDamage>(CONDITIONID_COMBAT, CONDITION_DROWN); }
+                    else if (fieldType == "physical") { combatType = COMBAT_PHYSICALDAMAGE; conditionDamage = std::make_unique<ConditionDamage>(CONDITIONID_COMBAT, CONDITION_BLEEDING); }
+
+                    if (combatType != COMBAT_NONE) {
+                        it.combatType = combatType;
+                        it.conditionDamage = std::move(conditionDamage);
+
+                        uint32_t ticks = fieldTable["ticks"] ? static_cast<uint32_t>(fieldTable["ticks"].as_integer()->get()) : 0;
+                        int32_t start = fieldTable["start"] ? std::max<int32_t>(0, static_cast<int32_t>(fieldTable["start"].as_integer()->get())) : 0;
+                        int32_t count = fieldTable["count"] ? std::max<int32_t>(1, static_cast<int32_t>(fieldTable["count"].as_integer()->get())) : 1;
+                        int32_t initDamage = fieldTable["initdamage"] ? static_cast<int32_t>(fieldTable["initdamage"].as_integer()->get()) : -1;
+                        int32_t damage = fieldTable["damage"] ? -static_cast<int32_t>(fieldTable["damage"].as_integer()->get()) : 0;
+
+                        if (damage != 0) {
+                            if (start > 0) {
+                                std::list<int32_t> damageList;
+                                ConditionDamage::generateDamageList(damage, start, damageList);
+                                for (int32_t damageValue : damageList) {
+                                    it.conditionDamage->addDamage(1, ticks, -damageValue);
+                                }
+                            } else {
+                                it.conditionDamage->addDamage(count, ticks, damage);
+                            }
+                        }
+
+                        if (initDamage > 0 || initDamage < -1) {
+                            it.conditionDamage->setInitDamage(-initDamage);
+                        } else if (initDamage == -1 && start != 0) {
+                            it.conditionDamage->setInitDamage(start);
+                        }
+
+                        it.conditionDamage->setParam(CONDITION_PARAM_FIELD, 1);
+                        if (it.conditionDamage->getTotalDamage() > 0) {
+                            it.conditionDamage->setParam(CONDITION_PARAM_FORCEUPDATE, 1);
+                        }
+                    }
+                }
+                break;
+
+            case ITEM_PARSE_REPLACEABLE:
+                if (value.is_boolean()) it.replaceable = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_PARTNERDIRECTION:
+                if (value.is_string()) it.bedPartnerDir = getDirection(value.as_string()->get());
+                break;
+
+            case ITEM_PARSE_LEVELDOOR:
+                if (value.is_integer()) it.levelDoor = static_cast<uint32_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_MALETRANSFORMTO:
+            case ITEM_PARSE_FEMALETRANSFORMTO:
+                if (value.is_integer()) {
+                    uint16_t transformId = static_cast<uint16_t>(value.as_integer()->get());
+                    PlayerSex_t sex = (parseAttribute->second == ITEM_PARSE_MALETRANSFORMTO) ? PLAYERSEX_MALE : PLAYERSEX_FEMALE;
+                    it.transformToOnUse[sex] = transformId;
+                    ItemType& other = getItemType(transformId);
+                    if (other.transformToFree == 0) {
+                        other.transformToFree = it.id;
+                    }
+                    if (it.transformToOnUse[sex == PLAYERSEX_MALE ? PLAYERSEX_FEMALE : PLAYERSEX_MALE] == 0) {
+                        it.transformToOnUse[sex == PLAYERSEX_MALE ? PLAYERSEX_FEMALE : PLAYERSEX_MALE] = transformId;
+                    }
+                }
+                break;
+
+            case ITEM_PARSE_TRANSFORMTO:
+                if (value.is_integer()) it.transformToFree = static_cast<uint16_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_DESTROYTO:
+                if (value.is_integer()) it.destroyTo = static_cast<uint16_t>(value.as_integer()->get());
+                break;
+
+            case ITEM_PARSE_ELEMENTICE:
+                if (value.is_integer()) { abilities.elementDamage = static_cast<uint16_t>(value.as_integer()->get()); abilities.elementType = COMBAT_ICEDAMAGE; }
+                break;
+
+            case ITEM_PARSE_ELEMENTEARTH:
+                if (value.is_integer()) { abilities.elementDamage = static_cast<uint16_t>(value.as_integer()->get()); abilities.elementType = COMBAT_EARTHDAMAGE; }
+                break;
+
+            case ITEM_PARSE_ELEMENTFIRE:
+                if (value.is_integer()) { abilities.elementDamage = static_cast<uint16_t>(value.as_integer()->get()); abilities.elementType = COMBAT_FIREDAMAGE; }
+                break;
+
+            case ITEM_PARSE_ELEMENTENERGY:
+                if (value.is_integer()) { abilities.elementDamage = static_cast<uint16_t>(value.as_integer()->get()); abilities.elementType = COMBAT_ENERGYDAMAGE; }
+                break;
+
+            case ITEM_PARSE_ELEMENTDEATH:
+                if (value.is_integer()) { abilities.elementDamage = static_cast<uint16_t>(value.as_integer()->get()); abilities.elementType = COMBAT_DEATHDAMAGE; }
+                break;
+
+            case ITEM_PARSE_ELEMENTHOLY:
+                if (value.is_integer()) { abilities.elementDamage = static_cast<uint16_t>(value.as_integer()->get()); abilities.elementType = COMBAT_HOLYDAMAGE; }
+                break;
+
+            case ITEM_PARSE_WALKSTACK:
+                if (value.is_boolean()) it.walkStack = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_BLOCKING:
+                if (value.is_boolean()) it.blockSolid = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_ALLOWDISTREAD:
+                if (value.is_string()) it.allowDistRead = booleanString(value.as_string()->get());
+                else if (value.is_boolean()) it.allowDistRead = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_STOREITEM:
+                if (value.is_string()) it.storeItem = booleanString(value.as_string()->get());
+                else if (value.is_boolean()) it.storeItem = value.as_boolean()->get();
+                break;
+
+            case ITEM_PARSE_WORTH:
+                if (value.is_integer()) {
+                    uint64_t worth = static_cast<uint64_t>(value.as_integer()->get());
+                    if (currencyItems.emplace(worth, id).second) {
+                        it.worth = worth;
+                    } else {
+                        std::cout << "[Warning - Items::parseItemToml] Duplicate currency worth " << worth << " for item " << id << std::endl;
+                    }
+                }
+                break;
+
+            case ITEM_PARSE_AUGMENT:
+                if (value.is_string()) {
+                    it.augments.emplace(value.as_string()->get());
+                } else if (value.is_array()) {
+                    for (const auto& aug : *value.as_array()) {
+                        if (aug.is_string()) it.augments.emplace(aug.as_string()->get());
+                    }
+                }
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    // Validate transform attributes for non-bed items
+    if ((it.transformToFree || it.transformToOnUse[PLAYERSEX_FEMALE] || it.transformToOnUse[PLAYERSEX_MALE]) && it.type != ITEM_TYPE_BED) {
+        std::cout << "[Warning - Items::parseItemToml] Item " << id << " has transform attributes but is not a bed" << std::endl;
+    }
 }
 
 ItemType& Items::getItemType(size_t id)

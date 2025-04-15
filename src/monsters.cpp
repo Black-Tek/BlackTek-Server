@@ -1399,94 +1399,88 @@ bool MonsterType::loadCallback(LuaScriptInterface* scriptInterface)
 
 bool Monsters::loadLootItem(const pugi::xml_node& node, LootBlock& lootBlock)
 {
-	pugi::xml_attribute attr;
-	if ((attr = node.attribute("id"))) {
-		int32_t id = pugi::cast<int32_t>(attr.value());
-		const ItemType& it = Item::items.getItemType(id);
+    pugi::xml_attribute attr;
 
-		if (it.name.empty()) {
-			std::cout << "[Warning - Monsters::loadMonster] Unknown loot item id \"" << id << "\". " << std::endl;
-			return false;
-		}
+    if ((attr = node.attribute("id"))) {
+        int32_t id = pugi::cast<int32_t>(attr.value());
+        const ItemType& it = Item::items.getItemType(id);
+        if (it.id == 0 || it.name.empty()) {
+            std::cout << "[Warning - Monsters::loadMonster] Unknown loot item id \"" << id << "\"." << std::endl;
+            return false;
+        }
+        lootBlock.id = id;
+    }
+    else if ((attr = node.attribute("name"))) {
+        std::string name = asLowerCaseString(attr.as_string());
+        auto ids = Item::items.nameToItems.equal_range(name);
+        if (ids.first == Item::items.nameToItems.end()) {
+            std::cout << "[Warning - Monsters::loadMonster] Unknown loot item \"" << name << "\"." << std::endl;
+            return false;
+        }
+        if (std::next(ids.first) != ids.second) {
+            std::cout << "[Warning - Monsters::loadMonster] Non-unique loot item \"" << name << "\"." << std::endl;
+            return false;
+        }
+        lootBlock.id = ids.first->second;
+    }
+    else {
+        std::cout << "[Warning - Monsters::loadMonster] Loot item missing 'id' or 'name' attribute." << std::endl;
+        return false;
+    }
 
-		lootBlock.id = id;
+    // Rest of the function unchanged...
+    if ((attr = node.attribute("countmax"))) {
+        lootBlock.countmax = std::max<int32_t>(1, pugi::cast<int32_t>(attr.value()));
+    } else {
+        lootBlock.countmax = 1;
+    }
 
-	} else if ((attr = node.attribute("name"))) {
-		auto name = attr.as_string();
-		auto ids = Item::items.nameToItems.equal_range(asLowerCaseString(name));
+    if ((attr = node.attribute("chance")) || (attr = node.attribute("chance1"))) {
+        int32_t chance = pugi::cast<int32_t>(attr.value());
+        if (chance > static_cast<int32_t>(MAX_LOOTCHANCE)) {
+            std::cout << "[Warning - Monsters::loadMonster] Invalid \"chance\" " << chance << ", max is " << MAX_LOOTCHANCE << "." << std::endl;
+            chance = MAX_LOOTCHANCE;
+        }
+        lootBlock.chance = std::min<int32_t>(MAX_LOOTCHANCE, chance);
+    } else {
+        lootBlock.chance = MAX_LOOTCHANCE;
+    }
 
-		if (ids.first == Item::items.nameToItems.cend()) {
-			std::cout << "[Warning - Monsters::loadMonster] Unknown loot item \"" << name << "\". " << std::endl;
-			return false;
-		}
+    if (Item::items.getItemType(lootBlock.id).isContainer()) {
+        loadLootContainer(node, lootBlock);
+    }
 
-		uint32_t id = ids.first->second;
+    if ((attr = node.attribute("subtype"))) {
+        lootBlock.subType = pugi::cast<int32_t>(attr.value());
+    } else {
+        uint32_t charges = Item::items.getItemType(lootBlock.id).charges;
+        if (charges != 0) {
+            lootBlock.subType = charges;
+        }
+    }
 
-		if (std::next(ids.first) != ids.second) {
-			std::cout << "[Warning - Monsters::loadMonster] Non-unique loot item \"" << name << "\". " << std::endl;
-			return false;
-		}
+    if ((attr = node.attribute("actionId"))) {
+        lootBlock.actionId = pugi::cast<int32_t>(attr.value());
+    }
 
-		lootBlock.id = id;
-	}
+    if ((attr = node.attribute("text"))) {
+        lootBlock.text = attr.as_string();
+    }
 
-	if (lootBlock.id == 0) {
-		return false;
-	}
+    if ((attr = node.attribute("unique"))) {
+        lootBlock.unique = attr.as_bool();
+    }
 
-	if ((attr = node.attribute("countmax"))) {
-		int32_t lootCountMax = pugi::cast<int32_t>(attr.value());
-		lootBlock.countmax = std::max<int32_t>(1, lootCountMax);
-	} else {
-		lootBlock.countmax = 1;
-	}
-
-	if ((attr = node.attribute("chance")) || (attr = node.attribute("chance1"))) {
-		int32_t lootChance = pugi::cast<int32_t>(attr.value());
-		if (lootChance > static_cast<int32_t>(MAX_LOOTCHANCE)) {
-			std::cout << "[Warning - Monsters::loadMonster] Invalid \"chance\" "<< lootChance <<" used for loot, the max is " << MAX_LOOTCHANCE << ". " << std::endl;
-		}
-		lootBlock.chance = std::min<int32_t>(MAX_LOOTCHANCE, lootChance);
-	} else {
-		lootBlock.chance = MAX_LOOTCHANCE;
-	}
-
-	if (Item::items[lootBlock.id].isContainer()) {
-		loadLootContainer(node, lootBlock);
-	}
-
-	//optional
-	if ((attr = node.attribute("subtype"))) {
-		lootBlock.subType = pugi::cast<int32_t>(attr.value());
-	} else {
-		uint32_t charges = Item::items[lootBlock.id].charges;
-		if (charges != 0) {
-			lootBlock.subType = charges;
-		}
-	}
-
-	if ((attr = node.attribute("actionId"))) {
-		lootBlock.actionId = pugi::cast<int32_t>(attr.value());
-	}
-
-	if ((attr = node.attribute("text"))) {
-		lootBlock.text = attr.as_string();
-	}
-
-	if ((attr = node.attribute("unique"))) {
-		lootBlock.unique = attr.as_bool();
-	}
-	return true;
+    return true;
 }
 
 void Monsters::loadLootContainer(const pugi::xml_node& node, LootBlock& lBlock)
 {
-	// NOTE: <inside> attribute was left for backwards compatibility with pre 1.x TFS versions.
-	// Please don't use it, if you don't have to.
-	for (auto subNode : node.child("inside") ? node.child("inside").children() : node.children()) {
-		LootBlock lootBlock;
-		if (loadLootItem(subNode, lootBlock)) {
-			lBlock.childLoot.emplace_back(std::move(lootBlock));
+	pugi::xml_node containerNode = node.child("inside") ? node.child("inside") : node;
+	for (auto subNode : containerNode.children()) {
+		LootBlock childLootBlock;
+		if (loadLootItem(subNode, childLootBlock)) {
+			lBlock.childLoot.emplace_back(std::move(childLootBlock));
 		}
 	}
 }

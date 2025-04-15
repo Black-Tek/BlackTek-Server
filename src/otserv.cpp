@@ -230,8 +230,8 @@ void mainLoader(int, char*[], ServiceManager* services)
 		return;
 	}
 
-	if (!Item::items.loadFromXml()) {
-		startupErrorMessage("Unable to load items (XML)!");
+	if (!Item::items.loadFromToml()) {
+		startupErrorMessage("Unable to load items (TOML)!");
 		return;
 	}
 
