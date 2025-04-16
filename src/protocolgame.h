@@ -312,6 +312,26 @@ class ProtocolGame final : public Protocol
 			account_password = password;
 		}
 
+		Position getTempPosition()
+		{
+			return spawn_position;
+		}
+
+		void setTempPosition(Position spawn)
+		{
+			spawn_position = spawn;
+		}
+
+		uint32_t getTempVocation()
+		{
+			return vocation_id;
+		}
+
+		void setTempVocation(uint32_t vocation)
+		{
+			vocation_id = vocation;
+		}
+
 		friend class Player;
 
 		// Helpers so we don't need to bind every time
@@ -329,6 +349,9 @@ class ProtocolGame final : public Protocol
 		PlayerPtr player = nullptr;
 		std::string account_name{};
 		std::string account_password{};
+		std::string character_name{};
+		Position spawn_position{};
+		uint32_t vocation_id = 0;
 		uint32_t eventConnect = 0;
 		uint32_t challengeTimestamp = 0;
 		uint16_t version = CLIENT_VERSION_MIN;

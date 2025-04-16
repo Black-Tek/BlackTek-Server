@@ -1420,28 +1420,54 @@ class Player final : public Creature, public Cylinder
 		void reformDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, gtl::node_hash_map<uint8_t, ModifierTotals> conversionList);
 		void increaseDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) const;
 
-		uint8_t getAccountManagerLastState() {
+		uint8_t getAccountManagerLastState() 
+		{
 			return accountManagerState;
 		}
 
-		void setAccountManagerLastState(uint8_t state) {
+		void setAccountManagerLastState(uint8_t state) 
+		{
 			accountManagerState = state;
 		}
 
-		void setTempAccountName(std::string name) {
+		void setTempAccountName(std::string name) 
+		{
 			client->setTempAccountName(name);
 		}
 
-		void setTempPassword(std::string password) {
+		void setTempPassword(std::string password) 
+		{
 			client->setTempPassword(password);
 		}
 
-		const std::string& getTempAccountName() {
+		void setTempPosition(Position spawn_pos) 
+		{
+			client->setTempPosition(spawn_pos);
+		}
+
+		void setTempVocation(uint32_t vocation)
+		{
+			client->setTempVocation(vocation);
+		}
+
+		const std::string getTempAccountName() 
+		{
 			return client->getTempAccountName();
 		}
 
-		const std::string& getTempPassword() {
+		const std::string getTempPassword() 
+		{
 			return client->getTempPassword();
+		}
+
+		const Position getTempPosition() 
+		{
+			return client->getTempPosition();
+		}
+
+		const uint32_t getTempVocation()
+		{
+			return client->getTempVocation();
 		}
 
 		Position generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, CombatOrigin origin);
@@ -1527,8 +1553,6 @@ class Player final : public Creature, public Cylinder
 		time_t lastLogout = 0;
 		time_t premiumEndsAt = 0;
 
-		uint32_t tempCharacterId = 0;
-		uint32_t tempTownChoice = 0;
 		uint64_t experience = 0;
 		uint64_t manaSpent = 0;
 		uint64_t lastAttack = 0;

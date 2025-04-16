@@ -423,7 +423,6 @@ class Game
 		void playerSay(uint32_t playerId, uint16_t channelId, SpeakClasses type,
 		               const std::string& receiver, const std::string& text);
 		ModalWindow CreatePrivateAccountManagerWindow(const uint32_t modalWindowId, const uint32_t optionId = 0);
-		void HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice);
 		void onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t window_id, const std::string& text);
 		ModalWindow CreateAccountManagerWindow(const uint32_t modalWindowId);
 		void playerChangeOutfit(uint32_t playerId, Outfit_t outfit);
