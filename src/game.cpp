@@ -3727,7 +3727,7 @@ ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId
 	return window;
 }
 
-void Game::HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice)
+void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice)
 {
 	switch (modalWindowId)
 	{
@@ -3776,7 +3776,7 @@ void Game::HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint3
 		{
 			if (button == 1)
 			{	
-				player->tempCharacterId = choice;
+				player->setTempVocation(choice);
 				auto window = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_TOWN, choice);
 				player->onModalWindowHandled(modalWindowId);
 				player->sendModalWindow(window);
@@ -3796,7 +3796,9 @@ void Game::HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint3
 		{	// this window should only be sent if the choice has towns and there is more than 1.
 			if (button == 1)
 			{
-				// auto town = getTown(choice)
+				const auto& town = map.towns.getTown(choice);
+				const auto& spawn_pos = town->getTemplePosition();
+				player->setTempPosition(spawn_pos);
 				return;
 			}
 			if (button == 2)
@@ -3820,13 +3822,13 @@ void Game::HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint3
 		{
 			if (button == 1)
 			{
-				// send character_name text box
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::CHARACTER_NAME_TEXT_BOX, "Character Name");
 				return;
 			}
 			if (button == 2)
 			{
-				player->tempCharacterId = choice;
-				auto window = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_TOWN, choice);
+				auto window = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_TOWN, player->getTempVocation());
 				player->onModalWindowHandled(modalWindowId);
 				player->sendModalWindow(window);
 				return;
@@ -3865,7 +3867,8 @@ void Game::HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint3
 		{
 			if (button == 1)
 			{
-				// send account_name text box
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::ACCOUNT_NAME_TEXT_BOX, "Account Name");
 				return;
 			}
 			if (button == 2)
@@ -3882,7 +3885,8 @@ void Game::HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint3
 		{
 			if (button == 1)
 			{
-				// send account_name text box again
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::ACCOUNT_NAME_TEXT_BOX, "Account Name");
 				return;
 			}
 			if (button == 2)
@@ -3899,7 +3903,8 @@ void Game::HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint3
 		{
 			if (button == 1)
 			{
-				// send enter_password text box
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_TEXT_BOX, "Password");
 				return;
 			}
 			if (button == 2)
@@ -3916,12 +3921,14 @@ void Game::HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint3
 		{
 			if (button == 1) // yes
 			{
-				// send password_confirmation text box
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::CONFIRMATION_TEXT_BOX, "Repeat Password");
 				return;
 			}
 			if (button == 2) // back
 			{
-				// send enter_password text box
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_TEXT_BOX, "Password");
 				return;
 			}
 			if (button == 3) // cancel
@@ -3955,7 +3962,8 @@ void Game::HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint3
 		{
 			if (button == 1)
 			{
-				// send password_confirmation text box
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::CONFIRMATION_TEXT_BOX, "Repeat Password");
 				return;
 			}
 			if (button == 2)
@@ -3974,13 +3982,15 @@ void Game::HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint3
 
 			if (button == 1) // retry
 			{
-				// send password_confirmation text box
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::CONFIRMATION_TEXT_BOX, "Repeate Password");
 				return;
 			}
 			if (button == 2) // new pass
 			{
-				// flush temp pass
-				// send enter_password text box
+				player->setTempPassword("");
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::CHARACTER_NAME_TEXT_BOX, "Character Name");
 				return;
 			}
 			if (button == 3)
@@ -4000,7 +4010,8 @@ void Game::HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint3
 		{
 			if (button == 1)
 			{
-				// send enter_password text box
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_RESET, "New Password");
 				return;
 			}
 			if (button == 2)
@@ -4017,12 +4028,14 @@ void Game::HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint3
 		{
 			if (button == 1) // yes
 			{
-				// send password_confirmation text box
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_RESET_CONFIRM, "Repeat New Password");
 				return;
 			}
 			if (button == 2) // back
 			{
-				// send enter_password text box
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_RESET, "New Password");
 				return;
 			}
 			if (button == 3) // cancel
@@ -4056,7 +4069,8 @@ void Game::HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint3
 		{
 			if (button == 1)
 			{
-				// send password_confirmation text box
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_RESET_CONFIRM, "Repeat New Password");
 				return;
 			}
 			if (button == 2)
@@ -4075,13 +4089,15 @@ void Game::HandlePrivateAccountManagerInput(const PlayerPtr& player, const uint3
 
 			if (button == 1) // retry
 			{
-				// send password_confirmation text box
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_RESET_CONFIRM, "Repeat New Password");
 				return;
 			}
 			if (button == 2) // new pass
 			{
-				// flush temp pass
-				// send enter_password text box
+				player->setTempPassword("");
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_RESET, "New Password");
 				return;
 			}
 			if (button == 3)
@@ -4309,6 +4325,12 @@ void Game::onAccountManagerRecieveText(const uint32_t player_id, uint32_t window
 	{
 		return;
 	}
+
+	if (player->getAccount() != 1)
+	{
+		return onPrivateAccountManagerRecieveText(player_id, window_id, text);
+	}
+
 	switch (window_id)
 	{
 		case AccountManager::ACCOUNT_NAME_TEXT_BOX: // Received Account Name
@@ -4485,11 +4507,6 @@ void Game::onAccountManagerInput(const PlayerPtr& player, const uint32_t modalWi
 			doAccountManagerReset(player->getID());
 		}
 	}
-}
-
-void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice)
-{
-
 }
 
 void Game::doAccountManagerLogin(const PlayerPtr& player)
