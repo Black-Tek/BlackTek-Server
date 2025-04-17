@@ -322,6 +322,26 @@ class ProtocolGame final : public Protocol
 			spawn_position = spawn;
 		}
 
+		uint32_t getTempTownId()
+		{
+			return town_id;
+		}
+
+		void setTempTownId(uint32_t town)
+		{
+			town_id = town;
+		}
+
+		uint32_t getTempCharacterChoice()
+		{
+			return character_choice;
+		}
+
+		void setTempCharacterChoice(uint32_t choice)
+		{
+			character_choice = choice;
+		}
+
 		uint32_t getTempVocation()
 		{
 			return vocation_id;
@@ -351,6 +371,8 @@ class ProtocolGame final : public Protocol
 		std::string account_password{};
 		std::string character_name{};
 		Position spawn_position{};
+		uint32_t town_id = 0;
+		uint32_t character_choice = 0;
 		uint32_t vocation_id = 0;
 		uint32_t eventConnect = 0;
 		uint32_t challengeTimestamp = 0;
