@@ -422,6 +422,9 @@ class Game
 		void playerShowQuestLine(uint32_t playerId, uint16_t questId);
 		void playerSay(uint32_t playerId, uint16_t channelId, SpeakClasses type,
 		               const std::string& receiver, const std::string& text);
+		ModalWindow CreatePrivateAccountManagerWindow(const uint32_t modalWindowId, const uint32_t optionId = 0);
+		void onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t window_id, const std::string& text);
+		ModalWindow CreateAccountManagerWindow(const uint32_t modalWindowId);
 		void playerChangeOutfit(uint32_t playerId, Outfit_t outfit);
 		void playerInviteToParty(uint32_t playerId, uint32_t invitedId);
 		void playerJoinParty(uint32_t playerId, uint32_t leaderId);
@@ -437,6 +440,7 @@ class Game
 		void playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t spriteId, uint16_t amount, uint32_t price, bool anonymous);
 		void playerCancelMarketOffer(uint32_t playerId, uint32_t timestamp, uint16_t counter);
 		void playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16_t counter, uint16_t amount);
+		void playerCancelMove(uint32_t playerId);
 
 		void parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const std::string& buffer);
 
@@ -563,6 +567,38 @@ class Game
 			tilesToClean.clear();
 		}
 
+		void addCharacterOption(CharacterOption& option)
+		{
+			character_options.emplace_back(option);
+		}
+
+		CharacterOption getOptionById(const uint32_t id)
+		{
+			for (const auto& option : character_options) 
+			{
+				if (option.id == id)
+				{
+					return option;
+				}
+			}
+			// log here
+			[[unlikely]]
+			return CharacterOption();
+		}
+
+		void onAccountManagerRecieveText(uint32_t player_id, uint32_t window_id, const std::string& text);
+		void onAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice);
+		void onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice);
+		void doAccountManagerLogin(const PlayerPtr& player);
+		void doAccountManagerReset(uint32_t player_id) {
+			const auto player = getPlayerByID(player_id);
+			if (!player)
+			{
+				return;
+			}
+			player->sendCancelWalk(); // this is needed
+			doAccountManagerLogin(player);
+		}
 
 		CURL* curl;
 
@@ -582,6 +618,7 @@ class Game
 		gtl::node_hash_map<uint32_t, Guild*> guilds;
 		std::vector<TilePtr> loaded_tiles;
 		std::vector<ItemPtr> loaded_tile_items;
+		std::vector<CharacterOption> character_options;
 		gtl::node_hash_map<uint16_t, ItemPtr> uniqueItems;
 		gtl::node_hash_map<uint32_t, gtl::flat_hash_map<uint32_t, int32_t>> accountStorageMap;
 

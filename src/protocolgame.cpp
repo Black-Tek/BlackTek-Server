@@ -11,6 +11,8 @@
 
 #include "player.h"
 
+#include "accountmanager.h"
+
 #include "configmanager.h"
 #include "actions.h"
 #include "game.h"
@@ -128,13 +130,15 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 {
 	//dispatcher thread
 	const auto& foundPlayer = g_game.getPlayerByGUID(characterId);
-	if (!foundPlayer || g_config.getBoolean(ConfigManager::ALLOW_CLONES)) {
+	const auto managerEnabled = g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER);
+	const auto isAccountManager = characterId == AccountManager::ID and managerEnabled;
+	if (not foundPlayer or g_config.getBoolean(ConfigManager::ALLOW_CLONES) or isAccountManager) {
 		player = Player::makePlayer(getThis());
 		
 		player->setID();
 		player->setGUID(characterId);
 
-		if (!IOLoginData::preloadPlayer(player)) {
+		if (not IOLoginData::preloadPlayer(player)) {
 			disconnectClient("Your character could not be loaded.");
 			return;
 		}
@@ -144,17 +148,17 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			return;
 		}
 
-		if (g_game.getGameState() == GAME_STATE_CLOSING && !player->hasFlag(PlayerFlag_CanAlwaysLogin)) {
+		if (g_game.getGameState() == GAME_STATE_CLOSING and not player->hasFlag(PlayerFlag_CanAlwaysLogin)) {
 			disconnectClient("The game is just going down.\nPlease try again later.");
 			return;
 		}
 
-		if (g_game.getGameState() == GAME_STATE_CLOSED && !player->hasFlag(PlayerFlag_CanAlwaysLogin)) {
+		if (g_game.getGameState() == GAME_STATE_CLOSED and not player->hasFlag(PlayerFlag_CanAlwaysLogin)) {
 			disconnectClient("Server is currently closed.\nPlease try again later.");
 			return;
 		}
 
-		if (g_config.getBoolean(ConfigManager::ONE_PLAYER_ON_ACCOUNT) && player->getAccountType() < ACCOUNT_TYPE_GAMEMASTER && g_game.getPlayerByAccount(player->getAccount())) {
+		if (g_config.getBoolean(ConfigManager::ONE_PLAYER_ON_ACCOUNT) and characterId != AccountManager::ID and player->getAccountType() < ACCOUNT_TYPE_GAMEMASTER and g_game.getPlayerByAccount(player->getAccount())) {
 			disconnectClient("You may only login with one character\nof your account at the same time.");
 			return;
 		}
@@ -192,6 +196,11 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 		}
 
 		player->setOperatingSystem(operatingSystem);
+
+		// Todo : add back position spawn determined by config.lua
+		if (isAccountManager) {
+			player->accountNumber = accountId;
+		}
 
 		if (!g_game.placeCreature(player, player->getLoginPosition())) {
 			if (!g_game.placeCreature(player, player->getTemplePosition(), false, true)) {
@@ -352,11 +361,6 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 		return;
 	}
 
-	if (accountName.empty()) {
-		disconnectClient("You must enter your account name.");
-		return;
-	}
-
 	auto characterName = msg.getString();
 
 	uint32_t timeStamp = msg.get<uint32_t>();
@@ -370,6 +374,15 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 		disconnectClient(fmt::format("Only clients with protocol {:s} allowed!", CLIENT_VERSION_STR));
 		return;
 	}
+
+	if (accountName.empty()
+		and password.empty()
+		and g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER)
+		and g_config.getBoolean(ConfigManager::ENABLE_NO_PASS_LOGIN)) {
+
+		accountName = g_config.getString(ConfigManager::ACCOUNT_MANAGER_AUTH);
+		password = g_config.getString(ConfigManager::ACCOUNT_MANAGER_AUTH);
+	} 
 
 	if (g_game.getGameState() == GAME_STATE_STARTUP) {
 		disconnectClient("Gameworld is starting up. Please wait.");
@@ -392,7 +405,13 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 	}
 
 	auto [accountId, characterId] = IOLoginData::gameworldAuthentication(accountName, password, characterName, token, tokenTime);
+	if (characterName == AccountManager::NAME) {
+		if (accountId == 0) {
+			std::tie(accountId, characterId) = IOLoginData::getAccountIdByAccountName(accountName, password, characterName);
+		}
+	}
 	if (accountId == 0) {
+		std::cout << "Says it's account id is 0 \n";
 		disconnectClient("Account name or password is not correct.");
 		return;
 	}
@@ -470,6 +489,26 @@ void ProtocolGame::parsePacket(NetworkMessage& msg)
 			return;
 		}
 	}
+
+	// Account Manager
+	if (player->isAccountManager()) {
+		switch (recvbyte) {
+		case 0x14: addGameTask([thisPtr = getThis()]() { thisPtr->logout(true, false); });	break;
+		case 0x1D: addGameTask([playerID = player->getID()]() { g_game.playerReceivePingBack(playerID); }); break;
+		case 0x1E: addGameTask([playerID = player->getID()]() { g_game.playerReceivePing(playerID); }); break;
+		case 0x89: parseTextWindow(msg); break;
+		case 0xF9: parseModalWindowAnswer(msg); break;
+		default:
+			addGameTask([player_id = player->getID()]() { g_game.doAccountManagerReset(player_id); });	break;
+			break;
+		}
+
+		if (msg.isOverrun()) {
+			disconnect();
+		}
+		return;
+	}
+
 
 	switch (recvbyte) {
 		case 0x14: addGameTask([thisPtr = getThis()]() { thisPtr->logout(true, false); }); break;
@@ -557,7 +596,7 @@ void ProtocolGame::parsePacket(NetworkMessage& msg)
 		case 0xF9: parseModalWindowAnswer(msg); break;
 
 		default:
-			// std::cout << "Player: " << player->getName() << " sent an unknown packet header: 0x" << std::hex << static_cast<uint16_t>(recvbyte) << std::dec << "!" << std::endl;
+			 std::cout << "Player: " << player->getName() << " sent an unknown packet header: 0x" << std::hex << static_cast<uint16_t>(recvbyte) << std::dec << "!" << std::endl;
 			break;
 	}
 
@@ -986,7 +1025,14 @@ void ProtocolGame::parseTextWindow(NetworkMessage& msg)
 {
 	uint32_t windowTextID = msg.get<uint32_t>();
 	auto newText = msg.getString();
-	addGameTask([playerID = player->getID(), windowTextID, newText = std::string{ newText }]() { g_game.playerWriteItem(playerID, windowTextID, newText); });
+	if (not player->isAccountManager())
+	{
+		addGameTask([playerID = player->getID(), windowTextID, newText = std::string{ newText }]() { g_game.playerWriteItem(playerID, windowTextID, newText); });
+	}
+	else
+	{
+		addGameTask([windowTextID, playerID = player->getID(), newText = std::string{ newText }]() { g_game.onAccountManagerRecieveText(playerID, windowTextID, newText); });
+	}
 }
 
 void ProtocolGame::parseHouseWindow(NetworkMessage& msg)
@@ -1212,6 +1258,9 @@ void ProtocolGame::parseModalWindowAnswer(NetworkMessage& msg)
 	uint32_t id = msg.get<uint32_t>();
 	uint8_t button = msg.getByte();
 	uint8_t choice = msg.getByte();
+	std::cout << "[parseAnswer] Window ID : " << id << " \n";
+	std::cout << "[parseAnswer] Button ID : " << button << " \n";
+	std::cout << "[parseAnswer] Choice : " << choice << " \n";
 	addGameTask([=, playerID = player->getID()]() { g_game.playerAnswerModalWindow(playerID, id, button, choice); });
 }
 
@@ -2766,6 +2815,19 @@ void ProtocolGame::sendHouseWindow(uint32_t windowTextId, const std::string& tex
 	msg.addByte(0x00);
 	msg.add<uint32_t>(windowTextId);
 	msg.addString(text);
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendAccountManagerTextBox(uint32_t windowTextId, const std::string& text)
+{
+	NetworkMessage msg;
+	msg.addByte(0x96);
+	msg.add<uint32_t>(windowTextId);
+	msg.addItem(ITEM_LETTER, 1);
+	msg.add<uint16_t>(15);
+	msg.addString(text);
+	msg.add<uint16_t>(0x00);
+	msg.add<uint16_t>(0x00);
 	writeToOutputBuffer(msg);
 }
 
