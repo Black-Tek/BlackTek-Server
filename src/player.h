@@ -1445,6 +1445,16 @@ class Player final : public Creature, public Cylinder
 			client->setTempPosition(spawn_pos);
 		}
 
+		void setTempTownId(uint32_t id)
+		{
+			client->setTempTownId(id);
+		}
+
+		void setTempCharacterChoice(uint32_t choice)
+		{
+			client->setTempCharacterChoice(choice);
+		}
+
 		void setTempVocation(uint32_t vocation)
 		{
 			client->setTempVocation(vocation);
@@ -1468,6 +1478,16 @@ class Player final : public Creature, public Cylinder
 		const uint32_t getTempVocation()
 		{
 			return client->getTempVocation();
+		}
+
+		const uint32_t getTempCharacterChoice()
+		{
+			return client->getTempCharacterChoice();
+		}
+
+		const uint32_t getTempTownId()
+		{
+			return client->getTempTownId();
 		}
 
 		Position generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, CombatOrigin origin);

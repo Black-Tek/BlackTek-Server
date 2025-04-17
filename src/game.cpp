@@ -3600,6 +3600,16 @@ ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId
 			break;
 		}
 
+		case AccountManager::PRIVATE_CHARACTER_FAILED: // asks for name
+		{
+			window.title = "Unacceptable Name";
+			window.message = "Well I know you like to be creative, but we both know you can't use that as a character name... I dopn't believe I need to tell you why!\n\n Let me know when you have come up with something more appropriate";
+			window.buttons.emplace_back("Ready", 1);
+			window.buttons.emplace_back("Back", 2);
+			window.buttons.emplace_back("Main Menu", 3);
+			break;
+		}
+
 		case AccountManager::PRIVATE_CHARACTER_CONFIRMATION:
 		{
 			window.message = "Well then, not exactly what I would have taken, but hey if you are certain..\n\nYou are certain, right?";
@@ -3776,7 +3786,7 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 		{
 			if (button == 1)
 			{	
-				player->setTempVocation(choice);
+				player->setTempCharacterChoice(choice);
 				auto window = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_TOWN, choice);
 				player->onModalWindowHandled(modalWindowId);
 				player->sendModalWindow(window);
@@ -3799,6 +3809,9 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 				const auto& town = map.towns.getTown(choice);
 				const auto& spawn_pos = town->getTemplePosition();
 				player->setTempPosition(spawn_pos);
+				player->setTempTownId(choice);
+				auto window = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER);
+				player->sendModalWindow(window);
 				return;
 			}
 			if (button == 2)
@@ -3829,6 +3842,31 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 			if (button == 2)
 			{
 				auto window = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_TOWN, player->getTempVocation());
+				player->onModalWindowHandled(modalWindowId);
+				player->sendModalWindow(window);
+				return;
+			}
+			if (button == 3)
+			{
+				auto window = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN);
+				player->onModalWindowHandled(modalWindowId);
+				player->sendModalWindow(window);
+				return;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_CHARACTER_FAILED:
+		{
+			if (button == 1)
+			{
+				player->onModalWindowHandled(modalWindowId);
+				player->sendAccountManagerTextWindow(AccountManager::CHARACTER_NAME_TEXT_BOX, "Character Name");
+				return;
+			}
+			if (button == 2)
+			{
+				auto window = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_TOWN, player->getTempCharacterChoice());
 				player->onModalWindowHandled(modalWindowId);
 				player->sendModalWindow(window);
 				return;
@@ -4178,8 +4216,72 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 
 		case AccountManager::CHARACTER_NAME_TEXT_BOX:
 		{
-			// if (nameIsAllowed()) {
-			// send name confirmation window
+			for (char ch : text) {
+				if (!std::isalnum(static_cast<unsigned char>(ch)) && ch != ' ') {
+					// invalid name, contains symbols
+					auto window = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_FAILED);
+					player->sendModalWindow(window);
+					player->onModalWindowHandled(window_id);
+					return;
+				}
+			}
+
+			// insert here any list of names to filter, probably in config.lua or extend the accountmanager.toml parser.
+
+			auto& db = Database::getInstance();
+			auto config = character_options[player->getTempCharacterChoice()];
+			auto vocation = g_vocations.getVocation(config.vocation);
+			auto startingPos = player->getTempPosition();
+
+			std::string query = fmt::format(fmt::runtime(
+				"INSERT INTO `players` ("
+				"`account_id`, `name`, `vocation`, `maglevel`, "
+				"`skill_fist`,`skill_fist_tries`,"
+				"`skill_club`,`skill_club_tries`,"
+				"`skill_sword`,`skill_sword_tries`,"
+				"`skill_axe`,`skill_axe_tries`,"
+				"`skill_dist`,`skill_dist_tries`,"
+				"`skill_shielding`,`skill_shielding_tries`,"
+				"`skill_fishing`,`skill_fishing_tries`,"
+				"`town_id`,`posx`,`posy`,`posz`"
+				") VALUES ("
+				"{:d}, {:s}, {:d}, {:d}, "
+				"{:d}, {:d}, "
+				"{:d}, {:d}, "
+				"{:d}, {:d}, "
+				"{:d}, {:d}, "
+				"{:d}, {:d}, "
+				"{:d}, {:d}, "
+				"{:d}, {:d}, "
+				"{:d}, {:d}, {:d}, {:d}"
+				")"),
+				player->getAccount(),
+				db.escapeString(text),
+				config.vocation,
+				config.magiclevel,
+				config.skills[SKILL_FIST], vocation->getReqSkillTries(SKILL_FIST, config.skills[SKILL_FIST]),
+				config.skills[SKILL_CLUB], vocation->getReqSkillTries(SKILL_CLUB, config.skills[SKILL_CLUB]),
+				config.skills[SKILL_SWORD], vocation->getReqSkillTries(SKILL_SWORD, config.skills[SKILL_SWORD]),
+				config.skills[SKILL_AXE], vocation->getReqSkillTries(SKILL_AXE, config.skills[SKILL_AXE]),
+				config.skills[SKILL_DISTANCE], vocation->getReqSkillTries(SKILL_DISTANCE, config.skills[SKILL_DISTANCE]),
+				config.skills[SKILL_SHIELD], vocation->getReqSkillTries(SKILL_SHIELD, config.skills[SKILL_SHIELD]),
+				config.skills[SKILL_FISHING], vocation->getReqSkillTries(SKILL_FISHING, config.skills[SKILL_FISHING]),
+				player->getTempTownId(),
+				startingPos.x, startingPos.y, startingPos.z
+			);
+			auto result = db.executeQuery(query);
+
+			if (result)
+			{
+				auto window = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_SUCCESS);
+				player->sendModalWindow(window);
+				player->onModalWindowHandled(window_id);
+				return;
+			}
+
+			auto window = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_FAILED);
+			player->sendModalWindow(window);
+			player->onModalWindowHandled(window_id);
 			break;
 		}
 		
@@ -4205,7 +4307,13 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 			{
 				Database& db = Database::getInstance();
 
-				// change password function here
+				std::string query = fmt::format(
+					"UPDATE `accounts` SET `password` = {:s} WHERE `id` = {:d}",
+					db.escapeString(transformToSHA1(text)),
+					player->getAccount()
+				);
+
+				db.executeQuery(query);
 
 				auto success_window = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_SUCCESS);
 				player->sendModalWindow(success_window);
@@ -4216,6 +4324,7 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 
 			auto fail_window = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSSWORD_MISMATCH);
 			player->sendModalWindow(fail_window);
+			break;
 		}
 
 		default:
