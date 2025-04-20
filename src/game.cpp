@@ -3760,7 +3760,7 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 				}
 				if (choice == ChoiceID::THIRD)
 				{
-					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_WINDOW));
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_RESET));
 					return;
 				}
 				break;
@@ -4229,11 +4229,16 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 			{
 				Database& db = Database::getInstance();
 				Account account = IOLoginData::loadAccount(player->getAccount());
-				db.executeQuery(fmt::format("UPDATE `accounts` SET `password` = {:s} WHERE `name` = {:s}", db.escapeString(transformToSHA1(text)), db.escapeString(account.name)));
+				if (db.executeQuery(fmt::format("UPDATE `accounts` SET `password` = {:s} WHERE `name` = {:s}",
+					db.escapeString(transformToSHA1(text)), db.escapeString(account.name))))
+				{
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_RESET_SUCCESS));
+					player->setTempAccountName("");
+					player->setTempPassword("");
+					break;
+				} // else
 
-				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_SUCCESS));
-				player->setTempAccountName("");
-				player->setTempPassword("");
+				// log and/or send a failure window
 				break;
 			}
 
@@ -4348,11 +4353,6 @@ void Game::onAccountManagerRecieveText(const uint32_t player_id, uint32_t window
 	if (!player) 
 	{
 		return;
-	}
-
-	if (player->getAccount() != 1)
-	{
-		return onPrivateAccountManagerRecieveText(player_id, window_id, text);
 	}
 
 	switch (window_id)

@@ -1031,7 +1031,14 @@ void ProtocolGame::parseTextWindow(NetworkMessage& msg)
 	}
 	else
 	{
-		addGameTask([windowTextID, playerID = player->getID(), newText = std::string{ newText }]() { g_game.onAccountManagerRecieveText(playerID, windowTextID, newText); });
+		if (player->getAccount() == 1)
+		{
+			addGameTask([windowTextID, playerID = player->getID(), newText = std::string{ newText }]() { g_game.onAccountManagerRecieveText(playerID, windowTextID, newText); });
+		} 
+		else
+		{
+			addGameTask([windowTextID, playerID = player->getID(), newText = std::string{ newText }]() { g_game.onPrivateAccountManagerRecieveText(playerID, windowTextID, newText); });
+		}
 	}
 }
 
