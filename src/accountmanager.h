@@ -34,6 +34,22 @@ struct CharacterOption {
     // std::vector<int32_t, int32_t> extra_items;
 };
 
+enum ButtonID : uint8_t {
+    NO_ROLE,
+    PRIMARY,
+    SECONDARY,
+    TERTIARY,
+    QUATERNY
+};
+
+enum ChoiceID : uint8_t {
+    NO_CHOICE,
+    FIRST,
+    SECOND,
+    THIRD,
+    FOURTH
+};
+
 class AccountManager
 {
 public:
@@ -54,6 +70,7 @@ public:
         DEFAULT_ACCEPT = DEFAULT_YES,
         DEFAULT_DECLINE = DEFAULT_NO
     };
+
 
     enum TextBox : uint8_t {
         NO_TEXT_WINDOW,
