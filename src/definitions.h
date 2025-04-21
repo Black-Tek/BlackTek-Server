@@ -4,11 +4,11 @@
 #ifndef FS_DEFINITIONS_H
 #define FS_DEFINITIONS_H
 
-static constexpr auto STATUS_SERVER_NAME = "Black Tek Server";
-static constexpr auto STATUS_SERVER_VERSION = "1.0";
+static constexpr auto STATUS_SERVER_NAME = "BlackTek Server";
+static constexpr auto STATUS_SERVER_VERSION = "1.2";
 static constexpr auto STATUS_SERVER_DEVELOPERS = "BlackTek";
 static constexpr auto STATUS_SERVER_MAINTAINER = "Codinablack@Github.com";
-static constexpr auto STATUS_SERVER_COMMUNITY_LINK = "https://discord.gg/Jgs5czzC";
+static constexpr auto STATUS_SERVER_COMMUNITY_LINK = "https://discord.gg/dy5wXSzbPG";
 
 static constexpr auto CLIENT_VERSION_MIN = 1097;
 static constexpr auto CLIENT_VERSION_MAX = 1098;
