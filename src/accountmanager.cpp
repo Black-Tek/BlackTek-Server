@@ -23,6 +23,18 @@ void AccountManager::initialize()
 			toml::table option_data = *entry.as_table();
 
 			option.vocation = option_data["vocation"].value_or(0);
+			std::string sex = option_data["sex"].value_or("male");
+
+			if (sex == "male") 
+			{
+				option.sex = true;
+			}
+			else
+			{
+				option.sex = false;
+			}
+
+
 			option.premium = option_data["premium"].value_or(false);
 
 			if (const auto& towns = option_data["towns"].as_array()) 
@@ -53,6 +65,7 @@ void AccountManager::initialize()
 				}
 			} // todo else { // log warning / error}
 
+			// todo -- Need to properly validate outfit exists for the specified gender/sex.
 			if (const auto& outfit_data = option_data["outfit"].as_table()) 
 			{
 				const auto& outfit = *outfit_data;

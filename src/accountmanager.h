@@ -14,6 +14,7 @@ struct CharacterOption {
     int32_t id = 0; // internal use only
     std::string name = "";
     int32_t vocation = 0;
+    bool sex = false;
     bool premium = false;
     bool allowTowns = true;
     bool needsPosition = true;

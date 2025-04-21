@@ -3565,10 +3565,13 @@ ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId
 		// CHARACTER CREATION
 		case AccountManager::PRIVATE_CHARACTER_VOCATION: // asks for vocation
 		{
+			// Todo : filter by account premium status or not
 			window.message = "This is a great day to be born anew! Which cast shall you take?";
 			for (const auto& choice : character_options) 
 			{
-				window.choices.emplace_back(choice.name, choice.id);
+				auto sex = choice.sex ? " (male)\n" : " (female)\n";
+				auto displayName = choice.name + sex;
+				window.choices.emplace_back(displayName, choice.id);
 			}
 			window.buttons.emplace_back("Select", ButtonID::PRIMARY);
 			window.buttons.emplace_back("Back", ButtonID::SECONDARY);
@@ -4161,10 +4164,11 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 			const auto& config = character_options[player->getTempCharacterChoice()];
 			const auto& vocation = g_vocations.getVocation(config.vocation);
 			const auto& startingPos = player->getTempPosition();
+			auto sex = config.sex ? 1 : 0;
 
 			std::string query = fmt::format(fmt::runtime(
 				"INSERT INTO `players` ("
-				"`account_id`, `name`, `vocation`, `maglevel`, "
+				"`account_id`, `name`, `vocation`, `maglevel`, `sex`, "
 				"`skill_fist`,`skill_fist_tries`,"
 				"`skill_club`,`skill_club_tries`,"
 				"`skill_sword`,`skill_sword_tries`,"
@@ -4174,7 +4178,7 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 				"`skill_fishing`,`skill_fishing_tries`,"
 				"`town_id`,`posx`,`posy`,`posz`"
 				") VALUES ("
-				"{:d}, {:s}, {:d}, {:d}, "
+				"{:d}, {:s}, {:d}, {:d}, {:d},"
 				"{:d}, {:d}, "
 				"{:d}, {:d}, "
 				"{:d}, {:d}, "
@@ -4188,6 +4192,7 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 				db.escapeString(text),
 				config.vocation,
 				config.magiclevel,
+				sex,
 				config.skills[SKILL_FIST], vocation->getReqSkillTries(SKILL_FIST, config.skills[SKILL_FIST]),
 				config.skills[SKILL_CLUB], vocation->getReqSkillTries(SKILL_CLUB, config.skills[SKILL_CLUB]),
 				config.skills[SKILL_SWORD], vocation->getReqSkillTries(SKILL_SWORD, config.skills[SKILL_SWORD]),
