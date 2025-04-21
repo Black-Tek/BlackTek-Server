@@ -1936,6 +1936,17 @@ void Game::playerMove(const uint32_t playerId, const Direction direction)
 	player->startAutoWalk(direction);
 }
 
+// for account manager
+void Game::playerCancelMove(uint32_t playerId)
+{
+	auto player = getPlayerByID(playerId);
+	if (!player) {
+		return;
+	}
+
+	player->sendCancelWalk();
+}
+
 bool Game::playerBroadcastMessage(const PlayerPtr& player, const std::string& text) const
 {
 	if (!player->hasFlag(PlayerFlag_CanBroadcast)) {
@@ -3525,6 +3536,1019 @@ void Game::playerSay(const uint32_t playerId, const uint16_t channelId, const Sp
 
 		default:
 			break;
+	}
+}
+
+ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId, const uint32_t optionId /* = 0 */)
+{	// todo : trade out magic numbers here and below with enums
+	auto window = ModalWindow(modalWindowId, "Account Manager", "");
+	window.priority = true;
+	window.defaultEnterButton = ButtonID::PRIMARY;
+	window.defaultEscapeButton = ButtonID::SECONDARY;
+
+
+	switch (modalWindowId)
+	{
+		// MAIN MENU
+		case AccountManager::PRIVATE_LOGIN:
+		{
+			window.message = "Welcome back my friend! How may I be of assistance today?";
+			window.choices.emplace_back("Create Character", ChoiceID::FIRST); // enums
+			window.choices.emplace_back("Create New Account", ChoiceID::SECOND);
+			window.choices.emplace_back("Change Password", ChoiceID::THIRD);
+			window.buttons.emplace_back("Select", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Quit", ButtonID::SECONDARY);
+			break;
+
+		}
+
+		// CHARACTER CREATION
+		case AccountManager::PRIVATE_CHARACTER_VOCATION: // asks for vocation
+		{
+			// Todo : filter by account premium status or not
+			window.message = "This is a great day to be born anew! Which cast shall you take?";
+			for (const auto& choice : character_options) 
+			{
+				auto sex = choice.sex ? " (male)\n" : " (female)\n";
+				auto displayName = choice.name + sex;
+				window.choices.emplace_back(displayName, choice.id);
+			}
+			window.buttons.emplace_back("Select", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_CHARACTER_TOWN: // asks for town
+		{
+			window.message = "Ahhh, yes. A good fit for ye indeed!\n\nNow choose where to begin:";
+
+			for (const auto& town_id : character_options[optionId].town_list)
+			{
+				const auto& town = map.towns.getTown(town_id);
+				window.choices.emplace_back(town->getName(), town_id);
+			}
+
+			window.buttons.emplace_back("Select", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			window.buttons.emplace_back("Cancel", ButtonID::TERTIARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_CHARACTER: // asks for name
+		{
+			window.message = "Now, what shall we call you?\n\nYou ponder that and let me know when you are ready!";
+			window.buttons.emplace_back("Ready", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			window.buttons.emplace_back("Main Menu", ButtonID::TERTIARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_CHARACTER_FAILED: // asks for name
+		{
+			window.title = "Unacceptable Name";
+			window.message = "Well I know you like to be creative, but we both know you can't use that as a character name... I dopn't believe I need to tell you why!\n\n Let me know when you have come up with something more appropriate";
+			window.buttons.emplace_back("Ready", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			window.buttons.emplace_back("Main Menu", ButtonID::TERTIARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_CHARACTER_CONFIRMATION:
+		{
+			window.message = "Well then, not exactly what I would have taken, but hey if you are certain..\n\nYou are certain, right?";
+			window.buttons.emplace_back("Yes", ButtonID::PRIMARY);
+			window.buttons.emplace_back("No", ButtonID::SECONDARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_CHARACTER_SUCCESS: // says you successfully created a character
+		{
+			window.message = "\nBy my Divine Power, It is done!\n";
+			window.buttons.emplace_back("Main Menu", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Logout", ButtonID::SECONDARY);
+			break;
+		}
+
+		// ACCOUNT CREATION
+		case AccountManager::PRIVATE_ACCOUNT:
+		{
+			window.message = "I know that you have some experience with this already, but just as a reminder...\n\nAn account name or password must abide by the following rules:\n\n- Must be a minimum of 6 characters and maximum of 15\n- Must contain no special characters or symbols\n- Can contain no space\n\n Do you understand and wish to continue?";
+			window.buttons.emplace_back("Yes", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_ACCOUNT_FAILED:
+		{
+			window.message = "The account name you entered was not accepted for one of the following reasons:\n\n-It contained illegal characters, such as symbols or spaces\n-It contained more characters than allowed\n-It did not contain enough characters\n-Account Name is forbidden or in use already.\n\nAre you ready to try again?";
+			window.buttons.emplace_back("Retry", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Main Menu", ButtonID::SECONDARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_WINDOW: // tells you password requirements
+		{
+			window.message = "Passwords must adhere to the following requirements\n\nCannot:\n\n-Contain symbols\n-Contain spaces\n-Contain more than 15 characters\n-Contain less than 6 characters\n\nDo you understand the requirements and wish to proceed?";
+			window.buttons.emplace_back("Yes", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_CONFIRMATION: // tells you to confirm password
+		{
+			window.message = "Well chosen! I just need you to confirm that password one more time for me, ok?";
+			window.buttons.emplace_back("Yes", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			window.buttons.emplace_back("Cancel", ButtonID::TERTIARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_SUCCESS: // tells you password was successfully changed
+		{
+			window.title = "Success!";
+			window.message = "Congratulations! You have successfully created a new account, you may login with it anytime to create a character!\n\n What would you like to do?";
+			window.buttons.emplace_back("Logout", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Main Menu", ButtonID::SECONDARY);
+			break;
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_FAILED: // says password doesn't meet requirements
+		{
+			window.message = "The password you have entered was not accepted because of one of the following reasons:\n\n-Contains symbols\n-Contains spaces\n-Contains more than 15 characters\n-Contains less than 6 characters\n\nAre you ready to try a different password?";
+			window.buttons.emplace_back("Yes", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Cancel", ButtonID::SECONDARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSSWORD_MISMATCH: // says passwords don't match
+		{
+			window.title = "Invalid Password!";
+			window.message = "I'm sorry, but that didn't quite match what you entered the first time. Please ensure you enter the same password you entered before..\nAre you ready to proceed? Or shall we start again?";
+			window.buttons.emplace_back("Retry", ButtonID::PRIMARY);
+			window.buttons.emplace_back("New Password", ButtonID::SECONDARY);
+			window.buttons.emplace_back("Main Menu", ButtonID::TERTIARY);
+			break;
+		}
+
+		// PASSWORD RESET
+		case AccountManager::PRIVATE_PASSWORD_RESET:
+		{
+			window.message = "Passwords must adhere to the following requirements\n\nCannot:\n\n-Contain symbols\n-Contain spaces\n-Contain more than 15 characters\n-Contain less than 6 characters\n\nDo you understand the requirements and wish to proceed?";
+			window.buttons.emplace_back("Yes", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_RESET_CONFIRMATION: // tells you to confirm password
+		{
+			window.message = "Well chosen! I just need you to confirm that password one more time for me, ok?";
+			window.buttons.emplace_back("Yes", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			window.buttons.emplace_back("Cancel", ButtonID::TERTIARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_RESET_SUCCESS: // tells you password was successfully changed
+		{
+			window.title = "Success!";
+			window.message = "Excellent job, wise master! Your password has been successfully changed!\n\nWhat would you like to do now?";
+			window.buttons.emplace_back("Main Menu", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Logout", ButtonID::SECONDARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_RESET_FAILED: // says password doesn't meet requirements
+		{
+			window.title = "Failed!";
+			window.message = "The password you have entered was not accepted because of one of the following reasons:\n\n-Contains symbols\n-Contains spaces\n-Contains more than 15 characters\n-Contains less than 6 characters\n\nAre you ready to try a different password?";
+			window.buttons.emplace_back("Yes", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Cancel", ButtonID::SECONDARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_RESET_MISMATCH: // says passwords don't match
+		{
+			window.title = "Password Mismatch!";
+			window.message = "I'm sorry, but that didn't quite match what you entered the first time. Please ensure you enter the same password you entered before..\nAre you ready to proceed? Or shall we start again?";
+			window.buttons.emplace_back("Retry", ButtonID::PRIMARY);
+			window.buttons.emplace_back("New Password", ButtonID::SECONDARY);
+			window.buttons.emplace_back("Main Menu", ButtonID::TERTIARY);
+			break;
+		}
+	}
+	return window;
+}
+
+void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice)
+{
+	switch (modalWindowId)
+	{
+		/////////////////////////////////
+		//////// MAIN MENU
+		/////////////////////////////////
+		case AccountManager::PRIVATE_LOGIN:
+		{
+			if (button == ButtonID::PRIMARY)
+			{
+				if (choice == ChoiceID::FIRST)
+				{
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION));
+					return;
+				}
+				if (choice == ChoiceID::SECOND)
+				{
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_ACCOUNT));
+					return;
+				}
+				if (choice == ChoiceID::THIRD)
+				{
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_RESET));
+					return;
+				}
+				break;
+			}
+			if (button == ButtonID::SECONDARY)
+			{
+				player->kickPlayer(false);
+				return;
+			}
+			break;
+		}
+
+		/////////////////////////////////
+		//////// CHARACTER CREATION
+		/////////////////////////////////
+		case AccountManager::PRIVATE_CHARACTER_VOCATION:
+		{
+			if (button == ButtonID::PRIMARY)
+			{	
+				player->setTempCharacterChoice(choice);
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_TOWN, choice));
+				return;
+			}
+			if (button == ButtonID::SECONDARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				return;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_CHARACTER_TOWN:
+		{	// this window should only be sent if the choice has towns and there is more than 1.
+			if (button == ButtonID::PRIMARY)
+			{
+				const auto& town = map.towns.getTown(choice);
+				const auto& spawn_pos = town->getTemplePosition();
+				player->setTempPosition(spawn_pos);
+				player->setTempTownId(choice);
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER));
+				break;
+			}
+			if (button == ButtonID::SECONDARY)
+			{
+				player->onModalWindowHandled(modalWindowId);
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION));
+				break;
+			}
+			if (button == ButtonID::TERTIARY)
+			{
+				player->onModalWindowHandled(modalWindowId);
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_CHARACTER:
+		{
+			if (button == ButtonID::PRIMARY)
+			{
+				player->sendAccountManagerTextWindow(AccountManager::CHARACTER_NAME_TEXT_BOX, "Character Name");
+				break;
+			}
+			if (button == ButtonID::SECONDARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_TOWN, player->getTempVocation()));
+				break;
+			}
+			if (button == ButtonID::TERTIARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_CHARACTER_FAILED:
+		{
+			if (button == ButtonID::PRIMARY)
+			{
+				player->sendAccountManagerTextWindow(AccountManager::CHARACTER_NAME_TEXT_BOX, "Character Name");
+				break;
+			}
+			if (button == ButtonID::SECONDARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_TOWN, player->getTempCharacterChoice()));
+				break;
+			}
+			if (button == ButtonID::TERTIARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_CHARACTER_SUCCESS:
+		{
+			if (button == ButtonID::PRIMARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			if (button == ButtonID::SECONDARY)
+			{
+				player->kickPlayer(false);
+				break;
+			}
+			break;
+		}
+
+		/////////////////////////////////
+		//////// NEW ACCOUNT CREATION
+		/////////////////////////////////
+		case AccountManager::PRIVATE_ACCOUNT:
+		{
+			if (button == ButtonID::PRIMARY)
+			{
+				player->sendAccountManagerTextWindow(AccountManager::ACCOUNT_NAME_TEXT_BOX, "Account Name");
+				break;
+			}
+			if (button == ButtonID::SECONDARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_ACCOUNT_FAILED:
+		{
+			if (button == ButtonID::PRIMARY)
+			{
+				player->sendAccountManagerTextWindow(AccountManager::ACCOUNT_NAME_TEXT_BOX, "Account Name");
+				break;
+			}
+			if (button == ButtonID::SECONDARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_WINDOW:
+		{
+			if (button == ButtonID::PRIMARY)
+			{
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_TEXT_BOX, "Password");
+				break;
+			}
+			if (button == ButtonID::SECONDARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_CONFIRMATION:
+		{
+			if (button == ButtonID::PRIMARY) // Yes
+			{
+				player->sendAccountManagerTextWindow(AccountManager::CONFIRMATION_TEXT_BOX, "Repeat Password");
+				break;
+			}
+			if (button == ButtonID::SECONDARY) // Back
+			{
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_TEXT_BOX, "Password");
+				break;
+			}
+			if (button == ButtonID::TERTIARY) // Cancel
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_SUCCESS:
+		{
+			if (button == ButtonID::PRIMARY)
+			{
+				player->kickPlayer(false);
+				break;
+			}
+			if (button == ButtonID::SECONDARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_FAILED:
+		{
+			if (button == ButtonID::PRIMARY)
+			{
+				player->sendAccountManagerTextWindow(AccountManager::CONFIRMATION_TEXT_BOX, "Repeat Password");
+				break;
+			}
+			if (button == ButtonID::SECONDARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+
+		}
+
+		case AccountManager::PRIVATE_PASSSWORD_MISMATCH:
+		{
+
+			if (button == ButtonID::PRIMARY) // Retry
+			{
+				player->sendAccountManagerTextWindow(AccountManager::CONFIRMATION_TEXT_BOX, "Repeate Password");
+				break;
+			}
+			if (button == ButtonID::SECONDARY) // New pass
+			{
+				player->setTempPassword("");
+				player->sendAccountManagerTextWindow(AccountManager::CHARACTER_NAME_TEXT_BOX, "Character Name");
+				break;
+			}
+			if (button == ButtonID::TERTIARY) // Main Menu
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+		}
+
+		/////////////////////////////////
+		//////// PASSWORD RESET
+		/////////////////////////////////
+		case AccountManager::PRIVATE_PASSWORD_RESET:
+		{
+			if (button == ButtonID::PRIMARY) // Yes
+			{
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_RESET, "New Password");
+				break;
+			}
+			if (button == ButtonID::SECONDARY) // No / Cancel / Back
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_RESET_CONFIRMATION:
+		{
+			if (button == ButtonID::PRIMARY) // Yes
+			{
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_RESET_CONFIRM, "Repeat New Password");
+				break;
+			}
+			if (button == ButtonID::SECONDARY) // Back
+			{
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_RESET, "New Password");
+				break;
+			}
+			if (button == ButtonID::TERTIARY) // Cancel
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_RESET_SUCCESS:
+		{
+			if (button == ButtonID::PRIMARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			if (button == ButtonID::SECONDARY)
+			{
+				player->kickPlayer(true);
+				break;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_RESET_FAILED:
+		{
+			if (button == ButtonID::PRIMARY) // Retry
+			{
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_RESET_CONFIRM, "Repeat New Password");
+				break;
+			}
+			if (button == ButtonID::SECONDARY) // Cancel
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+
+		}
+
+		case AccountManager::PRIVATE_PASSWORD_RESET_MISMATCH:
+		{
+
+			if (button == ButtonID::PRIMARY) // Retry
+			{
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_RESET_CONFIRM, "Repeat New Password");
+				break;
+			}
+			if (button == ButtonID::SECONDARY) // New Pass
+			{
+				player->setTempPassword("");
+				player->sendAccountManagerTextWindow(AccountManager::PASSWORD_RESET, "New Password");
+				break;
+			}
+			if (button == ButtonID::TERTIARY) // Main Menu
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+		}
+	}
+	player->onModalWindowHandled(modalWindowId);
+}
+
+void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t window_id, const std::string& text)
+{
+	const auto player = getPlayerByID(player_id);
+	if (!player)
+	{
+		return;
+	}
+	switch (window_id)
+	{
+		case AccountManager::ACCOUNT_NAME_TEXT_BOX: // Received Account Name
+		{
+			if (isAllowedRegistration(text) and not IOLoginData::accountExists(text))
+			{
+				player->setTempAccountName(text);
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_WINDOW));
+				break;
+			} // else
+
+			player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_ACCOUNT_FAILED));
+			break;
+		}
+
+		case AccountManager::PASSWORD_TEXT_BOX: // Received Password
+		{
+			if (isAllowedRegistration(text))
+			{
+				player->setTempPassword(text);
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_CONFIRMATION));
+				break;
+			} // else
+
+			player->setTempPassword("");
+			player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_FAILED));
+			break;
+		}
+
+		case AccountManager::CONFIRMATION_TEXT_BOX: // Recieved Confirmation Password
+		{
+			if (text == player->getTempPassword())
+			{
+				Database& db = Database::getInstance();
+
+				db.executeQuery(fmt::format("INSERT INTO `accounts` (`name`, `password`, `secret`, `type`, `premium_ends_at`, `email`, `creation`) "
+					"VALUES ({:s}, {:s}, NULL, 1, 0, '', UNIX_TIMESTAMP())",
+					db.escapeString(player->getTempAccountName()),
+					db.escapeString(transformToSHA1(text))));
+
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_SUCCESS));
+				player->setTempAccountName("");
+				player->setTempPassword("");
+				break;
+			} // else
+
+			player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSSWORD_MISMATCH));
+			break;
+		}
+
+		case AccountManager::CHARACTER_NAME_TEXT_BOX:
+		{
+			for (char ch : text) {
+				if (!std::isalnum(static_cast<unsigned char>(ch)) && ch != ' ') {
+					// invalid name, contains symbols
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_FAILED));
+					break;
+				}
+			}
+
+			// insert here any list of names to filter, probably in config.lua or extend the accountmanager.toml parser.
+
+			auto& db = Database::getInstance();
+			const auto& config = character_options[player->getTempCharacterChoice()];
+			const auto& vocation = g_vocations.getVocation(config.vocation);
+			const auto& startingPos = player->getTempPosition();
+			auto sex = config.sex ? 1 : 0;
+
+			std::string query = fmt::format(fmt::runtime(
+				"INSERT INTO `players` ("
+				"`account_id`, `name`, `vocation`, `maglevel`, `sex`, "
+				"`skill_fist`,`skill_fist_tries`,"
+				"`skill_club`,`skill_club_tries`,"
+				"`skill_sword`,`skill_sword_tries`,"
+				"`skill_axe`,`skill_axe_tries`,"
+				"`skill_dist`,`skill_dist_tries`,"
+				"`skill_shielding`,`skill_shielding_tries`,"
+				"`skill_fishing`,`skill_fishing_tries`,"
+				"`town_id`,`posx`,`posy`,`posz`"
+				") VALUES ("
+				"{:d}, {:s}, {:d}, {:d}, {:d},"
+				"{:d}, {:d}, "
+				"{:d}, {:d}, "
+				"{:d}, {:d}, "
+				"{:d}, {:d}, "
+				"{:d}, {:d}, "
+				"{:d}, {:d}, "
+				"{:d}, {:d}, "
+				"{:d}, {:d}, {:d}, {:d}"
+				")"),
+				player->getAccount(),
+				db.escapeString(text),
+				config.vocation,
+				config.magiclevel,
+				sex,
+				config.skills[SKILL_FIST], vocation->getReqSkillTries(SKILL_FIST, config.skills[SKILL_FIST]),
+				config.skills[SKILL_CLUB], vocation->getReqSkillTries(SKILL_CLUB, config.skills[SKILL_CLUB]),
+				config.skills[SKILL_SWORD], vocation->getReqSkillTries(SKILL_SWORD, config.skills[SKILL_SWORD]),
+				config.skills[SKILL_AXE], vocation->getReqSkillTries(SKILL_AXE, config.skills[SKILL_AXE]),
+				config.skills[SKILL_DISTANCE], vocation->getReqSkillTries(SKILL_DISTANCE, config.skills[SKILL_DISTANCE]),
+				config.skills[SKILL_SHIELD], vocation->getReqSkillTries(SKILL_SHIELD, config.skills[SKILL_SHIELD]),
+				config.skills[SKILL_FISHING], vocation->getReqSkillTries(SKILL_FISHING, config.skills[SKILL_FISHING]),
+				player->getTempTownId(),
+				startingPos.x, startingPos.y, startingPos.z
+			);
+
+			if (const auto& result = db.executeQuery(query))
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_SUCCESS));
+				break;
+			} // else
+
+			player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_FAILED));
+			break;
+		}
+		
+		case AccountManager::PASSWORD_RESET:
+		{
+			if (isAllowedRegistration(text))
+			{
+				player->setTempPassword(text);
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_RESET_CONFIRMATION));
+				break;
+			} // else
+
+			player->setTempPassword("");
+			player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_RESET_FAILED));
+			break;
+		}
+
+		case AccountManager::PASSWORD_RESET_CONFIRM:
+		{
+			if (text == player->getTempPassword())
+			{
+				Database& db = Database::getInstance();
+				Account account = IOLoginData::loadAccount(player->getAccount());
+				if (db.executeQuery(fmt::format("UPDATE `accounts` SET `password` = {:s} WHERE `name` = {:s}",
+					db.escapeString(transformToSHA1(text)), db.escapeString(account.name))))
+				{
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_RESET_SUCCESS));
+					player->setTempAccountName("");
+					player->setTempPassword("");
+					break;
+				} // else
+
+				// log and/or send a failure window
+				break;
+			}
+
+			player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSSWORD_MISMATCH));
+			break;
+		}
+
+		default:
+		{
+			break;
+		}
+	}
+}
+
+ModalWindow Game::CreateAccountManagerWindow(const uint32_t modalWindowId)
+{	
+	using Button = std::pair<std::string, uint8_t>;
+
+	auto window = ModalWindow(modalWindowId, "Account Manager", "");
+	window.priority = true;
+	window.defaultEnterButton = 1;
+	window.defaultEscapeButton = 2;
+	
+	Button Accept = { "Yes", 1 };
+	Button Decline = { "No", 2 };
+	Button Ok = { "Ok", 1 };
+	Button RetryPassword = {"Retry", 1};
+	Button NewPassword = { "New Pass", 2 };
+	Button Restart = { "Restart", 3 };
+
+	window.buttons.emplace_back(Accept);
+	window.buttons.emplace_back(Decline);
+
+	switch(modalWindowId)
+	{
+		case AccountManager::COMMON_LOGIN:
+		{
+			window.title = "Welcome!";
+			window.message = "Welcome new spririt, are you ready to begin your destiny?";
+			break;
+		}
+
+		case AccountManager::COMMON_ACCOUNT:
+		{
+			window.message = "First thing we need to do is create an account name. \nAn account name or password must abide by the following rules:\n\n- Must be a minimum of 6 characters and maximum of 15\n- Must contain no special characters or symbols\n- Can contain no space\n\n Do you understand and wish to continue?";
+			break;
+		}
+
+		case AccountManager::COMMON_PASSWORD:
+		{
+			window.message = "Perfect! Now we shall set a password, ok?";
+			break;
+		}
+
+		case AccountManager::COMMON_CONFIRMATION:
+		{
+			window.message = "Well chosen! I just need you to confirm that password one more time for me, ok?";
+			break;
+		}
+
+		case AccountManager::COMMON_SUCCESS:
+		{
+			window.title = "Success!";
+			window.message = "Your account has been successfully created! Please logout, and then back in using your newly created credentials";
+			window.buttons.clear();
+			window.buttons.emplace_back(Ok);
+			break;
+		}
+
+		case AccountManager::COMMON_ACCOUNT_FAILED:
+		{
+			window.title = "Account Creation Failed!";
+			window.message = "The account name you entered was not accepted for one of the following reasons:\n\n-It contained illegal characters, such as symbols or spaces\n-It contained more characters than allowed\n-It did not contain enough characters\n-Account Name is forbidden or in use already.\n\nAre you ready to try again?";
+			break;
+		}
+
+		case AccountManager::COMMON_PASSWORD_FAILED:
+		{
+			window.title = "Invalid Password!";
+			window.message = "The password you have entered was not accepted because of one of the following reasons:\n\n-Contains symbols\n-Contains spaces\n-Contains more than 15 characters\n-Contains less than 6 characters\n\nAre you ready to try a different password?";
+			break;
+		}
+
+		case AccountManager::COMMON_CONFIRMATION_FAILED:
+		{
+			window.message = "Your passwords did not match! Please retry your chosen password or choose a new password.";
+			window.buttons.clear();
+			window.buttons.emplace_back(RetryPassword);
+			window.buttons.emplace_back(NewPassword);
+			window.buttons.emplace_back(Restart);
+			break;
+		}
+
+		case AccountManager::COMMON_CANCEL:
+		{
+			window.title = "Quit?";
+			window.message = "If you quit now, all your progress will be lost! \n\nYou can restart if that is what you wish.\nAre you certain you wish to cancel and exit the game";
+			window.buttons.clear();
+			window.buttons.emplace_back("Exit", 1); // enums needed here
+			window.buttons.emplace_back("Back", 2);
+			window.buttons.emplace_back(Restart);
+			break;
+		}
+	}
+	return window;
+}
+
+void Game::onAccountManagerRecieveText(const uint32_t player_id, uint32_t window_id, const std::string& text)
+{
+	// Here we handle all text received by account manager
+	const auto player = getPlayerByID(player_id);
+	if (!player) 
+	{
+		return;
+	}
+
+	switch (window_id)
+	{
+		case AccountManager::ACCOUNT_NAME_TEXT_BOX: // Received Account Name
+		{
+			if (isAllowedRegistration(text) and not IOLoginData::accountExists(text))
+			{
+				player->setTempAccountName(text);
+				player->sendModalWindow(CreateAccountManagerWindow(AccountManager::COMMON_PASSWORD));
+				break;
+			} // else
+
+			player->sendModalWindow(CreateAccountManagerWindow(AccountManager::COMMON_ACCOUNT_FAILED));
+			break;
+		}
+
+		case AccountManager::PASSWORD_TEXT_BOX: // Received Password (first time)
+		{
+			if (isAllowedRegistration(text)) 
+			{
+				player->setTempPassword(text);
+				player->sendModalWindow(CreateAccountManagerWindow(AccountManager::COMMON_CONFIRMATION));
+				break;
+			} // else
+
+			player->setTempPassword("");
+			player->sendModalWindow(CreateAccountManagerWindow(AccountManager::COMMON_CONFIRMATION_FAILED));
+			break;
+		}
+
+		case AccountManager::CONFIRMATION_TEXT_BOX: // Recieved Confirmation Password
+		{
+			if (text == player->getTempPassword())
+			{
+				Database& db = Database::getInstance();
+
+				db.executeQuery(fmt::format("INSERT INTO `accounts` (`name`, `password`, `secret`, `type`, `premium_ends_at`, `email`, `creation`) "
+					"VALUES ({:s}, {:s}, NULL, 1, 0, '', UNIX_TIMESTAMP())",
+					db.escapeString(player->getTempAccountName()),
+					db.escapeString(transformToSHA1(text))));
+
+				player->sendModalWindow(CreateAccountManagerWindow(AccountManager::COMMON_SUCCESS));
+				player->setTempAccountName("");
+				player->setTempPassword("");
+				break;
+			} // else
+
+			player->sendModalWindow(CreateAccountManagerWindow(AccountManager::COMMON_CONFIRMATION_FAILED));
+			break;
+		}
+	}
+}
+
+void Game::onAccountManagerInput(const PlayerPtr& player, const uint32_t modalWindowId, const uint8_t button, const uint8_t choice)
+{
+	switch (button)
+	{
+		case AccountManager::DEFAULT_YES:
+		{
+			switch (modalWindowId)
+			{
+				case AccountManager::COMMON_LOGIN: // Welcome / Login Window
+				{
+					player->setAccountManagerLastState(modalWindowId);
+					player->sendModalWindow(CreateAccountManagerWindow(AccountManager::COMMON_ACCOUNT));
+					break;
+				}
+
+				case AccountManager::COMMON_ACCOUNT: // Account Window
+				{
+					player->sendAccountManagerTextWindow(AccountManager::ACCOUNT_NAME_TEXT_BOX, "account name");
+					break;
+				}
+
+				case AccountManager::COMMON_PASSWORD: // Password Window
+				{
+					player->sendAccountManagerTextWindow(AccountManager::PASSWORD_TEXT_BOX, "password");
+					break;
+				}
+
+				case AccountManager::COMMON_CONFIRMATION: // Password Confirmation Window
+				{
+					player->sendAccountManagerTextWindow(AccountManager::CONFIRMATION_TEXT_BOX, "retype password");
+					break;
+				}
+
+				case AccountManager::COMMON_CANCEL:
+				{
+					player->kickPlayer(false);
+					break;
+				}
+
+				case AccountManager::COMMON_SUCCESS:
+				{
+					player->kickPlayer(false);
+					break;
+				}
+
+				case AccountManager::COMMON_ACCOUNT_FAILED:
+				{
+					player->sendAccountManagerTextWindow(AccountManager::ACCOUNT_NAME_TEXT_BOX, "account name");
+					break;
+				}
+
+				case AccountManager::COMMON_PASSWORD_FAILED:
+				{
+					player->sendAccountManagerTextWindow(AccountManager::PASSWORD_TEXT_BOX, "password");
+					break;
+				}
+
+				case AccountManager::COMMON_CONFIRMATION_FAILED:
+				{
+					player->sendAccountManagerTextWindow(AccountManager::CONFIRMATION_TEXT_BOX, "retype password");
+					break;
+				}
+
+				default: // Shouldn't happen
+				{
+					player->kickPlayer(false);
+					break;
+				}
+			}
+			break;
+		}
+
+		case AccountManager::DEFAULT_NO:
+		{	
+			switch (modalWindowId)
+			{
+				case AccountManager::COMMON_LOGIN:
+				case AccountManager::COMMON_ACCOUNT:
+				case AccountManager::COMMON_PASSWORD:
+				case AccountManager::COMMON_CONFIRMATION:
+				case AccountManager::COMMON_ACCOUNT_FAILED:
+				case AccountManager::COMMON_PASSWORD_FAILED:
+				{
+					player->setAccountManagerLastState(modalWindowId);
+					player->sendModalWindow(CreateAccountManagerWindow(AccountManager::COMMON_CANCEL));
+					break;
+				}
+
+				case AccountManager::COMMON_CONFIRMATION_FAILED:
+				{
+					player->sendAccountManagerTextWindow(AccountManager::PASSWORD_TEXT_BOX, "password");
+					break;
+				}
+
+				case AccountManager::COMMON_CANCEL:
+				{
+					uint8_t last_state = player->getAccountManagerLastState();
+					player->setAccountManagerLastState(0);
+					player->sendModalWindow(CreateAccountManagerWindow(last_state));
+					break;
+				}
+			}
+			break;
+		}
+
+		case AccountManager::DEFAULT_RESET:
+		{ 
+			doAccountManagerReset(player->getID());
+			break;
+		}
+	}
+	player->onModalWindowHandled(modalWindowId);
+}
+
+void Game::doAccountManagerLogin(const PlayerPtr& player)
+{
+
+	// we do these resets incase player got here and it isn't when they logged in,
+	// but rather from canceling and getting this window again or a doing a reset.
+	player->setTempAccountName("");
+	player->setTempPassword("");
+	player->setAccountManagerLastState(0);
+
+	auto isUnregisteredAccount = (player->getAccount() == 1);
+	// make enums for the window ids
+
+	if (isUnregisteredAccount)
+	{
+		auto welcomeWindow = CreateAccountManagerWindow(AccountManager::COMMON_LOGIN);
+		player->sendModalWindow(welcomeWindow);
+		return;
+	}
+	else // Account Manager on player's personal account
+	{
+		auto loginWindow = CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN);
+		player->sendModalWindow(loginWindow);
+		return;
 	}
 }
 
@@ -5685,6 +6709,16 @@ void Game::playerAnswerModalWindow(const uint32_t playerId, const uint32_t modal
 	}
 
 	if (!player->hasModalWindowOpen(modalWindowId)) {
+		return;
+	}
+
+	if (player->isAccountManager()) 
+	{
+		if (player->getAccount() == 1) 
+		{
+			g_game.onAccountManagerInput(player, modalWindowId, button, choice);
+		}
+		g_game.onPrivateAccountManagerInput(player, modalWindowId, button, choice);
 		return;
 	}
 

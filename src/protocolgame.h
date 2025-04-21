@@ -208,6 +208,7 @@ class ProtocolGame final : public Protocol
 		void sendTextWindow(uint32_t windowTextId, const ItemPtr& item, uint16_t maxlen, bool canWrite);
 		void sendTextWindow(uint32_t windowTextId, uint32_t itemId, const std::string& text);
 		void sendHouseWindow(uint32_t windowTextId, const std::string& text);
+		void sendAccountManagerTextBox(uint32_t windowTextId, const std::string& text);
 		void sendOutfitWindow();
 
 		void sendUpdatedVIPStatus(uint32_t guid, VipStatus_t newStatus);
@@ -289,6 +290,68 @@ class ProtocolGame final : public Protocol
 		//otclient
 		void parseExtendedOpcode(NetworkMessage& msg);
 
+
+		// account manager
+		std::string getTempAccountName()
+		{
+			return account_name;
+		}
+
+		void setTempAccountName(std::string& name)
+		{
+			account_name = name;
+		}
+
+		std::string getTempPassword()
+		{
+			return account_password;
+		}
+
+		void setTempPassword(std::string& password)
+		{
+			account_password = password;
+		}
+
+		Position getTempPosition()
+		{
+			return spawn_position;
+		}
+
+		void setTempPosition(Position spawn)
+		{
+			spawn_position = spawn;
+		}
+
+		uint32_t getTempTownId()
+		{
+			return town_id;
+		}
+
+		void setTempTownId(uint32_t town)
+		{
+			town_id = town;
+		}
+
+		uint32_t getTempCharacterChoice()
+		{
+			return character_choice;
+		}
+
+		void setTempCharacterChoice(uint32_t choice)
+		{
+			character_choice = choice;
+		}
+
+		uint32_t getTempVocation()
+		{
+			return vocation_id;
+		}
+
+		void setTempVocation(uint32_t vocation)
+		{
+			vocation_id = vocation;
+		}
+
 		friend class Player;
 
 		// Helpers so we don't need to bind every time
@@ -304,7 +367,13 @@ class ProtocolGame final : public Protocol
 
 		std::unordered_set<uint32_t> knownCreatureSet;
 		PlayerPtr player = nullptr;
-
+		std::string account_name{};
+		std::string account_password{};
+		std::string character_name{};
+		Position spawn_position{};
+		uint32_t town_id = 0;
+		uint32_t character_choice = 0;
+		uint32_t vocation_id = 0;
 		uint32_t eventConnect = 0;
 		uint32_t challengeTimestamp = 0;
 		uint16_t version = CLIENT_VERSION_MIN;

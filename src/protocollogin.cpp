@@ -184,13 +184,22 @@ void ProtocolLogin::onRecvFirstMessage(NetworkMessage& msg)
 	}
 
 	auto accountName = msg.getString();
-	if (accountName.empty()) {
+	auto password = msg.getString();
+
+	const bool accountNameEmpty = accountName.empty();
+	const bool passwordEmpty = password.empty();
+
+	const bool m_enabled = g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER);
+	const bool quick_pass = g_config.getBoolean(ConfigManager::ENABLE_NO_PASS_LOGIN);
+	const auto& quick_auth = g_config.getString(ConfigManager::ACCOUNT_MANAGER_AUTH);
+
+	if (accountNameEmpty and passwordEmpty and m_enabled and quick_pass) {
+		accountName = quick_auth;
+		password = quick_auth;
+	} else if (accountNameEmpty) {
 		disconnectClient("Invalid account name.", version);
 		return;
-	}
-
-	auto password = msg.getString();
-	if (password.empty()) {
+	} else if (passwordEmpty) {
 		disconnectClient("Invalid password.", version);
 		return;
 	}

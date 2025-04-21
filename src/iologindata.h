@@ -22,6 +22,7 @@ class IOLoginData
 
 		static AccountType_t getAccountType(uint32_t accountId);
 		static void setAccountType(uint32_t accountId, AccountType_t accountType);
+		static std::pair<uint32_t, uint32_t> getAccountIdByAccountName(std::string_view accountName, std::string_view password, std::string_view characterName);
 		static void updateOnlineStatus(uint32_t guid, bool login);
 		static bool preloadPlayer(const PlayerPtr& player);
 
@@ -44,6 +45,8 @@ class IOLoginData
 		static void updatePremiumTime(uint32_t accountId, time_t endTime);
 
 		static bool addRewardItems(uint32_t playerId, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream);
+
+		static bool accountExists(const std::string& accountName);
 
 	private:
 		using ItemMap = std::map<uint32_t, std::pair<ItemPtr, uint32_t>>;

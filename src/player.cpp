@@ -18,6 +18,7 @@
 #include "rewardchest.h"
 #include "player.h"
 #include "spells.h"
+#include "accountmanager.h"
 
 extern ConfigManager g_config;
 extern Game g_game;
@@ -1738,54 +1739,57 @@ void Player::onCreatureAppear(const CreaturePtr& creature, bool isLogin)
 {
 	Creature::onCreatureAppear(creature, isLogin);
 
-	if (isLogin && creature == getCreature()) {
-		sendItems();
+	if (isLogin and creature == getCreature()) {
+		if (not isAccountManager()) {
 
-		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-			if (const auto& item = inventory[slot]) {
-				item->startDecaying();
-				g_moveEvents->onPlayerEquip(this->getPlayer(), item, static_cast<slots_t>(slot), false);
+			sendItems();
+			for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+				if (const auto& item = inventory[slot]) {
+					item->startDecaying();
+					g_moveEvents->onPlayerEquip(this->getPlayer(), item, static_cast<slots_t>(slot), false);
+				}
 			}
+
+			for (const auto& condition : storedConditionList) {
+				addCondition(condition);
+			}
+			storedConditionList.clear();
+
+			updateRegeneration();
+			if (const auto& bed = g_game.getBedBySleeper(guid)) {
+				bed->wakeUp(this->getPlayer());
+			}
+
+			if (guild) {
+				guild->addMember(this->getPlayer());
+			}
+
+			int32_t offlineTime;
+			if (getLastLogout() != 0) {
+				// Not counting more than 21 days to prevent overflow when multiplying with 1000 (for milliseconds).
+				offlineTime = std::min<int32_t>(time(nullptr) - getLastLogout(), 86400 * 21);
+			} else {
+				offlineTime = 0;
+			}
+
+			for (const auto& condition : getMuteConditions()) {
+				condition->setTicks(condition->getTicks() - (offlineTime * 1000));
+				if (condition->getTicks() <= 0) {
+					removeCondition(condition);
+				}
+			}
+			g_game.checkPlayersRecord();
+			IOLoginData::updateOnlineStatus(guid, true);
 		}
-
-		for (const auto& condition : storedConditionList) {
-			addCondition(condition);
+		else {
+			storedConditionList.clear();
+			const auto& acc_manager = getPlayer();
+			g_game.doAccountManagerLogin(acc_manager);
 		}
-		storedConditionList.clear();
-
-		updateRegeneration();
-
-		if (const auto& bed = g_game.getBedBySleeper(guid)) {
-			bed->wakeUp(this->getPlayer());
-		}
-
-		Account account = IOLoginData::loadAccount(accountNumber);
 
 		if (g_config.getBoolean(ConfigManager::PLAYER_CONSOLE_LOGS)) {
 			std::cout << name << " has logged in." << std::endl;
 		}
-
-		if (guild) {
-			guild->addMember(this->getPlayer());
-		}
-
-		int32_t offlineTime;
-		if (getLastLogout() != 0) {
-			// Not counting more than 21 days to prevent overflow when multiplying with 1000 (for milliseconds).
-			offlineTime = std::min<int32_t>(time(nullptr) - getLastLogout(), 86400 * 21);
-		} else {
-			offlineTime = 0;
-		}
-
-		for (const auto& condition : getMuteConditions()) {
-			condition->setTicks(condition->getTicks() - (offlineTime * 1000));
-			if (condition->getTicks() <= 0) {
-				removeCondition(condition);
-			}
-		}
-
-		g_game.checkPlayersRecord();
-		IOLoginData::updateOnlineStatus(guid, true);
 	}
 }
 
@@ -1898,7 +1902,9 @@ void Player::onRemoveCreature(const CreaturePtr& creature, bool isLogout)
 			guild->removeMember(this->getPlayer());
 		}
 
-		IOLoginData::updateOnlineStatus(guid, false);
+		if (not isAccountManager()) {
+			IOLoginData::updateOnlineStatus(guid, false);
+		}
 
 		bool saved = false;
 		for (uint32_t tries = 0; tries < 3; ++tries) {

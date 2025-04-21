@@ -2072,6 +2072,14 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::MYSQL_SOCK);
 	registerEnumIn("configKeys", ConfigManager::DEFAULT_PRIORITY);
 	registerEnumIn("configKeys", ConfigManager::MAP_AUTHOR);
+	registerEnumIn("configKeys", ConfigManager::AUGMENT_CRITICAL_ANIMATION);
+	registerEnumIn("configKeys", ConfigManager::ACCOUNT_MANAGER_AUTH);
+	registerEnumIn("configKeys", ConfigManager::ENABLE_ACCOUNT_MANAGER);
+	registerEnumIn("configKeys", ConfigManager::ENABLE_NO_PASS_LOGIN);
+	registerEnumIn("configKeys", ConfigManager::ACCOUNT_MANAGER_POS_X);
+	registerEnumIn("configKeys", ConfigManager::ACCOUNT_MANAGER_POS_Y);
+	registerEnumIn("configKeys", ConfigManager::ACCOUNT_MANAGER_POS_Z);
+
 
 	registerEnumIn("configKeys", ConfigManager::SQL_PORT);
 	registerEnumIn("configKeys", ConfigManager::MAX_PLAYERS);

@@ -59,6 +59,8 @@ class ConfigManager
 			AUGMENT_STAMINA_RULE,
 			AUGMENT_CRITICAL_ANIMATION,
 			NPC_PZ_WALKTHROUGH,
+			ENABLE_ACCOUNT_MANAGER,
+			ENABLE_NO_PASS_LOGIN,
 
 			LAST_BOOLEAN_CONFIG /* this must be the last one */
 		};
@@ -82,6 +84,7 @@ class ConfigManager
 			DEFAULT_PRIORITY,
 			MAP_AUTHOR,
 			CONFIG_FILE,
+			ACCOUNT_MANAGER_AUTH,
 
 			LAST_STRING_CONFIG /* this must be the last one */
 		};
@@ -126,6 +129,9 @@ class ConfigManager
 			VIP_PREMIUM_LIMIT,
 			DEPOT_FREE_LIMIT,
 			DEPOT_PREMIUM_LIMIT,
+			ACCOUNT_MANAGER_POS_X,
+			ACCOUNT_MANAGER_POS_Y,
+			ACCOUNT_MANAGER_POS_Z,
 
 			LAST_INTEGER_CONFIG /* this must be the last one */
 		};

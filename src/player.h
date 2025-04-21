@@ -22,6 +22,7 @@
 #include "storeinbox.h"
 #include "rewardchest.h"
 #include "augments.h"
+#include "accountmanager.h"
 
 #include <bitset>
 #include <optional>
@@ -196,6 +197,7 @@ class Player final : public Creature, public Cylinder
 		bool untameMount(uint8_t mountId);
 		bool hasMount(const Mount* mount) const;
 		void dismount();
+		bool isAccountManager() const { return guid == 1 or name == "Account Manager"; }
 		inline bool isPlayer() const override { return true; }
 		inline bool isMonster() const override { return false; }
 		inline bool isNpc() const override { return false; }
@@ -1101,6 +1103,12 @@ class Player final : public Creature, public Cylinder
 			}
 		}
 		void sendHouseWindow(House* house, uint32_t listId) const;
+
+		void sendAccountManagerTextWindow(uint32_t id, const std::string& text) const {
+			if (client) {
+				client->sendAccountManagerTextBox(id, text);
+			}
+		}
 	
 		void sendCreatePrivateChannel(uint16_t channelId, const std::string& channelName) const {
 			if (client) {
@@ -1412,6 +1420,76 @@ class Player final : public Creature, public Cylinder
 		void reformDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, gtl::node_hash_map<uint8_t, ModifierTotals> conversionList);
 		void increaseDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) const;
 
+		uint8_t getAccountManagerLastState() 
+		{
+			return accountManagerState;
+		}
+
+		void setAccountManagerLastState(uint8_t state) 
+		{
+			accountManagerState = state;
+		}
+
+		void setTempAccountName(std::string name) 
+		{
+			client->setTempAccountName(name);
+		}
+
+		void setTempPassword(std::string password) 
+		{
+			client->setTempPassword(password);
+		}
+
+		void setTempPosition(Position spawn_pos) 
+		{
+			client->setTempPosition(spawn_pos);
+		}
+
+		void setTempTownId(uint32_t id)
+		{
+			client->setTempTownId(id);
+		}
+
+		void setTempCharacterChoice(uint32_t choice)
+		{
+			client->setTempCharacterChoice(choice);
+		}
+
+		void setTempVocation(uint32_t vocation)
+		{
+			client->setTempVocation(vocation);
+		}
+
+		const std::string getTempAccountName() 
+		{
+			return client->getTempAccountName();
+		}
+
+		const std::string getTempPassword() 
+		{
+			return client->getTempPassword();
+		}
+
+		const Position getTempPosition() 
+		{
+			return client->getTempPosition();
+		}
+
+		const uint32_t getTempVocation()
+		{
+			return client->getTempVocation();
+		}
+
+		const uint32_t getTempCharacterChoice()
+		{
+			return client->getTempCharacterChoice();
+		}
+
+		const uint32_t getTempTownId()
+		{
+			return client->getTempTownId();
+		}
+
 		Position generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, CombatOrigin origin);
 
 		std::unique_ptr<AreaCombat> generateDeflectArea(std::optional<CreaturePtr> attacker, int32_t targetCount) const;
@@ -1483,6 +1561,8 @@ class Player final : public Creature, public Cylinder
 
 		std::string name;
 		std::string guildNick;
+		std::string tempAccountName;
+		std::string tempPassword;
 
 		Skill skills[SKILL_LAST + 1];
 		LightInfo itemsLight;
@@ -1564,6 +1644,8 @@ class Player final : public Creature, public Cylinder
 		std::bitset<6> blessings;
 		uint8_t levelPercent = 0;
 		uint8_t magLevelPercent = 0;
+		uint8_t accountManagerState = 0;
+
 
 		PlayerSex_t sex = PLAYERSEX_FEMALE;
 		OperatingSystem_t operatingSystem = CLIENTOS_NONE;
