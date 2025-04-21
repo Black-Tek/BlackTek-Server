@@ -79,12 +79,6 @@ void AccountManager::initialize()
 				option.magiclevel = skill["magiclevel"].value_or(1);
 			} // todo else { // log warning / error}
 
-			std::cout << "[[ Character Option ]] \n";
-			std::cout << ">> Index : " << std::string(index.str()) << " \n";
-			std::cout << ">> Premium : " << std::to_string(option.premium) <<" \n";
-			std::cout << ">> Vocation : " << std::to_string(option.vocation) << " \n";
-			std::cout << ">> Towns : " << std::to_string(option.town_list.size()) << " \n";
-			std::cout << ">> LookMount : " << std::to_string(option.outfit[2]) << " \n";
 			option.name = std::string(index.str());
 			option.id = option_id;
 			g_game.addCharacterOption(option);

@@ -1265,9 +1265,6 @@ void ProtocolGame::parseModalWindowAnswer(NetworkMessage& msg)
 	uint32_t id = msg.get<uint32_t>();
 	uint8_t button = msg.getByte();
 	uint8_t choice = msg.getByte();
-	std::cout << "[parseAnswer] Window ID : " << id << " \n";
-	std::cout << "[parseAnswer] Button ID : " << button << " \n";
-	std::cout << "[parseAnswer] Choice : " << choice << " \n";
 	addGameTask([=, playerID = player->getID()]() { g_game.playerAnswerModalWindow(playerID, id, button, choice); });
 }
 
