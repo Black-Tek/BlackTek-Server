@@ -5184,13 +5184,13 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			std::string spectatorMessage;
 
 			if (!attacker) {
-				spectatorMessage = targetNameDesc + " was healed for " + damageString;
+				spectatorMessage = targetNameDesc + " is healed for " + damageString;
 			}
 			else if (attacker == target) {
-				spectatorMessage = attackerNameDesc + " healed " + (targetPlayer ? (targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "him") : "it") + "self for " + damageString + ".";
+				spectatorMessage = attackerNameDesc + " heals " + (targetPlayer ? (targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "him") : "it") + "self for " + damageString + ".";
 			}
 			else {
-				spectatorMessage = attackerNameDesc + " healed " + targetNameDesc + " for " + damageString + ".";
+				spectatorMessage = attackerNameDesc + " heals " + targetNameDesc + " for " + damageString + ".";
 			}
 			spectatorMessage[0] = std::toupper(spectatorMessage[0]);
 
@@ -5210,9 +5210,9 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 				}
 				else if (spectatorPlayer == targetPlayer) {
 					message.type = MESSAGE_HEALED;
-					message.text = !attacker ? "You were healed for " + damageString + "." :
-						(targetPlayer == attackerPlayer ? "You healed yourself for " + damageString + "." :
-							"You were healed by " + attackerNameDesc + " for " + damageString + ".");
+					message.text = !attacker ? "You are healed for " + damageString + "." :
+						(targetPlayer == attackerPlayer ? "You heal yourself for " + damageString + "." :
+							"You are healed by " + attackerNameDesc + " for " + damageString + ".");
 				}
 				else {
 					message.type = MESSAGE_HEALED_OTHERS;
@@ -5465,7 +5465,7 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 		realManaChange = targetPlayer->getMana() - realManaChange;
 
 		if (realManaChange > 0 && !targetPlayer->isInGhostMode()) {
-			TextMessage message(MESSAGE_HEALED, "You gained " + std::to_string(realManaChange) + "mana.");
+			TextMessage message(MESSAGE_HEALED, "You gain " + std::to_string(realManaChange) + " mana.");
 			message.position = target->getPosition();
 			message.primary.value = realManaChange;
 			message.primary.color = TEXTCOLOR_MAYABLUE;
