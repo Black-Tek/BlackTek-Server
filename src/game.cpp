@@ -3681,12 +3681,12 @@ ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId
 			break;
 		}
 
-		case AccountManager::PRIVATE_PASSSWORD_MISMATCH: // says passwords don't match
+		case AccountManager::PRIVATE_PASSWORD_MISMATCH: // says passwords don't match
 		{
 			window.title = "Invalid Password!";
 			window.message = "I'm sorry, but that didn't quite match what you entered the first time. Please ensure you enter the same password you entered before..\nAre you ready to proceed? Or shall we start again?";
 			window.buttons.emplace_back("Retry", ButtonID::PRIMARY);
-			window.buttons.emplace_back("New Password", ButtonID::SECONDARY);
+			window.buttons.emplace_back("New Pass", ButtonID::SECONDARY);
 			window.buttons.emplace_back("Main Menu", ButtonID::TERTIARY);
 			break;
 		}
@@ -3732,7 +3732,7 @@ ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId
 			window.title = "Password Mismatch!";
 			window.message = "I'm sorry, but that didn't quite match what you entered the first time. Please ensure you enter the same password you entered before..\nAre you ready to proceed? Or shall we start again?";
 			window.buttons.emplace_back("Retry", ButtonID::PRIMARY);
-			window.buttons.emplace_back("New Password", ButtonID::SECONDARY);
+			window.buttons.emplace_back("New Pass", ButtonID::SECONDARY);
 			window.buttons.emplace_back("Main Menu", ButtonID::TERTIARY);
 			break;
 		}
@@ -3975,12 +3975,12 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 
 		}
 
-		case AccountManager::PRIVATE_PASSSWORD_MISMATCH:
+		case AccountManager::PRIVATE_PASSWORD_MISMATCH:
 		{
 
 			if (button == ButtonID::PRIMARY) // Retry
 			{
-				player->sendAccountManagerTextWindow(AccountManager::CONFIRMATION_TEXT_BOX, "Repeate Password");
+				player->sendAccountManagerTextWindow(AccountManager::CONFIRMATION_TEXT_BOX, "Repeat Password");
 				break;
 			}
 			if (button == ButtonID::SECONDARY) // New pass
@@ -4144,7 +4144,7 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 				break;
 			} // else
 
-			player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSSWORD_MISMATCH));
+			player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_MISMATCH));
 			break;
 		}
 
@@ -4247,7 +4247,7 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 				break;
 			}
 
-			player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSSWORD_MISMATCH));
+			player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_RESET_MISMATCH));
 			break;
 		}
 
@@ -4282,7 +4282,7 @@ ModalWindow Game::CreateAccountManagerWindow(const uint32_t modalWindowId)
 		case AccountManager::COMMON_LOGIN:
 		{
 			window.title = "Welcome!";
-			window.message = "Welcome new spririt, are you ready to begin your destiny?";
+			window.message = "Welcome new spirit, are you ready to begin your destiny?";
 			break;
 		}
 
