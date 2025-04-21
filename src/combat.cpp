@@ -662,7 +662,7 @@ void Combat::doCombat(const CreaturePtr& caster, const CreaturePtr& target) cons
 	}
 
 	// Consolidate combat check once
-	bool canCombat = (not params.aggressive or caster != target) and Combat::canDoCombat(caster, target) == RETURNVALUE_NOERROR;
+	bool canCombat = (not params.aggressive) or (caster != target and Combat::canDoCombat(caster, target) == RETURNVALUE_NOERROR);
 
 	if (params.combatType != COMBAT_NONE) {
 		CombatDamage damage = getCombatDamage(caster, target);
