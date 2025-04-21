@@ -200,12 +200,24 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 		// Todo : add back position spawn determined by config.lua
 		if (isAccountManager) {
 			player->accountNumber = accountId;
+			auto x = static_cast<uint16_t>(g_config.getNumber(ConfigManager::ACCOUNT_MANAGER_POS_X));
+			auto y = static_cast<uint16_t>(g_config.getNumber(ConfigManager::ACCOUNT_MANAGER_POS_Y));
+			auto z = static_cast<uint8_t>(g_config.getNumber(ConfigManager::ACCOUNT_MANAGER_POS_Z));
+			if (!g_game.placeCreature(player, Position{ x, y, z })) {
+				if (!g_game.placeCreature(player, player->getTemplePosition(), false, true)) {
+					disconnectClient("Unable To Spawn Account Manager Please contact Admin!.");
+					std::cout << "Account Manager Failed to spawn at location X = " << x << " Y = " << y << " Z = " << z << " \n";
+					return;
+				}
+			}
 		}
-
-		if (!g_game.placeCreature(player, player->getLoginPosition())) {
-			if (!g_game.placeCreature(player, player->getTemplePosition(), false, true)) {
-				disconnectClient("Temple position is wrong. Contact the administrator.");
-				return;
+		else
+		{
+			if (!g_game.placeCreature(player, player->getLoginPosition())) {
+				if (!g_game.placeCreature(player, player->getTemplePosition(), false, true)) {
+					disconnectClient("Temple position is wrong. Contact the administrator.");
+					return;
+				}
 			}
 		}
 
