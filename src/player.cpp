@@ -974,7 +974,7 @@ int32_t Player::getDefense() const
 	// and a quiver in each hand... in this case we are just gonna end up using left hand
 	// So if this is something that concerns you, you can go back to looping and using switches
 	// and storing variables to keep track of highest defense and do the math and all that yourself.
-	if (leftHand && (leftHand->getWeaponType() == WEAPON_SHIELD || leftHand->getWeaponType() == WEAPON_QUIVER))
+	if (leftHand and (leftHand->getWeaponType() == WEAPON_SHIELD or leftHand->getWeaponType() == WEAPON_QUIVER))
 	{
 		shield = leftHand;
 		if (rightHand)
@@ -982,10 +982,21 @@ int32_t Player::getDefense() const
 			weapon = rightHand;
 		}
 	}
-	else if (rightHand && (rightHand->getWeaponType() == WEAPON_SHIELD || rightHand->getWeaponType() == WEAPON_QUIVER))
+	else if (rightHand and (rightHand->getWeaponType() == WEAPON_SHIELD or rightHand->getWeaponType() == WEAPON_QUIVER))
 	{
 		shield = rightHand;
 		if (leftHand)
+		{
+			weapon = leftHand;
+		}
+	}
+	else 
+	{
+		if (rightHand and rightHand->getWeaponType() != WEAPON_SHIELD and rightHand->getWeaponType() != WEAPON_QUIVER)
+		{
+			weapon = rightHand;
+		} 
+		else if (leftHand and leftHand->getWeaponType() != WEAPON_SHIELD and leftHand->getWeaponType() != WEAPON_QUIVER)
 		{
 			weapon = leftHand;
 		}
