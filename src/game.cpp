@@ -4385,7 +4385,7 @@ void Game::onAccountManagerRecieveText(const uint32_t player_id, uint32_t window
 			} // else
 
 			player->setTempPassword("");
-			player->sendModalWindow(CreateAccountManagerWindow(AccountManager::COMMON_CONFIRMATION_FAILED));
+			player->sendModalWindow(CreateAccountManagerWindow(AccountManager::COMMON_PASSWORD_FAILED));
 			break;
 		}
 
