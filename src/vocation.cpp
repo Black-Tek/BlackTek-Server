@@ -104,7 +104,9 @@ bool Vocations::loadFromToml() {
 						stats->for_each([&vocation](auto&& prop) {
 							if (prop.is_table()) {
 								auto& stat = *prop.as_table();
-								vocation.gainCap = stat["cap"].value_or(10);
+								// client handles uint32 like a float
+								// so we must times capacity by 100
+								vocation.gainCap = stat["cap"].value_or(10) * 100;
 								vocation.gainHP = stat["hp"].value_or(5);
 								vocation.gainMana = stat["mana"].value_or(5);
 							}
