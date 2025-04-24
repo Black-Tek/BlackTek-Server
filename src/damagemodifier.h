@@ -178,10 +178,15 @@ public:
 	const std::string& getMonsterName() const;
 	const CombatType_t& getConversionType() const;
 
-	void setValue(uint16_t amount);
+	void setType(uint8_t modType);
+	void setStance(uint8_t stance);
+	void setValue(uint16_t amount); 
+	void setChance(uint8_t chance);
 	void setFactor(uint8_t factor);
 	void setCombatType(CombatType_t combatType);
 	void setOriginType(CombatOrigin origin);
+	void setRaceType(RaceType_t race);
+	void setCreatureType(CreatureType_t c_type);
 	void increaseValue(uint16_t amount);
 	void decreaseValue(uint16_t amount);
 	void setTransformDamageType(CombatType_t damageType);
@@ -240,8 +245,23 @@ private:
 
 /// Inline Methods' Definitions
 
+inline void DamageModifier::setType(uint8_t modType)
+{
+	m_mod_type = modType;
+}
+
+inline void DamageModifier::setStance(uint8_t stance)
+{
+	m_mod_stance = stance;
+}
+
 inline void DamageModifier::setValue(uint16_t amount) {
 	m_value = amount;
+}
+
+inline void DamageModifier::setChance(uint8_t chance)
+{
+	m_chance = chance;
 }
 
 inline void DamageModifier::setFactor(uint8_t factor)
@@ -255,6 +275,16 @@ inline void DamageModifier::setCombatType(CombatType_t combatType) {
 
 inline void DamageModifier::setOriginType(CombatOrigin origin) {
 	m_origin_type = origin;
+}
+
+inline void DamageModifier::setRaceType(RaceType_t race)
+{
+	m_race_type = race;
+}
+
+inline void DamageModifier::setCreatureType(CreatureType_t c_type)
+{
+	m_creature_type = c_type;
 }
 
 inline void DamageModifier::setCreatureName(std::string_view creatureName) {

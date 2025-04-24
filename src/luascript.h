@@ -353,6 +353,7 @@ class LuaScriptInterface
 		}
 
 		static std::string getString(lua_State* L, int32_t arg);
+		static std::string getString(lua_State* L, int32_t arg, const std::string& fallback);
 		static Position getPosition(lua_State* L, int32_t arg, int32_t& stackpos);
 		static Position getPosition(lua_State* L, int32_t arg);
 		static Outfit_t getOutfit(lua_State* L, int32_t arg);
@@ -846,10 +847,18 @@ class LuaScriptInterface
 
 		// DamageModifier
 		static int luaDamageModifierCreate(lua_State* L);
+		static int luaAugmentRegister(lua_State* L);
+		static int luaDamageModifierSetType(lua_State* L);
+		static int luaDamageModifierSetStance(lua_State* L);
+		static int luaDamageModifierSetChance(lua_State* L);
 		static int luaDamageModifierSetValue(lua_State* L);
 		static int luaDamageModifierSetRateFactor(lua_State* L);
 		static int luaDamageModifierSetCombatFilter(lua_State* L);
 		static int luaDamageModifierSetOriginFilter(lua_State* L);
+		static int luaDamageModifierSetRaceFilter(lua_State* L);
+		static int luaDamageModifierSetCreatureTypeFilter(lua_State* L);
+		static int luaDamageModifierSetCreatureName(lua_State* L);
+
 
 		// Augment
 		static int luaAugmentCreate(lua_State* L);

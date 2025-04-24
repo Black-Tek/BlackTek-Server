@@ -717,6 +717,16 @@ std::string LuaScriptInterface::getString(lua_State* L, int32_t arg)
 	return std::string(c_str, len);
 }
 
+std::string LuaScriptInterface::getString(lua_State* L, int32_t arg, const std::string& fallback)
+{
+	size_t len;
+	const char* c_str = lua_tolstring(L, arg, &len);
+	if (!c_str || len == 0) {
+		return fallback;
+	}
+	return std::string(c_str, len);
+}
+
 Position LuaScriptInterface::getPosition(lua_State* L, int32_t arg, int32_t& stackpos)
 {
 	Position position;
@@ -2417,14 +2427,22 @@ void LuaScriptInterface::registerFunctions()
 	// DamageModifer
 	registerClass("DamageModifier", "", LuaScriptInterface::luaDamageModifierCreate);
 	registerMetaMethod("DamageModifier", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMethod("DamageModifier", "setType", LuaScriptInterface::luaDamageModifierSetType);
+	registerMethod("DamageModifier", "setStance", LuaScriptInterface::luaDamageModifierSetStance);
 	registerMethod("DamageModifier", "setValue", LuaScriptInterface::luaDamageModifierSetValue);
-	registerMethod("DamageModifier", "setRateFactor", LuaScriptInterface::luaDamageModifierSetRateFactor);
-	registerMethod("DamageModifier", "setCombatFilter", LuaScriptInterface::luaDamageModifierSetCombatFilter);
-	registerMethod("DamageModifier", "setOriginFilter", LuaScriptInterface::luaDamageModifierSetOriginFilter);
+	registerMethod("DamageModifier", "setChance", LuaScriptInterface::luaDamageModifierSetChance);
+	registerMethod("DamageModifier", "setFactor", LuaScriptInterface::luaDamageModifierSetRateFactor);
+	registerMethod("DamageModifier", "setCombat", LuaScriptInterface::luaDamageModifierSetCombatFilter);
+	registerMethod("DamageModifier", "setOrigin", LuaScriptInterface::luaDamageModifierSetOriginFilter);
+	registerMethod("DamageModifier", "setCreatureType", LuaScriptInterface::luaDamageModifierSetCreatureTypeFilter);
+	registerMethod("DamageModifier", "setRace", LuaScriptInterface::luaDamageModifierSetRaceFilter);
+	registerMethod("DamageModifier", "setCreatureName", LuaScriptInterface::luaDamageModifierSetCreatureName);
+
 
 	// Augment
 	registerClass("Augment", "", LuaScriptInterface::luaAugmentCreate);
 	registerMetaMethod("Augment", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMethod("Augment", "register", LuaScriptInterface::luaAugmentRegister);
 	registerMethod("Augment", "setName", LuaScriptInterface::luaAugmentSetName);
 	registerMethod("Augment", "setDescription", LuaScriptInterface::luaAugmentSetDescription);
 	registerMethod("Augment", "getName", LuaScriptInterface::luaAugmentGetName);
@@ -7746,24 +7764,96 @@ int LuaScriptInterface::luaImbuementIsInfightDecay(lua_State* L)
 }
 
 int LuaScriptInterface::luaDamageModifierCreate(lua_State* L)
-{	// To-do : DamageModifier(DamageModifier)
-	// DamageModifier(stance, type, value, percent/flat, chance, combatType, originType, creatureType, race)
-	auto stance = getNumber<ImbuementType>(L, 2);
-	auto modType = getNumber<uint8_t>(L, 3);
-	auto amount = getNumber<uint16_t>(L, 4);
-	auto factor = getNumber<ModFactor>(L, 5);
-	auto chance = getNumber<uint8_t>(L, 6, 100);
-	auto combatType = getNumber<CombatType_t>(L, 7, COMBAT_NONE);
-	auto originType = getNumber<CombatOrigin>(L, 8, ORIGIN_NONE);
-	auto creatureType = getNumber<CreatureType_t>(L, 9, CREATURETYPE_ATTACKABLE);
-	auto race = getNumber<RaceType_t>(L, 10, RACE_NONE);
-	auto creatureName = getString(L, 11);
-
-	// to-do: handle no param defaults and throw error
-	if (stance && modType && amount && factor) {
-		pushSharedPtr(L, DamageModifier::makeModifier(stance, modType, amount, factor, chance, combatType, originType, creatureType, race, creatureName));
+{
+	// DamageModifier()
+	if (lua_gettop(L) < 2) {
+		pushSharedPtr(L, DamageModifier());
 		setMetatable(L, -1, "DamageModifier");
-	} else {
+		return 1;
+	}
+
+	// DamageModifier(stance, type, value, percent/flat, chance, combatType, originType, creatureType, race)
+	if (const auto stance = getNumber<ImbuementType>(L, 2))
+	{
+		const auto modType = getNumber<uint8_t>(L, 3);
+		const auto amount = getNumber<uint16_t>(L, 4);
+		const auto factor = getNumber<ModFactor>(L, 5);
+		const auto chance = getNumber<uint8_t>(L, 6, 100);
+		const auto combatType = getNumber<CombatType_t>(L, 7, COMBAT_NONE);
+		const auto originType = getNumber<CombatOrigin>(L, 8, ORIGIN_NONE);
+		const auto creatureType = getNumber<CreatureType_t>(L, 9, CREATURETYPE_ATTACKABLE);
+		const auto race = getNumber<RaceType_t>(L, 10, RACE_NONE);
+		const auto& creatureName = getString(L, 11, "none");
+
+		if (modType && amount && factor)
+		{
+			const auto& modifier = DamageModifier::makeModifier(stance, modType, amount, factor, chance, combatType, originType, creatureType, race, creatureName);
+			pushSharedPtr(L, modifier);
+			setMetatable(L, -1, "DamageModifier");
+			return 1;
+		}
+		else
+		{
+			lua_pushnil(L);
+			return 1;
+		}
+	}
+
+	// DamageModifier(damageModifier)
+	if (const auto& originalModifier = getSharedPtr<DamageModifier>(L, 2))
+	{
+		pushSharedPtr(L, DamageModifier(*originalModifier.get()));
+		setMetatable(L, -1, "DamageModifier");
+		return 1;
+	}
+
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetType(lua_State* L)
+{
+	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
+	{
+		if (const auto modType = getNumber<uint8_t>(L, 2)) 
+		{
+			modifier->setType(modType);
+		}
+	}
+	else 
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetStance(lua_State* L)
+{
+	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
+	{
+		if (const auto stance = getNumber<uint8_t>(L, 2))
+		{
+			modifier->setStance(stance);
+		}
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetChance(lua_State* L)
+{
+	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
+	{
+		if (const auto chance = getNumber<uint8_t>(L, 2))
+		{
+			modifier->setChance(chance);
+		}
+	}
+	else
+	{
 		lua_pushnil(L);
 	}
 	return 1;
@@ -7771,12 +7861,15 @@ int LuaScriptInterface::luaDamageModifierCreate(lua_State* L)
 
 int LuaScriptInterface::luaDamageModifierSetValue(lua_State* L)
 {
-	if (const auto modifier = getSharedPtr<DamageModifier>(L, 1)) {
-		// to-do: handle no param defaults and throw error
-		if (const uint8_t amount = getNumber<uint8_t>(L, 2)) {
+	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
+	{
+		if (const auto amount = getNumber<uint8_t>(L, 2)) 
+		{
 			modifier->setValue(amount);
 		}
-	} else {
+	} 
+	else 
+	{
 		lua_pushnil(L);
 	}
 	return 1;
@@ -7784,12 +7877,15 @@ int LuaScriptInterface::luaDamageModifierSetValue(lua_State* L)
 
 int LuaScriptInterface::luaDamageModifierSetRateFactor(lua_State* L)
 {
-	if (const auto modifier = getSharedPtr<DamageModifier>(L, 1)) {
-		// to-do: handle no param defaults and throw error
-		if (const uint8_t factor = getNumber<uint8_t>(L, 2)) {
+	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
+	{
+		if (const auto factor = getNumber<uint8_t>(L, 2)) 
+		{
 			modifier->setFactor(factor);
 		}
-	} else {
+	} 
+	else 
+	{
 		lua_pushnil(L);
 	}
 	return 1;
@@ -7797,13 +7893,15 @@ int LuaScriptInterface::luaDamageModifierSetRateFactor(lua_State* L)
 
 int LuaScriptInterface::luaDamageModifierSetCombatFilter(lua_State* L)
 {
-	if (const auto modifier = getSharedPtr<DamageModifier>(L, 1)) {
-		// to-do: handle no param defaults and throw error
-		CombatType_t combatType = getNumber<CombatType_t>(L, 2);
-		if (combatType >= 0) {
+	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
+	{
+		if (auto combatType = getNumber<CombatType_t>(L, 2); combatType >= 0)
+		{
 			modifier->setCombatType(combatType);
 		}
-	} else {
+	} 
+	else 
+	{
 		lua_pushnil(L);
 	}
 	return 1;
@@ -7811,14 +7909,81 @@ int LuaScriptInterface::luaDamageModifierSetCombatFilter(lua_State* L)
 
 int LuaScriptInterface::luaDamageModifierSetOriginFilter(lua_State* L)
 {
-	if (const auto modifier = getSharedPtr<DamageModifier>(L, 1)) {
-		// to-do: handle no param defaults and throw error
-		if (const CombatOrigin origin = getNumber<CombatOrigin>(L, 2)) {
+	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
+	{
+		if (const auto origin = getNumber<CombatOrigin>(L, 2)) 
+		{
 			modifier->setOriginType(origin);
 		}
-	} else {
+	}
+	else 
+	{
 		lua_pushnil(L);
 	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetRaceFilter(lua_State* L)
+{
+	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
+	{
+		if (const auto race = getNumber<RaceType_t>(L, 2))
+		{
+			modifier->setRaceType(race);
+		}
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetCreatureTypeFilter(lua_State* L)
+{
+	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
+	{
+		if (const auto c_type = getNumber<CreatureType_t>(L, 2))
+		{
+			modifier->setCreatureType(c_type);
+		}
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetCreatureName(lua_State* L)
+{
+	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
+	{
+			modifier->setCreatureName(getString(L, 2, "none"));
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaAugmentRegister(lua_State* L)
+{
+	if (lua_gettop(L) < 2) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const auto& augment = getSharedPtr<Augment>(L, 1);
+	if (Augments::GetAugment(augment->getName())) 
+	{
+		// already registered
+		lua_pushboolean(L, 0);
+		return 1;
+	}
+	Augments::AddAugment(augment);
+	lua_pushboolean(L, 1);
 	return 1;
 }
 
