@@ -79,6 +79,10 @@ bool Guild::removeWar(uint32_t guildId)
 	return true;
 }
 
+bool Guild::isWarActive(const GuildWar* war) {
+    return (war->status == WAR_ACTIVE || war->status == WAR_WITHDRAW_PROPOSED);
+}
+
 bool Guild::isInWar(uint32_t enemyGuildId)
 {
 	if (m_mGuildWars.find(enemyGuildId) == m_mGuildWars.end())
@@ -89,10 +93,9 @@ bool Guild::isInWar(uint32_t enemyGuildId)
 		return false;
 	}
 
-	// Check if the war is inactive
-	// Probably unecessary, but just to be sure
-	if (war->status != WAR_ACTIVE && war->status != WAR_WITHDRAW_PROPOSED)
+	if(!isWarActive(war)) {
 		return false;
+	}
 
 	return true;
 }
@@ -103,9 +106,10 @@ bool Guild::isInAnyWar()
 		return false;
 	}
 
-	for (const auto& war : m_mGuildWars) {
-		if (war.second.status == WAR_ACTIVE || war.second.status == WAR_WITHDRAW_PROPOSED)
+	for (const auto& warEntry : m_mGuildWars) {
+		if(isWarActive(&warEntry.second)) {
 			return true;
+		}
 	}
 
 	return false;

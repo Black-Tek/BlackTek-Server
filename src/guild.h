@@ -107,6 +107,9 @@ class Guild
 		}
 
 	private:
+		// Helper function for other methods checking war participation
+		bool isWarActive(const GuildWar* war);
+
 		std::list<PlayerPtr> membersOnline;
 		std::vector<GuildRank_ptr> ranks;
 		std::string name;
