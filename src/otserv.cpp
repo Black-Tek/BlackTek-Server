@@ -295,6 +295,9 @@ void mainLoader(int, char*[], ServiceManager* services)
 		AccountManager::initialize();
 	}
 
+	IOGuild::loadGuilds();
+	std::clog << ">> Loaded " << g_game.getGuilds().size() << " guilds" << std::endl;
+
 	std::cout << ">> Initializing gamestate" << std::endl;
 	g_game.setGameState(GAME_STATE_INIT);
 

@@ -147,6 +147,7 @@ CREATE TABLE IF NOT EXISTS `guilds` (
   `ownerid` int NOT NULL,
   `creationdata` int NOT NULL,
   `motd` varchar(255) NOT NULL DEFAULT '',
+  `balance` bigint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY (`name`),
   UNIQUE KEY (`ownerid`),
