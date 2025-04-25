@@ -214,7 +214,8 @@ void IOGuild::getWarList(const Guild_ptr& guild)
 		GuildWar war;
 		war.id = result->getNumber<uint32_t>("id");
 		war.status = result->getNumber<uint8_t>("status");
-		war.frags = result->getNumber<uint32_t>("frags");
+		war.frags = result->getNumber<uint8_t>("frags");
+		war.fragsToEnd = result->getNumber<uint8_t>("frags_to_end");
 		war.started = result->getNumber<uint64_t>("started");
 		war.ended = result->getNumber<uint64_t>("ended");
 

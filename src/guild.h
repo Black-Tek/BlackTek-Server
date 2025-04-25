@@ -29,6 +29,7 @@ struct GuildWar {
 
 	GuildWar() = default;
 };
+
 using GuildWarMap = std::map<uint32_t, GuildWar>;
 
 struct GuildRank {

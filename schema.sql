@@ -191,6 +191,7 @@ CREATE TABLE IF NOT EXISTS `guild_wars` (
   `status` tinyint NOT NULL DEFAULT '0',
   `started` bigint NOT NULL DEFAULT '0',
   `ended` bigint NOT NULL DEFAULT '0',
+  `frags_to_end` int NOT NULL DEFAULT 30,
   PRIMARY KEY (`id`),
   KEY `guild1` (`guild1`),
   KEY `guild2` (`guild2`)
