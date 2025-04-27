@@ -113,7 +113,7 @@ void Game::setGameState(GameState_t newState)
 			raids.loadFromXml();
 			raids.startup();
 
-			quests.loadFromXml();
+			quests.loadFromToml();
 			mounts.loadFromToml();
 
 			loadMotdNum();

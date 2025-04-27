@@ -1,0 +1,23 @@
+[StarterQuest]
+name = "Starter Quest"
+startstorage = 100
+startvalue = 1
+missions = [
+    {name = "Mission1", storage = 101, start = 0, end = 1, ignoreend = false, description = "This is mission description"},
+    {name = "Mission2", storage = 102, start = 0, end = 2, ignoreend = true, states = [ 
+        {id = 0, description = "primary state"}, 
+        {id = 1, description = "secondary state"}
+    ]}
+]
+
+[FirstJourney]
+name = "First Journey"
+startstorage = 103
+startvalue = 1
+missions = [
+    {name = "Mission1", storage = 104, start = 0, end = 1, ignoreend = false, description = "This is mission description"},
+    {name = "Mission2", storage = 105, start = 0, end = 2, ignoreend = true, states = [ 
+        {id = 0, description = "primary state"}, 
+        {id = 1, description = "secondary state"}
+    ]}
+]

@@ -96,7 +96,7 @@ class Quests
 			return quests;
 		}
 
-		bool loadFromXml();
+		bool loadFromToml();
 		Quest* getQuestByID(uint16_t id);
 		bool isQuestStorage(const uint32_t key, const int32_t value, const int32_t oldValue) const;
 		uint16_t getQuestsCount(const PlayerPtr& player) const;

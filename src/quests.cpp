@@ -127,47 +127,85 @@ bool Quest::isStarted(const PlayerPtr& player) const
 bool Quests::reload()
 {
 	quests.clear();
-	return loadFromXml();
+	return loadFromToml();
 }
 
-bool Quests::loadFromXml()
+bool Quests::loadFromToml()
 {
-	pugi::xml_document doc;
-	pugi::xml_parse_result result = doc.load_file("data/XML/quests.xml");
-	if (!result) {
-		printXMLError("Error - Quests::loadFromXml", "data/XML/quests.xml", result);
-		return false;
-	}
+	for (const auto& entry : std::filesystem::recursive_directory_iterator("data/quests/"))
+	{
+		if (entry.is_regular_file() && entry.path().extension() == ".toml")
+		{
+			try {
+				auto tbl = toml::parse_file(entry.path().string());
+				uint16_t id = 0;
 
-	uint16_t id = 0;
-	for (auto questNode : doc.child("quests").children()) {
-		quests.emplace_back(
-			questNode.attribute("name").as_string(),
-			++id,
-			pugi::cast<int32_t>(questNode.attribute("startstorageid").value()),
-			pugi::cast<int32_t>(questNode.attribute("startstoragevalue").value())
-		);
-		Quest& quest = quests.back();
+				// Iterate over each top-level table (each represents a quest)
+				for (const auto& [key, value] : tbl) {
+					if (value.is_table()) {
 
-		for (auto missionNode : questNode.children()) {
-			std::string mainDescription = missionNode.attribute("description").as_string();
+						auto quest_table = value.as_table();
+						std::string name = (*quest_table)["name"].value<std::string>().value_or("");
+						int32_t startstorage = static_cast<int32_t>((*quest_table)["startstorage"].value<int64_t>().value_or(0));
+						int32_t startvalue = static_cast<int32_t>((*quest_table)["startvalue"].value<int64_t>().value_or(0));
 
-			quest.missions.emplace_back(
-				missionNode.attribute("name").as_string(),
-				pugi::cast<int32_t>(missionNode.attribute("storageid").value()),
-				pugi::cast<int32_t>(missionNode.attribute("startvalue").value()),
-				pugi::cast<int32_t>(missionNode.attribute("endvalue").value()),
-				missionNode.attribute("ignoreendvalue").as_bool()
-			);
-			Mission& mission = quest.missions.back();
+						quests.emplace_back(name, ++id, startstorage, startvalue);
+						Quest& quest = quests.back();
 
-			if (mainDescription.empty()) {
-				for (auto missionStateNode : missionNode.children()) {
-					int32_t missionId = pugi::cast<int32_t>(missionStateNode.attribute("id").value());
-					mission.descriptions.emplace(missionId, missionStateNode.attribute("description").as_string());
+						if (auto missions_node = (*quest_table)["missions"]; missions_node.is_array()) {
+							auto missions_array = missions_node.as_array();
+
+
+							for (const auto& mission_val : *missions_array) {
+								if (mission_val.is_table()) {
+
+									auto mission_table = mission_val.as_table();
+									std::string mission_name = (*mission_table)["name"].value<std::string>().value_or("");
+									int32_t storage = 0;
+
+									if (auto storage_node = (*mission_table)["storage"]; storage_node.is_integer()) {
+										storage = static_cast<int32_t>(storage_node.value<int64_t>().value_or(0));
+									}
+
+									int32_t start = 0;
+									if (auto start_node = (*mission_table)["start"]; start_node.is_integer()) {
+										start = static_cast<int32_t>(start_node.value<int64_t>().value_or(0));
+									}
+
+									int32_t end = 0;
+									if (auto end_node = (*mission_table)["end"]; end_node.is_integer()) {
+										end = static_cast<int32_t>(end_node.value<int64_t>().value_or(0));
+									}
+
+									bool ignoreend = (*mission_table)["ignoreend"].value<bool>().value_or(false);
+									quest.missions.emplace_back(mission_name, storage, start, end, ignoreend);
+									Mission& mission = quest.missions.back();
+
+									// Handle description or states, why should we not eventually get to have both?
+									// need to check into what the client will allow for this...
+									if (auto desc_node = (*mission_table)["description"]; desc_node.is_string()) {
+										mission.mainDescription = desc_node.value<std::string>().value_or("");
+									}
+									else if (auto states_node = (*mission_table)["states"]; states_node.is_array()) {
+										auto states_array = states_node.as_array();
+										for (const auto& state_val : *states_array) {
+											if (state_val.is_table()) {
+												auto state_table = state_val.as_table();
+												int32_t state_id = static_cast<int32_t>((*state_table)["id"].value<int64_t>().value_or(0));
+												std::string desc = (*state_table)["description"].value<std::string>().value_or("");
+												mission.descriptions.emplace(state_id, desc);
+											}
+										}
+									}
+								}
+							}
+						}
+					}
 				}
-			} else {
-				mission.mainDescription = mainDescription;
+			}
+			catch (const toml::parse_error& err) {
+				std::cerr << "Failed to parse "<< entry.path().string() << ". Reason : " << err.what() << " \n";
+				return false;
 			}
 		}
 	}
