@@ -32,3 +32,10 @@ If you wish to get started immediately you may download all the binaries along w
 
 Getting setup for compiling can be done the easy way by running either the ```bootstrap.bat```(Windows) or ```bootstrap.sh```(Linux). <br>
 <br>If you prefer compiling manually, or you are looking for a more thorough getting started guide, you can find the information needed, based on your specific needs in our wiki [here](https://github.com/Black-Tek/BlackTek-Server/wiki/Getting-Started#compiling).<br>
+
+## Where to find a compatible client?
+____________
+
+The BlackTek server is currently using the Tibia 10.98 client protocol. You can use either the original client which you can find [here](https://downloads.ots.me/data/tibia-clients/windows/exe/Tibia1098.exe) as an .exe, or [here](https://downloads.ots.me/data/tibia-clients/windows/zip/Tibia1098.zip) as a .zip. 
+
+Alternatives which support this protocol include [Open Tibia Client](https://github.com/edubart/otclient) and any of it's derivatives such as [OTC Redemption](https://github.com/mehah/otclient#-otclient---redemption) & [OTCv8 (OTA)](https://github.com/OTAcademy/otclientv8), 
