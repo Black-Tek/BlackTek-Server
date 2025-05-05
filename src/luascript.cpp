@@ -29,6 +29,7 @@
 #include "weapons.h"
 #include "luavariant.h"
 #include "augments.h"
+#include "zones.h"
 
 extern Chat* g_chat;
 extern Game g_game;
@@ -2227,6 +2228,8 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("Position", "sendMagicEffect", LuaScriptInterface::luaPositionSendMagicEffect);
 	registerMethod("Position", "sendDistanceEffect", LuaScriptInterface::luaPositionSendDistanceEffect);
+	registerMethod("Position", "getZones()", LuaScriptInterface::luaPositionGetZones);
+	registerMethod("Position", "hasZone()", LuaScriptInterface::luaPositionHasZone);
 
 	// Tile
 	registerClass("Tile", "", LuaScriptInterface::luaTileCreate);
@@ -3355,6 +3358,18 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("XMLNode", "name", LuaScriptInterface::luaXmlNodeName);
 	registerMethod("XMLNode", "firstChild", LuaScriptInterface::luaXmlNodeFirstChild);
 	registerMethod("XMLNode", "nextSibling", LuaScriptInterface::luaXmlNodeNextSibling);
+
+	lua_register(luaState, "Zones", LuaScriptInterface::luaGetZones);
+	registerClass("Zone", "", LuaScriptInterface::luaCreateZone);
+	registerMetaMethod("Zone", "__gc", LuaScriptInterface::luaDeleteZone);
+	registerMethod("Zone", "getId", LuaScriptInterface::luaZoneId);
+	registerMethod("Zone", "getCreatures", LuaScriptInterface::luaZoneCreatures); // lets pass a creature_type for a filter
+	registerMethod("Zone", "getGrounds", LuaScriptInterface::luaZoneGrounds);
+	registerMethod("Zone", "getItems", LuaScriptInterface::luaZoneItems);
+	registerMethod("Zone", "getTiles", LuaScriptInterface::luaZoneTiles);
+	registerMethod("Zone", "getCreatureCount", LuaScriptInterface::luaZoneCreatureCount);
+	registerMethod("Zone", "getItemCount", LuaScriptInterface::luaZoneItemCount);
+	registerMethod("Zone", "getTileCount", LuaScriptInterface::luaZoneTileCount);
 }
 
 #undef registerEnum
@@ -5355,6 +5370,50 @@ int LuaScriptInterface::luaPositionSendDistanceEffect(lua_State* L)
 
 	pushBoolean(L, true);
 	return 1;
+}
+
+int LuaScriptInterface::luaPositionGetZones(lua_State* L)
+{
+	// position:getZones()
+	// returns table of zone id's
+	if (isTable(L, 1))
+	{
+		auto position = getPosition(L, 1);
+		auto zones = Zones::getZonesByPosition(position);
+		auto index = 0;
+		lua_createtable(L, zones.size(), 0);
+
+		for (auto& zone : zones)
+		{
+			lua_pushnumber(L, zone);
+			lua_rawseti(L, -2, ++index);
+		}
+		return 1;
+	}
+	// should be unreachable
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaPositionHasZone(lua_State* L)
+{
+	// position:hasZones()
+	// returns true / false
+	if (isTable(L, 1))
+	{
+		auto position = getPosition(L, 1);
+		auto zones = Zones::getZonesByPosition(position);
+		if (zones.empty()) 
+		{
+			pushBoolean(L, false);
+			return 1;
+		} 
+		// else
+		pushBoolean(L, true);
+		return 1;
+	}
+	// should be unreachable
+	return 0;
 }
 
 // Tile
@@ -18847,6 +18906,374 @@ int LuaScriptInterface::luaXmlNodeNextSibling(lua_State* L)
 	pushUserdata<pugi::xml_node>(L, newNode.release());
 	setMetatable(L, -1, "XMLNode");
 	return 1;
+}
+
+int LuaScriptInterface::luaGetZones(lua_State* L)
+{
+	auto& zones = Zones::get();
+	auto index = 0;
+	lua_createtable(L, zones.size(), 0);
+
+	for (auto& zone : zones)
+	{
+		pushUserdata<Zone>(L, &zone);
+		setMetatable(L, -1, "Zone");
+		lua_rawseti(L, -2, ++index);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaCreateZone(lua_State* L)
+{
+	// Zone(id)
+	// looks up the zone by id
+	// can return false if zone can't be found or id is 0;
+
+	// Zone(id, positions)
+	// creates zone manually
+
+	// both return userdata
+	if (auto zoneId = getNumber<int>(L, 2))
+	{
+		if (zoneId != 0)
+		{
+			if (auto hasPositions = isTable(L, 3))
+			{
+				std::vector<Position> positions{};
+				positions.reserve(64);
+
+				lua_pushnil(L);
+				while (lua_next(L, 3) != 0) {
+					if (isTable(L, -1)) {
+						auto position = getPosition(L, -1);
+						positions.emplace_back(position);
+					}
+					lua_pop(L, 1);
+				}
+				auto& zone = Zones::createZone(zoneId, positions);
+				pushUserdata<Zone>(L, &zone);
+				setMetatable(L, -1, "Zone");
+				return 1;
+			}
+			else
+			{
+				auto& zone = Zones::getZone(zoneId);
+				// we check the id here again to ensure we don't have a default initialied zone.
+				if (zone.id != 0) 
+				{
+					pushUserdata<Zone>(L, &zone);
+					setMetatable(L, -1, "Zone");
+					return 1;
+				}
+			}
+		} 
+		else
+		{
+			// can't use zone id 0, could send log or console error
+			lua_pushnil(L);
+			return 1;
+		}
+	}
+
+	// if they didn't include a number, we should probably throw console error
+
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaDeleteZone(lua_State* L)
+{
+	// zone __gc()
+	Zone** zonePtr = getRawUserdata<Zone>(L, 1);
+	if (zonePtr && *zonePtr) {
+		delete* zonePtr;
+		*zonePtr = nullptr;
+	}
+	return 0;
+}
+
+int LuaScriptInterface::luaZoneId(lua_State* L)
+{
+	if (auto zone = getUserdata<Zone>(L, 1))
+	{
+		lua_pushnumber(L, zone->id);
+		return 1;
+	}
+	// should be unreachable
+	return 0;
+}
+
+int LuaScriptInterface::luaZoneCreatures(lua_State* L)
+{
+	// zone:getCreatures()
+	// zone:getCreatures(creatureType)
+	if (auto zone = getUserdata<Zone>(L, 1))
+	{
+		int index = 0;
+		bool isFiltered = (isNumber(L, 2));
+		CreatureType_t creatureType;
+		lua_createtable(L, zone->positions.size() * 4, 0);
+
+		if (isFiltered)
+		{
+			creatureType = getNumber<CreatureType_t>(L, 2);
+		}
+
+		for (auto& position : zone->positions)
+		{
+			if (auto tile = g_game.map.getTile(position.x, position.y, position.z))
+			{
+				if (tile->getCreatureCount() == 0)
+				{
+					continue;
+				}
+
+				for (auto& creature : *tile->getCreatures())
+				{
+					if (isFiltered and creature->getType() != creatureType) 
+					{
+						continue;
+					}
+
+					pushSharedPtr(L, creature);
+					setCreatureMetatable(L, -1, creature);
+					lua_rawseti(L, -2, ++index);
+				}
+			}
+		}
+
+		return 1;
+	}
+	// should be unreachable
+	return 0;
+}
+
+int LuaScriptInterface::luaZoneGrounds(lua_State* L)
+{
+	// zone:getGrounds()
+	if (auto zone = getUserdata<Zone>(L, 1))
+	{
+		lua_createtable(L, zone->positions.size(), 0);
+		int index = 0;
+		for (auto& position : zone->positions)
+		{
+			if (auto tile = g_game.map.getTile(position.x, position.y, position.z))
+			{
+				if (auto ground = tile->getGround()) 
+				{
+					pushSharedPtr(L, ground);
+					setItemMetatable(L, -1, ground);
+					lua_rawseti(L, -2, ++index);
+				}
+			}
+		}
+		return 1;
+	}
+	// should be unreachable
+	return 0;
+}
+
+int LuaScriptInterface::luaZoneItems(lua_State* L)
+{
+	// zone::getItems()
+	// zone::getItems(id)
+	if (auto zone = getUserdata<Zone>(L, 1))
+	{
+		bool isFiltered = (isNumber(L, 2));
+		int index = 0;
+		uint16_t item_type = 0;
+		lua_createtable(L, zone->positions.size() * 10, 0);
+
+		if (isFiltered)
+		{
+			item_type = getNumber<uint16_t>(L, 2);
+		}
+
+		for (auto& position : zone->positions)
+		{
+			if (auto tile = g_game.map.getTile(position.x, position.y, position.z))
+			{
+				if (auto items = tile->getItemList())
+				{
+					for (auto& item : *items)
+					{
+						if (isFiltered and item->getID() != item_type)
+						{
+							continue;
+						}
+
+						pushSharedPtr(L, item);
+						setItemMetatable(L, -1, item);
+						lua_rawseti(L, -2, ++index);
+					}
+				}
+			}
+		}
+		return 1;
+	}
+	// should be unreachable
+	return 0;
+}
+
+int LuaScriptInterface::luaZoneTiles(lua_State* L)
+{
+	// zone::getTiles()
+	// zone::getTiles(flags)
+	if (auto zone = getUserdata<Zone>(L, 1))
+	{
+		int index = 0;
+		auto isFiltered = (isNumber(L, 2));
+		uint32_t flags = 0;
+
+		if (isFiltered)
+		{
+			flags = (getNumber<uint32_t>(L, 2));
+		}
+
+		lua_createtable(L, zone->positions.size(), 0);
+
+		for (auto& position : zone->positions)
+		{
+			if (auto tile = g_game.map.getTile(position.x, position.y, position.z))
+			{
+				if (isFiltered and (tile->getFlags() & flags) != flags)
+				{
+					continue;
+				}
+				pushSharedPtr(L, tile);
+				setMetatable(L, -1, "Tile");
+				lua_rawseti(L, -2, ++index);
+			}
+		}
+		return 1;
+	}
+	// should be unreachable
+	return 0;
+}
+
+int LuaScriptInterface::luaZoneCreatureCount(lua_State* L)
+{
+	// zone::getCreatureCount()
+	// zone::getCreatureCount(CreatureType_t)
+	if (auto zone = getUserdata<Zone>(L, 1))
+	{
+		auto c_count = 0;
+		auto isFiltered = (isNumber(L, 2));
+		CreatureType_t creatureType;
+
+		if (isFiltered)
+		{
+			creatureType = (getNumber<CreatureType_t>(L, 2));
+		}
+
+		for (auto& position : zone->positions)
+		{
+			if (auto tile = g_game.map.getTile(position.x, position.y, position.z))
+			{
+				if (auto t_count = tile->getCreatureCount())
+				{
+					if (isFiltered)
+					{
+						for (auto& creature : *tile->getCreatures())
+						{
+							if (creature->getType() != creatureType)
+							{
+								continue;
+							}
+							++c_count;
+						}
+					}
+					else // no filter, count them all
+					{
+						c_count += t_count;
+					}
+				}
+			}
+		}
+		lua_pushnumber(L, c_count);
+		return 1;
+	}
+	// should be unreachable
+	return 0;
+}
+
+int LuaScriptInterface::luaZoneItemCount(lua_State* L)
+{
+	// zone::getItemCount()
+	// zone::getItemCount(id)
+	if (auto zone = getUserdata<Zone>(L, 1))
+	{
+		auto i_count = 0;
+		auto isFiltered = (isNumber(L, 2));
+		int itemId = 0;
+
+		if (isFiltered)
+		{
+			itemId = (getNumber<int>(L, 2));
+		}
+
+		for (auto& position : zone->positions)
+		{
+			if (auto tile = g_game.map.getTile(position.x, position.y, position.z))
+			{
+				if (auto t_count = tile->getItemCount())
+				{
+					if (isFiltered)
+					{
+						for (auto& item : *tile->getItemList())
+						{
+							if (item->getID() != itemId)
+							{
+								continue;
+							}
+							++i_count;
+						}
+					}
+					else // no filter, count them all
+					{
+						i_count += t_count;
+					}
+				}
+			}
+		}
+		lua_pushnumber(L, i_count);
+		return 1;
+	}
+	// should be unreachable
+	return 0;
+}
+
+int LuaScriptInterface::luaZoneTileCount(lua_State* L)
+{
+	// zone::getTileCount()
+	// zone::getTileCount(flags)
+	if (auto zone = getUserdata<Zone>(L, 1))
+	{
+		auto t_count = 0;
+		auto isFiltered = (isTable(L, 2));
+		tileflags_t flags;
+
+		if (isFiltered)
+		{
+			flags = (getNumber<tileflags_t>(L, 2));
+		}
+
+		for (auto& position : zone->positions)
+		{
+			if (auto tile = g_game.map.getTile(position.x, position.y, position.z))
+			{
+				if (isFiltered and (tile->getFlags() & flags) != flags)
+				{
+					continue;
+				}
+				++t_count;
+			}
+		}
+		lua_pushnumber(L, t_count);
+		return 1;
+	}
+	// should be unreachable
+	return 0;
 }
 
 //

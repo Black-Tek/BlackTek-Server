@@ -653,6 +653,8 @@ class LuaScriptInterface
 
 		static int luaPositionSendMagicEffect(lua_State* L);
 		static int luaPositionSendDistanceEffect(lua_State* L);
+		static int luaPositionGetZones(lua_State* L);
+		static int luaPositionHasZone(lua_State* L);
 
 		// Tile
 		static int luaTileCreate(lua_State* L);
@@ -1719,6 +1721,19 @@ class LuaScriptInterface
 		static int luaXmlNodeName(lua_State* L);
 		static int luaXmlNodeFirstChild(lua_State* L);
 		static int luaXmlNodeNextSibling(lua_State* L);
+
+		static int luaGetZones(lua_State* L);
+		static int luaCreateZone(lua_State* L);
+		static int luaDeleteZone(lua_State* L);
+		static int luaZoneId(lua_State* L);
+		static int luaZoneCreatures(lua_State* L);
+		static int luaZoneGrounds(lua_State* L);
+		static int luaZoneItems(lua_State* L);
+		static int luaZoneTiles(lua_State* L);
+		static int luaZoneCreatureCount(lua_State* L);
+		static int luaZoneItemCount(lua_State* L);
+		static int luaZoneTileCount(lua_State* L);
+		
 
 		//
 		std::string lastLuaError;
