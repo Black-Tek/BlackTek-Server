@@ -22,6 +22,8 @@
 #include <fstream>
 #include <fmt/color.h>
 #include "augments.h"
+#include "zones.h"
+
 #if __has_include("gitmetadata.h")
 	#include "gitmetadata.h"
 #endif
@@ -286,6 +288,9 @@ void mainLoader(int, char*[], ServiceManager* services)
 		startupErrorMessage("Failed to load map");
 		return;
 	}
+
+	std::cout << ">> Loading Zones \n";
+	Zones::load();
 
 	std::cout << ">> Loading augments" << std::endl;
 	Augments::loadAll();

@@ -221,6 +221,10 @@ class Tile : public Cylinder, public SharedObject
 			return hasBitSet(flag, flags);
 		}
 
+		uint32_t getFlags() const {
+			return this->flags;
+		}
+
 		void setFlag(uint32_t flag) {
 			this->flags |= flag;
 		}
