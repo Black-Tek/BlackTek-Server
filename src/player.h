@@ -263,11 +263,11 @@ class Player final : public Creature, public Cylinder
 			bankBalance = balance;
 		}
 
-		Guild* getGuild() const {
+		Guild_ptr getGuild() const {
 			return guild;
 		}
 	
-		void setGuild(Guild* guild);
+		void setGuild(Guild_ptr guild);
 
 		GuildRank_ptr getGuildRank() const {
 			return guildRank;
@@ -277,8 +277,6 @@ class Player final : public Creature, public Cylinder
 			guildRank = newGuildRank;
 		}
 
-		bool isGuildMate(const PlayerConstPtr& player) const;
-
 		const std::string& getGuildNick() const {
 			return guildNick;
 		}
@@ -286,9 +284,6 @@ class Player final : public Creature, public Cylinder
 		void setGuildNick(const std::string& nick) {
 			guildNick = nick;
 		}
-
-		bool isInWar(const PlayerConstPtr& player) const;
-		bool isInWarList(uint32_t guildId) const;
 
 		void setLastWalkthroughAttempt(int64_t walkthroughAttempt) {
 			lastWalkthroughAttempt = walkthroughAttempt;
@@ -307,10 +302,6 @@ class Player final : public Creature, public Cylinder
 		}
 
 		uint16_t getClientIcons() const;
-
-		const GuildWarVector& getGuildWarVector() const {
-			return guildWarVector;
-		}
 
 		Vocation* getVocation() const {
 			return vocation;
@@ -353,6 +344,9 @@ class Player final : public Creature, public Cylinder
 		void clearPartyInvitations();
 
 		GuildEmblems_t getGuildEmblem(const PlayerConstPtr& player) const;
+		bool isGuildMate(const PlayerConstPtr player) const;
+		bool isGuildWarEnemy(const PlayerConstPtr player, bool alliesAsEnemies) const;
+		bool isInWar(const PlayerConstPtr player) const;
 
 		uint64_t getSpentMana() const {
 			return manaSpent;
@@ -1550,7 +1544,6 @@ class Player final : public Creature, public Cylinder
 		std::vector<std::shared_ptr<Augment>> augments;
 
 		std::vector<OutfitEntry> outfits;
-		GuildWarVector guildWarVector;
 
 		std::list<ShopInfo> shopItemList;
 
@@ -1588,7 +1581,7 @@ class Player final : public Creature, public Cylinder
 		ProtocolGame_ptr client;
 
 		BedItemPtr bedItem = nullptr;
-		Guild* guild = nullptr;
+		Guild_ptr guild = nullptr;
 		GuildRank_ptr guildRank = nullptr;
 		Group* group = nullptr;
 		InboxPtr inbox;

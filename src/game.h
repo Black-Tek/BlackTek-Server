@@ -267,6 +267,12 @@ class Game
 
 		void updateWorldLightLevel();
 
+		// Guild stuff
+		const std::unordered_map<uint32_t, Guild_ptr>& getGuilds() const { return guilds; }
+		Guild_ptr getGuild(uint32_t id) const;
+		void addGuild(Guild_ptr guild);
+		void removeGuild(uint32_t guildId);
+
 		ReturnValue internalMoveCreature(CreaturePtr creature, Direction direction, uint32_t flags = 0);
 		ReturnValue internalMoveCreature(CreaturePtr creature, TilePtr toTile, uint32_t flags = 0);
 
@@ -521,10 +527,6 @@ class Game
 		void addMonster(MonsterPtr monster);
 		void removeMonster(const MonsterPtr& monster);
 
-		Guild* getGuild(uint32_t id) const;
-		void addGuild(Guild* guild);
-		void removeGuild(uint32_t guildId);
-
 		gtl::node_hash_map<TilePtr, ContainerPtr> browseFields;
 
 		void internalRemoveItems(const std::vector<ItemPtr>& itemList, uint32_t amount, bool stackable);
@@ -612,10 +614,11 @@ class Game
 		void checkDecay();
 		void internalDecayItem(const ItemPtr& item);
 
+		std::unordered_map<uint32_t, Guild_ptr> guilds;
+
 		gtl::node_hash_map<uint32_t, PlayerPtr> players;
 		gtl::node_hash_map<std::string, PlayerPtr> mappedPlayerNames;
 		gtl::node_hash_map<uint32_t, PlayerPtr> mappedPlayerGuids;
-		gtl::node_hash_map<uint32_t, Guild*> guilds;
 		std::vector<TilePtr> loaded_tiles;
 		std::vector<ItemPtr> loaded_tile_items;
 		std::vector<CharacterOption> character_options;
