@@ -64,10 +64,6 @@ Game::~Game()
 {
 	curl_global_cleanup();
 	curl_easy_cleanup(curl);
-
-	for (const auto& it : guilds) {
-		delete it.second;
-	}
 }
 
 void Game::start(ServiceManager* manager)
@@ -5795,6 +5791,27 @@ void Game::updateWorldTime()
 	worldTime = (timeInfo->tm_sec + (timeInfo->tm_min * 60)) / 2.5f;
 }
 
+Guild_ptr Game::getGuild(uint32_t id) const
+{
+	auto it = guilds.find(id);
+	if (it == guilds.end()) {
+		return nullptr;
+	}
+	return it->second;
+}
+
+void Game::addGuild(Guild_ptr guild) { 
+	if (!guild) {
+		return;
+	}
+
+	guilds[guild->getId()] = guild;
+}
+
+void Game::removeGuild(uint32_t guildId) {
+	guilds.erase(guildId);
+}
+
 void Game::shutdown()
 {
 	std::cout << "Shutting down..." << std::flush;
@@ -6782,25 +6799,6 @@ void Game::addMonster(MonsterPtr monster)
 void Game::removeMonster(const MonsterPtr& monster)
 {
 	monsters.erase(monster->getID());
-}
-
-Guild* Game::getGuild(const uint32_t id) const
-{
-	const auto it = guilds.find(id);
-	if (it == guilds.end()) {
-		return nullptr;
-	}
-	return it->second;
-}
-
-void Game::addGuild(Guild* guild)
-{
-	guilds[guild->getId()] = guild;
-}
-
-void Game::removeGuild(uint32_t guildId)
-{
-	guilds.erase(guildId);
 }
 
 void Game::internalRemoveItems(const std::vector<ItemPtr>& itemList, uint32_t amount, const bool stackable)

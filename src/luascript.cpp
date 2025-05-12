@@ -10376,7 +10376,7 @@ int LuaScriptInterface::luaPlayerGetGuild(lua_State* L)
 		return 1;
 	}
 
-	pushUserdata<Guild>(L, guild);
+	pushSharedPtr(L, guild);
 	setMetatable(L, -1, "Guild");
 	return 1;
 }
@@ -10390,7 +10390,7 @@ int LuaScriptInterface::luaPlayerSetGuild(lua_State* L)
 		return 1;
 	}
 
-	player->setGuild(getUserdata<Guild>(L, 2));
+	player->setGuild(getSharedPtr<Guild>(L, 2));
 	pushBoolean(L, true);
 	return 1;
 }
@@ -12341,7 +12341,7 @@ int LuaScriptInterface::luaGuildCreate(lua_State* L)
 	const uint32_t id = getNumber<uint32_t>(L, 2);
 
 	if (const auto guild = g_game.getGuild(id)) {
-		pushUserdata<Guild>(L, guild);
+		pushSharedPtr(L, guild);
 		setMetatable(L, -1, "Guild");
 	} else {
 		lua_pushnil(L);

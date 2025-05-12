@@ -4679,25 +4679,6 @@ bool Player::hasLearnedInstantSpell(const std::string& spellName) const
 	return false;
 }
 
-bool Player::isInWar(const PlayerConstPtr& player) const
-{
-	if (!player || !guild) {
-		return false;
-	}
-
-	const Guild* playerGuild = player->getGuild();
-	if (!playerGuild) {
-		return false;
-	}
-
-	return isInWarList(playerGuild->getId()) && player->isInWarList(guild->getId());
-}
-
-bool Player::isInWarList(const uint32_t guildId) const
-{
-	return std::ranges::find(guildWarVector, guildId) != guildWarVector.end();
-}
-
 bool Player::isPremium() const
 {
 	if (g_config.getBoolean(ConfigManager::FREE_PREMIUM) || hasFlag(PlayerFlag_IsAlwaysPremium)) {
@@ -4784,14 +4765,6 @@ bool Player::isPartner(const PlayerConstPtr& player) const
 	return party == player->party;
 }
 
-bool Player::isGuildMate(const PlayerConstPtr& player) const
-{
-	if (!player || !guild) {
-		return false;
-	}
-	return guild == player->guild;
-}
-
 void Player::sendPlayerPartyIcons(const PlayerPtr& player) const
 {
 	sendCreatureShield(player);
@@ -4827,17 +4800,16 @@ GuildEmblems_t Player::getGuildEmblem(const PlayerConstPtr& player) const
 		return GUILDEMBLEM_NONE;
 	}
 
-	const Guild* playerGuild = player->getGuild();
+	const Guild_ptr playerGuild = player->getGuild();
 	if (!playerGuild) {
 		return GUILDEMBLEM_NONE;
 	}
 
-	if (player->getGuildWarVector().empty()) {
+	if (!playerGuild->isInAnyWar()) {
 		if (guild == playerGuild) {
 			return GUILDEMBLEM_MEMBER;
-		} else {
-			return GUILDEMBLEM_OTHER;
 		}
+		return GUILDEMBLEM_OTHER;
 	} else if (guild == playerGuild) {
 		return GUILDEMBLEM_ALLY;
 	} else if (isInWar(player)) {
@@ -4845,6 +4817,46 @@ GuildEmblems_t Player::getGuildEmblem(const PlayerConstPtr& player) const
 	}
 
 	return GUILDEMBLEM_NEUTRAL;
+}
+
+bool Player::isGuildMate(const PlayerConstPtr player) const
+{
+	if (!player || !guild) {
+		return false;
+	}
+	return guild == player->guild;
+}
+
+bool Player::isGuildWarEnemy(const PlayerConstPtr player, bool alliesAsEnemies) const
+{
+	if (!player || !guild) {
+		return false;
+	}
+
+	const auto& playerGuild = player->getGuild();
+	if (!playerGuild) {
+		return false;
+	}
+
+	if (getGuild()->getId() == playerGuild->getId()) {
+		return alliesAsEnemies;
+	}
+
+	return guild->isInWar(playerGuild->getId()) && playerGuild->isInWar(guild->getId());
+}
+
+bool Player::isInWar(const PlayerConstPtr player) const
+{
+	if (!player || !guild) {
+		return false;
+	}
+
+	const auto& playerGuild = player->getGuild();
+	if (!playerGuild) {
+		return false;
+	}
+
+	return guild->isInWar(playerGuild->getId()) && playerGuild->isInWar(guild->getId());
 }
 
 uint8_t Player::getCurrentMount() const
@@ -5363,13 +5375,13 @@ std::forward_list<Condition*> Player::getMuteConditions() const
 	return muteConditions;
 }
 
-void Player::setGuild(Guild* guild)
+void Player::setGuild(Guild_ptr guild)
 {
 	if (guild == this->guild) {
 		return;
 	}
 
-	Guild* oldGuild = this->guild;
+	Guild_ptr oldGuild = this->guild;
 
 	this->guildNick.clear();
 	this->guild = nullptr;

@@ -7,6 +7,31 @@
 
 class Player;
 
+enum WarStatus : uint8_t {
+	WAR_PENDING = 0, // There is an invite between guilds
+	WAR_ACTIVE = 1,
+	WAR_REJECTED = 2, // The invitation to war was rejected
+	WAR_CANCELLED = 3, // The invitation to war was cancelled
+	WAR_WITHDRAW_PROPOSED = 4, // War is still in progress until it is accepted
+	WAR_WITHDRAW_ACCEPTED = 5, // War finished by withdraw
+	WAR_FINISHED_KILLS = 6, // War finished by kills
+	WAR_FINISHED_TIME = 7, // War finished by time
+};
+
+struct GuildWar {
+	uint32_t id = 0;
+	uint8_t status = 0;
+	uint8_t frags = 0;
+	uint8_t fragsToEnd = 0;
+
+	time_t started = 0;
+	time_t ended = 0;
+
+	GuildWar() = default;
+};
+
+using GuildWarMap = std::map<uint32_t, GuildWar>;
+
 struct GuildRank {
 	uint32_t id;
 	std::string name;
@@ -63,21 +88,49 @@ class Guild
 			this->motd = motd;
 		}
 
+		uint32_t getGuildBankBalance() const {
+			return guildBankBalance;
+		}
+		void setGuildBankBalance(uint32_t balance) {
+			guildBankBalance = balance;
+		}
+
+		bool addWar(uint32_t guildId, GuildWar& war);
+		bool removeWar(uint32_t guildId);
+		bool isInWar(uint32_t guildId);
+		bool isInAnyWar();
+		GuildWar* getWar(uint32_t enemyGuildId) {
+			auto it = m_mGuildWars.find(enemyGuildId);
+			return (it != m_mGuildWars.end()) ? &it->second : nullptr;
+		}
+		GuildWarMap& getWars() {
+			return m_mGuildWars;
+		}
+
 	private:
+		// Helper function for other methods checking war participation
+		bool isWarActive(const GuildWar* war);
+
 		std::list<PlayerPtr> membersOnline;
 		std::vector<GuildRank_ptr> ranks;
 		std::string name;
 		std::string motd;
 		uint32_t id;
 		uint32_t memberCount = 0;
+
+		uint64_t guildBankBalance = 0;
+		GuildWarMap m_mGuildWars;
 };
 
-using GuildWarVector = std::vector<uint32_t>;
+using Guild_ptr = std::shared_ptr<Guild>;
 
 namespace IOGuild
 {
-	Guild* loadGuild(uint32_t guildId);
+	bool loadGuilds();
+	Guild_ptr loadGuild(uint32_t guildId);
 	uint32_t getGuildIdByName(const std::string& name);
+
+	void getWarList(const Guild_ptr& guild);
 };
 
 #endif
