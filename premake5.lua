@@ -77,7 +77,7 @@ project "Black-Tek-Server"
         optimize "Full"
 
     -- Platform-specific settings
-    filter "platforms:x64"
+    filter "platforms:64"
         architecture "x86_64"
 
     filter "platforms:ARM64"
