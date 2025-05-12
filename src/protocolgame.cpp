@@ -2840,7 +2840,7 @@ void ProtocolGame::sendAccountManagerTextBox(uint32_t windowTextId, const std::s
 	msg.addByte(0x96);
 	msg.add<uint32_t>(windowTextId);
 	msg.addItem(ITEM_LETTER, 1);
-	msg.add<uint16_t>(15);
+	msg.add<uint16_t>(18);
 	msg.addString(text);
 	msg.add<uint16_t>(0x00);
 	msg.add<uint16_t>(0x00);

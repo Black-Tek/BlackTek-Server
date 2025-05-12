@@ -3,7 +3,7 @@ premium = false
 vocation = 5
 sex = "male"
 towns = [1, 2, 3]
-outfit = {id = 1, head = 1, body = 1, legs = 1, feet = 1, mount = 0}
+outfit = {id = 128, head = 1, body = 1, legs = 1, feet = 1, mount = 0}
 skills = {fist = 1, sword = 1, axe = 1, club = 1, shield = 1, fishing = 1}
 
 [Resident]
@@ -11,5 +11,5 @@ premium = false
 vocation = 5
 sex = "female"
 towns = [1, 2, 3]
-outfit = {id = 1, head = 1, body = 1, legs = 1, feet = 1, mount = 0}
+outfit = {id = 136, head = 1, body = 1, legs = 1, feet = 1, mount = 0}
 skills = {fist = 1, sword = 1, axe = 1, club = 1, shield = 1, fishing = 1}
