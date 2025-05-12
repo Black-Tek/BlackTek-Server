@@ -1,7 +1,7 @@
 -- Workspace configuration for Black-Tek-Server
 workspace "Black-Tek-Server"
     configurations { "Debug", "Release" }
-    platforms { "x64", "ARM64", "ARM" }
+    platforms { "64", "ARM64", "ARM" }
     location ""
     editorintegration "On"
 
