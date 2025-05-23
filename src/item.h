@@ -1173,11 +1173,14 @@ class Item : virtual public Thing, public SharedObject
 		TilePtr getTile() override;
 		std::shared_ptr<const Tile> getTile() const override;
 	
-		bool isRemoved() {
-			if (parent.lock()) {
-				return parent.lock()->isRemoved();
+		bool isRemoved() const override {
+			auto parentLock = parent.lock();
+
+			if (!parentLock) {
+				return false;
 			}
-			return true;
+
+			return parentLock->isRemoved();
 		}
 
 		uint16_t getImbuementSlots() const;

@@ -6434,7 +6434,7 @@ article = "a"
 name = "blackboard"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 allowDistRead = "true"
 [[items]]
@@ -6479,7 +6479,7 @@ article = "a"
 name = "blackboard"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 allowDistRead = "true"
 [[items]]
@@ -7173,7 +7173,7 @@ name = "blank paper"
 
 
 weight = 50
-writeable = 1
+writeable = true
 maxTextLen = 1023
 writeOnceItemId = 1954
 [[items]]
@@ -7184,7 +7184,7 @@ name = "parchment"
 
 weight = 200
 description = "It is rewriteable."
-writeable = 1
+writeable = true
 maxTextLen = 1023
 [[items]]
 id = 1949
@@ -7194,7 +7194,7 @@ name = "scroll"
 
 weight = 50
 description = "It is rewriteable."
-writeable = 1
+writeable = true
 maxTextLen = 1023
 [[items]]
 id = 1950
@@ -7212,7 +7212,7 @@ name = "blank parchment"
 
 
 weight = 200
-writeable = 1
+writeable = true
 maxTextLen = 1023
 writeOnceItemId = 1953
 [[items]]
@@ -7222,7 +7222,7 @@ name = "document"
 
 
 weight = 150
-writeable = 1
+writeable = true
 maxTextLen = 1023
 writeOnceItemId = 1968
 [[items]]
@@ -7329,7 +7329,7 @@ article = "a"
 name = "parchment"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 weight = 200
 [[items]]
@@ -7338,7 +7338,7 @@ article = "a"
 name = "document"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 weight = 150
 [[items]]
@@ -7347,7 +7347,7 @@ article = "a"
 name = "parchment"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 weight = 200
 [[items]]
@@ -7363,7 +7363,7 @@ article = "a"
 name = "book"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 writeOnceItemId = 1950
 weight = 1300
@@ -7373,7 +7373,7 @@ article = "a"
 name = "book"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 writeOnceItemId = 1955
 weight = 1300
@@ -7383,7 +7383,7 @@ article = "a"
 name = "book"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 writeOnceItemId = 1958
 weight = 1300
@@ -7393,7 +7393,7 @@ article = "a"
 name = "book"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 writeOnceItemId = 1959
 weight = 1300
@@ -7403,7 +7403,7 @@ article = "a"
 name = "book"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 writeOnceItemId = 1960
 weight = 1300
@@ -7413,7 +7413,7 @@ article = "a"
 name = "book"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1100
 weight = 1300
 [[items]]
@@ -7422,7 +7422,7 @@ article = "a"
 name = "book"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 weight = 1300
 writeOnceItemId = 1962
@@ -7432,7 +7432,7 @@ article = "a"
 name = "book"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 weight = 1300
 writeOnceItemId = 1963
@@ -7442,7 +7442,7 @@ article = "a"
 name = "book"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 weight = 1300
 writeOnceItemId = 1964
@@ -7452,7 +7452,7 @@ article = "a"
 name = "book"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 weight = 1300
 writeOnceItemId = 1965
@@ -7462,7 +7462,7 @@ article = "a"
 name = "book"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 1023
 weight = 1300
 writeOnceItemId = 1966
@@ -12911,7 +12911,7 @@ name = "letter"
 
 
 weight = 50
-writeable = 1
+writeable = true
 maxTextLen = 1999
 [[items]]
 id = 2598
@@ -12928,7 +12928,7 @@ name = "label"
 
 
 weight = 10
-writeable = 1
+writeable = true
 maxTextLen = 79
 [[items]]
 id = 2600
@@ -26352,7 +26352,7 @@ name = "sheet of tracing paper"
 
 description = "It is blank."
 weight = 100
-writeable = 1
+writeable = true
 maxTextLen = 1023
 writeOnceItemId = 4854
 [[items]]
@@ -31837,7 +31837,7 @@ name = "medal of honour"
 
 
 weight = 1000
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 5786
@@ -31930,7 +31930,7 @@ name = "golden figurine"
 
 
 weight = 1500
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 5800
@@ -36453,7 +36453,7 @@ name = "greeting card"
 
 
 weight = 100
-writeable = 1
+writeable = true
 maxTextLen = 1023
 [[items]]
 id = 6388
@@ -36462,7 +36462,7 @@ name = "christmas card"
 
 
 weight = 100
-writeable = 1
+writeable = true
 maxTextLen = 0
 [[items]]
 id = 6389
@@ -37447,7 +37447,7 @@ name = "valentine's card"
 
 
 weight = 100
-writeable = 1
+writeable = true
 maxTextLen = 1023
 [[items]]
 id = 6539
@@ -44991,7 +44991,7 @@ name = "blank paper"
 
 
 weight = 100
-writeable = 1
+writeable = true
 maxTextLen = 1023
 writeOnceItemId = 7722
 [[items]]
@@ -45001,7 +45001,7 @@ name = "scroll"
 
 
 weight = 100
-writeable = 1
+writeable = true
 [[items]]
 id = 7725
 article = "a"
@@ -45009,7 +45009,7 @@ name = "blank scroll"
 
 
 weight = 100
-writeable = 1
+writeable = true
 maxTextLen = 1023
 writeOnceItemId = 7724
 [[items]]
@@ -45026,7 +45026,7 @@ name = "piece of paper"
 
 
 weight = 100
-writeable = 1
+writeable = true
 maxTextLen = 1023
 writeOnceItemId = 7726
 [[items]]
@@ -53300,7 +53300,7 @@ name = "heavily bound book"
 
 description = "It contains the scribings of many knowledgeable."
 weight = 7800
-writeable = 1
+writeable = true
 maxTextLen = 199
 [[items]]
 id = 8984
@@ -56930,7 +56930,7 @@ name = "CM token"
 
 description = "It was a gift from a community manager."
 weight = 1000
-writeable = 1
+writeable = true
 maxTextLen = 128
 allowDistRead = "true"
 [[items]]
@@ -60243,7 +60243,7 @@ name = "champion's cup"
 
 
 weight = 1800
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10125
@@ -60252,7 +60252,7 @@ name = "silver cup of honour"
 
 
 weight = 1600
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10126
@@ -60261,7 +60261,7 @@ name = "bronze cup of honour"
 
 
 weight = 1600
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10127
@@ -60270,7 +60270,7 @@ name = "golden warrior trophy"
 
 
 weight = 1900
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10128
@@ -60279,7 +60279,7 @@ name = "silver warrior trophy"
 
 
 weight = 1850
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10129
@@ -60288,7 +60288,7 @@ name = "bronze warrior trophy"
 
 
 weight = 1800
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10130
@@ -60297,7 +60297,7 @@ name = "golden trophy of excellence"
 
 
 weight = 1300
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10131
@@ -60306,7 +60306,7 @@ name = "silver trophy of excellence"
 
 
 weight = 1300
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10132
@@ -60315,7 +60315,7 @@ name = "bronze trophy of excellence"
 
 
 weight = 1300
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10133
@@ -60324,7 +60324,7 @@ name = "gold medal"
 
 
 weight = 1240
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10134
@@ -60333,7 +60333,7 @@ name = "silver medal"
 
 
 weight = 1220
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10135
@@ -60342,7 +60342,7 @@ name = "bronze medal"
 
 
 weight = 1200
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10136
@@ -60351,7 +60351,7 @@ name = "badge of glory"
 
 
 weight = 1550
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10137
@@ -60360,7 +60360,7 @@ name = "arcane insignia"
 
 
 weight = 1350
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10138
@@ -60369,7 +60369,7 @@ name = "hero's medal"
 
 
 weight = 1670
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10139
@@ -60378,7 +60378,7 @@ name = "laurel wreath"
 
 
 weight = 900
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10140
@@ -60387,7 +60387,7 @@ name = "royal medal"
 
 
 weight = 1600
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10141
@@ -60396,7 +60396,7 @@ name = "heavy medal"
 
 
 weight = 5500
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10142
@@ -60405,7 +60405,7 @@ name = "elven trophy"
 
 
 weight = 900
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10143
@@ -62354,7 +62354,7 @@ name = "pigeon trophy"
 
 description = "It's a symbol of peace handed out by the gods."
 weight = 400
-writeable = 1
+writeable = true
 maxTextLen = 128
 [[items]]
 id = 10456
@@ -62884,7 +62884,7 @@ name = "famous golden bug"
 
 description = "It's given to skilled discoverers of extra nasty bugs and to great scholars writing useful reports."
 weight = 1250
-writeable = 1
+writeable = true
 maxTextLen = 64
 [[items]]
 id = 10531
@@ -90396,7 +90396,7 @@ name = "miniature house"
 
 weight = 1000
 description = "This trophy was awarded to honour the greatest architects in the world."
-writeable = 1
+writeable = true
 maxTextLen = 128
 allowDistRead = "true"
 [[items]]
@@ -95284,7 +95284,7 @@ article = "a"
 name = "statue"
 
 
-writeable = 1
+writeable = true
 maxTextLen = 249
 [[items]]
 id = 18155
