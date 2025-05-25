@@ -657,7 +657,8 @@ void Combat::doCombat(const CreaturePtr& caster, const CreaturePtr& target) cons
 		and params.conditionList.empty()
 		and params.dispelType == 0
 		and params.impactEffect == CONST_ME_NONE
-		and params.distanceEffect == CONST_ANI_NONE) {
+		and params.distanceEffect == CONST_ANI_NONE 
+		and params.aggressive == 1) {
 		return;
 	}
 
