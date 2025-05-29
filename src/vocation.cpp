@@ -126,7 +126,7 @@ bool Vocations::loadFromToml() {
 									vocation.gainManaTicks = mana->at("interval").value_or(6);
 								}
 								if (auto soul = r["soul"].as_table()) {
-									vocation.soulMax = soul->at("amount").value_or(1);
+									vocation.gainSoulAmount = soul->at("amount").value_or(1);
 									vocation.gainSoulTicks = soul->at("interval").value_or(120);
 								}
 							}
