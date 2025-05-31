@@ -371,7 +371,7 @@ class ItemType
 		bool allowPickupable = false;
 		bool showDuration = false;
 		bool showCharges = false;
-		bool showAttributes = false;
+		bool showAttributes = true;
 		bool replaceable = true;
 		bool pickupable = false;
 		bool rotatable = false;
