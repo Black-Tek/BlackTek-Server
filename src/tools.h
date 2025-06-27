@@ -135,11 +135,14 @@ uint8_t clientFluidToServer(uint8_t clientFluid);
 
 itemAttrTypes stringToItemAttribute(const std::string& str);
 
+[[nodiscard]]
 const char* getReturnMessage(ReturnValue value);
 
 int64_t OTSYS_TIME();
 
 SpellGroup_t stringToSpellGroup(const std::string& value);
+
+FormulaType const ParseFormula(std::string_view modName) noexcept;
 
 namespace Titan {
 

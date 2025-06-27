@@ -103,6 +103,32 @@ ContainerPtr Item::CreateItemAsContainer(const uint16_t type, uint16_t size)
 	return newItem;
 }
 
+bool Item::giveCustomSkill(std::string_view name, uint16_t level)
+{
+	auto new_skill = std::make_shared<CustomSkill>(FormulaType::EXPONENTIAL);
+	new_skill->addLevels(level);
+	return custom_skills.try_emplace(name, new_skill).second;
+}
+
+bool Item::giveCustomSkill(std::string_view name, std::shared_ptr<CustomSkill> new_skill)
+{
+	return custom_skills.try_emplace(name, new_skill).second;
+}
+
+bool Item::removeCustomSkill(std::string_view name)
+{
+	return custom_skills.erase(name) > 0;
+}
+
+std::shared_ptr<CustomSkill> Item::getCustomSkill(std::string_view name)
+{
+	auto it = custom_skills.find(name);
+	if (it != custom_skills.end()) {
+		return it->second;
+	}
+	return nullptr;
+}
+
 ItemPtr Item::CreateItem(PropStream& propStream)
 {
 	uint16_t id;

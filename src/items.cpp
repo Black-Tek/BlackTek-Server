@@ -10,9 +10,13 @@
 
 #include <toml++/toml.hpp>
 #include <filesystem>
+#include "tools.h"
 
 extern MoveEvents* g_moveEvents;
 extern Weapons* g_weapons;
+
+static gtl::flat_hash_map<uint32_t, gtl::flat_hash_map<std::string, CustomSkill>> item_skills;
+static gtl::flat_hash_map<uint32_t, ItemBuff> item_buffs, item_debuffs;
 
 const gtl::flat_hash_map<std::string, ItemParseAttributes_t> ItemParseAttributesMap = {
 	{"type", ITEM_PARSE_TYPE},
@@ -185,6 +189,54 @@ const gtl::flat_hash_map<std::string, FluidTypes_t> FluidTypesMap = {
 	{"tea", FLUID_TEA},
 	{"mead", FLUID_MEAD},
 };
+
+bool Items::addItemSkill(uint32_t item_id, std::string_view skill_name, const CustomSkill& skill)
+{
+    auto& skillMap = item_skills[item_id];
+    return skillMap.try_emplace(skill_name, skill).second;
+}
+
+std::optional<CustomSkill> Items::getItemSkill(std::string_view skill_name, uint32_t item_id)
+{
+    if (auto it = item_skills.find(item_id); it != item_skills.end()) 
+    {
+        const auto& skills = it->second;
+        if (auto skillIt = skills.find(skill_name); skillIt != skills.end()) 
+        {
+            return skillIt->second;
+        }
+    }
+    return std::nullopt;
+}
+
+static bool addItemBuff(uint32_t item_id, const ItemBuff& buff)
+{
+    return item_buffs.try_emplace(item_id, buff).second;
+}
+
+static std::optional<ItemBuff> getItemBuff(uint32_t item_id)
+{
+    if (auto it = item_buffs.find(item_id); it != item_buffs.end()) 
+    {
+        return it->second;
+    }
+    return std::nullopt;
+}
+
+static bool addItemDebuff(uint32_t item_id, const ItemBuff& debuff)
+{
+    return item_debuffs.try_emplace(item_id, debuff).second;
+}
+
+static std::optional<ItemBuff> getItemDebuff(uint32_t item_id)
+{
+    if (auto it = item_debuffs.find(item_id); it != item_debuffs.end())
+    {
+        return it->second;
+    }
+    return std::nullopt;
+}
+
 
 Items::Items()
 {
@@ -575,6 +627,62 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
         else if (keyStr == "plural") {
             if (value.is_string()) {
                 it.pluralName = value.as_string()->get();
+            }
+            continue;
+        }
+        else if (keyStr == "skills") {
+            if (value.is_array()) {
+                for (const auto& skillEntry : *value.as_array()) {
+                    if (skillEntry.is_table()) {
+                        const toml::table& skillTable = *skillEntry.as_table();
+
+                        std::string name = skillTable["name"] ? skillTable["name"].as_string()->get() : "";
+                        int level = skillTable["level"] ? static_cast<int>(skillTable["level"].as_integer()->get()) : 1;
+                        int max = skillTable["max"] ? static_cast<int>(skillTable["max"].as_integer()->get()) : 10;
+                        std::string formula_type = skillTable["formula"] ? skillTable["formula"].as_string()->get() : "default";
+                        int threshold = skillTable["threshold"] ? static_cast<int>(skillTable["threshold"].as_integer()->get()) : 10;
+                        int difficulty = skillTable["difficulty"] ? static_cast<int>(skillTable["difficulty"].as_integer()->get()) : 50;
+                        double multiplier = skillTable["multiplier"] ? skillTable["multiplier"].as_floating_point()->get() : 1.0;
+
+                        FormulaType formula = ParseFormula(formula_type);
+
+                        if (not name.empty()) {
+                            CustomSkill customSkill = CustomSkill(formula, threshold, difficulty, multiplier);
+                            Items::addItemSkill(id, name, customSkill);
+                            continue;
+                        }
+                    }
+                }
+            }
+            continue;
+        }
+        else if (keyStr == "buffs") {
+            if (value.is_array()) {
+                for (const auto& traitEntry : *value.as_array()) {
+                    if (traitEntry.is_table()) {
+                        const toml::table& buffs = *traitEntry.as_table();
+                        std::string name = buffs["name"] ? buffs["name"].as_string()->get() : "none";
+
+                        if (name == "none")
+                        {
+                            // log here the skipped buff
+                            continue;
+                        }
+
+                        int value = buffs["value"] ? static_cast<int>(buffs["value"].as_integer()->get()) : 0;
+
+                        if (auto buff_type = buffs["type"].as_string()->get() == "debuff")
+                        {
+                            addItemDebuff(id, { name, value });
+                            continue;
+                        }
+                        else
+                        {
+                            addItemBuff(id, {name, value});
+                            continue;
+                        }
+                    }
+                }
             }
             continue;
         }

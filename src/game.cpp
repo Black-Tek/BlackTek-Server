@@ -6494,16 +6494,14 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 
 		auto buyerPlayer = getPlayerByGUID(offer.playerId);
 		if (!buyerPlayer) {
-			buyerPlayer = std::make_shared<Player>(nullptr);
 			if (!IOLoginData::loadPlayerById(buyerPlayer, offer.playerId)) {
-				buyerPlayer.reset();
 				return;
 			}
 		}
 
 		if (it.stackable) {
 			uint16_t tmpAmount = amount;
-			for (const auto item : itemList) {
+			for (const auto& item : itemList) {
 				const uint16_t removeCount = std::min<uint16_t>(tmpAmount, item->getItemCount());
 				tmpAmount -= removeCount;
 				internalRemoveItem(item, removeCount);
@@ -6513,7 +6511,7 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 				}
 			}
 		} else {
-			for (const auto item : itemList) {
+			for (const auto& item : itemList) {
 				internalRemoveItem(item);
 			}
 		}
@@ -6527,7 +6525,6 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 				auto item = Item::CreateItem(it.id, stackCount);
 				CylinderPtr inbox = player->getInbox();
 				if (internalAddItem(inbox, item, INDEX_WHEREEVER, FLAG_NOLIMIT) != RETURNVALUE_NOERROR) {
-					item.reset();
 					break;
 				}
 
@@ -6545,7 +6542,6 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 				auto item = Item::CreateItem(it.id, subType);
 				CylinderPtr inbox = player->getInbox();
 				if (internalAddItem(inbox, item, INDEX_WHEREEVER, FLAG_NOLIMIT) != RETURNVALUE_NOERROR) {
-					item.reset();
 					break;
 				}
 			}
@@ -6553,7 +6549,6 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 
 		if (buyerPlayer->isOffline()) {
 			IOLoginData::savePlayer(buyerPlayer);
-			buyerPlayer.reset();
 		} else {
 			buyerPlayer->onReceiveMail();
 		}
@@ -6599,7 +6594,7 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 			}
 		}
 
-		if (const auto sellerPlayer = getPlayerByGUID(offer.playerId)) {
+		if (const auto& sellerPlayer = getPlayerByGUID(offer.playerId)) {
 			sellerPlayer->bankBalance += totalPrice;
 		} else {
 			IOLoginData::increaseBankBalance(offer.playerId, totalPrice);

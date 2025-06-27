@@ -10,8 +10,16 @@
 #include "enums.h"
 #include "itemloader.h"
 #include "position.h"
+#include "skills.h"
 
 #include <toml++/toml.hpp>
+#include <gtl/phmap.hpp>
+
+using ItemBuff = std::pair<std::string, uint16_t>;
+using namespace Components::Skills;
+
+extern gtl::flat_hash_map<uint32_t, gtl::flat_hash_map<std::string, CustomSkill>> item_skills;
+extern gtl::flat_hash_map<uint32_t, ItemBuff> item_buffs, item_debuffs;
 
 enum SlotPositionBits : uint32_t {
 	SLOTP_WHEREEVER = 0xFFFFFFFF,
@@ -396,6 +404,10 @@ class Items
 		using InventoryVector = std::vector<uint16_t>;
 
 		using CurrencyMap = std::map<uint64_t, uint16_t, std::greater<uint64_t>>;
+
+		static bool addItemSkill(uint32_t item_id, std::string_view skill_name, const CustomSkill& skill);
+
+		static std::optional<CustomSkill> getItemSkill(std::string_view skill_name, uint32_t item_id);
 
 		Items();
 

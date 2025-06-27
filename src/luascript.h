@@ -828,6 +828,18 @@ class LuaScriptInterface
 		static int luaItemHasAugment(lua_State* L);
 		static int luaItemGetAugments(lua_State* L);
 
+		static int luaItemGiveCustomSkill(lua_State* L);
+		static int luaItemAddCustomSkill(lua_State* L);
+		static int luaItemSubtractCustomSkill(lua_State* L);
+		static int luaItemAddBonusCustomSkill(lua_State* L);
+		static int luaItemSubtractBonusSkill(lua_State* L);
+		static int luaItemClearBonusSkill(lua_State* L);
+		static int luaItemRemoveCustomSkill(lua_State* L);
+		static int luaItemHasCustomSkill(lua_State* L);
+		static int luaItemCanGainSkillLevels(lua_State* L);
+		static int luaItemGetCustomSkillLevel(lua_State* L);
+		static int luaItemGetCustomSkillUserData(lua_State* L);
+
 
 		// Imbuement
 
@@ -980,6 +992,18 @@ class LuaScriptInterface
 		static int luaCreatureMove(lua_State* L);
 
 		static int luaCreatureGetZone(lua_State* L);
+
+		static int luaCreatureGiveCustomSkill(lua_State* L);
+		static int luaCreatureAddCustomSkill(lua_State* L);
+		static int luaCreatureSubtractCustomSkill(lua_State* L);
+		static int luaCreatureAddBonusCustomSkill(lua_State* L);
+		static int luaCreatureSubtractBonusSkill(lua_State* L);
+		static int luaCreatureClearBonusSkill(lua_State* L);
+		static int luaCreatureRemoveCustomSkill(lua_State* L);
+		static int luaCreatureHasCustomSkill(lua_State* L);
+		static int luaCreatureCanGainSkillLevels(lua_State* L);
+		static int luaCreatureGetCustomSkillLevel(lua_State* L);
+		static int luaCreatureGetCustomSkillUserData(lua_State* L);
 
 		// Player
 		static int luaPlayerCreate(lua_State* L);
@@ -1527,6 +1551,26 @@ class LuaScriptInterface
 		static int luaLootSetActionId(lua_State* L);
 		static int luaLootSetDescription(lua_State* L);
 		static int luaLootAddChildLoot(lua_State* L);
+
+		// CustomSkill
+
+		static int luaCreateCustomSkill(lua_State* L);
+		static int luaDeleteCustomSkill(lua_State* L);
+		static int luaCustomSkillGetLevel(lua_State* L);
+		static int luaCustomSkillAddLevels(lua_State* L);
+		static int luaCustomSkillSubtractLevels(lua_State* L);
+		static int luaCustomSkillClearLevels(lua_State* L);
+		static int luaCustomSkillGetBonusLevel(lua_State* L);
+		static int luaCustomSkillAddBonusLevels(lua_State* L);
+		static int luaCustomSkillSubtractBonusLevels(lua_State* L);
+		static int luaCustomSkillClearBonus(lua_State* L);
+		static int luaCustomSkillGetPoints(lua_State* L);
+		static int luaCustomSkillAddPoints(lua_State* L);
+		static int luaCustomSkillSubtractPoints(lua_State* L);
+		static int luaCustomSkillClearPoints(lua_State* L);
+		static int luaCustomSkillGetPointsForLevel(lua_State* L);
+		static int luaCustomSkillGetMaxLevel(lua_State* L);
+		static int luaCustomSkillGetPercentToLevel(lua_State* L);
 
 		// MonsterSpell
 		static int luaCreateMonsterSpell(lua_State* L);

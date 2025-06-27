@@ -711,6 +711,10 @@ bool Player::setVocation(const uint16_t vocId)
 		return false;
 	}
 	vocation = voc;
+	
+	// todo, add custom skills to player if they don't have them already
+	// if they do have them, compare multiplier, difficculty, and threshold
+	// decide if that should be updated or not...
 
 	updateRegeneration();
 	setBaseSpeed(voc->getBaseSpeed());

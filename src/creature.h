@@ -12,10 +12,12 @@
 #include "enums.h"
 #include "creatureevent.h"
 #include "declarations.h"
+#include "skills.h"
 
 class Map;
 using ConditionList = std::list<Condition*>;
 using CreatureEventList = std::list<CreatureEvent*>;
+using namespace Components::Skills;
 
 enum slots_t : uint8_t {
 	CONST_SLOT_WHEREEVER = 0,
@@ -498,6 +500,20 @@ class Creature : virtual public Thing, public SharedObject
 			return movementBlocked;
 		}
 
+		bool giveCustomSkill(std::string_view name, uint16_t level);
+		bool giveCustomSkill(std::string_view name, std::shared_ptr<CustomSkill> new_skill);
+		bool removeCustomSkill(std::string_view name);
+		std::shared_ptr<CustomSkill> getCustomSkill(std::string_view name);
+		const SkillRegistry& getCustomSkills() const
+		{
+			return c_skills;
+		}
+
+		void setCustomSkills(SkillRegistry skill_set)
+		{
+			c_skills = skill_set;
+		}
+
 		//creature script events
 		bool registerCreatureEvent(const std::string& name);
 		bool unregisterCreatureEvent(const std::string& name);
@@ -588,6 +604,7 @@ class Creature : virtual public Thing, public SharedObject
 		ConditionList conditions;
 
 		std::vector<Direction> listWalkDir;
+		SkillRegistry c_skills;
 
 		TileWeakPtr tile;
 		CreatureWeakPtr attackedCreature;

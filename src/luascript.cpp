@@ -2409,6 +2409,18 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Item", "hasAugment", LuaScriptInterface::luaItemHasAugment);
 	registerMethod("Item", "getAugments", LuaScriptInterface::luaItemGetAugments);
 
+	registerMethod("Item", "giveSkill", LuaScriptInterface::luaItemGiveCustomSkill);
+	registerMethod("Item", "addSkill", LuaScriptInterface::luaItemAddCustomSkill);
+	registerMethod("Item", "subtractSkill", LuaScriptInterface::luaItemSubtractCustomSkill);
+	registerMethod("Item", "addBonusSkill", LuaScriptInterface::luaItemAddBonusCustomSkill);
+	registerMethod("Item", "subtractBonusSkill", LuaScriptInterface::luaItemSubtractBonusSkill);
+	registerMethod("Item", "clearBonusSkill", LuaScriptInterface::luaItemClearBonusSkill);
+	registerMethod("Item", "removeSkill", LuaScriptInterface::luaItemRemoveCustomSkill);
+	registerMethod("Item", "hasSkill", LuaScriptInterface::luaItemHasCustomSkill);
+	registerMethod("Item", "canSkill", LuaScriptInterface::luaItemCanGainSkillLevels);
+	registerMethod("Item", "getSkill", LuaScriptInterface::luaItemGetCustomSkillLevel);
+	registerMethod("Item", "skill", LuaScriptInterface::luaItemGetCustomSkillUserData);
+
 	// Imbuement
 	registerClass("Imbuement", "", LuaScriptInterface::luaImbuementCreate);
 	registerMetaMethod("Imbuement", "__eq", LuaScriptInterface::luaUserdataCompare);
@@ -2565,6 +2577,18 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Creature", "move", LuaScriptInterface::luaCreatureMove);
 
 	registerMethod("Creature", "getZone", LuaScriptInterface::luaCreatureGetZone);
+
+	registerMethod("Creature", "giveSkill", LuaScriptInterface::luaCreatureGiveCustomSkill);
+	registerMethod("Creature", "addSkill", LuaScriptInterface::luaCreatureAddCustomSkill);
+	registerMethod("Creature", "subtractSkill", LuaScriptInterface::luaCreatureSubtractCustomSkill);
+	registerMethod("Creature", "addBonusSkill", LuaScriptInterface::luaCreatureAddBonusCustomSkill);
+	registerMethod("Creature", "subtractBonusSkill", LuaScriptInterface::luaCreatureSubtractBonusSkill);
+	registerMethod("Creature", "clearBonusSkill", LuaScriptInterface::luaCreatureClearBonusSkill);
+	registerMethod("Creature", "removeSkill", LuaScriptInterface::luaCreatureRemoveCustomSkill);
+	registerMethod("Creature", "hasSkill", LuaScriptInterface::luaCreatureHasCustomSkill);
+	registerMethod("Creature", "canSkill", LuaScriptInterface::luaCreatureCanGainSkillLevels);
+	registerMethod("Creature", "getSkill", LuaScriptInterface::luaCreatureGetCustomSkillLevel);
+	registerMethod("Creature", "skill", LuaScriptInterface::luaCreatureGetCustomSkillUserData);
 
 	// Player
 	registerClass("Player", "Creature", LuaScriptInterface::luaPlayerCreate);
@@ -3133,6 +3157,36 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Loot", "setActionId", LuaScriptInterface::luaLootSetActionId);
 	registerMethod("Loot", "setDescription", LuaScriptInterface::luaLootSetDescription);
 	registerMethod("Loot", "addChildLoot", LuaScriptInterface::luaLootAddChildLoot);
+
+	// Skill (custom skills)
+	registerClass("Skill", "", LuaScriptInterface::luaCreateCustomSkill);
+	registerMetaMethod("Skill", "__gc", LuaScriptInterface::luaDeleteCustomSkill);
+	registerMetaMethod("Skill", "__add", LuaScriptInterface::luaCustomSkillAddLevels);
+	registerMetaMethod("Skill", "__sub", LuaScriptInterface::luaCustomSkillSubtractLevels);
+	registerMethod("Skill", "level", LuaScriptInterface::luaCustomSkillGetLevel);
+	registerMethod("Skill", "getLevel", LuaScriptInterface::luaCustomSkillGetLevel);
+	registerMethod("Skill", "addLevels", LuaScriptInterface::luaCustomSkillAddLevels);
+	registerMethod("Skill", "subtractLevels", LuaScriptInterface::luaCustomSkillSubtractLevels);
+	registerMethod("Skill", "removeLevels", LuaScriptInterface::luaCustomSkillSubtractLevels);
+	registerMethod("Skill", "clearLevels", LuaScriptInterface::luaCustomSkillClearLevels);
+	registerMethod("Skill", "bonusLevel", LuaScriptInterface::luaCustomSkillGetBonusLevel);
+	registerMethod("Skill", "addBonusLevels", LuaScriptInterface::luaCustomSkillAddBonusLevels);
+	registerMethod("Skill", "subtractBonusLevels", LuaScriptInterface::luaCustomSkillSubtractBonusLevels);
+	registerMethod("Skill", "removeBonusLevels", LuaScriptInterface::luaCustomSkillSubtractBonusLevels);
+	registerMethod("Skill", "clearBonus", LuaScriptInterface::luaCustomSkillClearBonus);
+	registerMethod("Skill", "points", LuaScriptInterface::luaCustomSkillGetPoints);
+	registerMethod("Skill", "getPoints", LuaScriptInterface::luaCustomSkillGetPoints);
+	registerMethod("Skill", "addPoints", LuaScriptInterface::luaCustomSkillAddPoints);
+	registerMethod("Skill", "subtractPoints", LuaScriptInterface::luaCustomSkillSubtractPoints);
+	registerMethod("Skill", "removePoints", LuaScriptInterface::luaCustomSkillSubtractPoints);
+	registerMethod("Skill", "clearPoints", LuaScriptInterface::luaCustomSkillClearPoints);
+	registerMethod("Skill", "pointsNeeded", LuaScriptInterface::luaCustomSkillGetPointsForLevel);
+	registerMethod("Skill", "maxLevel", LuaScriptInterface::luaCustomSkillGetMaxLevel);
+	registerMethod("Skill", "max", LuaScriptInterface::luaCustomSkillGetMaxLevel);
+	registerMethod("Skill", "getMax", LuaScriptInterface::luaCustomSkillGetMaxLevel);
+	registerMethod("Skill", "getMaxLevel", LuaScriptInterface::luaCustomSkillGetMaxLevel);
+	registerMethod("Skill", "percent", LuaScriptInterface::luaCustomSkillGetPercentToLevel);
+	registerMethod("Skill", "getPercent", LuaScriptInterface::luaCustomSkillGetPercentToLevel);
 
 	// MonsterSpell
 	registerClass("MonsterSpell", "", LuaScriptInterface::luaCreateMonsterSpell);
@@ -7648,6 +7702,416 @@ int LuaScriptInterface::luaItemGetAugments(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaItemGiveCustomSkill(lua_State* L)
+{
+	// item:giveCustomSkill("skillname")
+	// item:giveCustomSkill(CustomSkill)
+	// returns bool
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		if (isString(L, 2) and isUserdata(L, 3))
+		{
+			auto skill_name = getString(L, 2);
+			if (auto& skill = getSharedPtr<CustomSkill>(L, 3))
+			{
+				pushBoolean(L, item->giveCustomSkill(skill_name, std::move(skill)));
+			}
+		}
+		else if (isString(L, 2))
+		{
+			auto skill_name = getString(L, 2);
+			// Items might have predefined skills based on item type/ID
+			if (auto skill = Items::getItemSkill(skill_name, item->getID()))
+			{
+				if (skill.has_value())
+				{
+					auto new_skill = Components::Skills::CustomSkill::make_skill(skill.value());
+					pushBoolean(L, item->giveCustomSkill(skill_name, std::move(new_skill)));
+					return 1;
+				}
+			}
+			// Skill name not found, log it and send error to console
+			lua_pushnil(L);
+			return 1;
+		}
+		else
+		{
+			// first param is not a string, something is wrong, log it.
+			lua_pushnil(L);
+			return 1;
+		}
+	}
+	else
+	{
+		// another log location
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemAddCustomSkill(lua_State* L)
+{
+	// item:addSkill("SkillName", levels)
+	// returns bool
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		if (isString(L, 2) and isNumber(L, 3))
+		{
+			auto skill_name = getString(L, 2);
+			auto levels_to_add = getNumber<uint16_t>(L, 3);
+			if (auto skill = item->getCustomSkill(skill_name))
+			{
+				pushBoolean(L, skill->addLevels(levels_to_add));
+				return 1;
+			}
+			else
+			{
+				// item doesn't have that skill
+				// possible log?
+				pushBoolean(L, false);
+				return 1;
+			}
+		}
+		else if (not isString(L, 2))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else if (not isNumber(L, 3))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else
+		{
+			// this should for sure be unreachable, log here
+			pushBoolean(L, false);
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemSubtractCustomSkill(lua_State* L)
+{
+	// item:subtractSkill("SkillName", levels)
+	// returns bool
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		if (isString(L, 2) and isNumber(L, 3))
+		{
+			auto skill_name = getString(L, 2);
+			auto levels_to_subtract = getNumber<uint16_t>(L, 3);
+
+			if (auto skill = item->getCustomSkill(skill_name))
+			{
+				pushBoolean(L, skill->removeLevels(levels_to_subtract));
+				return 1;
+			}
+			else
+			{
+				// item doesn't have that skill
+				// possible log?
+				pushBoolean(L, false);
+				return 1;
+			}
+		}
+		else if (not isString(L, 2))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else if (not isNumber(L, 3))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else
+		{
+			// this should for sure be unreachable, log here
+			pushBoolean(L, false);
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemAddBonusCustomSkill(lua_State* L)
+{
+	// item:addBonusSkill("SkillName", levels)
+	// returns bool
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		if (isString(L, 2) and isNumber(L, 3))
+		{
+			auto skill_name = getString(L, 2);
+			auto levels_to_add = getNumber<uint16_t>(L, 3);
+			if (auto skill = item->getCustomSkill(skill_name))
+			{
+				pushBoolean(L, skill->addBonusLevels(levels_to_add));
+				return 1;
+			}
+			else
+			{
+				// item doesn't have that skill
+				// possible log?
+				pushBoolean(L, false);
+				return 1;
+			}
+		}
+		else if (not isString(L, 2))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else if (not isNumber(L, 3))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else
+		{
+			// this should for sure be unreachable, log here
+			pushBoolean(L, false);
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemSubtractBonusSkill(lua_State* L)
+{
+	// item:subtractBonusSkill("SkillName", levels)
+	// returns bool
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		if (isString(L, 2) and isNumber(L, 3))
+		{
+			auto skill_name = getString(L, 2);
+			auto levels_to_remove = getNumber<uint16_t>(L, 3);
+
+			if (auto skill = item->getCustomSkill(skill_name))
+			{
+				pushBoolean(L, skill->removeBonusLevels(levels_to_remove));
+				return 1;
+			}
+			else
+			{
+				// item doesn't have that skill
+				// possible log?
+				pushBoolean(L, false);
+				return 1;
+			}
+		}
+		else if (not isString(L, 2))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else if (not isNumber(L, 3))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else
+		{
+			// this should for sure be unreachable, log here
+			pushBoolean(L, false);
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemClearBonusSkill(lua_State* L)
+{
+	// item:clearBonusSkill("SkillName")
+	// returns bool
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		if (isString(L, 2))
+		{
+			auto skill_name = getString(L, 2);
+
+			if (auto skill = item->getCustomSkill(skill_name))
+			{
+				skill->setBonus(0);
+				pushBoolean(L, true);
+				return 1;
+			}
+			else
+			{
+				// item doesn't have that skill
+				// possible log?
+				pushBoolean(L, false);
+				return 1;
+			}
+		}
+		else
+		{
+			// first param is not a string, something is wrong, log it.
+			pushBoolean(L, false);
+			return 1;
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemRemoveCustomSkill(lua_State* L)
+{
+	// item:removeSkill("SkillName")
+	// returns bool
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		if (isString(L, 2))
+		{
+			auto skill_name = getString(L, 2);
+			pushBoolean(L, item->removeCustomSkill(skill_name));
+			return 1;
+		}
+		else
+		{
+			// first param is not a string, something is wrong, log it.
+			pushBoolean(L, false);
+			return 1;
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemHasCustomSkill(lua_State* L)
+{
+	// item:hasSkill("SkillName")
+	// returns bool
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		if (isString(L, 2))
+		{
+			auto skill_name = getString(L, 2);
+			auto has_skill = (item->getCustomSkill(skill_name) != nullptr) ? true : false;
+			pushBoolean(L, has_skill);
+			return 1;
+		}
+		else
+		{
+			// first param is not a string, something is wrong, log it.
+			pushBoolean(L, false);
+			return 1;
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemCanGainSkillLevels(lua_State* L)
+{
+	// item:canSkill("SkillName")
+	// returns bool
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		if (isString(L, 2))
+		{
+			auto skill_name = getString(L, 2);
+
+			if (auto skill = item->getCustomSkill(skill_name))
+			{
+				auto can_skill = (skill->max() > skill->level()) ? true : false;
+				pushBoolean(L, can_skill);
+				return 1;
+			}
+			else
+			{
+				// item doesn't have that skill
+				pushBoolean(L, false);
+				return 1;
+			}
+		}
+		else
+		{
+			// first param is not a string, something is wrong, log it.
+			pushBoolean(L, false);
+			return 1;
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemGetCustomSkillLevel(lua_State* L)
+{
+	// item:getSkillLevel("SkillName", bonus = true)
+	// returns number value
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		if (isString(L, 2))
+		{
+			auto skill_name = getString(L, 2);
+			bool include_bonus = isBoolean(L, 3) ? (getBoolean(L, 3)) : true;
+
+			if (auto skill = item->getCustomSkill(skill_name))
+			{
+				lua_pushinteger(L, skill->level(include_bonus));
+			}
+			else
+			{
+				// item doesn't have that skill
+				lua_pushinteger(L, 0);
+				return 1;
+			}
+		}
+		else
+		{
+			// first param is not a string, something is wrong, log it.
+			lua_pushinteger(L, 0);
+			return 1;
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemGetCustomSkillUserData(lua_State* L)
+{
+	// item:getSkill("SkillName")
+	// returns userdata
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		if (isString(L, 2))
+		{
+			auto skill_name = getString(L, 2);
+
+			if (auto skill = item->getCustomSkill(skill_name))
+			{
+				pushSharedPtr(L, skill);
+				setMetatable(L, -1, "CustomSkill");
+				return 1;
+			}
+			else
+			{
+				// item doesn't have that skill
+				lua_pushnil(L);
+				return 1;
+			}
+		}
+		else
+		{
+			// first param is not a string, something is wrong, log it.
+			lua_pushnil(L);
+			return 1;
+		}
+	}
+	return 1;
+}
+
 // Imbuement
 
 int LuaScriptInterface::luaImbuementCreate(lua_State* L)
@@ -9556,6 +10020,474 @@ int LuaScriptInterface::luaCreatureGetZone(lua_State* L)
 		lua_pushinteger(L, creature->getZone());
 	} else {
 		lua_pushnil(L);
+	}
+	return 1;
+}
+
+// Todo : Consider hard replacing boolean return values, with userdata
+// This would change the style of scripting significantly, and effectively
+// break all backwards compatibility, but it might be worth doing, for the "chaining" capabilities.
+// Note, this may mean not getting to use const& as much, not sure.
+// I think I can return userdata for true, and false for false...
+
+int LuaScriptInterface::luaCreatureGiveCustomSkill(lua_State* L)
+{
+	// creature:giveCustomSkill("skillname", make_new = true)
+	// creature:giveCustomSkill("skillname", CustomSkill)
+	// returns bool
+	
+	auto make_new = (isBoolean(L, 3)) ? getBoolean(L, 3) : true;
+
+	if (auto& creature = getSharedPtr<Creature>(L, 1)) 
+	{
+		if (isString(L, 2) and isUserdata(L, 3))
+		{
+			auto skill_name = getString(L, 2);
+			if (auto& skill = getSharedPtr<CustomSkill>(L, 3))
+			{
+				pushBoolean(L, creature->giveCustomSkill(skill_name, std::move(skill)));
+			}
+		}
+		else if (isString(L, 2) and make_new)
+		{
+			auto skill_name = getString(L, 2);
+			if (const auto& player = creature->getPlayer())
+			{
+				if (auto skill = Vocations::getVocationSkill(skill_name, player->getVocation()->getId()))
+				{
+					// Todo : create creature methods which accept the optional<CustomSkill>
+					if (skill.has_value())
+					{
+						auto new_skill = Components::Skills::CustomSkill::make_skill(skill.value());
+						pushBoolean(L, player->giveCustomSkill(skill_name, std::move(new_skill)));
+						return 1;
+					}
+				}
+
+				// Skill name not found but "make_new" is true
+				auto new_skill = Components::Skills::CustomSkill::make_skill();
+				pushBoolean(L, player->giveCustomSkill(skill_name, std::move(new_skill)));
+				return 1;
+			}
+			else if (const auto& npc = creature->getNpc())
+			{
+				if (auto skill = Npcs::getNpcSkill(skill_name, npc->getName()))
+				{
+					// Todo : create creature methods which accept the optional<std::shared_ptr<CustomSkill>>
+					if (skill.has_value())
+					{
+						auto new_skill = Components::Skills::CustomSkill::make_skill(skill.value());
+						pushBoolean(L, npc->giveCustomSkill(skill_name, std::move(new_skill)));
+						return 1;
+					}
+				}
+				// Skill name not found but "make_new" is true
+				auto new_skill = Components::Skills::CustomSkill::make_skill();
+				pushBoolean(L, player->giveCustomSkill(skill_name, std::move(new_skill)));
+				return 1;
+			}
+			else if (const auto& monster = creature->getMonster())
+			{
+				if (auto skill = Monsters::getMonsterSkill(skill_name, monster->getName()))
+				{
+					// Todo : create creature methods which accept the optional<std::shared_ptr<CustomSkill>>
+					if (skill.has_value())
+					{
+						auto new_skill = Components::Skills::CustomSkill::make_skill(skill.value());
+						pushBoolean(L, monster->giveCustomSkill(skill_name, std::move(new_skill)));
+						return 1;
+					}
+				}
+				// Skill name not found but "make_new" is true
+				auto new_skill = Components::Skills::CustomSkill::make_skill();
+				pushBoolean(L, player->giveCustomSkill(skill_name, std::move(new_skill)));
+				return 1;
+			}
+			// creature isn't known type, error. Log place
+			lua_pushnil(L);
+			return 1;
+		}
+		else
+		{
+			// first param is not a string, something is wrong, log it.
+			lua_pushnil(L);
+			return 1;
+		}
+	}
+	else 
+	{
+		// another log location
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaCreatureAddCustomSkill(lua_State* L)
+{
+	// creature:addSkill("SkillName")
+	// returns bool
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		if (isString(L, 2) and isNumber(L, 3))
+		{
+			auto skill_name = getString(L, 2);
+			auto levels_to_add = getNumber<uint16_t>(L, 3);
+
+			if (auto skill = creature->getCustomSkill(skill_name))
+			{
+				pushBoolean(L, skill->addLevels(levels_to_add));
+				return 1;
+			}
+			else
+			{
+				// creature doesn't have that skill
+				// possible log?
+				pushBoolean(L, false);
+				return 1;
+			}
+		}
+		else if (not isString(L, 2))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else if (not isNumber(L, 3))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else
+		{
+			// this should for sure be unreachable, log here
+			pushBoolean(L, false);
+		}
+
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaCreatureSubtractCustomSkill(lua_State* L)
+{
+	// creature:subtractSkill("SkillName", levels)
+	// returns bool
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		if (isString(L, 2) and isNumber(L, 3))
+		{
+			auto skill_name = getString(L, 2);
+			auto levels_to_remove = getNumber<uint16_t>(L, 3);
+
+			if (auto skill = creature->getCustomSkill(skill_name))
+			{
+				pushBoolean(L, skill->removeLevels(levels_to_remove));
+				return 1;
+			}
+			else
+			{
+				// creature doesn't have that skill
+				// possible log?
+				pushBoolean(L, false);
+				return 1;
+			}
+		}
+		else if (not isString(L, 2))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else if (not isNumber(L, 3))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else
+		{
+			// this should for sure be unreachable, log here
+			pushBoolean(L, false);
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaCreatureAddBonusCustomSkill(lua_State* L)
+{
+	// creature:addBonusSkill("SkillName")
+	// returns bool
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		if (isString(L, 2) and isNumber(L, 3))
+		{
+			auto skill_name = getString(L, 2);
+			auto levels_to_add = getNumber<uint16_t>(L, 3);
+
+			if (auto skill = creature->getCustomSkill(skill_name))
+			{
+				pushBoolean(L, skill->addBonusLevels(levels_to_add));
+				return 1;
+			}
+			else
+			{
+				// creature doesn't have that skill
+				// possible log?
+				pushBoolean(L, false);
+				return 1;
+			}
+		}
+		else if (not isString(L, 2))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else if (not isNumber(L, 3))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else
+		{
+			// this should for sure be unreachable, log here
+			pushBoolean(L, false);
+		}
+
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaCreatureSubtractBonusSkill(lua_State* L)
+{
+	// creature:subtractBonusSkill("SkillName", levels)
+	// returns bool
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		if (isString(L, 2) and isNumber(L, 3))
+		{
+			auto skill_name = getString(L, 2);
+			auto levels_to_remove = getNumber<uint16_t>(L, 3);
+
+			if (auto skill = creature->getCustomSkill(skill_name))
+			{
+				pushBoolean(L, skill->removeBonusLevels(levels_to_remove));
+				return 1;
+			}
+			else
+			{
+				// creature doesn't have that skill
+				// possible log?
+				pushBoolean(L, false);
+				return 1;
+			}
+		}
+		else if (not isString(L, 2))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else if (not isNumber(L, 3))
+		{
+			// todo send console error
+			// log location
+			pushBoolean(L, false);
+			return 1;
+		}
+		else
+		{
+			// this should for sure be unreachable, log here
+			pushBoolean(L, false);
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaCreatureClearBonusSkill(lua_State* L)
+{
+	// creature:clearBonusSkill("SkillName")
+	// returns bool
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		if (isString(L, 2))
+		{
+			auto skill_name = getString(L, 2);
+
+			if (auto skill = creature->getCustomSkill(skill_name))
+			{
+				skill->setBonus(0);
+				pushBoolean(L, true);
+				return 1;
+			}
+			else
+			{
+				// creature doesn't have that skill
+				// possible log?
+				pushBoolean(L, false);
+				return 1;
+			}
+		}
+		else
+		{
+			// first param is not a string, something is wrong, log it.
+			pushBoolean(L, false);
+			return 1;
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaCreatureRemoveCustomSkill(lua_State* L)
+{
+	// creature:removeSkill("SkillName")
+	// returns bool
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		if (isString(L, 2))
+		{
+			auto skill_name = getString(L, 2);
+			pushBoolean(L, creature->removeCustomSkill(skill_name));
+			return 1;
+		}
+		else
+		{
+			// first param is not a string, something is wrong, log it.
+			pushBoolean(L, false);
+			return 1;
+		}
+	}
+	return 1;
+}
+
+
+int LuaScriptInterface::luaCreatureHasCustomSkill(lua_State* L)
+{
+	// creature:hasSkill("SkillName")
+	// returns bool
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		if (isString(L, 2))
+		{
+			auto skill_name = getString(L, 2);
+			auto has_skill = (creature->getCustomSkill(skill_name) != nullptr) ? true : false;
+			pushBoolean(L, has_skill);
+			return 1;
+		}
+		else
+		{
+			// first param is not a string, something is wrong, log it.
+			pushBoolean(L, false);
+			return 1;
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaCreatureCanGainSkillLevels(lua_State* L)
+{
+	// creature:canSkill("SkillName")
+	// returns bool
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		if (isString(L, 2))
+		{
+			auto skill_name = getString(L, 2);
+
+			if (auto skill = creature->getCustomSkill(skill_name))
+			{
+				auto can_skill = (skill->max() > skill->level(false)) ? true : false;
+				pushBoolean(L, can_skill);
+				return 1;
+			}
+			else
+			{
+				// creature doesn't have that skill
+				pushBoolean(L, false);
+				return 1;
+			}
+		}
+		else
+		{
+			// first param is not a string, something is wrong, log it.
+			pushBoolean(L, false);
+			return 1;
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaCreatureGetCustomSkillLevel(lua_State* L)
+{
+	// creature:getSkillLevel("SkillName", bonus = true)
+	// returns number value
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		if (isString(L, 2))
+		{
+			auto skill_name = getString(L, 2);
+			bool include_bonus = (lua_gettop(L) >=3 and isBoolean(L, 3)) ? getBoolean(L, 3) : true; // default to true
+
+			if (auto skill = creature->getCustomSkill(skill_name))
+			{
+				lua_pushinteger(L, skill->level(include_bonus));
+				return 1;
+			}
+			else
+			{
+				// creature doesn't have that skill
+				lua_pushinteger(L, 0);
+				return 1;
+			}
+		}
+		else
+		{
+			// first param is not a string, something is wrong, log it.
+			lua_pushinteger(L, 0);
+			return 1;
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaCreatureGetCustomSkillUserData(lua_State* L)
+{
+	// creature:getSkill("SkillName")
+	// returns userdata (shared pointer)
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		if (isString(L, 2))
+		{
+			auto skill_name = getString(L, 2);
+
+			if (auto skill = creature->getCustomSkill(skill_name))
+			{
+				pushSharedPtr(L, skill);
+				std::cout << "We found the creature skill \n";
+				setMetatable(L, -1, "Skill");
+				return 1;
+			}
+			else
+			{
+				// creature doesn't have that skill
+				lua_pushnil(L);
+				return 1;
+			}
+		}
+		else
+		{
+			// first param is not a string, something is wrong, log it.
+			lua_pushnil(L);
+			return 1;
+		}
 	}
 	return 1;
 }
@@ -15868,6 +16800,259 @@ int LuaScriptInterface::luaLootAddChildLoot(lua_State* L)
 	} else {
 		lua_pushnil(L);
 	}
+	return 1;
+}
+
+// Skill (custom)
+
+int LuaScriptInterface::luaCreateCustomSkill(lua_State* L)
+{
+	// Skill("name", [ level = 1, [ max = 0, [ formula = FormulaType::EXPONENTIAL, [ multiplier = 1.0, [ difficulty = 50, [ threshold = 10]]]]]])
+	// return type is userdata
+
+	auto level = (isNumber(L, 2)) ? getNumber<uint16_t>(L, 2) : 1;
+	auto max = (isNumber(L, 3)) ? getNumber<uint16_t>(L, 3) : 0;
+	auto formula = (isNumber(L, 4)) ? getNumber<FormulaType>(L, 4) : FormulaType::EXPONENTIAL;
+	auto multiplier = (isNumber(L, 5)) ? getNumber<float>(L, 5) : 1.0;
+	auto difficulty = (isNumber(L, 6)) ? getNumber<float>(L, 6) : 50;
+	auto threshold = (isNumber(L, 7)) ? getNumber<float>(L, 7) : 10;
+
+	auto skill = Components::Skills::CustomSkill::make_skill();
+	pushSharedPtr(L, skill);
+	setMetatable(L, -1, "Skill");
+
+	return 1;
+}
+
+int LuaScriptInterface::luaDeleteCustomSkill(lua_State* L)
+{
+	// for lua's garbage collector
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		skill.reset();
+	}
+
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillGetLevel(lua_State* L)
+{
+	// skill:level(include_bonus = true)
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		auto include_bonus = (isBoolean(L, 2)) ? getBoolean(L, 2) : true;
+		lua_pushinteger(L, skill->level(include_bonus));
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillAddLevels(lua_State* L)
+{
+	// skill:addLevels(levels)
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		if (isNumber(L, 2))
+		{
+			auto levels = getNumber<uint16_t>(L, 2);
+			pushBoolean(L, skill->addLevels(levels));
+			return 1;
+		}
+		// this shouldn't be being called without a number, log it
+		pushBoolean(L, false);
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillSubtractLevels(lua_State* L)
+{
+	// skill:removeLevels(levels)
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		if (isNumber(L, 2))
+		{
+			auto levels = getNumber<uint16_t>(L, 2);
+			pushBoolean(L, skill->removeLevels(levels));
+			return 1;
+		}
+		// this shouldn't be being called without a number, log it
+		pushBoolean(L, false);
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillClearLevels(lua_State* L)
+{
+	// skill:clearLevels() -- resets to 1 not 0
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		auto include_bonus = (isBoolean(L, 2)) ? getBoolean(L, 2) : true;
+		skill->clearLevels(include_bonus);
+		pushBoolean(L, true);
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillGetBonusLevel(lua_State* L)
+{
+	// skill:getBonusLevels()
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		lua_pushinteger(L, skill->bonus());
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillAddBonusLevels(lua_State* L)
+{
+	// skill:addBonusLevels(levels)
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		if (isNumber(L, 2))
+		{
+			auto levels = getNumber<uint16_t>(L, 2);
+			pushBoolean(L, skill->addBonusLevels(levels));
+			return 1;
+		}
+		pushBoolean(L, false);
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillSubtractBonusLevels(lua_State* L)
+{
+	// skill:removeBonusLevels(levels)
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		if (isNumber(L, 2))
+		{
+			auto levels = getNumber<uint16_t>(L, 2);
+			pushBoolean(L, skill->removeBonusLevels(levels));
+			return 1;
+		}
+		pushBoolean(L, false);
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillClearBonus(lua_State* L)
+{
+	// skill:clearBonusLevels() -- resets to 0 not 1
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		skill->setBonus(0);
+		pushBoolean(L, true);
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillGetPoints(lua_State* L)
+{
+	// skill:points()
+	// skill:getPoints()
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		lua_pushinteger(L, skill->points());
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillAddPoints(lua_State* L)
+{
+	// skill:addPoints(points)
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		if (isNumber(L, 2))
+		{
+			auto points = getNumber<uint32_t>(L, 2);
+			pushBoolean(L, skill->addPoints(points));
+			return 1;
+		}
+		pushBoolean(L, false);
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillSubtractPoints(lua_State* L)
+{
+	// skill:removePoints(points)
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		if (isNumber(L, 2))
+		{
+			auto points = getNumber<uint32_t>(L, 2);
+			pushBoolean(L, skill->removePoints(points));
+			return 1;
+		}
+		pushBoolean(L, false);
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillClearPoints(lua_State* L)
+{
+	// skill:clearPoints() -- sets current points to 0 for current level
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		skill->clearPoints();
+		pushBoolean(L, true);
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillGetPointsForLevel(lua_State* L)
+{
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		lua_pushinteger(L, skill->needed());
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillGetMaxLevel(lua_State* L)
+{
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		lua_pushinteger(L, skill->max());
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCustomSkillGetPercentToLevel(lua_State* L)
+{
+	if (auto& skill = getSharedPtr<CustomSkill>(L, 1))
+	{
+		lua_pushnumber(L, skill->percent());
+		return 1;
+	}
+	lua_pushnil(L);
 	return 1;
 }
 

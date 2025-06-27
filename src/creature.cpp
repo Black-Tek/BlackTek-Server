@@ -26,12 +26,12 @@ Creature::Creature()
 
 Creature::~Creature()
 {
-	for (CreaturePtr summon : summons) {
+	for (auto& summon : summons) {
 		summon->setAttackedCreature(nullptr);
 		summon->removeMaster();
 	}
 
-	for (auto condition : conditions) {
+	for (auto& condition : conditions) {
 		delete condition;
 	}
 }
@@ -497,7 +497,7 @@ void Creature::onCreatureMove(const CreaturePtr& creature,
 		if (!summons.empty()) {
 			//check if any of our summons is out of range (+/- 2 floors or 30 tiles away)
 			std::forward_list<CreaturePtr> despawnList;
-			for (CreaturePtr summon : summons) {
+			for (auto& summon : summons) {
 				const Position& pos = summon->getPosition();
 				if (Position::getDistanceZ(newPos, pos) > 2 || (std::max<int32_t>(Position::getDistanceX(newPos, pos), Position::getDistanceY(newPos, pos)) > 30)) {
 					despawnList.push_front(summon);
@@ -919,7 +919,7 @@ bool Creature::setAttackedCreature(const CreaturePtr& creature)
 		attackedCreature.reset();
 	}
 
-	for (CreaturePtr summon : summons) {
+	for (auto& summon : summons) {
 		summon->setAttackedCreature(creature);
 	}
 	return true;
@@ -1511,6 +1511,36 @@ void Creature::setNormalCreatureLight()
 {
 	internalLight = {};
 }
+
+// This one is for trying to add new skills on the fly with set levels
+// for example, creating npc's or monsters with randomized levels
+// negatives are not allowed for this purpose
+bool Creature::giveCustomSkill(std::string_view name, uint16_t level)
+{
+	auto new_skill = std::make_shared<CustomSkill>(FormulaType::EXPONENTIAL);
+	new_skill->addLevels(level);
+	return c_skills.try_emplace(name, new_skill).second;
+}
+
+bool Creature::giveCustomSkill(std::string_view name, std::shared_ptr<CustomSkill> new_skill)
+{
+	return c_skills.try_emplace(name, new_skill).second;
+}
+
+bool Creature::removeCustomSkill(std::string_view name)
+{
+	return c_skills.erase(name) > 0;
+}
+
+std::shared_ptr<CustomSkill> Creature::getCustomSkill(std::string_view name)
+{
+	auto it = c_skills.find(name);
+	if (it != c_skills.end()) {
+		return it->second;
+	}
+	return nullptr;
+}
+
 
 bool Creature::registerCreatureEvent(const std::string& name)
 {

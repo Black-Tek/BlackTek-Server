@@ -6,6 +6,9 @@
 
 #include "enums.h"
 #include "item.h"
+#include "skills.h"
+
+extern gtl::flat_hash_map<uint16_t, SkillRegistry> vocation_skills;
 
 class Vocation
 {
@@ -19,7 +22,7 @@ class Vocation
 		const std::string& getVocDescription() const {
 			return description;
 		}
-	
+
 		uint64_t getReqSkillTries(uint8_t skill, uint16_t level) const;
 		uint64_t getReqMana(uint32_t magLevel) const;
 
@@ -137,6 +140,9 @@ class Vocations
 		int32_t getVocationId(std::string_view name) const;
 		uint16_t getPromotedVocation(uint16_t vocationId) const;
 		const VocationMap& getVocations() const { return vocationsMap; }
+		static bool addVocationSkill(uint32_t vocationId, std::string_view name, const std::shared_ptr<CustomSkill>& skill);
+		static std::optional<std::shared_ptr<CustomSkill>> getVocationSkill(std::string_view name, uint16_t vocation_id);
+		SkillRegistry getRegisteredSkills(uint16_t vocation_id);
 
 	private:
 		VocationMap vocationsMap;

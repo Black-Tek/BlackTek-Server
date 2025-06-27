@@ -8,6 +8,8 @@
 
 const uint32_t MAX_LOOTCHANCE = 100000;
 
+extern	gtl::flat_hash_map<std::string, SkillRegistry> monster_skills;
+
 struct LootBlock {
 	uint16_t id;
 	uint32_t countmax;
@@ -222,6 +224,12 @@ class Monsters
 		// non-copyable
 		Monsters(const Monsters&) = delete;
 		Monsters& operator=(const Monsters&) = delete;
+
+		static bool addMonsterSkill(std::string monster_name, std::string_view skill_name, const std::shared_ptr<CustomSkill>& skill);
+
+		static std::optional<std::shared_ptr<CustomSkill>> getMonsterSkill(std::string_view skill_name, std::string monster_name);
+
+		SkillRegistry getRegisteredSkills(std::string monster_name);
 
 		bool loadFromXml(bool reloading = false);
 		bool isLoaded() const {

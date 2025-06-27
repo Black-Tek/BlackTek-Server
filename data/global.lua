@@ -250,3 +250,12 @@ function checkDuplicateStorageKeys(varName)
         return duplicates
     end
 end
+
+table.find = function(table, value)
+	for i, v in pairs(table) do
+		if v == value then
+			return i
+		end
+	end
+	return nil
+end

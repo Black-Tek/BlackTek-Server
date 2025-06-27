@@ -559,6 +559,20 @@ class Item : virtual public Thing, public SharedObject
 		//Factory member to create item of right type based on type
 		static ItemPtr CreateItem(const uint16_t type, uint16_t count = 0);
 		static ContainerPtr CreateItemAsContainer(const uint16_t type, uint16_t size);
+		bool giveCustomSkill(std::string_view name, uint16_t level);
+		bool giveCustomSkill(std::string_view name, std::shared_ptr<CustomSkill> new_skill);
+		bool removeCustomSkill(std::string_view name);
+		std::shared_ptr<CustomSkill> getCustomSkill(std::string_view name);
+
+		const gtl::flat_hash_map<std::string, std::shared_ptr<CustomSkill>>& getCustomSkills() const
+		{
+			return custom_skills;
+		}
+
+		void setCustomSkills(SkillRegistry skill_set)
+		{
+			custom_skills = skill_set;
+		}
 		static ItemPtr CreateItem(PropStream& propStream);
 		static Items items;
 
@@ -1222,6 +1236,8 @@ class Item : virtual public Thing, public SharedObject
 		uint16_t imbuementSlots = 0;
 		std::vector<std::shared_ptr<Imbuement>> imbuements{};
 		std::vector<std::shared_ptr<Augment>> augments{};
+
+		SkillRegistry custom_skills{};
 
 		uint8_t count = 1; // number of stacked items
 		bool loadedFromMap = false;

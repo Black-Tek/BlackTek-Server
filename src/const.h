@@ -6,6 +6,19 @@
 
 static constexpr int32_t NETWORKMESSAGE_MAXSIZE = 65535;
 
+
+// Defines the type of formula for the points required growth curve
+enum FormulaType : uint8_t {
+	LINEAR,
+	LOGARITHMIC,
+	EXPONENTIAL,
+	QUADRATIC,
+	CUBIC,
+	STEP,
+	ROOT,
+	INVERSE
+};
+
 enum MagicEffectClasses : uint8_t {
 	CONST_ME_NONE,
 

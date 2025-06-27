@@ -131,6 +131,174 @@ std::pair<uint32_t, uint32_t> IOLoginData::gameworldAuthentication(std::string_v
 	return std::make_pair(accountId, characterId);
 }
 
+void IOLoginData::loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augmentList, const DBResult_ptr& result) {
+	try {
+		if (!result) {
+			std::cout << "ERROR: Null result in loadPlayerAugments" << std::endl;
+			return;
+		}
+
+		uint32_t playerID = result->getNumber<uint32_t>("player_id");
+		auto augmentData = result->getString("augments");
+
+		if (augmentData.empty()) {
+			return;
+		}
+
+		PropStream augmentStream;
+		augmentStream.init(augmentData.data(), augmentData.size());
+
+		uint32_t augmentCount = 0;
+
+		if (!augmentStream.read<uint32_t>(augmentCount)) {
+			return;
+		}
+
+		// Additional validation on augmentCount
+		if (augmentCount > MAX_AUGMENT_COUNT) {
+			std::cout << "ERROR: Augment count too high for player " << playerID << ": " << augmentCount << std::endl;
+			return;
+		}
+
+		augmentList.reserve(augmentCount);
+
+		for (uint32_t i = 0; i < augmentCount; ++i) {
+			auto augment = std::make_shared<Augment>();
+
+			try {
+				if (!augment->unserialize(augmentStream)) {
+					std::cout << "WARNING: Failed to unserialize augment " << i
+						<< " for player " << playerID << std::endl;
+					return;
+				}
+				augmentList.emplace_back(augment);
+			}
+			catch (const std::exception& e) {
+				std::cout << "ERROR: Exception while unserializing augment " << i
+					<< " for player " << playerID << ": " << e.what() << std::endl;
+				return;
+			}
+		}
+	}
+	catch (const std::exception& e) {
+		std::cout << "ERROR: Exception in loadPlayerAugments: " << e.what() << std::endl;
+		augmentList.clear();
+	}
+}
+
+void IOLoginData::serializeCustomSkills(const PlayerConstPtr player, DBInsert query, PropWriteStream& binary_stream)
+{
+	binary_stream.write<uint32_t>(player->getCustomSkills().size());
+	for (const auto& [name, skill] : player->getCustomSkills())
+	{
+		binary_stream.writeString(name);
+		binary_stream.write<uint64_t>(skill->points());
+		binary_stream.write<float>(skill->multiplier());
+		binary_stream.write<float>(skill->difficulty());
+		binary_stream.write<float>(skill->threshold());
+		binary_stream.write<uint16_t>(skill->level(false)); // should be false to prevent saving the bonus levels
+		binary_stream.write<int16_t>(skill->bonus());
+		binary_stream.write<uint16_t>(skill->max());
+		binary_stream.write<uint8_t>(static_cast<uint8_t>(skill->formula()));
+	}
+}
+
+void IOLoginData::serializeCustomSkills(const ItemConstPtr item, DBInsert query, PropWriteStream& binary_stream)
+{
+	binary_stream.write<uint32_t>(item->getCustomSkills().size());
+	for (const auto& [name, skill] : item->getCustomSkills())
+	{
+		binary_stream.writeString(name);
+		binary_stream.write<uint64_t>(skill->points());
+		binary_stream.write<float>(skill->multiplier());
+		binary_stream.write<float>(skill->difficulty());
+		binary_stream.write<float>(skill->threshold());
+		binary_stream.write<uint16_t>(skill->level(false)); // should be false to prevent saving the bonus levels
+		binary_stream.write<int16_t>(skill->bonus());
+		binary_stream.write<uint16_t>(skill->max());
+		binary_stream.write<uint8_t>(static_cast<uint8_t>(skill->formula()));
+	}
+}
+
+SkillRegistry IOLoginData::deserializeCustomSkills(PropStream binary_stream)
+{
+	SkillRegistry skill_set{};
+	uint32_t skill_count = 0;
+	std::string name{};
+	uint64_t current_points = 0;
+	float multiplier = 1.0f;
+	float difficulty = 1.0f;
+	float threshold = 1.0f;
+	uint16_t current_level = 0;
+	int16_t bonus_level = 0;
+	uint16_t max_level = 0;
+	uint8_t formula = 0;
+
+	if (!binary_stream.read<uint32_t>(skill_count))
+	{
+		// log location
+		std::cout << "ERROR: Corrupted Custom Skill Count" << std::endl;
+		return skill_set;
+	}
+
+	if (skill_count == 0)
+	{
+		return skill_set;
+	}
+
+	for (uint32_t i = 0; i < skill_count; i++)
+	{
+		auto [name, successName] = binary_stream.readString();
+
+		if (not successName)
+		{
+			// log location
+			std::cout << "ERROR: Corrupted Custom Skill Name " << std::endl;
+			return skill_set;
+		}
+
+		if (not binary_stream.read<uint64_t>(current_points)
+			or not binary_stream.read<float>(multiplier)
+			or not binary_stream.read<float>(difficulty)
+			or not binary_stream.read<float>(threshold)
+			or not binary_stream.read<uint16_t>(current_level)
+			or not binary_stream.read<int16_t>(bonus_level)
+			or not binary_stream.read<uint16_t>(max_level)
+			or not binary_stream.read<uint8_t>(formula))
+		{
+			// log location
+			std::cout << "ERROR: Corrupted Custom Skill Data " << std::endl;
+			return skill_set;
+		}
+
+		auto skill = Components::Skills::CustomSkill::make_skill(formula, max_level, multiplier, difficulty, threshold);
+		skill->addPoints(current_points);
+		skill->setBonus(bonus_level);
+
+		skill_set.emplace(std::string(name), skill);
+	}
+	return skill_set;
+}
+
+bool IOLoginData::savePlayerCustomSkills(const PlayerConstPtr& player, DBInsert& query_insert, PropWriteStream& binary_stream) 
+{
+	const Database& db = Database::getInstance();
+	auto& skills = player->getCustomSkills();
+	const uint32_t skill_count = skills.size();
+	binary_stream.clear();
+
+	IOLoginData::serializeCustomSkills(player, query_insert, binary_stream);
+
+	auto skills_blob = binary_stream.getStream();
+
+	if (not query_insert.addRow(fmt::format("{:d}, {:s}", player->getGUID(), db.escapeString(skills_blob)))) 
+	{
+		return false;
+	}
+
+	return query_insert.execute();
+}
+
 uint32_t IOLoginData::getAccountIdByPlayerName(const std::string& playerName)
 {
 	Database& db = Database::getInstance();
@@ -439,7 +607,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 	//load inventory items
 	ItemMap itemMap;
 
-	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments` FROM `player_items` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills` FROM `player_items` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
 
 		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
@@ -578,7 +746,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 	if ((result = db.storeQuery(fmt::format("SELECT `player_id`, `augments` FROM `player_augments` WHERE `player_id` = {:d}", player->getGUID())))) {
 		try {
 			std::vector<std::shared_ptr<Augment>> augments;
-			loadPlayerAugments(augments, result);
+			IOLoginData::loadPlayerAugments(augments, result);
 
 			if (!augments.empty()) {
 				for (auto& augment : augments) {
@@ -592,6 +760,42 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 			std::cout << "ERROR: Failed to process loaded augments: " << e.what() << std::endl;
 		}
 	}
+
+	// I used a lambda with immediate execution in order to be able to return early in case of corrupt data or failed loading
+	[&]() -> void 
+		{
+		if ((result = db.storeQuery(fmt::format("SELECT `player_id`, `skills` FROM `player_custom_skills` WHERE `player_id` = {:d}", player->getGUID())))) {
+			try
+			{
+				if (not result) 
+				{
+					std::cout << "ERROR: Null result in loading player custom skills" << std::endl;
+					return;
+				}
+
+				uint32_t player_id = result->getNumber<uint32_t>("player_id");
+				auto skill_data = result->getString("skills");
+
+				if (skill_data.empty()) 
+				{
+					return;
+				}
+				
+				PropStream binary_stream;
+				binary_stream.init(skill_data.data(), skill_data.size());
+
+				if (auto skill_set = IOLoginData::deserializeCustomSkills(binary_stream); skill_set.size() > 0)
+				{
+					player->setCustomSkills(std::move(skill_set));
+				}
+
+			}
+			catch (const std::exception& e) 
+			{
+				std::cout << "ERROR: Failed to load custom skills : " << e.what() << std::endl;
+			}
+		}
+		}();
 
 	//load vip list
 	if ((result = db.storeQuery(fmt::format("SELECT `player_id` FROM `account_viplist` WHERE `account_id` = {:d}", player->getAccount())))) {
@@ -636,10 +840,17 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 
 		const auto augmentsData = augmentStream.getStream();
 
-		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}",
+		auto skill_stream = PropWriteStream();
+
+		IOLoginData::serializeCustomSkills(item, query_insert, skill_stream);
+
+		const auto& skill_data = skill_stream.getStream();
+
+		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}, {:s}",
 			player->getGUID(), pid, runningId, item->getID(), item->getSubType(),
 			db.escapeString(attributesData),
-			db.escapeString(augmentsData)))) {
+			db.escapeString(augmentsData),
+			db.escapeString(skill_data)))) {
 			return false;
 		}
 
@@ -671,10 +882,18 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 
 			auto augmentsData = augmentStream.getStream();
 
-			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}",
+
+			auto skill_stream = PropWriteStream();
+
+			IOLoginData::serializeCustomSkills(item, query_insert, skill_stream);
+
+			const auto& skill_data = skill_stream.getStream();
+
+			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}, {:s}",
 				player->getGUID(), parentId, runningId, item->getID(), item->getSubType(),
 				db.escapeString(attributesData),
-				db.escapeString(augmentsData)))) {
+				db.escapeString(augmentsData),
+				db.escapeString(skill_data)))) {
 				return false;
 			}
 
@@ -748,10 +967,19 @@ bool IOLoginData::addRewardItems(uint32_t playerID, const ItemBlockList& itemLis
 		}
 		const auto augmentsData = augmentStream.getStream();
 
-		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}",
+
+		auto skill_stream = PropWriteStream();
+		const auto& skills = item->getCustomSkills();
+
+		IOLoginData::serializeCustomSkills(item, query_insert, skill_stream);
+
+		const auto& skill_data = skill_stream.getStream();
+
+		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}, {:s}",
 			playerID, pid, runningId, item->getID(), item->getSubType(),
 			db.escapeString(attributesData),
-			db.escapeString(augmentsData)))) {
+			db.escapeString(augmentsData),
+			db.escapeString(skill_data)))) {
 			return false;
 		}
 
@@ -780,10 +1008,18 @@ bool IOLoginData::addRewardItems(uint32_t playerID, const ItemBlockList& itemLis
 			}
 			auto augmentsData = augmentStream.getStream();
 
-			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}",
+			auto skill_stream = PropWriteStream();
+			const auto& skills = item->getCustomSkills();
+
+			IOLoginData::serializeCustomSkills(item, query_insert, skill_stream);
+
+			const auto& skill_data = skill_stream.getStream();
+
+			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}, {:s}",
 				playerID, parentId, runningId, item->getID(), item->getSubType(),
 				db.escapeString(attributesData),
-				db.escapeString(augmentsData)))) {
+				db.escapeString(augmentsData),
+				db.escapeString(skill_data)))) {
 				return false;
 			}
 
@@ -938,7 +1174,7 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 		return false;
 	}
 
-	DBInsert itemsQuery("INSERT INTO `player_items` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments` ) VALUES ");
+	DBInsert itemsQuery("INSERT INTO `player_items` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills` ) VALUES ");
 
 	ItemBlockList itemList;
 	for (int32_t slotId = CONST_SLOT_FIRST; slotId <= CONST_SLOT_LAST; ++slotId) {
@@ -956,7 +1192,7 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 		return false;
 	}
 
-	DBInsert depotQuery("INSERT INTO `player_depotitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`) VALUES ");
+	DBInsert depotQuery("INSERT INTO `player_depotitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`) VALUES ");
 	itemList.clear();
 
 	for (const auto& it : player->depotChests) {
@@ -974,7 +1210,7 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 		return false;
 	}
 
-	DBInsert rewardQuery("INSERT INTO `player_rewarditems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`) VALUES ");
+	DBInsert rewardQuery("INSERT INTO `player_rewarditems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`) VALUES ");
 	itemList.clear();
 
 	for (auto item : player->getRewardChest()->getItemList()) {
@@ -991,7 +1227,7 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 		return false;
 	}
 
-	DBInsert inboxQuery("INSERT INTO `player_inboxitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`,  `augments`) VALUES ");
+	DBInsert inboxQuery("INSERT INTO `player_inboxitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`,  `augments`, `skills`) VALUES ");
 	itemList.clear();
 
 	for (auto item : player->getInbox()->getItemList()) {
@@ -1007,7 +1243,7 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 		return false;
 	}
 
-	DBInsert storeInboxQuery("INSERT INTO `player_storeinboxitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`) VALUES ");
+	DBInsert storeInboxQuery("INSERT INTO `player_storeinboxitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`) VALUES ");
 	itemList.clear();
 
 	for (auto item : player->getStoreInbox()->getItemList()) {
@@ -1046,6 +1282,16 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 	if (!saveAugments(player, augmentQuery, augmentStream)) {
 		return false;
 	}
+
+
+	if (!db.executeQuery(fmt::format("DELETE FROM `player_custom_skills` WHERE `player_id` = {:d}", player->getGUID()))) {
+		return false;
+	}
+
+	DBInsert skill_query("INSERT INTO `player_custom_skills` (`player_id`, `skills`) VALUES ");
+	PropWriteStream binary_stream;
+
+	savePlayerCustomSkills(player, skill_query, binary_stream);
 
 
 	//End the transaction
@@ -1110,61 +1356,6 @@ bool IOLoginData::formatPlayerName(std::string& name)
 	return true;
 }
 
-void IOLoginData::loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augmentList, const DBResult_ptr& result) {
-	try {
-		if (!result) {
-			std::cout << "ERROR: Null result in loadPlayerAugments" << std::endl;
-			return;
-		}
-
-		uint32_t playerID = result->getNumber<uint32_t>("player_id");
-		auto augmentData = result->getString("augments");
-
-		if (augmentData.empty()) {
-			return;
-		}
-
-		PropStream augmentStream;
-		augmentStream.init(augmentData.data(), augmentData.size());
-
-		uint32_t augmentCount = 0;
-
-		if (!augmentStream.read<uint32_t>(augmentCount)) {
-			return;
-		}
-		
-		// Additional validation on augmentCount
-		if (augmentCount > MAX_AUGMENT_COUNT) {
-			std::cout << "ERROR: Augment count too high for player " << playerID << ": " << augmentCount << std::endl;
-			return;
-		}
-
-		augmentList.reserve(augmentCount);
-
-		for (uint32_t i = 0; i < augmentCount; ++i) {
-			auto augment = std::make_shared<Augment>();
-
-			try {
-				if (!augment->unserialize(augmentStream)) {
-					std::cout << "WARNING: Failed to unserialize augment " << i
-						<< " for player " << playerID << std::endl;
-					return;
-				}
-				augmentList.emplace_back(augment);
-			}
-			catch (const std::exception& e) {
-				std::cout << "ERROR: Exception while unserializing augment " << i
-					<< " for player " << playerID << ": " << e.what() << std::endl;
-				return;
-			}
-		}
-	}
-	catch (const std::exception& e) {
-		std::cout << "ERROR: Exception in loadPlayerAugments: " << e.what() << std::endl;
-		augmentList.clear();
-	}
-}
-
 void IOLoginData::loadItems(ItemMap& itemMap, const DBResult_ptr& result)
 {
 	Database& db = Database::getInstance();
@@ -1184,6 +1375,10 @@ void IOLoginData::loadItems(ItemMap& itemMap, const DBResult_ptr& result)
 		PropStream augmentStream;
 		augmentStream.init(augmentData.data(), augmentData.size());
 
+		auto skill_data = result->getString("skills");
+		PropStream skill_stream;
+		skill_stream.init(skill_data.data(), skill_data.size());
+
 
 		if (auto item = Item::CreateItem(type, count)) {
 			// Deserialize the item's attributes
@@ -1192,6 +1387,11 @@ void IOLoginData::loadItems(ItemMap& itemMap, const DBResult_ptr& result)
 
 			if (!item->unserializeAugments(augmentStream)) {
 				// todo: handle this
+			}
+
+			if (auto skill_set = IOLoginData::deserializeCustomSkills(skill_stream); skill_set.size() > 0)
+			{
+				item->setCustomSkills(std::move(skill_set));
 			}
 
 			// Add item to the itemMap
@@ -1262,3 +1462,5 @@ bool IOLoginData::accountExists(const std::string& accountName)
 	DBResult_ptr result = db.storeQuery(query.str());
 	return result != nullptr;
 }
+
+

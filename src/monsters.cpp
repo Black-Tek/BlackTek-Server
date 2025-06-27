@@ -18,6 +18,39 @@ extern Spells* g_spells;
 extern Monsters g_monsters;
 extern ConfigManager g_config;
 
+static gtl::flat_hash_map<std::string, SkillRegistry> monster_skills;
+
+bool Monsters::addMonsterSkill(std::string monster_name, std::string_view skill_name, const std::shared_ptr<CustomSkill>& skill)
+{
+	auto& skillMap = monster_skills[monster_name];
+	return skillMap.try_emplace(skill_name, skill).second;
+}
+
+std::optional<std::shared_ptr<CustomSkill>> Monsters::getMonsterSkill(std::string_view skill_name, std::string monster_name)
+{
+	if (auto it = monster_skills.find(monster_name); it != monster_skills.end()) 
+	{
+		const auto& skills = it->second;
+		if (auto skillIt = skills.find(skill_name); skillIt != skills.end()) 
+		{
+			return skillIt->second;
+		}
+	}
+	return std::nullopt;
+}
+
+// std::expected candidate <container, bool>
+// it would save on the overhead of creating the empty container
+// and assigning it later down the line of execution perhaps?
+SkillRegistry Monsters::getRegisteredSkills(std::string monster_name)
+{
+	if (auto it = monster_skills.find(monster_name); it != monster_skills.end())
+	{
+		return it->second;
+	}
+	return SkillRegistry();
+}
+
 spellBlock_t::~spellBlock_t()
 {
 	if (combatSpell) {
@@ -1273,6 +1306,59 @@ MonsterType* Monsters::loadMonster(const std::string& file, const std::string& m
 			}
 		}
 	}
+
+	if ((node = monsterNode.child("skills"))) 
+	{
+		for (auto& skill_node : node.children())
+		{
+			std::string name;
+			uint16_t level = 1;
+			uint16_t max = 0;
+			uint8_t formula = 2;
+			float multiplier = 1.0f;
+			float threshold = 10.0f;
+			float difficulty = 50.0f;
+
+			if (attr = skill_node.attribute("name"))
+			{
+				name = attr.as_string();
+			}
+
+			if (attr = skill_node.attribute("level"))
+			{
+				level = pugi::cast<uint16_t>(attr.value());
+			}
+
+			if (attr = skill_node.attribute("max"))
+			{
+				max = pugi::cast<uint16_t>(attr.value());
+			}
+
+			if (attr = skill_node.attribute("formula"))
+			{
+				formula = pugi::cast<uint8_t>(attr.value());
+			}
+
+			if (attr = skill_node.attribute("threshold"))
+			{
+				threshold = pugi::cast<float>(attr.value());
+			}
+
+			if (attr = skill_node.attribute("difficulty"))
+			{
+				difficulty = pugi::cast<float>(attr.value());
+			}
+
+			if (attr = skill_node.attribute("multiplier"))
+			{
+				multiplier = pugi::cast<float>(attr.value());
+			}
+
+			auto monster_skill = Components::Skills::CustomSkill::make_skill(formula, max, multiplier, threshold, difficulty);
+			Monsters::addMonsterSkill(monsterName, name, monster_skill);
+		}
+	}
+
 
 	if ((node = monsterNode.child("summons"))) {
 		if ((attr = node.attribute("maxSummons"))) {

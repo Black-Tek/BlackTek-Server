@@ -12,6 +12,39 @@ extern LuaEnvironment g_luaEnvironment;
 
 uint32_t Npc::npcAutoID = 0x80000000;
 
+static 	gtl::flat_hash_map<std::string, SkillRegistry> npc_skills;
+
+bool Npcs::addNpcSkill(std::string npc_name, std::string_view skill_name, const std::shared_ptr<CustomSkill>& skill)
+{
+	auto& skillMap = npc_skills[npc_name];
+	return skillMap.try_emplace(skill_name, skill).second;
+}
+
+std::optional<std::shared_ptr<CustomSkill>> Npcs::getNpcSkill(std::string_view skill_name, std::string npc_name)
+{
+	if (auto it = npc_skills.find(npc_name); it != npc_skills.end()) 
+	{
+		const auto& skills = it->second;
+		if (auto skillIt = skills.find(skill_name); skillIt != skills.end()) 
+		{
+			return skillIt->second;
+		}
+	}
+	return std::nullopt;
+}
+
+// std::expected candidate <container, bool>
+// it would save on the overhead of creating the empty container
+// and assigning it later down the line of execution perhaps?
+SkillRegistry Npcs::getRegisteredSkills(std::string npc_name)
+{
+	if (auto it = npc_skills.find(npc_name); it != npc_skills.end())
+	{
+		return it->second;
+	}
+	return SkillRegistry();
+}
+
 void Npcs::reload()
 {
 	const std::map<uint32_t, NpcPtr>& npcs = g_game.getNpcs();
@@ -30,6 +63,8 @@ NpcPtr Npc::createNpc(const std::string& name)
 	if (!npc->load()) {
 		return nullptr;
 	}
+
+	npc->setCustomSkills(Npcs::getRegisteredSkills(name));
 	return npc;
 }
 
@@ -180,6 +215,58 @@ bool Npc::loadFromXml()
 		if (health > healthMax) {
 			health = healthMax;
 			std::cout << "[Warning - Npc::loadFromXml] Health now is greater than health max in " << filename << std::endl;
+		}
+	}
+
+	if (auto skills = npcNode.child("skills"))
+	{
+		for (auto& skill_node : skills.children())
+		{
+			std::string skill_name = "none";
+			uint16_t level = 1;
+			uint16_t max = 0;
+			uint8_t formula = 2;
+			float multiplier = 1.0f;
+			float threshold = 10.0f;
+			float difficulty = 50.0f;
+
+			if (attr = skill_node.attribute("name"))
+			{
+				skill_name = attr.as_string();
+			}
+
+			if (attr = skill_node.attribute("level"))
+			{
+				level = pugi::cast<uint16_t>(attr.value());
+			}
+
+			if (attr = skill_node.attribute("max"))
+			{
+				max = pugi::cast<uint16_t>(attr.value());
+			}
+
+			if (attr = skill_node.attribute("formula"))
+			{
+				formula = pugi::cast<uint8_t>(attr.value());
+			}
+
+			if (attr = skill_node.attribute("threshold"))
+			{
+				threshold = pugi::cast<float>(attr.value());
+			}
+
+			if (attr = skill_node.attribute("difficulty"))
+			{
+				difficulty = pugi::cast<float>(attr.value());
+			}
+
+			if (attr = skill_node.attribute("multiplier"))
+			{
+				multiplier = pugi::cast<float>(attr.value());
+			}
+
+			auto npc_skill = Components::Skills::CustomSkill::make_skill(formula, max, multiplier, threshold, difficulty);
+			Npcs::addNpcSkill(name, skill_name, npc_skill);
 		}
 	}
 

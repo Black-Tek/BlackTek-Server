@@ -12,9 +12,14 @@
 class Npc;
 class Player;
 
+extern 	gtl::flat_hash_map<std::string, SkillRegistry> npc_skills;
+
 class Npcs
 {
 	public:
+		static bool addNpcSkill(std::string npc_name, std::string_view skill_name, const std::shared_ptr<CustomSkill>& skill);
+		static std::optional<std::shared_ptr<CustomSkill>> getNpcSkill(std::string_view skill_name, std::string npc_name);
+		static SkillRegistry getRegisteredSkills(std::string npc_name);
 		static void reload();
 };
 
