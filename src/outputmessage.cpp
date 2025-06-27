@@ -62,5 +62,5 @@ OutputMessage_ptr OutputMessagePool::getOutputMessage()
 {
 	// LockfreePoolingAllocator<void,...> will leave (void* allocate) ill-formed because
 	// of sizeof(T), so this guarantees that only one list will be initialized
-	return std::allocate_shared<OutputMessage>(LockfreePoolingAllocator<void, OUTPUTMESSAGE_FREE_LIST_CAPACITY>());
+	return std::allocate_shared<OutputMessage>(LockfreePoolingAllocator<OutputMessage, OUTPUTMESSAGE_FREE_LIST_CAPACITY>());
 }
