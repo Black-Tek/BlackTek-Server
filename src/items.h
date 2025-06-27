@@ -18,7 +18,7 @@
 using ItemBuff = std::pair<std::string, uint16_t>;
 using namespace Components::Skills;
 
-extern gtl::flat_hash_map<uint32_t, gtl::flat_hash_map<std::string, CustomSkill>> item_skills;
+extern gtl::flat_hash_map<uint32_t, SkillRegistry> item_skills;
 extern gtl::flat_hash_map<uint32_t, ItemBuff> item_buffs, item_debuffs;
 
 enum SlotPositionBits : uint32_t {
@@ -405,9 +405,9 @@ class Items
 
 		using CurrencyMap = std::map<uint64_t, uint16_t, std::greater<uint64_t>>;
 
-		static bool addItemSkill(uint32_t item_id, std::string_view skill_name, const CustomSkill& skill);
+		static bool addItemSkill(uint32_t item_id, std::string_view skill_name, const std::shared_ptr<CustomSkill>& skill);
 
-		static std::optional<CustomSkill> getItemSkill(std::string_view skill_name, uint32_t item_id);
+		static std::optional<std::shared_ptr<CustomSkill>> getItemSkill(std::string_view skill_name, uint32_t item_id);
 
 		Items();
 

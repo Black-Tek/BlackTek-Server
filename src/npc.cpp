@@ -12,7 +12,7 @@ extern LuaEnvironment g_luaEnvironment;
 
 uint32_t Npc::npcAutoID = 0x80000000;
 
-static 	gtl::flat_hash_map<std::string, SkillRegistry> npc_skills;
+gtl::flat_hash_map<std::string, SkillRegistry> npc_skills;
 
 bool Npcs::addNpcSkill(std::string npc_name, std::string_view skill_name, const std::shared_ptr<CustomSkill>& skill)
 {

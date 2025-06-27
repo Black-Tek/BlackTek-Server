@@ -18,7 +18,7 @@ extern Spells* g_spells;
 extern Monsters g_monsters;
 extern ConfigManager g_config;
 
-static gtl::flat_hash_map<std::string, SkillRegistry> monster_skills;
+gtl::flat_hash_map<std::string, SkillRegistry> monster_skills;
 
 bool Monsters::addMonsterSkill(std::string monster_name, std::string_view skill_name, const std::shared_ptr<CustomSkill>& skill)
 {

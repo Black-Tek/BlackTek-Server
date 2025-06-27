@@ -10,7 +10,7 @@
 #include "pugicast.h"
 #include "tools.h"
 
-static gtl::flat_hash_map<uint16_t, SkillRegistry> vocation_skills;
+gtl::flat_hash_map<uint16_t, SkillRegistry> vocation_skills;
 
 Vocation* Vocations::getVocation(uint16_t id)
 {

@@ -15,8 +15,8 @@
 extern MoveEvents* g_moveEvents;
 extern Weapons* g_weapons;
 
-static gtl::flat_hash_map<uint32_t, gtl::flat_hash_map<std::string, CustomSkill>> item_skills;
-static gtl::flat_hash_map<uint32_t, ItemBuff> item_buffs, item_debuffs;
+gtl::flat_hash_map<uint32_t, SkillRegistry> item_skills;
+gtl::flat_hash_map<uint32_t, ItemBuff> item_buffs, item_debuffs;
 
 const gtl::flat_hash_map<std::string, ItemParseAttributes_t> ItemParseAttributesMap = {
 	{"type", ITEM_PARSE_TYPE},
@@ -190,13 +190,13 @@ const gtl::flat_hash_map<std::string, FluidTypes_t> FluidTypesMap = {
 	{"mead", FLUID_MEAD},
 };
 
-bool Items::addItemSkill(uint32_t item_id, std::string_view skill_name, const CustomSkill& skill)
+bool Items::addItemSkill(uint32_t item_id, std::string_view skill_name, const std::shared_ptr<CustomSkill>& skill)
 {
     auto& skillMap = item_skills[item_id];
     return skillMap.try_emplace(skill_name, skill).second;
 }
 
-std::optional<CustomSkill> Items::getItemSkill(std::string_view skill_name, uint32_t item_id)
+std::optional<std::shared_ptr<CustomSkill>> Items::getItemSkill(std::string_view skill_name, uint32_t item_id)
 {
     if (auto it = item_skills.find(item_id); it != item_skills.end()) 
     {
@@ -647,7 +647,7 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
                         FormulaType formula = ParseFormula(formula_type);
 
                         if (not name.empty()) {
-                            CustomSkill customSkill = CustomSkill(formula, threshold, difficulty, multiplier);
+                            auto customSkill = Components::Skills::CustomSkill::make_skill(formula, threshold, difficulty, multiplier);
                             Items::addItemSkill(id, name, customSkill);
                             continue;
                         }
