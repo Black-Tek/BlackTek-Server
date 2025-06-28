@@ -142,8 +142,6 @@ int64_t OTSYS_TIME();
 
 SpellGroup_t stringToSpellGroup(const std::string& value);
 
-FormulaType const ParseFormula(std::string_view modName) noexcept;
-
 namespace Titan {
 
 #if defined(__cpp_lib_to_underlying) && (__cpp_lib_to_underlying >= 202102L)

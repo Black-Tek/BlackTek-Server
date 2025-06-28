@@ -644,7 +644,7 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
                         int difficulty = skillTable["difficulty"] ? static_cast<int>(skillTable["difficulty"].as_integer()->get()) : 50;
                         double multiplier = skillTable["multiplier"] ? skillTable["multiplier"].as_floating_point()->get() : 1.0;
 
-                        FormulaType formula = ParseFormula(formula_type);
+                        FormulaType formula = Components::Skills::ParseFormula(formula_type);
 
                         if (not name.empty()) {
                             auto customSkill = Components::Skills::CustomSkill::make_skill(formula, threshold, difficulty, multiplier);

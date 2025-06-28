@@ -35,7 +35,7 @@ namespace Components {
     namespace Skills {
 
         static constexpr auto path = "data/skills/";
-
+        FormulaType const ParseFormula(std::string_view modName) noexcept;
 
         // Maximum possible points, used for overflow prevention
         static constexpr uint64_t PointMax = UINT64_MAX;

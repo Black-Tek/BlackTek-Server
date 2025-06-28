@@ -37,6 +37,34 @@
 namespace Components {
     namespace Skills {
 
+        [[nodiscard]]
+        FormulaType const ParseFormula(std::string_view modName) noexcept
+        {
+            const std::array<std::pair<std::string_view, FormulaType>, 11> static_map
+            { {
+                {"default",         FormulaType::EXPONENTIAL},
+                {"absorb",          FormulaType::CUBIC},
+                {"restore",         FormulaType::EXPONENTIAL},
+                {"replenish",       FormulaType::INVERSE},
+                {"revive",          FormulaType::LINEAR},
+                {"reflect",         FormulaType::LOGARITHMIC},
+                {"deflect",         FormulaType::QUADRATIC},
+                {"ricochet",        FormulaType::ROOT},
+                {"resist",          FormulaType::STEP}
+            } };
+
+            for (const auto& [key, value] : static_map)
+            {
+                if (key == modName)
+                {
+                    return value;
+                }
+            }
+            // should probably log this
+            [[unlikely]]
+            return FormulaType::EXPONENTIAL;
+        }
+
         static gtl::node_hash_map<std::string, CustomSkill> skill_registry{};
 
         static bool load(std::string path)

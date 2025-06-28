@@ -1311,31 +1311,3 @@ bool isAllowedRegistration(std::string_view name) {
 	static const std::regex pattern("^[a-zA-Z0-9]{6,29}$");
 	return std::regex_match(name.begin(), name.end(), pattern);
 }
-
-[[nodiscard]]
-FormulaType const ParseFormula(std::string_view modName) noexcept
-{
-	const std::array<std::pair<std::string_view, FormulaType>, 11> static_map
-	{ {
-		{"default",         FormulaType::EXPONENTIAL},
-		{"absorb",          FormulaType::CUBIC},
-		{"restore",         FormulaType::EXPONENTIAL},
-		{"replenish",       FormulaType::INVERSE},
-		{"revive",          FormulaType::LINEAR},
-		{"reflect",         FormulaType::LOGARITHMIC},
-		{"deflect",         FormulaType::QUADRATIC},
-		{"ricochet",        FormulaType::ROOT},
-		{"resist",          FormulaType::STEP}
-	} };
-
-	for (const auto& [key, value] : static_map)
-	{
-		if (key == modName)
-		{
-			return value;
-		}
-	}
-	// should probably log this
-	[[unlikely]]
-	return FormulaType::EXPONENTIAL;
-}
