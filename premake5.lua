@@ -98,6 +98,7 @@ project "Black-Tek-Server"
         linkoptions { "/IGNORE:4099" }
         buildoptions { "/bigobj", "/utf-8" }
         vsprops { VcpkgEnableManifest = "true" }
+        files {"resources.rc", "blackteklogo.ico"}
         symbolspath "$(OutDir)$(TargetName).pdb"
 
     -- Architecture-specific settings
