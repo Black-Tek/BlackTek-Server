@@ -1236,14 +1236,15 @@ void ProtocolGame::parseMarketLeave()
 
 void ProtocolGame::parseMarketBrowse(NetworkMessage& msg)
 {
-	uint16_t browseId = msg.get<uint16_t>();
-
+	uint8_t browseId = msg.get<uint8_t>();
 	if (browseId == MARKETREQUEST_OWN_OFFERS) {
-		addGameTask([playerID = player->getID()]() { g_game.playerBrowseMarketOwnOffers(playerID); });
-	} else if (browseId == MARKETREQUEST_OWN_HISTORY) {
-		addGameTask([playerID = player->getID()]() { g_game.playerBrowseMarketOwnHistory(playerID); });
-	} else {
-		addGameTask([=, playerID = player->getID()]() { g_game.playerBrowseMarket(playerID, browseId); });
+		g_dispatcher.addTask([playerID = player->getID()]() { g_game.playerBrowseMarketOwnOffers(playerID); });
+	}
+	else if (browseId == MARKETREQUEST_OWN_HISTORY) {
+		g_dispatcher.addTask([playerID = player->getID()]() { g_game.playerBrowseMarketOwnHistory(playerID); });
+	}
+	else {
+		g_dispatcher.addTask([=, playerID = player->getID()]() { g_game.playerBrowseMarket(playerID, browseId); });
 	}
 }
 
@@ -1809,11 +1810,12 @@ void ProtocolGame::sendMarketLeave()
 void ProtocolGame::sendMarketBrowseItem(uint16_t itemId, const MarketOfferList& buyOffers, const MarketOfferList& sellOffers)
 {
 	NetworkMessage msg;
-
+	msg.reset();
 	msg.addByte(0xF9);
 	msg.addItemId(itemId);
 
 	msg.add<uint32_t>(buyOffers.size());
+
 	for (const MarketOffer& offer : buyOffers) {
 		msg.add<uint32_t>(offer.timestamp);
 		msg.add<uint16_t>(offer.counter);

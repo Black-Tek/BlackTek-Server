@@ -6222,7 +6222,7 @@ void Game::playerLeaveMarket(const uint32_t playerId)
 	player->setInMarket(false);
 }
 
-void Game::playerBrowseMarket(const uint32_t playerId, const uint16_t spriteId)
+void Game::playerBrowseMarket(const uint32_t playerId, const uint16_t itemID)
 {
 	const auto player = getPlayerByID(playerId);
 	if (!player) {
@@ -6233,12 +6233,8 @@ void Game::playerBrowseMarket(const uint32_t playerId, const uint16_t spriteId)
 		return;
 	}
 
-	const ItemType& it = Item::items.getItemIdByClientId(spriteId);
-	if (it.id == 0) {
-		return;
-	}
-
-	if (it.wareId == 0) {
+	const ItemType& it = Item::items[itemID];
+	if (it.id == 0 || it.wareId == 0) {
 		return;
 	}
 
