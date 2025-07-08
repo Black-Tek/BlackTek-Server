@@ -237,7 +237,6 @@ SkillRegistry IOLoginData::deserializeCustomSkills(PropStream binary_stream)
 	if (!binary_stream.read<uint32_t>(skill_count))
 	{
 		// log location
-		std::cout << "ERROR: Corrupted Custom Skill Count" << std::endl;
 		return skill_set;
 	}
 
@@ -253,7 +252,6 @@ SkillRegistry IOLoginData::deserializeCustomSkills(PropStream binary_stream)
 		if (not successName)
 		{
 			// log location
-			std::cout << "ERROR: Corrupted Custom Skill Name " << std::endl;
 			return skill_set;
 		}
 
@@ -267,7 +265,6 @@ SkillRegistry IOLoginData::deserializeCustomSkills(PropStream binary_stream)
 			or not binary_stream.read<uint8_t>(formula))
 		{
 			// log location
-			std::cout << "ERROR: Corrupted Custom Skill Data " << std::endl;
 			return skill_set;
 		}
 
