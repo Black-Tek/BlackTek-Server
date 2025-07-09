@@ -1186,6 +1186,7 @@ class LuaScriptInterface
 		static int luaPlayerResetIdleTime(lua_State* L);
 
 		static int luaPlayerSendCreatureSquare(lua_State* L);
+		static int luaPlayerGetEquipment(lua_State* L);
 
 		static int luaPlayerAddAugment(lua_State* L);
 		static int luaPlayerRemoveAugment(lua_State* L);

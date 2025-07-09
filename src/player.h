@@ -1484,6 +1484,8 @@ class Player final : public Creature, public Cylinder
 			return client->getTempTownId();
 		}
 
+		std::vector<ItemPtr> getEquipment(bool validateSlot = true) const;
+
 		Position generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, CombatOrigin origin);
 
 		std::unique_ptr<AreaCombat> generateDeflectArea(std::optional<CreaturePtr> attacker, int32_t targetCount) const;

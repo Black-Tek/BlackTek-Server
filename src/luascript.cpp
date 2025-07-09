@@ -2771,6 +2771,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "resetIdleTime", LuaScriptInterface::luaPlayerResetIdleTime);
 
 	registerMethod("Player", "sendCreatureSquare", LuaScriptInterface::luaPlayerSendCreatureSquare);
+	registerMethod("Player", "getEquipment", LuaScriptInterface::luaPlayerGetEquipment);
 
 	registerMethod("Player", "addAugment", LuaScriptInterface::luaPlayerAddAugment);
 	registerMethod("Player", "removeAugment", LuaScriptInterface::luaPlayerRemoveAugment);
@@ -12646,6 +12647,28 @@ int LuaScriptInterface::luaPlayerSendCreatureSquare(lua_State* L)
 	}
 	player->sendCreatureSquare(creature, getNumber<SquareColor_t>(L, 3));
 	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerGetEquipment(lua_State* L)
+{
+	// player:getEquipment([validate = true])
+	const auto& player = getSharedPtr<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	auto validate = (isBoolean(L, 2)) ? getBoolean(L, 2) : true;
+	auto equipment = player->getEquipment(validate);
+
+	lua_newtable(L);
+	int index = 1;
+	for (const auto& item : equipment) {
+		pushSharedPtr(L, item);
+		setMetatable(L, -1, "Item");
+		lua_rawseti(L, -2, index++);
+	}
 	return 1;
 }
 

@@ -6342,6 +6342,38 @@ void Player::reformDamage(std::optional<CreaturePtr> attacker, CombatDamage& ori
 	}
 }
 
+std::vector<ItemPtr> Player::getEquipment(bool validateSlot) const
+{
+	std::vector<ItemPtr> equipment;
+	for (uint8_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot)
+	{
+		if (const auto& item = inventory[slot])
+		{
+			if (validateSlot) 
+			{
+				if (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot)))
+				{
+					if (g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS)
+						and ((slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE and item->getWeaponType() != WEAPON_AMMO))
+						or (slot == CONST_SLOT_AMMO) and (item->getWeaponType() == WEAPON_AMMO or item->getLightInfo().level > 0))
+					{
+						equipment.push_back(item);
+					}
+					else if (!g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
+					{
+						equipment.push_back(item);
+					}
+				}
+			}
+			else
+			{
+				equipment.push_back(item);
+			}
+		}
+	}
+	return equipment;
+}
+
 Position Player::generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, CombatOrigin origin) {
 
 	const Direction attackDirection = (attacker.has_value())
