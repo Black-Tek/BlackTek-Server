@@ -42,15 +42,15 @@ namespace Components {
         {
             const std::array<std::pair<std::string_view, FormulaType>, 11> static_map
             { {
-                {"default",         FormulaType::EXPONENTIAL},
-                {"absorb",          FormulaType::CUBIC},
-                {"restore",         FormulaType::EXPONENTIAL},
-                {"replenish",       FormulaType::INVERSE},
-                {"revive",          FormulaType::LINEAR},
-                {"reflect",         FormulaType::LOGARITHMIC},
-                {"deflect",         FormulaType::QUADRATIC},
-                {"ricochet",        FormulaType::ROOT},
-                {"resist",          FormulaType::STEP}
+                {"default",             FormulaType::EXPONENTIAL},
+                {"cubic",               FormulaType::CUBIC},
+                {"exponential",         FormulaType::EXPONENTIAL},
+                {"inverse",             FormulaType::INVERSE},
+                {"linear",              FormulaType::LINEAR},
+                {"logarithmic",         FormulaType::LOGARITHMIC},
+                {"quadratic",           FormulaType::QUADRATIC},
+                {"root",                FormulaType::ROOT},
+                {"step",                FormulaType::STEP}
             } };
 
             for (const auto& [key, value] : static_map)
