@@ -15,6 +15,10 @@ struct CharacterOption {
     std::string name = "";
     int32_t vocation = 0;
     bool sex = false;
+    uint32_t level;
+    uint32_t baseHealth;
+    uint32_t baseMana;
+    uint32_t baseCapacity;
     bool premium = false;
     bool allowTowns = true;
     bool needsPosition = true;
