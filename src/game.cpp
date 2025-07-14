@@ -4160,11 +4160,17 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 			const auto& config = character_options[player->getTempCharacterChoice()];
 			const auto& vocation = g_vocations.getVocation(config.vocation);
 			const auto& startingPos = player->getTempPosition();
-			auto sex = config.sex ? 1 : 0;
+			const auto sex = config.sex ? 1 : 0;
+			const auto level = config.level;
+			const auto health = config.baseHealth + vocation->getHPGain() * (level - 1);
+			const auto healthmax = health;
+			const auto mana = config.baseMana + vocation->getManaGain() * (level - 1);
+			const auto manamax = mana;
+			const auto cap = config.baseCapacity + (vocation->getCapGain() / 100) * (level - 1);
 
 			std::string query = fmt::format(fmt::runtime(
 				"INSERT INTO `players` ("
-				"`account_id`, `name`, `vocation`, `maglevel`, `sex`, "
+								"`account_id`, `name`, `vocation`, `health`, `healthmax`, `maglevel`, `mana`, `manamax`, `cap`, `sex`, `level`,"
 				"`skill_fist`,`skill_fist_tries`,"
 				"`skill_club`,`skill_club_tries`,"
 				"`skill_sword`,`skill_sword_tries`,"
@@ -4174,7 +4180,7 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 				"`skill_fishing`,`skill_fishing_tries`,"
 				"`town_id`,`posx`,`posy`,`posz`"
 				") VALUES ("
-				"{:d}, {:s}, {:d}, {:d}, {:d},"
+				"{:d}, {:s}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d},"
 				"{:d}, {:d}, "
 				"{:d}, {:d}, "
 				"{:d}, {:d}, "
@@ -4187,8 +4193,10 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 				player->getAccount(),
 				db.escapeString(text),
 				config.vocation,
+				health, healthmax,
 				config.magiclevel,
-				sex,
+				mana, manamax,
+				cap, sex, level,
 				config.skills[SKILL_FIST], vocation->getReqSkillTries(SKILL_FIST, config.skills[SKILL_FIST]),
 				config.skills[SKILL_CLUB], vocation->getReqSkillTries(SKILL_CLUB, config.skills[SKILL_CLUB]),
 				config.skills[SKILL_SWORD], vocation->getReqSkillTries(SKILL_SWORD, config.skills[SKILL_SWORD]),

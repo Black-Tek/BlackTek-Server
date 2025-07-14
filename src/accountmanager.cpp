@@ -21,8 +21,10 @@ void AccountManager::initialize()
 
 			CharacterOption option;
 			toml::table option_data = *entry.as_table();
-
 			option.vocation = option_data["vocation"].value_or(0);
+			option.baseHealth = option_data["baseHealth"].value_or(150);
+			option.baseMana = option_data["baseMana"].value_or(0);
+			option.baseCapacity = option_data["baseCapacity"].value_or(400);
 			std::string sex = option_data["sex"].value_or("male");
 
 			if (sex == "male") 
@@ -34,7 +36,7 @@ void AccountManager::initialize()
 				option.sex = false;
 			}
 
-
+			option.level = option_data["startingLevel"].value_or(1);
 			option.premium = option_data["premium"].value_or(false);
 
 			if (const auto& towns = option_data["towns"].as_array()) 
