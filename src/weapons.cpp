@@ -17,6 +17,165 @@ extern ConfigManager g_config;
 extern Weapons* g_weapons;
 extern Events* g_events;
 
+namespace StandardHitChance
+{
+
+	constexpr uint32_t MAX_SKILL = 110;
+	constexpr uint32_t DISTANCES = 8;
+	constexpr uint32_t MAX_MODELS = 3;
+
+	enum HitChanceModel : uint8_t
+	{
+		MODEL_75 = 0,
+		MODEL_90 = 1,
+		MODEL_100 = 2,
+	};
+
+	static constexpr std::array<std::pair<int32_t, int32_t>, 9> _DirectionOffsets{ {
+		{-1, -1}, {0, -1}, {1, -1},
+		{-1,  0}, {0,  0}, {1,  0},
+		{-1,  1}, {0,  1}, {1,  1}
+	} };
+
+	constexpr std::array<std::array<uint32_t, MAX_SKILL + 1>, DISTANCES> _Model75()
+	{
+		std::array<std::array<uint32_t, MAX_SKILL + 1>, DISTANCES> model{};
+
+		for (uint32_t d = 0; d < DISTANCES; ++d)
+		{
+			for (uint32_t skill = 0; skill <= MAX_SKILL; ++skill)
+			{
+				uint32_t chance = 0;
+				switch (d) 
+				{
+					case 1:
+					case 5:
+						chance = std::min<uint32_t>(skill, 74) + 1;
+						break;
+					case 2:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 28) * 2.4f + 8);
+						break;
+					case 3:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 45) * 1.55f + 6);
+						break;
+					case 4:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 58) * 1.25f + 3);
+						break;
+					case 6:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 90) * 0.80f + 3);
+						break;
+					case 7:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 104) * 0.70f + 2);
+						break;
+					[[unlikely]]
+					default:
+						break;
+				}
+				model[d][skill] = chance;
+			}
+		}
+		return model;
+	}
+
+	constexpr std::array<std::array<uint32_t, MAX_SKILL + 1>, DISTANCES> _Model90()
+	{
+		std::array<std::array<uint32_t, MAX_SKILL + 1>, DISTANCES> model{};
+
+		for (uint32_t d = 0; d < DISTANCES; ++d)
+		{
+			for (uint32_t skill = 0; skill <= MAX_SKILL; ++skill)
+			{
+				uint32_t chance = 0;
+				switch (d) 
+				{
+					case 1:
+					case 5:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 74) * 1.20f + 1);
+						break;
+					case 2:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 28) * 3.20f);
+						break;
+					case 3:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 45) * 2);
+						break;
+					case 4:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 58) * 1.55f);
+						break;
+					case 6:
+					case 7:
+						chance = std::min<uint32_t>(skill, 90);
+						break;
+					[[unlikely]]
+					default:
+						break;
+					}
+				model[d][skill] = chance;
+			}
+		}
+		return model;
+	}
+
+	constexpr std::array<std::array<uint32_t, MAX_SKILL + 1>, DISTANCES> _Model100()
+	{
+		std::array<std::array<uint32_t, MAX_SKILL + 1>, DISTANCES> model{};
+
+		for (uint32_t d = 0; d < DISTANCES; ++d)
+		{
+			for (uint32_t skill = 0; skill <= MAX_SKILL; ++skill)
+			{
+				uint32_t chance = 0;
+				switch (d) 
+				{
+					case 1:
+					case 5:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 73) * 1.35f + 1);
+						break;
+					case 2:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 30) * 3.20f + 4);
+						break;
+					case 3:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 48) * 2.05f + 2);
+						break;
+					case 4:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 65) * 1.50f + 2);
+						break;
+					case 6:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 87) * 1.20f) - 4;
+						break;
+					case 7:
+						chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 90) * 1.10f + 1);
+						break;
+					[[unlikely]]
+					default:
+						break;
+				}
+				model[d][skill] = chance;
+			}
+		}
+		return model;
+	}
+
+	constexpr auto _75_Model = _Model75();
+	constexpr auto _90_Model = _Model90();
+	constexpr auto _100_Model = _Model100();
+
+	// this is the only method in the namespace meant for outside use
+	// everything else is intended for internal use only
+	inline uint32_t getChance(HitChanceModel model, uint32_t distance, uint32_t skill)
+	{
+		distance = std::clamp(distance, 0u, DISTANCES - 1);
+		skill = std::min(skill, MAX_SKILL);
+
+		switch (model) 
+		{
+			case MODEL_75: return _75_Model[distance][skill];
+			case MODEL_90: return _90_Model[distance][skill];
+			case MODEL_100: return _100_Model[distance][skill];
+			[[unlikely]] default: return 0;
+		}
+	}
+}
+
 Weapons::Weapons()
 {
 	scriptInterface.initState();
@@ -597,17 +756,20 @@ int32_t WeaponMelee::getElementDamage(const PlayerConstPtr& player, const Creatu
 	return -normal_random(0, static_cast<int32_t>(maxValue * player->getVocation()->meleeDamageMultiplier));
 }
 
-int32_t WeaponMelee::getWeaponDamage(const PlayerConstPtr& player, const CreatureConstPtr&, const ItemConstPtr& item, bool maxDamage /*= false*/) const
-{
+int32_t WeaponMelee::getWeaponDamage(const PlayerConstPtr& player, const CreatureConstPtr&, const ItemConstPtr& item, bool maxDamage /*= false*/) const {
+
+	const int32_t playerLevel = player->getLevel();
+	const float playerAttackFactor = player->getAttackFactor();
+	const auto& playerVocation = player->getVocation();
 	int32_t attackSkill = player->getWeaponSkill(item);
 	int32_t attackValue = std::max<int32_t>(0, item->getAttack());
-	float attackFactor = player->getAttackFactor();
+	const float meleeDamageMultiplier = playerVocation->meleeDamageMultiplier;
+	int32_t maxValue = static_cast<int32_t>(Weapons::getMaxWeaponDamage(playerLevel, attackSkill, attackValue, playerAttackFactor) * meleeDamageMultiplier);
 
-	int32_t maxValue = static_cast<int32_t>(Weapons::getMaxWeaponDamage(player->getLevel(), attackSkill, attackValue, attackFactor) * player->getVocation()->meleeDamageMultiplier);
-	if (maxDamage) {
+	if (maxDamage) 
+	{
 		return -maxValue;
 	}
-
 	return -normal_random(0, maxValue);
 }
 
@@ -637,159 +799,109 @@ void WeaponDistance::configureWeapon(const ItemType& it)
 
 bool WeaponDistance::useWeapon(const PlayerPtr player, const ItemPtr item, const CreaturePtr target) const
 {
-	int32_t damageModifier = 0;
-	const ItemType& it = Item::items[id];
-	if (it.weaponType == WEAPON_AMMO) {
-		auto mainWeaponItem = player->getWeapon(true);
-		if (const auto mainWeapon = g_weapons->getWeapon(mainWeaponItem)) {
-			damageModifier = mainWeapon->playerWeaponCheck(player, target, mainWeaponItem->getShootRange());
-		} else if (mainWeaponItem) {
-			damageModifier = playerWeaponCheck(player, target, mainWeaponItem->getShootRange());
-		}
-	} else {
-		damageModifier = playerWeaponCheck(player, target, item->getShootRange());
-	}
-
-	if (damageModifier == 0) {
+	if (not player or !item or not target) 
+	{
 		return false;
 	}
 
-	int32_t chance;
-	if (it.hitChance == 0) {
-		//hit chance is based on distance to target and distance skill
-		uint32_t skill = player->getSkillLevel(SKILL_DISTANCE);
-		const Position& playerPos = player->getPosition();
-		const Position& targetPos = target->getPosition();
-		uint32_t distance = std::max<uint32_t>(Position::getDistanceX(playerPos, targetPos), Position::getDistanceY(playerPos, targetPos));
+	const ItemType& it = Item::items[id];
+	const Position& playerPos = player->getPosition();
+	const Position& targetPos = target->getPosition();
 
-		uint32_t maxHitChance;
-		if (it.maxHitChance != -1) {
-			maxHitChance = it.maxHitChance;
-		} else if (it.ammoType != AMMO_NONE) {
-			//hit chance on two-handed weapons is limited to 90%
-			maxHitChance = 90;
-		} else {
-			//one-handed is set to 75%
-			maxHitChance = 75;
+	int32_t damageModifier = 0;
+	if (it.weaponType == WEAPON_AMMO) 
+	{
+		const ItemPtr& mainWeaponItem = player->getWeapon(true);
+		if (mainWeaponItem) 
+		{
+			if (const auto mainWeapon = g_weapons->getWeapon(mainWeaponItem)) 
+			{
+				damageModifier = mainWeapon->playerWeaponCheck(player, target, mainWeaponItem->getShootRange());
+			}
+			else 
+			{
+				damageModifier = playerWeaponCheck(player, target, mainWeaponItem->getShootRange());
+			}
 		}
+	}
+	else 
+	{
+		damageModifier = playerWeaponCheck(player, target, item->getShootRange());
+	}
 
-		if (maxHitChance == 75) {
-			//chance for one-handed weapons
-			switch (distance) {
-				case 1:
-				case 5:
-					chance = std::min<uint32_t>(skill, 74) + 1;
-					break;
-				case 2:
-					chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 28) * 2.40f) + 8;
-					break;
-				case 3:
-					chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 45) * 1.55f) + 6;
-					break;
-				case 4:
-					chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 58) * 1.25f) + 3;
-					break;
-				case 6:
-					chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 90) * 0.80f) + 3;
-					break;
-				case 7:
-					chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 104) * 0.70f) + 2;
-					break;
-				default:
-					chance = it.hitChance;
-					break;
-			}
-		} else if (maxHitChance == 90) {
-			//formula for two-handed weapons
-			switch (distance) {
-				case 1:
-				case 5:
-					chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 74) * 1.20f) + 1;
-					break;
-				case 2:
-					chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 28) * 3.20f);
-					break;
-				case 3:
-					chance = std::min<uint32_t>(skill, 45) * 2;
-					break;
-				case 4:
-					chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 58) * 1.55f);
-					break;
-				case 6:
-				case 7:
-					chance = std::min<uint32_t>(skill, 90);
-					break;
-				default:
-					chance = it.hitChance;
-					break;
-			}
-		} else if (maxHitChance == 100) {
-			switch (distance) {
-				case 1:
-				case 5:
-					chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 73) * 1.35f) + 1;
-					break;
-				case 2:
-					chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 30) * 3.20f) + 4;
-					break;
-				case 3:
-					chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 48) * 2.05f) + 2;
-					break;
-				case 4:
-					chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 65) * 1.50f) + 2;
-					break;
-				case 6:
-					chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 87) * 1.20f) - 4;
-					break;
-				case 7:
-					chance = static_cast<uint32_t>(std::min<uint32_t>(skill, 90) * 1.10f) + 1;
-					break;
-				default:
-					chance = it.hitChance;
-					break;
-			}
-		} else {
-			chance = maxHitChance;
+	if (damageModifier == 0) 
+	{
+		return false;
+	}
+
+	uint32_t chance;
+	if (it.hitChance == 0) 
+	{
+		const uint32_t skill = player->getSkillLevel(SKILL_DISTANCE);
+		const uint32_t distance = std::min(7u, std::max<uint32_t>(
+			Position::getDistanceX(playerPos, targetPos),
+			Position::getDistanceY(playerPos, targetPos)));
+
+		const uint32_t maxHitChance = (it.maxHitChance != -1) ? it.maxHitChance	: (it.ammoType != AMMO_NONE ? 90 : 75);
+
+		switch (maxHitChance) 
+		{
+			case 75:
+				chance = StandardHitChance::getChance(StandardHitChance::MODEL_75, distance, skill);
+				break;
+			case 90:
+				chance = StandardHitChance::getChance(StandardHitChance::MODEL_90, distance, skill);
+				break;
+			case 100:
+				chance = StandardHitChance::getChance(StandardHitChance::MODEL_100, distance, skill);
+				break;
+			default:
+				chance = maxHitChance;
+				break;
 		}
-	} else {
+	}
+	else 
+	{
 		chance = it.hitChance;
 	}
 
-	if (item->getWeaponType() == WEAPON_AMMO) {
-		if (const auto bow = player->getWeapon(true); bow && bow->getHitChance() != 0) {
+	if (it.weaponType == WEAPON_AMMO) 
+	{
+		if (const auto& bow = player->getWeapon(true)) 
+		{
+			// add even if zero is faster than trying to lookup the hit chance on an item twice
 			chance += bow->getHitChance();
 		}
 	}
 
-	if (chance >= uniform_random(1, 100)) {
+	if (chance >= uniform_random(1, 100)) 
+	{
 		Weapon::internalUseWeapon(player, item, target, damageModifier);
-	} else {
-		//miss target
-		auto destTile = target->getTile();
+		return true;
+	}
 
-		if (!Position::areInRange<1, 1, 0>(player->getPosition(), target->getPosition())) {
-			static std::vector<std::pair<int32_t, int32_t>> destList {
-				{-1, -1}, {0, -1}, {1, -1},
-				{-1,  0}, {0,  0}, {1,  0},
-				{-1,  1}, {0,  1}, {1,  1}
-			};
-			std::ranges::shuffle(destList, getRandomGenerator());
+	auto destTile = target->getTile();
+	if (not Position::areInRange<1, 1, 0>(playerPos, targetPos)) 
+	{
+		std::array<std::pair<int32_t, int32_t>, 9> shuffledOffsets = StandardHitChance::_DirectionOffsets;
+		std::ranges::shuffle(shuffledOffsets, getRandomGenerator());
 
-			Position destPos = target->getPosition();
-
-			for (const auto& dir : destList) {
-				// Blocking tiles or tiles without ground ain't valid targets for spears
-				auto tmpTile = g_game.map.getTile(destPos.x + dir.first, destPos.y + dir.second, destPos.z);
-				if (tmpTile && !tmpTile->hasFlag(TILESTATE_IMMOVABLEBLOCKSOLID) && tmpTile->getGround() != nullptr) {
-					destTile = tmpTile;
-					break;
-				}
+		const Position& base = target->getPosition();
+		for (const auto& [dx, dy] : shuffledOffsets) 
+		{
+			if (auto tile = g_game.map.getTile(base.x + dx, base.y + dy, base.z);
+				tile and tile->getGround() and not tile->hasFlag(TILESTATE_IMMOVABLEBLOCKSOLID)) 
+			{
+				destTile = tile;
+				break;
 			}
 		}
-		Weapon::internalUseWeapon(player, item, destTile);
 	}
+
+	Weapon::internalUseWeapon(player, item, destTile);
 	return true;
 }
+
 
 int32_t WeaponDistance::getElementDamage(const PlayerConstPtr& player, const CreatureConstPtr& target, const ItemConstPtr& item) const
 {
@@ -820,34 +932,32 @@ int32_t WeaponDistance::getElementDamage(const PlayerConstPtr& player, const Cre
 	return -normal_random(minValue, static_cast<int32_t>(maxValue * player->getVocation()->distDamageMultiplier));
 }
 
-int32_t WeaponDistance::getWeaponDamage(const PlayerConstPtr& player, const CreatureConstPtr& target, const ItemConstPtr& item, bool maxDamage /*= false*/) const
+int32_t WeaponDistance::getWeaponDamage(const PlayerConstPtr& player, const CreatureConstPtr& target, const ItemConstPtr& item, bool maxDamage /*= false*/) const 
 {
+
+	const int32_t playerLevel = player->getLevel();
+	const float playerAttackFactor = player->getAttackFactor();
+	const auto& playerVocation = player->getVocation();
 	int32_t attackValue = item->getAttack();
 
-	if (item->getWeaponType() == WEAPON_AMMO) {
-		if (const auto weapon = player->getWeapon(true)) {
+	if (item->getWeaponType() == WEAPON_AMMO) 
+	{
+		if (const auto weapon = player->getWeapon(true)) 
+		{
 			attackValue += weapon->getAttack();
 		}
 	}
 
 	int32_t attackSkill = player->getSkillLevel(SKILL_DISTANCE);
-	float attackFactor = player->getAttackFactor();
+	const float distDamageMultiplier = playerVocation->distDamageMultiplier;
+	int32_t maxValue = static_cast<int32_t>(Weapons::getMaxWeaponDamage(playerLevel, attackSkill, attackValue, playerAttackFactor) * distDamageMultiplier);
 
-	int32_t maxValue = static_cast<int32_t>(Weapons::getMaxWeaponDamage(player->getLevel(), attackSkill, attackValue, attackFactor) * player->getVocation()->distDamageMultiplier);
-	if (maxDamage) {
+	if (maxDamage) 
+	{
 		return -maxValue;
 	}
 
-	int32_t minValue;
-	if (target) {
-		if (target->getPlayer()) {
-			minValue = static_cast<int32_t>(std::ceil(player->getLevel() * 0.1));
-		} else {
-			minValue = static_cast<int32_t>(std::ceil(player->getLevel() * 0.2));
-		}
-	} else {
-		minValue = 0;
-	}
+	int32_t minValue = target ? static_cast<int32_t>(std::ceil(playerLevel * (target->getPlayer() ? 0.1 : 0.2))) : 0;
 	return -normal_random(minValue, maxValue);
 }
 
