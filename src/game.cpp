@@ -4150,7 +4150,7 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 				if (!std::isalnum(static_cast<unsigned char>(ch)) && ch != ' ') {
 					// invalid name, contains symbols
 					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_FAILED));
-					break;
+					return;
 				}
 			}
 
