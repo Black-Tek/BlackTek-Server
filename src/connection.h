@@ -5,7 +5,7 @@
 #define FS_CONNECTION_H
 
 #include <unordered_set>
-
+#include <gtl/phmap.hpp>
 #include "networkmessage.h"
 
 static constexpr int32_t CONNECTION_WRITE_TIMEOUT = 30;
@@ -39,7 +39,7 @@ class ConnectionManager
 	private:
 		ConnectionManager() = default;
 
-		std::unordered_set<Connection_ptr> connections;
+		gtl::parallel_flat_hash_set<Connection_ptr> connections;
 		std::mutex connectionManagerLock;
 };
 
