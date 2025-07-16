@@ -16830,7 +16830,7 @@ int LuaScriptInterface::luaLootAddChildLoot(lua_State* L)
 
 int LuaScriptInterface::luaCreateCustomSkill(lua_State* L)
 {
-	// Skill("name", [ level = 1, [ max = 0, [ formula = FormulaType::EXPONENTIAL, [ multiplier = 1.0, [ difficulty = 50, [ threshold = 10]]]]]])
+	// Skill(level = 1, [ max = 0, [ formula = FormulaType::EXPONENTIAL, [ multiplier = 1.0, [ difficulty = 50, [ threshold = 10]]]]]])
 	// return type is userdata
 
 	auto level = (isNumber(L, 2)) ? getNumber<uint16_t>(L, 2) : 1;
