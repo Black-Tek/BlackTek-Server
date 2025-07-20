@@ -91,65 +91,78 @@ Zone& Zones::createZone(int id, std::vector<Position> positions)
 void Zones::load()
 {
 	auto folder = "data/world/" + g_config.getString(ConfigManager::MAP_NAME) + "-zones";
-	for (const auto& file : std::filesystem::recursive_directory_iterator(folder))
+	if (std::filesystem::exists(folder) and std::filesystem::is_directory(folder))
 	{
-		if (file.is_regular_file() && file.path().extension() == ".toml")
+		for (const auto& file : std::filesystem::recursive_directory_iterator(folder))
 		{
-			try 
+			if (file.is_regular_file() and file.path().extension() == ".toml")
 			{
-				toml::table tbl = toml::parse_file(file.path().c_str());
-				auto zonesArray = tbl["zone"];
-				if (zonesArray && zonesArray.is_array()) 
+				try
 				{
-					for (const auto& zoneEntry : *zonesArray.as_array()) 
+					toml::table tbl = toml::parse_file(file.path().c_str());
+					auto zonesArray = tbl["zone"];
+					if (zonesArray and zonesArray.is_array())
 					{
-						if (zoneEntry.is_table()) 
+						for (const auto& zoneEntry : *zonesArray.as_array())
 						{
-							const toml::table& zoneTable = *zoneEntry.as_table();
-							auto id = zoneTable["id"];
-							auto posArray = zoneTable["positions"];
-							if (id and id.is_integer() and posArray and posArray.is_array()) 
+							if (zoneEntry.is_table())
 							{
-								uint16_t zoneId = static_cast<uint16_t>(id.value_or(0));
+								const toml::table& zoneTable = *zoneEntry.as_table();
+								auto id = zoneTable["id"];
+								auto posArray = zoneTable["positions"];
+								if (id and id.is_integer() and posArray and posArray.is_array())
+								{
+									uint16_t zoneId = static_cast<uint16_t>(id.value_or(0));
 
-								if (zoneId == 0)
-								{
-									// log / error id should not be 0;
-									continue;
-								}
-								std::vector<Position> positions{};
-								for (const auto& position : *posArray.as_array())
-								{
-									if (position.is_table())
+									if (zoneId == 0)
 									{
-										const toml::table& position_data = *position.as_table();
-										uint16_t x = static_cast<uint16_t>(position_data["x"].value_or(0));
-										uint16_t y = static_cast<uint16_t>(position_data["y"].value_or(0));
-										uint8_t z = static_cast<uint8_t>(position_data["z"].value_or(0));
-										positions.emplace_back(x, y, z);
+										// log / error id should not be 0;
+										continue;
 									}
+									std::vector<Position> positions{};
+									for (const auto& position : *posArray.as_array())
+									{
+										if (position.is_table())
+										{
+											const toml::table& position_data = *position.as_table();
+											uint16_t x = static_cast<uint16_t>(position_data["x"].value_or(0));
+											uint16_t y = static_cast<uint16_t>(position_data["y"].value_or(0));
+											uint8_t z = static_cast<uint8_t>(position_data["z"].value_or(0));
+											positions.emplace_back(x, y, z);
+										}
+									}
+									auto zone = Zone(zoneId);
+									zone.positions = std::move(positions);
+									if (auto registered = Zones::registerZone(std::move(zone)))
+									{
+										// success!
+										continue;
+									}
+									// failed to register
+									// log
 								}
-								auto zone = Zone(zoneId);
-								zone.positions = std::move(positions);
-								if (auto registered = Zones::registerZone(std::move(zone)))
-								{
-									// success!
-									continue;
-								}
-								// failed to register
-								// log
 							}
 						}
 					}
+					else
+					{
+						//log ("Invalid zone file: %s", filepath);
+					}
 				}
-				else 
-				{
-					//log ("Invalid zone file: %s", filepath);
+				catch (const toml::parse_error& err) {
+					// log ("TOML parse error in file %s: %s", filepath, err.what());
 				}
 			}
-			catch (const toml::parse_error& err) {
-				// log ("TOML parse error in file %s: %s", filepath, err.what());
-			}
+		}
+	}
+	else
+	{
+		std::error_code ec;
+		if (not std::filesystem::create_directories(folder, ec))
+		{
+			// log 
+			std::cout << "Failed to detect and failed to create zones folder... skipping zones! '" << folder << "': " << ec.message() << std::endl;
+			return;
 		}
 	}
 }
