@@ -1112,7 +1112,7 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 		if (!begin) {
 			s << ')';
 		}
-	} else if (it.armor != 0 || (item && item->getArmor() != 0) || it.showAttributes) {
+	} else if (it.armor != 0 || (item && item->getArmor() != 0) || (it.showAttributes and not it.canReadText and not it.canWriteText and not it.allowDistRead)) {
 		bool begin = true;
 
 		int32_t armor = (item ? item->getArmor() : it.armor);
