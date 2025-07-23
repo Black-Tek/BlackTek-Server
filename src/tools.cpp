@@ -323,6 +323,10 @@ struct NormalDistParams {
 
 static thread_local std::map<NormalDistParams, std::normal_distribution<float>> cached_normal_distributions;
 int32_t normal_random(int32_t minNumber, int32_t maxNumber) {
+    if (minNumber == maxNumber) 
+	{
+        return minNumber;
+    }
 	auto&& [a, b] = std::minmax(minNumber, maxNumber);
 
 	float mean = static_cast<float>(a + b) / 2.0f;
