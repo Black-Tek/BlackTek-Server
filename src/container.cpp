@@ -205,7 +205,7 @@ bool Container::isHoldingItem(const ItemConstPtr& item) const
 }
 
 bool Container::isRewardCorpse() const {
-	for (const auto subItem : getItemList()) {
+	for (const auto& subItem : getItemList()) {
 		if (subItem->getID() == ITEM_REWARD_CONTAINER) {
 			return true;
 		}

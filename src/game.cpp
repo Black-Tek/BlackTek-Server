@@ -1183,6 +1183,13 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 		}
 	}
 
+	if (ContainerPtr fromContainer = std::dynamic_pointer_cast<Container>(fromCylinder)) {
+		if (fromContainer->isRewardCorpse() or fromContainer->getID() == ITEM_REWARD_CONTAINER) {
+			item->removeAttribute(ITEM_ATTRIBUTE_REWARDID);
+            item->removeAttribute(ITEM_ATTRIBUTE_DATE);
+		}
+	}
+
 	//check if we can add this item
 	ReturnValue ret = toCylinder->queryAdd(index, item, count, flags, actor);
 	if (ret == RETURNVALUE_NEEDEXCHANGE) {
