@@ -627,6 +627,8 @@ bool Spell::playerSpellCheck(const PlayerPtr& player) const
 			case WEAPON_SWORD:
 			case WEAPON_CLUB:
 			case WEAPON_AXE:
+            case WEAPON_DISTANCE:
+			case WEAPON_WAND:
 				break;
 
 			default: {
