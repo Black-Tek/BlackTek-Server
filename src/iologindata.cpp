@@ -661,23 +661,46 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 	if ((result = db.storeQuery(fmt::format("SELECT `sid`, `pid`, `itemtype`, `count`, `attributes`, `augments` FROM `player_rewarditems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
 
-		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
-			const std::pair<ItemPtr, uint32_t>& pair = it->second;
-			auto item = pair.first;
+		const uint64_t now = static_cast<uint64_t>(std::time(nullptr));
+		const uint64_t expireThreshold = now - 7 * 24 * 60 * 60;
 
-			if (int32_t pid = pair.second; pid == 0) {
-				auto& rewardChest = player->getRewardChest();
-					rewardChest->internalAddThing(item);
-			} else {
-				ItemMap::const_iterator it2 = itemMap.find(pid);
-				if (it2 == itemMap.end()) {
+		std::unordered_set<uint32_t> usedAsContainer;
+		for (const auto& [sid, pair] : itemMap) {
+			if (pair.second != 0) {
+				usedAsContainer.insert(pair.second);
+			}
+		}
+
+		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(); it != itemMap.rend(); ) {
+			const uint32_t sid = it->first;
+			ItemPtr item = it->second.first;
+			uint32_t pid = it->second.second;
+
+			const uint64_t itemDate = static_cast<uint64_t>(item->getIntAttr(ITEM_ATTRIBUTE_DATE));
+			if (itemDate < expireThreshold || (item->getID() == 21518 && pid == 0 && !usedAsContainer.contains(sid))) {
+				db.executeQuery(fmt::format(
+					"DELETE FROM `player_rewarditems` WHERE `player_id` = {:d} AND `sid` = {:d}",
+					player->getGUID(), sid));
+				it = ItemMap::const_reverse_iterator(itemMap.erase(std::next(it).base()));
+				continue;
+			}
+
+			if (pid == 0) {
+				player->getRewardChest()->internalAddThing(item);
+			}
+			else {
+				auto parentIt = itemMap.find(pid);
+				if (parentIt == itemMap.end()) {
+					++it;
 					continue;
 				}
 
-				if (auto container = it2->second.first->getContainer()) {
-					container->internalAddThing(item);
+				if (const ContainerPtr& parent = parentIt->second.first->getContainer()) {
+					parent->internalAddThing(item);
 				}
 			}
+
+			++it;
 		}
 	}
 
