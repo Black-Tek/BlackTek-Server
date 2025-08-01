@@ -1155,6 +1155,13 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 
 	ItemPtr toItem = nullptr;
 
+	if (ContainerPtr fromContainer = std::dynamic_pointer_cast<Container>(fromCylinder)) {
+		if (fromContainer->isRewardCorpse() or fromContainer->getID() == ITEM_REWARD_CONTAINER) {
+			item->removeAttribute(ITEM_ATTRIBUTE_REWARDID);
+			item->removeAttribute(ITEM_ATTRIBUTE_DATE);
+		}
+	}
+
 	CylinderPtr subCylinder;
 	int floorN = 0;
 
@@ -1180,13 +1187,6 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 	if (ContainerPtr itemContainer = std::dynamic_pointer_cast<Container>(item)) {
 		if (itemContainer->isRewardCorpse() || item->getID() == ITEM_REWARD_CONTAINER) {
 			return RETURNVALUE_NOERROR; // silently ignore move
-		}
-	}
-
-	if (ContainerPtr fromContainer = std::dynamic_pointer_cast<Container>(fromCylinder)) {
-		if (fromContainer->isRewardCorpse() or fromContainer->getID() == ITEM_REWARD_CONTAINER) {
-			item->removeAttribute(ITEM_ATTRIBUTE_REWARDID);
-            item->removeAttribute(ITEM_ATTRIBUTE_DATE);
 		}
 	}
 
