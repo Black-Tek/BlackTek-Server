@@ -1,5 +1,5 @@
 [config]
-enabled = 0
+enabled = false
 
 [[stage]]
 minlevel = 1
