@@ -804,8 +804,9 @@ void Spell::postCastSpell(const PlayerPtr& player, uint32_t manaCost, uint32_t s
 	if (manaCost > 0) {
 		player->addManaSpent(manaCost);
 		CombatDamage manacost;
-		manacost.primary.type = COMBAT_MANADRAIN; // not sure about this, maybe it should be none?
+		manacost.primary.type = COMBAT_NONE;
 		manacost.primary.value = -static_cast<int32_t>(manaCost);
+		manacost.isSpellCost = true;
 		g_game.combatChangeMana(nullptr, player, manacost);
 	}
 
