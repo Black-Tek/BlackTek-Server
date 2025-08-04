@@ -37,14 +37,14 @@ end
 
 function Creature:onAttack(target, blockType, combatType, origin, criticalDamage, leechedDamage)
 	local onAttack = EventCallback.onDoAttack
-	if onDoAttack then
-		onDoAttack(self, target, blockType, combatType, origin, criticalDamage, leechedDamage)
+	if onAttack then
+		onAttack(self, target, blockType, combatType, origin, criticalDamage, leechedDamage)
 	end
 end
 
 function Creature:onDefend(attacker, blockType, combatType, origin, criticalDamage, leechedDamage)
 	local onDefend = EventCallback.onDefendAttack
-	if onDefendAttack then
-		onDefendAttack(self, attacker, blockType, combatType, origin, criticalDamage, leechedDamage)
+	if onDefend then
+		onDefend(self, attacker, blockType, combatType, origin, criticalDamage, leechedDamage)
 	end
 end
