@@ -4910,11 +4910,11 @@ void Game::changeLight(const CreatureConstPtr& creature)
 
 bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, const CreaturePtr& target, const bool checkDefense, const bool checkArmor, const bool field, const bool ignoreResistances /*= false */)
 {
-	if (damage.primary.type == COMBAT_NONE && damage.secondary.type == COMBAT_NONE) {
+	if (not target or (damage.primary.type == COMBAT_NONE and damage.secondary.type == COMBAT_NONE)) {
 		return true;
 	}
 
-	if (target->getPlayer() && target->isInGhostMode()) {
+	if (target->getPlayer() and target->isInGhostMode()) {
 		return true;
 	}
 
@@ -4962,14 +4962,16 @@ bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, con
 	if (damage.primary.type != COMBAT_NONE) {
 		damage.primary.value = -damage.primary.value;
 		primaryBlockType = target->blockHit(attacker, damage.primary.type, damage.primary.value, checkDefense, checkArmor, field, ignoreResistances);
-		if (attacker && target && (damage.primary.type != COMBAT_HEALING)) {
-			g_events->eventCreatureOnAttack(attacker, target, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
+		if (damage.primary.type != COMBAT_HEALING) {
+			if (attacker) {
+				g_events->eventCreatureOnAttack(attacker, target, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
+			}
 			g_events->eventCreatureOnDefend(target, attacker, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
 
-			if (const auto& aggressor = attacker->getPlayer()) {
+			if (const auto& aggressor = attacker ? attacker->getPlayer() : nullptr) {
 				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
 					const auto& item = aggressor->getInventoryItem(static_cast<slots_t>(slot));
-					if ((!item) or (item->getAttack() <= 0) ) {
+					if (not item or item->getAttack() <= 0) {
 						continue;
 					}
 					g_events->eventItemOnAttack(item, aggressor, target, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
@@ -4979,7 +4981,7 @@ bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, con
 			if (const auto& victim = target->getPlayer()) {
 				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
 					const auto& item = victim->getInventoryItem(static_cast<slots_t>(slot));
-					if ((!item) or (item->getDefense() <= 0 and item->getArmor() <= 0)  ){
+					if (not item or (item->getDefense() <= 0 and item->getArmor() <= 0)) {
 						continue;
 					}
 					g_events->eventItemOnDefend(item, victim, attacker, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
@@ -4995,14 +4997,16 @@ bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, con
 	if (damage.secondary.type != COMBAT_NONE) {
 		damage.secondary.value = -damage.secondary.value;
 		secondaryBlockType = target->blockHit(attacker, damage.secondary.type, damage.secondary.value, false, false, field, ignoreResistances);
-		if (attacker && target && (damage.primary.type != COMBAT_HEALING)) {
-			g_events->eventCreatureOnAttack(attacker, target, secondaryBlockType, damage.secondary.type, damage.origin, damage.critical, damage.leeched);
+		if (damage.primary.type != COMBAT_HEALING) {
+			if (attacker) {
+				g_events->eventCreatureOnAttack(attacker, target, secondaryBlockType, damage.secondary.type, damage.origin, damage.critical, damage.leeched);
+			}
 			g_events->eventCreatureOnDefend(target, attacker, secondaryBlockType, damage.secondary.type, damage.origin, damage.critical, damage.leeched);
 
-			if (const auto aggressor = attacker->getPlayer()) {
+			if (const auto aggressor = attacker ? attacker->getPlayer() : nullptr) {
 				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
 					const auto item = aggressor->getInventoryItem(static_cast<slots_t>(slot));
-					if (!item) {
+					if (not item) {
 						continue;
 					}
 					if (item->getAttack() > 0) {
@@ -5014,11 +5018,11 @@ bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, con
 			if (const auto victim = target->getPlayer()) {
 				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
 					const auto item = victim->getInventoryItem(static_cast<slots_t>(slot));
-					if (!item) {
+					if (not item) {
 						continue;
 					}
 
-					if (item->getDefense() > 0 || item->getArmor() > 0) {
+					if (item->getDefense() > 0 or item->getArmor() > 0) {
 						g_events->eventItemOnDefend(item, victim, attacker, secondaryBlockType, damage.secondary.type, damage.origin, damage.critical, damage.leeched);
 					}
 				}
@@ -5030,9 +5034,56 @@ bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, con
 		secondaryBlockType = BLOCK_NONE;
 	}
 
-	damage.blockType = primaryBlockType;
+	if (const auto& aggressor = attacker ? attacker->getPlayer() : nullptr) {
+		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+			const auto& item = aggressor->getInventoryItem(static_cast<slots_t>(slot));
+			if (not item or not item->isAugmented()) {
+				continue;
+			}
+			
+			if (
+				!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || 
+				(item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))) ||
+				(g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
+			) {
+				for (const auto& augment : item->getAugments()) {
+					for (const auto& modifier : augment->getAttackModifiers()) {
+						if ((damage.primary.type != COMBAT_NONE and modifier->getDamageType() == damage.primary.type and modifier->getOriginType() == damage.origin) or 
+							(damage.secondary.type != COMBAT_NONE and modifier->getDamageType() == damage.secondary.type and modifier->getOriginType() == damage.origin)) {
+							g_events->eventItemOnModifierAttack(item, aggressor, target, modifier, damage);
+						}
+					}
+				}
+			}
+		}
+	}
 
-	return (primaryBlockType != BLOCK_NONE) && (secondaryBlockType != BLOCK_NONE);
+	if (const auto& victim = target->getPlayer()) {
+		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+			const auto& item = victim->getInventoryItem(static_cast<slots_t>(slot));
+			if (not item or not item->isAugmented()) {
+				continue;
+			}
+			
+			if (
+				!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || 
+				(item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))) ||
+				(g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
+			) {
+				for (const auto& augment : item->getAugments()) {
+					for (const auto& modifier : augment->getDefenseModifiers()) {
+						if ((damage.primary.type != COMBAT_NONE and modifier->getDamageType() == damage.primary.type) or
+							(damage.secondary.type != COMBAT_NONE and modifier->getDamageType() == damage.secondary.type)) {
+							g_events->eventItemOnModifierDefend(item, victim, attacker, modifier, damage);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	damage.blockType = primaryBlockType;
+	return (primaryBlockType != BLOCK_NONE) and (secondaryBlockType != BLOCK_NONE);
 }
 
 void Game::combatGetTypeInfo(const CombatType_t combatType, const CreaturePtr& target, TextColor_t& color, uint8_t& effect)

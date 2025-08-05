@@ -54,4 +54,8 @@
 	<event class="Item" method="onAugment" enabled="1"/>
 	<event class="Item" method="onRemoveAugment" enabled="1"/>
 
+	<event class="Item" method="onModifierAttack" enabled="1"/>
+	<event class="Item" method="onModifierDefend" enabled="1"/>
+
+
 </events>

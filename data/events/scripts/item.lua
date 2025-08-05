@@ -41,3 +41,17 @@ function Item:onRemoveAugment(augment)
 		onRemoveAugment(self, augment)
 	end
 end
+
+function Item:onModifierAttack(player, creature, blockType, combatType)
+	local onModifierAttack = EventCallback.onModifierAttack
+	if onModifierAttack then
+		onModifierAttack(self, player, creature, blockType, combatType)
+	end
+end
+
+function Item:onModifierDefend(player, creature, blockType, combatType)
+	local onModifierDefend = EventCallback.onModifierDefend
+	if onModifierDefend then
+		onModifierDefend(self, player, creature, blockType, combatType)
+	end
+end

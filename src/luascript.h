@@ -39,6 +39,7 @@ class Spell;
 class LuaScriptInterface;
 class Game;
 struct LootBlock;
+class DamageModifier;
 
 template<typename T>
 concept EnumType = std::is_enum_v<T> && !std::is_same_v<T, bool>;
@@ -424,7 +425,9 @@ class LuaScriptInterface
 		static void pushOutfit(lua_State* L, const Outfit* outfit);
 		static void pushMount(lua_State* L, const Mount* mount);
 		static void pushLoot(lua_State* L, const std::vector<LootBlock>& lootList);
-	
+
+		static void pushDamageModifier(lua_State *L, const std::shared_ptr<DamageModifier> &modifier);
+
 		static void setField(lua_State* L, const char* index, std::floating_point auto value)
 		{
 			lua_pushnumber(L, value);
