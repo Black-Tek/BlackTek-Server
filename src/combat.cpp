@@ -846,11 +846,6 @@ void Combat::doCombat(const CreaturePtr& caster, const Position& position) const
 {
 	const auto& p = params;
 
-	if (p.combatType == COMBAT_NONE && p.conditionList.empty() && p.dispelType == 0) 
-	{
-		return;
-	}
-
 	if (p.combatType != COMBAT_NONE) 
 	{
 		CombatDamage damage = getCombatDamage(caster, nullptr);
