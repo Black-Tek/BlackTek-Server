@@ -1183,6 +1183,13 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 		}
 	}
 
+	if (ContainerPtr fromContainer = std::dynamic_pointer_cast<Container>(fromCylinder)) {
+		if (fromContainer->isRewardCorpse() or fromContainer->getID() == ITEM_REWARD_CONTAINER) {
+			item->removeAttribute(ITEM_ATTRIBUTE_REWARDID);
+            item->removeAttribute(ITEM_ATTRIBUTE_DATE);
+		}
+	}
+
 	//check if we can add this item
 	ReturnValue ret = toCylinder->queryAdd(index, item, count, flags, actor);
 	if (ret == RETURNVALUE_NEEDEXCHANGE) {
@@ -5448,6 +5455,8 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 		return true;
 	}
 
+	const Position& targetPos = target->getPosition();
+
 	int32_t manaChange = damage.primary.value + damage.secondary.value;
 	if (manaChange > 0) {
 		if (attacker) {
@@ -5477,14 +5486,6 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 		}
 	}
 	else {
-		const Position& targetPos = target->getPosition();
-		if (!target->isAttackable()) {
-			if (!target->isInGhostMode()) {
-				addMagicEffect(targetPos, CONST_ME_POFF);
-			}
-			return false;
-		}
-
 		PlayerPtr attackerPlayer;
 		if (attacker) {
 			attackerPlayer = attacker->getPlayer();
@@ -5493,19 +5494,33 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 			attackerPlayer = nullptr;
 		}
 
-		if (attackerPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
-			return false;
-		}
-
 		int32_t manaLoss = std::min<int32_t>(targetPlayer->getMana(), -manaChange);
-		BlockType_t blockType = target->blockHit(attacker, COMBAT_MANADRAIN, manaLoss);
-		if (blockType != BLOCK_NONE) {
-			addMagicEffect(targetPos, CONST_ME_POFF);
-			return false;
-		}
 
-		if (manaLoss <= 0) {
-			return true;
+		if (damage.isSpellCost) {
+			if (!target->isAttackable()) {
+				return false;
+			}
+			targetPlayer->changeMana(-manaLoss);
+		}
+		else {
+			if (!target->isAttackable()) {
+				if (!target->isInGhostMode()) {
+					addMagicEffect(targetPos, CONST_ME_POFF);
+				}
+				return false;
+			}
+			if (attackerPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
+				return false;
+			}
+			BlockType_t blockType = target->blockHit(attacker, COMBAT_MANADRAIN, manaLoss);
+			if (blockType != BLOCK_NONE) {
+				addMagicEffect(targetPos, CONST_ME_POFF);
+				return false;
+			}
+			if (manaLoss <= 0) {
+				return true;
+			}
+			targetPlayer->drainMana(attacker, manaLoss);
 		}
 
 		const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
@@ -5514,8 +5529,6 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 				creatureEvent->executeManaChange(target, attacker, damage);
 			}
 		}
-
-		targetPlayer->drainMana(attacker, manaLoss);
 
 		const auto& targetNameDesc = target->getNameDescription();
 		const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";

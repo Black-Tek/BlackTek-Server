@@ -1911,10 +1911,8 @@ void Monster::death(const CreaturePtr&)
 							
 							if (chance <= adjustedChance) {
 								auto lootItem = Item::CreateItem(lootBlock.id, count);
-								if (!lootItem->isStackable()) {
-									lootItem->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
-									lootItem->setIntAttr(ITEM_ATTRIBUTE_REWARDID, monsterId);
-								}
+								lootItem->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
+								lootItem->setIntAttr(ITEM_ATTRIBUTE_REWARDID, monsterId);
 								CylinderPtr holder = rewardContainer;
 								if (g_game.internalAddItem(holder, lootItem) == RETURNVALUE_NOERROR) {
 									hasLoot = true;

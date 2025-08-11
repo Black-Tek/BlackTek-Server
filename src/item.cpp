@@ -37,59 +37,53 @@ void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begi
 ItemPtr Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
 {
     const ItemType& it = Item::items[type];
-    if (it.group == ITEM_GROUP_DEPRECATED) {
+    if (it.group == ITEM_GROUP_DEPRECATED or it.id == 0) {
         return nullptr;
     }
 
-    if (it.stackable && count == 0) {
+    if (it.stackable and count == 0) {
         count = 1;
     }
 
-    if (it.id == 0) {
-        return nullptr;
-    }
+	ItemPtr item;
+
+	bool allowAugments = false;
 
 	if (it.isDepot()) {
-		return std::make_shared<DepotLocker>(type);
+		item = std::make_shared<DepotLocker>(type);
 	} else if (it.isRewardChest()) {
-		return std::make_shared<RewardChest>(type);
+		item = std::make_shared<RewardChest>(type);
 	} else if (it.isContainer()) {
-		return std::make_shared<Container>(type);
+		item = std::make_shared<Container>(type);
+		if (it.slotPosition & SLOTP_BACKPACK) {
+			allowAugments = true;
+		}
 	} else if (it.isTeleport()) {
-		return std::make_shared<Teleport>(type);
+		item = std::make_shared<Teleport>(type);
 	} else if (it.isMagicField()) {
-		return std::make_shared<MagicField>(type);
+		item = std::make_shared<MagicField>(type);
 	} else if (it.isDoor()) {
-		return std::make_shared<Door>(type);
+		item = std::make_shared<Door>(type);
 	} else if (it.isTrashHolder()) {
-		return std::make_shared<TrashHolder>(type);
+		item = std::make_shared<TrashHolder>(type);
 	} else if (it.isMailbox()) {
-		return std::make_shared<Mailbox>(type);
+		item = std::make_shared<Mailbox>(type);
 	} else if (it.isBed()) {
-		return std::make_shared<BedItem>(type);
-    } else if (it.id >= 2210 && it.id <= 2212) { // magic rings
-		return std::make_shared<Item>(type - 3, count);
-    } else if (it.id == 2215 || it.id == 2216) { // magic rings
-		return std::make_shared<Item>(type - 2, count);
-    } else if (it.id >= 2202 && it.id <= 2206) { // magic rings
-		return std::make_shared<Item>(type - 37, count);
-    } else if (it.id == 2640) { // soft boots
-		return std::make_shared<Item>(6132, count);
-    } else if (it.id == 6301) { // death ring
-		return std::make_shared<Item>(6300, count);
-    } else if (it.id == 18528) { // prismatic ring
-		return std::make_shared<Item>(18408, count);
-    } else {
-		auto normalItem = std::make_shared<Item>(type, count);
+		item = std::make_shared<BedItem>(type);
+	} else {
+		item = std::make_shared<Item>(type, count);
+		allowAugments = true;
+	}
+
+	if (allowAugments and item) {
 		for (const auto& augName : it.augments) {
 			auto augment = Augments::GetAugment(augName);
 			if (augment) {
-				normalItem->addAugment(augment);
+				item->addAugment(augment);
 			}
 		}
-		return normalItem;
-    }
-    return nullptr;
+	}
+	return item;
 }
 
 ContainerPtr Item::CreateItemAsContainer(const uint16_t type, uint16_t size)
