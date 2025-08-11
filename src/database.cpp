@@ -147,10 +147,6 @@ DBResult_ptr Database::storeQuery(const std::string& query)
 
 std::string Database::escapeBlob(const char* s, uint32_t length) const
 {
-	if (!s || length == 0) {
-		return "''";
-	}
-
 	// the worst case is 2n + 1
 	size_t maxLength = (length * 2) + 1;
 
@@ -158,10 +154,13 @@ std::string Database::escapeBlob(const char* s, uint32_t length) const
 	escaped.reserve(maxLength + 2);
 	escaped.push_back('\'');
 
-	char* output = new char[maxLength];
-	auto escaped_length = mysql_real_escape_string(handle, output, s, length);
-	escaped.append(output, escaped_length);
-	delete[] output;
+	if (length != 0) {
+		char* output = new char[maxLength];
+		assert(s != nullptr);
+		auto escaped_length = mysql_real_escape_string(handle, output, s, length);
+		escaped.append(output, escaped_length);
+		delete[] output;
+	}
 
 	escaped.push_back('\'');
 	return escaped;
