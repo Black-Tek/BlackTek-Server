@@ -806,7 +806,9 @@ void Spell::postCastSpell(const PlayerPtr& player, uint32_t manaCost, uint32_t s
 		CombatDamage manacost;
 		manacost.primary.type = COMBAT_MANADRAIN; // not sure about this, maybe it should be none?
 		manacost.primary.value = -static_cast<int32_t>(manaCost);
-		g_game.combatChangeMana(nullptr, player, manacost);
+		g_game.combatChangeMana(nullptr, player, manacost, false);
+		const bool sendMsg = g_config.getBoolean(ConfigManager::MANA_SPENT_NOTIFICATION);
+		g_game.combatChangeMana(nullptr, player, manacost, sendMsg);
 	}
 
 	if (!player->hasFlag(PlayerFlag_HasInfiniteSoul)) {
