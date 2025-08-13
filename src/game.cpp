@@ -5532,18 +5532,16 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 			}
 		}
 
-<<<<<<< Updated upstream
 		const auto& targetNameDesc = target->getNameDescription();
 		const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
 		std::string spectatorMessage;
-=======
+
 		targetPlayer->drainMana(attacker, manaLoss);
 
 		if (showMessages) {
 			const auto& targetNameDesc = target->getNameDescription();
 			const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
 			std::string spectatorMessage;
->>>>>>> Stashed changes
 
 			if (!attacker) {
 				spectatorMessage = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana.";
