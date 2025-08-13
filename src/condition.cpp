@@ -878,16 +878,15 @@ bool ConditionRegeneration::executeCondition(const CreaturePtr creature, int32_t
 		return ConditionGeneric::executeCondition(creature, interval);
 	}
 
-	if (internalHealthTicks >= healthTicks) {
+	if (internalHealthTicks >= healthTicks && healthGain != 0) {
 		internalHealthTicks = 0;
 		CombatDamage regen;
 		regen.primary.value = static_cast<int32_t>(healthGain);
 		regen.primary.type = COMBAT_HEALING;
-		regen.noInFight = isBuff;
 		g_game.combatChangeHealth(nullptr, creature, regen);
 	}
 
-	if (internalManaTicks >= manaTicks) {
+	if (internalManaTicks >= manaTicks && manaGain != 0) {
 		internalManaTicks = 0;
 
 		if (auto player = creature->getPlayer()) {

@@ -5500,9 +5500,6 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 			if (!target->isAttackable()) {
 				return false;
 			}
-			if (manaLoss == 0) {
-				return false;
-			}
 			targetPlayer->changeMana(-manaLoss);
 		}
 		else {
