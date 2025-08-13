@@ -806,14 +806,13 @@ void Spell::postCastSpell(const PlayerPtr& player, uint32_t manaCost, uint32_t s
 		CombatDamage manacost;
 		manacost.primary.type = COMBAT_NONE;
 		manacost.primary.value = -static_cast<int32_t>(manaCost);
-<<<<<<< Updated upstream
 		manacost.isUtility = true;
 		g_game.combatChangeMana(nullptr, player, manacost);
-=======
+
 		g_game.combatChangeMana(nullptr, player, manacost, false);
 		const bool sendMsg = g_config.getBoolean(ConfigManager::MANA_SPENT_NOTIFICATION);
 		g_game.combatChangeMana(nullptr, player, manacost, sendMsg);
->>>>>>> Stashed changes
+
 	}
 
 	if (!player->hasFlag(PlayerFlag_HasInfiniteSoul)) {
