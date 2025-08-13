@@ -5496,7 +5496,7 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 
 		int32_t manaLoss = std::min<int32_t>(targetPlayer->getMana(), -manaChange);
 
-		if (damage.isSpellCost) {
+		if (damage.isUtility) {
 			if (!target->isAttackable()) {
 				return false;
 			}

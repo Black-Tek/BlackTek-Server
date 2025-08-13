@@ -610,7 +610,7 @@ struct CombatDamage
 	bool critical = false;
 	bool leeched = false;
 	bool augmented = false; // we can use this to help with refactoring combat logic later, by giving more config options to end users for how augmented damage interacts with augments
-	bool isSpellCost = false;
+	bool isUtility = false;
 	CombatDamage(
 		CombatType_t type = COMBAT_NONE,
 		CombatOrigin origin = ORIGIN_NONE,
@@ -619,7 +619,7 @@ struct CombatDamage
 		bool crit = false,
 		bool leech = false,
 		bool augment = false,
-		bool isSpellCost = false ) :
+		bool isUtility = false ) :
 		origin(origin),
 		primary{ type, value },
 		critical(crit),
