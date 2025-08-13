@@ -893,7 +893,7 @@ bool ConditionRegeneration::executeCondition(const CreaturePtr creature, int32_t
 			CombatDamage regen;
 			regen.primary.value = static_cast<int32_t>(manaGain);
 			regen.primary.type = COMBAT_HEALING;
-			regen.noInFight = isBuff;
+			regen.isUtility = isBuff;
 			g_game.combatChangeMana(nullptr, player, regen);
 		}
 	}
