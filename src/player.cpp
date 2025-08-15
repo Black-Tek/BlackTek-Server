@@ -5300,20 +5300,31 @@ const bool Player::isAugmented() const
 
 const bool Player::hasAugment(const std::string_view augmentName, bool checkItems)
 {
-	for (const auto& augment : augments) {
-		if (augment->getName() == augmentName) {
+	for (const auto& augment : augments) 
+	{
+		if (augment->getName() == augmentName) 
+		{
 			return true;
 		}
 	}
 
-	if (checkItems) {
-		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-			const auto& item = inventory[slot];
-			for (const auto& aug : item->getAugments()) {
-				if (aug->getName() == augmentName) {
-					return true;
+	if (checkItems) 
+	{
+		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) 
+		{
+            if (const auto& item = inventory[slot]; item) 
+			{
+				if (item->isAugmented()) 
+				{
+					for (const auto& aug : augments) 
+					{
+						if (aug->getName() == augmentName) 
+						{
+							return true;
+						}
+					}
 				}
-			}
+            }
 		}
 	}
 
@@ -5328,15 +5339,24 @@ const bool Player::hasAugment(const std::shared_ptr<Augment>& augment, bool chec
 		}
 	}
 
-	if (checkItems) {
-		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-			const auto& item = inventory[slot];
-			for (const auto& aug : item->getAugments()) {
-				if (aug == augment) {
-					return true;
-				}
-			}
-		}
+	if (checkItems) 
+	{
+		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) 
+		{
+            if (const auto& item = inventory[slot]; item) 
+			{
+                if (item->isAugmented()) 
+				{
+					for (const auto& aug : augments) 
+					{
+                        if (aug == augment) 
+						{
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
 	}
 
 	return false;
@@ -5425,9 +5445,9 @@ void Player::updateRegeneration() const
 }
 
 void Player::addItemImbuements(const ItemPtr& item) {
-	if (item->hasImbuements()) {
-		const std::vector<std::shared_ptr<Imbuement>>& imbuementList = item->getImbuements();
-		for (auto& imbue : imbuementList) {
+    if (item->hasImbuements()) {
+		auto& imbues = item->getImbuements();
+		for (auto& imbue : *imbues) {
 			if (imbue->isSkill()) {
 				switch (imbue->imbuetype) {
 					case ImbuementType::IMBUEMENT_TYPE_FIST_SKILL:
@@ -5492,9 +5512,9 @@ void Player::addItemImbuements(const ItemPtr& item) {
 }
 
 void Player::removeItemImbuements(const ItemPtr& item) {
-	if (item->hasImbuements()) {
-		const std::vector<std::shared_ptr<Imbuement>>& imbuementList = item->getImbuements();
-		for (auto& imbue : imbuementList) {
+    if (item->hasImbuements()) {
+        auto& imbues = item->getImbuements();
+        for (auto& imbue : *imbues) {
 			if (imbue->isSkill()) {
 				switch (imbue->imbuetype) {
 					case ImbuementType::IMBUEMENT_TYPE_FIST_SKILL:
@@ -5743,24 +5763,39 @@ gtl::node_hash_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
 {
 	gtl::node_hash_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> modifierMap;
 
-	if (!augments.empty()) {
-		for (const auto& aug : augments) {
-			for (const auto& mod : aug->getAttackModifiers()) {
+	if (not augments.empty()) 
+	{
+		for (const auto& aug : augments) 
+		{
+			for (const auto& mod : aug->getAttackModifiers()) 
+			{
 				modifierMap[mod->getType()].emplace_back(mod);
 			}
 		}
 	}
 
-	for (uint8_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_RING; ++slot) {
-		if (const auto& item = inventory[slot]; item && !item->getAugments().empty()) {
-			for (const auto& aug : item->getAugments()) {
-				if (!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot)))) {
-					for (const auto& mod : aug->getAttackModifiers()) {
-						modifierMap[mod->getType()].emplace_back(mod);
-					}
-				} else if ( g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO)) {
-					for (const auto& mod : aug->getAttackModifiers()) {
-						modifierMap[mod->getType()].emplace_back(mod);
+	for (uint8_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_RING; ++slot) 
+	{
+		if (const auto& item = inventory[slot]; item) 
+		{
+            if (item->isAugmented()) 
+			{
+                const auto& augs = item->getAugments();
+				for (const auto& aug : *augs) 
+				{
+					if (!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) or (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot)))) 
+					{
+						for (const auto& mod : aug->getAttackModifiers()) 
+						{
+							modifierMap[mod->getType()].emplace_back(mod);
+						}
+					} 
+					else if ( g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) and (slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE and item->getWeaponType() != WEAPON_AMMO))
+					{
+						for (const auto& mod : aug->getAttackModifiers()) 
+						{
+							modifierMap[mod->getType()].emplace_back(mod);
+						}
 					}
 				}
 			}
@@ -5774,24 +5809,39 @@ gtl::node_hash_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
 {
 	gtl::node_hash_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> modifierMap;
 
-	if (!augments.empty()) {
-		for (const auto& aug : augments) {
-			for (const auto& mod : aug->getDefenseModifiers()) {
+	if (not augments.empty()) 
+	{
+		for (const auto& aug : augments) 
+		{
+			for (const auto& mod : aug->getDefenseModifiers()) 
+			{
 				modifierMap[mod->getType()].emplace_back(mod);
 			}
 		}
 	}
 
-	for (uint8_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_RING; ++slot) {
-		if (const auto& item = inventory[slot]; item && !item->getAugments().empty()) {
-			for (const auto& aug : item->getAugments()) {
-				if (!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot)))) {
-					for (const auto& mod : aug->getDefenseModifiers()) {
-						modifierMap[mod->getType()].emplace_back(mod);
-					}
-				} else if (g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO)) {
-					for (const auto& mod : aug->getDefenseModifiers()) {
-						modifierMap[mod->getType()].emplace_back(mod);
+	for (uint8_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_RING; ++slot) 
+	{
+		if (const auto& item = inventory[slot]; item) 
+		{
+            if (item->isAugmented()) 
+			{
+                const auto& augs = item->getAugments();
+				for (const auto& aug : *augs) 
+				{
+					if (!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) or (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))))
+					{
+						for (const auto& mod : aug->getDefenseModifiers()) 
+						{
+							modifierMap[mod->getType()].emplace_back(mod);
+						}
+					} 
+					else if (g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) and (slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO)) 
+					{
+						for (const auto& mod : aug->getDefenseModifiers()) 
+						{
+							modifierMap[mod->getType()].emplace_back(mod);
+						}
 					}
 				}
 			}
@@ -5809,39 +5859,52 @@ gtl::node_hash_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uin
 	itemList.reserve(COMBAT_COUNT);
 	
 	[[unlikely]]
-	if ((modType != ATTACK_MODIFIER_CONVERSION) && (modType != DEFENSE_MODIFIER_REFORM)) {
+	if ((modType != ATTACK_MODIFIER_CONVERSION) and (modType != DEFENSE_MODIFIER_REFORM)) 
+	{
 		std::cout << "::: WARNING Player::getConvertedTotals called with invalid Mod Type! \n";
 		return playerList;
 	}
 
-	if (!augments.empty()) {
-		for (const auto& aug : augments) {
+	if (not augments.empty()) 
+	{
+		for (const auto& aug : augments) 
+		{
 			const auto& modifiers = modType == ATTACK_MODIFIER_CONVERSION ? aug->getAttackModifiers(modType) : aug->getDefenseModifiers(modType);
-			for (const auto& modifier : modifiers) {
-				if (modifier->appliesToDamage(damageType) && modifier->appliesToOrigin(originType) && modifier->appliesToTarget(creatureType, race, creatureName)) {
-
+			for (const auto& modifier : modifiers) 
+			{
+				if (modifier->appliesToDamage(damageType) and modifier->appliesToOrigin(originType) and modifier->appliesToTarget(creatureType, race, creatureName)) 
+				{
 					uint16_t flat = 0;
 					uint16_t percent = 0;
 
-					if (modifier->isFlatValue() && modifier->getChance() == 0 || modifier->isFlatValue() && modifier->getChance() == 100) {
+					if (modifier->isFlatValue() and modifier->getChance() == 0 or modifier->isFlatValue() and modifier->getChance() == 100) 
+					{
 						flat += modifier->getValue();
-					} else if (modifier->isFlatValue()) {
-						if (modifier->getChance() >= uniform_random(1, 100)) {
+					} 
+					else if (modifier->isFlatValue()) 
+					{
+						if (modifier->getChance() >= uniform_random(1, 100)) 
+						{
 							flat += modifier->getValue();
 						}
 					}
 
-					if (modifier->isPercent() && modifier->getChance() == 0 || modifier->isPercent() && modifier->getChance() == 100) {
+					if (modifier->isPercent() && modifier->getChance() == 0 or modifier->isPercent() and modifier->getChance() == 100) 
+					{
 						percent += modifier->getValue();
-					} else if (modifier->isPercent()) {
-						if (modifier->getChance() >= uniform_random(1, 100)) {
+					} 
+					else if (modifier->isPercent()) 
+					{
+						if (modifier->getChance() >= uniform_random(1, 100)) 
+						{
 							percent += modifier->getValue();
 						}
 					}
 
 					percent = std::min<uint16_t>(percent, 100);
 					const auto& index = combatTypeToIndex(modifier->getConversionType());
-					if (auto [it, inserted] = playerList.try_emplace(index, ModifierTotals{flat, percent}); !inserted) {
+					if (auto [it, inserted] = playerList.try_emplace(index, ModifierTotals{flat, percent}); not inserted) 
+					{
 						it->second += ModifierTotals{flat, percent};
 					}
 				}
@@ -5849,36 +5912,53 @@ gtl::node_hash_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uin
 		}
 	}
 
-	for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-		if (const auto& item = inventory[slot]; item && !item->getAugments().empty()) {
-			for (const auto& aug : item->getAugments()) {
-				const auto& modifiers = modType == ATTACK_MODIFIER_CONVERSION ? aug->getAttackModifiers(modType) : aug->getDefenseModifiers(modType);
-				for (const auto& modifier : modifiers) {
-					if (modifier->appliesToDamage(damageType) && modifier->appliesToOrigin(originType) && modifier->appliesToTarget(creatureType, race, creatureName)) {
+	for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) 
+	{
+		if (const auto& item = inventory[slot]; item) 
+		{
+            if (item->isAugmented()) 
+			{
+                const auto& augs = item->getAugments();
+				for (const auto& aug : *augs) 
+				{
+					const auto& modifiers = modType == ATTACK_MODIFIER_CONVERSION ? aug->getAttackModifiers(modType) : aug->getDefenseModifiers(modType);
+					for (const auto& modifier : modifiers) 
+					{
+						if (modifier->appliesToDamage(damageType) and modifier->appliesToOrigin(originType) and modifier->appliesToTarget(creatureType, race, creatureName)) 
+						{
+							uint16_t flat = 0;
+							uint16_t percent = 0;
 
-						uint16_t flat = 0;
-						uint16_t percent = 0;
-
-						if (modifier->isFlatValue() && modifier->getChance() == 0 || modifier->isFlatValue() && modifier->getChance() == 100) {
-							flat += modifier->getValue();
-						} else if (modifier->isFlatValue()) {
-							if (modifier->getChance() >= uniform_random(1, 100)) {
+							if (modifier->isFlatValue() and modifier->getChance() == 0 or modifier->isFlatValue() and modifier->getChance() == 100) 
+							{
 								flat += modifier->getValue();
+							} 
+							else if (modifier->isFlatValue()) 
+							{
+								if (modifier->getChance() >= uniform_random(1, 100)) 
+								{
+									flat += modifier->getValue();
+								}
 							}
-						}
 
-						if (modifier->isPercent() && modifier->getChance() == 0 || modifier->isPercent() && modifier->getChance() == 100) {
-							percent += modifier->getValue();
-						} else if (modifier->isPercent()) {
-							if (modifier->getChance() >= uniform_random(1, 100)) {
+							if (modifier->isPercent() and modifier->getChance() == 0 or modifier->isPercent() and modifier->getChance() == 100) 
+							{
 								percent += modifier->getValue();
+							} 
+							else if (modifier->isPercent()) 
+							{
+								if (modifier->getChance() >= uniform_random(1, 100)) 
+								{
+									percent += modifier->getValue();
+								}
 							}
-						}
 						
-						percent = std::min<uint16_t>(percent, 100);
-						const auto index = combatTypeToIndex(modifier->getConversionType());
-						if (auto [it, inserted] = playerList.try_emplace(index, ModifierTotals{flat, percent}); !inserted) {
-							it->second += ModifierTotals{flat, percent};
+							percent = std::min<uint16_t>(percent, 100);
+							const auto index = combatTypeToIndex(modifier->getConversionType());
+							if (auto [it, inserted] = playerList.try_emplace(index, ModifierTotals{flat, percent}); not inserted) 
+							{
+								it->second += ModifierTotals{flat, percent};
+							}
 						}
 					}
 				}

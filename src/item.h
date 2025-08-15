@@ -1211,9 +1211,14 @@ class Item : virtual public Thing, public SharedObject
 		bool hasImbuements() const; /// change to isImbued();
 		bool addImbuement(std::shared_ptr<Imbuement> imbuement, bool created = true);
 		bool removeImbuement(const std::shared_ptr<Imbuement>& imbuement, bool decayed = false);
-		std::vector<std::shared_ptr<Imbuement>>& getImbuements();
-		const std::vector<std::shared_ptr<Imbuement>>& getImbuements() const;
-
+		std::unique_ptr<std::vector<std::shared_ptr<Imbuement>>>& getImbuements() 
+		{
+            if (not imbuements.get()) 
+			{
+				imbuements = std::move(std::make_unique<std::vector<std::shared_ptr<Imbuement>>>());
+            }
+			return imbuements;
+		}
 
 		const bool addAugment(std::string_view augmentName);
 		const bool addAugment(const std::shared_ptr<Augment>& augment);
@@ -1225,28 +1230,40 @@ class Item : virtual public Thing, public SharedObject
 		bool hasAugment(std::string_view name) const;
 		bool hasAugment(const std::shared_ptr<Augment>& augment) const;
 
-		const std::vector<std::shared_ptr<Augment>>& getAugments();
+		std::unique_ptr<std::vector<std::shared_ptr<Augment>>>& getAugments()
+		{
+			if (not augments.get())
+			{
+				augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+			}
+
+			return augments;
+		}
+
+	// Any variable's bigger than a pointer should get their own class
+	// and that class should have a unique pointer here, lazy initialized
+	// Item attributes is full enough and needs to be reworked to be allowed to be bigger
+
+	// Access doesn't affect memory layout,
+	// but ordering does, hence the many private/protected access specifiers
+	private:
+        SkillRegistry custom_skills{};
 
 	protected:
 		std::weak_ptr<Cylinder> parent;
 
+	private:
+        std::unique_ptr<ItemAttributes> attributes;
+		std::unique_ptr<std::vector<std::shared_ptr<Imbuement>>> imbuements;
+		std::unique_ptr<std::vector<std::shared_ptr<Augment>>> augments;
+	protected:
 		uint16_t id; // the same id as in ItemType
 
 	private:
-		std::string getWeightDescription(uint32_t weight) const;
-
-		std::unique_ptr<ItemAttributes> attributes;
-
 		uint16_t imbuementSlots = 0;
-		std::vector<std::shared_ptr<Imbuement>> imbuements{};
-		std::vector<std::shared_ptr<Augment>> augments{};
-
-		SkillRegistry custom_skills{};
-
 		uint8_t count = 1; // number of stacked items
 		bool loadedFromMap = false;
-
-		//Don't add variables here, use the ItemAttribute class.
+        std::string getWeightDescription(uint32_t weight) const;
 };
 
 using ItemList = std::list<ItemPtr>;
