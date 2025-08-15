@@ -1148,8 +1148,8 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 						continue;
 					}
 					if (item->hasImbuements()) {
-						
-						for (auto& imbuement : item->getImbuements()) {
+						auto& imbues = item->getImbuements();
+						for (auto& imbuement : *imbues) {
 							if (!imbuement->value) {
 								continue;
 							}
@@ -1206,7 +1206,8 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 						}
 
 						if (item->hasImbuements()) {
-							for (const auto& imbuement : item->getImbuements()) {
+							auto& imbues = item->getImbuements();
+							for (const auto& imbuement : *imbues) {
 								const auto combatType = damage.primary.type;
 								const auto originalDamage = abs(damage.primary.value);
 								const auto resistance = (originalDamage * imbuement->value) / 100;
