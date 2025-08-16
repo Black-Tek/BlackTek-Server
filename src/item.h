@@ -521,9 +521,9 @@ class ItemAttributes
 				if (auto it = customAttrMap->find(lowercaseKey); it != customAttrMap->end()) {
 					customAttrMap->erase(it);
 
-					if (customAttrMap->empty()) {
-						removeAttribute(ITEM_ATTRIBUTE_CUSTOM);
-					}
+					//if (customAttrMap->empty()) {
+					//	removeAttribute(ITEM_ATTRIBUTE_CUSTOM);
+					//}
 					return true;
 				}
 			}
