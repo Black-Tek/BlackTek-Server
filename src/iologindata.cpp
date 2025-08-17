@@ -1011,7 +1011,6 @@ bool IOLoginData::addRewardItems(uint32_t playerID, const ItemBlockList& itemLis
 			item->serializeAttr(propWriteStream);
 			auto attributesData = propWriteStream.getStream();
 
-			auto augmentStream = PropWriteStream();
             auto augmentStream = PropWriteStream();
 			if (item->isAugmented()) 
 			{
