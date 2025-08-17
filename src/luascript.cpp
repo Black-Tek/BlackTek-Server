@@ -7335,11 +7335,9 @@ int LuaScriptInterface::luaItemTransform(lua_State* L)
 	uint32_t uid = env->addThing(item);
 
 	const auto newItem = g_game.transformItem(item, itemId, subType);
-	if (item->isRemoved()) {
-		env->removeItemByUID(uid);
-	}
 
 	if (newItem && newItem != item) {
+        env->removeItemByUID(uid);
 		env->insertItem(uid, newItem);
 	}
 
