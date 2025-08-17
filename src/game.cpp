@@ -5733,13 +5733,27 @@ void Game::startDecay(const ItemPtr& item)
 
 void Game::internalDecayItem(const ItemPtr& item)
 {
-	if (const int32_t decayTo = item->getDecayTo(); decayTo > 0) {
-		startDecay(transformItem(item, decayTo));
-	} else {
-		if (const ReturnValue ret = internalRemoveItem(item); ret != RETURNVALUE_NOERROR) {
-			std::cout << "[Debug - Game::internalDecayItem] internalDecayItem failed, error code: " << static_cast<uint32_t>(ret) << ", item id: " << item->getID() << std::endl;
-		}
-	}
+    const int32_t decayTo = item->getDecayTo();
+
+    if (decayTo > 0) 
+	{
+        startDecay(transformItem(item, decayTo));
+    }
+    else if (decayTo == 0) 
+	{
+        if (not item->getParent()) {
+            return;
+        }
+
+        if (const ReturnValue ret = internalRemoveItem(item); ret != RETURNVALUE_NOERROR) 
+		{
+            std::cout << "[Warning - Game::internalDecayItem] Failed to remove item, error: " << static_cast<uint32_t>(ret) << ", item id: " << item->getID() << std::endl;
+        }
+    }
+    else 
+	{
+        std::cout << "[Error - Game::internalDecayItem] Invalid decayTo value: " << decayTo << ", item id: " << item->getID() << std::endl;
+    }
 }
 
 void Game::checkDecay()
