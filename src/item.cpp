@@ -1797,7 +1797,7 @@ bool Item::hasImbuementType(const ImbuementType imbuetype) const
 
 	return std::any_of(imbuements->begin(), imbuements->end(), [imbuetype](const std::shared_ptr<Imbuement>& elem) 
 	{
-		return elem and elem->imbuetype == imbuetype;
+		return elem->imbuetype == imbuetype;
 	});
 }
 

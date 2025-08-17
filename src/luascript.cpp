@@ -7511,6 +7511,7 @@ int LuaScriptInterface::luaItemHasImbuementType(lua_State* L)
         if (item->hasImbuements()) 
 		{
 			pushBoolean(L, item->hasImbuementType(getNumber<ImbuementType>(L, 2, ImbuementType::IMBUEMENT_TYPE_NONE)));
+            return 1;
 		}
         pushBoolean(L, false);
         return 1;
