@@ -855,7 +855,8 @@ bool Item::unserializeAugments(PropStream& propStream)
 
 	if (not isAugmented() and augmentCount > 0)
 	{
-		augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>(augmentCount);
+		augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+        augments->reserve(augmentCount);
 	}
 
 	for (uint32_t i = 0; i < augmentCount; ++i) 
