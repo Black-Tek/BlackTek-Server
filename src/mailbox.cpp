@@ -93,7 +93,7 @@ bool Mailbox::sendItem(const ItemPtr& item) const
 			return true;
 		}
 	} else {
-		PlayerPtr tmpPlayer(nullptr);
+		PlayerPtr tmpPlayer = std::make_shared<Player>(nullptr);
 		if (!IOLoginData::loadPlayerByName(tmpPlayer, receiver)) {
 			return false;
 		}
