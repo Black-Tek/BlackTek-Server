@@ -1933,7 +1933,7 @@ void Monster::death(const CreaturePtr&)
 							player->sendTextMessage(MESSAGE_LOOT, "The following items dropped by " + getMonster()->getName() + " are available in your reward chest: " + rewardContainer->getContentDescription() + ".");
 						}
 					} else {
-						DBInsert rewardQuery("INSERT INTO `player_rewarditems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`) VALUES ");
+						DBInsert rewardQuery("INSERT INTO `player_rewarditems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`) VALUES ");
 						PropWriteStream propWriteStream;
 
 						ItemBlockList itemList;
