@@ -829,13 +829,16 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 		auto augmentStream = PropWriteStream();
         if (item->isAugmented()) 
 		{
-            const auto &augments = item->getAugments();
-            augmentStream.clear();
+            const auto& augments = item->getAugments();
             augmentStream.write<uint32_t>(augments->size());
             for (const auto& augment : *augments) 
 			{
                 augment->serialize(augmentStream);
             }
+        } 
+		else 
+		{
+            augmentStream.write<uint32_t>(0);
         }
 		const auto augmentsData = augmentStream.getStream();
 
@@ -871,16 +874,18 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 			auto attributesData = propWriteStream.getStream();
 
 			auto augmentStream = PropWriteStream();
-            if (item->isAugmented())
+			if (item->isAugmented()) 
 			{
 				const auto& augments = item->getAugments();
-                augmentStream.clear();
-                augmentStream.write<uint32_t>(augments->size());
-
-                for (const auto& augment : *augments) 
+				augmentStream.write<uint32_t>(augments->size());
+				for (const auto& augment : *augments) 
 				{
-                    augment->serialize(augmentStream);
-                }
+					augment->serialize(augmentStream);
+				}
+			} 
+			else 
+			{
+				augmentStream.write<uint32_t>(0);
 			}
 
 			auto augmentsData = augmentStream.getStream();
@@ -962,16 +967,19 @@ bool IOLoginData::addRewardItems(uint32_t playerID, const ItemBlockList& itemLis
 		const auto attributesData = propWriteStream.getStream();
 
 		auto augmentStream = PropWriteStream();
-		if (item->isAugmented()) 
+        if (item->isAugmented()) 
 		{
-			const auto& augments = item->getAugments();
-			augmentStream.clear();
-			augmentStream.write(augments->size());
-			for (const auto& augment : *augments) 
+            const auto& augments = item->getAugments();
+            augmentStream.write<uint32_t>(augments->size());
+            for (const auto& augment : *augments) 
 			{
-				augment->serialize(augmentStream);
-			}
-		}
+                augment->serialize(augmentStream);
+            }
+        } 
+		else 
+		{
+            augmentStream.write<uint32_t>(0);
+        }
 
 		const auto augmentsData = augmentStream.getStream();
 		auto skill_stream = PropWriteStream();
@@ -1004,16 +1012,20 @@ bool IOLoginData::addRewardItems(uint32_t playerID, const ItemBlockList& itemLis
 			auto attributesData = propWriteStream.getStream();
 
 			auto augmentStream = PropWriteStream();
-            if (item->isAugmented()) 
-			{   
+            auto augmentStream = PropWriteStream();
+			if (item->isAugmented()) 
+			{
 				const auto& augments = item->getAugments();
-				augmentStream.clear();
-				augmentStream.write(augments->size());
+				augmentStream.write<uint32_t>(augments->size());
 				for (const auto& augment : *augments) 
 				{
 					augment->serialize(augmentStream);
 				}
-            }
+			} 
+			else 
+			{
+				augmentStream.write<uint32_t>(0);
+			}
 			auto augmentsData = augmentStream.getStream();
 
 			auto skill_stream = PropWriteStream();
