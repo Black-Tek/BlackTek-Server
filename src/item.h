@@ -1195,7 +1195,7 @@ class Item : virtual public Thing, public SharedObject
 			auto parentLock = parent.lock();
 
 			if (!parentLock) {
-				return false;
+				return true;
 			}
 
 			return parentLock->isRemoved();
