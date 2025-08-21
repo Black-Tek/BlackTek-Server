@@ -68,10 +68,12 @@ class Monster final : public Creature
 			return nameDescription + '.';
 		}
 
-		CreatureType_t getType() const override {
-			// to-do : write the logic for all the various summons
-			return CREATURETYPE_MONSTER;
+		bool isBoss(bool countReward = true) const
+		{
+			return mType->info.isBoss or ( countReward and mType->info.isRewardBoss);
 		}
+
+        CreatureType_t getType(CreaturePtr caller = nullptr) const override;
 
 		const Position& getMasterPos() const {
 			return masterPos;

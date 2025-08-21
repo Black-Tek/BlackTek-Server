@@ -129,7 +129,9 @@ enum CreatureType_t : uint8_t {
 	CREATURETYPE_SUMMON_PARTY = 6,
 	CREATURETYPE_BOSS = 7,
 	CREATURETYPE_ATTACKABLE = 8,
-	CREATURETYPE_SUMMON_ALL,
+	CREATURETYPE_SUMMON_ALL = 9,
+	CREATURETYPE_SUMMON_OTHER = 10,
+	CREATURETYPE_SUMMON_MONSTER_FRIEND = 11, // we can extend this later by adding predefined lists of friendly monsters for monsters
 };
 
 enum OperatingSystem_t : uint8_t {

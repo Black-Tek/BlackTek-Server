@@ -1432,7 +1432,8 @@ void Tile::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t in
 			}
 		}
 
-		//calling movement scripts
+
+		// this one and player are the only two postAddNotifications using the thing as a creature.
 		if (creature) {
 			g_moveEvents->onCreatureMove(creature, getTile(), MOVE_EVENT_STEP_IN);
 		} else if (item) {

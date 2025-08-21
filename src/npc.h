@@ -151,7 +151,10 @@ class Npc final : public Creature
 			return name;
 		}
 
-		CreatureType_t getType() const override {
+		CreatureType_t getType(CreaturePtr caller = nullptr) const override {
+			// Todo : create more enums for creature types being relative to caller
+			// even for players and npc's, this basic expansion of possibilities
+			// applied on this core function would allow vast customization opportunities down the road
 			return CREATURETYPE_NPC;
 		}
 

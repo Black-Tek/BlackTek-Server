@@ -2158,3 +2158,81 @@ bool Monster::canPushItems() const
 
 	return mType->info.canPushItems;
 }
+
+// This param "caller" is really only used in this version of this method.
+// The point is to determine more specific creature types easily.
+// Currently the overloaded method is only goint to be used in one place,
+// and that is forwarded to a lua method
+// Keep in mind, all of these "getType" methods default to the generic type to maintain compatibility
+// with the uses throughout the sourcecode which already exist, change this generic possibility
+// and you must change the logic in the locations it's used
+// This method can be used to clean up many redundant lines of code once all versions are ready
+CreatureType_t Monster::getType(CreaturePtr caller) const
+{
+    // Our "caller" represents the creature we are inquiring the type of this monster for
+    // So if we are asking and the creature is this monsters master, it would be an ally
+    // but if we are asking and they creature is targetting this monster, it's an enemy
+    // We account for being able to call from either side, ally or enemy
+
+    if (isBoss())
+        return CREATURETYPE_BOSS;
+
+    if (auto owner = master.lock(); owner and caller)
+    {
+        if (caller == owner)
+            return CREATURETYPE_SUMMON_OWN;
+
+        if (auto calling_player = caller->getPlayer(); calling_player)
+        {
+            if (auto player = std::dynamic_pointer_cast<Player>(owner); player)
+            {
+                // Todo : we could set priority in config for party of guild, or allow as aditional param
+                auto owner_guild = player->getGuild();
+                auto caller_guild = calling_player->getGuild();
+                auto owner_party = player->getParty();
+                auto caller_party = calling_player->getParty();
+
+                // for now we will say party is the higher priority
+                if (owner_party and caller_party and owner_party == caller_party)
+                    return CREATURETYPE_SUMMON_PARTY;
+
+                if (owner_guild and caller_guild and owner_guild == caller_guild)
+                    return CREATURETYPE_SUMMON_GUILD;
+
+                return CREATURETYPE_SUMMON_OTHER;
+            }
+
+            if (auto monster = owner->getMonster(); monster)
+            {
+                for (const auto& weakPtr : monster->getTargetList())
+                {
+                    if (auto target = weakPtr.lock(); target and target == caller)
+                        return CREATURETYPE_SUMMON_HOSTILE;
+                }
+            }
+        }
+
+        if (auto calling_monster = std::dynamic_pointer_cast<Monster>(caller); calling_monster)
+        {
+            if (auto player = std::dynamic_pointer_cast<Player>(owner); player)
+            {
+                for (const auto& weakPtr : calling_monster->getTargetList())
+                {
+                    // These two circumstances probably warrent their own enum types
+                    if (auto target = weakPtr.lock(); target and ((target == player) or (target == getMonster())))
+                        return CREATURETYPE_SUMMON_HOSTILE;
+                }
+            }
+
+            if (owner->isMonster()) // remember we already checked if owner == caller
+            {
+                // Todo : Extend this logic here and for non summons to account for monster "friends"
+                return CREATURETYPE_SUMMON_MONSTER_FRIEND;
+            }
+        }
+        return CREATURETYPE_SUMMON_OTHER;
+    }
+    // Todo : part of the above, here we need to handle different scenarios for monster's
+    // we could do friendly monsters, prey, non-threat, ect... will help with our "temperaments" we create later on.
+    return CREATURETYPE_MONSTER;
+}
