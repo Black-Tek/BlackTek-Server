@@ -656,25 +656,51 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 	}
 
 	// Load reward items
-	itemMap.clear();
+    itemMap.clear();
 
-	if ((result = db.storeQuery(fmt::format("SELECT `sid`, `pid`, `itemtype`, `count`, `attributes`, `augments`, `skills` FROM `player_rewarditems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `sid`, `pid`, `itemtype`, `count`, `attributes`, `augments`, `skills` FROM `player_rewarditems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID()))))
+	{
 		loadItems(itemMap, result);
+		int64_t current_time = time(nullptr);
 
-		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
+		std::set<uint32_t> excludedPids;
+
+		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it)
+		{
 			const std::pair<ItemPtr, uint32_t>& pair = it->second;
-			auto item = pair.first;
+			auto& item = pair.first;
+			uint32_t pid = pair.second;
 
-			if (int32_t pid = pair.second; pid == 0) {
+			if (excludedPids.count(pid))
+			{
+				excludedPids.insert(it->first);
+				continue;
+			}
+
+			if (auto container = item->getContainer())
+			{
+				if (item->getIntAttr(ITEM_ATTRIBUTE_DATE) < current_time)
+				{
+					excludedPids.insert(it->first);
+					continue;
+				}
+			}
+
+			if (pid == 0)
+			{
 				auto& rewardChest = player->getRewardChest();
-					rewardChest->internalAddThing(item);
-			} else {
+				rewardChest->internalAddThing(item);
+			}
+			else
+			{
 				ItemMap::const_iterator it2 = itemMap.find(pid);
-				if (it2 == itemMap.end()) {
+				if (it2 == itemMap.end())
+				{
 					continue;
 				}
 
-				if (auto container = it2->second.first->getContainer()) {
+				if (auto container = it2->second.first->getContainer())
+				{
 					container->internalAddThing(item);
 				}
 			}

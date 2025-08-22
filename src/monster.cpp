@@ -1880,7 +1880,8 @@ void Monster::death(const CreaturePtr&)
 			}
 
 			const auto& creatureLoot = mType->info.lootItems;
-			int64_t currentTime = time(nullptr);
+			int64_t currentTime = static_cast<int64_t>(time(nullptr));
+            int64_t time_limit = static_cast<int64_t>(7 * 24 * 60 * 60) + currentTime;
 
 			for (const auto& [playerId, score] : bossScoreTable.playerScoreTable) {
 
@@ -1894,7 +1895,7 @@ void Monster::death(const CreaturePtr&)
 				
 				const auto& player = g_game.getPlayerByGUID(playerId);
 				const auto& rewardContainer = Item::CreateItem(ITEM_REWARD_CONTAINER)->getContainer();
-				rewardContainer->getItem()->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
+				rewardContainer->getItem()->setIntAttr(ITEM_ATTRIBUTE_DATE, time_limit);
 				rewardContainer->getItem()->setIntAttr(ITEM_ATTRIBUTE_REWARDID, getMonster()->getID());
 
 				bool hasLoot = false;
@@ -1911,8 +1912,6 @@ void Monster::death(const CreaturePtr&)
 							
 							if (chance <= adjustedChance) {
 								auto lootItem = Item::CreateItem(lootBlock.id, count);
-								lootItem->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
-								lootItem->setIntAttr(ITEM_ATTRIBUTE_REWARDID, monsterId);
 								CylinderPtr holder = rewardContainer;
 								if (g_game.internalAddItem(holder, lootItem) == RETURNVALUE_NOERROR) {
 									hasLoot = true;
