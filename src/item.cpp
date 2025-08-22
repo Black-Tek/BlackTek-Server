@@ -849,7 +849,6 @@ bool Item::unserializeAugments(PropStream& propStream)
 	uint32_t augmentCount = 0;
 
 	if (!propStream.read<uint32_t>(augmentCount)) {
-		std::cout << "WARNING: Failed to read augment count in IOLoginData::loadItems for item : " << getName() << std::endl;
 		return false;
 	}
 
