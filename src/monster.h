@@ -191,7 +191,10 @@ class Monster final : public Creature
 			return !isSummon() && getHealth() <= mType->info.runAwayHealth && challengeFocusDuration <= 0;
 		}
 
-		bool getDistanceStep(const Position& targetPos, Direction& direction, bool flee = false);
+		void fleeFromTarget(const Position& targetPos, Direction& direction) noexcept;
+
+        [[nodiscard]] bool followTargetFromDistance(const Position& targetPos, Direction& direction) noexcept;
+
 	
 		bool isTargetNearby() const {
 			return stepDuration >= 1;

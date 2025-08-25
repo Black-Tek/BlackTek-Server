@@ -946,9 +946,9 @@ void Creature::goToFollowCreature()
 			Direction dir = DIRECTION_NONE;
 
 			if (monster->isFleeing()) {
-				monster->getDistanceStep(targetPos, dir, true);
+				monster->fleeFromTarget(targetPos, dir);
 			} else { // maxTargetDist > 1
-				if (!monster->getDistanceStep(targetPos, dir)) {
+				if (not monster->followTargetFromDistance(targetPos, dir)) {
 					// if we can't get anything then let the A* calculate
 					listWalkDir.clear();
 					if (getPathTo(targetPos, listWalkDir, fpp)) {
