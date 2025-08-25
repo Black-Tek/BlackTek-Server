@@ -206,6 +206,7 @@ class Monster final : public Creature
 
 		BlockType_t blockHit(const CreaturePtr& attacker, CombatType_t combatType, int32_t& damage,
 		                     bool checkDefense = false, bool checkArmor = false, bool field = false, bool ignoreResistances = false) override;
+		void setIdle(bool idle);
 
 		static uint32_t monsterAutoID;
 
@@ -258,7 +259,7 @@ class Monster final : public Creature
 		void death(const CreaturePtr& lastHitCreature) override;
 		ItemPtr getCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr& mostDamageCreature) override;
 
-		void setIdle(bool idle);
+
 		void updateIdleStatus();
 	
 		bool getIdleStatus() const {

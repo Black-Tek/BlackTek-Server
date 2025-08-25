@@ -560,20 +560,23 @@ bool Game::internalPlaceCreature(CreaturePtr creature, const Position& pos, bool
 
 bool Game::placeCreature(CreaturePtr creature, const Position& pos, bool extendedPos /*=false*/, bool forced /*= false*/, MagicEffectClasses magicEffect /*= CONST_ME_TELEPORT*/)
 {
-	if (!internalPlaceCreature(creature, pos, extendedPos, forced)) {
+	if (not internalPlaceCreature(creature, pos, extendedPos, forced)) 
+	{
 		return false;
 	}
 
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true);
-	for (const auto spectator : spectators) {
-		if (const auto tmpPlayer = spectator->getPlayer()) {
+	for (const auto& spectator : spectators)
+	{
+		if (const auto& tmpPlayer = spectator->getPlayer()) {
 			tmpPlayer->sendCreatureAppear(creature, creature->getPosition(), magicEffect);
 		}
-	}
-
-	for (const auto spectator : spectators) {
 		spectator->onCreatureAppear(creature, true);
+		if (const auto& monster = spectator->getMonster()) 
+		{
+			monster->setIdle(false);
+		}
 	}
 
 	if (creature->getParent() != nullptr)	{
