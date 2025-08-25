@@ -1634,12 +1634,15 @@ bool Monster::followTargetFromDistance(const Position& target_position, Directio
 bool Monster::canWalkTo(Position pos, const Direction direction)
 {
 	pos = getNextPosition(direction, pos);
-	if (isInSpawnRange(pos)) {
-		if (getWalkCache(pos) == 0) {
+	if (isInSpawnRange(pos)) 
+	{
+		if (getWalkCache(pos) == 0) 
+		{
 			return false;
 		}
 
-		if (auto tile = g_game.map.getTile(pos); tile && tile->getTopVisibleCreature(this->getMonster()) == nullptr && tile->queryAdd(this->getMonster(), FLAG_PATHFINDING) == RETURNVALUE_NOERROR) {
+		if (auto tile = g_game.map.getTile(pos); tile and tile->queryAdd(getMonster(), FLAG_PATHFINDING) == RETURNVALUE_NOERROR) 
+		{
 			return true;
 		}
 	}
