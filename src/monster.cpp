@@ -1554,11 +1554,15 @@ bool Monster::followTargetFromDistance(const Position& target_position, Directio
     {
         return false; // let the A* calculate it
     }
-    else if (distance <= mType->info.targetDistance)
+    else if (distance == mType->info.targetDistance)
     {
         return true; // we don't really care here, since it's what we wanted to reach (a dance-step will take of dancing in that position)
     }
-
+	else if (distance < mType->info.targetDistance)
+	{
+		fleeFromTarget(target_position, direction);
+		return true;
+	}
     const auto offset_x = Position::getOffsetX(monster_position, target_position);
     const auto offset_y = Position::getOffsetY(monster_position, target_position);
     const auto target_direction = getTargetDirection(offset_x, offset_y);
