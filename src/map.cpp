@@ -317,6 +317,8 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 
 	//event method
 	for (const auto& spectator : spectators) {
+		if (const auto& monster = spectator->getMonster(); monster)
+				monster->setIdle(false);
 		spectator->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
 	}
 
