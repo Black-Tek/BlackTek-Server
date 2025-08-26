@@ -735,7 +735,7 @@ void Monster::onThink(const uint32_t interval)
 		updateIdleStatus();
 
 		if (not isIdle) {
-			addEventWalk();
+			addEventWalk(true);
 
 			if (isSummon()) 
 			{
