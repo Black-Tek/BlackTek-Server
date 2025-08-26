@@ -716,64 +716,62 @@ void Monster::onThink(const uint32_t interval)
 {
 	Creature::onThink(interval);
 
-	if (mType->info.thinkEvent != -1) {
-		// onThink(self, interval)
-		LuaScriptInterface* scriptInterface = mType->info.scriptInterface;
-		if (!scriptInterface->reserveScriptEnv()) {
-			std::cout << "[Error - Monster::onThink] Call stack overflow" << std::endl;
-			return;
-		}
-
-		ScriptEnvironment* env = scriptInterface->getScriptEnv();
-		env->setScriptId(mType->info.thinkEvent, scriptInterface);
-
-		lua_State* L = scriptInterface->getLuaState();
-		scriptInterface->pushFunction(mType->info.thinkEvent);
-
-		LuaScriptInterface::pushUserdata<Monster>(L, this);
-		LuaScriptInterface::setMetatable(L, -1, "Monster");
-
-		lua_pushinteger(L, interval);
-
-		if (scriptInterface->callFunction(2)) {
-			return;
-		}
-	}
-
-	if (!isInSpawnRange(position)) {
+	if (not isInSpawnRange(position)) 
+	{
 		g_game.addMagicEffect(this->getPosition(), CONST_ME_POFF);
-		if (g_config.getBoolean(ConfigManager::REMOVE_ON_DESPAWN)) {
+
+		if (g_config.getBoolean(ConfigManager::REMOVE_ON_DESPAWN)) 
+		{
 			g_game.removeCreature(this->getCreature(), false);
-		} else {
+		} 
+		else 
+		{
 			g_game.internalTeleport(this->getCreature(), masterPos);
 			setIdle(true);
 		}
-	} else {
+	} 
+	else 
+	{
 		updateIdleStatus();
 
-		if (!isIdle) {
+		if (not isIdle) {
 			addEventWalk();
 
-			if (isSummon()) {
-				if (!getAttackedCreature()) {
-					if (getMaster() && getMaster()->getAttackedCreature()) {
+			if (isSummon()) 
+			{
+				if (not getAttackedCreature()) 
+				{
+					if (getMaster() and getMaster()->getAttackedCreature()) 
+					{
 						//This happens if the monster is summoned during combat
 						selectTarget(getMaster()->getAttackedCreature());
-					} else if (getMaster() != getFollowCreature()) {
+					} 
+					else if (getMaster() != getFollowCreature()) 
+					{
 						//Our master has not ordered us to attack anything, lets follow him around instead.
 						setFollowCreature(getMaster());
 					}
-				} else if (getAttackedCreature() == this->getCreature()) {
+				} 
+				else if (getAttackedCreature() == this->getCreature()) 
+				{
 					setFollowCreature(nullptr);
-				} else if (getFollowCreature() != getAttackedCreature()) {
+				} 
+				else if (getFollowCreature() != getAttackedCreature()) 
+				{
 					//This happens just after a master orders an attack, so lets follow it as well.
 					setFollowCreature(getAttackedCreature());
 				}
-			} else if (!targetList.empty()) {
-				if (!getFollowCreature() || !hasFollowPath) {
+			} 
+			else if (not targetList.empty()) 
+			{
+				if (not getFollowCreature() or not hasFollowPath) 
+				{
 					searchTarget();
-				} else if (isFleeing()) {
-					if (getAttackedCreature() && !canUseAttack(getPosition(), getAttackedCreature())) {
+				} 
+				else if (isFleeing()) 
+				{
+					if (getAttackedCreature() and not canUseAttack(getPosition(), getAttackedCreature())) 
+					{
 						searchTarget(TARGETSEARCH_ATTACKRANGE);
 					}
 				}
@@ -783,6 +781,28 @@ void Monster::onThink(const uint32_t interval)
 			onThinkYell(interval);
 			onThinkDefense(interval);
 		}
+	}
+
+	// this is MonsterType specific, different than creature event onthink
+	// do we really need both? MonsterType is a nice interface for developing custom AI
+	// we moved the onThink here because it's meant to be a void, not a boolean
+	if (mType->info.thinkEvent != -1) {
+		// onThink(self, interval)
+		LuaScriptInterface* scriptInterface = mType->info.scriptInterface;
+		if (not scriptInterface->reserveScriptEnv()) 
+		{
+			std::cout << "[Error - Monster::onThink] Call stack overflow" << std::endl;
+			return;
+		}
+
+		ScriptEnvironment* env = scriptInterface->getScriptEnv();
+		lua_State* L = scriptInterface->getLuaState();
+		env->setScriptId(mType->info.thinkEvent, scriptInterface);
+		scriptInterface->pushFunction(mType->info.thinkEvent);
+		LuaScriptInterface::pushUserdata<Monster>(L, this);
+		LuaScriptInterface::setMetatable(L, -1, "Monster");
+		lua_pushinteger(L, interval);
+		scriptInterface->callFunction(2);
 	}
 }
 
