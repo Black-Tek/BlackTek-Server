@@ -4838,7 +4838,6 @@ void Game::checkCreatures(const size_t index)
 		} else {
 			creature->inCheckCreaturesVector = false;
 			it = checkCreatureList.erase(it);
-			// ReleaseCreature(creature);
 		}
 	}
 
