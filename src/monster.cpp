@@ -240,9 +240,13 @@ void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile
 		if (isSummon()) {
 			isMasterInRange = canSee(getMaster()->getPosition());
 		}
-
+		// This updateTargetList() is updating summons target list while moving
+		// and more importantly stoping movement when no targets are left after a kill
+		// because the monster moves again after killing target. 
+		// We would rather stop monster dead in tracks if they kill the only target around
+		// and then handle summons targetting in a better way to free up the expensive price of updating
+		// every target list of over monster which moves, everytime it moves.
 		updateTargetList();
-		updateIdleStatus();
 	} else {
 		const bool canSeeNewPos = canSee(newPos);
 		const bool canSeeOldPos = canSee(oldPos);
@@ -256,33 +260,9 @@ void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile
 		if (canSeeNewPos && isSummon() && getMaster() == creature) {
 			isMasterInRange = true; //Follow master again
 		}
-
-		updateIdleStatus();
-
-		if (!isSummon()) {
-			if (getFollowCreature()) {
-				const Position& followPosition = getFollowCreature()->getPosition();
-				const Position& position = getPosition();
-
-				const int32_t offset_x = Position::getDistanceX(followPosition, position);
-				const int32_t offset_y = Position::getDistanceY(followPosition, position);
-				if ((offset_x > 1 || offset_y > 1) && mType->info.changeTargetChance > 0) {
-					Direction dir = getDirectionTo(position, followPosition);
-					const Position& checkPosition = getNextPosition(dir, position);
-
-					if (const auto& tile = g_game.map.getTile(checkPosition)) {
-						const auto& topCreature = tile->getTopCreature();
-						if (topCreature && getFollowCreature() != topCreature && isOpponent(topCreature)) {
-							selectTarget(topCreature);
-						}
-					}
-				}
-			} else if (isOpponent(creature)) {
-				//we have no target lets try pick this one
-				selectTarget(creature);
-			}
-		}
 	}
+    if (isIdle)
+		updateIdleStatus();
 }
 
 void Monster::onCreatureSay(const CreaturePtr& creature, SpeakClasses type, const std::string& text)
