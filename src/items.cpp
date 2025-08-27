@@ -12,9 +12,12 @@
 #include <filesystem>
 #include "tools.h"
 #include <fmt/color.h>
+#include "configmanager.h"
+#include "itemloader.h"
 
 extern MoveEvents* g_moveEvents;
 extern Weapons* g_weapons;
+extern ConfigManager g_config;
 
 gtl::flat_hash_map<uint32_t, SkillRegistry> item_skills;
 gtl::flat_hash_map<uint32_t, ItemBuff> item_buffs, item_debuffs;
@@ -270,7 +273,7 @@ bool Items::reload()
 
 bool Items::loadFromDat(const std::string& file)
 {
-    std::ifstream fin(datFile, std::ios::binary);
+    std::ifstream fin(file, std::ios::binary);
     if (!fin.is_open()) {
         fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "> ERROR: {:s}\n", "Unable to load Tibia.dat, from specified path: " + file);
         return false;
@@ -1065,7 +1068,7 @@ uint16_t Items::getItemIdByName(const std::string& name)
 	return result->second;
 }
 
-bool unserializeDatItem(ItemType& iType, std::ifstream& fin)
+bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 {
 	// read the options until we find the termination flag
 	ItemDatFlag flag;
@@ -1075,200 +1078,206 @@ bool unserializeDatItem(ItemType& iType, std::ifstream& fin)
 
 		switch (flag)
 		{
-			case ItemDatFlag.Ground:
-				iType.group = ITEM_GROUP_GROUND;
-				uint16_t groundSpeed;
+            case ItemDatFlag::Ground: {
+                iType.group = ITEM_GROUP_GROUND;
+                uint16_t groundSpeed;
                 fin.read(reinterpret_cast<char*>(&groundSpeed), sizeof(groundSpeed));
-				iType.speed = groundSpeed;
-				break;
+                iType.speed = groundSpeed;
+                break;
+            }
 
-			case ItemDatFlag.GroundBorder:
+			case ItemDatFlag::GroundBorder:
 				iType.alwaysOnTopOrder = 1;
 				break;
 
-			case ItemDatFlag.OnBottom:
+			case ItemDatFlag::OnBottom:
 				iType.alwaysOnTopOrder = 2;
 				break;
 
-			case ItemDatFlag.OnTop:
-				iiType.alwaysOnTopOrder = 3;
+			case ItemDatFlag::OnTop:
+				iType.alwaysOnTopOrder = 3;
 				break;
 
-			case ItemDatFlag.Container:
+			case ItemDatFlag::Container:
 				iType.type = ITEM_TYPE_CONTAINER;
 				break;
 
-			case ItemDatFlag.Stackable:
+			case ItemDatFlag::Stackable:
 				iType.stackable = true;
 				break;
 
-			case ItemDatFlag.ForceUse:
+			case ItemDatFlag::ForceUse:
 				iType.forceUse = true;
 				break;
 
-			case ItemDatFlag.MultiUse:
+			case ItemDatFlag::MultiUse:
 				iType.useable = true;
 				break;
 
-			case ItemDatFlag.Writable:
-				iType.canWriteText = true;
-				iType.canReadText = true;
-				uint16_t maxTextLen;
+            case ItemDatFlag::Writable: {
+                iType.canWriteText = true;
+                iType.canReadText = true;
+                uint16_t maxTextLen;
                 fin.read(reinterpret_cast<char*>(&maxTextLen), sizeof(maxTextLen));
-				iType.maxTextLen = maxTextLen;
-				break;
+                iType.maxTextLen = maxTextLen;
+                break;
+            }
 
-			case ItemDatFlag.WritableOnce:
-				iType.canReadText = true;
-				// to-do - confirm if correct
-				uint16_t maxTextLen;
+            case ItemDatFlag::WritableOnce: {
+                iType.canReadText = true;
+                // to-do - confirm if correct
+                uint16_t maxTextLen;
                 fin.read(reinterpret_cast<char*>(&maxTextLen), sizeof(maxTextLen));
-				iType.maxTextLen = maxTextLen;
-				break;
+                iType.maxTextLen = maxTextLen;
+                break;
+            }
 
-			case ItemDatFlag.FluidContainer:
+			case ItemDatFlag::FluidContainer:
 				// to-do - confirm if correct
 				iType.group = ITEM_GROUP_FLUID;
 				break;
 
-			case ItemDatFlag.Fluid:
+			case ItemDatFlag::Fluid:
 				// to-do - confirm if correct
 				iType.group = ITEM_GROUP_FLUID;
 				break;
 
-			case ItemDatFlag.IsUnpassable:
+			case ItemDatFlag::IsUnpassable:
 				// to-do - verify if correct - blockSolid is 90% unpassable
 				iType.blockSolid   = true;
 				break;
 
-			case ItemDatFlag.IsUnmoveable:
+			case ItemDatFlag::IsUnmoveable:
 				iType.moveable = false;
 				break;
 
-			case ItemDatFlag.BlockMissiles:
+			case ItemDatFlag::BlockMissiles:
 				iType.blockProjectile = true;
 				break;
 
-			case ItemDatFlag.BlockPathfinder:
+			case ItemDatFlag::BlockPathfinder:
 				iType.blockPathFind = true;
 				break;
 
-			case ItemDatFlag.NoMoveAnimation:
+			case ItemDatFlag::NoMoveAnimation:
 				iType.isAnimation = true;
 				break;
 
-			case ItemDatFlag.Pickupable:
+			case ItemDatFlag::Pickupable:
 				iType.pickupable = true;
 				break;
 
-			case ItemDatFlag.Hangable:
+			case ItemDatFlag::Hangable:
 				iType.isHangable = true;
 				break;
 
-			case ItemDatFlag.IsHorizontal:
+			case ItemDatFlag::IsHorizontal:
 				iType.isHorizontal = true;
 				break;
 
-			case ItemDatFlag.IsVertical:
+			case ItemDatFlag::IsVertical:
 				iType.isVertical = true;
 				break;
 
-			case ItemDatFlag.Rotatable:
+			case ItemDatFlag::Rotatable:
 				iType.rotatable = true;
 				break;
 
-			case ItemDatFlag.HasLight:
-				uint16_t lightLevel;
-				uint16_t lightColor;
+            case ItemDatFlag::HasLight: {
+                uint16_t lightLevel;
+                uint16_t lightColor;
                 fin.read(reinterpret_cast<char*>(&lightLevel), sizeof(lightLevel));
                 fin.read(reinterpret_cast<char*>(&lightColor), sizeof(lightColor));
-				iType.lightLevel = lightLevel;
-				iType.lightColor = lightColor;
+                iType.lightLevel = lightLevel;
+                iType.lightColor = lightColor;
+                break;
+            }
+
+			case ItemDatFlag::DontHide:
 				break;
 
-			case ItemDatFlag.DontHide:
+			case ItemDatFlag::Translucent:
 				break;
 
-			case ItemDatFlag.Translucent:
-				break;
-
-			case ItemDatFlag.HasOffset:
+			case ItemDatFlag::HasOffset:
 				fin.seekg(2, std::ios::cur); // OffsetX
 				fin.seekg(2, std::ios::cur); // OffsetY
 				break;
 
-			case ItemDatFlag.HasElevation:
+			case ItemDatFlag::HasElevation:
 				//item.HasElevation = true;
 				fin.seekg(2, std::ios::cur); // Height
 				break;
 
-			case ItemDatFlag.Lying:
+			case ItemDatFlag::Lying:
 				break;
 
-			case ItemDatFlag.AnimateAlways:
+			case ItemDatFlag::AnimateAlways:
 				break;
 
-			case ItemDatFlag.Minimap:
+			case ItemDatFlag::Minimap:
 				fin.seekg(2, std::ios::cur); // minimap color
 				break;
 
-			case ItemDatFlag.LensHelp:
-				uint16_t lensHelp;
+            case ItemDatFlag::LensHelp: {
+                uint16_t lensHelp;
                 fin.read(reinterpret_cast<char*>(&lensHelp), sizeof(lensHelp));
-				if (lensHelp == 1112)
-				{
-					item.canReadText = true;
-				}
-				break;
+                if (lensHelp == 1112)
+                {
+                    iType.canReadText = true;
+                }
+                break;
+            }
 
-			case ItemDatFlag.FullGround:
+			case ItemDatFlag::FullGround:
 				//item.FullGround = true;
 				break;
 
-			case ItemDatFlag.IgnoreLook:
+			case ItemDatFlag::IgnoreLook:
 				// to-do confirm if should be false/true
 				iType.lookThrough = false;
 				break;
 
-			case ItemDatFlag.Cloth:
+			case ItemDatFlag::Cloth:
 				fin.seekg(2, std::ios::cur); // cloth
 				break;
 
-			case ItemDatFlag.Market:
-				fin.seekg(2, std::ios::cur); // category
-				fin.seekg(2, std::ios::cur); // trade as
-				fin.seekg(2, std::ios::cur); // show as
-				uint16_t nameLength;
+            case ItemDatFlag::Market: {
+                fin.seekg(2, std::ios::cur); // category
+                fin.seekg(2, std::ios::cur); // trade as
+                fin.seekg(2, std::ios::cur); // show as
+                uint16_t nameLength;
                 fin.read(reinterpret_cast<char*>(&nameLength), sizeof(nameLength));
-				fin.seekg(nameLength, std::ios::cur); // name
-				// Skip profession (2 bytes) and level (2 bytes)
-        		fin.seekg(4, std::ios::cur);
-				break;
+                fin.seekg(nameLength, std::ios::cur); // name
+                // Skip profession (2 bytes) and level (2 bytes)
+                fin.seekg(4, std::ios::cur);
+                break;
+            }
 
-			case ItemDatFlag.DefaultAction:
+			case ItemDatFlag::DefaultAction:
 				fin.seekg(2, std::ios::cur);
 				break;
 
-			case ItemDatFlag.Wrappable:
-			case ItemDatFlag.Unwrappable:
-			case ItemDatFlag.TopEffect:
-			case ItemDatFlag.Usable:
+			case ItemDatFlag::Wrappable:
+			case ItemDatFlag::Unwrappable:
+			case ItemDatFlag::TopEffect:
+			case ItemDatFlag::Usable:
 				break;
 
-			case ItemDatFlag.LastFlag:
+			case ItemDatFlag::LastFlag:
 				break;
 
 			default: {
 				fmt::print(
 					fmt::fg(fmt::color::crimson) | fmt::emphasis::bold,
-					"UnserializeDatItem: Error while parsing, unknown flag 0x{:X} at id {}.\n",
-					flag, iType.id
+					"UnserializeDatItem: Error while parsing, unknown flag {} at id {}.\n",
+                    static_cast<uint8_t>(flag), iType.id
 				);
 				return false;
 			}
 		}
 
-	} while (flag != ItemDatFlag.LastFlag);
+	} while (flag != ItemDatFlag::LastFlag);
 
     return true;
 }

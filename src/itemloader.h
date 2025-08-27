@@ -1,8 +1,7 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_ITEMLOADER_H
-#define FS_ITEMLOADER_H
+#pragma once
 
 #include <cstdint>
 
@@ -28,7 +27,7 @@ enum itemgroup_t {
 	ITEM_GROUP_LAST
 };
 
-enum ItemDatFlag : uint8_t {
+enum class ItemDatFlag : uint8_t {
 	Ground            = 0,
 	GroundBorder      = 1,
 	OnBottom          = 2,
@@ -71,5 +70,3 @@ enum ItemDatFlag : uint8_t {
 	Usable            = 254,
 	LastFlag          = 255
 };
-
-#endif
