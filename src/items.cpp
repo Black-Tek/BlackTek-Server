@@ -1279,5 +1279,34 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 
 	} while (flag != ItemDatFlag::LastFlag);
 
+	// Skip texture/spriteId information
+	uint8_t _width;
+	uint8_t _height;
+	fin.read(reinterpret_cast<char*>(&_width), sizeof(_width));
+	fin.read(reinterpret_cast<char*>(&_height), sizeof(_height));
+	if (_width > 1 || _height > 1)
+	{
+		// Skipping exact size.
+		fin.seekg(1, std::ios::cur);
+	}
+	
+	uint8_t _layers, _patternX, _patternY, _patternZ, _frames;
+	fin.read(reinterpret_cast<char*>(&_layers), sizeof(_layers));
+	fin.read(reinterpret_cast<char*>(&_patternX), sizeof(_patternX));
+	fin.read(reinterpret_cast<char*>(&_patternY), sizeof(_patternY));
+	fin.read(reinterpret_cast<char*>(&_patternZ), sizeof(_patternZ));
+	fin.read(reinterpret_cast<char*>(&_frames), sizeof(_frames));
+
+	uint32_t numSprites = static_cast<uint32_t>(_width * _height * _layers * _patternX * _patternY * _patternZ * _frames);
+	if(_frames > 1) { // && frameDurations == true, which is true for 10.98 protocol
+		// Skipping frames durations info.
+		fin.seekg(6 + 8 * _frames, std::ios::cur);
+	}
+
+	for (uint32_t i = 0; i < numSprites; ++i) {
+		// uin32_t spriteId
+		fin.seekg(4, std::ios::cur);
+	}
+
     return true;
 }
