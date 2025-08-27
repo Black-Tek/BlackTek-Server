@@ -248,7 +248,6 @@ Items::Items()
 void Items::clear()
 {
 	items.clear();
-	clientIdToServerIdMap.clear();
 	nameToItems.clear();
 	currencyItems.clear();
 	inventory.clear();
@@ -1051,9 +1050,7 @@ const ItemType& Items::getItemType(size_t id) const
 const ItemType& Items::getItemIdByClientId(uint16_t spriteId) const
 {
 	if (spriteId >= 100) {
-		if (uint16_t serverId = clientIdToServerIdMap.getServerId(spriteId)) {
-			return getItemType(serverId);
-		}
+		return getItemType(spriteId);
 	}
 	return items.front();
 }
