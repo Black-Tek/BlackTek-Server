@@ -256,7 +256,7 @@ void Items::clear()
 bool Items::reload()
 {
 	clear();
-	loadFromOtb("data/items/items.otb");
+	loadFromDat(g_config.getString(ConfigManager::ITEMS_DAT_PATH));
 
 	if (!loadFromToml()) {
 		return false;
@@ -268,15 +268,11 @@ bool Items::reload()
 	return true;
 }
 
-constexpr auto OTBI = OTB::Identifier{{'O','T', 'B', 'I'}};
-
-bool Items::loadFromOtb(const std::string& file)
+bool Items::loadFromDat(const std::string& file)
 {
-	OTB::Loader loader{file, OTBI};
 
-	auto& root = loader.parseTree();
 
-	PropStream props;
+	// OTB code TO-DO: swap for dat loading
 	if (loader.getProps(root, props)) {
 		//4 byte flags
 		//attributes
@@ -313,7 +309,7 @@ bool Items::loadFromOtb(const std::string& file)
 	}
 
 	if (majorVersion == 0xFFFFFFFF) {
-		std::cout << "[Warning - Items::loadFromOtb] items.otb using generic client version." << std::endl;
+		std::cout << "[Warning - Items::loadFromDat] items.otb using generic client version." << std::endl;
 	} else if (majorVersion != 3) {
 		std::cout << "Old version detected, a newer version of items.otb is required." << std::endl;
 		return false;

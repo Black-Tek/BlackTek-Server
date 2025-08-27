@@ -88,6 +88,7 @@ class ConfigManager
 			MAP_AUTHOR,
 			CONFIG_FILE,
 			ACCOUNT_MANAGER_AUTH,
+			ITEMS_DAT_PATH,
 
 			LAST_STRING_CONFIG /* this must be the last one */
 		};

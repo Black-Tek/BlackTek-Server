@@ -74,22 +74,8 @@ bool IOMap::loadMap(Map* map, const std::filesystem::path& fileName)
 			return false;
 		}
 
-		if (root_header.majorVersionItems < 3 ||
-			root_header.majorVersionItems > Item::items.majorVersion ||
-			root_header.minorVersionItems < CLIENT_VERSION_810) {
-
-			if (root_header.majorVersionItems < 3 || root_header.minorVersionItems < CLIENT_VERSION_810) {
-				setLastErrorString("This map need to be upgraded by using the latest map editor version to be able to load correctly.");
-			}
-			else {
-				setLastErrorString("The map was saved with a different items.otb version, an upgraded items.otb is required.");
-			}
-			return false;
-		}
-
-		if (root_header.minorVersionItems > Item::items.minorVersion) {
-			std::cout << "[Warning - IOMap::loadMap] This map needs an updated items.otb." << std::endl;
-		}
+		// to-do - we remove OTB so we no longer are able to have warnings about outdated .otb... Needs confirmation if they were even something needed.
+		std::cout << "[Warning - IOMap::loadMap] Items.otb were deprecated. Now Tibia.dat is used!" << std::endl;
 
 		map->width = root_header.width;
 		map->height = root_header.height;
