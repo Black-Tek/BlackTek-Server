@@ -1205,7 +1205,7 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				break;
 
 			case ItemDatFlag::HasElevation:
-				//item.HasElevation = true;
+				iType.hasHeight = true;
 				fin.seekg(2, std::ios::cur); // Height
 				break;
 
@@ -1244,7 +1244,11 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 
             case ItemDatFlag::Market: {
                 fin.seekg(2, std::ios::cur); // category
-                fin.seekg(2, std::ios::cur); // trade as
+
+				uint16_t wareId; // trade as
+				fin.read(reinterpret_cast<char*>(&wareId), sizeof(wareId));
+				iType.wareId = wareId;
+
                 fin.seekg(2, std::ios::cur); // show as
                 uint16_t nameLength;
                 fin.read(reinterpret_cast<char*>(&nameLength), sizeof(nameLength));
@@ -1278,6 +1282,9 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 		}
 
 	} while (flag != ItemDatFlag::LastFlag);
+
+	// Manual assignment of some item data based on earlier switch + by analysing 'flags' that were used in .otb.
+	iType.alwaysOnTop = (iType.alwaysOnTopOrder != 0);
 
 	// Skip texture/spriteId information
 	uint8_t _width;
