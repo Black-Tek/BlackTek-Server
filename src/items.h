@@ -384,7 +384,7 @@ class ItemType
 		bool pickupable = false;
 		bool rotatable = false;
 		bool useable = false;
-		bool moveable = false;
+		bool moveable = true;
 		bool alwaysOnTop = false;
 		bool canReadText = false;
 		bool canWriteText = false;
@@ -495,5 +495,7 @@ class Items
 		private:
 			std::vector<uint16_t> vec;
 		} clientIdToServerIdMap;
+
+		bool unserializeDatItem(ItemType& itemType, std::ifstream& fin);
 };
 #endif
