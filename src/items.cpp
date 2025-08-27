@@ -1160,7 +1160,7 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				break;
 
 			case ItemDatFlag::NoMoveAnimation:
-				iType.isAnimation = true;
+				//not sure what here, maybe just ignore?
 				break;
 
 			case ItemDatFlag::Pickupable:
@@ -1296,6 +1296,7 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 	fin.read(reinterpret_cast<char*>(&_patternY), sizeof(_patternY));
 	fin.read(reinterpret_cast<char*>(&_patternZ), sizeof(_patternZ));
 	fin.read(reinterpret_cast<char*>(&_frames), sizeof(_frames));
+	iType.isAnimation = (_frames > 1);
 
 	uint32_t numSprites = static_cast<uint32_t>(_width * _height * _layers * _patternX * _patternY * _patternZ * _frames);
 	if(_frames > 1) { // && frameDurations == true, which is true for 10.98 protocol
