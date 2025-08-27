@@ -1078,13 +1078,13 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 
 		switch (flag)
 		{
-            case ItemDatFlag::Ground: {
-                iType.group = ITEM_GROUP_GROUND;
-                uint16_t groundSpeed;
-                fin.read(reinterpret_cast<char*>(&groundSpeed), sizeof(groundSpeed));
-                iType.speed = groundSpeed;
-                break;
-            }
+			case ItemDatFlag::Ground: {
+				iType.group = ITEM_GROUP_GROUND;
+				uint16_t groundSpeed;
+				fin.read(reinterpret_cast<char*>(&groundSpeed), sizeof(groundSpeed));
+				iType.speed = groundSpeed;
+				break;
+			}
 
 			case ItemDatFlag::GroundBorder:
 				iType.alwaysOnTopOrder = 1;
@@ -1114,23 +1114,23 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				iType.useable = true;
 				break;
 
-            case ItemDatFlag::Writable: {
-                iType.canWriteText = true;
-                iType.canReadText = true;
-                uint16_t maxTextLen;
-                fin.read(reinterpret_cast<char*>(&maxTextLen), sizeof(maxTextLen));
-                iType.maxTextLen = maxTextLen;
-                break;
-            }
+			case ItemDatFlag::Writable: {
+				iType.canWriteText = true;
+				iType.canReadText = true;
+				uint16_t maxTextLen;
+				fin.read(reinterpret_cast<char*>(&maxTextLen), sizeof(maxTextLen));
+				iType.maxTextLen = maxTextLen;
+				break;
+			}
 
-            case ItemDatFlag::WritableOnce: {
-                iType.canReadText = true;
-                // to-do - confirm if correct
-                uint16_t maxTextLen;
-                fin.read(reinterpret_cast<char*>(&maxTextLen), sizeof(maxTextLen));
-                iType.maxTextLen = maxTextLen;
-                break;
-            }
+			case ItemDatFlag::WritableOnce: {
+				iType.canReadText = true;
+				// to-do - confirm if correct
+				uint16_t maxTextLen;
+				fin.read(reinterpret_cast<char*>(&maxTextLen), sizeof(maxTextLen));
+				iType.maxTextLen = maxTextLen;
+				break;
+			}
 
 			case ItemDatFlag::FluidContainer:
 				// to-do - confirm if correct
@@ -1183,15 +1183,15 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				iType.rotatable = true;
 				break;
 
-            case ItemDatFlag::HasLight: {
-                uint16_t lightLevel;
-                uint16_t lightColor;
-                fin.read(reinterpret_cast<char*>(&lightLevel), sizeof(lightLevel));
-                fin.read(reinterpret_cast<char*>(&lightColor), sizeof(lightColor));
-                iType.lightLevel = lightLevel;
-                iType.lightColor = lightColor;
-                break;
-            }
+			case ItemDatFlag::HasLight: {
+				uint16_t lightLevel;
+				uint16_t lightColor;
+				fin.read(reinterpret_cast<char*>(&lightLevel), sizeof(lightLevel));
+				fin.read(reinterpret_cast<char*>(&lightColor), sizeof(lightColor));
+				iType.lightLevel = lightLevel;
+				iType.lightColor = lightColor;
+				break;
+			}
 
 			case ItemDatFlag::DontHide:
 				break;
@@ -1219,15 +1219,15 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				fin.seekg(2, std::ios::cur); // minimap color
 				break;
 
-            case ItemDatFlag::LensHelp: {
-                uint16_t lensHelp;
-                fin.read(reinterpret_cast<char*>(&lensHelp), sizeof(lensHelp));
-                if (lensHelp == 1112)
-                {
-                    iType.canReadText = true;
-                }
-                break;
-            }
+			case ItemDatFlag::LensHelp: {
+				uint16_t lensHelp;
+				fin.read(reinterpret_cast<char*>(&lensHelp), sizeof(lensHelp));
+				if (lensHelp == 1112)
+				{
+					iType.canReadText = true;
+				}
+				break;
+			}
 
 			case ItemDatFlag::FullGround:
 				//item.FullGround = true;
@@ -1242,21 +1242,21 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				fin.seekg(2, std::ios::cur); // cloth
 				break;
 
-            case ItemDatFlag::Market: {
-                fin.seekg(2, std::ios::cur); // category
+			case ItemDatFlag::Market: {
+				fin.seekg(2, std::ios::cur); // category
 
 				uint16_t wareId; // trade as
 				fin.read(reinterpret_cast<char*>(&wareId), sizeof(wareId));
 				iType.wareId = wareId;
 
-                fin.seekg(2, std::ios::cur); // show as
-                uint16_t nameLength;
-                fin.read(reinterpret_cast<char*>(&nameLength), sizeof(nameLength));
-                fin.seekg(nameLength, std::ios::cur); // name
-                // Skip profession (2 bytes) and level (2 bytes)
-                fin.seekg(4, std::ios::cur);
-                break;
-            }
+				fin.seekg(2, std::ios::cur); // show as
+				uint16_t nameLength;
+				fin.read(reinterpret_cast<char*>(&nameLength), sizeof(nameLength));
+				fin.seekg(nameLength, std::ios::cur); // name
+				// Skip profession (2 bytes) and level (2 bytes)
+				fin.seekg(4, std::ios::cur);
+				break;
+			}
 
 			case ItemDatFlag::DefaultAction:
 				fin.seekg(2, std::ios::cur);
@@ -1275,7 +1275,7 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				fmt::print(
 					fmt::fg(fmt::color::crimson) | fmt::emphasis::bold,
 					"UnserializeDatItem: Error while parsing, unknown flag {} at id {}.\n",
-                    static_cast<uint8_t>(flag), iType.id
+					static_cast<uint8_t>(flag), iType.id
 				);
 				return false;
 			}
@@ -1316,5 +1316,5 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 		fin.seekg(4, std::ios::cur);
 	}
 
-    return true;
+	return true;
 }
