@@ -1099,6 +1099,7 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				break;
 
 			case ItemDatFlag::Container:
+				iType.group = ITEM_GROUP_CONTAINER;
 				iType.type = ITEM_TYPE_CONTAINER;
 				break;
 
@@ -1262,10 +1263,13 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				fin.seekg(2, std::ios::cur);
 				break;
 
+			case ItemDatFlag::Usable:
+				iType.useable = true;
+				break;
+
 			case ItemDatFlag::Wrappable:
 			case ItemDatFlag::Unwrappable:
 			case ItemDatFlag::TopEffect:
-			case ItemDatFlag::Usable:
 				break;
 
 			case ItemDatFlag::LastFlag:
