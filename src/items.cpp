@@ -275,7 +275,7 @@ bool Items::loadFromDat(const std::string& file)
 {
     std::ifstream fin(file, std::ios::binary);
     if (!fin.is_open()) {
-        fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "> ERROR: {:s}\n", "Unable to load Tibia.dat, from specified path: " + file);
+        fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "> ERROR: {:s}\n", "Unable to load items.dat, from specified path: " + file);
         return false;
     }
 
