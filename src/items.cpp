@@ -9,6 +9,7 @@
 #include "weapons.h"
 
 #include <toml++/toml.hpp>
+#include <optional>
 #include <filesystem>
 #include "tools.h"
 #include <fmt/color.h>
@@ -1071,10 +1072,11 @@ uint16_t Items::getItemIdByName(const std::string& name)
 bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 {
 	// read the options until we find the termination flag
+	std::optional<ItemDatFlag> prevFlag;
 	ItemDatFlag flag;
 	do
 	{
-		flag = (ItemDatFlag)fin.get();
+		flag = static_cast<ItemDatFlag>(fin.get());
 
 		switch (flag)
 		{
@@ -1278,13 +1280,14 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 			default: {
 				fmt::print(
 					fmt::fg(fmt::color::crimson) | fmt::emphasis::bold,
-					"UnserializeDatItem: Error while parsing, unknown flag {} at id {}.\n",
-					static_cast<uint8_t>(flag), iType.id
+					"UnserializeDatItem: Error while parsing, unknown flag {} at id {}, previous flag {}.\n",
+					static_cast<uint8_t>(flag), iType.id, prevFlag.has_value() ? std::to_string(static_cast<uint8_t>(prevFlag.value())) : "none"
 				);
 				return false;
 			}
 		}
 
+        prevFlag = flag;
 	} while (flag != ItemDatFlag::LastFlag);
 
 	// Manual assignment of some item data based on earlier switch + by analysing 'flags' that were used in .otb.
@@ -1315,10 +1318,8 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 		fin.seekg(6 + 8 * _frames, std::ios::cur);
 	}
 
-	for (uint32_t i = 0; i < numSprites; ++i) {
-		// uin32_t spriteId
-		fin.seekg(4, std::ios::cur);
-	}
+	// Skip uint32_t sprite Ids
+	fin.seekg(4 * numSprites, std::ios::cur);
 
 	return true;
 }
