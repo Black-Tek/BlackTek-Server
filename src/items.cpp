@@ -1233,8 +1233,7 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				break;
 
 			case ItemDatFlag::IgnoreLook:
-				// to-do confirm if should be false/true
-				iType.lookThrough = false;
+				iType.lookThrough = true;
 				break;
 
 			case ItemDatFlag::Cloth:
