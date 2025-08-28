@@ -714,19 +714,19 @@ void Monster::onEndCondition(const ConditionType_t type)
 
 void Monster::onThink(const uint32_t interval)
 {
+    const auto& self = getCreature();
 	Creature::onThink(interval);
-
 	if (not isInSpawnRange(position)) 
 	{
-		g_game.addMagicEffect(this->getPosition(), CONST_ME_POFF);
+		g_game.addMagicEffect(getPosition(), CONST_ME_POFF);
 
 		if (g_config.getBoolean(ConfigManager::REMOVE_ON_DESPAWN)) 
 		{
-			g_game.removeCreature(this->getCreature(), false);
+			g_game.removeCreature(self, false);
 		} 
 		else 
 		{
-			g_game.internalTeleport(this->getCreature(), masterPos);
+			g_game.internalTeleport(self, masterPos);
 			setIdle(true);
 		}
 	} 
@@ -734,43 +734,47 @@ void Monster::onThink(const uint32_t interval)
 	{
 		updateIdleStatus();
 
-		if (not isIdle) {
+		if (not isIdle) 
+		{
 			addEventWalk(true);
-
+			const auto& attacked_creature = getAttackedCreature();
+			const auto& follow_creature = getFollowCreature();
 			if (isSummon()) 
 			{
-				if (not getAttackedCreature()) 
+				if (not attacked_creature) 
 				{
-					if (getMaster() and getMaster()->getAttackedCreature()) 
+					const auto& my_master = getMaster();
+					const auto& target = my_master ? my_master->getAttackedCreature() : nullptr;
+					if (target) 
 					{
 						//This happens if the monster is summoned during combat
-						selectTarget(getMaster()->getAttackedCreature());
+						selectTarget(target);
 					} 
-					else if (getMaster() != getFollowCreature()) 
+					else if (my_master != follow_creature) 
 					{
 						//Our master has not ordered us to attack anything, lets follow him around instead.
-						setFollowCreature(getMaster());
+						setFollowCreature(my_master);
 					}
 				} 
-				else if (getAttackedCreature() == this->getCreature()) 
+				else if (attacked_creature == self) 
 				{
 					setFollowCreature(nullptr);
 				} 
-				else if (getFollowCreature() != getAttackedCreature()) 
+				else if (follow_creature != attacked_creature) 
 				{
 					//This happens just after a master orders an attack, so lets follow it as well.
-					setFollowCreature(getAttackedCreature());
+					setFollowCreature(attacked_creature);
 				}
 			} 
 			else if (not targetList.empty()) 
 			{
-				if (not getFollowCreature() or not hasFollowPath) 
+				if (not follow_creature or not hasFollowPath) 
 				{
 					searchTarget();
 				} 
 				else if (isFleeing()) 
 				{
-					if (getAttackedCreature() and not canUseAttack(getPosition(), getAttackedCreature())) 
+					if (attacked_creature and not canUseAttack(getPosition(), attacked_creature)) 
 					{
 						searchTarget(TARGETSEARCH_ATTACKRANGE);
 					}
@@ -786,7 +790,8 @@ void Monster::onThink(const uint32_t interval)
 	// this is MonsterType specific, different than creature event onthink
 	// do we really need both? MonsterType is a nice interface for developing custom AI
 	// we moved the onThink here because it's meant to be a void, not a boolean
-	if (mType->info.thinkEvent != -1) {
+	if (mType->info.thinkEvent != -1) 
+	{
 		// onThink(self, interval)
 		LuaScriptInterface* scriptInterface = mType->info.scriptInterface;
 		if (not scriptInterface->reserveScriptEnv()) 
@@ -808,53 +813,53 @@ void Monster::onThink(const uint32_t interval)
 
 void Monster::doAttacking(const uint32_t interval)
 {
-	if (!getAttackedCreature() || (isSummon() && getAttackedCreature() == this->getCreature())) {
+    const auto& attacked_creature = getAttackedCreature();
+    const auto& self = getCreature();
+	if (not attacked_creature or (isSummon() and attacked_creature == self)) 
+	{
 		return;
 	}
 
-	bool lookUpdated = false;
 	bool resetTicks = interval != 0;
 	attackTicks += interval;
+	updateLookDirection();
 
 	const Position& myPos = getPosition();
-	const Position& targetPos = getAttackedCreature()->getPosition();
+	const Position& targetPos = attacked_creature->getPosition();
+	auto chance = static_cast<uint32_t>(uniform_random(1, 100));
+	auto ready_spells = mType->info.attackSpells | std::views::filter([chance](const auto& spell) { return spell.chance >= chance; });
 
-	for (const spellBlock_t& spellBlock : mType->info.attackSpells) {
+	// Todo : sort spells by chance with highest chances in back (reverse iterator for reading)
+	for (const spellBlock_t& spellBlock : ready_spells) 
+	{
 		bool inRange = false;
 
-		if (getAttackedCreature() == nullptr) {
+		if (attackedCreature.expired()) 
+		{
 			break;
 		}
 
-		if (canUseSpell(myPos, targetPos, spellBlock, interval, inRange, resetTicks)) {
-			if (spellBlock.chance >= static_cast<uint32_t>(uniform_random(1, 100))) {
-				if (!lookUpdated) {
-					updateLookDirection();
-					lookUpdated = true;
-				}
+		auto success = (canUseSpell(myPos, targetPos, spellBlock, interval, inRange, resetTicks));
+        if (success)
+		{
+			// We are updating the monsters own personal min/max values here..
+			// which means we are updating it to the last spell it ever casts..
+			// the spell already has these values, why do we need to save them to the monster?
+			// todo  : investigate why we are saving these values to monsters, and if it's pointless,
+			// comeback and eliminate this nonsense and just let the castSpell handle that...
+			minCombatValue = spellBlock.minCombatValue;
+			maxCombatValue = spellBlock.maxCombatValue;
+			spellBlock.spell->castSpell(self, attacked_creature);
 
-				minCombatValue = spellBlock.minCombatValue;
-				maxCombatValue = spellBlock.maxCombatValue;
-				spellBlock.spell->castSpell(this->getCreature(), getAttackedCreature());
-
-				if (spellBlock.isMelee) {
-					lastMeleeAttack = OTSYS_TIME();
-				}
+			if (spellBlock.isMelee)
+			{
+				lastMeleeAttack = inRange ? OTSYS_TIME() : 0;
 			}
 		}
-
-		if (!inRange && spellBlock.isMelee) {
-			//melee swing out of reach
-			lastMeleeAttack = 0;
-		}
 	}
 
-	// ensure ranged creatures turn to player
-	if (!lookUpdated && lastMeleeAttack == 0) {
-		updateLookDirection();
-	}
-
-	if (resetTicks) {
+	if (resetTicks) 
+	{
 		attackTicks = 0;
 	}
 }
@@ -1190,8 +1195,9 @@ void Monster::pushCreatures(const TilePtr& tile)
 bool Monster::getNextStep(Direction& direction, uint32_t& flags)
 {
 	if (!walkingToSpawn && (isIdle || isDead())) {
-		// potential ai improvement here.. why stop wallking like the comment below says?
+		// potential ai "realism" improvement here.. why stop wallking like the comment below says?
 		// to save on CPU? 
+
 		// we don't have anyone watching, might as well stop walking
 		eventWalk = 0;
 		return false;

@@ -4718,7 +4718,7 @@ bool Game::internalCreatureTurn(const CreaturePtr& creature, const Direction dir
 	//send to client
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto spectator : spectators) {
+	for (const auto& spectator : spectators) {
 		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
 		std::static_pointer_cast<Player>(spectator)->sendCreatureTurn(creature);
 	}
@@ -4755,8 +4755,8 @@ bool Game::internalCreatureSay(const CreaturePtr& creature, const SpeakClasses t
 	}
 
 	//send to client
-	for (const auto spectator : spectators) {
-		if (const auto tmpPlayer = spectator->getPlayer()) {
+	for (const auto& spectator : spectators) {
+		if (const auto& tmpPlayer = spectator->getPlayer()) {
 			if (!ghostMode || tmpPlayer->canSeeCreature(creature)) {
 				tmpPlayer->sendCreatureSay(creature, type, text, pos);
 			}
@@ -4765,7 +4765,7 @@ bool Game::internalCreatureSay(const CreaturePtr& creature, const SpeakClasses t
 
 	//event method
 	if (!echo) {
-		for (const auto spectator : spectators) {
+		for (const auto& spectator : spectators) {
 			spectator->onCreatureSay(creature, type, text);
 			if (creature != spectator) {
 				g_events->eventCreatureOnHear(spectator, creature, text, type);
@@ -4774,33 +4774,35 @@ bool Game::internalCreatureSay(const CreaturePtr& creature, const SpeakClasses t
 	}
 	return true;
 }
-
-void Game::checkCreatureWalk(const uint32_t creatureId)
+// Todo : Investigate the actual necessity of creature->getHealth() > 0 checks in these methods
+void Game::checkCreatureWalk(const uint32_t creatureId) noexcept
 {
-	const auto creature = getCreatureByID(creatureId);
-	if (creature && creature->getHealth() > 0) {
+	const auto& creature = getCreatureByID(creatureId);
+	if (creature and creature->getHealth() > 0) 
+	{
 		creature->onWalk();
-		cleanup();
 	}
 }
 
-void Game::updateCreatureWalk(const uint32_t creatureId)
+void Game::updateCreatureWalk(const uint32_t creatureId) noexcept
 {
-	const auto creature = getCreatureByID(creatureId);
-	if (creature && creature->getHealth() > 0) {
+	const auto& creature = getCreatureByID(creatureId);
+	if (creature and creature->getHealth() > 0) 
+	{
 		creature->goToFollowCreature();
 	}
 }
 
-void Game::checkCreatureAttack(const uint32_t creatureId)
+void Game::checkCreatureAttack(const uint32_t creatureId) noexcept
 {
-	const auto creature = getCreatureByID(creatureId);
-	if (creature && creature->getHealth() > 0) {
+	const auto& creature = getCreatureByID(creatureId);
+	if (creature and creature->getHealth() > 0) 
+	{
 		creature->onAttacking(0);
 	}
 }
 
-void Game::addCreatureCheck(const CreaturePtr& creature)
+void Game::addCreatureCheck(const CreaturePtr& creature) noexcept
 {
 	creature->creatureCheck = true;
 
@@ -4813,34 +4815,51 @@ void Game::addCreatureCheck(const CreaturePtr& creature)
 	checkCreatureLists[uniform_random(0, EVENT_CREATURECOUNT - 1)].push_back(creature);
 }
 
-void Game::removeCreatureCheck(const CreaturePtr& creature)
+void Game::removeCreatureCheck(const CreaturePtr& creature) noexcept
 {
-	if (creature->inCheckCreaturesVector) {
+    // it's possible removing from the creature list now
+	// rather than changing a boolean and letting the list
+	// clean it's self up, could be a huge gain by reducing work in that hot path 
+	// NEEDS TESTING
+	if (creature->inCheckCreaturesVector) 
+	{
 		creature->creatureCheck = false;
 	}
 }
 
-void Game::checkCreatures(const size_t index)
+void Game::checkCreatures(const size_t index) noexcept
 {
-	g_scheduler.addEvent(createSchedulerTask(EVENT_CHECK_CREATURE_INTERVAL, [=, this]() { checkCreatures((index + 1) % EVENT_CREATURECOUNT); }));
+	g_scheduler.addEvent(createSchedulerTask(EVENT_CHECK_CREATURE_INTERVAL, [this, next_index = (index + 1) % EVENT_CREATURECOUNT]() { checkCreatures(next_index); }));
 
 	auto& checkCreatureList = checkCreatureLists[index];
-	auto it = checkCreatureList.begin();
-	const auto end = checkCreatureList.end();
-	while (it != end) {
-		if (const auto creature = *it; creature->creatureCheck) {
-			if (creature->getHealth() > 0) {
-				creature->onThink(EVENT_CREATURE_THINK_INTERVAL);
-				creature->onAttacking(EVENT_CREATURE_THINK_INTERVAL);
-				creature->executeConditions(EVENT_CREATURE_THINK_INTERVAL);
-			}
-			++it;
-		} else {
-			creature->inCheckCreaturesVector = false;
-			it = checkCreatureList.erase(it);
-		}
+	
+	auto valid_creatures = checkCreatureList 
+    | std::views::filter([](const auto& creature) { return creature->creatureCheck; })
+    | std::views::filter([](const auto& creature) { return creature->getHealth() > 0; });
+
+	for (auto& creature : valid_creatures) 
+	{
+		creature->onThink(EVENT_CREATURE_THINK_INTERVAL);
+		creature->onAttacking(EVENT_CREATURE_THINK_INTERVAL);
+		creature->executeConditions(EVENT_CREATURE_THINK_INTERVAL);
 	}
 
+	for (auto it = checkCreatureList.rbegin(); it != checkCreatureList.rend();) 
+	{
+		if (not (*it)->creatureCheck) 
+		{
+			(*it)->inCheckCreaturesVector = false;
+			it = decltype(it)(checkCreatureList.erase(std::next(it).base()));
+		} 
+		else 
+		{
+			++it;
+		}
+	}
+	// Todo : cleanup() is hijacking this cycle as part
+	// of an outdated and poor performing decay system
+	// we removed it's redundant and wasteful call from creatureCheckWalk
+	// but we need to implement a much better decay system using timestamps, stack pattern and reverse iterators
 	cleanup();
 }
 
@@ -5877,7 +5896,7 @@ void Game::shutdown()
 void Game::cleanup()
 {
 	//free memory
-	for (const auto item : toDecayItems) {
+	for (const auto& item : toDecayItems) {
 		const uint32_t dur = item->getDuration();
 		if (dur >= EVENT_DECAYINTERVAL * EVENT_DECAY_BUCKETS) {
 			decayItems[lastBucket].push_back(item);

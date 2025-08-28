@@ -234,8 +234,8 @@ class Game
 		bool removeCreature(CreaturePtr creature, bool isLogout = true);
 		void executeDeath(uint32_t creatureId);
 
-		void addCreatureCheck(const CreaturePtr& creature);
-		static void removeCreatureCheck(const CreaturePtr& creature);
+		void addCreatureCheck(const CreaturePtr& creature) noexcept;
+		static void removeCreatureCheck(const CreaturePtr& creature) noexcept;
 
 		size_t getPlayersOnline() const {
 			return players.size();
@@ -475,10 +475,10 @@ class Game
 		void saveGameState();
 
 		//Events
-		void checkCreatureWalk(uint32_t creatureId);
-		void updateCreatureWalk(uint32_t creatureId);
-		void checkCreatureAttack(uint32_t creatureId);
-		void checkCreatures(size_t index);
+		void checkCreatureWalk(uint32_t creatureId) noexcept;
+		void updateCreatureWalk(uint32_t creatureId) noexcept;
+		void checkCreatureAttack(uint32_t creatureId) noexcept;
+		void checkCreatures(size_t index) noexcept;
 		void checkLight();
 
 		bool combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, const CreaturePtr& target, bool checkDefense, bool checkArmor, bool field, bool ignoreResistances = false);

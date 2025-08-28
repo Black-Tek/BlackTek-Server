@@ -118,57 +118,71 @@ int32_t Creature::getWalkDelay() const
 
 void Creature::onThink(uint32_t interval)
 {
-	if (!isMapLoaded && useCacheMap()) {
+	if (not isMapLoaded and useCacheMap()) 
+	{
 		isMapLoaded = true;
 		updateMapCache();
 	}
 
-	if (auto followTarget = getFollowCreature()) {
+	const auto& my_master = getMaster();
+
+	if (const auto& followTarget = getFollowCreature()) 
+	{
 		walkUpdateTicks += interval;
-		if (forceUpdateFollowPath || walkUpdateTicks >= 2000) {
+		if (forceUpdateFollowPath or walkUpdateTicks >= 2000) 
+		{
 			walkUpdateTicks = 0;
 			forceUpdateFollowPath = false;
 			isUpdatingPath = true;
 		}
-		if (followTarget && getMaster() != followTarget && !canSeeCreature(followTarget)) {
+		if (followTarget and my_master != followTarget and not canSeeCreature(followTarget)) 
+		{
 			onCreatureDisappear(followTarget, false);
 		}
 	}
 
-	if (auto attackTarget = getAttackedCreature()) {
-		if (attackTarget && getMaster() != attackTarget && !canSeeCreature(attackTarget)) {
+	if (const auto& attackTarget = getAttackedCreature()) 
+	{
+		if (attackTarget and my_master != attackTarget and not canSeeCreature(attackTarget)) 
+		{
 			onCreatureDisappear(attackTarget, false);
 		}
 	}
 
 	blockTicks += interval;
-	if (blockTicks >= 1000) {
+	if (blockTicks >= 1000) 
+	{
 		blockCount = std::min<uint32_t>(blockCount + 1, 2);
 		blockTicks = 0;
 	}
 
-	if (isUpdatingPath) {
+	if (isUpdatingPath) 
+	{
 		isUpdatingPath = false;
 		goToFollowCreature();
 	}
 
-	//scripting event - onThink
-	const CreatureEventList& thinkEvents = getCreatureEvents(CREATURE_EVENT_THINK);
-	for (CreatureEvent* thinkEvent : thinkEvents) {
+	// scripting event - onThink
+	const auto& thinkEvents = getCreatureEvents(CREATURE_EVENT_THINK);
+	for (const auto& thinkEvent : thinkEvents) 
+	{
 		thinkEvent->executeOnThink(getCreature(), interval);
 	}
 }
 
 void Creature::onAttacking(uint32_t interval)
 {
-	if (!getAttackedCreature()) {
+    const auto& target = getAttackedCreature();
+	if (not target) 
+	{
 		return;
 	}
 
 	onAttacked();
-	getAttackedCreature()->onAttacked();
+	target->onAttacked();
 
-	if (g_game.isSightClear(getPosition(), getAttackedCreature()->getPosition(), true)) {
+	if (g_game.isSightClear(getPosition(), target->getPosition(), true)) 
+	{
 		doAttacking(interval);
 	}
 }

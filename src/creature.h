@@ -325,7 +325,7 @@ class Creature : virtual public Thing, public SharedObject
 		//combat functions
 		CreaturePtr getAttackedCreature() 
 		{
-			if (auto a_target = attackedCreature.lock())
+			if (const auto& a_target = attackedCreature.lock())
 			{
 				return a_target;
 			}
