@@ -74,8 +74,10 @@ bool IOMap::loadMap(Map* map, const std::filesystem::path& fileName)
 			return false;
 		}
 
-		// to-do - we remove OTB so we no longer are able to have warnings about outdated .otb... Needs confirmation if they were even something needed.
-		std::cout << "[Warning - IOMap::loadMap] Items.otb were deprecated. Now items.dat is used!" << std::endl;
+		// to-do - we remove OTB so we no longer are able to have warnings about outdated items file being used
+		// I think to keep a cool warning about map being saved with newer OTB, we can just save 2 bytes of the total items
+		// in the header of the map, and then compare them here. Or if now majorVersionItems/minorVersionItems will be unused, those bytes will be able to be used.
+		// First RME has to be edited though.
 
 		map->width = root_header.width;
 		map->height = root_header.height;

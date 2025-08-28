@@ -1128,7 +1128,6 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 
 			case ItemDatFlag::WritableOnce: {
 				iType.canReadText = true;
-				// to-do - confirm if correct
 				uint16_t maxTextLen;
 				fin.read(reinterpret_cast<char*>(&maxTextLen), sizeof(maxTextLen));
 				iType.maxTextLen = maxTextLen;
