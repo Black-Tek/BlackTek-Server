@@ -1160,7 +1160,6 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				break;
 
 			case ItemDatFlag::NoMoveAnimation:
-				//not sure what here, maybe just ignore?
 				break;
 
 			case ItemDatFlag::Pickupable:
