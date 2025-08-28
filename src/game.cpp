@@ -5046,7 +5046,7 @@ bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, con
 				(item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))) ||
 				(g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
 			) {
-				for (const auto& augment : item->getAugments()) {
+				for (const auto& augment : *item->getAugments()) {
 					for (const auto& modifier : augment->getAttackModifiers()) {
 						if ((damage.primary.type != COMBAT_NONE and modifier->getDamageType() == damage.primary.type and modifier->getOriginType() == damage.origin) or 
 							(damage.secondary.type != COMBAT_NONE and modifier->getDamageType() == damage.secondary.type and modifier->getOriginType() == damage.origin)) {
@@ -5070,7 +5070,7 @@ bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, con
 				(item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))) ||
 				(g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
 			) {
-				for (const auto& augment : item->getAugments()) {
+				for (const auto& augment : *item->getAugments()) {
 					for (const auto& modifier : augment->getDefenseModifiers()) {
 						if ((damage.primary.type != COMBAT_NONE and modifier->getDamageType() == damage.primary.type) or
 							(damage.secondary.type != COMBAT_NONE and modifier->getDamageType() == damage.secondary.type)) {
