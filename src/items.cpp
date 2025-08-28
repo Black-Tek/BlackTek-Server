@@ -1136,17 +1136,14 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 			}
 
 			case ItemDatFlag::FluidContainer:
-				// to-do - confirm if correct
 				iType.group = ITEM_GROUP_FLUID;
 				break;
 
 			case ItemDatFlag::Fluid:
-				// to-do - confirm if correct
-				iType.group = ITEM_GROUP_FLUID;
+				iType.group = ITEM_GROUP_SPLASH;
 				break;
 
 			case ItemDatFlag::IsUnpassable:
-				// to-do - verify if correct - blockSolid is 90% unpassable
 				iType.blockSolid   = true;
 				break;
 
