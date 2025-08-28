@@ -6,8 +6,10 @@
 #include "condition.h"
 #include "game.h"
 #include "monster.h"
+#include "configmanager.h"
 
 extern Game g_game;
+extern ConfigManager g_config;
 
 bool Condition::setParam(ConditionParam_t param, int32_t value)
 {
@@ -878,22 +880,27 @@ bool ConditionRegeneration::executeCondition(const CreaturePtr creature, int32_t
 		return ConditionGeneric::executeCondition(creature, interval);
 	}
 
-	if (internalHealthTicks >= healthTicks) {
+	if (internalHealthTicks >= healthTicks && healthGain != 0) {
 		internalHealthTicks = 0;
 		CombatDamage regen;
 		regen.primary.value = static_cast<int32_t>(healthGain);
 		regen.primary.type = COMBAT_HEALING;
-		g_game.combatChangeHealth(nullptr, creature, regen);
+		const bool sendMsg = g_config.getBoolean(ConfigManager::HEALTH_REGEN_NOTIFICATION);
+		g_game.combatChangeHealth(nullptr, creature, regen, sendMsg);
 	}
 
-	if (internalManaTicks >= manaTicks) {
+	if (internalManaTicks >= manaTicks && manaGain != 0) {
 		internalManaTicks = 0;
 
 		if (auto player = creature->getPlayer()) {
 			CombatDamage regen;
 			regen.primary.value = static_cast<int32_t>(manaGain);
 			regen.primary.type = COMBAT_HEALING;
+			regen.isUtility = isBuff;
 			g_game.combatChangeMana(nullptr, player, regen);
+
+			const bool sendMsg = g_config.getBoolean(ConfigManager::MANA_REGEN_NOTIFICATION);
+			g_game.combatChangeMana(nullptr, creature, regen, sendMsg);
 		}
 	}
 

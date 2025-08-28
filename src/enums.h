@@ -129,7 +129,9 @@ enum CreatureType_t : uint8_t {
 	CREATURETYPE_SUMMON_PARTY = 6,
 	CREATURETYPE_BOSS = 7,
 	CREATURETYPE_ATTACKABLE = 8,
-	CREATURETYPE_SUMMON_ALL,
+	CREATURETYPE_SUMMON_ALL = 9,
+	CREATURETYPE_SUMMON_OTHER = 10,
+	CREATURETYPE_SUMMON_MONSTER_FRIEND = 11, // we can extend this later by adding predefined lists of friendly monsters for monsters
 };
 
 enum OperatingSystem_t : uint8_t {
@@ -610,7 +612,7 @@ struct CombatDamage
 	bool critical = false;
 	bool leeched = false;
 	bool augmented = false; // we can use this to help with refactoring combat logic later, by giving more config options to end users for how augmented damage interacts with augments
-	bool isSpellCost = false;
+	bool isUtility = false;
 	CombatDamage(
 		CombatType_t type = COMBAT_NONE,
 		CombatOrigin origin = ORIGIN_NONE,
@@ -619,7 +621,7 @@ struct CombatDamage
 		bool crit = false,
 		bool leech = false,
 		bool augment = false,
-		bool isSpellCost = false ) :
+		bool isUtility = false ) :
 		origin(origin),
 		primary{ type, value },
 		critical(crit),

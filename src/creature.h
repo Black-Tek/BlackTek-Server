@@ -121,7 +121,7 @@ class Creature : virtual public Thing, public SharedObject
 		virtual const std::string& getName() const = 0;
 		virtual const std::string& getNameDescription() const = 0;
 	
-		virtual CreatureType_t getType() const = 0;
+		virtual CreatureType_t getType(CreaturePtr caller = nullptr) const = 0;
 		virtual void setID() = 0;
 	
 		void setRemoved() {
@@ -166,10 +166,6 @@ class Creature : virtual public Thing, public SharedObject
 	
 		void setHiddenHealth(bool b) {
 			hiddenHealth = b;
-		}
-
-		bool isBoss() const {
-			return false;
 		}
 
 		int32_t getThrowRange() const override final {

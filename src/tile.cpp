@@ -241,21 +241,16 @@ CreatureConstPtr Tile::getBottomCreature() const
 
 CreaturePtr Tile::getTopVisibleCreature(const CreaturePtr creature) const
 {
-	if (const auto creatures = getCreatures()) {
-		if (creature) {
-			for (const auto tileCreature : *creatures) {
-				if (creature->canSeeCreature(tileCreature)) {
-					return tileCreature;
-				}
-			}
-		} else {
-			for (const auto tileCreature : *creatures) {
-				if (!tileCreature->isInvisible()) {
-					const auto player = tileCreature->getPlayer();
-					if (!player || !player->isInGhostMode()) {
-						return tileCreature;
-					}
-				}
+	if (const auto& creatures = getCreatures()) 
+	{
+		for (const auto& tile_creature : *creatures) 
+		{
+			const bool creature_has_sight = (creature and creature->canSeeCreature(tile_creature));
+			const bool invisible_creature = (tile_creature->isInvisible() ? true : false) or (tile_creature->getPlayer() and tile_creature->getPlayer()->isInGhostMode());
+
+			if ((creature_has_sight) or (not invisible_creature))
+			{
+				return tile_creature;
 			}
 		}
 	}
@@ -1432,7 +1427,8 @@ void Tile::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t in
 			}
 		}
 
-		//calling movement scripts
+
+		// this one and player are the only two postAddNotifications using the thing as a creature.
 		if (creature) {
 			g_moveEvents->onCreatureMove(creature, getTile(), MOVE_EVENT_STEP_IN);
 		} else if (item) {

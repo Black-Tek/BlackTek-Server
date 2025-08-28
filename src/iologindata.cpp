@@ -630,7 +630,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 	//load depot items
 	itemMap.clear();
 
-	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments` FROM `player_depotitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills` FROM `player_depotitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
 
 		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
@@ -656,25 +656,51 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 	}
 
 	// Load reward items
-	itemMap.clear();
+    itemMap.clear();
 
-	if ((result = db.storeQuery(fmt::format("SELECT `sid`, `pid`, `itemtype`, `count`, `attributes`, `augments` FROM `player_rewarditems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `sid`, `pid`, `itemtype`, `count`, `attributes`, `augments`, `skills` FROM `player_rewarditems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID()))))
+	{
 		loadItems(itemMap, result);
+		int64_t current_time = time(nullptr);
 
-		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
+		std::set<uint32_t> excludedPids;
+
+		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it)
+		{
 			const std::pair<ItemPtr, uint32_t>& pair = it->second;
-			auto item = pair.first;
+			auto& item = pair.first;
+			uint32_t pid = pair.second;
 
-			if (int32_t pid = pair.second; pid == 0) {
+			if (excludedPids.count(pid))
+			{
+				excludedPids.insert(it->first);
+				continue;
+			}
+
+			if (auto container = item->getContainer())
+			{
+				if (item->getIntAttr(ITEM_ATTRIBUTE_DATE) < current_time)
+				{
+					excludedPids.insert(it->first);
+					continue;
+				}
+			}
+
+			if (pid == 0)
+			{
 				auto& rewardChest = player->getRewardChest();
-					rewardChest->internalAddThing(item);
-			} else {
+				rewardChest->internalAddThing(item);
+			}
+			else
+			{
 				ItemMap::const_iterator it2 = itemMap.find(pid);
-				if (it2 == itemMap.end()) {
+				if (it2 == itemMap.end())
+				{
 					continue;
 				}
 
-				if (auto container = it2->second.first->getContainer()) {
+				if (auto container = it2->second.first->getContainer())
+				{
 					container->internalAddThing(item);
 				}
 			}
@@ -684,7 +710,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 	//load inbox items
 	itemMap.clear();
 
-	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments` FROM `player_inboxitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills` FROM `player_inboxitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
 
 		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
@@ -710,7 +736,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 	//load store inbox items
 	itemMap.clear();
 
-	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments` FROM `player_storeinboxitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills` FROM `player_storeinboxitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
 
 		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
@@ -819,7 +845,7 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 
 	for (const auto& it : itemList) {
 		int32_t pid = it.first;
-		auto item = it.second;
+		auto &item = it.second;
 		++runningId;
 
 		propWriteStream.clear();
@@ -827,14 +853,19 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 		const auto attributesData = propWriteStream.getStream();
 
 		auto augmentStream = PropWriteStream();
-		const auto& augments = item->getAugments();
-		augmentStream.clear();
-		augmentStream.write<uint32_t>(augments.size());
-
-		for (const auto& augment : augments) {
-			augment->serialize(augmentStream);
-		}
-
+        if (item->isAugmented()) 
+		{
+            const auto& augments = item->getAugments();
+            augmentStream.write<uint32_t>(augments->size());
+            for (const auto& augment : *augments) 
+			{
+                augment->serialize(augmentStream);
+            }
+        } 
+		else 
+		{
+            augmentStream.write<uint32_t>(0);
+        }
 		const auto augmentsData = augmentStream.getStream();
 
 		auto skill_stream = PropWriteStream();
@@ -861,7 +892,7 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 		const auto container = cb.first;
 		int32_t parentId = cb.second;
 
-		for (auto item : container->getItemList()) {
+		for (auto& item : container->getItemList()) {
 			++runningId;
 
 			propWriteStream.clear();
@@ -869,12 +900,18 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 			auto attributesData = propWriteStream.getStream();
 
 			auto augmentStream = PropWriteStream();
-			const auto& augments = item->getAugments();
-			augmentStream.clear();
-			augmentStream.write<uint32_t>(augments.size());
-
-			for (const auto& augment : augments) {
-				augment->serialize(augmentStream);
+			if (item->isAugmented()) 
+			{
+				const auto& augments = item->getAugments();
+				augmentStream.write<uint32_t>(augments->size());
+				for (const auto& augment : *augments) 
+				{
+					augment->serialize(augmentStream);
+				}
+			} 
+			else 
+			{
+				augmentStream.write<uint32_t>(0);
 			}
 
 			auto augmentsData = augmentStream.getStream();
@@ -956,20 +993,24 @@ bool IOLoginData::addRewardItems(uint32_t playerID, const ItemBlockList& itemLis
 		const auto attributesData = propWriteStream.getStream();
 
 		auto augmentStream = PropWriteStream();
-		const auto& augments = item->getAugments();
-		augmentStream.clear();
-		augmentStream.write(augments.size());
-		for (const auto& augment : augments) {
-			augment->serialize(augmentStream);
-		}
+        if (item->isAugmented()) 
+		{
+            const auto& augments = item->getAugments();
+            augmentStream.write<uint32_t>(augments->size());
+            for (const auto& augment : *augments) 
+			{
+                augment->serialize(augmentStream);
+            }
+        } 
+		else 
+		{
+            augmentStream.write<uint32_t>(0);
+        }
+
 		const auto augmentsData = augmentStream.getStream();
-
-
 		auto skill_stream = PropWriteStream();
 		const auto& skills = item->getCustomSkills();
-
 		IOLoginData::serializeCustomSkills(item, query_insert, skill_stream);
-
 		const auto& skill_data = skill_stream.getStream();
 
 		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}, {:s}",
@@ -987,21 +1028,28 @@ bool IOLoginData::addRewardItems(uint32_t playerID, const ItemBlockList& itemLis
 
 	for (size_t i = 0; i < containers.size(); i++) {
 		const ContainerBlock& cb = containers[i];
-		auto container = cb.first;
+		auto& container = cb.first;
 		int32_t parentId = cb.second;
 
-		for (auto item : container->getItemList()) {
+		for (auto& item : container->getItemList()) {
 			++runningId;
 			propWriteStream.clear();
 			item->serializeAttr(propWriteStream);
 			auto attributesData = propWriteStream.getStream();
 
-			auto augmentStream = PropWriteStream();
-			const auto& augments = item->getAugments();
-			augmentStream.clear();
-			augmentStream.write(augments.size());
-			for (const auto& augment : augments) {
-				augment->serialize(augmentStream);
+            auto augmentStream = PropWriteStream();
+			if (item->isAugmented()) 
+			{
+				const auto& augments = item->getAugments();
+				augmentStream.write<uint32_t>(augments->size());
+				for (const auto& augment : *augments) 
+				{
+					augment->serialize(augmentStream);
+				}
+			} 
+			else 
+			{
+				augmentStream.write<uint32_t>(0);
 			}
 			auto augmentsData = augmentStream.getStream();
 

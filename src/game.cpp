@@ -560,20 +560,23 @@ bool Game::internalPlaceCreature(CreaturePtr creature, const Position& pos, bool
 
 bool Game::placeCreature(CreaturePtr creature, const Position& pos, bool extendedPos /*=false*/, bool forced /*= false*/, MagicEffectClasses magicEffect /*= CONST_ME_TELEPORT*/)
 {
-	if (!internalPlaceCreature(creature, pos, extendedPos, forced)) {
+	if (not internalPlaceCreature(creature, pos, extendedPos, forced)) 
+	{
 		return false;
 	}
 
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true);
-	for (const auto spectator : spectators) {
-		if (const auto tmpPlayer = spectator->getPlayer()) {
+	for (const auto& spectator : spectators)
+	{
+		if (const auto& tmpPlayer = spectator->getPlayer()) {
 			tmpPlayer->sendCreatureAppear(creature, creature->getPosition(), magicEffect);
 		}
-	}
-
-	for (const auto spectator : spectators) {
 		spectator->onCreatureAppear(creature, true);
+		if (const auto& monster = spectator->getMonster()) 
+		{
+			monster->setIdle(false);
+		}
 	}
 
 	if (creature->getParent() != nullptr)	{
@@ -1180,13 +1183,6 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 	if (ContainerPtr itemContainer = std::dynamic_pointer_cast<Container>(item)) {
 		if (itemContainer->isRewardCorpse() || item->getID() == ITEM_REWARD_CONTAINER) {
 			return RETURNVALUE_NOERROR; // silently ignore move
-		}
-	}
-
-	if (ContainerPtr fromContainer = std::dynamic_pointer_cast<Container>(fromCylinder)) {
-		if (fromContainer->isRewardCorpse() or fromContainer->getID() == ITEM_REWARD_CONTAINER) {
-			item->removeAttribute(ITEM_ATTRIBUTE_REWARDID);
-            item->removeAttribute(ITEM_ATTRIBUTE_DATE);
 		}
 	}
 
@@ -4842,7 +4838,6 @@ void Game::checkCreatures(const size_t index)
 		} else {
 			creature->inCheckCreaturesVector = false;
 			it = checkCreatureList.erase(it);
-			// ReleaseCreature(creature);
 		}
 	}
 
@@ -5189,7 +5184,7 @@ void Game::combatGetTypeInfo(const CombatType_t combatType, const CreaturePtr& t
 	}
 }
 
-bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& target, CombatDamage& damage)
+bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& target, CombatDamage& damage, bool showMessages)
 {
 	if (damage.primary.value == 0 && damage.secondary.value == 0) {
 		return true;
@@ -5239,7 +5234,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			}
 		}
 
-		if (realHealthChange > 0 && !target->isInGhostMode()) {
+		if (showMessages && realHealthChange > 0 && !target->isInGhostMode()) {
 			const auto& damageString = std::to_string(realHealthChange) + " hitpoint" + ((realHealthChange != 1) ? "s" : "");
 			const auto& targetNameDesc = target->getNameDescription();
 			const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
@@ -5323,48 +5318,50 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 				targetPlayer->drainMana(attacker, manaDamage);
 				addMagicEffect(spectators, targetPos, CONST_ME_LOSEENERGY);
 
-				const auto& targetNameDesc = target->getNameDescription();
-				const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
-				std::string spectatorMessage;
+				if (showMessages) {
+					const auto& targetNameDesc = target->getNameDescription();
+					const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
+					std::string spectatorMessage;
 
-				if (!attacker) {
-					spectatorMessage = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana.";
-				}
-				else if (attacker == target) {
-					spectatorMessage = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana due to " +
-						(targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his") + " own attack.";
-				}
-				else {
-					spectatorMessage = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana due to an attack by " +	attackerNameDesc + ".";
-				}
-				spectatorMessage[0] = std::toupper(spectatorMessage[0]);
-
-				message.primary.value = manaDamage;
-				message.primary.color = TEXTCOLOR_BLUE;
-
-				// Notify spectators about mana loss
-				for (const auto& spectator : spectators) {
-					PlayerPtr spectatorPlayer = std::static_pointer_cast<Player>(spectator);
-					if (spectatorPlayer->getPosition().z != targetPos.z) {
-						continue;
+					if (!attacker) {
+						spectatorMessage = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana.";
 					}
-
-					if (spectatorPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
-						message.type = MESSAGE_DAMAGE_DEALT;
-						message.text = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana due to your attack.";
-						message.text[0] = std::toupper(message.text[0]);
-					}
-					else if (spectatorPlayer == targetPlayer) {
-						message.type = MESSAGE_DAMAGE_RECEIVED;
-						message.text = !attacker ? "You lose " + std::to_string(manaDamage) + " mana." :
-							(targetPlayer == attackerPlayer ? "You lose " + std::to_string(manaDamage) + " mana due to your own attack." :
-								"You lose " + std::to_string(manaDamage) + " mana due to an attack by " + attackerNameDesc + ".");
+					else if (attacker == target) {
+						spectatorMessage = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana due to " +
+							(targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his") + " own attack.";
 					}
 					else {
-						message.type = MESSAGE_DAMAGE_OTHERS;
-						message.text = spectatorMessage;
+						spectatorMessage = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana due to an attack by " +	attackerNameDesc + ".";
 					}
-					spectatorPlayer->sendTextMessage(message);
+					spectatorMessage[0] = std::toupper(spectatorMessage[0]);
+
+					message.primary.value = manaDamage;
+					message.primary.color = TEXTCOLOR_BLUE;
+
+					// Notify spectators about mana loss
+					for (const auto& spectator : spectators) {
+						PlayerPtr spectatorPlayer = std::static_pointer_cast<Player>(spectator);
+						if (spectatorPlayer->getPosition().z != targetPos.z) {
+							continue;
+						}
+
+						if (spectatorPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
+							message.type = MESSAGE_DAMAGE_DEALT;
+							message.text = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana due to your attack.";
+							message.text[0] = std::toupper(message.text[0]);
+						}
+						else if (spectatorPlayer == targetPlayer) {
+							message.type = MESSAGE_DAMAGE_RECEIVED;
+							message.text = !attacker ? "You lose " + std::to_string(manaDamage) + " mana." :
+								(targetPlayer == attackerPlayer ? "You lose " + std::to_string(manaDamage) + " mana due to your own attack." :
+									"You lose " + std::to_string(manaDamage) + " mana due to an attack by " + attackerNameDesc + ".");
+						}
+						else {
+							message.type = MESSAGE_DAMAGE_OTHERS;
+							message.text = spectatorMessage;
+						}
+						spectatorPlayer->sendTextMessage(message);
+					}
 				}
 
 				damage.primary.value -= manaDamage;
@@ -5499,7 +5496,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 }
 
 
-bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& target, CombatDamage& damage)
+bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& target, CombatDamage& damage, bool showMessages)
 {
 	const auto targetPlayer = target->getPlayer();
 	if (!targetPlayer) {
@@ -5528,7 +5525,7 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 		targetPlayer->changeMana(manaChange);
 		realManaChange = targetPlayer->getMana() - realManaChange;
 
-		if (realManaChange > 0 && !targetPlayer->isInGhostMode()) {
+		if (showMessages && realManaChange > 0 && !targetPlayer->isInGhostMode()) {
 			TextMessage message(MESSAGE_HEALED, "You gain " + std::to_string(realManaChange) + " mana.");
 			message.position = target->getPosition();
 			message.primary.value = realManaChange;
@@ -5547,7 +5544,7 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 
 		int32_t manaLoss = std::min<int32_t>(targetPlayer->getMana(), -manaChange);
 
-		if (damage.isSpellCost) {
+		if (damage.isUtility) {
 			if (!target->isAttackable()) {
 				return false;
 			}
@@ -5585,50 +5582,58 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 		const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
 		std::string spectatorMessage;
 
-		if (!attacker) {
-			spectatorMessage = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana.";
-		}
-		else if (attacker == target) {
-			spectatorMessage = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana due to " +
-				(targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his") + " own attack.";
-		}
-		else {
-			spectatorMessage = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana due to an attack by " +
-				attackerNameDesc + ".";
-		}
-		spectatorMessage[0] = std::toupper(spectatorMessage[0]);
+		targetPlayer->drainMana(attacker, manaLoss);
 
-		TextMessage message;
-		message.position = targetPos;
-		message.primary.value = manaLoss;
-		message.primary.color = TEXTCOLOR_BLUE;
+		if (showMessages) {
+			const auto& targetNameDesc = target->getNameDescription();
+			const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
+			std::string spectatorMessage;
 
-		SpectatorVec spectators;
-		map.getSpectators(spectators, targetPos, false, true);
-		for (const auto& spectator : spectators) {
-			PlayerPtr spectatorPlayer = std::static_pointer_cast<Player>(spectator);
-			if (spectatorPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
-				message.type = MESSAGE_DAMAGE_DEALT;
-				message.text = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana due to your attack.";
-				message.text[0] = std::toupper(message.text[0]);
+			if (!attacker) {
+				spectatorMessage = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana.";
 			}
-			else if (spectatorPlayer == targetPlayer) {
-				message.type = MESSAGE_DAMAGE_RECEIVED;
-				if (!attacker) {
-					message.text = "You lose " + std::to_string(manaLoss) + " mana.";
-				}
-				else if (targetPlayer == attackerPlayer) {
-					message.text = "You lose " + std::to_string(manaLoss) + " mana due to your own attack.";
-				}
-				else {
-					message.text = "You lose " + std::to_string(manaLoss) + " mana due to an attack by " + attackerNameDesc + ".";
-				}
+			else if (attacker == target) {
+				spectatorMessage = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana due to " +
+					(targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his") + " own attack.";
 			}
 			else {
-				message.type = MESSAGE_DAMAGE_OTHERS;
-				message.text = spectatorMessage;
+				spectatorMessage = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana due to an attack by " +
+					attackerNameDesc + ".";
 			}
-			spectatorPlayer->sendTextMessage(message);
+			spectatorMessage[0] = std::toupper(spectatorMessage[0]);
+
+			TextMessage message;
+			message.position = targetPos;
+			message.primary.value = manaLoss;
+			message.primary.color = TEXTCOLOR_BLUE;
+
+			SpectatorVec spectators;
+			map.getSpectators(spectators, targetPos, false, true);
+			for (const auto& spectator : spectators) {
+				PlayerPtr spectatorPlayer = std::static_pointer_cast<Player>(spectator);
+				if (spectatorPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
+					message.type = MESSAGE_DAMAGE_DEALT;
+					message.text = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana due to your attack.";
+					message.text[0] = std::toupper(message.text[0]);
+				}
+				else if (spectatorPlayer == targetPlayer) {
+					message.type = MESSAGE_DAMAGE_RECEIVED;
+					if (!attacker) {
+						message.text = "You lose " + std::to_string(manaLoss) + " mana.";
+					}
+					else if (targetPlayer == attackerPlayer) {
+						message.text = "You lose " + std::to_string(manaLoss) + " mana due to your own attack.";
+					}
+					else {
+						message.text = "You lose " + std::to_string(manaLoss) + " mana due to an attack by " + attackerNameDesc + ".";
+					}
+				}
+				else {
+					message.type = MESSAGE_DAMAGE_OTHERS;
+					message.text = spectatorMessage;
+				}
+				spectatorPlayer->sendTextMessage(message);
+			}
 		}
 	}
 
@@ -5774,13 +5779,27 @@ void Game::startDecay(const ItemPtr& item)
 
 void Game::internalDecayItem(const ItemPtr& item)
 {
-	if (const int32_t decayTo = item->getDecayTo(); decayTo > 0) {
-		startDecay(transformItem(item, decayTo));
-	} else {
-		if (const ReturnValue ret = internalRemoveItem(item); ret != RETURNVALUE_NOERROR) {
-			std::cout << "[Debug - Game::internalDecayItem] internalDecayItem failed, error code: " << static_cast<uint32_t>(ret) << ", item id: " << item->getID() << std::endl;
-		}
-	}
+    const int32_t decayTo = item->getDecayTo();
+
+    if (decayTo > 0) 
+	{
+        startDecay(transformItem(item, decayTo));
+    }
+    else if (decayTo == 0) 
+	{
+        if (not item->getParent()) {
+            return;
+        }
+
+        if (const ReturnValue ret = internalRemoveItem(item); ret != RETURNVALUE_NOERROR) 
+		{
+            std::cout << "[Warning - Game::internalDecayItem] Failed to remove item, error: " << static_cast<uint32_t>(ret) << ", item id: " << item->getID() << std::endl;
+        }
+    }
+    else 
+	{
+        std::cout << "[Error - Game::internalDecayItem] Invalid decayTo value: " << decayTo << ", item id: " << item->getID() << std::endl;
+    }
 }
 
 void Game::checkDecay()

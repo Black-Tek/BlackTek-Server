@@ -68,10 +68,12 @@ class Monster final : public Creature
 			return nameDescription + '.';
 		}
 
-		CreatureType_t getType() const override {
-			// to-do : write the logic for all the various summons
-			return CREATURETYPE_MONSTER;
+		bool isBoss(bool countReward = true) const
+		{
+			return mType->info.isBoss or ( countReward and mType->info.isRewardBoss);
 		}
+
+        CreatureType_t getType(CreaturePtr caller = nullptr) const override;
 
 		const Position& getMasterPos() const {
 			return masterPos;
@@ -189,7 +191,10 @@ class Monster final : public Creature
 			return !isSummon() && getHealth() <= mType->info.runAwayHealth && challengeFocusDuration <= 0;
 		}
 
-		bool getDistanceStep(const Position& targetPos, Direction& direction, bool flee = false);
+		void fleeFromTarget(const Position& targetPos, Direction& direction) noexcept;
+
+        [[nodiscard]] bool followTargetFromDistance(const Position& targetPos, Direction& direction) noexcept;
+
 	
 		bool isTargetNearby() const {
 			return stepDuration >= 1;
@@ -201,6 +206,7 @@ class Monster final : public Creature
 
 		BlockType_t blockHit(const CreaturePtr& attacker, CombatType_t combatType, int32_t& damage,
 		                     bool checkDefense = false, bool checkArmor = false, bool field = false, bool ignoreResistances = false) override;
+		void setIdle(bool idle);
 
 		static uint32_t monsterAutoID;
 
@@ -253,7 +259,7 @@ class Monster final : public Creature
 		void death(const CreaturePtr& lastHitCreature) override;
 		ItemPtr getCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr& mostDamageCreature) override;
 
-		void setIdle(bool idle);
+
 		void updateIdleStatus();
 	
 		bool getIdleStatus() const {

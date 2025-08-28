@@ -132,9 +132,8 @@ inline std::shared_ptr<Augment> Augment::MakeAugment(std::string augmentName, st
 }
 
 inline std::shared_ptr<Augment> Augment::MakeAugment(std::shared_ptr<Augment>& originalRef)
-{
-	auto augmentClone = std::make_shared<Augment>(originalRef);
-	return augmentClone;
+{			 
+	return std::make_shared<Augment>(originalRef);
 }
 
 inline const std::string Augment::getName() const {
