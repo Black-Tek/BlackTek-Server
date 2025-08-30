@@ -1260,7 +1260,11 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				break;
 
 			case ItemDatFlag::Usable:
-				iType.useable = true;
+				// Ignore, don't think about doing useable = true.
+				// If you do:
+				//iType.useable = true;
+				// Items will STOP being useable.
+				// It aligns with how .otb behaved: it only sets useable for TFS based on multi use.
 				break;
 
 			case ItemDatFlag::Wrappable:
