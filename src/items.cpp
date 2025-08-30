@@ -1220,6 +1220,8 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 			case ItemDatFlag::LensHelp: {
 				uint16_t lensHelp;
 				fin.read(reinterpret_cast<char*>(&lensHelp), sizeof(lensHelp));
+				// 1100 + index
+				// Indexes: ladders, sewerGrates, dungeonFloor, levers, doors, specialDoors, stairs, mailboxes, depotBoxes, dustbins, stonePiles, signs, booksAndScrolls
 				if (lensHelp == 1112)
 				{
 					iType.canReadText = true;
