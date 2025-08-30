@@ -1335,6 +1335,7 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 		return retMaxCount;
 	}
 
+	// is there an instance where this is needed?
 	if (moveItem && moveItem->getDuration() > 0) {
 		if (moveItem->getDecaying() != DECAYING_TRUE) {
 			moveItem->setDecaying(DECAYING_TRUE);
@@ -2426,7 +2427,6 @@ void Game::playerMoveUpContainer(const uint32_t playerId, uint8_t cid)
 			parentContainer->setParentToTileItems(tile);
 		} else {
 			parentContainer = it->second;
-			parentContainer->setParentToTileItems(tile);
 		}
 	}
 
@@ -2583,7 +2583,6 @@ void Game::playerBrowseField(const uint32_t playerId, const Position& pos)
 		container->setParentToTileItems(tile);
 	} else {
 		container = it->second;
-		container->setParentToTileItems(tile);
 	}
 
 	const uint8_t dummyContainerId = 0xF - ((pos.x % 3) * 3 + (pos.y % 3));
@@ -5782,7 +5781,6 @@ void Game::checkDecay()
 		const auto item = *it;
 		if (!item->canDecay()) {
 			item->setDecaying(DECAYING_FALSE);
-			// ReleaseItem(item);
 			it = decayItems[bucket].erase(it);
 			continue;
 		}
@@ -5796,12 +5794,10 @@ void Game::checkDecay()
 		if (duration <= 0) {
 			it = decayItems[bucket].erase(it);
 			internalDecayItem(item);
-			// ReleaseItem(item);
 		} else if (duration < EVENT_DECAYINTERVAL * EVENT_DECAY_BUCKETS) {
 			it = decayItems[bucket].erase(it);
 			if (const size_t newBucket = (bucket + ((duration + EVENT_DECAYINTERVAL / 2) / 1000)) % EVENT_DECAY_BUCKETS; newBucket == bucket) {
 				internalDecayItem(item);
-				// ReleaseItem(item);
 			} else {
 				decayItems[newBucket].push_back(item);
 			}
