@@ -196,6 +196,8 @@ bool ConfigManager::load()
 		string[MYSQL_DB] = getGlobalString(L, "mysqlDatabase", "forgottenserver");
 		string[MYSQL_SOCK] = getGlobalString(L, "mysqlSock", "");
 
+		string[ITEMS_DAT_PATH] = getGlobalString(L, "itemsDatPath", "data/items/items.dat");
+
 		integer[SQL_PORT] = getGlobalNumber(L, "mysqlPort", 3306);
 
 		if (integer[GAME_PORT] == 0) {

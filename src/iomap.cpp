@@ -74,22 +74,10 @@ bool IOMap::loadMap(Map* map, const std::filesystem::path& fileName)
 			return false;
 		}
 
-		if (root_header.majorVersionItems < 3 ||
-			root_header.majorVersionItems > Item::items.majorVersion ||
-			root_header.minorVersionItems < CLIENT_VERSION_810) {
-
-			if (root_header.majorVersionItems < 3 || root_header.minorVersionItems < CLIENT_VERSION_810) {
-				setLastErrorString("This map need to be upgraded by using the latest map editor version to be able to load correctly.");
-			}
-			else {
-				setLastErrorString("The map was saved with a different items.otb version, an upgraded items.otb is required.");
-			}
-			return false;
-		}
-
-		if (root_header.minorVersionItems > Item::items.minorVersion) {
-			std::cout << "[Warning - IOMap::loadMap] This map needs an updated items.otb." << std::endl;
-		}
+		// to-do - we remove OTB so we no longer are able to have warnings about outdated items file being used
+		// I think to keep a cool warning about map being saved with more recent file than server has, we can just save 2 bytes of the total items
+		// in the header of the map, and then compare them here. Or if now majorVersionItems/minorVersionItems will be unused, those bytes will be able to be used.
+		// First RME has to be edited though.
 
 		map->width = root_header.width;
 		map->height = root_header.height;

@@ -384,7 +384,7 @@ class ItemType
 		bool pickupable = false;
 		bool rotatable = false;
 		bool useable = false;
-		bool moveable = false;
+		bool moveable = true;
 		bool alwaysOnTop = false;
 		bool canReadText = false;
 		bool canWriteText = false;
@@ -418,7 +418,7 @@ class Items
 		bool reload();
 		void clear();
 
-		bool loadFromOtb(const std::string& file);
+		bool loadFromDat(const std::string& file);
 
 		const ItemType& operator[](size_t id) const {
 			return getItemType(id);
@@ -453,47 +453,7 @@ class Items
 	private:
 		std::vector<ItemType> items;
 		InventoryVector inventory;
-		class ClientIdToServerIdMap
-		{
-		public:
-			ClientIdToServerIdMap() {
-				vec.reserve(30000);
-			}
 
-			void emplace(uint16_t clientId, uint16_t serverId) {
-				if (clientId >= vec.size()) {
-					vec.resize(clientId + 1, 0);
-				}
-
-				if (vec[clientId] == 0) {
-					vec[clientId] = serverId;
-				}
-			}
-
-			uint16_t getServerId(uint16_t clientId) const {
-				uint16_t serverId = 0;
-				if (clientId < vec.size()) {
-					serverId = vec[clientId];
-				}
-				return serverId;
-			}
-
-			size_t size() const {
-				size_t count = 0;
-				for (const auto& id : vec) {
-					if (id != 0) {
-						++count;
-					}
-				}
-				return count;
-			}
-
-			void clear() {
-				vec.clear();
-			}
-
-		private:
-			std::vector<uint16_t> vec;
-		} clientIdToServerIdMap;
+		bool unserializeDatItem(ItemType& itemType, std::ifstream& fin);
 };
 #endif
