@@ -3,6 +3,7 @@
 **.sln
 **.vcxproj
 **.vcxproj.user
+**.vcxproj.filters
 
 # Build Output
 /build
