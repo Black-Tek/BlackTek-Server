@@ -1847,18 +1847,19 @@ void Monster::updateLookDirection()
 
 void Monster::dropLoot(const ContainerPtr& corpse, const CreaturePtr&)
 {
-	if (getMonster()->isRewardBoss()) {
-		int64_t currentTime = std::time(nullptr);
-		const auto& rewardContainer = Item::CreateItem(ITEM_REWARD_CONTAINER);
+    if (getMonster()->isRewardBoss()) {
+        int64_t currentTime = static_cast<int64_t>(time(nullptr));
+        int64_t time_limit = static_cast<int64_t>(7 * 24 * 60 * 60) + currentTime;
+        const auto& rewardContainer = Item::CreateItem(ITEM_REWARD_CONTAINER);
 
-		rewardContainer->setIntAttr(ITEM_ATTRIBUTE_DATE, currentTime);
-		rewardContainer->setIntAttr(ITEM_ATTRIBUTE_REWARDID, getMonster()->getID());
+        rewardContainer->setIntAttr(ITEM_ATTRIBUTE_DATE, time_limit);
+        rewardContainer->setIntAttr(ITEM_ATTRIBUTE_REWARDID, getMonster()->getID());
 
-		corpse->internalAddThing(rewardContainer);
-	}
-	else if (corpse && lootDrop) {
-		g_events->eventMonsterOnDropLoot(this->getMonster(), corpse);
-	}
+        corpse->internalAddThing(rewardContainer);
+    }
+    else if (corpse && lootDrop) {
+        g_events->eventMonsterOnDropLoot(this->getMonster(), corpse);
+    }
 }
 
 void Monster::setNormalCreatureLight()
