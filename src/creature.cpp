@@ -1225,6 +1225,12 @@ bool Creature::addCondition(Condition* condition, bool force/* = false*/)
 		int32_t chance = 0;
 		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
 			auto item = this->getPlayer()->getInventoryItem(slot);
+
+			if (not item) 
+			{
+				continue;
+			}
+
             if (item->hasImbuements()) {
                 if (auto& imbues = item->getImbuements(); imbues and item and item->hasImbuementType(IMBUEMENT_TYPE_PARALYSIS_DEFLECTION)) {
                     for (auto &imbuement : *imbues) {
