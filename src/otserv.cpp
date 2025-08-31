@@ -228,8 +228,8 @@ void mainLoader(int, char*[], ServiceManager* services)
 
 	// load item data
 	std::cout << ">> Loading items" << std::endl;
-	if (!Item::items.loadFromOtb("data/items/items.otb")) {
-		startupErrorMessage("Unable to load items (OTB)!");
+	if (!Item::items.loadFromDat(g_config.getString(ConfigManager::ITEMS_DAT_PATH))) {
+		startupErrorMessage("Unable to load items (DAT)!");
 		return;
 	}
 
