@@ -75,6 +75,6 @@ class Dispatcher : public ThreadHolder<Dispatcher> {
 };
 
 extern Dispatcher g_dispatcher;
-extern Dispatcher g_dispatcher_discord;
+extern Dispatcher g_utility_boss;
 
 #endif

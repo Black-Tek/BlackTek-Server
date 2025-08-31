@@ -5216,7 +5216,7 @@ int LuaScriptInterface::luaGameSendDiscordWebhook(lua_State* L)
 
 		auto curl = g_game.curl;
 
-		g_dispatcher_discord.addTask(createTask([curl, token, field, headers]() {
+		g_utility_boss.addTask(createTask([curl, token, field, headers]() {
 			curl_easy_setopt(curl, CURLOPT_URL, token.data());
 			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, field.data());
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);

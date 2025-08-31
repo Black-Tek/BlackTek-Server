@@ -140,7 +140,7 @@ void Game::setGameState(GameState_t newState)
 			g_scheduler.stop();
 			g_databaseTasks.stop();
 			g_dispatcher.stop();
-			g_dispatcher_discord.stop();
+			g_utility_boss.stop();
 			break;
 		}
 
@@ -5874,7 +5874,7 @@ void Game::shutdown()
 	g_scheduler.shutdown();
 	g_databaseTasks.shutdown();
 	g_dispatcher.shutdown();
-	g_dispatcher_discord.shutdown();
+	g_utility_boss.shutdown();
 	map.spawns.clear();
 	raids.clear();
 

@@ -30,7 +30,7 @@
 
 DatabaseTasks g_databaseTasks;
 Dispatcher g_dispatcher;
-Dispatcher g_dispatcher_discord;
+Dispatcher g_utility_boss;
 Scheduler g_scheduler;
 
 Game g_game;
@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
 
 	g_dispatcher.start();
 	g_scheduler.start();
-	g_dispatcher_discord.start();
+	g_utility_boss.start();
 
 	g_dispatcher.addTask(createTask([=, services = &serviceManager]() { mainLoader(argc, argv, services); }));
 
@@ -89,13 +89,13 @@ int main(int argc, char* argv[])
 		g_scheduler.shutdown();
 		g_databaseTasks.shutdown();
 		g_dispatcher.shutdown();
-		g_dispatcher_discord.shutdown();
+		g_utility_boss.shutdown();
 	}
 
 	g_scheduler.join();
 	g_databaseTasks.join();
 	g_dispatcher.join();
-	g_dispatcher_discord.join();
+	g_utility_boss.join();
 
 	return 0;
 }
@@ -150,8 +150,7 @@ void mainLoader(int, char*[], ServiceManager* services)
 	dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
 	SetConsoleMode(hOut, dwMode);
 #endif
-
-	printServerVersion();
+	g_utility_boss.addTask(createTask([]() { printServerVersion(); }));
 
 	// check if config.lua or config.lua.dist exist
 	const std::string& configFile = g_config.getString(ConfigManager::CONFIG_FILE);
@@ -170,8 +169,10 @@ void mainLoader(int, char*[], ServiceManager* services)
 	}
 
 	// read global config
-	std::cout << ":: Initializing Game Server..." << std::endl;
-	std::cout << ">> Loading config" << std::endl;
+	g_utility_boss.addTask(createTask([]() { std::cout << ":: Initializing Game Server..." << std::endl; }));
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Loading config" << std::endl; }));
+	
+	
 	if (!g_config.load()) {
 		startupErrorMessage("Unable to load " + configFile + "!");
 		return;
@@ -187,25 +188,26 @@ void mainLoader(int, char*[], ServiceManager* services)
 #endif
 
 	//set RSA key
-	std::cout << ">> Loading RSA key " << std::endl;
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Loading RSA key " << std::endl; }));
+	
 	try {
 		g_RSA.loadPEM("key.pem");
 	} catch(const std::exception& e) {
 		startupErrorMessage(e.what());
 		return;
 	}
-
-	std::cout << ">> Establishing database connection..." << std::flush;
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Establishing database connection..." << std::flush; }));
+	
 
 	if (!Database::getInstance().connect()) {
 		startupErrorMessage("Failed to connect to database.");
 		return;
 	}
 
-	std::cout << " MySQL " << Database::getClientVersion() << std::endl;
-
+	g_utility_boss.addTask(createTask([]() { std::cout << " MySQL " << Database::getClientVersion() << std::endl; }));
+	
 	// run database manager
-	std::cout << ">> Running database manager" << std::endl;
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Running database manager" << std::endl; }));
 
 	if (!DatabaseManager::isDatabaseSetup()) {
 		startupErrorMessage("The database you have specified in config.lua is empty, please import the schema.sql to your database.");
@@ -216,18 +218,20 @@ void mainLoader(int, char*[], ServiceManager* services)
 	DatabaseManager::updateDatabase();
 
 	if (g_config.getBoolean(ConfigManager::OPTIMIZE_DATABASE) && !DatabaseManager::optimizeTables()) {
-		std::cout << "> No tables were optimized." << std::endl;
+		g_utility_boss.addTask(createTask([]() { std::cout << "> No tables were optimized." << std::endl; }));
 	}
 
 	//load vocations
-	std::cout << ">> Loading vocations" << std::endl;
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Loading vocations" << std::endl; }));
+	
 	if (!g_vocations.loadFromToml()) {
 		startupErrorMessage("Unable to load vocations!");
 		return;
 	}
 
 	// load item data
-	std::cout << ">> Loading items" << std::endl;
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Loading items" << std::endl; }));
+	
 	if (!Item::items.loadFromDat(g_config.getString(ConfigManager::ITEMS_DAT_PATH))) {
 		startupErrorMessage("Unable to load items (DAT)!");
 		return;
@@ -237,38 +241,38 @@ void mainLoader(int, char*[], ServiceManager* services)
 		startupErrorMessage("Unable to load items (TOML)!");
 		return;
 	}
-
-	std::cout << ">> Loading script systems" << std::endl;
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Loading script systems" << std::endl; }));
+	
 	if (!ScriptingManager::getInstance().loadScriptSystems()) {
 		startupErrorMessage("Failed to load script systems");
 		return;
 	}
-
-	std::cout << ">> Loading lua scripts" << std::endl;
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Loading lua scripts" << std::endl; }));
+	
 	if (!g_scripts->loadScripts("scripts", false, false)) {
 		startupErrorMessage("Failed to load lua scripts");
 		return;
 	}
-
-	std::cout << ">> Loading monsters" << std::endl;
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Loading monsters" << std::endl; }));
+	
 	if (!g_monsters.loadFromXml()) {
 		startupErrorMessage("Unable to load monsters!");
 		return;
 	}
-
-	std::cout << ">> Loading lua monsters" << std::endl;
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Loading lua monsters" << std::endl; }));
+	
 	if (!g_scripts->loadScripts("monster", false, false)) {
 		startupErrorMessage("Failed to load lua monsters");
 		return;
 	}
-
-	std::cout << ">> Loading outfits" << std::endl;
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Loading outfits" << std::endl; }));
+	
 	if (!Outfits::getInstance().load()) {
 		startupErrorMessage("Unable to load outfits!");
 		return;
 	}
-
-	std::cout << ">> Checking world type... " << std::flush;
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Checking world type... " << std::flush; }));
+	
 	std::string worldType = asLowerCaseString(g_config.getString(ConfigManager::WORLD_TYPE));
 	if (worldType == "pvp") {
 		g_game.setWorldType(WORLD_TYPE_PVP);
@@ -281,29 +285,32 @@ void mainLoader(int, char*[], ServiceManager* services)
 		startupErrorMessage(fmt::format("Unknown world type: {:s}, valid world types are: pvp, no-pvp and pvp-enforced.", g_config.getString(ConfigManager::WORLD_TYPE)));
 		return;
 	}
-	std::cout << asUpperCaseString(worldType) << std::endl;
+	g_utility_boss.addTask(createTask([worldType]() { std::cout << asUpperCaseString(worldType) << std::endl; }));
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Loading map" << std::endl; }));
 
-	std::cout << ">> Loading map" << std::endl;
+	
 	if (!g_game.loadMainMap(g_config.getString(ConfigManager::MAP_NAME))) {
 		startupErrorMessage("Failed to load map");
 		return;
 	}
-
-	std::cout << ">> Loading Zones \n";
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Loading Zones \n"; }));
+	
 	Zones::load();
-
-	std::cout << ">> Loading augments" << std::endl;
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Loading augments" << std::endl; }));
+	
 	Augments::loadAll();
 
 	if (g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER)) {
-		std::cout << ">> Loading Account Manager.. \n";
+		g_utility_boss.addTask(createTask([]() { std::cout << ">> Loading Account Manager.. \n"; }));
+		
 		AccountManager::initialize();
 	}
 
 	IOGuild::loadGuilds();
-	std::clog << ">> Loaded " << g_game.getGuilds().size() << " guilds" << std::endl;
-
-	std::cout << ">> Initializing gamestate" << std::endl;
+	g_utility_boss.addTask(createTask([]() { std::clog << ">> Loaded " << g_game.getGuilds().size() << " guilds" << std::endl; }));
+	
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Initializing gamestate" << std::endl; }));
+	
 	g_game.setGameState(GAME_STATE_INIT);
 
 	// Game client protocols
@@ -335,8 +342,8 @@ void mainLoader(int, char*[], ServiceManager* services)
 
 	IOMarket::checkExpiredOffers();
 	IOMarket::getInstance().updateStatistics();
+	g_utility_boss.addTask(createTask([]() { std::cout << ">> Loaded all modules, server starting up..." << std::endl; }));
 
-	std::cout << ">> Loaded all modules, server starting up..." << std::endl;
 
 #ifndef _WIN32
 	if (getuid() == 0 || geteuid() == 0) {
