@@ -38,7 +38,7 @@ if not exist "!VCPKG_INSTALL_PATH!" (
     goto vcpkg_input
 )
 
-cd "!VCPKG_INSTALL_PATH!"
+cd /d "!VCPKG_INSTALL_PATH!"
 
 :: Download and extract vcpkg
 echo Downloading vcpkg...
@@ -61,7 +61,7 @@ vcpkg integrate install || (
     echo Failed to integrate vcpkg.
     exit /b
 )
-cd "!projectDir!"
+cd /d "!projectDir!"
 
 :premake_input
 echo Please enter a path to a folder for storing premake
@@ -78,7 +78,7 @@ if not exist "!PREMAKE_PATH!" (
     goto premake_input
 )
 
-cd "!PREMAKE_PATH!"
+cd /d "!PREMAKE_PATH!"
 
 :: Download and extract premake.
 :: We are currently locked into a version of premake
@@ -161,7 +161,7 @@ if /i not "%confirm%"=="Y" goto select_vs_version
 :: Run premake with selected version
 echo.
 echo Generating solution files for %vs_version%...
-cd !projectDir!
+cd /d !projectDir!
 cmd /c premake5.exe %vs_version%
 
 if errorlevel 1 (
