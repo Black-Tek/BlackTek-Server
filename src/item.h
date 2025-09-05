@@ -883,11 +883,11 @@ class Item : virtual public Thing, public SharedObject
 		const bool isEquipped();
 		void decayImbuements(bool infight);
 
-		static std::string getDescription(const ItemType& it, int32_t lookDistance, const ItemConstPtr& item = nullptr, int32_t subType = -1, bool addArticle = true);
+		static std::string getDescription(const ItemType& it, int32_t lookDistance, const ItemPtr& item = nullptr, int32_t subType = -1, bool addArticle = true);
 		static std::string getNameDescription(const ItemType& it, const ItemConstPtr& item = nullptr, int32_t subType = -1, bool addArticle = true);
 		static std::string getWeightDescription(const ItemType& it, uint32_t weight, uint32_t count = 1);
 
-		std::string getDescription(int32_t lookDistance) const override final;
+		std::string getDescription(int32_t lookDistance) override final;
 		std::string getNameDescription() const;
 		std::string getWeightDescription() const;
 

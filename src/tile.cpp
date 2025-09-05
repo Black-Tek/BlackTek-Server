@@ -118,7 +118,7 @@ uint32_t Tile::getDownItemCount() const
 	return 0;
 }
 
-std::string Tile::getDescription(int32_t) const
+std::string Tile::getDescription(int32_t)
 {
 	return "You dont know why, but you cant see anything!";
 }

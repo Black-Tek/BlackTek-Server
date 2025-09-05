@@ -230,7 +230,7 @@ class VirtualCylinder final : public Cylinder
 			return 1;
 		}
 	
-		std::string getDescription(int32_t) const override {
+		std::string getDescription(int32_t) override {
 			return {};
 		}
 	

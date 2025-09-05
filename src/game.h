@@ -74,6 +74,101 @@ static constexpr int32_t RANGE_BROWSE_FIELD_INTERVAL = 400;
 static constexpr int32_t RANGE_WRAP_ITEM_INTERVAL = 400;
 static constexpr int32_t RANGE_REQUEST_TRADE_INTERVAL = 400;
 
+static constexpr uint32_t EquipmentDecayMaxInterval = 100;
+static constexpr uint32_t MapDecayMaxInterval = 250;
+
+#include <coroutine>
+#include <chrono>
+
+struct DecayTask 
+{
+    struct promise_type 
+	{
+        DecayTask get_return_object() { return {}; }
+        std::suspend_never initial_suspend() noexcept { return {}; }
+        std::suspend_never final_suspend() noexcept { return {}; }
+        void return_void() noexcept {}
+        void unhandled_exception() { std::terminate(); }
+    };
+};
+
+// todo : move this to a more appropriate location
+// and reuse this for all the timer wheel tasks, and spawns too
+// possibly eliminate entire usage of dispatcher/scheduler for game tasks
+// only excluding possible things that can benefit to being offloaded from main loop
+struct TimerQueue 
+{
+    using Clock = std::chrono::steady_clock;
+    using TimePoint = Clock::time_point;
+
+    struct Entry 
+	{
+        TimePoint wake;
+        std::coroutine_handle<> handle;
+        bool operator>(const Entry& other) const { return wake > other.wake; }
+    };
+
+    std::priority_queue<Entry, std::vector<Entry>, std::greater<>> queue;
+
+    void add(TimePoint when, std::coroutine_handle<> handle) 
+	{
+        queue.push({when, handle});
+    }
+
+    void tick() {
+        auto now = Clock::now();
+        while (not queue.empty() and queue.top().wake <= now) 
+		{
+            auto handle = queue.top().handle;
+            queue.pop();
+            handle.resume();
+        }
+    }
+};
+
+inline TimerQueue g_timer_queue;
+
+struct SleepFor 
+{
+    uint32_t ms;
+    bool await_ready() const noexcept { return ms == 0; }
+    void await_suspend(std::coroutine_handle<> handle) const 
+	{
+        g_timer_queue.add(TimerQueue::Clock::now() + std::chrono::milliseconds(ms), handle);
+    }
+    void await_resume() const noexcept {}
+};
+
+struct Expirable 
+{
+    Expirable(ItemPtr _item, uint32_t expire_time, uint32_t creation = 0) :  item(_item), expiration(expire_time), created(creation) {}
+
+    uint32_t getExpiration() const { return expiration; }
+    ItemPtr getItem() const { return item; }
+
+    bool operator==(const Expirable& other) const noexcept 
+	{
+        return item.get() == other.item.get();
+    }
+
+	ItemPtr item;
+    uint32_t expiration;
+	uint32_t created;
+};
+
+namespace std 
+{
+    template <>
+    struct hash<Expirable> 
+	{
+        size_t operator()(const Expirable& expirable) const noexcept 
+		{
+            return std::hash<Item*>()(expirable.item.get());
+        }
+    };
+}
+using DecayList = std::priority_queue<Expirable, std::vector<Expirable>, std::greater<Expirable>>;
+
 /**
   * Main Game class.
   * This class is responsible to control everything that happens
@@ -235,7 +330,14 @@ class Game
 		void executeDeath(uint32_t creatureId);
 
 		void addCreatureCheck(const CreaturePtr& creature) noexcept;
-		static void removeCreatureCheck(const CreaturePtr& creature) noexcept;
+        static void removeCreatureCheck(const CreaturePtr& creature) noexcept;
+
+        void addEquippedItemDecay(Expirable entry) noexcept;
+		void addMapItemDecay(Expirable entry) noexcept;
+
+        DecayTask runEquippedItemDecay() noexcept;
+        DecayTask runMapItemDecay() noexcept;
+
 
 		size_t getPlayersOnline() const {
 			return players.size();
@@ -547,7 +649,8 @@ class Game
 		Raids raids;
 		Quests quests;
 
-		std::forward_list<ItemPtr> toDecayItems;
+		std::deque<Expirable> equipped_decay_precache;
+		std::deque<Expirable> map_decay_precache;
 
 		std::unordered_set<TilePtr> getTilesToClean() const {
 			return tilesToClean;
@@ -603,6 +706,7 @@ class Game
 		}
 
 		CURL* curl;
+		std::unordered_set<Expirable> decaying_eq;
 
 	private:
 		bool playerSaySpell(const PlayerPtr& player, SpeakClasses type, const std::string& text);
@@ -610,8 +714,6 @@ class Game
 		bool playerYell(const PlayerPtr& player, const std::string& text);
 		bool playerSpeakTo(const PlayerPtr& player, SpeakClasses type, const std::string& receiver, const std::string& text);
 		void playerSpeakToNpc(const PlayerPtr& player, const std::string& text);
-
-		void checkDecay();
 		void internalDecayItem(const ItemPtr& item);
 
 		std::unordered_map<uint32_t, Guild_ptr> guilds;
@@ -619,13 +721,17 @@ class Game
 		gtl::node_hash_map<uint32_t, PlayerPtr> players;
 		gtl::node_hash_map<std::string, PlayerPtr> mappedPlayerNames;
 		gtl::node_hash_map<uint32_t, PlayerPtr> mappedPlayerGuids;
-		std::vector<TilePtr> loaded_tiles;
-		std::vector<ItemPtr> loaded_tile_items;
-		std::vector<CharacterOption> character_options;
+
 		gtl::node_hash_map<uint16_t, ItemPtr> uniqueItems;
 		gtl::node_hash_map<uint32_t, gtl::flat_hash_map<uint32_t, int32_t>> accountStorageMap;
 
+		DecayList map_expirables;
+		DecayList equipped_expirables;
+
 		std::list<ItemPtr> decayItems[EVENT_DECAY_BUCKETS];
+		std::vector<TilePtr> loaded_tiles;
+		std::vector<ItemPtr> loaded_tile_items;
+		std::vector<CharacterOption> character_options;
 		std::list<CreaturePtr> checkCreatureLists[EVENT_CREATURECOUNT];
 	
 		size_t lastBucket = 0;

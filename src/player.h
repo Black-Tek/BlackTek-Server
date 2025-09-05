@@ -179,7 +179,7 @@ class Player final : public Creature, public Cylinder
 			return name;
 		}
 	
-		std::string getDescription(int32_t lookDistance) const override;
+		std::string getDescription(int32_t lookDistance) override;
 
 		CreatureType_t getType(CreaturePtr caller = nullptr) const override {
 			// Todo : create more enums for creature types being relative to caller
@@ -565,6 +565,12 @@ class Player final : public Creature, public Cylinder
 
 		ItemPtr getInventoryItem(slots_t slot) const;
 		ItemPtr getInventoryItem(uint32_t slot) const;
+
+		ItemPtr (&getInventory())[CONST_SLOT_LAST + 1] 
+		{
+			return inventory;
+		}
+
 		static bool isInventorySlot(slots_t slot);
 
 		bool isItemAbilityEnabled(slots_t slot) const {

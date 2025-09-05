@@ -20,7 +20,7 @@ class Thing
         Thing(const Thing&) = delete;
         Thing& operator=(const Thing&) = delete;
        
-        virtual std::string getDescription(int32_t lookDistance) const = 0;
+        virtual std::string getDescription(int32_t lookDistance) = 0;
 
         virtual CylinderPtr getParent() {
             return nullptr;

@@ -154,6 +154,7 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_IMBUEMENT_SLOT,
 	ITEM_PARSE_WORTH,
 	ITEM_PARSE_AUGMENT,
+	ITEM_PARSE_RESUMABLE
 };
 
 struct Abilities {
@@ -395,6 +396,7 @@ class ItemType
 		bool lookThrough = false;
 		bool stopTime = false;
 		bool showCount = true;
+		bool resumable = false;
 };
 
 class Items

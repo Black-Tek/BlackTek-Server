@@ -731,7 +731,7 @@ bool Player::isPushable() const
 	return Creature::isPushable();
 }
 
-std::string Player::getDescription(const int32_t lookDistance) const
+std::string Player::getDescription(const int32_t lookDistance)
 {
 	std::ostringstream s;
 

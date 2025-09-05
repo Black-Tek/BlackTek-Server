@@ -213,7 +213,7 @@ class Npc final : public Creature
 
 		void onCreatureSay(const CreaturePtr& creature, SpeakClasses type, const std::string& text) override;
 		void onThink(uint32_t interval) override;
-		std::string getDescription(int32_t lookDistance) const override;
+		std::string getDescription(int32_t lookDistance) override;
 
 		bool isImmune(CombatType_t) const override {
 			return !attackable;

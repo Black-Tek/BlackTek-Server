@@ -128,6 +128,7 @@ const gtl::flat_hash_map<std::string, ItemParseAttributes_t> ItemParseAttributes
 	{"imbuementslots", 	ITEM_PARSE_IMBUEMENT_SLOT},
 	{"worth", ITEM_PARSE_WORTH},
 	{"augment", ITEM_PARSE_AUGMENT},
+    {"resumable", ITEM_PARSE_RESUMABLE},
 };
 
 const gtl::flat_hash_map<std::string, ItemTypes_t> ItemTypesMap = {
@@ -1022,6 +1023,10 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
                     if (aug.is_string()) it.augments.emplace(aug.as_string()->get());
                 }
             }
+            break;
+
+        case ITEM_PARSE_RESUMABLE:
+            if (value.is_boolean()) it.resumable = value.as_boolean()->get();
             break;
 
         default:

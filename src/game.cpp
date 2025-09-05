@@ -43,6 +43,16 @@ extern MoveEvents* g_moveEvents;
 extern Weapons* g_weapons;
 extern Scripts* g_scripts;
 
+// This is what std::greater needs for your min-heap
+bool operator>(const Expirable& a, const Expirable& b) {
+    return a.getExpiration() > b.getExpiration();
+}
+
+// This is what std::less needs (if you were using a max-heap)
+bool operator<(const Expirable& a, const Expirable& b) {
+    return a.getExpiration() < b.getExpiration();
+}
+
 Game::Game()
 {
 	offlineTrainingWindow.defaultEnterButton = 0;
@@ -75,7 +85,9 @@ void Game::start(ServiceManager* manager)
 		g_scheduler.addEvent(createSchedulerTask(EVENT_LIGHTINTERVAL, [this]() { checkLight(); }));
 	}
 	g_scheduler.addEvent(createSchedulerTask(EVENT_CREATURE_THINK_INTERVAL, [this]() { checkCreatures(0); }));
-	g_scheduler.addEvent(createSchedulerTask(EVENT_DECAYINTERVAL, [this]() { checkDecay(); }));
+    g_scheduler.addEvent(createSchedulerTask(EVENT_DUMP_DECAY, [this]() { cleanup(); }));
+    runEquippedItemDecay();
+    runMapItemDecay();
 }
 
 GameState_t Game::getGameState() const
@@ -1336,10 +1348,28 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 	}
 
 	// is there an instance where this is needed?
-	if (moveItem && moveItem->getDuration() > 0) {
-		if (moveItem->getDecaying() != DECAYING_TRUE) {
-			moveItem->setDecaying(DECAYING_TRUE);
-			toDecayItems.push_front(moveItem);
+	// I don't think so, so we will disable for now and see what happens
+	if (moveItem && moveItem->getDuration() > 0) 
+	{
+		const auto& item_type = Item::items[item->getID()];
+		const uint32_t duration = item->getDuration();
+		const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+		const uint32_t expiration = duration + call_time;
+		auto expirable_data = Expirable(item, expiration, call_time);
+		if (moveItem->getDecaying() != DECAYING_TRUE) 
+		{
+			if (const auto& player = std::dynamic_pointer_cast<Player>(toCylinder); player and item_type.resumable) 
+			{
+				moveItem->setDecaying(DECAYING_FALSE);
+			} 
+			else
+			{
+				moveItem->setDecaying(DECAYING_TRUE);
+			}
+		}
+		else if (const auto& player = std::dynamic_pointer_cast<Player>(toCylinder); player and item_type.resumable) 
+		{
+			g_game.equipped_decay_precache.push_back(std::move(expirable_data));
 		}
 	}
 
@@ -1439,13 +1469,27 @@ ReturnValue Game::internalAddItem(CylinderPtr toCylinder, ItemPtr item, int32_t 
 
 	if (item->getDuration() > 0) {
 		item->setDecaying(DECAYING_TRUE);
-		toDecayItems.push_front(item);
+
+		const auto& item_type = Item::items[item->getID()];
+		const uint32_t duration = item->getDuration();
+		const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+		const uint32_t expiration = duration + call_time;
+		auto expirable_data = Expirable(item, expiration, call_time);
+
+		// Equippable expirable
+        if (item_type.resumable) 
+		{
+            g_game.equipped_decay_precache.push_back(std::move(expirable_data));
+			return RETURNVALUE_NOERROR;
+		}
+		g_game.map_decay_precache.push_back(expirable_data);
 	}
 	return RETURNVALUE_NOERROR;
 }
 
 ReturnValue Game::internalRemoveItem(ItemPtr item, int32_t count /*= -1*/, bool test /*= false*/, uint32_t flags /*= 0*/)
 {
+    std::cout << "Removing item : " << item->getName() << " \n";
 	auto cylinder = item->getParent();
 	if (cylinder == nullptr) {
 		return RETURNVALUE_NOTPOSSIBLE;
@@ -1799,7 +1843,20 @@ ItemPtr Game::transformItem(const ItemPtr& item, const uint16_t newId, const int
 	if (newItem->getDuration() > 0) {
 		if (newItem->getDecaying() != DECAYING_TRUE) {
 			newItem->setDecaying(DECAYING_TRUE);
-			toDecayItems.push_front(newItem);
+            const auto& item_type = Item::items[newItem->getID()];
+			const uint32_t duration = newItem->getDuration();
+			const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+			const uint32_t expiration = duration + call_time;
+			auto expirable_data = Expirable(newItem, expiration, call_time);
+
+			// Equippable expirable
+            if (item_type.resumable)
+			{
+                g_game.equipped_decay_precache.push_back(std::move(expirable_data));
+				return newItem;
+			}
+			g_game.map_decay_precache.push_back(expirable_data);
+			return newItem;
 		}
 	}
 
@@ -4859,7 +4916,7 @@ void Game::checkCreatures(const size_t index) noexcept
 	// of an outdated and poor performing decay system
 	// we removed it's redundant and wasteful call from creatureCheckWalk
 	// but we need to implement a much better decay system using timestamps, stack pattern and reverse iterators
-	cleanup();
+	// cleanup();
 }
 
 void Game::changeSpeed(const CreaturePtr& creature, const int32_t varSpeedDelta)
@@ -5738,7 +5795,19 @@ void Game::startDecay(const ItemPtr& item)
 
 	if (item->getDuration() > 0) {
 		item->setDecaying(DECAYING_TRUE);
-		toDecayItems.push_front(item);
+		const auto& item_type = Item::items[item->getID()];
+		const uint32_t duration = item->getDuration();
+		const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+		const uint32_t expiration = duration + call_time;
+		auto expirable_data = Expirable(item, expiration, call_time);
+
+		// Equippable expirable
+        if (item_type.resumable) 
+		{
+            g_game.equipped_decay_precache.push_back(std::move(expirable_data));
+			return;
+		}
+		g_game.map_decay_precache.push_back(expirable_data);
 	} else {
 		internalDecayItem(item);
 	}
@@ -5754,7 +5823,9 @@ void Game::internalDecayItem(const ItemPtr& item)
     }
     else if (decayTo == 0) 
 	{
-        if (not item->getParent()) {
+        if (not item->getParent()) 
+		{
+			// this shouldn't be possible, log it
             return;
         }
 
@@ -5769,45 +5840,63 @@ void Game::internalDecayItem(const ItemPtr& item)
     }
 }
 
-void Game::checkDecay()
+void Game::addEquippedItemDecay(Expirable entry) noexcept
 {
-	g_scheduler.addEvent(createSchedulerTask(EVENT_DECAYINTERVAL, [=, this]() { checkDecay(); }));
+    decaying_eq.insert(entry);
+    equipped_expirables.push(std::move(entry));
+}
 
-	const size_t bucket = (lastBucket + 1) % EVENT_DECAY_BUCKETS;
+void Game::addMapItemDecay(Expirable entry) noexcept
+{
+    map_expirables.push(entry);
+}
 
-	auto it = decayItems[bucket].begin();
-	const auto end = decayItems[bucket].end();
-	while (it != end) {
-		const auto item = *it;
-		if (!item->canDecay()) {
-			item->setDecaying(DECAYING_FALSE);
-			it = decayItems[bucket].erase(it);
-			continue;
-		}
+DecayTask Game::runEquippedItemDecay() noexcept
+{
+    while (true) 
+	{
+        uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        while (not equipped_expirables.empty() and equipped_expirables.top().getExpiration() <= call_time)
+        {
+            Expirable expired_data = equipped_expirables.top();
+            equipped_expirables.pop();
 
-		int32_t duration = item->getDuration();
-		const int32_t decreaseTime = std::min<int32_t>(EVENT_DECAYINTERVAL * EVENT_DECAY_BUCKETS, duration);
+            if (auto it = decaying_eq.find(expired_data); it != decaying_eq.end()) 
+			{
+                internalDecayItem(expired_data.getItem());
+            }
+        }
 
-		duration -= decreaseTime;
-		item->decreaseDuration(decreaseTime);
+        uint32_t next_time = EquipmentDecayMaxInterval;
+        if (not equipped_expirables.empty()) 
+		{
+            uint32_t next_expiration_time = equipped_expirables.top().getExpiration();
+            next_time = std::min<uint32_t>((next_expiration_time - call_time), EquipmentDecayMaxInterval);
+        }
+        co_await SleepFor{next_time};
+    }
+}
 
-		if (duration <= 0) {
-			it = decayItems[bucket].erase(it);
-			internalDecayItem(item);
-		} else if (duration < EVENT_DECAYINTERVAL * EVENT_DECAY_BUCKETS) {
-			it = decayItems[bucket].erase(it);
-			if (const size_t newBucket = (bucket + ((duration + EVENT_DECAYINTERVAL / 2) / 1000)) % EVENT_DECAY_BUCKETS; newBucket == bucket) {
-				internalDecayItem(item);
-			} else {
-				decayItems[newBucket].push_back(item);
-			}
-		} else {
-			++it;
-		}
-	}
+DecayTask Game::runMapItemDecay() noexcept
+{
+    while (true) 
+	{
+        uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        while (not map_expirables.empty() and map_expirables.top().getExpiration() <= call_time)
+        {
+            Expirable expired_data = map_expirables.top();
+            map_expirables.pop();
+            internalDecayItem(expired_data.getItem());
+        }
 
-	lastBucket = bucket;
-	cleanup();
+        uint32_t next_time = MapDecayMaxInterval;
+        if (not map_expirables.empty()) 
+		{
+            uint32_t next_expiration_time = map_expirables.top().getExpiration();
+            next_time = std::min<uint32_t>((next_expiration_time - call_time), MapDecayMaxInterval);
+        }
+        co_await SleepFor{next_time};
+    }
 }
 
 void Game::checkLight()
@@ -5891,16 +5980,20 @@ void Game::shutdown()
 
 void Game::cleanup()
 {
-	//free memory
-	for (const auto& item : toDecayItems) {
-		const uint32_t dur = item->getDuration();
-		if (dur >= EVENT_DECAYINTERVAL * EVENT_DECAY_BUCKETS) {
-			decayItems[lastBucket].push_back(item);
-		} else {
-			decayItems[(lastBucket + 1 + dur / 1000) % EVENT_DECAY_BUCKETS].push_back(item);
-		}
+	for (auto& expirable : equipped_decay_precache) 
+	{
+		addEquippedItemDecay(std::move(expirable));
 	}
-	toDecayItems.clear();
+
+	for (auto& expirable : map_decay_precache)
+	{
+		addMapItemDecay(std::move(expirable));
+	}
+
+	equipped_decay_precache.clear();
+    map_decay_precache.clear();
+	g_timer_queue.tick();
+	g_scheduler.addEvent(createSchedulerTask(EVENT_DUMP_DECAY, [this]() { cleanup(); }));
 }
 
 void Game::broadcastMessage(const std::string& text, const MessageClasses type) const

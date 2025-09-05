@@ -311,7 +311,7 @@ bool Npc::canSee(const Position& pos) const
 	return Creature::canSee(getPosition(), pos, 3, 3);
 }
 
-std::string Npc::getDescription(int32_t) const
+std::string Npc::getDescription(int32_t)
 {
 	std::string descr;
 	descr.reserve(name.length() + 1);

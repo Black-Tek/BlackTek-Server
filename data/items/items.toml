@@ -8327,6 +8327,7 @@ name = "stealth ring"
 weight = 100
 slotType = "ring"
 transformEquipTo = 2202
+resumable = true
 stopduration = true
 showduration = true
 
@@ -8665,6 +8666,7 @@ duration = 600
 showduration = true
 invisible = true
 showattributes = true
+resumable = true
 
 [[items]]
 id = 2203

@@ -249,7 +249,7 @@ class Tile : public Cylinder, public SharedObject
 
 		bool hasHeight(uint32_t n) const;
 
-		std::string getDescription(int32_t lookDistance) const override final;
+		std::string getDescription(int32_t lookDistance) override final;
 
 		int32_t getClientIndexOfCreature(const PlayerConstPtr& player, const CreatureConstPtr& creature) const;
 		int32_t getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr& item) const;

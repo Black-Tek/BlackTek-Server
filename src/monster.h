@@ -64,7 +64,7 @@ class Monster final : public Creature
 			this->nameDescription = nameDescription;
 		};
 
-		std::string getDescription(int32_t) const override {
+		std::string getDescription(int32_t) override {
 			return nameDescription + '.';
 		}
 

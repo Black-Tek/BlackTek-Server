@@ -204,11 +204,26 @@ Item::Item(const Item& i) :
 ItemPtr Item::clone() const
 {
 	auto item = Item::CreateItem(id, count);
-	if (attributes) {
+	if (attributes) 
+	{
 		item->attributes.reset(new ItemAttributes(*attributes));
-		if (item->getDuration() > 0) {
+		if (item->getDuration() > 0) 
+		{
 			item->setDecaying(DECAYING_TRUE);
-			g_game.toDecayItems.push_front(item);
+			const auto& item_type = Item::items[id];
+			const int64_t duration = item->getDuration();
+			const int64_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+			const int64_t expiration = duration + call_time;
+			auto expirable_data = Expirable(item, expiration, call_time);
+
+			// Equippable expirable
+            if (item_type.resumable) 
+			{
+                g_game.equipped_decay_precache.push_back(std::move(expirable_data));
+				return item;
+			}
+			g_game.map_decay_precache.push_back(expirable_data);
+			return item;
 		}
 	}
 	return item;
@@ -283,6 +298,9 @@ void Item::onRemoved()
 
 void Item::setID(uint16_t newid)
 {
+	// todo : this is using backwards logic to manage duration
+	// we are using stopTime in a weird way, which is leading to infinite
+	// decaying items when loaded in the map
 	const ItemType& prevIt = Item::items[id];
 	id = newid;
 
@@ -295,6 +313,15 @@ void Item::setID(uint16_t newid)
 	}
 
 	removeAttribute(ITEM_ATTRIBUTE_CORPSEOWNER);
+
+	 auto fake_proxy = Expirable(getItem(), 0, 0);
+    if (auto it = g_game.decaying_eq.find(fake_proxy); it != g_game.decaying_eq.end() and getDecaying()) {
+        const uint32_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        const uint32_t diff = it->expiration - now;
+		setDecaying(DECAYING_FALSE);
+        setDuration(static_cast<int32_t>(diff));
+		g_game.decaying_eq.erase(it);
+    }
 
 	if (newDuration > 0 && (!prevIt.stopTime || !hasAttribute(ITEM_ATTRIBUTE_DURATION))) {
 		setDecaying(DECAYING_FALSE);
@@ -1079,7 +1106,7 @@ uint32_t Item::getWeight() const
 }
 
 std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
-                                 const ItemConstPtr& item /*= nullptr*/, int32_t subType /*= -1*/, bool addArticle /*= true*/)
+                                 const ItemPtr& item /*= nullptr*/, int32_t subType /*= -1*/, bool addArticle /*= true*/)
 {
 	const std::string* text = nullptr;
 
@@ -1260,7 +1287,33 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 
 	if (it.showDuration) {
 		if (item && item->hasAttribute(ITEM_ATTRIBUTE_DURATION)) {
+
+			// Todo : this is an extremely hackish way to force the description of equipped decayables
+			// to actively reflect the current duration when looking at the item.
+			// We eliminated the const ness of this call stack, which was a domino effect for other "thing"
+			// classes using the same method... this was extremely lazy.. the better alternative is to write all the
+			// methods I used here, with const versions for those missing it, so that I can reimplement the const
+			// but we also need to handle checking if this item is actually equipped, a better way than this loop.
 			uint32_t duration = item->getDuration() / 1000;
+			if (const auto& player = dynamic_pointer_cast<Player>(item->getParent()))
+			{
+				const auto slot = item->getEquipSlot();
+
+				for (const auto& equipment : player->getInventory())
+				{
+					if (equipment == item) 
+					{
+						auto fake_proxy = Expirable(item->getItem(), 0, 0);
+						if (auto it = g_game.decaying_eq.find(fake_proxy); it != g_game.decaying_eq.end() and item->getDecaying()) {
+							const uint32_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+							const uint32_t diff = it->expiration - now;
+							duration = (static_cast<int32_t>(diff) / 1000);
+							break;
+						}
+					}
+				}
+			}
+
 			s << " that will expire in ";
 
 			if (duration >= 86400) {
@@ -1371,7 +1424,7 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 	return s.str();
 }
 
-std::string Item::getDescription(int32_t lookDistance) const
+std::string Item::getDescription(int32_t lookDistance)
 {
 	const ItemType& it = items[id];
 	return getDescription(it, lookDistance, getItem());
