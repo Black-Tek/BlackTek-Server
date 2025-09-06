@@ -43,14 +43,24 @@ extern MoveEvents* g_moveEvents;
 extern Weapons* g_weapons;
 extern Scripts* g_scripts;
 
-// This is what std::greater needs for your min-heap
-bool operator>(const Expirable& a, const Expirable& b) {
+static bool operator>(const Expirable& a, const Expirable& b) 
+{
     return a.getExpiration() > b.getExpiration();
 }
 
-// This is what std::less needs (if you were using a max-heap)
-bool operator<(const Expirable& a, const Expirable& b) {
+static bool operator<(const Expirable& a, const Expirable& b) 
+{
     return a.getExpiration() < b.getExpiration();
+}
+
+static bool operator>(const CreatureRoster& a, const CreatureRoster& b) 
+{
+    return a.time_point > b.time_point;
+}
+
+static bool operator<(const CreatureRoster& a, const CreatureRoster& b) 
+{
+    return a.time_point < b.time_point;
 }
 
 Game::Game()
@@ -84,10 +94,11 @@ void Game::start(ServiceManager* manager)
 	if (g_config.getBoolean(ConfigManager::DEFAULT_WORLD_LIGHT)) {
 		g_scheduler.addEvent(createSchedulerTask(EVENT_LIGHTINTERVAL, [this]() { checkLight(); }));
 	}
-	g_scheduler.addEvent(createSchedulerTask(EVENT_CREATURE_THINK_INTERVAL, [this]() { checkCreatures(0); }));
-    g_scheduler.addEvent(createSchedulerTask(EVENT_DUMP_DECAY, [this]() { cleanup(); }));
-    runEquippedItemDecay();
-    runMapItemDecay();
+	g_scheduler.addEvent(createSchedulerTask(20, [this]() { decay_clean_cycle(); }));
+	g_scheduler.addEvent(createSchedulerTask(50, [this]() { coro_timer_cycle(); }));
+	g_scheduler.addEvent(createSchedulerTask(80, [this]() { creature_think_cycle(); }));
+	g_scheduler.addEvent(createSchedulerTask(100, [this]() { item_decay_cycle(); }));
+	g_scheduler.addEvent(createSchedulerTask(120, [this]() { equipment_decay_cycle(); }));
 }
 
 GameState_t Game::getGameState() const
@@ -4859,63 +4870,58 @@ void Game::checkCreatureAttack(const uint32_t creatureId) noexcept
 
 void Game::addCreatureCheck(const CreaturePtr& creature) noexcept
 {
-	creature->creatureCheck = true;
-
 	if (creature->inCheckCreaturesVector) {
 		// already in a vector
 		return;
 	}
-
+	const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 	creature->inCheckCreaturesVector = true;
-	checkCreatureLists[uniform_random(0, EVENT_CREATURECOUNT - 1)].push_back(creature);
+	// checkCreatureLists[uniform_random(0, EVENT_CREATURECOUNT - 1)].push_back(creature);
+    auto entry = CreatureRoster(creature, call_time + EVENT_CREATURE_THINK_INTERVAL);
+    think_queue.push(entry);
 }
 
 void Game::removeCreatureCheck(const CreaturePtr& creature) noexcept
 {
-    // it's possible removing from the creature list now
-	// rather than changing a boolean and letting the list
-	// clean it's self up, could be a huge gain by reducing work in that hot path 
-	// NEEDS TESTING
 	if (creature->inCheckCreaturesVector) 
 	{
-		creature->creatureCheck = false;
+		creature->inCheckCreaturesVector = false;
 	}
 }
 
-void Game::checkCreatures(const size_t index) noexcept
+CoroTask Game::creature_think_cycle() noexcept
 {
-	g_scheduler.addEvent(createSchedulerTask(EVENT_CHECK_CREATURE_INTERVAL, [this, next_index = (index + 1) % EVENT_CREATURECOUNT]() { checkCreatures(next_index); }));
-
-	auto& checkCreatureList = checkCreatureLists[index];
-	
-	auto valid_creatures = checkCreatureList 
-    | std::views::filter([](const auto& creature) { return creature->creatureCheck; })
-    | std::views::filter([](const auto& creature) { return creature->getHealth() > 0; });
-
-	for (auto& creature : valid_creatures) 
+	while (true) 
 	{
-		creature->onThink(EVENT_CREATURE_THINK_INTERVAL);
-		creature->onAttacking(EVENT_CREATURE_THINK_INTERVAL);
-		creature->executeConditions(EVENT_CREATURE_THINK_INTERVAL);
-	}
+		const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();	
+		std::vector<CreatureRoster> local_buffer;
 
-	for (auto it = checkCreatureList.rbegin(); it != checkCreatureList.rend();) 
-	{
-		if (not (*it)->creatureCheck) 
+		while (not think_queue.empty() and think_queue.top().time_point <= call_time)
 		{
-			(*it)->inCheckCreaturesVector = false;
-			it = decltype(it)(checkCreatureList.erase(std::next(it).base()));
-		} 
-		else 
-		{
-			++it;
+			CreatureRoster roster_data = think_queue.top();
+			think_queue.pop();
+			if (roster_data.creature->inCheckCreaturesVector)
+			{
+				roster_data.creature->onThink(EVENT_CREATURE_THINK_INTERVAL);
+				roster_data.creature->onAttacking(EVENT_CREATURE_THINK_INTERVAL);
+				roster_data.creature->executeConditions(EVENT_CREATURE_THINK_INTERVAL);
+				local_buffer.emplace_back(roster_data.creature, roster_data.time_point + EVENT_CREATURE_THINK_INTERVAL);
+			}
 		}
+
+		for (auto& entry : local_buffer) 
+		{
+			think_queue.push(std::move(entry));
+		}
+
+		uint32_t next_time = EVENT_CHECK_CREATURE_INTERVAL;
+        if (not think_queue.empty()) 
+		{
+            uint32_t next_expiration_time = think_queue.top().time_point;
+            next_time = std::min<uint32_t>((next_expiration_time - call_time), EquipmentDecayMaxInterval);
+        }
+		co_await SleepFor{next_time};
 	}
-	// Todo : cleanup() is hijacking this cycle as part
-	// of an outdated and poor performing decay system
-	// we removed it's redundant and wasteful call from creatureCheckWalk
-	// but we need to implement a much better decay system using timestamps, stack pattern and reverse iterators
-	// cleanup();
 }
 
 void Game::changeSpeed(const CreaturePtr& creature, const int32_t varSpeedDelta)
@@ -5850,7 +5856,7 @@ void Game::addMapItemDecay(Expirable entry) noexcept
     map_expirables.push(entry);
 }
 
-DecayTask Game::runEquippedItemDecay() noexcept
+CoroTask Game::equipment_decay_cycle() noexcept
 {
     while (true) 
 	{
@@ -5876,7 +5882,7 @@ DecayTask Game::runEquippedItemDecay() noexcept
     }
 }
 
-DecayTask Game::runMapItemDecay() noexcept
+CoroTask Game::item_decay_cycle() noexcept
 {
     while (true) 
 	{
@@ -5966,7 +5972,7 @@ void Game::shutdown()
 	map.spawns.clear();
 	raids.clear();
 
-	cleanup();
+	decay_clean_cycle();
 
 	if (serviceManager) {
 		serviceManager->stop();
@@ -5977,7 +5983,13 @@ void Game::shutdown()
 	std::cout << " done!" << std::endl;
 }
 
-void Game::cleanup()
+void Game::coro_timer_cycle()
+{
+	g_timer_queue.tick();
+	g_scheduler.addEvent(createSchedulerTask(EVENT_CORO_TIMER_CYCLE, [this]() { coro_timer_cycle(); }));
+}
+
+void Game::decay_clean_cycle()
 {
 	for (auto& expirable : equipped_decay_precache) 
 	{
@@ -5991,8 +6003,7 @@ void Game::cleanup()
 
 	equipped_decay_precache.clear();
     map_decay_precache.clear();
-	g_timer_queue.tick();
-	g_scheduler.addEvent(createSchedulerTask(EVENT_DUMP_DECAY, [this]() { cleanup(); }));
+	g_scheduler.addEvent(createSchedulerTask(EVENT_DUMP_DECAY, [this]() { decay_clean_cycle(); }));
 }
 
 void Game::broadcastMessage(const std::string& text, const MessageClasses type) const

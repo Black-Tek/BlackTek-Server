@@ -80,11 +80,11 @@ static constexpr uint32_t MapDecayMaxInterval = 250;
 #include <coroutine>
 #include <chrono>
 
-struct DecayTask 
+struct CoroTask 
 {
     struct promise_type 
 	{
-        DecayTask get_return_object() { return {}; }
+        CoroTask get_return_object() { return {}; }
         std::suspend_never initial_suspend() noexcept { return {}; }
         std::suspend_never final_suspend() noexcept { return {}; }
         void return_void() noexcept {}
@@ -155,6 +155,15 @@ struct Expirable
     uint32_t expiration;
 	uint32_t created;
 };
+
+struct CreatureRoster
+{
+    CreatureRoster(CreaturePtr c_pointer, uint32_t time = 0) : creature(c_pointer), time_point(time) {}
+	CreaturePtr creature;
+	uint32_t time_point;
+};
+
+using CreatureQueue = std::priority_queue<CreatureRoster, std::vector<CreatureRoster>, std::greater<CreatureRoster>>;
 
 namespace std 
 {
@@ -332,11 +341,13 @@ class Game
 		void addCreatureCheck(const CreaturePtr& creature) noexcept;
         static void removeCreatureCheck(const CreaturePtr& creature) noexcept;
 
+        CoroTask creature_think_cycle() noexcept;
+
         void addEquippedItemDecay(Expirable entry) noexcept;
 		void addMapItemDecay(Expirable entry) noexcept;
 
-        DecayTask runEquippedItemDecay() noexcept;
-        DecayTask runMapItemDecay() noexcept;
+        CoroTask equipment_decay_cycle() noexcept;
+        CoroTask item_decay_cycle() noexcept;
 
 
 		size_t getPlayersOnline() const {
@@ -554,8 +565,9 @@ class Game
 
 		std::vector<ItemPtr> getMarketItemList(uint16_t wareId, uint16_t sufficientCount, const PlayerConstPtr& player);
 
-		void cleanup();
-		void shutdown();
+		void coro_timer_cycle();
+		void decay_clean_cycle();
+        void shutdown();
 
 		bool canThrowObjectTo(const Position& fromPos, const Position& toPos, bool checkLineOfSight = true, bool sameFloor = false,
 		                      int32_t rangex = Map::maxClientViewportX, int32_t rangey = Map::maxClientViewportY);
@@ -580,7 +592,6 @@ class Game
 		void checkCreatureWalk(uint32_t creatureId) noexcept;
 		void updateCreatureWalk(uint32_t creatureId) noexcept;
 		void checkCreatureAttack(uint32_t creatureId) noexcept;
-		void checkCreatures(size_t index) noexcept;
 		void checkLight();
 
 		bool combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, const CreaturePtr& target, bool checkDefense, bool checkArmor, bool field, bool ignoreResistances = false);
@@ -732,7 +743,8 @@ class Game
 		std::vector<TilePtr> loaded_tiles;
 		std::vector<ItemPtr> loaded_tile_items;
 		std::vector<CharacterOption> character_options;
-		std::list<CreaturePtr> checkCreatureLists[EVENT_CREATURECOUNT];
+		CreatureQueue think_queue;
+		CreatureQueue walk_queue;
 	
 		size_t lastBucket = 0;
 
