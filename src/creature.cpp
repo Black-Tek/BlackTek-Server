@@ -227,7 +227,7 @@ void Creature::onWalk()
 
 	if (eventWalk != 0) {
 		eventWalk = 0;
-		addEventWalk();
+		addEventWalk(true);
 	}
 }
 
