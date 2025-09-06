@@ -35,11 +35,9 @@ local function tableShuffle(t)
 end
 
 function multispawn.onSay(player, words, param)
-    print("saying the words")
     if not player:getGroup():getAccess() then
         return true
     end
-    print("setting first params")
     local args = param:splitTrimmed(":")
     local creature = args[1]
 
@@ -48,9 +46,7 @@ function multispawn.onSay(player, words, param)
     end
 
     local player_pos = player:getPosition()
-    print("creating helper function")
     local doSpawn = function(dataset)
-        print("doSpawn called")
         local x = dataset[1]
         local y = dataset[2]
         if not (x == 0 and y == 0) then
