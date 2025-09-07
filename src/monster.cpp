@@ -491,88 +491,47 @@ void Monster::onCreatureLeave(const CreaturePtr& creature)
 
 bool Monster::searchTarget(TargetSearchType_t searchType /*= TARGETSEARCH_DEFAULT*/)
 {
-	std::list<CreaturePtr> resultList;
+    if (targetList.empty())
+		return false;
+
 	const Position& myPos = getPosition();
+	if (searchType == TARGETSEARCH_NEAREST)
+	{
+		CreaturePtr priority_target = nullptr;
+		int32_t priority_path = 48; // we should initialize this to the max distance we can search + 1
+		for (const auto& weakCreature : targetList) 
+		{
+			CreaturePtr creature = weakCreature.lock();
+			if (not creature or getFollowCreature() == creature or not canTarget(creature) or not canUseAttack(myPos, creature))
+				continue;
 
-	// First, collect valid targets from targetList
-	for (const auto& weakCreature : targetList) {
-		CreaturePtr creature = weakCreature.lock();
-		if (creature && getFollowCreature() != creature && isTarget(creature)) {
-			if (searchType == TARGETSEARCH_RANDOM || canUseAttack(myPos, creature)) {
-				resultList.push_back(creature);
+			const Position& targetPosition = creature->getPosition();
+			int32_t distance = Position::getDistanceX(myPos, targetPosition) + Position::getDistanceY(myPos, targetPosition);
+			if (distance < priority_path)
+			{
+				priority_path = distance;
+				priority_target = creature;
 			}
 		}
+		if (priority_target)
+			return selectTarget(priority_target);
 	}
-
-	switch (searchType) {
-	case TARGETSEARCH_NEAREST: {
+	else
+	{
 		CreaturePtr target = nullptr;
-
-		if (!resultList.empty()) {
-			auto it = resultList.begin();
-			target = *it;
-
-			if (++it != resultList.end()) {
-				const Position& targetPosition = target->getPosition();
-				int32_t minRange = Position::getDistanceX(myPos, targetPosition) + Position::getDistanceY(myPos, targetPosition);
-				do {
-					const Position& pos = (*it)->getPosition();
-					const int32_t distance = Position::getDistanceX(myPos, pos) + Position::getDistanceY(myPos, pos);
-					if (distance < minRange) {
-						target = *it;
-						minRange = distance;
-					}
-				} while (++it != resultList.end());
+		bool valid = false;
+		do
+		{
+			auto& selection = targetList[uniform_random(0, targetList.size() - 1)];
+			CreaturePtr creature = selection.lock();
+			valid = (creature and getFollowCreature() != creature and canTarget(creature));
+			if (valid) 
+			{
+				return selectTarget(creature);
 			}
-		}
-		else {
-			int32_t minRange = std::numeric_limits<int32_t>::max();
-			for (const auto& weakCreature : targetList) {
-				CreaturePtr creature = weakCreature.lock();
-				if (!creature || !isTarget(creature)) {
-					continue;
-				}
-
-				const Position& pos = creature->getPosition();
-				int32_t distance = Position::getDistanceX(myPos, pos) + Position::getDistanceY(myPos, pos);
-				if (distance < minRange) {
-					target = creature;
-					minRange = distance;
-				}
-			}
-		}
-
-		if (target && selectTarget(target)) {
-			return true;
-		}
-		break;
+		} while (valid = false);
 	}
-
-	case TARGETSEARCH_DEFAULT:
-	case TARGETSEARCH_ATTACKRANGE:
-	case TARGETSEARCH_RANDOM:
-	default: {
-		if (!resultList.empty()) {
-			auto it = resultList.begin();
-			std::advance(it, uniform_random(0, resultList.size() - 1));
-			return selectTarget(*it);
-		}
-
-		if (searchType == TARGETSEARCH_ATTACKRANGE) {
-			return false;
-		}
-
-		break;
-	}
-	}
-
-	// Pick the first valid target in the list
-	for (const auto& weakTarget : targetList) {
-		CreaturePtr target = weakTarget.lock();
-		if (target && getFollowCreature() != target && selectTarget(target)) {
-			return true;
-		}
-	}
+	// shouldn't be able to make it here, if so log it
 	return false;
 }
 
@@ -624,7 +583,7 @@ BlockType_t Monster::blockHit(const CreaturePtr& attacker, CombatType_t combatTy
 	return blockType;
 }
 
-bool Monster::isTarget(const CreatureConstPtr& creature) const
+bool Monster::canTarget(const CreatureConstPtr& creature) const
 {
 	if (creature->isRemoved() || !creature->isAttackable() ||
 	        creature->getZone() == ZONE_PROTECTION || !canSeeCreature(creature)) {
@@ -639,7 +598,7 @@ bool Monster::isTarget(const CreatureConstPtr& creature) const
 
 bool Monster::selectTarget(const CreaturePtr& creature)
 {
-	if (!isTarget(creature)) {
+	if (!canTarget(creature)) {
 		return false;
 	}
 

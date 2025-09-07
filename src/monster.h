@@ -185,7 +185,7 @@ class Monster final : public Creature
 			return friendList;
 		}
 
-		bool isTarget(const CreatureConstPtr& creature) const;
+		bool canTarget(const CreatureConstPtr& creature) const;
 	
 		bool isFleeing() const {
 			return !isSummon() && getHealth() <= mType->info.runAwayHealth && challengeFocusDuration <= 0;

@@ -12941,16 +12941,17 @@ int LuaScriptInterface::luaMonsterSetIdle(lua_State* L)
 
 int LuaScriptInterface::luaMonsterIsTarget(lua_State* L)
 {
+	// todo update this too
 	// monster:isTarget(creature)
-	if (const auto monster = getSharedPtr<Monster>(L, 1)) {
-		const auto creature = getCreature(L, 2);
+	if (const auto& monster = getSharedPtr<Monster>(L, 1)) {
+		const auto& creature = getCreature(L, 2);
 		if (!creature) {
 			reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 			pushBoolean(L, false);
 			return 1;
 		}
 
-		pushBoolean(L, monster->isTarget(creature));
+		pushBoolean(L, monster->canTarget(creature));
 	} else {
 		lua_pushnil(L);
 	}
