@@ -136,6 +136,7 @@ class ConfigManager
 			ACCOUNT_MANAGER_POS_X,
 			ACCOUNT_MANAGER_POS_Y,
 			ACCOUNT_MANAGER_POS_Z,
+			SUMMON_PROXIMITY,
 
 			LAST_INTEGER_CONFIG /* this must be the last one */
 		};

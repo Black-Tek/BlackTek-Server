@@ -1875,7 +1875,7 @@ void Monster::getPathSearchParams(const CreatureConstPtr& creature, FindPathPara
 
 	if (isSummon()) {
 		if (getMaster() == creature) {
-			fpp.maxTargetDist = 2;
+			fpp.maxTargetDist = g_config.getNumber(ConfigManager::SUMMON_PROXIMITY);
 			fpp.fullPathSearch = true;
 		} else if (mType->info.targetDistance <= 1) {
 			fpp.fullPathSearch = true;

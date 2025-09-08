@@ -164,6 +164,9 @@ rewardRateDamageDone = 1
 rewardRateDamageTaken = 0.5
 rewardRateHealingDone = 0.3
 
+-- How many squares away a summon stands from the player
+summonProximity = 2
+
 -- Monster Despawn Config
 -- despawnRange is the amount of floors a monster can be from its spawn position
 -- despawnRadius is how many tiles away it can be from its spawn position
