@@ -1158,6 +1158,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 							const int32_t difference = (originalDamage - conversionAmount);
 							
 							CombatDamage imbueDamage;
+							imbueDamage.primary.type = damage.primary.type;
 							imbueDamage.blockType = BLOCK_NONE;
 							imbueDamage.origin = ORIGIN_IMBUEMENT;
 
