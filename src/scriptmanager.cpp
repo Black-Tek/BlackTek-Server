@@ -66,10 +66,6 @@ bool ScriptingManager::loadScriptSystems()
 	g_weapons->loadDefaults();
 
 	g_spells = new Spells();
-	if (!g_spells->loadFromXml()) {
-		std::cout << "> ERROR: Unable to load spells!" << std::endl;
-		return false;
-	}
 
 	g_actions = new Actions();
 	if (!g_actions->loadFromXml()) {
