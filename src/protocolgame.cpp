@@ -1236,7 +1236,7 @@ void ProtocolGame::parseMarketLeave()
 
 void ProtocolGame::parseMarketBrowse(NetworkMessage& msg)
 {
-	uint8_t browseId = msg.get<uint8_t>();
+	uint16_t browseId = msg.get<uint16_t>();
 	if (browseId == MARKETREQUEST_OWN_OFFERS) {
 		g_dispatcher.addTask([playerID = player->getID()]() { g_game.playerBrowseMarketOwnOffers(playerID); });
 	}

@@ -6392,14 +6392,14 @@ void Game::playerBrowseMarket(const uint32_t playerId, const uint16_t itemID)
 	}
 
 	const ItemType& it = Item::items[itemID];
-	if (it.id == 0 || it.wareId == 0) {
+	if (it.id == 0 or it.wareId == 0) {
 		return;
 	}
 
 	const MarketOfferList& buyOffers = IOMarket::getActiveOffers(MARKETACTION_BUY, it.id);
 	const MarketOfferList& sellOffers = IOMarket::getActiveOffers(MARKETACTION_SELL, it.id);
 	player->sendMarketBrowseItem(it.id, buyOffers, sellOffers);
-	player->sendMarketDetail(it.id);
+	// player->sendMarketDetail(it.id); // we temporarily disable this until we discover which part of the method is sending back packets
 }
 
 void Game::playerBrowseMarketOwnOffers(const uint32_t playerId)
