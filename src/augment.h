@@ -17,15 +17,17 @@ public:
 	Augment() = default;
 	Augment(const std::string& name, const std::string& description = "");
 	Augment(std::shared_ptr<Augment>& original);
+	
+	 bool operator==(const Augment& other) const 
+    {
+        return getName() == other.getName();
+    }
 
 	~Augment() = default;
 
 	// allow copying
 	explicit Augment(const Augment&) = default;
 	Augment& operator=(const Augment&) = default;
-
-	// comparison operator
-	std::strong_ordering operator<=>(const Augment& other) const = default;
 
 	const std::string getName() const;
 	const std::string getDescription() const;

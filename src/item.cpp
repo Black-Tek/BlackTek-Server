@@ -873,32 +873,34 @@ bool Item::unserializeAttr(PropStream& propStream)
 
 bool Item::unserializeAugments(PropStream& propStream)
 {
-	uint32_t augmentCount = 0;
-
-	if (!propStream.read<uint32_t>(augmentCount)) {
-		return false;
-	}
-
-	if (not isAugmented() and augmentCount > 0)
+    uint32_t augmentCount = 0;
+    if (not propStream.read<uint32_t>(augmentCount)) 
 	{
-		augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+        return false;
+    }
+    
+    if (not isAugmented() and augmentCount > 0)
+    {
+        augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
         augments->reserve(augmentCount);
-	}
+    }
+    
+    for (uint32_t i = 0; i < augmentCount; ++i) 
+    {
+        auto augment = std::make_shared<Augment>();
+        bool result = augment->unserialize(propStream);
+        if (not result) 
+        {
+            return result;
+        }
 
-	for (uint32_t i = 0; i < augmentCount; ++i) 
-	{
-		auto augment = std::make_shared<Augment>();
-		bool result = augment->unserialize(propStream);
-		if (not result) 
-		{
-			return result;
-		} 
-		else 
-		{
-			addAugment(std::move(augment));
-		}
-	}
-	return true;
+        if (not hasAugment(augment))
+        {
+            addAugment(augment);
+        }
+    }
+
+    return true;
 }
 
 bool Item::unserializeItemNode(OTB::Loader&, const OTB::Node&, PropStream& propStream)
@@ -1925,10 +1927,13 @@ const bool Item::addAugment(const std::shared_ptr<Augment>& augment)
 		return true;
 	}
 
-	if (std::ranges::find(*augments, augment) != augments->end()) 
-	{
-		return false;
-	}
+	for (const auto& aug : *augments) 
+    {
+        bool same_pointer = (aug.get() == augment.get());
+        bool same_name = (*aug == *augment);
+        if (same_pointer or same_name)
+			return false;
+    }
 
 	augments->push_back(augment);
     g_events->eventItemOnAugment(getItem(), augment);
@@ -2023,18 +2028,19 @@ bool Item::hasAugment(std::string_view name) const
 bool Item::hasAugment(const std::shared_ptr<Augment>& augment) const
 {
     if (not isAugmented()) 
-	{
+    {
         return false;
     }
-
-	for (const auto& aug : *augments) 
-	{
-		if (aug == augment) 
-		{
+    
+    for (const auto& aug : *augments) 
+    {
+        bool same_pointer = (aug.get() == augment.get());
+        bool same_name = (*aug == *augment);
+        if (same_pointer or same_name)
 			return true;
-		}
-	}
-	return false;
+    }
+    
+    return false;
 }
 
 void Item::decayImbuements(bool infight) {
