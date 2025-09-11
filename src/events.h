@@ -12,6 +12,7 @@ class Party;
 class ItemType;
 class Tile;
 class Spell;
+class DamageModifier;
 
 enum class EventInfoId {
 	// Creature
@@ -77,6 +78,8 @@ class Events
 		int32_t itemOnDefend = -1;
 		int32_t itemOnAugment = -1;
 		int32_t itemOnRemoveAugment = -1;
+		int32_t itemOnModifierAttack = -1;
+		int32_t itemOnModifierDefend = -1;
 
 	};
 
@@ -139,7 +142,9 @@ class Events
 		void eventItemOnDefend(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
 		void eventItemOnAugment(const ItemPtr& item, std::shared_ptr<Augment> augment);
 		void eventItemOnRemoveAugment(const ItemPtr& item, std::shared_ptr<Augment> augment);
-		
+
+		void eventItemOnModifierAttack(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& defender, const std::shared_ptr<DamageModifier>& modifier, CombatDamage& damage);
+    	void eventItemOnModifierDefend(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& attacker, const std::shared_ptr<DamageModifier>& modifier, CombatDamage& damage);
 
 		constexpr auto getScriptId(EventInfoId eventInfoId) const {
 			switch (eventInfoId)

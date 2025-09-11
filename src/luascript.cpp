@@ -7611,7 +7611,7 @@ int LuaScriptInterface::luaItemAddAugment(lua_State* L)
 		return 1;
 	}
 
-	if (item->isStackable() || item->canDecay() || !item->canTransform() || item->getCharges() || !item->hasProperty(CONST_PROP_MOVEABLE)) {
+	if (item->isStackable() || item->canDecay() || !item->canTransform() || !item->hasProperty(CONST_PROP_MOVEABLE)) {
 		lua_pushboolean(L, false);
 		return 1;
 	}
@@ -8751,6 +8751,15 @@ int LuaScriptInterface::luaAugmentGetDefenseModifiers(lua_State* L) {
 	return 1;
 }
 
+
+void LuaScriptInterface::pushDamageModifier(lua_State* L, const std::shared_ptr<DamageModifier>& modifier) {
+    if (modifier) {
+        pushSharedPtr(L, modifier);
+        setMetatable(L, -1, "DamageModifier");
+    } else {
+        lua_pushnil(L);
+    }
+}
 
 // Container
 int LuaScriptInterface::luaContainerCreate(lua_State* L)
