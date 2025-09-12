@@ -8298,6 +8298,7 @@ slotType = "ammo"
 weight = 1500
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 2163
@@ -8307,6 +8308,7 @@ slotType = "ammo"
 weight = 1500
 decayTo = 0
 showduration = true
+resumable = true
 duration = 3000
 
 [[items]]
@@ -8330,6 +8332,7 @@ transformEquipTo = 2202
 resumable = true
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 2166
@@ -8340,6 +8343,7 @@ slotType = "ring"
 transformEquipTo = 2203
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 2167
@@ -8350,6 +8354,7 @@ slotType = "ring"
 transformEquipTo = 2204
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 2168
@@ -8360,6 +8365,7 @@ slotType = "ring"
 transformEquipTo = 2205
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 2169
@@ -8370,6 +8376,7 @@ slotType = "ring"
 transformEquipTo = 2206
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 2170
@@ -8664,6 +8671,7 @@ decayTo = 0
 transformDeEquipTo = 2165
 duration = 600
 showduration = true
+resumable = true
 invisible = true
 showattributes = true
 resumable = true
@@ -8679,6 +8687,7 @@ transformDeEquipTo = 2166
 skillFist = 6
 duration = 1800
 showduration = true
+resumable = true
 
 [[items]]
 id = 2204
@@ -8690,6 +8699,7 @@ decayTo = 0
 transformDeEquipTo = 2167
 duration = 600
 showduration = true
+resumable = true
 manashield = true
 showattributes = true
 
@@ -8707,6 +8717,7 @@ healthTicks = 6000
 manaGain = 8
 manaTicks = 6000
 showduration = true
+resumable = true
 showattributes = true
 
 [[items]]
@@ -8719,6 +8730,7 @@ decayTo = 0
 transformDeEquipTo = 2169
 duration = 600
 showduration = true
+resumable = true
 speed = 60
 showattributes = true
 
@@ -8731,6 +8743,7 @@ slotType = "ring"
 transformEquipTo = 2210
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 2208
@@ -8741,6 +8754,7 @@ slotType = "ring"
 transformEquipTo = 2211
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 2209
@@ -8751,6 +8765,7 @@ slotType = "ring"
 transformEquipTo = 2212
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 2210
@@ -8763,6 +8778,7 @@ transformDeEquipTo = 2207
 skillSword = 4
 duration = 1800
 showduration = true
+resumable = true
 
 [[items]]
 id = 2211
@@ -8775,6 +8791,7 @@ transformDeEquipTo = 2208
 skillAxe = 4
 duration = 1800
 showduration = true
+resumable = true
 
 [[items]]
 id = 2212
@@ -8787,6 +8804,7 @@ transformDeEquipTo = 2209
 skillClub = 4
 duration = 1800
 showduration = true
+resumable = true
 
 [[items]]
 id = 2213
@@ -8797,6 +8815,7 @@ slotType = "ring"
 transformEquipTo = 2215
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 2214
@@ -8807,6 +8826,7 @@ slotType = "ring"
 transformEquipTo = 2216
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 2215
@@ -8819,6 +8839,7 @@ transformDeEquipTo = 2213
 suppressDrunk = true
 duration = 3600
 showduration = true
+resumable = true
 showattributes = true
 
 [[items]]
@@ -8835,6 +8856,7 @@ healthTicks = 6000
 manaGain = 24
 manaTicks = 6000
 showduration = true
+resumable = true
 showattributes = true
 
 [[items]]
@@ -12195,6 +12217,7 @@ healthTicks = 6000
 manaGain = 12
 manaTicks = 6000
 showduration = true
+resumable = true
 showattributes = true
 
 [[items]]
@@ -30004,6 +30027,7 @@ slotType = "ammo"
 weight = 2200
 decayTo = 2229
 showduration = true
+resumable = true
 duration = 3000
 
 [[items]]
@@ -30014,6 +30038,7 @@ slotType = "ammo"
 weight = 2200
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 5814
@@ -32447,6 +32472,7 @@ slotType = "feet"
 transformEquipTo = 2640
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 6133
@@ -33354,6 +33380,7 @@ slotType = "ring"
 transformEquipTo = 6301
 stopduration = true
 showduration = true
+resumable = true
 augment = "death ring"
 
 [[items]]
@@ -33368,6 +33395,7 @@ transformDeEquipTo = 6300
 duration = 480
 skillShield = -10
 showduration = true
+resumable = true
 description = "Wearing it makes you feel a little weaker than usual."
 augment = "death ring"
 
@@ -39474,6 +39502,7 @@ name = "flame of life"
 decayTo = 7360
 duration = 360
 showduration = true
+resumable = true
 
 [[items]]
 id = 7360
@@ -39482,6 +39511,7 @@ name = "flame of life"
 decayTo = 0
 duration = 60
 showduration = true
+resumable = true
 
 [[items]]
 id = 7361
@@ -55140,6 +55170,7 @@ decayTo = 10022
 transformDeEquipTo = 9933
 duration = 3600
 showduration = true
+resumable = true
 showattributes = true
 
 [[items]]
@@ -55153,6 +55184,7 @@ slotType = "feet"
 transformEquipTo = 9932
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 9934
@@ -55319,6 +55351,7 @@ speed = 50
 decayTo = 0
 duration = 86400
 showduration = true
+resumable = true
 
 [[items]]
 id = 9957
@@ -57364,6 +57397,7 @@ name = "violet flame"
 decayTo = 7359
 duration = 600
 showduration = true
+resumable = true
 
 [[items]]
 id = 10289
@@ -69830,6 +69864,7 @@ decayTo = 5461
 duration = 21600
 transformDeEquipTo = 5461
 showduration = true
+resumable = true
 showattributes = true
 
 [[items]]
@@ -91509,6 +91544,7 @@ slotType = "ring"
 transformEquipTo = 18528
 stopduration = true
 showduration = true
+resumable = true
 showattributes = true
 augment = "prismatic ring"
 
@@ -92371,6 +92407,7 @@ transformDeEquipTo = 18408
 decayTo = 0
 duration = 3600
 showduration = true
+resumable = true
 showattributes = true
 
 [[items]]
@@ -122865,6 +122902,7 @@ weight = 550
 slotType = "necklace"
 transformEquipTo = 24790
 showduration = true
+resumable = true
 stopduration = true
 armor = 2
 
@@ -123378,6 +123416,7 @@ transformDeEquipTo = 24717
 armor = 2
 duration = 3600
 showduration = true
+resumable = true
 
 [[items]]
 id = 24791
@@ -129474,6 +129513,7 @@ slotType = "head"
 transformEquipTo = 26131
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 26131
@@ -129485,6 +129525,7 @@ decayTo = 0
 transformDeEquipTo = 26130
 duration = 3600
 showduration = true
+resumable = true
 speed = 20
 armor = 7
 healthGain = 2
@@ -129502,6 +129543,7 @@ decayTo = 0
 transformDeEquipTo = 26133
 duration = 3600
 showduration = true
+resumable = true
 speed = 60
 armor = 2
 healthGain = 3
@@ -129519,6 +129561,7 @@ slotType = "feet"
 transformEquipTo = 26132
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 26134
@@ -129838,6 +129881,7 @@ duration = 1800
 skillDist = 4
 magiclevelpoints = 2
 showduration = true
+resumable = true
 transformDeEquipTo = 26198
 
 [[items]]
@@ -129854,6 +129898,7 @@ manaGain = 8
 manaTicks = 6000
 magiclevelpoints = 3
 showduration = true
+resumable = true
 transformDeEquipTo = 26199
 
 [[items]]
@@ -129868,6 +129913,7 @@ skillSword = 4
 skillClub = 4
 skillAxe = 4
 showduration = true
+resumable = true
 transformDeEquipTo = 26200
 
 [[items]]
@@ -129879,6 +129925,7 @@ slotType = "ring"
 transformEquipTo = 26186
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 26186
@@ -129891,6 +129938,7 @@ duration = 1800
 skillDist = 3
 magiclevelpoints = 1
 showduration = true
+resumable = true
 transformDeEquipTo = 26185
 
 [[items]]
@@ -129902,6 +129950,7 @@ slotType = "ring"
 transformEquipTo = 26188
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 26188
@@ -129917,6 +129966,7 @@ manaGain = 4
 manaTicks = 6000
 magiclevelpoints = 2
 showduration = true
+resumable = true
 transformDeEquipTo = 26187
 
 [[items]]
@@ -129928,6 +129978,7 @@ slotType = "ring"
 transformEquipTo = 26190
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 26190
@@ -129941,6 +129992,7 @@ skillSword = 3
 skillClub = 3
 skillAxe = 3
 showduration = true
+resumable = true
 transformDeEquipTo = 26189
 
 [[items]]
@@ -129997,6 +130049,7 @@ slotType = "necklace"
 transformEquipTo = 26182
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 26199
@@ -130007,6 +130060,7 @@ slotType = "necklace"
 transformEquipTo = 26183
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 26200
@@ -130017,6 +130071,7 @@ slotType = "necklace"
 transformEquipTo = 26184
 stopduration = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 26201
@@ -131023,6 +131078,7 @@ duration = 604800
 charges = 500
 showcharges = true
 showduration = true
+resumable = true
 
 [[items]]
 id = 26379
