@@ -1,4 +1,6 @@
-function onStartup()
+local global_startup = GlobalEvent("global_startup_event")
+
+global_startup.onStartup = function()
 
 	db.query("TRUNCATE TABLE `players_online`")
 	db.asyncQuery("DELETE FROM `guild_wars` WHERE `status` = 0")
@@ -57,3 +59,6 @@ function onStartup()
 		end
 	end
 end
+
+global_startup:type("startup")
+global_startup:register()
