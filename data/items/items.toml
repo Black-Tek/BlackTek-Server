@@ -8332,7 +8332,6 @@ transformEquipTo = 2202
 resumable = true
 stopduration = true
 showduration = true
-resumable = true
 
 [[items]]
 id = 2166
@@ -8674,7 +8673,6 @@ showduration = true
 resumable = true
 invisible = true
 showattributes = true
-resumable = true
 
 [[items]]
 id = 2203
