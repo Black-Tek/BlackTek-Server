@@ -106,8 +106,6 @@ class Spell : public BaseSpell
 {
 	public:
 		Spell() = default;
-
-		bool configureSpell(const pugi::xml_node& node);
 		const std::string& getName() const {
 			return name;
 		}
@@ -363,8 +361,6 @@ class InstantSpell final : public TalkAction, public Spell
 	public:
 		explicit InstantSpell(LuaScriptInterface* interface) : TalkAction(interface) {}
 
-		bool configureEvent(const pugi::xml_node& node) override;
-
 		bool playerCastInstant(const PlayerPtr& player, std::string& param);
 
 		bool castSpell(const CreaturePtr& creature) override;
@@ -436,8 +432,6 @@ class RuneSpell final : public Action, public Spell
 {
 	public:
 		explicit RuneSpell(LuaScriptInterface* interface) : Action(interface) {}
-
-		bool configureEvent(const pugi::xml_node& node) override;
 
 		ReturnValue canExecuteAction(const PlayerConstPtr& player, const Position& toPos) override;
 	
