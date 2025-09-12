@@ -10,6 +10,7 @@
 
 *.dll
 *.exe
+*.pdb
 
 # VCPKG Dependencies
 /vcpkg_installed
