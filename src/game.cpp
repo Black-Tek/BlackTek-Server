@@ -5914,7 +5914,7 @@ CoroTask Game::equipment_decay_cycle() noexcept
         uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         while (not equipped_expirables.empty() and equipped_expirables.top().getExpiration() <= call_time)
         {
-            Expirable expired_data = equipped_expirables.top();
+            const auto& expired_data = equipped_expirables.top();
             equipped_expirables.pop();
 
             if (auto it = decaying_eq.find(expired_data); it != decaying_eq.end()) 
@@ -5940,7 +5940,7 @@ CoroTask Game::item_decay_cycle() noexcept
         uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         while (not map_expirables.empty() and map_expirables.top().getExpiration() <= call_time)
         {
-            Expirable expired_data = map_expirables.top();
+            const auto& expired_data = map_expirables.top();
             map_expirables.pop();
             internalDecayItem(expired_data.getItem());
         }
