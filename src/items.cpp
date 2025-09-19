@@ -1095,14 +1095,17 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 
 			case ItemDatFlag::GroundBorder:
 				iType.alwaysOnTopOrder = 1;
+				iType.alwaysOnTop = true;
 				break;
 
 			case ItemDatFlag::OnBottom:
 				iType.alwaysOnTopOrder = 2;
+				iType.alwaysOnTop = true;
 				break;
 
 			case ItemDatFlag::OnTop:
 				iType.alwaysOnTopOrder = 3;
+				iType.alwaysOnTop = true;
 				break;
 
 			case ItemDatFlag::Container:
@@ -1294,9 +1297,6 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 
         prevFlag = flag;
 	} while (flag != ItemDatFlag::LastFlag);
-
-	// Manual assignment of some item data based on earlier switch + by analysing 'flags' that were used in .otb.
-	iType.alwaysOnTop = (iType.alwaysOnTopOrder != 0);
 
 	// Skip texture/spriteId information
 	uint8_t _width;
