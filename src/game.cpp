@@ -4894,8 +4894,6 @@ CoroTask Game::creature_think_cycle() noexcept
     while (true)
     {
         const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        std::vector<CreatureRoster> local_buffer;
-
         while (not think_queue.empty() and think_queue.top().time_point <= call_time)
         {
             CreatureRoster roster_data = think_queue.top();
@@ -4907,7 +4905,6 @@ CoroTask Game::creature_think_cycle() noexcept
                 roster_data.creature->onThink(EVENT_CREATURE_THINK_INTERVAL);
                 roster_data.creature->onAttacking(EVENT_CREATURE_THINK_INTERVAL);
                 roster_data.creature->executeConditions(EVENT_CREATURE_THINK_INTERVAL);
-                local_buffer.emplace_back(roster_data.creature, call_time + EVENT_CREATURE_THINK_INTERVAL);
             }
         }
 
