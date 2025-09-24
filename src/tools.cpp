@@ -6,7 +6,6 @@
 #include "tools.h"
 #include "configmanager.h"
 
-#include <chrono>
 #include <fmt/chrono.h>
 #include <gtl/phmap.hpp>
 

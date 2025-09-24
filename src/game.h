@@ -98,7 +98,7 @@ struct CoroTask
 // only excluding possible things that can benefit to being offloaded from main loop
 struct TimerQueue 
 {
-    using Clock = std::chrono::steady_clock;
+    using Clock = std::chrono::system_clock;
     using TimePoint = Clock::time_point;
 
     struct Entry 

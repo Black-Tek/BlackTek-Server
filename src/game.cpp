@@ -4891,37 +4891,28 @@ void Game::removeCreatureCheck(const CreaturePtr& creature) noexcept
 
 CoroTask Game::creature_think_cycle() noexcept
 {
-	while (true) 
-	{
-		const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();	
-		std::vector<CreatureRoster> local_buffer;
+    while (true)
+    {
+        const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        std::vector<CreatureRoster> local_buffer;
 
-		while (not think_queue.empty() and think_queue.top().time_point <= call_time)
-		{
-			CreatureRoster roster_data = think_queue.top();
-			think_queue.pop();
-			if (roster_data.creature->inCheckCreaturesVector)
-			{
-				roster_data.creature->onThink(EVENT_CREATURE_THINK_INTERVAL);
-				roster_data.creature->onAttacking(EVENT_CREATURE_THINK_INTERVAL);
-				roster_data.creature->executeConditions(EVENT_CREATURE_THINK_INTERVAL);
-				local_buffer.emplace_back(roster_data.creature, roster_data.time_point + EVENT_CREATURE_THINK_INTERVAL);
-			}
-		}
+        while (not think_queue.empty() and think_queue.top().time_point <= call_time)
+        {
+            CreatureRoster roster_data = think_queue.top();
+            think_queue.pop();
 
-		for (auto& entry : local_buffer) 
-		{
-			think_queue.push(std::move(entry));
-		}
-
-		uint32_t next_time = EVENT_CHECK_CREATURE_INTERVAL;
-        if (not think_queue.empty()) 
-		{
-            uint32_t next_expiration_time = think_queue.top().time_point;
-            next_time = std::min<uint32_t>((next_expiration_time - call_time), EquipmentDecayMaxInterval);
+            if (roster_data.creature->inCheckCreaturesVector)
+            {
+                roster_data.creature->inCheckCreaturesVector = false;
+                roster_data.creature->onThink(EVENT_CREATURE_THINK_INTERVAL);
+                roster_data.creature->onAttacking(EVENT_CREATURE_THINK_INTERVAL);
+                roster_data.creature->executeConditions(EVENT_CREATURE_THINK_INTERVAL);
+                local_buffer.emplace_back(roster_data.creature, call_time + EVENT_CREATURE_THINK_INTERVAL);
+            }
         }
-		co_await SleepFor{next_time};
-	}
+
+        co_await SleepFor { EVENT_CHECK_CREATURE_INTERVAL };
+    }
 }
 
 void Game::changeSpeed(const CreaturePtr& creature, const int32_t varSpeedDelta)
