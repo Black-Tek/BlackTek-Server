@@ -1320,7 +1320,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				}
 
 				if (lifeStealGain) {
-					auto lifeStealCombat = CombatDamage(COMBAT_LIFEDRAIN, ORIGIN_AUGMENT, BLOCK_NONE, lifeStealGain, damage.critical, true, true);
+					auto lifeStealCombat = CombatDamage(COMBAT_HEALING, ORIGIN_AUGMENT, BLOCK_NONE, lifeStealGain, damage.critical, true, true);
 					g_game.combatChangeHealth(target, caster, lifeStealCombat);
 				}
 
