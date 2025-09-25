@@ -390,12 +390,12 @@ std::string convertIPToString(uint32_t ip)
 
 std::string formatDate(time_t time)
 {
-	return fmt::format("{:%d/%m/%Y %H:%M:%S}", fmt::localtime(time));
+    return fmt::format("{:%d/%m/%Y %H:%M:%S}", *std::localtime(&time));
 }
 
 std::string formatDateShort(time_t time)
 {
-	return fmt::format("{:%d %b %Y}", fmt::localtime(time));
+    return fmt::format("{:%d %b %Y}", *std::localtime(&time));
 }
 
 Direction getDirection(const std::string& string)
