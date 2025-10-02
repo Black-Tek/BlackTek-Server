@@ -341,7 +341,7 @@ class Game
 		void addCreatureCheck(const CreaturePtr& creature) noexcept;
         static void removeCreatureCheck(const CreaturePtr& creature) noexcept;
 
-        CoroTask creature_think_cycle() noexcept;
+        void creature_think_cycle() noexcept;
 
         void addEquippedItemDecay(Expirable entry) noexcept;
 		void addMapItemDecay(Expirable entry) noexcept;
@@ -739,6 +739,9 @@ class Game
 		DecayList map_expirables;
 		DecayList equipped_expirables;
 
+		std::array<std::list<CreaturePtr>, 20> slots_;
+        size_t current_slot_ = 0;
+
 		std::list<ItemPtr> decayItems[EVENT_DECAY_BUCKETS];
 		std::vector<TilePtr> loaded_tiles;
 		std::vector<ItemPtr> loaded_tile_items;
@@ -792,6 +795,7 @@ class Game
 		uint32_t lastStageLevel = 0;
 		bool stagesEnabled = false;
 		bool useLastStageLevel = false;
+
 };
 
 #endif

@@ -96,7 +96,6 @@ void Game::start(ServiceManager* manager)
 	}
 	g_scheduler.addEvent(createSchedulerTask(20, [this]() { decay_clean_cycle(); }));
 	g_scheduler.addEvent(createSchedulerTask(50, [this]() { coro_timer_cycle(); }));
-	g_scheduler.addEvent(createSchedulerTask(80, [this]() { creature_think_cycle(); }));
 	g_scheduler.addEvent(createSchedulerTask(100, [this]() { item_decay_cycle(); }));
 	g_scheduler.addEvent(createSchedulerTask(120, [this]() { equipment_decay_cycle(); }));
 }
@@ -4868,48 +4867,54 @@ void Game::checkCreatureAttack(const uint32_t creatureId) noexcept
 	}
 }
 
+
+
 void Game::addCreatureCheck(const CreaturePtr& creature) noexcept
 {
-	if (creature->inCheckCreaturesVector) {
-		// already in a vector
-		return;
-	}
-	const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-	creature->inCheckCreaturesVector = true;
-	// checkCreatureLists[uniform_random(0, EVENT_CREATURECOUNT - 1)].push_back(creature);
-    auto entry = CreatureRoster(creature, call_time + EVENT_CREATURE_THINK_INTERVAL);
-    think_queue.push(entry);
+    creature->creatureCheck = true;
+
+    if (creature->inCheckCreaturesVector)
+    {
+        return;
+    }
+
+    creature->inCheckCreaturesVector = true;
+    slots_[(current_slot_ + 1) % 20].push_back(creature);
 }
 
 void Game::removeCreatureCheck(const CreaturePtr& creature) noexcept
 {
-	if (creature->inCheckCreaturesVector) 
-	{
-		creature->inCheckCreaturesVector = false;
-	}
+    if (creature->inCheckCreaturesVector)
+    {
+        creature->creatureCheck = false;
+    }
 }
 
-CoroTask Game::creature_think_cycle() noexcept
+void Game::creature_think_cycle() noexcept
 {
-    while (true)
+    auto& checkCreatureList = slots_[current_slot_];
+    current_slot_ = (current_slot_ + 1) % 20;
+
+    auto valid_creatures = checkCreatureList 
+        | std::views::filter([](const auto& creature) { return creature->creatureCheck; })
+        | std::views::filter([](const auto& creature) { return creature->getHealth() > 0; });
+
+    for (auto& creature : valid_creatures)
     {
-        const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        while (not think_queue.empty() and think_queue.top().time_point <= call_time)
-        {
-            CreatureRoster roster_data = think_queue.top();
-            think_queue.pop();
-
-            if (roster_data.creature->inCheckCreaturesVector)
-            {
-                roster_data.creature->inCheckCreaturesVector = false;
-                roster_data.creature->onThink(EVENT_CREATURE_THINK_INTERVAL);
-                roster_data.creature->onAttacking(EVENT_CREATURE_THINK_INTERVAL);
-                roster_data.creature->executeConditions(EVENT_CREATURE_THINK_INTERVAL);
-            }
-        }
-
-        co_await SleepFor { EVENT_CHECK_CREATURE_INTERVAL };
+        creature->onThink(1000);
+        creature->onAttacking(1000);
+        creature->executeConditions(1000);
     }
+
+    std::erase_if(checkCreatureList, [](const auto& creature) 
+	{
+        if (not creature->creatureCheck) 
+		{
+            creature->inCheckCreaturesVector = false;
+            return true;
+        }
+        return false;
+    });
 }
 
 void Game::changeSpeed(const CreaturePtr& creature, const int32_t varSpeedDelta)
@@ -6024,8 +6029,9 @@ void Game::shutdown()
 
 void Game::coro_timer_cycle()
 {
-	g_timer_queue.tick();
 	g_scheduler.addEvent(createSchedulerTask(EVENT_CORO_TIMER_CYCLE, [this]() { coro_timer_cycle(); }));
+    creature_think_cycle();
+	g_timer_queue.tick();
 }
 
 void Game::decay_clean_cycle()
