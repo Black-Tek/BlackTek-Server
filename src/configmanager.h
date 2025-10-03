@@ -63,7 +63,6 @@ class ConfigManager
 			ENABLE_NO_PASS_LOGIN,
 			HEALTH_REGEN_NOTIFICATION,
 			MANA_REGEN_NOTIFICATION,
-			MANA_SPENT_NOTIFICATION,
 
 			LAST_BOOLEAN_CONFIG /* this must be the last one */
 		};
