@@ -591,9 +591,10 @@ void Spell::postCastSpell(const PlayerPtr& player, bool finishedCast /*= true*/,
 
 void Spell::postCastSpell(const PlayerPtr& player, uint32_t manaCost, uint32_t soulCost)
 {
-	if (manaCost > 0) {
-		player->addManaSpent(manaCost);
-	}
+    if (manaCost > 0 && !player->hasFlag(PlayerFlag_HasInfiniteMana)) {
+        player->addManaSpent(manaCost);
+        player->changeMana(-static_cast<int32_t>(manaCost));
+    }
 
 	if (!player->hasFlag(PlayerFlag_HasInfiniteSoul)) {
 		if (soulCost > 0) {
