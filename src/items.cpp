@@ -261,7 +261,7 @@ void Items::clear()
 bool Items::reload()
 {
 	clear();
-	loadFromDat(g_config.getString(ConfigManager::ITEMS_DAT_PATH));
+	loadFromDat(g_config.getString(ConfigManager::ASSETS_DAT_PATH));
 
 	if (!loadFromToml()) {
 		return false;
@@ -277,7 +277,7 @@ bool Items::loadFromDat(const std::string& file)
 {
     std::ifstream fin(file, std::ios::binary);
     if (!fin.is_open()) {
-        fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "> ERROR: {:s}\n", "Unable to load items.dat, from specified path: " + file);
+        fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "> ERROR: {:s}\n", "Unable to load assets.dat, from specified path: " + file);
         return false;
     }
 

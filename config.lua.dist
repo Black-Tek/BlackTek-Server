@@ -68,10 +68,11 @@ onlyInvitedCanMoveHouseItems = true
 timeBetweenActions = 200
 timeBetweenExActions = 1000
 
--- Map
+-- Map and assets.dat
 -- NOTE: set mapName WITHOUT .otbm at the end
 mapName = "forgotten"
 mapAuthor = "Komic"
+assetsDatPath = "data/items/assets.dat"
 
 -- Market
 marketOfferDuration = 30 * 24 * 60 * 60
