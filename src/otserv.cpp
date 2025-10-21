@@ -232,7 +232,7 @@ void mainLoader(int, char*[], ServiceManager* services)
 	// load item data
 	g_utility_boss.addTask(createTask([]() { std::cout << ">> Loading items" << std::endl; }));
 	
-	if (!Item::items.loadFromDat(g_config.getString(ConfigManager::ITEMS_DAT_PATH))) {
+	if (!Item::items.loadFromDat(g_config.getString(ConfigManager::ASSETS_DAT_PATH))) {
 		startupErrorMessage("Unable to load items (DAT)!");
 		return;
 	}
