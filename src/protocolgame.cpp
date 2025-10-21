@@ -2737,8 +2737,8 @@ void ProtocolGame::sendItems()
 		msg.add<uint16_t>(1); // always 1
 	}
 
-	for (auto clientId : inventory) {
-		msg.add<uint16_t>(clientId);
+	for (auto itemID : inventory) {
+		msg.add<uint16_t>(itemID);
 		msg.addByte(0); //always 0
 		msg.add<uint16_t>(1);
 	}
@@ -3269,7 +3269,7 @@ void ProtocolGame::MoveDownCreature(NetworkMessage& msg, const CreatureConstPtr&
 void ProtocolGame::AddShopItem(NetworkMessage& msg, const ShopInfo& item)
 {
 	const ItemType& it = Item::items[item.itemId];
-	msg.add<uint16_t>(it.clientId);
+	msg.add<uint16_t>(it.getID());
 
 	if (it.isSplash() || it.isFluidContainer()) {
 		msg.addByte(serverFluidToClient(item.subType));

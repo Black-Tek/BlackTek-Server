@@ -1490,7 +1490,7 @@ bool Monsters::loadLootItem(const pugi::xml_node& node, LootBlock& lootBlock)
     if ((attr = node.attribute("id"))) {
         int32_t id = pugi::cast<int32_t>(attr.value());
         const ItemType& it = Item::items.getItemType(id);
-        if (it.id == 0 || it.name.empty()) {
+        if (it.getID() == 0 || it.name.empty()) {
             std::cout << "[Warning - Monsters::loadMonster] Unknown loot item id \"" << id << "\"." << std::endl;
             return false;
         }

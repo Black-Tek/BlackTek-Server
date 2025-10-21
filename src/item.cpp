@@ -37,7 +37,7 @@ void handleMiscDescription(std::ostringstream& s, const ItemType& it, bool& begi
 ItemPtr Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
 {
     const ItemType& it = Item::items[type];
-    if (it.group == ITEM_GROUP_DEPRECATED or it.id == 0) {
+    if (it.group == ITEM_GROUP_DEPRECATED or it.getID() == 0) {
         return nullptr;
     }
 
@@ -89,7 +89,7 @@ ItemPtr Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
 ContainerPtr Item::CreateItemAsContainer(const uint16_t type, uint16_t size)
 {
 	const ItemType& it = Item::items[type];
-	if (it.id == 0 || it.group == ITEM_GROUP_DEPRECATED || it.stackable || it.useable || it.moveable || it.pickupable || it.isDepot() || it.isSplash() || it.isDoor()) {
+	if (it.getID() == 0 || it.group == ITEM_GROUP_DEPRECATED || it.stackable || it.useable || it.moveable || it.pickupable || it.isDepot() || it.isSplash() || it.isDoor()) {
 		return nullptr;
 	}
 
@@ -1246,7 +1246,7 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 				} else {
 					s << "unknown";
 				}
-			} else if (it.allowDistRead && (it.id < 7369 || it.id > 7371)) {
+			} else if (it.allowDistRead && (it.getID() < 7369 || it.getID() > 7371)) {
 				s << ".\n";
 
 				if (lookDistance <= 4) {
@@ -1350,7 +1350,7 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 		}
 	}
 
-	if (!it.allowDistRead || (it.id >= 7369 && it.id <= 7371)) {
+	if (!it.allowDistRead || (it.getID() >= 7369 && it.getID() <= 7371)) {
 		s << '.';
 	} else {
 		if (!text && item) {
@@ -1414,7 +1414,7 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 		s << '\n' << it.description;
 	}
 
-	if (it.allowDistRead && it.id >= 7369 && it.id <= 7371) {
+	if (it.allowDistRead && it.getID() >= 7369 && it.getID() <= 7371) {
 		if (!text && item) {
 			text = &item->getText();
 		}
@@ -1462,7 +1462,7 @@ std::string Item::getNameDescription(const ItemType& it, const ItemConstPtr& ite
 		if (addArticle) {
 			s << "an ";
 		}
-		s << "item of type " << it.id;
+		s << "item of type " << it.getID();
 	}
 	return s.str();
 }
@@ -2072,7 +2072,7 @@ void Item::decayImbuements(bool infight) {
 }
 
 void handleRuneDescription(std::ostringstream& s, const ItemType& it, const ItemConstPtr& item, int32_t& subType) {
-	if (RuneSpell* rune = g_spells->getRuneSpell(it.id)) {
+	if (RuneSpell* rune = g_spells->getRuneSpell(it.getID())) {
 		int32_t tmpSubType = subType;
 		if (item) {
 			tmpSubType = item->getSubType();
