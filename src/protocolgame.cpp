@@ -2737,8 +2737,8 @@ void ProtocolGame::sendItems()
 		msg.add<uint16_t>(1); // always 1
 	}
 
-	for (auto itemID : inventory) {
-		msg.add<uint16_t>(itemID);
+	for (auto itemTypeID : inventory) {
+		msg.add<uint16_t>(itemTypeID);
 		msg.addByte(0); //always 0
 		msg.add<uint16_t>(1);
 	}
