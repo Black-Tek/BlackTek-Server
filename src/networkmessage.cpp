@@ -83,7 +83,7 @@ void NetworkMessage::addItem(uint16_t id, uint8_t count)
 {
 	const ItemType& it = Item::items[id];
 
-	add<uint16_t>(it.getID());
+	add<uint16_t>(id);
 
 	addByte(0xFF); // MARK_UNMARKED
 
