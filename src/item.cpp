@@ -1399,7 +1399,7 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 				s << '\n' << getWeightDescription(it, weight, item->getItemCount());
 			}
 		} else if (it.weight != 0 && it.pickupable) {
-			s << '\n' << getWeightDescription(it, it.weight);
+			s << '\n' << getWeightDescription(it, (it.weight / 100 ));
 		}
 	}
 

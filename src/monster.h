@@ -9,7 +9,6 @@
 
 class Creature;
 class Game;
-class Spawn;
 
 using CreatureHashSet = std::unordered_set<CreaturePtr>;
 using CreatureList = std::vector<CreatureWeakPtr>;
@@ -127,7 +126,7 @@ class Monster final : public Creature
 			return mType->info.manaCost;
 		}
 	
-		void setSpawn(Spawn* spawn) {
+		void setSpawn(uint32_t spawn) {
 			this->spawn = spawn;
 		}
 	
@@ -218,10 +217,9 @@ class Monster final : public Creature
 		std::string nameDescription;
 
 		MonsterType* mType;
-		Spawn* spawn = nullptr;
 
 		int64_t lastMeleeAttack = 0;
-
+		uint32_t spawn = 0;
 		uint32_t attackTicks = 0;
 		uint32_t targetTicks = 0;
 		uint32_t targetChangeTicks = 0;

@@ -139,24 +139,35 @@ TeleportPtr Tile::getTeleportItem() const
 	return nullptr;
 }
 
+// todo :: move to it's own storage place for fields separate from items.
 MagicFieldPtr Tile::getFieldItem() const
 {
-	if (!hasFlag(TILESTATE_MAGICFIELD)) {
-		return nullptr;
+    if (not hasFlag(TILESTATE_MAGICFIELD) or not ground)
+    {
+        return nullptr;
+    }
+
+	if (auto field = ground->getMagicField())
+	{
+		return field;
 	}
 
-	if (ground && ground->getMagicField()) {
-		return ground->getMagicField();
-	}
+    const auto& items = getItemList();
+    if (not items)
+    {
+        return nullptr;
+    }
 
-	if (const auto items = getItemList()) {
-		for (auto it = items->rbegin(), end = items->rend(); it != end; ++it) {
-			if ((*it)->getMagicField()) {
-				return (*it)->getMagicField();
-			}
-		}
-	}
-	return nullptr;
+    const size_t size = items->size();
+    for (size_t i = 0; i < size; ++i)
+    {
+        if (auto field = (*items)[i]->getMagicField())
+        {
+            return field;
+        }
+    }
+
+    return nullptr;
 }
 
 TrashHolderPtr Tile::getTrashHolder() const
@@ -483,7 +494,7 @@ ReturnValue Tile::queryAdd(CreaturePtr creature, uint32_t flags)
 	const auto creatures = getCreatures();
 
 	if (creatures && !creatures->empty() && !hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags)) {
-		for (const auto tileCreature : *creatures) {
+		for (const auto& tileCreature : *creatures) {
 			if (!tileCreature->isInGhostMode() && (tileCreature->getPlayer() && !tileCreature->getPlayer()->isAccessPlayer() )) {
 				if (creature->getPlayer() && !creature->getPlayer()->isAccessPlayer() && !creature->getPlayer()->canWalkthrough(tileCreature)) {
 					return RETURNVALUE_NOTENOUGHROOM;
@@ -505,21 +516,20 @@ ReturnValue Tile::queryAdd(CreaturePtr creature, uint32_t flags)
             }
         }
 
-        if (const auto items = getItemList()) {
-            for (const auto item : *items) {
+        if (const auto& items = getItemList()) {
+            for (const auto& item : *items) {
 	            if (const ItemType& iiType = Item::items[item->getID()]; iiType.blockSolid && (!iiType.moveable || item->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID))) {
                     return RETURNVALUE_NOTPOSSIBLE;
                 }
             }
         }
     }
-
-	if (auto player = std::dynamic_pointer_cast<Player>(creature)) {
-		results = queryAdd(player, flags);
-	} else if (auto monster = std::dynamic_pointer_cast<Monster>(creature)) {
+	// we try monsters first as they typically outnumber players
+	if (auto monster = std::dynamic_pointer_cast<Monster>(creature))
 		results = queryAdd(monster, flags);
-	}
-
+	else if (auto player = std::dynamic_pointer_cast<Player>(creature))
+		results = queryAdd(player, flags);
+	
 	return results;
 }
 
@@ -607,11 +617,11 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags) {
 		}
 	}
 
-	const auto creatures = getCreatures();
+	const auto& creatures = getCreatures();
 
 	// We have creatures on the tile we are trying to step on
 	if (creatures && !creatures->empty()) {
-		for (const auto tileCreature : *creatures) {
+		for (const auto& tileCreature : *creatures) {
 			// creature is not in ghost mode
 			if (!tileCreature->isInGhostMode()) {
 				return RETURNVALUE_NOTENOUGHROOM;
@@ -623,7 +633,7 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags) {
 					continue;
 				}
 				// the creature is a monster this monster can't push.
-				const auto creatureMonster = tileCreature->getMonster();
+				const auto& creatureMonster = tileCreature->getMonster();
 				if (!creatureMonster || !tileCreature->isPushable() || (creatureMonster->isSummon() && creatureMonster->getMaster()->getPlayer())) {
 					return RETURNVALUE_NOTPOSSIBLE;
 				}
@@ -632,7 +642,7 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags) {
 	}
 
 	// If the magic field is safe, return early
-    const auto field = getFieldItem();
+    const auto& field = getFieldItem();
     if (!field || field->isBlocking() || field->getDamage() == 0) {
         return RETURNVALUE_NOERROR;
     }

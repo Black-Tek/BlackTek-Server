@@ -193,9 +193,9 @@ void Monster::onRemoveCreature(const CreaturePtr& creature, const bool isLogout)
 	}
 
 	if (creature == this->getCreature()) {
-		if (spawn) {
-			spawn->startSpawnCheck();
-		}
+		//if (spawn) {
+		//	spawn->startSpawnCheck();
+		//}
 
 		setIdle(true);
 	} else {
@@ -1592,6 +1592,21 @@ bool Monster::canWalkTo(Position pos, const Direction direction)
 
 void Monster::death(const CreaturePtr&)
 {
+    auto self = getMonster();
+	if (self->spawn != 0)
+	{
+		auto spawn = Spawns::System::GetSpawn(self->spawn);
+        std::visit(
+            [self](auto&& s)
+            {
+                if constexpr (not std::is_null_pointer_v<std::decay_t<decltype(s)>>)
+                {
+                    s->onTrigger(self, Spawns::SpawnTrigger::Death);
+                }
+            },
+            spawn);
+	}
+
 	const auto monsterId = getID();
 	// rewardboss
 	if (const auto it = g_game.rewardBossTracking.find(monsterId); it != g_game.rewardBossTracking.end()) {
@@ -1728,9 +1743,9 @@ bool Monster::isInSpawnRange(const Position& pos) const
 		return true;
 	}
 
-	if (!Spawns::isInZone(masterPos, Monster::despawnRadius, pos)) {
-		return false;
-	}
+	//if (!Spawns::isInZone(masterPos, Monster::despawnRadius, pos)) {
+	//	return false;
+	//}
 
 	if (Monster::despawnRange == 0) {
 		return true;

@@ -77,67 +77,8 @@ static constexpr int32_t RANGE_REQUEST_TRADE_INTERVAL = 400;
 static constexpr uint32_t EquipmentDecayMaxInterval = 100;
 static constexpr uint32_t MapDecayMaxInterval = 250;
 
-#include <coroutine>
-#include <chrono>
 
-struct CoroTask 
-{
-    struct promise_type 
-	{
-        CoroTask get_return_object() { return {}; }
-        std::suspend_never initial_suspend() noexcept { return {}; }
-        std::suspend_never final_suspend() noexcept { return {}; }
-        void return_void() noexcept {}
-        void unhandled_exception() { std::terminate(); }
-    };
-};
 
-// todo : move this to a more appropriate location
-// and reuse this for all the timer wheel tasks, and spawns too
-// possibly eliminate entire usage of dispatcher/scheduler for game tasks
-// only excluding possible things that can benefit to being offloaded from main loop
-struct TimerQueue 
-{
-    using Clock = std::chrono::system_clock;
-    using TimePoint = Clock::time_point;
-
-    struct Entry 
-	{
-        TimePoint wake;
-        std::coroutine_handle<> handle;
-        bool operator>(const Entry& other) const { return wake > other.wake; }
-    };
-
-    std::priority_queue<Entry, std::vector<Entry>, std::greater<>> queue;
-
-    void add(TimePoint when, std::coroutine_handle<> handle) 
-	{
-        queue.push({when, handle});
-    }
-
-    void tick() {
-        auto now = Clock::now();
-        while (not queue.empty() and queue.top().wake <= now) 
-		{
-            auto handle = queue.top().handle;
-            queue.pop();
-            handle.resume();
-        }
-    }
-};
-
-inline TimerQueue g_timer_queue;
-
-struct SleepFor 
-{
-    uint32_t ms;
-    bool await_ready() const noexcept { return ms == 0; }
-    void await_suspend(std::coroutine_handle<> handle) const 
-	{
-        g_timer_queue.add(TimerQueue::Clock::now() + std::chrono::milliseconds(ms), handle);
-    }
-    void await_resume() const noexcept {}
-};
 
 struct Expirable 
 {
