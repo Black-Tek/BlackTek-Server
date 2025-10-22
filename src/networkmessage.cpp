@@ -118,5 +118,5 @@ void NetworkMessage::addItem(const ItemConstPtr& item)
 
 void NetworkMessage::addItemId(uint16_t itemId)
 {
-	add<uint16_t>(Item::items[itemId].getID());
+	add<uint16_t>(itemId);
 }
