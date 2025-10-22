@@ -1055,14 +1055,6 @@ const ItemType& Items::getItemType(size_t id) const
 	return items.front();
 }
 
-const ItemType& Items::getItemIdByItemTypeId(uint16_t spriteId) const
-{
-	if (spriteId >= 100) {
-		return getItemType(spriteId);
-	}
-	return items.front();
-}
-
 uint16_t Items::getItemIdByName(const std::string& name)
 {
 	auto result = nameToItems.find(asLowerCaseString(name));

@@ -348,7 +348,7 @@ ThingPtr Game::internalGetThing(const PlayerPtr& player, const Position& pos, in
 		uint8_t slot = pos.z;
 		return parentContainer->getItemByIndex(player->getContainerIndex(fromCid) + slot);
 	} else if (pos.y == 0 && pos.z == 0) {
-		const ItemType& it = Item::items.getItemIdByItemTypeId(spriteId);
+		const ItemType& it = Item::items.getItemType(spriteId);
 		if (it.getID() == 0) {
 			return nullptr;
 		}
@@ -1957,7 +1957,7 @@ void Game::playerEquipItem(const uint32_t playerId, const uint16_t spriteId)
 		return;
 	}
 
-	const ItemType& it = Item::items.getItemIdByItemTypeId(spriteId);
+	const ItemType& it = Item::items.getItemType(spriteId);
 	const slots_t slot = getSlotType(it);
 
 	const auto slotItem = player->getInventoryItem(slot);
@@ -3133,7 +3133,7 @@ void Game::playerPurchaseItem(const uint32_t playerId, const uint16_t spriteId, 
 		return;
 	}
 
-	const ItemType& it = Item::items.getItemIdByItemTypeId(spriteId);
+	const ItemType& it = Item::items.getItemType(spriteId);
 	if (it.getID() == 0) {
 		return;
 	}
@@ -3170,7 +3170,7 @@ void Game::playerSellItem(const uint32_t playerId, const uint16_t spriteId, cons
 		return;
 	}
 
-	const ItemType& it = Item::items.getItemIdByItemTypeId(spriteId);
+	const ItemType& it = Item::items.getItemType(spriteId);
 	if (it.getID() == 0) {
 		return;
 	}
@@ -3208,7 +3208,7 @@ void Game::playerLookInShop(const uint32_t playerId, const uint16_t spriteId, co
 		return;
 	}
 
-	const ItemType& it = Item::items.getItemIdByItemTypeId(spriteId);
+	const ItemType& it = Item::items.getItemType(spriteId);
 	if (it.getID() == 0) {
 		return;
 	}
@@ -6507,12 +6507,12 @@ void Game::playerCreateMarketOffer(const uint32_t playerId, uint8_t type, const 
 		return;
 	}
 
-	const ItemType& itt = Item::items.getItemIdByItemTypeId(spriteId);
+	const ItemType& itt = Item::items.getItemType(spriteId);
 	if (itt.getID() == 0 || itt.wareId == 0) {
 		return;
 	}
 
-	const ItemType& it = Item::items.getItemIdByItemTypeId(itt.wareId);
+	const ItemType& it = Item::items.getItemType(itt.wareId);
 	if (it.getID() == 0 || it.wareId == 0) {
 		return;
 	}

@@ -436,7 +436,6 @@ class Items
 
 		const ItemType& getItemType(size_t id) const;
 		ItemType& getItemType(size_t id);
-		const ItemType& getItemIdByItemTypeId(uint16_t spriteId) const;
 
 		uint16_t getItemIdByName(const std::string& name);
 
