@@ -221,7 +221,7 @@ void Weapons::loadDefaults()
 {
 	for (size_t i = 100, size = Item::items.size(); i < size; ++i) {
 		const ItemType& it = Item::items.getItemType(i);
-		if (it.id == 0 || weapons.contains(i)) {
+		if (it.getID() == 0 || weapons.contains(i)) {
 			continue;
 		}
 
@@ -302,7 +302,7 @@ bool Weapon::configureEvent(const pugi::xml_node& node)
 
 void Weapon::configureWeapon(const ItemType& it)
 {
-	id = it.id;
+	id = it.getID();
 }
 
 int32_t Weapon::playerWeaponCheck(const PlayerConstPtr& player, const CreatureConstPtr& target, uint8_t shootRange) const

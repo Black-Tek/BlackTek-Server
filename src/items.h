@@ -199,6 +199,13 @@ class ItemType
 		ItemType(ItemType&& other) = default;
 		ItemType& operator=(ItemType&& other) = default;
 
+		uint16_t getID() const {
+			return id;
+		}
+		void setID(uint16_t newId) {
+			id = newId;
+		}
+
 		bool isGroundTile() const {
 			return group == ITEM_GROUP_GROUND;
 		}
@@ -300,8 +307,6 @@ class ItemType
 
 		itemgroup_t group = ITEM_GROUP_NONE;
 		ItemTypes_t type = ITEM_TYPE_NONE;
-		uint16_t id = 0;
-		uint16_t clientId = 0;
 		bool stackable = false;
 		bool isAnimation = false;
 
@@ -397,6 +402,9 @@ class ItemType
 		bool stopTime = false;
 		bool showCount = true;
 		bool resumable = false;
+
+	private:
+		uint16_t id = 0;
 };
 
 class Items
@@ -428,7 +436,6 @@ class Items
 
 		const ItemType& getItemType(size_t id) const;
 		ItemType& getItemType(size_t id);
-		const ItemType& getItemIdByClientId(uint16_t spriteId) const;
 
 		uint16_t getItemIdByName(const std::string& name);
 
