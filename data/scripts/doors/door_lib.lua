@@ -9,7 +9,6 @@ doorConfig = {
     allowPushOntoMagicFields = true,                 -- push creatures onto fire fields, poison fields, etc.
     deleteUnpushableItems = true,                    -- if items don't succesfully move they will be deleted
     prioritizeEntryPosition = true,                  -- try to push creatures back to entry position first
-    pushRounds = 3,                                  -- how many times to try pushing things out of the doorway before giving up
     closeErrorMessage = "There is not enough room.", -- generic message applies to all doors when a player tries and fails to close a door
     -- locked_doors
     closeDoorBeforeLocking = true,                   -- if true, doors must already be closed to get locked. if false, the door will close and lock at the same time
@@ -278,7 +277,7 @@ function pushCreatureFromDoor(creature, doorPosition)
     if doorConfig.prioritizeEntryPosition then
         local entryPos = getCreatureEntryPosition(creature)
         if entryPos then
-            for round = 1, doorConfig.pushRounds do
+            for round = 1, 3 do
                 if canPushToPosition(entryPos, round, doorPosition) then
                     creature:teleportTo(entryPos, true)
                     clearCreatureEntryPosition(creature)
@@ -299,7 +298,7 @@ function pushCreatureFromDoor(creature, doorPosition)
         { x = 1,  y = 1 }   -- Southeast
     }
 
-    for round = 1, doorConfig.pushRounds do
+    for round = 1, 3 do
         local shuffledDirs = shuffle(directions)
         for _, dir in ipairs(shuffledDirs) do
             local targetPos = Position(
