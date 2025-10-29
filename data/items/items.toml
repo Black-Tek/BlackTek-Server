@@ -67936,28 +67936,28 @@ name = "dragon claw lamp"
 [[items]]
 id = 12193
 article = "a"
-name = "gate of expertise"
+name = "closed door"
 leveldoor = 1000
 type = "door"
 blockprojectile = true
 
 [[items]]
 id = 12194
-article = "a"
-name = "gate of expertise"
+article = "an"
+name = "open door"
 type = "door"
 
 [[items]]
 id = 12195
 article = "a"
-name = "closed door"
+name = "gate of expertise"
 type = "door"
 blockprojectile = true
 
 [[items]]
 id = 12196
-article = "an"
-name = "open door"
+article = "a"
+name = "gate of expertise"
 type = "door"
 
 [[items]]
@@ -67974,7 +67974,6 @@ article = "a"
 name = "closed door"
 type = "door"
 blockprojectile = true
-description = "It is locked."
 
 [[items]]
 id = 12199
