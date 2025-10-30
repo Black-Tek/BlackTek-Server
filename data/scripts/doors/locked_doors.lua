@@ -77,6 +77,12 @@ useKeyOnDoor:register()
 local useLockedDoor = Action()
 
 function useLockedDoor.onUse(player, item, fromPosition, target, toPosition, isHotkey)
+
+    if isGamemaster(player) then
+        player:teleportTo(toPosition)
+        return true
+    end
+
     player:sendTextMessage(MESSAGE_EVENT_ADVANCE, lockedDoors.messages.locked)
     return true
 end

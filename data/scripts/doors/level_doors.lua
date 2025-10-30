@@ -17,6 +17,10 @@ function levelDoor.onUse(player, item, fromPosition, target, toPosition, isHotke
     local requiredLevel = getRequiredLevel(doorActionId)
 
     if doorState == "closed" then
+        if isGamemaster(player) then
+            player:teleportTo(toPosition)
+            return true
+        end
 
         if doorActionId == 0 then
             player:sendTextMessage(MESSAGE_EVENT_ADVANCE, levelDoors.messages.noActionId)
@@ -71,6 +75,11 @@ function levelDoorStepIn.onStepIn(creature, item, position, fromPosition)
     end
 
     local player = creature
+
+    if isGamemaster(player) then
+        return true
+    end
+
     local doorActionId = item:getActionId()
     local requiredLevel = getRequiredLevel(doorActionId)
 

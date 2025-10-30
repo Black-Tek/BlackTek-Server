@@ -11,6 +11,12 @@ function questDoor.onUse(player, item, fromPosition, target, toPosition, isHotke
     local doorActionId = item:getActionId()
 
     if doorState == "closed" then
+
+        if isGamemaster(player) then
+            player:teleportTo(toPosition)
+            return true
+        end
+
         if doorActionId == 0 then
             player:sendTextMessage(MESSAGE_EVENT_ADVANCE, questDoors.messages.noActionId)
             return true
@@ -64,6 +70,11 @@ function questDoorStepIn.onStepIn(creature, item, position, fromPosition)
     end
 
     local player = creature
+
+    if isGamemaster(player) then
+        return true
+    end
+
     local doorActionId = item:getActionId()
 
     if doorActionId == 0 then

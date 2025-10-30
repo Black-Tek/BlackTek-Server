@@ -11,6 +11,10 @@ function houseDoor.onUse(player, item, fromPosition, target, toPosition, isHotke
     end
 
     if doorState == "closed" then
+        if isGamemaster(player) then
+            player:teleportTo(toPosition)
+            return true
+        end
         item:transform(pairedId)
         return true
     end
@@ -34,6 +38,9 @@ houseDoor:register()
 
 local doorStepIn = MoveEvent()
 function doorStepIn.onStepIn(creature, item, position, fromPosition)
+    if isGamemaster(creature) then
+        return true
+    end
     storeCreatureEntryPosition(creature, fromPosition)
     return true
 end

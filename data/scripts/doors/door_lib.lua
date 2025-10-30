@@ -1,3 +1,11 @@
+-- store the position of the player when they enter a door
+-- now we can push them back there later
+DOOR_ENTRY_STORAGE = {
+    X = 50000,
+    Y = 50001,
+    Z = 50002
+}
+
 doorConfig = {
     -- note: defaults are set as recommended
     allowPushPlayers = true,
@@ -511,4 +519,9 @@ function isQuestDoor(doorId)
     end
 
     return false, nil, nil
+end
+
+function isGamemaster(player)
+    if not player:isPlayer() then return false end
+    return player:getGroup():getId() >= 4
 end
