@@ -18,7 +18,7 @@ function levelDoor.onUse(player, item, fromPosition, target, toPosition, isHotke
 
     if doorState == "closed" then
         if isGamemaster(player) then
-            player:teleportTo(toPosition)
+            teleportThroughDoor(player, player:getPosition(), toPosition)
             return true
         end
 

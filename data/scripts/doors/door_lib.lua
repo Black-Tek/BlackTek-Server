@@ -521,7 +521,26 @@ function isQuestDoor(doorId)
     return false, nil, nil
 end
 
-function isGamemaster(player)
-    if not player:isPlayer() then return false end
-    return player:getGroup():getId() >= 4
+function isGamemaster(creature)
+    if not creature:isPlayer() then return false end
+    return creature:getGroup():getId() >= 4
+end
+
+function teleportThroughDoor(player, fromPosition, doorPosition)
+    local deltaX = doorPosition.x - fromPosition.x
+    local deltaY = doorPosition.y - fromPosition.y
+
+    local isVertical = math.abs(deltaY) > math.abs(deltaX) and 1 or 0
+    local isHorizontal = 1 - isVertical
+
+    local signX = deltaX > 0 and 1 or -1
+    local signY = deltaY > 0 and 1 or -1
+
+    local destinationPos = Position(
+        doorPosition.x + (isHorizontal * signX),
+        doorPosition.y + (isVertical * signY),
+        doorPosition.z
+    )
+
+    return player:teleportTo(destinationPos)
 end
