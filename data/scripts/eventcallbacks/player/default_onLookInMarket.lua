@@ -6,7 +6,7 @@ local event = EventCallback
 event.onLookInMarket = function(self, itemType)
 	local response = NetworkMessage()
 	response:addByte(0xF8)
-	response:addU16(itemType:getClientId())
+	response:addU16(itemType:getID())
 
 	-- tier label (byte)
 	do

@@ -296,8 +296,7 @@ bool Items::loadFromDat(const std::string& file)
 
     for (uint16_t id = 100; id < items.size(); ++id) {
         ItemType& iType = items[id];
-        iType.clientId = id;
-        iType.id = id;
+        iType.setID(id);
         unserializeDatItem(iType, fin);
     }
 
@@ -371,13 +370,13 @@ void Items::buildInventoryList()
     inventory.clear();
     inventory.reserve(items.size() / 2); // Rough estimate to reduce reallocations
     for (const auto& type : items) {
-        if (type.id == 0) {
+        if (type.getID() == 0) {
             continue; // Skip uninitialized items
         }
         if (type.weaponType != WEAPON_NONE || type.ammoType != AMMO_NONE ||
             type.attack != 0 || type.defense != 0 || type.extraDefense != 0 ||
             type.armor != 0 || (type.slotPosition & (SLOTP_NECKLACE | SLOTP_RING | SLOTP_AMMO | SLOTP_FEET | SLOTP_HEAD | SLOTP_ARMOR | SLOTP_LEGS))) {
-            inventory.push_back(type.clientId);
+            inventory.push_back(type.getID());
         }
     }
     inventory.shrink_to_fit();
@@ -391,8 +390,8 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
     }
 
     ItemType& it = items[id];
-    if (it.id == 0) {
-        it.id = id;
+    if (it.getID() == 0) {
+        it.setID(id);
     }
     else if (!it.name.empty()) {
         std::cout << "[Warning - Items::parseItemToml] Duplicate item definition for id: " << id << std::endl;
@@ -944,7 +943,7 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
                 it.transformToOnUse[sex] = transformId;
                 ItemType& other = getItemType(transformId);
                 if (other.transformToFree == 0) {
-                    other.transformToFree = it.id;
+                    other.transformToFree = it.getID();
                 }
                 if (it.transformToOnUse[sex == PLAYERSEX_MALE ? PLAYERSEX_FEMALE : PLAYERSEX_MALE] == 0) {
                     it.transformToOnUse[sex == PLAYERSEX_MALE ? PLAYERSEX_FEMALE : PLAYERSEX_MALE] = transformId;
@@ -1052,14 +1051,6 @@ const ItemType& Items::getItemType(size_t id) const
 {
 	if (id < items.size()) {
 		return items[id];
-	}
-	return items.front();
-}
-
-const ItemType& Items::getItemIdByClientId(uint16_t spriteId) const
-{
-	if (spriteId >= 100) {
-		return getItemType(spriteId);
 	}
 	return items.front();
 }
@@ -1289,7 +1280,7 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				fmt::print(
 					fmt::fg(fmt::color::crimson) | fmt::emphasis::bold,
 					"UnserializeDatItem: Error while parsing, unknown flag {} at id {}, previous flag {}.\n",
-					static_cast<uint8_t>(flag), iType.id, prevFlag.has_value() ? std::to_string(static_cast<uint8_t>(prevFlag.value())) : "none"
+					static_cast<uint8_t>(flag), iType.getID(), prevFlag.has_value() ? std::to_string(static_cast<uint8_t>(prevFlag.value())) : "none"
 				);
 				return false;
 			}

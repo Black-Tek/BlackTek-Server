@@ -110,7 +110,7 @@ void IOMarket::processExpiredOffers(const DBResult_ptr& result, bool)
 		const uint16_t amount = result->getNumber<uint16_t>("amount");
 		if (result->getNumber<uint16_t>("sale") == 1) {
 			const ItemType& itemType = Item::items[result->getNumber<uint16_t>("itemtype")];
-			if (itemType.id == 0) {
+			if (itemType.getID() == 0) {
 				continue;
 			}
 
@@ -126,7 +126,7 @@ void IOMarket::processExpiredOffers(const DBResult_ptr& result, bool)
 				uint16_t tmpAmount = amount;
 				while (tmpAmount > 0) {
 					uint16_t stackCount = std::min<uint16_t>(100, tmpAmount);
-					auto item = Item::CreateItem(itemType.id, stackCount);
+					auto item = Item::CreateItem(itemType.getID(), stackCount);
 					if (CylinderPtr inbox = player->getInbox(); g_game.internalAddItem(inbox, item, INDEX_WHEREEVER, FLAG_NOLIMIT) != RETURNVALUE_NOERROR) {
 						break;
 					}
@@ -142,7 +142,7 @@ void IOMarket::processExpiredOffers(const DBResult_ptr& result, bool)
 				}
 
 				for (uint16_t i = 0; i < amount; ++i) {
-					auto item = Item::CreateItem(itemType.id, subType);
+					auto item = Item::CreateItem(itemType.getID(), subType);
 					if (CylinderPtr inbox = player->getInbox(); g_game.internalAddItem(inbox, item, INDEX_WHEREEVER, FLAG_NOLIMIT) != RETURNVALUE_NOERROR) {
 						break;
 					}
