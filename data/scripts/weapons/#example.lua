@@ -1,8 +1,68 @@
 --[[
 
-	Burst Arrow example
+-- Note: Weapons only need to be registered in Lua if they require a special method not defined in items.toml such as break chance, equip requirements etc...
+-- 		For example, a standard crossbow is fully defined in items.toml
+-- Note: Some methods may also exist in items.toml. When defined here in Lua, they typically override the items.toml settings but can also cause issues, so best only define them once
 
-]]
+-- Register a weapon
+weapon:register()
+weapon:id(itemId)
+weapon:action(action)	-- "removecount", "removecharge", "move"
+
+"removecount"			-- stackable weapons and ammo, remove 1 per attack
+"removecharge"			-- weapons with charges, remove 1 per attack
+"move"					-- weapon is "throwable" and thrown toward the target on attack, landing on or around their position (one item per attack if stackable)
+
+-- Equip Requirements
+weapon:level(level)
+weapon:magicLevel(magicLevel)
+weapon:premium(bool)
+weapon:wieldUnproperly(bool) 			 	-- (default: false). Reduces weapon damage when equip requirements are not met
+weapon:vocation(vocName[, showInDescription, lastVoc])
+
+Vocation requirement string building:
+weapon:vocation("Knight", true, false)   	-- "knights"
+weapon:vocation("Paladin", true, false)  	-- "knights, paladins"
+weapon:vocation("Druid", true, true)     	-- "knights, paladins, and druids" (lasVoc = "true" adds "and" before this vocation)
+weapon:vocation("Paladin", false, true)  	--  No change because showInDescription = false
+Note: "lastVoc" applies only to vocations shown in the description, not the actual last vocation set
+
+-- onUse requirements (deducted per attack)
+weapon:mana(mana)
+weapon:manaPercent(percent)
+weapon:health(health)
+weapon:healthPercent(percent)
+weapon:soul(soul)
+
+-- Stats
+weapon:element(combatType)						-- Default combat type, physical by default
+weapon:attack(value)
+weapon:defense(value)
+weapon:range(tiles)
+weapon:charges(count)
+weapon:duration(seconds)
+weapon:decayTo(itemId)
+weapon:transformEquipTo(itemId)
+weapon:transformDeEquipTo(itemId)
+weapon:slotType(slot) 							-- CONST_SLOT_LEFT, CONST_SLOT_RIGHT...
+weapon:hitChance(percent)
+weapon:extraElement(attackValue, combatType)	-- Secondary combat type, additional to the default combat type
+weapon:breakChance(percent)
+
+-- Distance/Ammo only
+weapon:ammoType(ammoType)						-- AMMO_ARROW, AMMO_SPEAR etc...
+weapon:maxHitChance(percent)
+
+-- Wands only
+weapon:damage(min, max)
+
+-- Wands & Distance weapons
+weapon:shootType(distEffect)
+
+]]--
+
+
+--Burst Arrow example
 local area = createCombatArea({
 	{1, 1, 1},
 	{1, 3, 1},
@@ -33,11 +93,8 @@ burstarrow:ammoType("arrow")
 burstarrow:maxHitChance(100)
 burstarrow:register()
 
---[[
 
-	Wand of Vortex example
-
-]]
+-- Wand of Vortex example
 local wov = Weapon(WEAPON_WAND)
 wov:id(2190)
 wov:damage(8, 18)
@@ -48,11 +105,7 @@ wov:vocation("sorcerer", true, true)
 wov:vocation("master sorcerer")
 wov:register()
 
---[[
-
-	Arbalest example
-
-]]
+-- Arbalest example
 local arbalest = Weapon(WEAPON_DISTANCE)
 arbalest:id(5803)
 arbalest:slotType("two-handed") -- it's now a 2h weapon
@@ -64,11 +117,7 @@ arbalest:level(75)
 arbalest:wieldedUnproperly(true)
 arbalest:register()
 
---[[
-
-	Earth Barbarian Axe example
-
-]]
+-- Earth Barbarian Axe example
 local eba = Weapon(WEAPON_AXE)
 eba:id(7859)
 eba:attack(23)
