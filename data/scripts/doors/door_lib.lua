@@ -8,9 +8,11 @@ DOOR_ENTRY_STORAGE = {
 
 doorConfig = {
     -- note: defaults are set as recommended
-    allowPushPlayers = true,
-    allowPushMonsters = true,
-    allowPushSkulled = true,                         -- players
+    allowPushPlayers = true,                         -- allow pushing players off the door
+    allowPushMonsters = true,                        -- allow pushing monsters off the door
+    allowPushSkulled = true,                         -- allow pushing skulled players off the door
+    allowPushOntoPlayers = true,                     -- allow pushing onto tiles with players
+    allowPushOntoMonsters = true,                    -- allow pushing onto tiles with monsters
     allowPushThroughMagicWalls = false,              -- magic wall & wild growth
     allowPushIntoProtectionZone = true,              -- push creatures into PZ
     allowPushOutOfProtectionZone = true,             -- push creatures out of PZ
@@ -245,6 +247,16 @@ function canPushToPosition(position, round, doorPosition)
     end
 
     if round == 2 and creatureCount > 0 then
+
+        for _, creature in ipairs(creatures) do
+            if creature:isPlayer() and not doorConfig.allowPushOntoPlayers then
+                return false
+            end
+            if creature:isMonster() and not doorConfig.allowPushOntoMonsters then
+                return false
+            end
+        end
+
         local hasSkulled = false
         for _, creature in ipairs(creatures) do
             if isSkulled(creature) then
