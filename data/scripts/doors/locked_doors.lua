@@ -78,8 +78,8 @@ local useLockedDoor = Action()
 
 function useLockedDoor.onUse(player, item, fromPosition, target, toPosition, isHotkey)
 
-    if isGamemaster(player) then
-        teleportThroughDoor(player, player:getPosition(), toPosition)
+    if isGamemaster(player) and doorConfig.allowGamemasterBypass then
+        teleportOnDoor(player, toPosition)
         return true
     end
 

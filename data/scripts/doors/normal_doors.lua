@@ -8,6 +8,10 @@ function normalDoor.onUse(player, item, fromPosition, target, toPosition, isHotk
     end
 
     if doorState == "closed" then
+        if isGamemaster(player) and doorConfig.allowGamemasterBypass then
+            teleportOnDoor(player, toPosition)
+            return true
+        end
 
         item:transform(pairedId)
         return true
@@ -43,7 +47,6 @@ doorStepIn:register()
 
 local doorStepOut = MoveEvent()
 function doorStepOut.onStepOut(creature, item, position, fromPosition)
-    clearCreatureEntryPosition(creature)
     return true
 end
 for closedId, openId in pairs(normalDoors) do

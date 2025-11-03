@@ -17,8 +17,8 @@ function levelDoor.onUse(player, item, fromPosition, target, toPosition, isHotke
     local requiredLevel = getRequiredLevel(doorActionId)
 
     if doorState == "closed" then
-        if isGamemaster(player) then
-            teleportThroughDoor(player, player:getPosition(), toPosition)
+        if isGamemaster(player) and doorConfig.allowGamemasterBypass then
+            teleportOnDoor(player, toPosition)
             return true
         end
 
@@ -32,7 +32,9 @@ function levelDoor.onUse(player, item, fromPosition, target, toPosition, isHotke
             return true
         end
 
-        player:teleportTo(toPosition)
+        local playerPosition = player:getPosition()
+        player:teleportTo(toPosition, true)
+        storeCreatureEntryPosition(player, playerPosition)
         doorItem:transform(pairedId)
         return true
     end
@@ -76,7 +78,7 @@ function levelDoorStepIn.onStepIn(creature, item, position, fromPosition)
 
     local player = creature
 
-    if isGamemaster(player) then
+    if isGamemaster(player) and doorConfig.allowGamemasterBypass then
         return true
     end
 
@@ -88,7 +90,6 @@ function levelDoorStepIn.onStepIn(creature, item, position, fromPosition)
         player:teleportTo(fromPosition, true)
         return false
     end
-
     storeCreatureEntryPosition(creature, fromPosition)
     return true
 end
@@ -102,7 +103,21 @@ levelDoorStepIn:register()
 local levelDoorStepOut = MoveEvent()
 
 function levelDoorStepOut.onStepOut(creature, item, position, fromPosition)
-    clearCreatureEntryPosition(creature)
+    local doorPosition = item:getPosition()
+    local tile = Tile(doorPosition)
+
+    if tile then
+        local creatures = tile:getCreatures()
+        if creatures then
+            for _, c in ipairs(creatures) do
+                if not (doorConfig.allowGamemasterBypass and isGamemaster(c)) then
+                    return true
+                end
+            end
+        end
+    end
+
+    closeDoor(doorPosition, item)
     return true
 end
 

@@ -7,6 +7,7 @@ DOOR_ENTRY_STORAGE = {
 }
 
 doorConfig = {
+    allowGamemasterBypass = true,                    -- if true, gamemasters will teleport directly onto doors without opening them
     -- note: defaults are set as recommended
     allowPushPlayers = true,                         -- allow pushing players off the door
     allowPushMonsters = true,                        -- allow pushing monsters off the door
@@ -19,11 +20,11 @@ doorConfig = {
     allowPushOntoMagicFields = true,                 -- push creatures onto fire fields, poison fields, etc.
     deleteUnpushableItems = true,                    -- if items don't succesfully move they will be deleted
     prioritizeEntryPosition = true,                  -- try to push creatures back to entry position first
-    closeErrorMessage = "There is not enough room.", -- generic message applies to all doors when a player tries and fails to close a door
+    closeErrorMessage = "There is not enough room.", -- generic message applied to all doors when a player tries and fails to close it
     -- locked_doors
     closeDoorBeforeLocking = true,                   -- if true, doors must already be closed to get locked. if false, the door will close and lock at the same time
     -- level_doors
-    levelDoorRequireToClose = true,                  -- correct level required to close door, if false then lower level players can close level doors to push players out of them
+    levelDoorRequireToClose = true,                  -- if true, players must be the correct level to close the door, otherwise lower level players can close them to push players out
     levelDoorAllowMonsters = false,                  -- if true, monsters can pass through open level doors
     -- quest_doors
     questDoorRequireToClose = true,
@@ -57,7 +58,6 @@ houseDoors = {
     [19843]=19844, [19852]=19853, [19983]=19984, [19992]=19993, [20276]=20277, [20285]=20286, [22817]=22818,
     [22826]=22827
 }
-
 
 levelDoors = {
     ids = {
@@ -137,15 +137,24 @@ local function isSkulled(creature)
 end
 
 function isDoor(itemId)
-    if normalDoors[itemId] then
-        return true, "closed", normalDoors[itemId]
-    end
+    local doorSets = {
+        normalDoors,
+        houseDoors,
+        levelDoors.ids,
+        questDoors.ids
+    }
 
-    for closedId, openId in pairs(normalDoors) do
-        if openId == itemId then
-            return true, "open", closedId
+    for _, set in ipairs(doorSets) do
+        if set[itemId] then
+            return true, "closed", set[itemId]
+        end
+        for closedId, openId in pairs(set) do
+            if openId == itemId then
+                return true, "open", closedId
+            end
         end
     end
+
     return false, nil, nil
 end
 
@@ -369,69 +378,56 @@ end
 function closeDoor(doorPosition, doorItem)
     if not doorPosition or not doorItem then return false end
     local doorId = doorItem:getId()
-    local closedId = nil
+    local closedId
 
-    local isOpenDoor = false
-    for closed, open in pairs(normalDoors) do
-        if open == doorId then
-            closedId = closed
-            isOpenDoor = true
-            break
+    local doorSets = { normalDoors, houseDoors, levelDoors.ids, questDoors.ids }
+    for _, set in ipairs(doorSets) do
+        for closed, open in pairs(set) do
+            if open == doorId then
+                closedId = closed
+                break
+            end
         end
+        if closedId then break end
     end
-
-    if not isOpenDoor then
-        return false
-    end
+    if not closedId then return false end
 
     local tile = Tile(doorPosition)
     if not tile then return false end
 
     local creatures = tile:getCreatures()
-    if creatures then
+    if creatures and #creatures > 0 then
         for _, creature in ipairs(creatures) do
-            if not pushCreatureFromDoor(creature, doorPosition) then
-                return false
+            if creature:isPlayer() and doorConfig.allowGamemasterBypass and isGamemaster(creature) then
+            else
+                if not pushCreatureFromDoor(creature, doorPosition) then
+                    return false
+                end
             end
         end
     end
 
     local items = tile:getItems()
     if items then
-        local movableItems = {}
-        for _, item in ipairs(items) do
+        for i = #items, 1, -1 do
+            local item = items[i]
             if item and item:getId() ~= doorId then
                 local itemType = ItemType(item:getId())
                 if itemType:isMovable() then
-                    table.insert(movableItems, item)
-                end
-            end
-        end
-
-        for i = #movableItems, 1, -1 do
-            local item = movableItems[i]
-            local itemType = ItemType(item:getId())
-
-            if itemType:isBlocking() then
-                if not pushItemFromDoor(item, doorPosition) then
-                    return false
-                end
-            else
-                if not pushItemFromDoor(item, doorPosition) then
-                    if doorConfig.deleteUnpushableItems then
-                        item:remove()
-                    else
-                        return false
+                    if not pushItemFromDoor(item, doorPosition) then
+                        if doorConfig.deleteUnpushableItems then
+                            item:remove()
+                        else
+                            return false
+                        end
                     end
                 end
             end
         end
     end
 
-    doorItem:transform(closedId)
-    return true
+    return doorItem:transform(closedId)
 end
-
 
 lockedDoorsSet = {}
 for _, id in ipairs(lockedDoors.ids) do
@@ -538,21 +534,6 @@ function isGamemaster(creature)
     return creature:getGroup():getId() >= 4
 end
 
-function teleportThroughDoor(player, fromPosition, doorPosition)
-    local deltaX = doorPosition.x - fromPosition.x
-    local deltaY = doorPosition.y - fromPosition.y
-
-    local isVertical = math.abs(deltaY) > math.abs(deltaX) and 1 or 0
-    local isHorizontal = 1 - isVertical
-
-    local signX = deltaX > 0 and 1 or -1
-    local signY = deltaY > 0 and 1 or -1
-
-    local destinationPos = Position(
-        doorPosition.x + (isHorizontal * signX),
-        doorPosition.y + (isVertical * signY),
-        doorPosition.z
-    )
-
-    return player:teleportTo(destinationPos)
+function teleportOnDoor(player, toPosition)
+    return player:teleportTo(toPosition, true)
 end
