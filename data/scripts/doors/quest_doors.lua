@@ -12,7 +12,7 @@ function questDoor.onUse(player, item, fromPosition, target, toPosition, isHotke
 
     if doorState == "closed" then
 
-        if isGamemaster(player) and doorConfig.allowGamemasterBypass then
+        if player:hasGamemasterAccess() and doorConfig.allowGamemasterBypass then
             teleportOnDoor(player, toPosition)
             return true
         end
@@ -71,7 +71,7 @@ function questDoorStepIn.onStepIn(creature, item, position, fromPosition)
 
     local player = creature
 
-    if isGamemaster(player) and doorConfig.allowGamemasterBypass then
+    if player:hasGamemasterAccess() and doorConfig.allowGamemasterBypass then
         return true
     end
 
@@ -109,7 +109,7 @@ function questDoorStepOut.onStepOut(creature, item, position, fromPosition)
         local creatures = tile:getCreatures()
         if creatures then
             for _, c in ipairs(creatures) do
-                if not (doorConfig.allowGamemasterBypass and isGamemaster(c)) then
+                if not (doorConfig.allowGamemasterBypass and c:hasGamemasterAccess()) then
                     return true
                 end
             end

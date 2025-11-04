@@ -14,7 +14,6 @@ function onStepIn(creature, item, position, fromPosition)
 
 	if item.actionid >= actionIds.levelCheck and item.actionid <= actionIds.levelCheckLast then
 		if creature:getLevel() < levelCheckConfig.normalLevelOffset + (item.actionid - actionIds.levelCheck) * levelCheckConfig.normal then
-			print("Levelcheck: " .. creature:getLevel() .. " < " .. levelCheckConfig.normalLevelOffset + (item.actionid - actionIds.levelCheck) * levelCheckConfig.normal)
 			creature:teleportTo(fromPosition, false)
 			position:sendMagicEffect(CONST_ME_MAGIC_BLUE)
 			creature:sendTextMessage(MESSAGE_EVENT_ADVANCE, "The tile seems to be protected against unwanted intruders.")
@@ -23,7 +22,6 @@ function onStepIn(creature, item, position, fromPosition)
 	end
 	if item.actionid >= actionIds.levelCheckExtended and item.actionid <= actionIds.levelCheckExtendedLast then
 		if creature:getLevel() < levelCheckConfig.extendedLevelOffset + (item.actionid - actionIds.levelCheckExtended) * levelCheckConfig.extended then
-			print("Levelcheck: " .. creature:getLevel() .. " < " .. levelCheckConfig.extendedLevelOffset + (item.actionid - actionIds.levelCheckExtended) * levelCheckConfig.extended)
 			creature:teleportTo(fromPosition, false)
 			position:sendMagicEffect(CONST_ME_MAGIC_BLUE)
 			creature:sendTextMessage(MESSAGE_EVENT_ADVANCE, "The tile seems to be protected against unwanted intruders.")

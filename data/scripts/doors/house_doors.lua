@@ -11,7 +11,7 @@ function houseDoor.onUse(player, item, fromPosition, target, toPosition, isHotke
     end
 
     if doorState == "closed" then
-        if isGamemaster(player) and doorConfig.allowGamemasterBypass then
+        if player:hasGamemasterAccess() and doorConfig.allowGamemasterBypass then
             teleportOnDoor(player, toPosition)
             return true
         end
@@ -38,9 +38,10 @@ houseDoor:register()
 
 local doorStepIn = MoveEvent()
 function doorStepIn.onStepIn(creature, item, position, fromPosition)
-    if isGamemaster(creature) and doorConfig.allowGamemasterBypass then
+    if doorConfig.allowGamemasterBypass and creature:isPlayer() and creature:hasGamemasterAccess() then
         return true
     end
+
     storeCreatureEntryPosition(creature, fromPosition)
     return true
 end

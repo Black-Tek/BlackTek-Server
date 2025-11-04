@@ -316,3 +316,7 @@ end
 function Player.getTotalMoney(self)
 	return self:getMoney() + self:getBankBalance()
 end
+
+function Player.hasGamemasterAccess(self)
+	return self:getGroup():getId() >= 4 and self:getAccountType() >= ACCOUNT_TYPE_GAMEMASTER
+end
