@@ -47,18 +47,18 @@ bool DatabaseManager::isDatabaseSetup()
 
 int32_t DatabaseManager::getDatabaseVersion()
 {
+	Database& db = Database::getInstance();
 	if (!tableExists("server_config")) {
-		Database& db = Database::getInstance();
 		db.executeQuery("CREATE TABLE `server_config` (`config` VARCHAR(50) NOT NULL, `value` VARCHAR(256) NOT NULL DEFAULT '', UNIQUE(`config`)) ENGINE = InnoDB");
-		db.executeQuery("INSERT INTO `server_config` VALUES ('db_version', 0)");
-		return 0;
 	}
 
 	int32_t version = 0;
 	if (getDatabaseConfig("db_version", version)) {
 		return version;
+	} else {
+		db.executeQuery("INSERT INTO `server_config` VALUES ('db_version', 0)");
+		return 0;
 	}
-	return -1;
 }
 
 void DatabaseManager::updateDatabase()
