@@ -907,14 +907,13 @@ class Item : virtual public Thing, public SharedObject
 			return (isPickupable() ? 15 : 2);
 		}
 
+		// this id, is not item's id. This is itemtype's id basically (what you see in e.g. items.xml or dat tools), so do not be misleaded.
+		// the good course of action, would be to rename this method to:
+		// getItemTypeID(), setItemTypeID(), id -> itemTypeID.
+		// todo: think about it, but be careful as itemType also has `getID` and `setID`. Do not just `replace all`.
 		uint16_t getID() const {
 			return id;
 		}
-	
-		uint16_t getClientID() const {
-			return items[id].clientId;
-		}
-	
 		void setID(uint16_t newid);
 
 		// Returns the player that is holding this item in his inventory

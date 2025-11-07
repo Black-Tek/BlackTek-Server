@@ -545,6 +545,8 @@ CREATE TABLE `server_config` (
   `value` varchar(256) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
+INSERT INTO `server_config` (`config`, `value`) VALUES ('db_version', '0');
+
 -- --------------------------------------------------------
 
 --

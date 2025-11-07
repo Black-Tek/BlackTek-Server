@@ -14511,7 +14511,7 @@ int LuaScriptInterface::luaItemTypeGetId(lua_State* L)
 {
 	// itemType:getId()
 	if (const auto itemType = getUserdata<const ItemType>(L, 1)) {
-		lua_pushinteger(L, itemType->id);
+		lua_pushinteger(L, itemType->getID());
 	} else {
 		lua_pushnil(L);
 	}
@@ -14521,8 +14521,9 @@ int LuaScriptInterface::luaItemTypeGetId(lua_State* L)
 int LuaScriptInterface::luaItemTypeGetClientId(lua_State* L)
 {
 	// itemType:getClientId()
+	std::cout << "[Warning - itemType:getClientId()] This function is deprecated. Use itemType:getId() instead." << std::endl;
 	if (const auto itemType = getUserdata<const ItemType>(L, 1)) {
-		lua_pushinteger(L, itemType->clientId);
+		lua_pushinteger(L, itemType->getID());
 	} else {
 		lua_pushnil(L);
 	}
