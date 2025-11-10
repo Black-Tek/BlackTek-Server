@@ -161,6 +161,7 @@ namespace Spawns
         return false;
     }
 
+    template<>
     CoroTask ZoneManager<SpawnType::Monster, Policy::Relative>::spawn(std::shared_ptr<SpawnCreature> entry, bool startup)
     {
         auto spawn_count = 1;
@@ -220,6 +221,7 @@ namespace Spawns
         creature_list.push_back(entry);
     }
 
+    template<>
     CoroTask ZoneManager<SpawnType::Monster, Policy::Fixed>::spawn(std::shared_ptr<SpawnCreature> entry, bool startup)
     {
         auto spawn_count = 1;
@@ -414,6 +416,7 @@ namespace Spawns
         spawn(entry, startup);
     }
 
+    template<>
     CoroTask ZoneManager<SpawnType::Monster, Policy::Relative>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
@@ -540,7 +543,7 @@ namespace Spawns
         }
     }
 
-
+    template<>
     CoroTask ZoneManager<SpawnType::Monster, Policy::Fixed>::run()
     {
         auto startup = true;
@@ -766,6 +769,7 @@ namespace Spawns
     // All the different configurations for spawns, needing their logic defined still
 
     // staged spawns need rollback option and capabilities
+    template<>
     CoroTask ZoneManager<SpawnType::Monster, Policy::Staged>::run()
     {
         while (active())
@@ -820,6 +824,7 @@ namespace Spawns
         }
     }
 
+    template<>
     CoroTask ZoneManager<SpawnType::Monster, Policy::Triggered>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
@@ -878,6 +883,7 @@ namespace Spawns
     // add announcer system for notifying those entering (and their party members get special messages if not also entering)
     // ex "The earth started shaking... something stirs in the distance"
 
+    template <>
     CoroTask ZoneManager<SpawnType::Boss, Policy::Fixed>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
@@ -930,6 +936,7 @@ namespace Spawns
         }
     }
     
+    template <>
     CoroTask ZoneManager<SpawnType::Boss, Policy::Relative>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
@@ -982,6 +989,7 @@ namespace Spawns
         }
     }
 
+    template <>
     CoroTask ZoneManager<SpawnType::Boss, Policy::Staged>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
@@ -1034,6 +1042,7 @@ namespace Spawns
         }
     }
 
+    template <>
     CoroTask ZoneManager<SpawnType::Boss, Policy::Triggered>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
@@ -1086,7 +1095,7 @@ namespace Spawns
         }
     }
 
-
+    template <>
     CoroTask ZoneManager<SpawnType::Npc, Policy::Fixed>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
@@ -1139,6 +1148,7 @@ namespace Spawns
         }
     }
 
+    template <>
     CoroTask ZoneManager<SpawnType::Npc, Policy::Relative>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
@@ -1191,6 +1201,7 @@ namespace Spawns
         }
     }
 
+    template <>
     CoroTask ZoneManager<SpawnType::Npc, Policy::Staged>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
@@ -1243,6 +1254,7 @@ namespace Spawns
         }
     }
 
+    template <>
     CoroTask ZoneManager<SpawnType::Npc, Policy::Triggered>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
@@ -1300,6 +1312,7 @@ namespace Spawns
     // bigstone:40, boulder:30, stone:30 <-- name:health == staged
     // if it's staged we need to provide an event so user can define how to remove the "health"
     // it would likely be beneficial to still store a list of id's for tools that can be used on the item
+    template <>
     CoroTask ZoneManager<SpawnType::Item, Policy::Fixed>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
@@ -1352,6 +1365,7 @@ namespace Spawns
         }
     }
 
+    template <>
     CoroTask ZoneManager<SpawnType::Item, Policy::Relative>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
@@ -1404,6 +1418,7 @@ namespace Spawns
         }
     }
 
+    template <>
     CoroTask ZoneManager<SpawnType::Item, Policy::Staged>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
@@ -1456,6 +1471,7 @@ namespace Spawns
         }
     }
 
+    template <>
     CoroTask ZoneManager<SpawnType::Item, Policy::Triggered>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
