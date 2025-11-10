@@ -1901,7 +1901,7 @@ namespace Spawns
         auto today = std::chrono::floor<std::chrono::days>(now);
         std::chrono::weekday wd { today };
 
-        std::cout << "Today is: " << wd << std::endl;
+        // std::cout << "Today is: " << wd << std::endl;
         // 1 == Monday, Sunday == 7 , 0 == all
         std::cout << "iso_encoding: " << wd.iso_encoding() << std::endl;
 
