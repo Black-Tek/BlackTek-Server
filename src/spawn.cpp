@@ -139,8 +139,8 @@ namespace Spawns
         return std::nullopt;
     }
 
-    template <SpawnType EntityType, Policy RuleType>
-    bool ZoneManager<EntityType, RuleType>::tryMonsterSpawn(MonsterPtr monster, Position position, Direction direction, MagicEffectClasses magic_effect /*CONST_ME_TELEPORT*/, bool startup /*false*/, bool artificial /*false*/)
+    template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType>
+    bool ZoneManager<EntityType, RuleType, TriggerType>::tryMonsterSpawn(MonsterPtr monster, Position position, Direction direction, MagicEffectClasses magic_effect /*CONST_ME_TELEPORT*/, bool startup /*false*/, bool artificial /*false*/)
     {
         if (g_events->eventMonsterOnSpawn(monster, position, true, false))
         {
@@ -314,7 +314,6 @@ namespace Spawns
         creature_list.push_back(entry);
     }
 
-    // todo : these methods are perfect for implementing tile/position counters for the overall system
     void System::RegisterSpawnPosition(Position& position, const AnySpawn& spawn)
     {
         std::visit([&](auto&& zone)
@@ -332,21 +331,21 @@ namespace Spawns
             spawn);
     }
 
-    template <SpawnType EntityType, Policy RuleType>
-    void ZoneManager<EntityType, RuleType>::activate()
+    template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType>
+    void ZoneManager<EntityType, RuleType, TriggerType>::activate()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
         run();
     }
 
-    template <SpawnType EntityType, Policy RuleType>
-    void ZoneManager<EntityType, RuleType>::deactivate()
+    template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType>
+    void ZoneManager<EntityType, RuleType, TriggerType>::deactivate()
     {
         config.reset(static_cast<size_t>(ConfigFlag::Active));
     }
 
-    template <SpawnType EntityType, Policy RuleType>
-    ParseResult ZoneManager<EntityType, RuleType>::set_range(const toml::v3::table& range_table)
+    template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType>
+    ParseResult ZoneManager<EntityType, RuleType, TriggerType>::set_range(const toml::v3::table& range_table)
     {
         auto start_str = range_table.get("startpos")->value<std::string>();
         auto end_str = range_table.get("endpos")->value<std::string>();
@@ -395,8 +394,8 @@ namespace Spawns
         return { ParseCode::Success, "" };
     }
 
-    template <SpawnType EntityType, Policy RuleType>
-    void ZoneManager<EntityType, RuleType>::process_creatures()
+    template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType>
+    void ZoneManager<EntityType, RuleType, TriggerType>::process_creatures()
     {
         if (not creature_list.empty())
         {
@@ -408,8 +407,8 @@ namespace Spawns
         }
     }
 
-    template <SpawnType EntityType, Policy RuleType>
-    CoroTask ZoneManager<EntityType, RuleType>::delay_spawn(uint32_t milliseconds, std::shared_ptr<SpawnCreature> entry, bool startup)
+    template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType>
+    CoroTask ZoneManager<EntityType, RuleType, TriggerType>::delay_spawn(uint32_t milliseconds, std::shared_ptr<SpawnCreature> entry, bool startup)
     {
         co_await SleepFor(milliseconds);
         spawn(entry, startup);
@@ -769,8 +768,7 @@ namespace Spawns
     // staged spawns need rollback option and capabilities
     CoroTask ZoneManager<SpawnType::Monster, Policy::Staged>::run()
     {
-        config.set(static_cast<size_t>(ConfigFlag::Active)); // todo move to activate() 
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter 
             {

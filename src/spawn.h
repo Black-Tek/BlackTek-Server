@@ -167,10 +167,26 @@ namespace Spawns
         Passive,
         Forced,
         Instant,
+        Rebootable,     // staged: wave progess always resets
+        Resumable,      // staged: wave progress continue and pause
+        Degradable,     // staged: progress decays
+        Timed,          // staged: waves progress after time, rather than by death
     };
 
-    template <SpawnType EntityType, Policy RuleType>
-    class ZoneManager : public std::enable_shared_from_this<ZoneManager<EntityType, RuleType>>
+
+    template <Policy P, SpawnTrigger T>
+    struct MapTrigger // todo swap the name "maptrigger" for "spawntrigger" as that's more appropriate
+    {
+    };
+
+    template <SpawnTrigger TriggerType>
+    struct MapTrigger<Policy::Triggered, TriggerType>
+    {
+        SpawnTrigger trigger = TriggerType;
+    };
+
+    template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType = SpawnTrigger::None>
+    class ZoneManager : public std::enable_shared_from_this<ZoneManager<EntityType, RuleType, TriggerType>>, public MapTrigger<RuleType, TriggerType>
     {
     public:
 
