@@ -277,7 +277,7 @@ namespace Spawns
                     {
                         // send magic effect to position
                         std::cout << "[Spawn] Passive spawn trying to spawn but player is there, sleeping.. \n";
-                        co_await SleepFor { delay }; // make global retry time
+                        co_await SleepFor { cooldown }; // make global retry time
                         ++sleep_count;
                     }
                 }
@@ -315,6 +315,27 @@ namespace Spawns
         }
         creature_list.push_back(entry);
     }
+
+    template <>
+    CoroTask ZoneManager<SpawnType::Monster, Policy::Staged>::spawn(std::shared_ptr<SpawnCreature> entry, bool startup)
+    {
+        while (not paused())
+        {
+            co_return;
+        }
+        creature_list.push_back(entry);
+    }
+
+    template <>
+    CoroTask ZoneManager<SpawnType::Monster, Policy::Triggered>::spawn(std::shared_ptr<SpawnCreature> entry, bool startup)
+    {
+        while (not paused())
+        {
+            co_return;
+        }
+        creature_list.push_back(entry);
+    }
+
 
     void System::RegisterSpawnPosition(Position& position, const AnySpawn& spawn)
     {
@@ -420,7 +441,7 @@ namespace Spawns
     CoroTask ZoneManager<SpawnType::Monster, Policy::Relative>::run()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter 
             {
@@ -547,8 +568,7 @@ namespace Spawns
     CoroTask ZoneManager<SpawnType::Monster, Policy::Fixed>::run()
     {
         auto startup = true;
-        config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             if (startup and passive() and players.empty() and not creature_list.empty())
             {
@@ -769,6 +789,10 @@ namespace Spawns
     // All the different configurations for spawns, needing their logic defined still
 
     // staged spawns need rollback option and capabilities
+
+    // reboot / resetable
+    // decayable
+    // resumable
     template<>
     CoroTask ZoneManager<SpawnType::Monster, Policy::Staged>::run()
     {
@@ -786,22 +810,110 @@ namespace Spawns
                             {
                                 case SpawnTrigger::Enter:
                                 {
+                                    auto found_player = std::find(players.begin(), players.end(), player) == players.end();
+                                    auto empty_spawn = (not found_player and players.empty());
+
+                                    if (rebootable())
+                                    {
+                                        if (empty_spawn)
+                                        {
+                                            players.push_back(player);
+                                            process_creatures();
+                                        }
+                                        else
+                                        {
+                                            players.push_back(player);
+                                        }
+                                    }
+
+                                    else if (resumable())
+                                    {
+                                        if (empty_spawn)
+                                        {
+                                            players.push_back(player);
+                                            process_creatures();
+                                        }
+                                        else
+                                        {
+                                            players.push_back(player);
+                                        }
+                                    }
+
+                                    else if (degradable())
+                                    {
+                                        if (empty_spawn)
+                                        {
+                                            players.push_back(player);
+                                            process_creatures();
+                                        }
+                                        else
+                                        {
+                                            players.push_back(player);
+                                        }
+                                    }
+
+                                    else if (timed())
+                                    {
+                                        if (empty_spawn)
+                                        {
+                                            players.push_back(player);
+                                            process_creatures();
+                                        }
+                                        else
+                                        {
+                                            players.push_back(player);
+                                        }
+                                    }
+                                    break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 {
+                                    players.erase(std::remove(players.begin(), players.end(), player), players.end());
+                                    
+                                    if (players.empty()) 
+                                    {
+                                        if (rebootable()) 
+                                        {
+
+                                        }
+
+                                        else if (resumable())
+                                        {
+
+                                        }
+
+                                        else if (degradable())
+                                        {
+
+                                        }
+
+                                        else if (timed())
+                                        {
+
+                                        }
+                                    }
+                                    else
+                                    {
+
+                                    }
+
+                                    break;
                                 }
 
                                 case SpawnTrigger::Death:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Login:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Logout:
                                 {
+                                    break;
                                 }
 
                                 default:
@@ -827,8 +939,7 @@ namespace Spawns
     template<>
     CoroTask ZoneManager<SpawnType::Monster, Policy::Triggered>::run()
     {
-        config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter {
                 [&](auto cb)
@@ -841,22 +952,27 @@ namespace Spawns
                             {
                                 case SpawnTrigger::Enter:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Death:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Login:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Logout:
                                 {
+                                    break;
                                 }
 
                                 default:
@@ -886,8 +1002,7 @@ namespace Spawns
     template <>
     CoroTask ZoneManager<SpawnType::Boss, Policy::Fixed>::run()
     {
-        config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter {
                 [&](auto cb)
@@ -900,22 +1015,27 @@ namespace Spawns
                             {
                                 case SpawnTrigger::Enter:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Death:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Login:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Logout:
                                 {
+                                    break;
                                 }
 
                                 default:
@@ -939,8 +1059,7 @@ namespace Spawns
     template <>
     CoroTask ZoneManager<SpawnType::Boss, Policy::Relative>::run()
     {
-        config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter {
                 [&](auto cb)
@@ -953,22 +1072,27 @@ namespace Spawns
                             {
                                 case SpawnTrigger::Enter:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Death:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Login:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Logout:
                                 {
+                                    break;
                                 }
 
                                 default:
@@ -992,8 +1116,7 @@ namespace Spawns
     template <>
     CoroTask ZoneManager<SpawnType::Boss, Policy::Staged>::run()
     {
-        config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter {
                 [&](auto cb)
@@ -1006,22 +1129,27 @@ namespace Spawns
                             {
                                 case SpawnTrigger::Enter:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Death:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Login:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Logout:
                                 {
+                                    break;
                                 }
 
                                 default:
@@ -1045,8 +1173,7 @@ namespace Spawns
     template <>
     CoroTask ZoneManager<SpawnType::Boss, Policy::Triggered>::run()
     {
-        config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter {
                 [&](auto cb)
@@ -1059,22 +1186,27 @@ namespace Spawns
                             {
                                 case SpawnTrigger::Enter:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Death:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Login:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Logout:
                                 {
+                                    break;
                                 }
 
                                 default:
@@ -1098,8 +1230,7 @@ namespace Spawns
     template <>
     CoroTask ZoneManager<SpawnType::Npc, Policy::Fixed>::run()
     {
-        config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter {
                 [&](auto cb)
@@ -1112,22 +1243,27 @@ namespace Spawns
                             {
                                 case SpawnTrigger::Enter:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Death:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Login:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Logout:
                                 {
+                                    break;
                                 }
 
                                 default:
@@ -1151,8 +1287,7 @@ namespace Spawns
     template <>
     CoroTask ZoneManager<SpawnType::Npc, Policy::Relative>::run()
     {
-        config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter {
                 [&](auto cb)
@@ -1165,22 +1300,27 @@ namespace Spawns
                             {
                                 case SpawnTrigger::Enter:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Death:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Login:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Logout:
                                 {
+                                    break;
                                 }
 
                                 default:
@@ -1204,8 +1344,7 @@ namespace Spawns
     template <>
     CoroTask ZoneManager<SpawnType::Npc, Policy::Staged>::run()
     {
-        config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter {
                 [&](auto cb)
@@ -1218,22 +1357,27 @@ namespace Spawns
                             {
                                 case SpawnTrigger::Enter:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Death:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Login:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Logout:
                                 {
+                                    break;
                                 }
 
                                 default:
@@ -1257,8 +1401,7 @@ namespace Spawns
     template <>
     CoroTask ZoneManager<SpawnType::Npc, Policy::Triggered>::run()
     {
-        config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter {
                 [&](auto cb)
@@ -1271,22 +1414,27 @@ namespace Spawns
                             {
                                 case SpawnTrigger::Enter:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Death:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Login:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Logout:
                                 {
+                                    break;
                                 }
 
                                 default:
@@ -1315,8 +1463,7 @@ namespace Spawns
     template <>
     CoroTask ZoneManager<SpawnType::Item, Policy::Fixed>::run()
     {
-        config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter {
                 [&](auto cb)
@@ -1329,22 +1476,27 @@ namespace Spawns
                             {
                                 case SpawnTrigger::Enter:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Death:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Login:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Logout:
                                 {
+                                    break;
                                 }
 
                                 default:
@@ -1368,8 +1520,7 @@ namespace Spawns
     template <>
     CoroTask ZoneManager<SpawnType::Item, Policy::Relative>::run()
     {
-        config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter {
                 [&](auto cb)
@@ -1382,22 +1533,27 @@ namespace Spawns
                             {
                                 case SpawnTrigger::Enter:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Death:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Login:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Logout:
                                 {
+                                    break;
                                 }
 
                                 default:
@@ -1421,8 +1577,7 @@ namespace Spawns
     template <>
     CoroTask ZoneManager<SpawnType::Item, Policy::Staged>::run()
     {
-        config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter {
                 [&](auto cb)
@@ -1435,22 +1590,27 @@ namespace Spawns
                             {
                                 case SpawnTrigger::Enter:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Death:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Login:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Logout:
                                 {
+                                    break;
                                 }
 
                                 default:
@@ -1474,8 +1634,7 @@ namespace Spawns
     template <>
     CoroTask ZoneManager<SpawnType::Item, Policy::Triggered>::run()
     {
-        config.set(static_cast<size_t>(ConfigFlag::Active));
-        while (config.test(static_cast<size_t>(ConfigFlag::Active)))
+        while (active())
         {
             co_await EventAwaiter {
                 [&](auto cb)
@@ -1488,22 +1647,27 @@ namespace Spawns
                             {
                                 case SpawnTrigger::Enter:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Death:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Login:
                                 {
+                                    break;
                                 }
 
                                 case SpawnTrigger::Logout:
                                 {
+                                    break;
                                 }
 
                                 default:

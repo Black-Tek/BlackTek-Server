@@ -175,18 +175,18 @@ namespace Spawns
 
 
     template <Policy P, SpawnTrigger T>
-    struct MapTrigger // todo swap the name "maptrigger" for "spawntrigger" as that's more appropriate
+    struct ITrigger
     {
     };
 
     template <SpawnTrigger TriggerType>
-    struct MapTrigger<Policy::Triggered, TriggerType>
+    struct ITrigger<Policy::Triggered, TriggerType>
     {
         SpawnTrigger trigger = TriggerType;
     };
 
     template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType = SpawnTrigger::None>
-    class ZoneManager : public std::enable_shared_from_this<ZoneManager<EntityType, RuleType, TriggerType>>, public MapTrigger<RuleType, TriggerType>
+    class ZoneManager : public std::enable_shared_from_this<ZoneManager<EntityType, RuleType, TriggerType>>, public ITrigger<RuleType, TriggerType>
     {
     public:
 
@@ -197,9 +197,9 @@ namespace Spawns
         std::vector<PlayerPtr> players;
         Position startpos;
         uint32_t id = 0;
-        std::bitset<8> config;
+        std::bitset<32> config;
         std::bitset<8> weekdays;
-        uint16_t delay = 5 * 1000; // ms -- move the * multiplier to where it's used
+        uint16_t cooldown = 5 * 1000; // ms -- move the * multiplier to where it's used
         uint8_t spawn_multiplier = 1;
         uint8_t exp_multiplier = 1;
         uint8_t loot_multiplier = 1;
@@ -217,6 +217,10 @@ namespace Spawns
         bool passive() const { return config.test(static_cast<size_t>(ConfigFlag::Passive)); }
         bool forced() const { return config.test(static_cast<size_t>(ConfigFlag::Forced)); } // for deciding to spawn in front of players -- todo : global forced retries, effects (times too), and if forced when boosted
         bool instant() const { return config.test(static_cast<size_t>(ConfigFlag::Instant)); }
+        bool rebootable() const { return config.test(static_cast<size_t>(ConfigFlag::Rebootable)); }
+        bool resumable() const { return config.test(static_cast<size_t>(ConfigFlag::Resumable)); }
+        bool degradable() const { return config.test(static_cast<size_t>(ConfigFlag::Degradable)); }
+        bool timed() const { return config.test(static_cast<size_t>(ConfigFlag::Timed)); }
         bool passive_positional() const { return passive() and positional(); }
         bool active_today(std::chrono::weekday today) const { return weekdays.test(0) or weekdays.test(today.iso_encoding()); }
         bool tryMonsterSpawn(MonsterPtr creature, Position position, Direction direction, MagicEffectClasses magic_effect, bool startup, bool artificial);
