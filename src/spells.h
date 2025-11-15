@@ -45,6 +45,7 @@ class Spells final : public BaseEvents
 
 		void clearMaps(bool fromLua);
 		void clear(bool fromLua) override final;
+		bool reload() override;
 		bool registerInstantLuaEvent(InstantSpell* event);
 		bool registerRuneLuaEvent(RuneSpell* event);
 
