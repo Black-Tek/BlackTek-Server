@@ -80,14 +80,32 @@ jobs:
           cd D:\a\BlackTek-Server\BlackTek-Server
           vcpkg install --triplet x64-windows --x-manifest-root=. --clean-after-build
 
-      # ---------------------------------------
+            # ---------------------------------------
       # BUILD RELEASE
       # ---------------------------------------
       - name: Build Release
         run: |
           cd D:\a\BlackTek-Server\BlackTek-Server
           msbuild Black-Tek-Server.sln /p:Configuration=Release /m
-          copy Black-Tek-Server.exe BlackTek-Server-Release.exe
+
+      # ---------------------------------------
+      # FIND BUILT EXECUTABLE
+      # ---------------------------------------
+      - name: Locate Executable
+        id: find-exe
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Recurse -Filter "Black-Tek-Server.exe" | Where-Object {
+            $_.FullName -match "Release"
+          } | Select-Object -First 1
+
+          if (-not $exe) {
+            Write-Error "Could not find built Black-Tek-Server.exe"
+            exit 1
+          }
+
+          Write-Host "Found EXE at: $($exe.FullName)"
+          Copy-Item $exe.FullName "D:\a\BlackTek-Server\BlackTek-Server\BlackTek-Server-Release.exe
 
       # ---------------------------------------
       # PACKAGE ARTIFACT
