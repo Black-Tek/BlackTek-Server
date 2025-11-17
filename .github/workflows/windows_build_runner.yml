@@ -17,16 +17,19 @@ jobs:
       packages: write
       contents: write
 
+    env:
+      VCPKG_ROOT: C:\vcpkg
+
     steps:
-      # -------------------------------
+      # ---------------------------------------
       # CHECKOUT
-      # -------------------------------
+      # ---------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # -------------------------------
+      # ---------------------------------------
       # CACHE: PREMAKE
-      # -------------------------------
+      # ---------------------------------------
       - name: Cache Premake
         id: premake-cache
         uses: actions/cache@v3
@@ -42,20 +45,20 @@ jobs:
           cmd /c Bootstrap.bat
           move .\bin\release\premake5.exe D:\a\BlackTek-Server\BlackTek-Server\premake5.exe
 
-      - name: Generate Visual Studio Solution
+      - name: Generate VS2022 Solution
         run: |
           D:\a\BlackTek-Server\BlackTek-Server\premake5.exe vs2022
 
-      # -------------------------------
-      # FIX GITHUB RATE LIMITING FOR VCPKG
-      # -------------------------------
-      - name: Authenticate GitHub for vcpkg downloads
+      # ---------------------------------------
+      # AUTHENTICATE GITHUB FOR VCPKG (Fix 429)
+      # ---------------------------------------
+      - name: Authenticate vcpkg GitHub Access
         run: |
           git config --global url."https://${{ secrets.GITHUB_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
-      # -------------------------------
-      # VCPKG CACHE (MAJOR SPEEDUP)
-      # -------------------------------
+      # ---------------------------------------
+      # VCPKG CACHE
+      # ---------------------------------------
       - name: Restore vcpkg cache
         uses: actions/cache@v3
         with:
@@ -66,44 +69,36 @@ jobs:
           restore-keys: |
             vcpkg-${{ runner.os }}-
 
-      # -------------------------------
-      # VCPKG INSTALL
-      # -------------------------------
-      - name: Configure MSVC Environment
-        uses: egor-tensin/vs-shell@v2
-        with:
-          arch: x64
-
-      - name: Install Dependencies
+      # ---------------------------------------
+      # INSTALL DEPENDENCIES (manifest mode)
+      # ---------------------------------------
+      - name: Install Dependencies (vcpkg manifest mode)
         run: |
-          cd D:\a\BlackTek-Server
-          git -C C:/vcpkg fetch origin
-          git -C C:/vcpkg checkout master
-          git -C C:/vcpkg reset --hard origin/master
-          vcpkg install --triplet x64-windows --clean-after-build
+          cd D:\a\BlackTek-Server\BlackTek-Server
+          vcpkg install --triplet x64-windows --x-manifest-root=. --clean-after-build
 
-      # -------------------------------
-      # BUILD RELEASE MODE ONLY
-      # -------------------------------
+      # ---------------------------------------
+      # BUILD RELEASE
+      # ---------------------------------------
       - name: Build Release
         run: |
           cd D:\a\BlackTek-Server\BlackTek-Server
           msbuild Black-Tek-Server.sln /p:Configuration=Release
           copy Black-Tek-Server.exe BlackTek-Server-Release.exe
 
-      # -------------------------------
-      # ARTIFACT PACKAGING
-      # -------------------------------
+      # ---------------------------------------
+      # PACKAGE ARTIFACT
+      # ---------------------------------------
       - name: Prepare Compressed Assets
         run: |
           echo "Commit SHA: ${{ github.sha }}" > version.info
           7z a BlackTek-Server-${{ github.sha }}.zip D:/a/BlackTek-Server/BlackTek-Server/
 
-      # -------------------------------
-      # CLEANUP OLD ASSETS (EDGE RELEASE)
-      # -------------------------------
+      # ---------------------------------------
+      # CLEANUP OLD EDGE ASSETS
+      # ---------------------------------------
       - name: Cleanup Old Edge Assets
-        if: (github.event_name == 'push') && !startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         run: |
           Write-Output "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
@@ -124,11 +119,11 @@ jobs:
             }
           }
 
-      # -------------------------------
-      # UPLOAD NEW EDGE RELEASE ARTIFACT
-      # -------------------------------
+      # ---------------------------------------
+      # UPLOAD NEW EDGE BUILD
+      # ---------------------------------------
       - name: Upload Release Artifact
-        if: (github.event_name == 'push') && !startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
