@@ -1,106 +1,134 @@
 name: Windows Build
-on: 
+
+on:
   workflow_dispatch:
   pull_request:
   push:
     branches:
-      - 'master'
-      - '1.0'
-      - '1.1'
+      - "master"
+      - "1.0"
+      - "1.1"
+
 jobs:
-  BuildForWindows:
-    name: ${{ matrix.os }}-${{ matrix.buildtype }}
-    runs-on: ${{ matrix.os }}
+  windows-release:
+    name: Windows Release Build
+    runs-on: windows-2022
     permissions:
       packages: write
       contents: write
-    strategy:
-      matrix:
-        os: [windows-2022]
-        buildtype: [windows-release, windows-release-asan, windows-debug]
-        include:
-          - os: windows-2022
-            triplet: x64-windows
+
     steps:
+      # -------------------------------
+      # CHECKOUT
+      # -------------------------------
       - name: Checkout repository
-        uses: actions/checkout@main
-      - name: Setup Premake & Generate Solution
+        uses: actions/checkout@v4
+
+      # -------------------------------
+      # CACHE: PREMAKE
+      # -------------------------------
+      - name: Cache Premake
+        id: premake-cache
+        uses: actions/cache@v3
+        with:
+          path: premake5.exe
+          key: premake5-v1
+
+      - name: Build Premake (if cache miss)
+        if: steps.premake-cache.outputs.cache-hit != 'true'
         run: |
           git clone https://github.com/premake/premake-core
           cd premake-core
           cmd /c Bootstrap.bat
           move .\bin\release\premake5.exe D:\a\BlackTek-Server\BlackTek-Server\premake5.exe
-          cd D:\a\BlackTek-Server\BlackTek-Server
+
+      - name: Generate Visual Studio Solution
+        run: |
           D:\a\BlackTek-Server\BlackTek-Server\premake5.exe vs2022
-      - name: Configure Package Manager
+
+      # -------------------------------
+      # FIX GITHUB RATE LIMITING FOR VCPKG
+      # -------------------------------
+      - name: Authenticate GitHub for vcpkg downloads
+        run: |
+          git config --global url."https://${{ secrets.GITHUB_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+      # -------------------------------
+      # VCPKG CACHE (MAJOR SPEEDUP)
+      # -------------------------------
+      - name: Restore vcpkg cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            C:\vcpkg\installed
+            C:\vcpkg\packages
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
+      # -------------------------------
+      # VCPKG INSTALL
+      # -------------------------------
+      - name: Configure MSVC Environment
         uses: egor-tensin/vs-shell@v2
         with:
           arch: x64
+
       - name: Install Dependencies
         run: |
           cd D:\a\BlackTek-Server
           git -C C:/vcpkg fetch origin
           git -C C:/vcpkg checkout master
           git -C C:/vcpkg reset --hard origin/master
-          vcpkg remove --outdated --recurse
-          vcpkg install --triplet x64-windows
-          vcpkg integrate install
-      - name: Compile Release
+          vcpkg install --triplet x64-windows --clean-after-build
+
+      # -------------------------------
+      # BUILD RELEASE MODE ONLY
+      # -------------------------------
+      - name: Build Release
         run: |
           cd D:\a\BlackTek-Server\BlackTek-Server
           msbuild Black-Tek-Server.sln /p:Configuration=Release
-          cmd /c copy Black-Tek-Server.exe BlackTek-Server-Release.exe
-      - name: Compile Debug
-        run: |
-          cd D:\a\BlackTek-Server\BlackTek-Server
-          msbuild Black-Tek-Server.sln /p:Configuration=Debug
-          cmd /c copy Black-Tek-Server.exe BlackTek-Server-Debug.exe
-          del Black-Tek-Server.exe
-          cd D:\a\BlackTek-Server
-      - name: Cleanup Vcpkg_installed 
-        run: Remove-Item -Path "D:/a/BlackTek-Server/BlackTek-Server/vcpkg_installed" -Recurse -Force
-        shell: pwsh
-      - name: Cleanup Intermediaries 
-        run: Remove-Item -Path "D:/a/BlackTek-Server/BlackTek-Server/build" -Recurse -Force
-        shell: pwsh
-      - name: Cleanup Premake-Core 
-        run: Remove-Item -Path "D:/a/BlackTek-Server/BlackTek-Server/premake-core" -Recurse -Force
-        shell: pwsh
+          copy Black-Tek-Server.exe BlackTek-Server-Release.exe
+
+      # -------------------------------
+      # ARTIFACT PACKAGING
+      # -------------------------------
       - name: Prepare Compressed Assets
         run: |
           echo "Commit SHA: ${{ github.sha }}" > version.info
           7z a BlackTek-Server-${{ github.sha }}.zip D:/a/BlackTek-Server/BlackTek-Server/
-      - name: Cleanup Old Release Assets
-        if: (github.event_name == 'push') && (matrix.buildtype == 'windows-release') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && matrix.buildtype == 'windows-release' && github.event.pull_request.merged == true)
+
+      # -------------------------------
+      # CLEANUP OLD ASSETS (EDGE RELEASE)
+      # -------------------------------
+      - name: Cleanup Old Edge Assets
+        if: (github.event_name == 'push') && !startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         run: |
-          # GitHub CLI should be available on Windows runners
-          
-          # Authenticate directly with the token
           Write-Output "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-          
-          # Get the list of assets from the edge release
-          $assets = gh release view Windows-Edge-Build --json assets -q '.assets[].name' | Where-Object { $_ -like "BlackTek-Server-*" } | Sort-Object
-          
-          # Keep only the X most recent assets
+
+          $assets = gh release view Windows-Edge-Build --json assets -q '.assets[].name' |
+            Where-Object { $_ -like "BlackTek-Server-*" } |
+            Sort-Object
+
           $keepCount = 25
           $totalCount = ($assets | Measure-Object).Count
-          
+
           if ($totalCount -gt $keepCount) {
             $deleteCount = $totalCount - $keepCount
             $assetsToDelete = $assets | Select-Object -First $deleteCount
-            
-            Write-Output "Found $totalCount assets, keeping $keepCount, deleting $deleteCount"
-            
+
             foreach ($asset in $assetsToDelete) {
-              Write-Output "Deleting asset: $asset"
               gh release delete-asset Windows-Edge-Build "$asset" --yes
             }
-          } else {
-            Write-Output "Only $totalCount assets found, no cleanup needed (keeping up to $keepCount)"
           }
-      - name: Upload Assets for Edge Build
-        if: (github.event_name == 'push') && (matrix.buildtype == 'windows-release') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+
+      # -------------------------------
+      # UPLOAD NEW EDGE RELEASE ARTIFACT
+      # -------------------------------
+      - name: Upload Release Artifact
+        if: (github.event_name == 'push') && !startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -109,7 +137,5 @@ jobs:
           tag_name: Windows-Edge-Build
           name: BlackTek Server Edge Build
           body: |
-            This is an automated Windows Edge build for commit ${{ github.sha }}
-            OS-BuildType: Windows
-            Build date: ${{ github.event.head_commit.timestamp }}
+            Automated Windows Edge Build for commit ${{ github.sha }}
           files: BlackTek-Server-${{ github.sha }}.zip
