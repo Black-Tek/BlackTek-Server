@@ -49,13 +49,16 @@ jobs:
         run: |
           D:\a\BlackTek-Server\BlackTek-Server\premake5.exe vs2022
 
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
       # ---------------------------------------
       # AUTHENTICATE GITHUB FOR VCPKG (Fix 429)
       # ---------------------------------------
       - name: Authenticate vcpkg GitHub Access
         run: |
           git config --global url."https://${{ secrets.GITHUB_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-
+        
       # ---------------------------------------
       # VCPKG CACHE
       # ---------------------------------------
@@ -83,7 +86,7 @@ jobs:
       - name: Build Release
         run: |
           cd D:\a\BlackTek-Server\BlackTek-Server
-          msbuild Black-Tek-Server.sln /p:Configuration=Release
+          msbuild Black-Tek-Server.sln /p:Configuration=Release /m
           copy Black-Tek-Server.exe BlackTek-Server-Release.exe
 
       # ---------------------------------------
