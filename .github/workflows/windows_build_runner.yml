@@ -30,10 +30,12 @@ jobs:
         with:
           path: |
             C:\vcpkg\installed
+            C:\vcpkg\downloads
+            C:\vcpkg\buildtrees
             D:\a\BlackTek-Server\BlackTek-Server\vcpkg_installed
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-v2
           restore-keys: |
-            vcpkg-${{ runner.os }}-
+            vcpkg-${{ runner.os }}-v2-
       
       - name: Setup Premake & Generate Solution
         run: |
@@ -49,17 +51,59 @@ jobs:
         with:
           arch: x64
       
+      - name: Setup vcpkg environment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          # Set environment variables for vcpkg
+          echo "VCPKG_MAX_CONCURRENCY=1" >> $env:GITHUB_ENV
+          echo "VCPKG_KEEP_ENV_VARS=GITHUB_TOKEN" >> $env:GITHUB_ENV
+          
+          # Configure binary caching to use GitHub's CDN
+          echo "VCPKG_BINARY_SOURCES=clear;x-azblob,https://vcpkg.azureedge.net/,read" >> $env:GITHUB_ENV
+      
       - name: Install Dependencies
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
         run: |
           cd D:\a\BlackTek-Server
           git -C C:/vcpkg fetch origin
           git -C C:/vcpkg checkout master
           git -C C:/vcpkg reset --hard origin/master
+          
+          # Clean up outdated packages
           vcpkg remove --outdated --recurse
-          vcpkg install --triplet x64-windows
-          vcpkg integrate install
+          
+          # Install with retry logic
+          $maxAttempts = 3
+          $attempt = 1
+          $success = $false
+          
+          while (-not $success -and $attempt -le $maxAttempts) {
+            Write-Host "Installation attempt $attempt of $maxAttempts"
+            try {
+              vcpkg install --triplet x64-windows
+              vcpkg integrate install
+              $success = $true
+              Write-Host "Installation successful!"
+            }
+            catch {
+              Write-Host "Attempt $attempt failed. Error: $_"
+              if ($attempt -lt $maxAttempts) {
+                $waitTime = [math]::Pow(2, $attempt) * 30
+                Write-Host "Waiting $waitTime seconds before retry..."
+                Start-Sleep -Seconds $waitTime
+              }
+              $attempt++
+            }
+          }
+          
+          if (-not $success) {
+            Write-Error "Failed to install dependencies after $maxAttempts attempts"
+            exit 1
+          }
       
       - name: Compile Release
         run: |
