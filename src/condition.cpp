@@ -897,8 +897,6 @@ bool ConditionRegeneration::executeCondition(const CreaturePtr creature, int32_t
 			regen.primary.value = static_cast<int32_t>(manaGain);
 			regen.primary.type = COMBAT_HEALING;
 			regen.isUtility = isBuff;
-			g_game.combatChangeMana(nullptr, player, regen);
-
 			const bool sendMsg = g_config.getBoolean(ConfigManager::MANA_REGEN_NOTIFICATION);
 			g_game.combatChangeMana(nullptr, creature, regen, sendMsg);
 		}

@@ -389,6 +389,11 @@ void Monster::onCreatureFound(const CreaturePtr& creature, bool pushFront/* = fa
 		return;
 	}
 
+	if (creature.get() == this)
+	{
+		return;
+	}
+
 	if (!canSee(creature->getPosition())) {
 		return;
 	}
