@@ -57,11 +57,8 @@ jobs:
         shell: pwsh
         run: |
           # Set environment variables for vcpkg
-          echo "VCPKG_MAX_CONCURRENCY=1" >> $env:GITHUB_ENV
+          echo "VCPKG_MAX_CONCURRENCY=2" >> $env:GITHUB_ENV
           echo "VCPKG_KEEP_ENV_VARS=GITHUB_TOKEN" >> $env:GITHUB_ENV
-          
-          # Configure binary caching to use GitHub's CDN
-          echo "VCPKG_BINARY_SOURCES=clear;x-azblob,https://vcpkg.azureedge.net/,read" >> $env:GITHUB_ENV
       
       - name: Install Dependencies
         env:
@@ -84,10 +81,10 @@ jobs:
           while (-not $success -and $attempt -le $maxAttempts) {
             Write-Host "Installation attempt $attempt of $maxAttempts"
             try {
-              vcpkg install --triplet x64-windows
+              # Only integrate - MSBuild will install packages via vcpkg.json manifest
               vcpkg integrate install
               $success = $true
-              Write-Host "Installation successful!"
+              Write-Host "vcpkg integration successful! Packages will be installed during build."
             }
             catch {
               Write-Host "Attempt $attempt failed. Error: $_"
