@@ -51,11 +51,14 @@ class BaseEvents
 		virtual ~BaseEvents() = default;
 
 		bool loadFromXml();
-		bool reload();
+		virtual bool reload();
 		bool isLoaded() const {
 			return loaded;
 		}
 		void reInitState(bool fromLua);
+
+	protected:
+		bool loaded = false;
 
 	private:
 		virtual LuaScriptInterface& getScriptInterface() = 0;
@@ -64,7 +67,6 @@ class BaseEvents
 		virtual bool registerEvent(Event_ptr event, const pugi::xml_node& node) = 0;
 		virtual void clear(bool) = 0;
 
-		bool loaded = false;
 };
 
 class CallBack

@@ -47,6 +47,14 @@ void GlobalEvents::clear(bool fromLua)
 	reInitState(fromLua);
 }
 
+bool GlobalEvents::reload()
+{
+	loaded = false;
+	clear(false);
+	loaded = true;
+	return true;
+}
+
 Event_ptr GlobalEvents::getEvent(const std::string& nodeName)
 {
 	if (!caseInsensitiveEqual(nodeName, "globalevent")) {
