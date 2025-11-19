@@ -43,6 +43,7 @@ class GlobalEvents final : public BaseEvents
 
 		bool registerLuaEvent(GlobalEvent* event);
 		void clear(bool fromLua) override final;
+		bool reload() override;
 
 	private:
 		std::string_view getScriptBaseName() const override { return "globalevents"; }
