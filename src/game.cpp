@@ -4894,8 +4894,7 @@ void Game::creature_think_cycle() noexcept
 {
     auto& checkCreatureList = slots_[current_slot_];
     current_slot_ = (current_slot_ + 1) % 20;
-
-    auto valid_creatures = checkCreatureList 
+auto valid_creatures = checkCreatureList 
         | std::views::filter([](const auto& creature) { return creature->creatureCheck; })
         | std::views::filter([](const auto& creature) { return creature->getHealth() > 0; });
 
