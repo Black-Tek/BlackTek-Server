@@ -47,6 +47,7 @@ doorStepIn:register()
 
 local doorStepOut = MoveEvent()
 function doorStepOut.onStepOut(creature, item, position, fromPosition)
+    clearCreatureEntryPosition(creature)
     return true
 end
 for closedId, openId in pairs(normalDoors) do
