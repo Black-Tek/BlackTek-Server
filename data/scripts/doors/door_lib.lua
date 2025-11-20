@@ -25,6 +25,7 @@ doorConfig = {
     closeDoorBeforeLocking = true,                   -- if true, doors must already be closed to get locked. if false, the door will close and lock at the same time
     -- level_doors
     levelDoorRequireToClose = true,                  -- if true, players must be the correct level to close the door, otherwise lower level players can close them to push players out
+    levelDoorAllowMissingActionId = true,            -- if true, doors without action ids behave like level 0 doors, otherwise players see a message
     levelDoorAllowMonsters = false,                  -- if true, monsters can pass through open level doors
     -- quest_doors
     questDoorRequireToClose = true,

@@ -212,6 +212,14 @@ void Weapons::clear(bool fromLua)
 	reInitState(fromLua);
 }
 
+bool Weapons::reload()
+{
+	loaded = false;
+	clear(false);
+	loaded = true;
+	return true;
+}
+
 LuaScriptInterface& Weapons::getScriptInterface()
 {
 	return scriptInterface;

@@ -102,6 +102,7 @@ questDoorStepIn:register()
 local questDoorStepOut = MoveEvent()
 
 function questDoorStepOut.onStepOut(creature, item, position, fromPosition)
+    clearCreatureEntryPosition(creature)
     local doorPosition = item:getPosition()
     local tile = Tile(doorPosition)
 
@@ -116,8 +117,7 @@ function questDoorStepOut.onStepOut(creature, item, position, fromPosition)
         end
     end
 
-    closeDoor(doorPosition, item)
-    return true
+    return closeDoor(doorPosition, item)
 end
 
 for closedId, openId in pairs(questDoors.ids) do

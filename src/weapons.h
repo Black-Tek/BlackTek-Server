@@ -37,6 +37,7 @@ class Weapons final : public BaseEvents
 
 		bool registerLuaEvent(Weapon* event);
 		void clear(bool fromLua) override final;
+		bool reload() override;
 
 	private:
 		LuaScriptInterface& getScriptInterface() override;

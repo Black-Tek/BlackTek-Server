@@ -109,6 +109,14 @@ void Spells::clear(bool fromLua)
 	reInitState(fromLua);
 }
 
+bool Spells::reload()
+{
+	loaded = false;
+	clear(false);
+	loaded = true;
+	return true;
+}
+
 LuaScriptInterface& Spells::getScriptInterface()
 {
 	return scriptInterface;

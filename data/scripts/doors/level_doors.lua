@@ -22,7 +22,7 @@ function levelDoor.onUse(player, item, fromPosition, target, toPosition, isHotke
             return true
         end
 
-        if doorActionId == 0 then
+        if doorActionId == 0 and not doorConfig.levelDoorAllowMissingActionId then
             player:sendTextMessage(MESSAGE_EVENT_ADVANCE, levelDoors.messages.noActionId)
             return true
         end
@@ -85,6 +85,12 @@ function levelDoorStepIn.onStepIn(creature, item, position, fromPosition)
     local doorActionId = item:getActionId()
     local requiredLevel = getRequiredLevel(doorActionId)
 
+    if doorActionId == 0 and not doorConfig.levelDoorAllowMissingActionId then
+        player:sendTextMessage(MESSAGE_EVENT_ADVANCE, levelDoors.messages.noActionId)
+        player:teleportTo(fromPosition, true)
+        return false
+    end
+
     if not meetsLevelRequirement(player, requiredLevel) then
         player:sendTextMessage(MESSAGE_EVENT_ADVANCE, string.format(levelDoors.messages.needLevel, requiredLevel))
         player:teleportTo(fromPosition, true)
@@ -103,6 +109,7 @@ levelDoorStepIn:register()
 local levelDoorStepOut = MoveEvent()
 
 function levelDoorStepOut.onStepOut(creature, item, position, fromPosition)
+    clearCreatureEntryPosition(creature)
     local doorPosition = item:getPosition()
     local tile = Tile(doorPosition)
 
@@ -117,8 +124,7 @@ function levelDoorStepOut.onStepOut(creature, item, position, fromPosition)
         end
     end
 
-    closeDoor(doorPosition, item)
-    return true
+    return closeDoor(doorPosition, item)
 end
 
 for closedId, openId in pairs(levelDoors.ids) do

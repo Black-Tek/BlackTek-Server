@@ -12,7 +12,7 @@ function useKeyOnDoor.onUse(player, item, fromPosition, target, toPosition, isHo
 
     if doorActionId == 0 or keyActionId == 0 then
         player:sendTextMessage(MESSAGE_EVENT_ADVANCE, lockedDoors.messages.wrongKey)
-        return false
+        return true
     end
 
     if keyActionId ~= doorActionId then
@@ -51,7 +51,7 @@ function useKeyOnDoor.onUse(player, item, fromPosition, target, toPosition, isHo
             return true
         else
             if not closeDoor(toPosition, doorItem) then
-                player:sendTextMessage(MESSAGE_EVENT_ADVANCE, doorConfig.ids.closeErrorMessage)
+                player:sendTextMessage(MESSAGE_EVENT_ADVANCE, doorConfig.closeErrorMessage)
                 return true
             end
             local lockedId = getLockedDoorId(doorItem:getId())
