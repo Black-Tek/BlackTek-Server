@@ -76,6 +76,7 @@ static constexpr int32_t RANGE_REQUEST_TRADE_INTERVAL = 400;
 
 static constexpr uint32_t EquipmentDecayMaxInterval = 100;
 static constexpr uint32_t MapDecayMaxInterval = 250;
+static constexpr size_t MaxCreatureThinkSlots = 20;
 
 
 
@@ -680,7 +681,7 @@ class Game
 		DecayList map_expirables;
 		DecayList equipped_expirables;
 
-		std::array<std::list<CreaturePtr>, 20> slots_;
+		std::array<std::list<CreaturePtr>, MaxCreatureThinkSlots> slots_;
         size_t current_slot_ = 0;
 
 		std::list<ItemPtr> decayItems[EVENT_DECAY_BUCKETS];

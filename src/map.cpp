@@ -263,19 +263,13 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 	getSpectators(spectators, oldPos, true);
 	getSpectators(newPosSpectators, newPos, true);
 	spectators.addSpectators(newPosSpectators);
-	std::vector<int32_t> oldStackPosVector;
-	size_t i = 0;
 
-	for (const auto& spectator : spectators) 
-	{
-		if (const auto& tmpPlayer = spectator->getPlayer()) 
-		{
-			if (tmpPlayer->canSeeCreature(creature)) 
-			{
+	std::vector<int32_t> oldStackPosVector;
+	for (const auto& spectator : spectators) {
+		if (const auto& tmpPlayer = spectator->getPlayer()) {
+			if (tmpPlayer->canSeeCreature(creature)) {
 				oldStackPosVector.push_back(oldTile->getClientIndexOfCreature(tmpPlayer, creature));
-			} 
-			else 
-			{
+			} else {
 				oldStackPosVector.push_back(-1);
 			}
 		}
@@ -310,24 +304,22 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 		}
 	}
 
-
-	for (const auto& spectator : spectators) 
-	{
-		if (const auto& monster = spectator->getMonster(); monster) 
-		{
-			monster->setIdle(false);
-		}
-
-		if (const auto& tmpPlayer = spectator->getPlayer()) 
-		{ 
-			// Use the correct stackpos
-			if (const int32_t& stackpos = oldStackPosVector[i++]; stackpos != -1) 
-			{
-				tmpPlayer->sendCreatureMove(creature, newPos, newTile->getClientIndexOfCreature(tmpPlayer, creature), oldPos, stackpos, teleport); // send to client
+	//send to client
+	size_t i = 0;
+	for (const auto& spectator : spectators) {
+		if (const auto& tmpPlayer = spectator->getPlayer()) {
+			//Use the correct stackpos
+			if (const int32_t& stackpos = oldStackPosVector[i++]; stackpos != -1) {
+				tmpPlayer->sendCreatureMove(creature, newPos, newTile->getClientIndexOfCreature(tmpPlayer, creature), oldPos, stackpos, teleport);
 			}
 		}
+	}
 
-		spectator->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport); //event method
+	//event method
+	for (const auto& spectator : spectators) {
+		if (const auto& monster = spectator->getMonster(); monster)
+				monster->setIdle(false);
+		spectator->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
 	}
 
 	oldTile->postRemoveNotification(creature, newTile, 0);

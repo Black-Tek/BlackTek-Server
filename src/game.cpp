@@ -4873,6 +4873,9 @@ void Game::checkCreatureAttack(const uint32_t creatureId) noexcept
 
 void Game::addCreatureCheck(const CreaturePtr& creature) noexcept
 {
+    auto c_check = creature->creatureCheck;
+    auto v_check = creature->inCheckCreaturesVector;
+    auto reinit = (not c_check and not v_check);
     creature->creatureCheck = true;
 
     if (creature->inCheckCreaturesVector)
@@ -4881,7 +4884,16 @@ void Game::addCreatureCheck(const CreaturePtr& creature) noexcept
     }
 
     creature->inCheckCreaturesVector = true;
-    slots_[(current_slot_ + 1) % 20].push_back(creature);
+
+	if (reinit)
+    {
+		size_t pool_size = MaxCreatureThinkSlots / 2;
+        slots_[normal_random(1, pool_size)].push_back(creature);
+    }
+    else
+    {
+        slots_[(current_slot_ + 1) % MaxCreatureThinkSlots].push_back(creature);
+    }
 }
 
 void Game::removeCreatureCheck(const CreaturePtr& creature) noexcept
@@ -4896,8 +4908,7 @@ void Game::creature_think_cycle() noexcept
 {
     auto& checkCreatureList = slots_[current_slot_];
     current_slot_ = (current_slot_ + 1) % 20;
-
-    auto valid_creatures = checkCreatureList 
+auto valid_creatures = checkCreatureList 
         | std::views::filter([](const auto& creature) { return creature->creatureCheck; })
         | std::views::filter([](const auto& creature) { return creature->getHealth() > 0; });
 
