@@ -139,8 +139,8 @@ namespace Spawns
         return std::nullopt;
     }
 
-    template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType>
-    bool ZoneManager<EntityType, RuleType, TriggerType>::tryMonsterSpawn(MonsterPtr monster, Position position, Direction direction, MagicEffectClasses magic_effect /*CONST_ME_TELEPORT*/, bool startup /*false*/, bool artificial /*false*/)
+    template <SpawnType EntityType, Policy RuleType>
+    bool ZoneManager<EntityType, RuleType>::tryMonsterSpawn(MonsterPtr monster, Position position, Direction direction, MagicEffectClasses magic_effect /*CONST_ME_TELEPORT*/, bool startup /*false*/, bool artificial /*false*/)
     {
         if (g_events->eventMonsterOnSpawn(monster, position, true, false))
         {
@@ -354,21 +354,21 @@ namespace Spawns
             spawn);
     }
 
-    template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType>
-    void ZoneManager<EntityType, RuleType, TriggerType>::activate()
+    template <SpawnType EntityType, Policy RuleType>
+    void ZoneManager<EntityType, RuleType>::activate()
     {
         config.set(static_cast<size_t>(ConfigFlag::Active));
         run();
     }
 
-    template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType>
-    void ZoneManager<EntityType, RuleType, TriggerType>::deactivate()
+    template <SpawnType EntityType, Policy RuleType>
+    void ZoneManager<EntityType, RuleType>::deactivate()
     {
         config.reset(static_cast<size_t>(ConfigFlag::Active));
     }
 
-    template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType>
-    ParseResult ZoneManager<EntityType, RuleType, TriggerType>::set_range(const toml::v3::table& range_table)
+    template <SpawnType EntityType, Policy RuleType>
+    ParseResult ZoneManager<EntityType, RuleType>::set_range(const toml::v3::table& range_table)
     {
         auto start_str = range_table.get("startpos")->value<std::string>();
         auto end_str = range_table.get("endpos")->value<std::string>();
@@ -417,8 +417,8 @@ namespace Spawns
         return { ParseCode::Success, "" };
     }
 
-    template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType>
-    void ZoneManager<EntityType, RuleType, TriggerType>::process_creatures()
+    template <SpawnType EntityType, Policy RuleType>
+    void ZoneManager<EntityType, RuleType>::process_creatures()
     {
         if (not creature_list.empty())
         {
@@ -430,8 +430,8 @@ namespace Spawns
         }
     }
 
-    template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType>
-    CoroTask ZoneManager<EntityType, RuleType, TriggerType>::delay_spawn(uint32_t milliseconds, std::shared_ptr<SpawnCreature> entry, bool startup)
+    template <SpawnType EntityType, Policy RuleType>
+    CoroTask ZoneManager<EntityType, RuleType>::delay_spawn(uint32_t milliseconds, std::shared_ptr<SpawnCreature> entry, bool startup)
     {
         co_await SleepFor(milliseconds);
         spawn(entry, startup);
@@ -1690,7 +1690,22 @@ namespace Spawns
 
     void System::RegisterSpawn(uint32_t id, AnySpawn zone)
     {
-        _spawn_registry.insert({ id, zone });
+        _spawn_registry.insert({id, zone});
+    }
+
+    void System::RegisterTriggered(uint32_t id, SpawnTrigger trigger)
+    {
+        _triggered_spawns.insert({id, trigger});
+    }
+
+    void System::RegisterStaged(uint32_t id, StageType stage)
+    {
+        _staged_spawns.insert({id, stage});
+    }
+
+    void System::RegisterLinked(uint32_t id, LinkType link)
+    {
+        _linked_spawns.insert({id, link});
     }
 
     AnySpawn System::GetSpawn(uint32_t id)

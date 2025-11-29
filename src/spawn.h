@@ -58,6 +58,23 @@ namespace Spawns
         Sunday
     };
 
+    enum class StageType : uint32_t
+    {
+        None,
+        Wave,
+        Timed,
+        Linked,
+        PerEntity
+    };
+
+    enum class LinkType : uint32_t
+    {
+        None,
+        Peer,
+        Slave,
+        Master
+    };
+
     struct ParseResult
     {
         ParseCode code;
@@ -173,20 +190,8 @@ namespace Spawns
         Timed,          // staged: waves progress after time, rather than by death
     };
 
-
-    template <Policy P, SpawnTrigger T>
-    struct ITrigger
-    {
-    };
-
-    template <SpawnTrigger TriggerType>
-    struct ITrigger<Policy::Triggered, TriggerType>
-    {
-        SpawnTrigger trigger = TriggerType;
-    };
-
-    template <SpawnType EntityType, Policy RuleType, SpawnTrigger TriggerType = SpawnTrigger::None>
-    class ZoneManager : public std::enable_shared_from_this<ZoneManager<EntityType, RuleType, TriggerType>>, public ITrigger<RuleType, TriggerType>
+    template <SpawnType EntityType, Policy RuleType>
+    class ZoneManager : public std::enable_shared_from_this<ZoneManager<EntityType, RuleType>>
     {
     public:
 
@@ -376,12 +381,19 @@ namespace Spawns
 
         inline static std::unordered_map<Position, std::shared_ptr<SpawnZones>, PositionHash> _spawn_position_registry;
         inline static std::unordered_map<uint32_t, AnySpawn> _spawn_registry;
+        inline static std::unordered_map<uint32_t, SpawnTrigger> _triggered_spawns;
+        inline static std::unordered_map<uint32_t, StageType> _staged_spawns;
+        inline static std::unordered_map<uint32_t, LinkType> _linked_spawns;
+
         //inline static std::chrono::time_point<uint32_t> _next_day;
         //inline static std::chrono::weekday _today;
 
         static void RegisterSpawnPosition(Position& position, const AnySpawn& spawn);
 
-        static void RegisterSpawn(uint32_t id, AnySpawn zone);
+        static void RegisterSpawn(uint32_t spawn_id, AnySpawn zone);
+        static void RegisterTriggered(uint32_t triggered_spawn_id, SpawnTrigger trigger);
+        static void RegisterStaged(uint32_t staged_spawn_id, StageType s_type);
+        static void RegisterLinked(uint32_t linked_spawn_id, LinkType l_type);
         static AnySpawn GetSpawn(uint32_t id);
         static std::shared_ptr<SpawnZones> GetSpawns(Position position);
 
