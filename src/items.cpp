@@ -444,7 +444,7 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
                         FormulaType formula = Components::Skills::ParseFormula(formula_type);
 
                         if (not name.empty()) {
-                            auto customSkill = Components::Skills::CustomSkill::make_skill(formula, threshold, difficulty, multiplier);
+                            auto customSkill = Components::Skills::CustomSkill::make_skill(level, formula, threshold, difficulty, multiplier);
                             Items::addItemSkill(id, name, customSkill);
                             continue;
                         }

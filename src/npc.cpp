@@ -265,7 +265,7 @@ bool Npc::loadFromXml()
 				multiplier = pugi::cast<float>(attr.value());
 			}
 
-			auto npc_skill = Components::Skills::CustomSkill::make_skill(formula, max, multiplier, threshold, difficulty);
+			auto npc_skill = Components::Skills::CustomSkill::make_skill(level, formula, max, multiplier, threshold, difficulty);
 			Npcs::addNpcSkill(name, skill_name, npc_skill);
 		}
 	}

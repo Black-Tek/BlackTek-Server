@@ -44,7 +44,8 @@ namespace Components {
         class CustomSkill {
         public:
 
-            CustomSkill(uint8_t form = FormulaType::EXPONENTIAL, uint16_t max = 0, float x = 1.0, float y = 50, float z = 10) :
+            CustomSkill(uint16_t level = 1, uint8_t form = FormulaType::EXPONENTIAL, uint16_t max = 0, float x = 1.0, float y = 50, float z = 10) :
+                current_level(level),
                 _multiplier(x),
                 _difficulty(y),
                 _threshold(z),
@@ -64,9 +65,9 @@ namespace Components {
                 return std::make_shared<CustomSkill>(*skill.get());
             }
 
-            static std::shared_ptr<CustomSkill> make_skill(uint8_t form = FormulaType::EXPONENTIAL, uint16_t max = 0, float x = 1.0, float y = 50, float z = 10)
+            static std::shared_ptr<CustomSkill> make_skill(uint16_t level = 1, uint8_t form = FormulaType::EXPONENTIAL, uint16_t max = 0, float x = 1.0, float y = 50, float z = 10)
             {
-                return std::make_shared<CustomSkill>(form, max, x, y, z);
+                return std::make_shared<CustomSkill>(level, form, max, x, y, z);
             }
 
             [[nodiscard]]

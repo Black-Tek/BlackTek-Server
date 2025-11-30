@@ -1354,7 +1354,7 @@ MonsterType* Monsters::loadMonster(const std::string& file, const std::string& m
 				multiplier = pugi::cast<float>(attr.value());
 			}
 
-			auto monster_skill = Components::Skills::CustomSkill::make_skill(formula, max, multiplier, threshold, difficulty);
+			auto monster_skill = Components::Skills::CustomSkill::make_skill(level, formula, max, multiplier, threshold, difficulty);
 			Monsters::addMonsterSkill(monsterName, name, monster_skill);
 		}
 	}

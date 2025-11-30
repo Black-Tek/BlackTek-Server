@@ -219,7 +219,7 @@ bool Vocations::loadFromToml() {
 										float threshold = s["threshold"].value_or(10.0f);
 										float difficulty = s["difficulty"].value_or(50.0f);
 										FormulaType formula = Components::Skills::ParseFormula(s["formula"].value_or("default"));
-										auto custom_skill = Components::Skills::CustomSkill::make_skill(formula, max, multiplier, threshold, difficulty);
+										auto custom_skill = Components::Skills::CustomSkill::make_skill(1, formula, max, multiplier, threshold, difficulty);
 										Vocations::addVocationSkill(vocId, skill_name, std::move(custom_skill));
 									}
 								}
