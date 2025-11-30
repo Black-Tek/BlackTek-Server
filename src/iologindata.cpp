@@ -268,7 +268,7 @@ SkillRegistry IOLoginData::deserializeCustomSkills(PropStream binary_stream)
 			return skill_set;
 		}
 
-		auto skill = Components::Skills::CustomSkill::make_skill(formula, max_level, multiplier, difficulty, threshold);
+		auto skill = Components::Skills::CustomSkill::make_skill(current_level, formula, max_level, multiplier, difficulty, threshold);
 		skill->addPoints(current_points);
 		skill->setBonus(bonus_level);
 
