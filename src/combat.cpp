@@ -138,7 +138,7 @@ CombatDamage Combat::getCombatDamage(const CreaturePtr& creature, const Creature
 
 	if (params.valueCallback) 
 	{
-		params.valueCallback->getMinMaxValues(player, damage);
+		params.valueCallback->getMinMaxValues(player, damage, target);
 		return damage;
 	}
 
@@ -616,6 +616,12 @@ bool Combat::setCallback(CallBackParam_t key)
 			params.targetCallback.reset(new TargetCallback());
 			return true;
 		}
+
+		case CALLBACK_PARAM_DAMAGEVALUE:
+        {
+            params.valueCallback.reset(new ValueCallback(COMBAT_FORMULA_TARGET));
+            return true;
+        }
 	}
 	return false;
 }
@@ -634,6 +640,11 @@ CallBack* Combat::getCallback(CallBackParam_t key) const
 
 		case CALLBACK_PARAM_TARGETCREATURE: {
 			return params.targetCallback.get();
+		}
+
+		case CALLBACK_PARAM_DAMAGEVALUE:
+		{
+			return params.valueCallback.get();
 		}
 	}
 	return nullptr;
@@ -1565,7 +1576,7 @@ void Combat::applyDamageReductionModifier
 
 //**********************************************************//
 
-void ValueCallback::getMinMaxValues(const PlayerPtr& player, CombatDamage& damage) const
+void ValueCallback::getMinMaxValues(const PlayerPtr& player, CombatDamage& damage, const CreaturePtr& target) const
 {
 	//onGetPlayerMinMaxValues(...)
 	if (!scriptInterface->reserveScriptEnv()) {
@@ -1621,6 +1632,15 @@ void ValueCallback::getMinMaxValues(const PlayerPtr& player, CombatDamage& damag
 			lua_pushnumber(L, player->getAttackFactor());
 			parameters += 3;
 			break;
+		}
+
+		case COMBAT_FORMULA_TARGET:
+        {
+			// onGetPlayerMinMaxValues(player, target)
+            LuaScriptInterface::pushSharedPtr(L, target);
+            LuaScriptInterface::setMetatable(L, -2, "Creature");
+            parameters += 1;
+            break;
 		}
 
 		default: {

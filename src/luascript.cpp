@@ -1153,11 +1153,13 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(CALLBACK_PARAM_SKILLVALUE)
 	registerEnum(CALLBACK_PARAM_TARGETTILE)
 	registerEnum(CALLBACK_PARAM_TARGETCREATURE)
+	registerEnum(CALLBACK_PARAM_DAMAGEVALUE)
 
 	registerEnum(COMBAT_FORMULA_UNDEFINED)
 	registerEnum(COMBAT_FORMULA_LEVELMAGIC)
 	registerEnum(COMBAT_FORMULA_SKILL)
 	registerEnum(COMBAT_FORMULA_DAMAGE)
+	registerEnum(COMBAT_FORMULA_TARGET)
 
 	registerEnum(DIRECTION_NORTH)
 	registerEnum(DIRECTION_EAST)
