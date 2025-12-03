@@ -2624,6 +2624,10 @@ void ProtocolGame::sendAddCreature(const CreatureConstPtr& creature, const Posit
 
 	sendInventoryItem(CONST_SLOT_STORE_INBOX, player->getStoreInbox()->getItem());
 
+	const bool open = g_config.getBoolean(ConfigManager::AUTO_OPEN_CONTAINERS);
+    if (open)
+		player->autoOpenContainers();
+
 	sendStats();
 	sendSkills();
 

@@ -398,7 +398,9 @@ class Player final : public Creature, public Cylinder
 
 		ContainerPtr getContainerByID(uint8_t cid);
 		int8_t getContainerID(const ContainerConstPtr& container) const;
-		uint16_t getContainerIndex(uint8_t cid) const;
+        uint16_t getContainerIndex(uint8_t cid) const;
+
+        void autoOpenContainers();
 
 		bool canOpenCorpse(uint32_t ownerId) const;
 

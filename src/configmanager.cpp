@@ -257,6 +257,7 @@ bool ConfigManager::load()
 	boolean[NPC_PZ_WALKTHROUGH] = getGlobalBoolean(L, "allowNpcWalkthroughInPz", false);
 	boolean[HEALTH_REGEN_NOTIFICATION] = getGlobalBoolean(L, "healthRegenNotification", false);
 	boolean[MANA_REGEN_NOTIFICATION] = getGlobalBoolean(L, "manaRegenNotification", false);
+    boolean[AUTO_OPEN_CONTAINERS] = getGlobalBoolean(L, "autoOpenContainers", true);
 
 	// Account manager
 	boolean[ENABLE_ACCOUNT_MANAGER] = getGlobalBoolean(L, "useIngameAccountManager", true);

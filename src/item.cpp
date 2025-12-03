@@ -850,6 +850,17 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 			break;
 		}
 
+		case ATTR_OPENCONTAINER: {
+			uint32_t container_id;
+			if (!propStream.read<uint32_t>(container_id)) {
+				std::cout << "Failed to read : open container id \n";
+				return ATTR_READ_ERROR;
+			}
+
+			setIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER, container_id);
+			break;
+		}
+
 		default:
 			return ATTR_READ_CONTINUE;
 	}
@@ -1074,6 +1085,13 @@ void Item::serializeAttr(PropWriteStream& propWriteStream) const
 		propWriteStream.write<uint8_t>(ATTR_REWARDID);
 		propWriteStream.write<uint32_t>(getIntAttr(ITEM_ATTRIBUTE_REWARDID));
 	}
+
+	if (hasAttribute(ITEM_ATTRIBUTE_OPENCONTAINER))
+    {
+        propWriteStream.write<uint8_t>(ATTR_OPENCONTAINER);
+        propWriteStream.write<uint32_t>(getIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER));
+    }
+
 }
 
 
