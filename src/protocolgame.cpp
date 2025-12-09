@@ -185,7 +185,7 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			output->addByte(0x16);
 			output->addString(fmt::format("Too many players online.\nYou are at place {:d} on the waiting list.", currentSlot));
 			output->addByte(retryTime);
-			send(output);
+			send(std::move(output));
 			disconnect();
 			return;
 		}
@@ -456,7 +456,7 @@ void ProtocolGame::onConnect()
 	output->skipBytes(-12);
 	output->add<uint32_t>(adlerChecksum(output->getOutputBuffer() + sizeof(uint32_t), 8));
 
-	send(output);
+	send(std::move(output));
 }
 
 void ProtocolGame::disconnectClient(const std::string& message) const
@@ -464,7 +464,7 @@ void ProtocolGame::disconnectClient(const std::string& message) const
 	auto output = OutputMessagePool::getOutputMessage();
 	output->addByte(0x14);
 	output->addString(message);
-	send(output);
+    send(std::move(output));
 	disconnect();
 }
 

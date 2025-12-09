@@ -71,7 +71,7 @@ OutputMessage_ptr Protocol::getOutputBuffer(int32_t size)
 	if (!outputBuffer) {
 		outputBuffer = OutputMessagePool::getOutputMessage();
 	} else if ((outputBuffer->getLength() + size) > NetworkMessage::MAX_PROTOCOL_BODY_LENGTH) {
-		send(outputBuffer);
+		send(std::move(outputBuffer));
 		outputBuffer = OutputMessagePool::getOutputMessage();
 	}
 	return outputBuffer;

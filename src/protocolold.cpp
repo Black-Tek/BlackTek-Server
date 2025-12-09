@@ -17,7 +17,7 @@ void ProtocolOld::disconnectClient(const std::string& message)
 	auto output = OutputMessagePool::getOutputMessage();
 	output->addByte(0x0A);
 	output->addString(message);
-	send(output);
+	send(std::move(output));
 
 	disconnect();
 }

@@ -266,7 +266,10 @@ void Connection::onWriteOperation(const boost::system::error_code& error)
 {
 	std::lock_guard<std::recursive_mutex> lockClass(connectionLock);
 	writeTimer.cancel();
+    OutputMessage_ptr msg = messageQueue.front();
 	messageQueue.pop_front();
+
+	msg->reset();
 
 	if (error) {
 		messageQueue.clear();

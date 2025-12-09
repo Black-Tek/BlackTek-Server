@@ -136,7 +136,7 @@ void ProtocolStatus::sendStatusString()
 
 	std::string data = ss.str();
 	output->addBytes(data.c_str(), data.size());
-	send(output);
+	send(std::move(output));
 	disconnect();
 }
 
@@ -208,6 +208,6 @@ void ProtocolStatus::sendInfo(uint16_t requestedInfo, const std::string& charact
 		output->addString(STATUS_SERVER_VERSION);
 		output->addString(CLIENT_VERSION_STR);
 	}
-	send(output);
+	send(std::move(output));
 	disconnect();
 }
