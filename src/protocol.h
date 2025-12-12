@@ -7,6 +7,7 @@
 #include <zlib.h>
 #include "connection.h"
 #include "xtea.h"
+#include "networkopcodes.h"
 
 class Protocol : public std::enable_shared_from_this<Protocol>
 {
