@@ -1280,7 +1280,6 @@ bool Creature::addCondition(Condition* condition, bool force/* = false*/)
 
 bool Creature::addCombatCondition(Condition* condition)
 {
-    if (isMonster()) return false;
 	//Caution: condition variable could be deleted after the call to addCondition
 	ConditionType_t type = condition->getType();
 
