@@ -4,7 +4,7 @@
 #ifndef FS_CONST_H
 #define FS_CONST_H
 
-static constexpr int32_t NETWORKMESSAGE_MAXSIZE = 65535;
+static constexpr int32_t NETWORKMESSAGE_MAXSIZE = 24590;
 
 
 // Defines the type of formula for the points required growth curve

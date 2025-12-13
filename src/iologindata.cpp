@@ -606,7 +606,6 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 
 	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills` FROM `player_items` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
-
 		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
 			const std::pair<ItemPtr, int32_t>& pair = it->second;
 			auto item = pair.first;
@@ -837,9 +836,19 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 {
 	using ContainerBlock = std::pair<ContainerPtr, int32_t>;
 	std::vector<ContainerBlock> containers;
+	const auto& open_containers = player->openContainers;
 	containers.reserve(32);
 
 	int32_t runningId = 100;
+
+	if (not open_containers.empty())
+	{
+		for (const auto& container_data : open_containers)
+		{
+			container_data.second.container->setIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER, static_cast<int64_t>(container_data.first) + 1);
+		}
+	}
+	
 
 	Database& db = Database::getInstance();
 
@@ -849,6 +858,7 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 		++runningId;
 
 		propWriteStream.clear();
+
 		item->serializeAttr(propWriteStream);
 		const auto attributesData = propWriteStream.getStream();
 
@@ -881,10 +891,10 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 			db.escapeString(skill_data)))) {
 			return false;
 		}
-
-		if (auto container = item->getContainer()) {
-			containers.emplace_back(container, runningId);
-		}
+        if (const auto& container = item->getContainer())
+        {
+            containers.emplace_back(container, runningId);
+        }
 	}
 
 	for (size_t i = 0; i < containers.size(); i++) {
@@ -931,9 +941,21 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 				return false;
 			}
 
-			if (auto subContainer = item->getContainer()) {
-				containers.emplace_back(subContainer, runningId);
-			}
+			if (const auto& container = item->getContainer())
+            {
+                containers.emplace_back(container, runningId);
+            }
+		}
+	}
+
+	// we reset here because player not be logging out,
+	// and so if they are being saved without logging out,
+	// we must make sure we clear the attribute.
+	if (not open_containers.empty())
+	{
+		for (const auto& container_data : open_containers)
+		{
+			container_data.second.container->setIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER, 0);
 		}
 	}
 

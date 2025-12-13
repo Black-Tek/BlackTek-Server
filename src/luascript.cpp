@@ -2097,6 +2097,7 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::ACCOUNT_MANAGER_POS_Z);
 	registerEnumIn("configKeys", ConfigManager::HEALTH_REGEN_NOTIFICATION);
 	registerEnumIn("configKeys", ConfigManager::MANA_REGEN_NOTIFICATION);
+    registerEnumIn("configKeys", ConfigManager::AUTO_OPEN_CONTAINERS);
 
 
 	registerEnumIn("configKeys", ConfigManager::SQL_PORT);

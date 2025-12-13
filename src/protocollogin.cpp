@@ -24,7 +24,7 @@ void ProtocolLogin::disconnectClient(const std::string& message, uint16_t versio
 
 	output->addByte(version >= 1076 ? 0x0B : 0x0A);
 	output->addString(message);
-	send(output);
+	send(std::move(output));
 
 	disconnect();
 }
@@ -44,7 +44,7 @@ void ProtocolLogin::getCharacterList(const std::string& accountName, const std::
 		if (token.empty() || !(token == generateToken(account.key, ticks) || token == generateToken(account.key, ticks - 1) || token == generateToken(account.key, ticks + 1))) {
 			output->addByte(0x0D);
 			output->addByte(0);
-			send(output);
+			send(std::move(output));
 			disconnect();
 			return;
 		}
@@ -108,7 +108,7 @@ void ProtocolLogin::getCharacterList(const std::string& accountName, const std::
 		output->add<uint32_t>(account.premiumEndsAt);
 	}
 
-	send(output);
+	send(std::move(output));
 
 	disconnect();
 }

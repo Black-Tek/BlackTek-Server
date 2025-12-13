@@ -1302,6 +1302,54 @@ uint16_t Player::getContainerIndex(const uint8_t cid) const
 	return it->second.index;
 }
 
+void Player::autoOpenContainers()
+{
+    std::vector<std::pair<uint8_t, ContainerPtr>> openContainersList;
+    openContainersList.reserve(8);
+
+    for (int32_t i = CONST_SLOT_FIRST; i <= CONST_SLOT_LAST; i++)
+    {
+        auto& item = inventory[i];
+        if (not item)
+        {
+            continue;
+        }
+
+        auto itemContainer = item->getContainer();
+        if (itemContainer)
+        {
+
+            uint8_t cid = item->getIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER);
+            if (cid > 0)
+            {
+                openContainersList.emplace_back(cid, itemContainer);
+            }
+
+            for (ContainerIterator it = itemContainer->iterator(); it.hasNext(); it.advance())
+            {
+                auto subContainer = (*it)->getContainer();
+                if (subContainer)
+                {
+                    uint8_t subcid = (*it)->getIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER);
+                    if (subcid > 0)
+                    {
+                        openContainersList.emplace_back(subcid, subContainer);
+                    }
+                }
+            }
+        }
+    }
+
+    std::sort(openContainersList.begin(), openContainersList.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+
+    for (auto& it : openContainersList)
+    {
+        addContainer(it.first - 1, it.second);
+        onSendContainer(it.second);
+        it.second->setIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER, 0);
+    }
+}
+
 bool Player::canOpenCorpse(const uint32_t ownerId) const
 {
 	return getID() == ownerId || (party && party->canOpenCorpse(ownerId));
@@ -4190,7 +4238,8 @@ void Player::onIdleStatus()
 void Player::onPlacedCreature()
 {
 	//scripting event - onLogin
-	if (!g_creatureEvents->playerLogin(this->getPlayer())) {
+	if (not g_creatureEvents->playerLogin(this->getPlayer())) 
+	{
 		kickPlayer(true);
 	}
 }

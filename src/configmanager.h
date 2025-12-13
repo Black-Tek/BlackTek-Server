@@ -63,6 +63,7 @@ class ConfigManager
 			ENABLE_NO_PASS_LOGIN,
 			HEALTH_REGEN_NOTIFICATION,
 			MANA_REGEN_NOTIFICATION,
+			AUTO_OPEN_CONTAINERS,
 
 			LAST_BOOLEAN_CONFIG /* this must be the last one */
 		};
