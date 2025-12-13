@@ -161,9 +161,9 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 	if (not foundPlayer or g_config.getBoolean(ConfigManager::ALLOW_CLONES) or isAccountManager)
 	{
 		player = Player::makePlayer(getThis());
-		
-		player->setID();
+
 		player->setGUID(characterId);
+		player->setID(); // player's id is based on GUID
 
 		if (not IOLoginData::preloadPlayer(player))
 		{
