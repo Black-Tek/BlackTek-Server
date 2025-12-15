@@ -4673,8 +4673,8 @@ int LuaScriptInterface::luaGameLoadMap(lua_State* L)
 int LuaScriptInterface::luaGameGetExperienceStage(lua_State* L)
 {
 	// Game.getExperienceStage(level)
-	uint32_t level = getNumber<uint32_t>(L, 1);
-	lua_pushinteger(L, g_config.getExperienceStage(level));
+	float level = getNumber<float>(L, 1);
+	lua_pushnumber(L, g_config.getExperienceStage(level));
 	return 1;
 }
 
