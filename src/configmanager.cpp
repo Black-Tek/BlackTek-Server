@@ -147,7 +147,7 @@ ExperienceStages loadTOMLStages()
 				const auto& stage = *elem.as_table();
 				uint32_t minLevel = stage["minlevel"].value_or(1u);
 				uint32_t maxLevel = stage["maxlevel"].value_or(std::numeric_limits<uint32_t>::max());
-				uint32_t multiplier = stage["multiplier"].value_or(1u);
+				float multiplier = stage["multiplier"].value_or(1.0);
 
 				stages.emplace_back(minLevel, maxLevel, multiplier);
 			}
