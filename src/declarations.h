@@ -87,6 +87,9 @@ class RewardChest;
 using RewardChestPtr = std::shared_ptr<RewardChest>;
 using RewardChestConstPtr = std::shared_ptr<const RewardChest>;
 
+class Party;
+using PartyPtr = std::shared_ptr<Party>;
+using PartyConsPtr = std::shared_ptr<const Party>;
 
 /// Object Containers
 class TileItemVector;

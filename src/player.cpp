@@ -767,7 +767,7 @@ std::string Player::getDescription(const int32_t lookDistance)
 		}
 	}
 
-	if (party) {
+	if (party > 0) {
 		if (lookDistance == -1) {
 			s << " Your party has ";
 		} else if (sex == PLAYERSEX_FEMALE) {
@@ -776,14 +776,14 @@ std::string Player::getDescription(const int32_t lookDistance)
 			s << " He is in a party with ";
 		}
 
-		size_t memberCount = party->getMemberCount() + 1;
+		size_t memberCount = getParty()->getMemberCount() + 1;
 		if (memberCount == 1) {
 			s << "1 member and ";
 		} else {
 			s << memberCount << " members and ";
 		}
 
-		size_t invitationCount = party->getInvitationCount();
+		size_t invitationCount = getParty()->getInvitationCount();
 		if (invitationCount == 1) {
 			s << "1 pending invitation.";
 		} else {
@@ -1352,7 +1352,7 @@ void Player::autoOpenContainers()
 
 bool Player::canOpenCorpse(const uint32_t ownerId) const
 {
-	return getID() == ownerId || (party && party->canOpenCorpse(ownerId));
+	return getID() == ownerId or (party > 0 and getParty()->canOpenCorpse(ownerId));
 }
 
 uint16_t Player::getLookCorpse() const
@@ -1951,8 +1951,8 @@ void Player::onRemoveCreature(const CreaturePtr& creature, bool isLogout)
 
 		clearPartyInvitations();
 
-		if (party) {
-			party->leaveParty(this->getPlayer(), true);
+		if (party > 0) {
+			getParty()->leaveParty(this->getPlayer(), true);
 		}
 
 		g_chat->removeUserFromAllChannels(this->getPlayer());
@@ -2062,8 +2062,8 @@ void Player::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile,
 		inMarket = false;
 	}
 
-	if (party) {
-		party->updateSharedExperience();
+	if (party > 0) {
+		getParty()->updateSharedExperience();
 	}
 
 	if (teleport || oldPos.z != newPos.z) {
@@ -2484,8 +2484,8 @@ void Player::addExperience(const CreaturePtr& source, uint64_t exp, bool sendTex
 			g_game.updateCreatureWalkthrough(this->getPlayer());
 		}
 
-		if (party) {
-			party->updateSharedExperience();
+		if (party > 0) {
+			getParty()->updateSharedExperience();
 		}
 
 		g_creatureEvents->playerAdvance(this->getPlayer(), SKILL_LEVEL, prevLevel, level);
@@ -2565,8 +2565,8 @@ void Player::removeExperience(uint64_t exp, const bool sendText/* = false*/)
 			g_game.updateCreatureWalkthrough(this->getPlayer());
 		}
 
-		if (party) {
-			party->updateSharedExperience();
+		if (party > 0) {
+			getParty()->updateSharedExperience();
 		}
 
 		sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("You were downgraded from Level {:d} to Level {:d}.", oldLevel, level));
@@ -4230,8 +4230,8 @@ void Player::onIdleStatus()
 {
 	Creature::onIdleStatus();
 
-	if (party) {
-		party->clearPlayerPoints(this->getPlayer());
+	if (party > 0) {
+		getParty()->clearPlayerPoints(this->getPlayer());
 	}
 }
 
@@ -4249,11 +4249,11 @@ void Player::onAttackedCreatureDrainHealth(const CreaturePtr& target, int32_t po
 	Creature::onAttackedCreatureDrainHealth(target, points);
 
 	if (target) {
-		if (party && !Combat::isPlayerCombat(target)) {
+		if (party > 0 && !Combat::isPlayerCombat(target)) {
 			const auto& tmpMonster = target->getMonster();
 			if (tmpMonster && tmpMonster->isHostile()) {
 				//We have fulfilled a requirement for shared experience
-				party->updatePlayerTicks(this->getPlayer(), points);
+				getParty()->updatePlayerTicks(this->getPlayer(), points);
 			}
 		}
 	}
@@ -4261,7 +4261,7 @@ void Player::onAttackedCreatureDrainHealth(const CreaturePtr& target, int32_t po
 
 void Player::onTargetCreatureGainHealth(const CreaturePtr& target, int32_t points)
 {
-	if (target && party) {
+	if (target && party > 0) {
 		PlayerPtr tmpPlayer = nullptr;
 
 		if (target->getPlayer()) {
@@ -4273,7 +4273,7 @@ void Player::onTargetCreatureGainHealth(const CreaturePtr& target, int32_t point
 		}
 
 		if (isPartner(tmpPlayer)) {
-			party->updatePlayerTicks(this->getPlayer(), points);
+			getParty()->updatePlayerTicks(this->getPlayer(), points);
 		}
 	}
 }
@@ -4329,8 +4329,8 @@ void Player::onGainExperience(uint64_t gainExp, const CreaturePtr& target)
 		return;
 	}
 
-	if (target && !target->getPlayer() && party && party->isSharedExperienceActive() && party->isSharedExperienceEnabled()) {
-		party->shareExperience(gainExp, target);
+	if (target && !target->getPlayer() && party > 0 && getParty()->isSharedExperienceActive() && getParty()->isSharedExperienceEnabled()) {
+		getParty()->shareExperience(gainExp, target);
 		//We will get a share of the experience through the sharing mechanism
 		return;
 	}
@@ -4744,14 +4744,15 @@ PartyShields_t Player::getPartyShield(const PlayerConstPtr& player) const
 		return SHIELD_NONE;
 	}
 
-	if (party) {
-		if (party->getLeader() == player) {
-			if (party->isSharedExperienceActive()) {
-				if (party->isSharedExperienceEnabled()) {
+	if (party > 0) {
+		auto my_party = getParty();
+		if (my_party->getLeader() == player) {
+			if (my_party->isSharedExperienceActive()) {
+				if (my_party->isSharedExperienceEnabled()) {
 					return SHIELD_YELLOW_SHAREDEXP;
 				}
 
-				if (party->canUseSharedExperience(player)) {
+				if (my_party->canUseSharedExperience(player)) {
 					return SHIELD_YELLOW_NOSHAREDEXP;
 				}
 
@@ -4762,12 +4763,12 @@ PartyShields_t Player::getPartyShield(const PlayerConstPtr& player) const
 		}
 
 		if (player->party == party) {
-			if (party->isSharedExperienceActive()) {
-				if (party->isSharedExperienceEnabled()) {
+			if (my_party->isSharedExperienceActive()) {
+				if (my_party->isSharedExperienceEnabled()) {
 					return SHIELD_BLUE_SHAREDEXP;
 				}
 
-				if (party->canUseSharedExperience(player)) {
+				if (my_party->canUseSharedExperience(player)) {
 					return SHIELD_BLUE_NOSHAREDEXP;
 				}
 
@@ -4786,7 +4787,7 @@ PartyShields_t Player::getPartyShield(const PlayerConstPtr& player) const
 		return SHIELD_WHITEYELLOW;
 	}
 
-	if (player->party) {
+	if (player->party > 0) {
 		return SHIELD_GRAY;
 	}
 
@@ -4795,18 +4796,18 @@ PartyShields_t Player::getPartyShield(const PlayerConstPtr& player) const
 
 bool Player::isInviting(const PlayerConstPtr& player) const
 {
-	if (!player || !party || party->getLeader() != this->getPlayer()) {
+	if (not player or not getParty() or (getParty() and getParty()->getLeader() != this->getPlayer()))
 		return false;
-	}
-	return party->isPlayerInvited(player);
+
+	return getParty()->isPlayerInvited(player);
 }
 
 bool Player::isPartner(const PlayerConstPtr& player) const
 {
-	if (!player || !party || player == this->getPlayer()) {
+	if (not player or party == 0 or player == this->getPlayer())
 		return false;
-	}
-	return party == player->party;
+
+	return party == player->getPartyId();
 }
 
 void Player::sendPlayerPartyIcons(const PlayerPtr& player) const
@@ -4815,24 +4816,24 @@ void Player::sendPlayerPartyIcons(const PlayerPtr& player) const
 	sendCreatureSkull(player);
 }
 
-bool Player::addPartyInvitation(Party* party)
+bool Player::addPartyInvitation(PartyPtr passed_party)
 {
-	if (const auto it = std::ranges::find(invitePartyList, party); it != invitePartyList.end()) {
+	if (const auto it = std::ranges::find(invitePartyList, passed_party); it != invitePartyList.end()) {
 		return false;
 	}
 
-	invitePartyList.push_front(party);
+	invitePartyList.push_front(passed_party);
 	return true;
 }
 
-void Player::removePartyInvitation(Party* party)
+void Player::removePartyInvitation(PartyPtr party)
 {
 	invitePartyList.remove(party);
 }
 
 void Player::clearPartyInvitations()
 {
-	for (Party* invitingParty : invitePartyList) {
+	for (auto invitingParty : invitePartyList) {
 		invitingParty->removeInvite(this->getPlayer(), false);
 	}
 	invitePartyList.clear();
@@ -5218,25 +5219,27 @@ uint16_t Player::getHelpers() const
 {
 	uint16_t helpers;
 
-	if (guild && party) {
+	if (guild and party > 0) {
 		std::unordered_set<PlayerPtr> helperSet;
+
+		const auto& my_party = getParty();
 
 		auto guildMembers = guild->getMembersOnline();
 		helperSet.insert(guildMembers.begin(), guildMembers.end());
 
-		auto partyMembers = party->getMembers();
+		auto partyMembers = my_party->getMembers();
 		helperSet.insert(partyMembers.begin(), partyMembers.end());
 
-		auto partyInvitees = party->getInvitees();
+		auto partyInvitees = my_party->getInvitees();
 		helperSet.insert(partyInvitees.begin(), partyInvitees.end());
 
-		helperSet.insert(party->getLeader());
+		helperSet.insert(my_party->getLeader());
 
 		helpers = helperSet.size();
 	} else if (guild) {
 		helpers = guild->getMembersOnline().size();
-	} else if (party) {
-		helpers = party->getMemberCount() + party->getInvitationCount() + 1;
+	} else if (party > 0) {
+		helpers = getParty()->getMemberCount() + getParty()->getInvitationCount() + 1;
 	} else {
 		helpers = 0;
 	}

@@ -6227,37 +6227,42 @@ void Game::loadPlayersRecord()
 
 void Game::playerInviteToParty(const uint32_t playerId, const uint32_t invitedId)
 {
-	if (playerId == invitedId) {
+	if (playerId == invitedId)
 		return;
-	}
 
 	const auto player = getPlayerByID(playerId);
-	if (!player) {
+
+	if (not player)
 		return;
-	}
+
 
 	auto invitedPlayer = getPlayerByID(invitedId);
-	if (!invitedPlayer || invitedPlayer->isInviting(player)) {
-		return;
-	}
 
-	if (invitedPlayer->getParty()) {
+	if (not invitedPlayer or invitedPlayer->isInviting(player))
+		return;
+
+	if (invitedPlayer->getParty())
+	{
 		player->sendTextMessage(MESSAGE_INFO_DESCR, fmt::format("{:s} is already in a party.", invitedPlayer->getName()));
 		return;
 	}
 
 	auto party = player->getParty();
-	if (!party) {
-		party = new Party(player);
-	} else if (party->getLeader() != player) {
+	if (not party) 
+	{
+		party = Party::make(player);
+		party->enroll();
+		player->setParty(party->getId());
+	}
+	else if (party->getLeader() != player)
+	{
 		return;
 	}
 
-	if (!g_events->eventPartyOnInvite(party, invitedPlayer)) {
-		if (party->empty()) {
-			player->setParty(nullptr);
-			delete party;
-		}
+	if (not g_events->eventPartyOnInvite(party, invitedPlayer))
+	{
+		if (party->empty())
+			player->setParty(0);
 		return;
 	}
 

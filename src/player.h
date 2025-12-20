@@ -330,20 +330,30 @@ class Player final : public Creature, public Cylinder
 			return secureMode;
 		}
 
-		void setParty(Party* party) {
-			this->party = party;
+		void setParty(uint32_t party_id) 
+		{
+			party = party_id;
+		}
+
+		void setParty(Party& pt) 
+		{
+			party = pt.getId();
 		}
 	
-		Party* getParty() const {
+		uint32_t getPartyId() const {
 			return party;
+		}
+
+		PartyPtr getParty()  const {
+			return Party::get(party);
 		}
 	
 		PartyShields_t getPartyShield(const PlayerConstPtr& player) const;
 		bool isInviting(const PlayerConstPtr& player) const;
 		bool isPartner(const PlayerConstPtr& player) const;
 		void sendPlayerPartyIcons(const PlayerPtr& player) const;
-		bool addPartyInvitation(Party* party);
-		void removePartyInvitation(Party* party);
+		bool addPartyInvitation(PartyPtr party); // todo switch to ids
+		void removePartyInvitation(PartyPtr party);
 		void clearPartyInvitations();
 
 		GuildEmblems_t getGuildEmblem(const PlayerConstPtr& player) const;
@@ -1560,7 +1570,8 @@ class Player final : public Creature, public Cylinder
 
 		std::list<ShopInfo> shopItemList;
 
-		std::forward_list<Party*> invitePartyList;
+		// todo cleanup all these wasteful containers below and above, to reduce the insane size of player objects.
+		std::forward_list<PartyPtr> invitePartyList;
 		std::forward_list<uint32_t> modalWindows;
 		std::forward_list<std::string> learnedInstantSpellList;
 		std::forward_list<Condition*> storedConditionList; // TODO: This variable is only temporarily used when logging in, get rid of it somehow
@@ -1603,7 +1614,6 @@ class Player final : public Creature, public Cylinder
 		ItemPtr writeItem = nullptr;
 		House* editHouse = nullptr;
 		NpcPtr shopOwner = nullptr;
-		Party* party = nullptr;
 		PlayerPtr tradePartner = nullptr;
 		SchedulerTask* walkTask = nullptr;
 		Town* town = nullptr;
@@ -1612,6 +1622,7 @@ class Player final : public Creature, public Cylinder
 		RewardChestPtr rewardChest = nullptr;
 		DepotLockerPtr depotLocker = nullptr;
 
+		uint32_t party = 0;
 		uint32_t inventoryWeight = 0;
 		uint32_t capacity = 40000;
 		uint32_t damageImmunities = 0;

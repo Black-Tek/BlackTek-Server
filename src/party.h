@@ -7,15 +7,17 @@
 #include "player.h"
 #include "monsters.h"
 
-class Player;
-class Party;
-
-using PlayerVector = std::vector<PlayerPtr>;
-
+// Todo : move all of these to config lua, and be sure to validate and if failure default
 static constexpr int32_t EXPERIENCE_SHARE_RANGE = 30;
 static constexpr int32_t EXPERIENCE_SHARE_FLOORS = 1;
+static constexpr uint32_t MAXIMUM_PARTY_SIZE = 10;
+static constexpr uint32_t MAXIMUM_INVITE_COUNT = 20;
 
-enum SharedExpStatus_t : uint8_t {
+using PartyMembers = std::vector<PlayerPtr>;
+using PartyInvitees = std::vector<PlayerPtr>;
+
+enum SharedExpStatus_t : uint8_t 
+{
 	SHAREDEXP_OK,
 	SHAREDEXP_TOOFARAWAY,
 	SHAREDEXP_LEVELDIFFTOOLARGE,
@@ -23,30 +25,46 @@ enum SharedExpStatus_t : uint8_t {
 	SHAREDEXP_EMPTYPARTY
 };
 
-class Party
+class Party : public std::enable_shared_from_this<Party>
 {
 	public:
+		explicit Party();
 		explicit Party(const PlayerPtr& leader);
 
-		PlayerPtr getLeader() const {
+		void enroll();
+
+		uint32_t getId() const
+		{
+			return id;
+		}
+
+		PlayerPtr getLeader() const 
+		{
 			return leader;
 		}
 	
-		PlayerVector& getMembers() {
+		PartyMembers& getMembers() 
+		{
 			return memberList;
 		}
 	
-		const PlayerVector& getInvitees() const {
+		const PartyInvitees& getInvitees() const 
+		{
 			return inviteList;
 		}
 	
-		size_t getMemberCount() const {
+		size_t getMemberCount() const 
+		{
 			return memberList.size();
 		}
 	
-		size_t getInvitationCount() const {
+		size_t getInvitationCount() const 
+		{
 			return inviteList.size();
 		}
+
+		static PartyPtr get(uint32_t id);
+		static PartyPtr make(const PlayerPtr& player);
 
 		void disband();
 		bool invitePlayer(const PlayerPtr& player);
@@ -61,8 +79,9 @@ class Party
 		void updateAllPartyIcons();
 		void broadcastPartyMessage(MessageClasses msgClass, const std::string& msg, bool sendToInvitations = false) const;
 	
-		bool empty() const {
-			return memberList.empty() && inviteList.empty();
+		bool empty() const 
+		{
+			return memberList.empty() and inviteList.empty();
 		}
 	
 		bool canOpenCorpse(uint32_t ownerId) const;
@@ -70,11 +89,13 @@ class Party
 		void shareExperience(uint64_t experience, const CreaturePtr& source = nullptr);
 		bool setSharedExperience(const PlayerPtr& player, bool sharedExpActive);
 	
-		bool isSharedExperienceActive() const {
+		bool isSharedExperienceActive() const 
+		{
 			return sharedExpActive;
 		}
 	
-		bool isSharedExperienceEnabled() const {
+		bool isSharedExperienceEnabled() const 
+		{
 			return sharedExpEnabled;
 		}
 	
@@ -88,13 +109,11 @@ class Party
 	private:
 		SharedExpStatus_t getSharedExperienceStatus() const;
 
+		PartyMembers memberList;
+		PartyInvitees inviteList;
 		std::map<uint32_t, int64_t> ticksMap;
-
-		PlayerVector memberList;
-		PlayerVector inviteList;
-
 		PlayerPtr leader;
-
+		uint32_t id = 0;
 		bool sharedExpActive = false;
 		bool sharedExpEnabled = false;
 };

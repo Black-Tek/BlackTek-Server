@@ -97,13 +97,13 @@ class Events
 		void eventCreatureOnDefend(const CreaturePtr& defender, const CreaturePtr& attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
 
 		// Party
-		bool eventPartyOnJoin(Party* party, const PlayerPtr& player);
-		bool eventPartyOnLeave(Party* party, const PlayerPtr& player);
-		bool eventPartyOnDisband(Party* party);
-		void eventPartyOnShareExperience(Party* party, uint64_t& exp);
-		bool eventPartyOnInvite(Party* party, const PlayerPtr& player);
-		bool eventPartyOnRevokeInvitation(Party* party, const PlayerPtr& player);
-		bool eventPartyOnPassLeadership(Party* party, const PlayerPtr& player);
+		bool eventPartyOnJoin(PartyPtr party, const PlayerPtr& player);
+		bool eventPartyOnLeave(PartyPtr party, const PlayerPtr& player);
+		bool eventPartyOnDisband(PartyPtr party);
+		void eventPartyOnShareExperience(PartyPtr party, uint64_t& exp);
+		bool eventPartyOnInvite(PartyPtr party, const PlayerPtr& player);
+		bool eventPartyOnRevokeInvitation(PartyPtr party, const PlayerPtr& player);
+		bool eventPartyOnPassLeadership(PartyPtr party, const PlayerPtr& player);
 
 		// Player
 		bool eventPlayerOnBrowseField(const PlayerPtr& player, const Position& position);
