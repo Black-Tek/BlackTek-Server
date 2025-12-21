@@ -9,6 +9,7 @@
 #include "configmanager.h"
 #include "scheduler.h"
 #include "events.h"
+#include "party.h"
 
 double Creature::speedA = 857.36;
 double Creature::speedB = 261.29;
