@@ -17455,7 +17455,6 @@ int32_t LuaScriptInterface::luaPartyCreate(lua_State* L)
 	auto party = player->getParty();
 	if (!party) {
 		party = Party::make(player);
-		party->enroll();
 		player->setParty(party->getId());
 		g_game.updatePlayerShield(player);
 		player->sendCreatureSkull(player);

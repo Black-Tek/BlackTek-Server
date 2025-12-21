@@ -31,8 +31,6 @@ class Party : public std::enable_shared_from_this<Party>
 		explicit Party();
 		explicit Party(const PlayerPtr& leader);
 
-		void enroll();
-
 		uint32_t getId() const
 		{
 			return id;

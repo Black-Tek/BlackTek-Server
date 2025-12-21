@@ -27,11 +27,6 @@ Party::Party(const PlayerPtr& leader) :  leader(leader), id(++_total_parties_cre
 
 }
 
-void Party::enroll()
-{
-	_game_parties.try_emplace(getId(), shared_from_this());
-}
-
 PartyPtr Party::get(uint32_t id)
 {
 	auto it = _game_parties.find(id);
@@ -44,7 +39,9 @@ PartyPtr Party::get(uint32_t id)
 
 PartyPtr Party::make(const PlayerPtr& player)
 {
-	return std::make_shared<Party>(player);
+	auto new_party = std::make_shared<Party>(player);
+	_game_parties.try_emplace(new_party->getId(), new_party);
+	return new_party;
 }
 
 void Party::disband()

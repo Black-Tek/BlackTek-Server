@@ -6251,7 +6251,6 @@ void Game::playerInviteToParty(const uint32_t playerId, const uint32_t invitedId
 	if (not party) 
 	{
 		party = Party::make(player);
-		party->enroll();
 		player->setParty(party->getId());
 	}
 	else if (party->getLeader() != player)

@@ -19,6 +19,7 @@
 #include "player.h"
 #include "spells.h"
 #include "accountmanager.h"
+#include "party.h"
 
 extern ConfigManager g_config;
 extern Game g_game;
