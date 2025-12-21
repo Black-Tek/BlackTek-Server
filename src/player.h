@@ -335,18 +335,13 @@ class Player final : public Creature, public Cylinder
 			party = party_id;
 		}
 
-		void setParty(Party& pt) 
-		{
-			party = pt.getId();
-		}
+		void setParty(Party& pt);
 	
 		uint32_t getPartyId() const {
 			return party;
 		}
 
-		PartyPtr getParty()  const {
-			return Party::get(party);
-		}
+		PartyPtr getParty()  const;
 	
 		PartyShields_t getPartyShield(const PlayerConstPtr& player) const;
 		bool isInviting(const PlayerConstPtr& player) const;

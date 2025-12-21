@@ -4739,6 +4739,15 @@ void Player::setPremiumTime(const time_t premiumEndsAt)
 	sendBasicData();
 }
 
+inline void Player::setParty(Party& pt)
+{
+	party = pt.getId();
+}
+
+inline PartyPtr Player::getParty() const {
+	return Party::get(party);
+}
+
 PartyShields_t Player::getPartyShield(const PlayerConstPtr& player) const
 {
 	if (!player) {
