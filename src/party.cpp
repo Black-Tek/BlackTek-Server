@@ -201,6 +201,11 @@ bool Party::joinParty(const PlayerPtr& player)
 	if (not player or player->getPartyId() != 0)	
         return false;
 
+	auto max_party_size = g_config.getNumber(ConfigManager::MAXIMUM_PARTY_SIZE);
+
+	if (memberList.size() >= max_party_size)
+		return false;
+
 	if (not g_events->eventPartyOnJoin(shared_from_this(), player))
 		return false;
 
@@ -297,6 +302,14 @@ bool Party::invitePlayer(const PlayerPtr& player)
 
 	if (isPlayerInvited(player))
 		return false;
+
+	auto max_invites = g_config.getNumber(ConfigManager::MAXIMUM_INVITE_COUNT);
+
+	if (inviteList.size() >= max_invites)
+	{
+		leader->sendTextMessage(MESSAGE_INFO_DESCR, "Your cannot invite more players!");
+		return false;
+	}
 
 	if (empty())
 	{
@@ -463,7 +476,10 @@ SharedExpStatus_t Party::getMemberSharedExperienceStatus(const PlayerConstPtr& p
 	if (player->getLevel() < minLevel)
 		return SHAREDEXP_LEVELDIFFTOOLARGE;
 
-	if (not Position::areInRange<EXPERIENCE_SHARE_RANGE, EXPERIENCE_SHARE_RANGE, EXPERIENCE_SHARE_FLOORS>(leader->getPosition(), player->getPosition()))
+	const auto share_range = g_config.getNumber(ConfigManager::PARTY_EXP_SHARE_RANGE);
+	const auto floor_range = g_config.getNumber(ConfigManager::PARTY_EXP_SHARE_FLOORS);
+
+	if (not Position::areInRange(leader->getPosition(), player->getPosition(), share_range, share_range, floor_range))
 		return SHAREDEXP_TOOFARAWAY;
 
 	if (not player->hasFlag(PlayerFlag_NotGainInFight))

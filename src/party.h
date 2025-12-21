@@ -7,12 +7,6 @@
 #include "player.h"
 #include "monsters.h"
 
-// Todo : move all of these to config lua, and be sure to validate and if failure default
-static constexpr int32_t EXPERIENCE_SHARE_RANGE = 30;
-static constexpr int32_t EXPERIENCE_SHARE_FLOORS = 1;
-static constexpr uint32_t MAXIMUM_PARTY_SIZE = 10;
-static constexpr uint32_t MAXIMUM_INVITE_COUNT = 20;
-
 using PartyMembers = std::vector<PlayerPtr>;
 using PartyInvitees = std::vector<PlayerPtr>;
 
