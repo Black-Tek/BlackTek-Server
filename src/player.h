@@ -34,7 +34,6 @@ class NetworkMessage;
 class Weapon;
 class ProtocolGame;
 class Npc;
-class Party;
 class SchedulerTask;
 class Bed;
 class Guild;
@@ -335,13 +334,20 @@ class Player final : public Creature, public Cylinder
 			party = party_id;
 		}
 
-		void setParty(Party& pt);
+		void setParty(Party& pt)
+		{
+			party = pt.getId();
+		}
 	
-		uint32_t getPartyId() const {
+		uint32_t getPartyId() const
+		{
 			return party;
 		}
 
-		PartyPtr getParty()  const;
+		PartyPtr getParty()  const
+		{
+			return Party::get(party);
+		}
 	
 		PartyShields_t getPartyShield(const PlayerConstPtr& player) const;
 		bool isInviting(const PlayerConstPtr& player) const;

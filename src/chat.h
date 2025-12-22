@@ -7,7 +7,6 @@
 #include "const.h"
 #include "luascript.h"
 
-class Party;
 class Player;
 
 using UsersMap = std::map<uint32_t, PlayerPtr>;
