@@ -7,6 +7,7 @@
 #include "luascript.h"
 #include "const.h"
 #include "creature.h"
+#include "party.h"
 
 class ItemType;
 class Tile;

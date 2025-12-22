@@ -4,7 +4,7 @@
 #ifndef FS_PARTY_H
 #define FS_PARTY_H
 
-#include "player.h"
+#include "declarations.h"
 #include "monsters.h"
 
 using PartyMembers = std::vector<PlayerPtr>;
@@ -55,8 +55,8 @@ class Party : public std::enable_shared_from_this<Party>
 			return inviteList.size();
 		}
 
-		static PartyPtr get(uint32_t id);
-		static PartyPtr make(const PlayerPtr& player);
+		static std::shared_ptr<Party> get(uint32_t id);
+		static std::shared_ptr<Party> make(const PlayerPtr& player);
 
 		void disband();
 		bool invitePlayer(const PlayerPtr& player);
@@ -109,5 +109,7 @@ class Party : public std::enable_shared_from_this<Party>
 		bool sharedExpActive = false;
 		bool sharedExpEnabled = false;
 };
+
+using PartyPtr = std::shared_ptr<Party>;
 
 #endif
