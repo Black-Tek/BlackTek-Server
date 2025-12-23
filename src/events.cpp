@@ -400,7 +400,7 @@ void Events::eventCreatureOnDefend(const CreaturePtr& defender, const CreaturePt
 }
 
 // Party
-bool Events::eventPartyOnJoin(Party* party, const PlayerPtr& player)
+bool Events::eventPartyOnJoin(PartyPtr party, const PlayerPtr& player)
 {
 	// Party:onJoin(player) or Party.onJoin(self, player)
 	if (info.partyOnJoin == -1) {
@@ -418,7 +418,7 @@ bool Events::eventPartyOnJoin(Party* party, const PlayerPtr& player)
 	lua_State* L = scriptInterface.getLuaState();
 	scriptInterface.pushFunction(info.partyOnJoin);
 
-	LuaScriptInterface::pushUserdata<Party>(L, party);
+	LuaScriptInterface::pushSharedPtr(L, party);
 	LuaScriptInterface::setMetatable(L, -1, "Party");
 
 	LuaScriptInterface::pushSharedPtr(L, player);
@@ -427,7 +427,7 @@ bool Events::eventPartyOnJoin(Party* party, const PlayerPtr& player)
 	return scriptInterface.callFunction(2);
 }
 
-bool Events::eventPartyOnLeave(Party* party, const PlayerPtr& player)
+bool Events::eventPartyOnLeave(PartyPtr party, const PlayerPtr& player)
 {
 	// Party:onLeave(player) or Party.onLeave(self, player)
 	if (info.partyOnLeave == -1) {
@@ -445,7 +445,7 @@ bool Events::eventPartyOnLeave(Party* party, const PlayerPtr& player)
 	lua_State* L = scriptInterface.getLuaState();
 	scriptInterface.pushFunction(info.partyOnLeave);
 
-	LuaScriptInterface::pushUserdata<Party>(L, party);
+	LuaScriptInterface::pushSharedPtr(L, party);
 	LuaScriptInterface::setMetatable(L, -1, "Party");
 
 	LuaScriptInterface::pushSharedPtr(L, player);
@@ -454,7 +454,7 @@ bool Events::eventPartyOnLeave(Party* party, const PlayerPtr& player)
 	return scriptInterface.callFunction(2);
 }
 
-bool Events::eventPartyOnDisband(Party* party)
+bool Events::eventPartyOnDisband(PartyPtr party)
 {
 	// Party:onDisband() or Party.onDisband(self)
 	if (info.partyOnDisband == -1) {
@@ -472,13 +472,13 @@ bool Events::eventPartyOnDisband(Party* party)
 	lua_State* L = scriptInterface.getLuaState();
 	scriptInterface.pushFunction(info.partyOnDisband);
 
-	LuaScriptInterface::pushUserdata<Party>(L, party);
+	LuaScriptInterface::pushSharedPtr(L, party);
 	LuaScriptInterface::setMetatable(L, -1, "Party");
 
 	return scriptInterface.callFunction(1);
 }
 
-void Events::eventPartyOnShareExperience(Party* party, uint64_t& exp)
+void Events::eventPartyOnShareExperience(PartyPtr party, uint64_t& exp)
 {
 	// Party:onShareExperience(exp) or Party.onShareExperience(self, exp)
 	if (info.partyOnShareExperience == -1) {
@@ -496,7 +496,7 @@ void Events::eventPartyOnShareExperience(Party* party, uint64_t& exp)
 	lua_State* L = scriptInterface.getLuaState();
 	scriptInterface.pushFunction(info.partyOnShareExperience);
 
-	LuaScriptInterface::pushUserdata<Party>(L, party);
+	LuaScriptInterface::pushSharedPtr(L, party);
 	LuaScriptInterface::setMetatable(L, -1, "Party");
 
 	lua_pushinteger(L, exp);
@@ -511,7 +511,7 @@ void Events::eventPartyOnShareExperience(Party* party, uint64_t& exp)
 	scriptInterface.resetScriptEnv();
 }
 
-bool Events::eventPartyOnInvite(Party* party, const PlayerPtr& player)
+bool Events::eventPartyOnInvite(PartyPtr party, const PlayerPtr& player)
 {
 	// Party:onInvite(player) or Party.onInvite(self, player)
 	if (info.partyOnInvite == -1) {
@@ -529,7 +529,7 @@ bool Events::eventPartyOnInvite(Party* party, const PlayerPtr& player)
 	lua_State* L = scriptInterface.getLuaState();
 	scriptInterface.pushFunction(info.partyOnInvite);
 
-	LuaScriptInterface::pushUserdata<Party>(L, party);
+	LuaScriptInterface::pushSharedPtr(L, party);
 	LuaScriptInterface::setMetatable(L, -1, "Party");
 
 	LuaScriptInterface::pushSharedPtr(L, player);
@@ -538,7 +538,7 @@ bool Events::eventPartyOnInvite(Party* party, const PlayerPtr& player)
 	return scriptInterface.callFunction(2);
 }
 
-bool Events::eventPartyOnRevokeInvitation(Party* party, const PlayerPtr& player)
+bool Events::eventPartyOnRevokeInvitation(PartyPtr party, const PlayerPtr& player)
 {
 	// Party:onRevokeInvitation(player) or Party.onRevokeInvitation(self, player)
 	if (info.partyOnRevokeInvitation == -1) {
@@ -556,7 +556,7 @@ bool Events::eventPartyOnRevokeInvitation(Party* party, const PlayerPtr& player)
 	lua_State* L = scriptInterface.getLuaState();
 	scriptInterface.pushFunction(info.partyOnRevokeInvitation);
 
-	LuaScriptInterface::pushUserdata<Party>(L, party);
+	LuaScriptInterface::pushSharedPtr(L, party);
 	LuaScriptInterface::setMetatable(L, -1, "Party");
 
 	LuaScriptInterface::pushSharedPtr(L, player);
@@ -565,7 +565,7 @@ bool Events::eventPartyOnRevokeInvitation(Party* party, const PlayerPtr& player)
 	return scriptInterface.callFunction(2);
 }
 
-bool Events::eventPartyOnPassLeadership(Party* party, const PlayerPtr& player)
+bool Events::eventPartyOnPassLeadership(PartyPtr party, const PlayerPtr& player)
 {
 	// Party:onPassLeadership(player) or Party.onPassLeadership(self, player)
 	if (info.partyOnPassLeadership == -1) {
@@ -583,7 +583,7 @@ bool Events::eventPartyOnPassLeadership(Party* party, const PlayerPtr& player)
 	lua_State* L = scriptInterface.getLuaState();
 	scriptInterface.pushFunction(info.partyOnPassLeadership);
 
-	LuaScriptInterface::pushUserdata<Party>(L, party);
+	LuaScriptInterface::pushSharedPtr(L, party);
 	LuaScriptInterface::setMetatable(L, -1, "Party");
 
 	LuaScriptInterface::pushSharedPtr(L, player);

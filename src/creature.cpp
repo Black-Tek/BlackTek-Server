@@ -9,6 +9,7 @@
 #include "configmanager.h"
 #include "scheduler.h"
 #include "events.h"
+#include "party.h"
 
 double Creature::speedA = 857.36;
 double Creature::speedB = 261.29;
@@ -706,8 +707,8 @@ void Creature::onDeath()
 				if (auto attackerPlayer = attacker->getPlayer()) {
 					attackerPlayer->removeAttacked(getPlayer());
 
-					Party* party = attackerPlayer->getParty();
-					if (party && party->getLeader() && party->isSharedExperienceActive() && party->isSharedExperienceEnabled()) {
+					if (const auto& party = attackerPlayer->getParty(); party->getLeader() and party->isSharedExperienceActive() and party->isSharedExperienceEnabled())
+					{
 						attacker = party->getLeader();
 					}
 				}
