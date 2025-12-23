@@ -236,26 +236,29 @@ void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile
 		}
 	}
 
-
-
-	const bool canSeeNewPos = canSee(newPos);
-	const bool canSeeOldPos = canSee(oldPos);
-
-	if (canSeeNewPos && !canSeeOldPos) {
-		onCreatureEnter(creature);
-	} else if (!canSeeNewPos && canSeeOldPos) {
-		onCreatureLeave(creature);
-	}
-
-	if (const auto& master = getMaster())
-	{
-		if (creature == getCreature())
-		{
-			isMasterInRange = canSee(master->getPosition());
+	if (creature == this->getCreature()) {
+		if (isSummon()) {
+			isMasterInRange = canSee(getMaster()->getPosition());
 		}
-		else if (canSeeNewPos and master == creature)
-		{
-			isMasterInRange = true;
+		// This updateTargetList() is updating summons target list while moving
+		// and more importantly stoping movement when no targets are left after a kill
+		// because the monster moves again after killing target. 
+		// We would rather stop monster dead in tracks if they kill the only target around
+		// and then handle summons targetting in a better way to free up the expensive price of updating
+		// every target list of over monster which moves, everytime it moves.
+		updateTargetList();
+	} else {
+		const bool canSeeNewPos = canSee(newPos);
+		const bool canSeeOldPos = canSee(oldPos);
+
+		if (canSeeNewPos && !canSeeOldPos) {
+			onCreatureEnter(creature);
+		} else if (!canSeeNewPos && canSeeOldPos) {
+			onCreatureLeave(creature);
+		}
+
+		if (canSeeNewPos && isSummon() && getMaster() == creature) {
+			isMasterInRange = true; //Follow master again
 		}
 	}
     if (isIdle)
@@ -477,13 +480,16 @@ void Monster::onCreatureLeave(const CreaturePtr& creature)
 		removeFriend(creature);
 	}
 
-	removeTarget(creature);
-	updateIdleStatus();
+	//update targetList
+	if (isOpponent(creature)) {
+		removeTarget(creature);
+		updateIdleStatus();
 
-	if (!isSummon() && targetList.empty()) {
-		int32_t walkToSpawnRadius = g_config.getNumber(ConfigManager::DEFAULT_WALKTOSPAWNRADIUS);
-		if (walkToSpawnRadius > 0 && !Position::areInRange(position, masterPos, walkToSpawnRadius, walkToSpawnRadius)) {
-			walkToSpawn();
+		if (!isSummon() && targetList.empty()) {
+			int32_t walkToSpawnRadius = g_config.getNumber(ConfigManager::DEFAULT_WALKTOSPAWNRADIUS);
+			if (walkToSpawnRadius > 0 && !Position::areInRange(position, masterPos, walkToSpawnRadius, walkToSpawnRadius)) {
+				walkToSpawn();
+			}
 		}
 	}
 }

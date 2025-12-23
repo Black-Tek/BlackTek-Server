@@ -89,7 +89,6 @@ class RewardChest;
 using RewardChestPtr = std::shared_ptr<RewardChest>;
 using RewardChestConstPtr = std::shared_ptr<const RewardChest>;
 
-
 /// Object Containers
 class TileItemVector;
 using CreatureVector = std::vector<CreaturePtr>;

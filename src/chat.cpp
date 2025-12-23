@@ -7,6 +7,7 @@
 #include "game.h"
 #include "pugicast.h"
 #include "scheduler.h"
+#include "party.h"
 
 #include <fmt/format.h>
 
@@ -342,7 +343,7 @@ ChatChannel* Chat::createChannel(const PlayerConstPtr& player, uint16_t channelI
 		case CHANNEL_PARTY: {
 			auto party = player->getParty();
 			if (party) {
-				auto ret = partyChannels.emplace(std::make_pair(party, ChatChannel(channelId, "Party")));
+				auto ret = partyChannels.emplace(std::make_pair(party->getId(), ChatChannel(channelId, "Party")));
 				return &ret.first->second;
 			}
 			break;
@@ -396,7 +397,7 @@ bool Chat::deleteChannel(const PlayerConstPtr& player, uint16_t channelId)
 				return false;
 			}
 
-			const auto it = partyChannels.find(party);
+			const auto it = partyChannels.find(party->getId());
 			if (it == partyChannels.end()) {
 				return false;
 			}
@@ -561,7 +562,7 @@ ChatChannel* Chat::getChannel(const PlayerConstPtr& player, uint16_t channelId)
 
 		case CHANNEL_PARTY: {
 			if (auto party = player->getParty()) {
-				const auto it = partyChannels.find(party);
+				const auto it = partyChannels.find(party->getId());
 				if (it != partyChannels.end()) {
 					return &it->second;
 				}

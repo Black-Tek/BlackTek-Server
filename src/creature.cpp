@@ -12,6 +12,7 @@
 #include <chrono>
 #include <iomanip>
 #include <ctime>
+#include "party.h"
 
 double Creature::speedA = 857.36;
 double Creature::speedB = 261.29;
@@ -740,8 +741,8 @@ void Creature::onDeath()
 				if (auto attackerPlayer = attacker->getPlayer()) {
 					attackerPlayer->removeAttacked(getPlayer());
 
-					Party* party = attackerPlayer->getParty();
-					if (party && party->getLeader() && party->isSharedExperienceActive() && party->isSharedExperienceEnabled()) {
+					if (const auto& party = attackerPlayer->getParty(); party->getLeader() and party->isSharedExperienceActive() and party->isSharedExperienceEnabled())
+					{
 						attacker = party->getLeader();
 					}
 				}
@@ -1314,7 +1315,6 @@ bool Creature::addCondition(Condition* condition, bool force/* = false*/)
 
 bool Creature::addCombatCondition(Condition* condition)
 {
-    if (isMonster()) return false;
 	//Caution: condition variable could be deleted after the call to addCondition
 	ConditionType_t type = condition->getType();
 

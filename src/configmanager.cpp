@@ -147,7 +147,7 @@ ExperienceStages loadTOMLStages()
 				const auto& stage = *elem.as_table();
 				uint32_t minLevel = stage["minlevel"].value_or(1u);
 				uint32_t maxLevel = stage["maxlevel"].value_or(std::numeric_limits<uint32_t>::max());
-				uint32_t multiplier = stage["multiplier"].value_or(1u);
+				float multiplier = stage["multiplier"].value_or(1.0);
 
 				stages.emplace_back(minLevel, maxLevel, multiplier);
 			}
@@ -311,6 +311,10 @@ bool ConfigManager::load()
 	integer[DEPOT_FREE_LIMIT] = getGlobalNumber(L, "depotFreeLimit", 2000);
 	integer[DEPOT_PREMIUM_LIMIT] = getGlobalNumber(L, "depotPremiumLimit", 10000);
 	integer[SUMMON_PROXIMITY] = getGlobalNumber(L, "summonProximity", 2);
+	integer[PARTY_EXP_SHARE_RANGE] = getGlobalNumber(L, "partyExpShareRange", 30);
+	integer[PARTY_EXP_SHARE_FLOORS] = getGlobalNumber(L, "partyExpShareFloors", 1);
+	integer[MAXIMUM_PARTY_SIZE] = getGlobalNumber(L, "maximumPartySize", 10);
+	integer[MAXIMUM_INVITE_COUNT] = getGlobalNumber(L, "maximumInviteCount", 20);
 
 	floats[REWARD_BASE_RATE] = getGlobalFloat(L, "rewardBaseRate", 1.0f);
 	floats[REWARD_RATE_DAMAGE_DONE] = getGlobalFloat(L, "rewardRateDamageDone", 1.0f);

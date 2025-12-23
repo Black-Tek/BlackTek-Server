@@ -7,7 +7,6 @@
 #include "const.h"
 #include "luascript.h"
 
-class Party;
 class Player;
 
 using UsersMap = std::map<uint32_t, PlayerPtr>;
@@ -141,7 +140,7 @@ class Chat
 	private:
 		std::map<uint16_t, ChatChannel> normalChannels;
 		std::map<uint16_t, PrivateChatChannel> privateChannels;
-		std::map<Party*, ChatChannel> partyChannels;
+		std::map<uint32_t, ChatChannel> partyChannels;
 		std::map<uint32_t, ChatChannel> guildChannels;
 
 		LuaScriptInterface scriptInterface;
