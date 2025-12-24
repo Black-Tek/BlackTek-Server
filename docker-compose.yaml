@@ -20,6 +20,14 @@ services:
       timeout: 5s
       retries: 20
       start_period: 5s
+  
+  whodb:
+    image: clidey/whodb:latest
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - blacktek-net
 
   server:
     build:
