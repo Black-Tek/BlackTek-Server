@@ -1,6 +1,6 @@
 services:
   server-db:
-    image: mysql:8.0
+    image: mariadb:latest
     pull_policy: always
     restart: always
     command: [ "--default-authentication-plugin=mysql_native_password" ]
@@ -8,12 +8,18 @@ services:
       MYSQL_RANDOM_ROOT_PASSWORD: "yes"
       MYSQL_DATABASE: blacktekserver
       MYSQL_USER: blacktekserver
-      MYSQL_PASSWORD: blacktekserver
+      MYSQL_PASSWORD: blacktekpassword
     volumes:
       - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
       - server-db-data:/var/lib/mysql
     networks:
       - blacktek-net
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "127.0.0.1", "-u", "blacktekserver", "-pblacktekpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
 
   server:
     build:
@@ -27,7 +33,8 @@ services:
     networks:
       - blacktek-net
     depends_on:
-      - server-db
+      server-db:
+        condition: service_healthy
 
 volumes:
   server-db-data:

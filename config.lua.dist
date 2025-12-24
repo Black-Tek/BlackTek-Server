@@ -81,9 +81,9 @@ checkExpiredMarketOffersEachMinutes = 60
 maxMarketOffersAtATimePerPlayer = 100
 
 -- MySQL
-mysqlHost = "127.0.0.1"
+mysqlHost = "server-db"
 mysqlUser = "blacktekserver"
-mysqlPass = ""
+mysqlPass = "blacktekpassword"
 mysqlDatabase = "blacktekserver"
 mysqlPort = 3306
 mysqlSock = ""
