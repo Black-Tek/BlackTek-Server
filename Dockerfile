@@ -1,36 +1,60 @@
-FROM ubuntu:22.04 AS build
+FROM ubuntu:24.04 AS base
 
-RUN apt update
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    g++ \
+    make \
+    git \
+    curl \
+    zip \
+    unzip \
+    tar \
+    pkg-config \
+    uuid-dev \
+    wget \
+    ca-certificates \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
 
 # install premake5
-RUN apt install -y unzip make g++ uuid-dev wget && \
-    mkdir /bts && \
-    cd /bts/ && wget https://github.com/premake/premake-core/archive/refs/heads/master.zip && \
-    cd /bts/ && unzip master.zip && rm master.zip && \
-    cd /bts/premake-core-master && make -f Bootstrap.mak linux && \
-    mv /bts/premake-core-master/bin/release/premake5 /bin/premake5 && \
-    rm -rf /bts/premake-core-master/bin/release/premake5
+FROM base AS premake
+RUN git clone --depth 1 https://github.com/premake/premake-core.git /tmp/premake && \
+    cd /tmp/premake && make -f Bootstrap.mak linux && \
+    mv bin/release/premake5 /usr/local/bin/premake5
 
-# install vcpkg
-RUN apt install -y curl zip unzip tar git && \
-    cd /bts && git clone https://github.com/microsoft/vcpkg.git && \
-    /bts/vcpkg/bootstrap-vcpkg.sh
+# install vcpkg and C++ libraries
+FROM base AS dependencies
 
-COPY src /usr/src/bts/src/
-COPY premake5.lua vcpkg.json /usr/src/bts/
+COPY --from=premake /usr/local/bin/premake5 /usr/local/bin/premake5
 
-WORKDIR /usr/src/bts
+RUN git clone --depth 1 https://github.com/microsoft/vcpkg.git /opt/vcpkg && \
+    /opt/vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
-# install C++ libraries from vcpkg
-RUN apt install -y pkg-config python3
-RUN cd /usr/src/bts && /bts/vcpkg/vcpkg install
+WORKDIR /build
+
+COPY vcpkg.json premake5.lua ./
+
+RUN /opt/vcpkg/vcpkg install --triplet x64-linux
 
 # compile project
-RUN premake5 gmake2 && make -j $(nproc) config=debug_64
+FROM dependencies AS build
 
-FROM ubuntu:22.04
+COPY src/ ./src/
 
-COPY --from=build /usr/src/bts/Black-Tek-Server /bin/bts
+ARG BUILD_TYPE=release
+
+RUN premake5 gmake2 && make -j$(nproc) config=${BUILD_TYPE}_64
+
+FROM ubuntu:24.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libstdc++6 \
+    libgcc-s1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /build/Black-Tek-Server /bin/bts
 COPY data /srv/data/
 COPY README.md *.dist *.sql key.pem /srv/
 
