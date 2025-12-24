@@ -11,7 +11,7 @@ services:
       MYSQL_PASSWORD: blacktekpassword
     volumes:
       - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
-      - server-db-data:/var/lib/mysql
+      - ./db-data:/var/lib/mysql
     networks:
       - blacktek-net
     healthcheck:
