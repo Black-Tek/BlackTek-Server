@@ -1,0 +1,25 @@
+[[FixedMonsterSpawn]]
+interval = 100
+positional = false
+passive = true
+weekday = "all"
+
+monsters = [
+	{chance = 40, interval = 15, name = "rabbit", position = "1:1:0"},
+	{chance = 60, interval = 10, list = [{name = "rabbit", chance = 40}, {name = "skunk", chance = 60}], position = "1:0:0"}
+]
+
+range = {startpos = "92:126:7", endpos = "93:127:7"}
+
+[[RelativeMonsterSpawn]]
+interval = 100
+positional = false
+passive = true
+weekday = "all"
+
+monsters = [
+	{chance = 40, interval = 15, name = "rabbit", position = "1:1:0"},
+	{chance = 60, interval = 10, list = [{name = "rabbit", chance = 40}, {name = "skunk", chance = 60}], position = "1:0:0"}
+]
+
+range = {startpos = "98:126:7", endpos = "99:127:7"}

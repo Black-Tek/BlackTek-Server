@@ -516,9 +516,9 @@ bool Npc::canWalkTo(const Position& fromPos, Direction dir)
 	}
 
 	Position toPos = getNextPosition(dir, fromPos);
-	if (!Spawns::isInZone(masterPos, masterRadius, toPos)) {
-		return false;
-	}
+	//if (!Spawns::isInZone(masterPos, masterRadius, toPos)) {
+	//	return false;
+	//}
 
 	const auto& tile = g_game.map.getTile(toPos);
 	if (!tile || tile->queryAdd(this->getNpc(), 0) != RETURNVALUE_NOERROR) {
