@@ -32,7 +32,9 @@ class Party : public std::enable_shared_from_this<Party>
 
 		PlayerPtr getLeader() const 
 		{
-			return leader;
+			if (leader)
+				return leader;
+			return nullptr;
 		}
 	
 		PartyMembers& getMembers() 

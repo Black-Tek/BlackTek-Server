@@ -346,7 +346,9 @@ class Player final : public Creature, public Cylinder
 
 		PartyPtr getParty()  const
 		{
-			return Party::get(party);
+			if (not party == 0)
+				return Party::get(party);
+			return nullptr;
 		}
 	
 		PartyShields_t getPartyShield(const PlayerConstPtr& player) const;
