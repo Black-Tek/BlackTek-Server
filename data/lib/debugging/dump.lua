@@ -12,6 +12,7 @@ function dumpLevel(input, level)
 
 		for k, v in pairs(input) do
 			if type(k) ~= 'number' then
+				local k = k
 				k = '"' .. k .. '"'
 			end
 

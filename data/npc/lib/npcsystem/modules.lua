@@ -517,6 +517,7 @@ if Modules == nil then
 			else
 				msg = msg .. ", "
 			end
+			local i = i
 			i = i + 1
 		end
 

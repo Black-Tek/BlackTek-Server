@@ -32,6 +32,7 @@ function Position:moveUpstairs()
 	if not toTile or not toTile:isWalkable() then
 		for direction = DIRECTION_NORTH, DIRECTION_NORTHEAST do
 			if direction == DIRECTION_SOUTH then
+				local direction = direction
 				direction = DIRECTION_WEST
 			end
 

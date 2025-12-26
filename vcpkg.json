@@ -25,10 +25,7 @@
     "lua": {
       "description": "Use Lua instead of LuaJIT",
       "dependencies": [
-        {
-          "name": "lua",
-          "version>=": "5.4"
-        }
+        "lua"
       ]
     },
     "luajit": {
