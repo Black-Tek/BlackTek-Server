@@ -268,6 +268,14 @@ class LuaScriptInterface
 			new (lua_newuserdata(L, sizeof(T))) T(std::move(value));
 		}
 
+		template <class T>
+		int sharedPointerCleanup(lua_State* L)
+		{
+			auto& obj_ref = getSharedPtr<T>(L, 1);
+			std::destroy_at(std::addressof(obj_ref));
+			return 0;
+		}
+
 		// Metatables
 		static void setMetatable(lua_State* L, int32_t index, const std::string& name);
 		static void setWeakMetatable(lua_State* L, int32_t index, const std::string& name);
@@ -346,11 +354,7 @@ class LuaScriptInterface
 	
 		static bool getBoolean(lua_State* L, int32_t arg, bool defaultValue)
 		{
-			const auto parameters = lua_gettop(L);
-			if (parameters == 0 || arg > parameters) {
-				return defaultValue;
-			}
-			return lua_toboolean(L, arg) != 0;
+			return lua_toboolean(L, arg) != 0 or defaultValue;
 		}
 
 		static std::string getString(lua_State* L, int32_t arg);
@@ -842,6 +846,13 @@ class LuaScriptInterface
 		static int luaItemCanGainSkillLevels(lua_State* L);
 		static int luaItemGetCustomSkillLevel(lua_State* L);
 		static int luaItemGetCustomSkillUserData(lua_State* L);
+		static int luaItemGiveStat(lua_State* L);
+		static int luaItemRemoveStat(lua_State* L);
+		static int luaItemIncreaseStat(lua_State* L);
+		static int luaItemDecreaseStat(lua_State* L);
+		static int luaItemHasStat(lua_State* L);
+		static int luaItemGetStat(lua_State* L);
+		static int luaItemGetStats(lua_State* L);
 
 
 		// Imbuement
@@ -1007,6 +1018,34 @@ class LuaScriptInterface
 		static int luaCreatureCanGainSkillLevels(lua_State* L);
 		static int luaCreatureGetCustomSkillLevel(lua_State* L);
 		static int luaCreatureGetCustomSkillUserData(lua_State* L);
+		static int luaCreatureGiveStat(lua_State* L);
+		static int luaCreatureRemoveStat(lua_State* L);
+		static int luaCreatureIncreaseStat(lua_State* L);
+		static int luaCreatureDecreaseStat(lua_State* L);
+		static int luaCreatureHasStat(lua_State* L);
+		static int luaCreatureGetStat(lua_State* L);
+		static int luaCreatureGetStats(lua_State* L);
+
+		// Stat
+		static int luaStatCreate(lua_State* L);
+		static int luaStatDestroy(lua_State* L);
+		static int luaStatIncrease(lua_State* L);
+		static int luaStatDecrease(lua_State* L);
+		static int luaStatMaxIncrease(lua_State* L);
+		static int luaStatMaxDecrease(lua_State* L);
+		static int luaStatId(lua_State* L);
+		static int luaStatBaseMax(lua_State* L);
+		static int luaStatMax(lua_State* L);
+		static int luaStatValue(lua_State* L);
+		static int luaStatAddModifier(lua_State* L);
+		static int luaStatRemoveModifier(lua_State* L);
+		
+
+		// StatModifier
+		static int luaStatModifierCreate(lua_State* L);
+		static int luaStatModifierDestroy(lua_State* L);
+		static int luaStatModifierType(lua_State* L);
+		static int luaStatModifierValue(lua_State* L);
 
 		// Player
 		static int luaPlayerCreate(lua_State* L);

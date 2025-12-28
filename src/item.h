@@ -12,6 +12,7 @@
 #include "imbuement.h"
 #include "augments.h"
 #include "declarations.h"
+#include "pointbasedstat.h"
 
 #include <typeinfo>
 #include <boost/variant.hpp>
@@ -29,6 +30,7 @@ class Door;
 class MagicField;
 class BedItem;
 
+using namespace Components::Stats;
 
 enum ITEMPROPERTY {
 	CONST_PROP_BLOCKSOLID = 0,
@@ -578,6 +580,12 @@ class Item : virtual public Thing, public SharedObject
 		{
 			custom_skills = skill_set;
 		}
+
+		void setCustomStats(StatRegistry&& stat_set)
+		{
+			c_stats = std::make_unique<StatRegistry>(stat_set);
+		}
+
 		static ItemPtr CreateItem(PropStream& propStream);
 		static Items items;
 
@@ -1240,6 +1248,84 @@ class Item : virtual public Thing, public SharedObject
 			return augments;
 		}
 
+		bool giveCustomStat(uint32_t id, uint32_t max_points, uint32_t current_points = 0)
+		{
+			if (not c_stats.get())
+				c_stats = std::make_unique<StatRegistry>();
+
+			auto stat = std::make_shared<StandardStat>(id, current_points, max_points);
+			return c_stats.get()->try_emplace(id, stat).second;
+		}
+
+		bool giveCustomStat(uint32_t id, StandardStatPtr new_stat)
+		{
+			if (not c_stats.get())
+				c_stats = std::make_unique<StatRegistry>();
+
+			return c_stats.get()->try_emplace(id, new_stat).second;
+		}
+		
+		bool removeCustomStat(uint32_t id)
+		{
+			if (auto stats = c_stats.get())
+			{
+				return stats->erase(id) > 0;
+			}
+			return false;
+		}
+
+		bool increaseCustomStat(uint32_t id, uint32_t amount)
+		{
+			if (not c_stats.get())
+				return false;
+
+			auto& stat = c_stats.get()->find(id)->second;
+			return stat->add(amount);
+		}
+
+		bool decreaseCustomStat(uint32_t id, uint32_t amount)
+		{
+			if (not c_stats.get())
+				return false;
+
+			auto& stat = c_stats.get()->find(id)->second;
+			return stat->remove(amount);
+		}
+
+		bool hasCustomStats()
+		{
+			return c_stats.get() != nullptr;
+		}
+
+		bool hasCustomStat(uint32_t id)
+		{
+			if (not c_stats.get())
+				return false;
+
+			auto result = c_stats.get()->find(id);
+			return result != c_stats.get()->end();
+		}
+
+		const Components::Stats::StatRegistry& getCustomStats()
+		{
+			if (not c_stats.get())
+				c_stats = std::make_unique<Components::Stats::StatRegistry>();
+
+			return *c_stats;
+		}
+
+		const Components::Stats::StandardStatPtr getCustomStat(uint32_t id)
+		{
+			if (not c_stats.get())
+				return nullptr;
+
+			auto it = c_stats.get()->find(id);
+			if (it != c_stats.get()->end())
+				return it->second;
+
+			return nullptr;
+		}
+
 	// Any variable's bigger than a pointer should get their own class
 	// and that class should have a unique pointer here, lazy initialized
 	// Item attributes is full enough and needs to be reworked to be allowed to be bigger
@@ -1248,7 +1334,7 @@ class Item : virtual public Thing, public SharedObject
 	// but ordering does, hence the many private/protected access specifiers
 	private:
         SkillRegistry custom_skills{};
-
+		std::unique_ptr<StatRegistry> c_stats;
 	protected:
 		std::weak_ptr<Cylinder> parent;
 

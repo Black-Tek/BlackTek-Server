@@ -203,6 +203,48 @@ void IOLoginData::serializeCustomSkills(const PlayerConstPtr player, DBInsert qu
 	}
 }
 
+void IOLoginData::serializeCustomStats(PlayerPtr player, DBInsert query, PropWriteStream& binary_stream)
+{
+	binary_stream.write<uint32_t>(player->getCustomStats().size());
+	for (const auto& [id, stat] : player->getCustomStats())
+	{
+		binary_stream.write<uint16_t>(id);
+		binary_stream.write<uint32_t>(stat->value());
+		binary_stream.write<uint32_t>(stat->max());
+		binary_stream.write<uint32_t>(stat->baseMax());
+		
+		// Serialize modifiers
+		const auto& modifiers = stat->getModifiers();
+		binary_stream.write<uint32_t>(modifiers.size());
+		for (const auto& modifier : modifiers)
+		{
+			binary_stream.write<uint8_t>(static_cast<uint8_t>(modifier.getType()));
+			binary_stream.write<uint32_t>(modifier.getValue());
+		}
+	}
+}
+
+void IOLoginData::serializeCustomStats(ItemPtr item, DBInsert query, PropWriteStream& binary_stream)
+{
+	binary_stream.write<uint32_t>(item->getCustomStats().size());
+	for (const auto& [id, stat] : item->getCustomStats())
+	{
+		binary_stream.write<uint16_t>(id);
+		binary_stream.write<uint32_t>(stat->value());
+		binary_stream.write<uint32_t>(stat->max());
+		binary_stream.write<uint32_t>(stat->baseMax());
+		
+		// Serialize modifiers
+		const auto& modifiers = stat->getModifiers();
+		binary_stream.write<uint32_t>(modifiers.size());
+		for (const auto& modifier : modifiers)
+		{
+			binary_stream.write<uint8_t>(static_cast<uint8_t>(modifier.getType()));
+			binary_stream.write<uint32_t>(modifier.getValue());
+		}
+	}
+}
+
 void IOLoginData::serializeCustomSkills(const ItemConstPtr item, DBInsert query, PropWriteStream& binary_stream)
 {
 	binary_stream.write<uint32_t>(item->getCustomSkills().size());
@@ -277,6 +319,66 @@ SkillRegistry IOLoginData::deserializeCustomSkills(PropStream binary_stream)
 	return skill_set;
 }
 
+StatRegistry IOLoginData::deserializeCustomStats(PropStream binary_stream)
+{
+	StatRegistry stat_set{};
+	uint32_t stat_count = 0;
+	uint16_t id = 0;
+	uint32_t current_points = 0;
+	uint32_t max_points = 0;
+	uint32_t base_max = 0;
+
+	if (not binary_stream.read<uint32_t>(stat_count))
+	{
+		// log location
+		return stat_set;
+	}
+
+	if (stat_count == 0)
+	{
+		return stat_set;
+	}
+
+	for (uint32_t i = 0; i < stat_count; i++)
+	{
+		if (not binary_stream.read<uint16_t>(id)
+			or not binary_stream.read<uint32_t>(current_points)
+			or not binary_stream.read<uint32_t>(max_points)
+			or not binary_stream.read<uint32_t>(base_max))
+		{
+			// log location
+			return stat_set;
+		}
+
+		const auto& stat = std::make_shared<Components::Stats::StandardStat>(id, current_points, base_max);
+		
+		uint32_t modifier_count = 0;
+		if (binary_stream.read<uint32_t>(modifier_count))
+		{
+			for (uint32_t j = 0; j < modifier_count; j++)
+			{
+				uint8_t modifier_type = 0;
+				uint32_t modifier_value = 0;
+				
+				if (not binary_stream.read<uint8_t>(modifier_type)
+					or not binary_stream.read<uint32_t>(modifier_value))
+				{
+					// log location
+					break;
+				}
+				
+				stat->addModifier(
+					static_cast<Components::Stats::StatModifierType>(modifier_type),
+					modifier_value
+				);
+			}
+		}
+		
+		stat_set.emplace(id, stat);
+	}
+	return stat_set;
+}
+
 bool IOLoginData::savePlayerCustomSkills(const PlayerConstPtr& player, DBInsert& query_insert, PropWriteStream& binary_stream) 
 {
 	const Database& db = Database::getInstance();
@@ -289,6 +391,25 @@ bool IOLoginData::savePlayerCustomSkills(const PlayerConstPtr& player, DBInsert&
 	auto skills_blob = binary_stream.getStream();
 
 	if (not query_insert.addRow(fmt::format("{:d}, {:s}", player->getGUID(), db.escapeString(skills_blob)))) 
+	{
+		return false;
+	}
+
+	return query_insert.execute();
+}
+
+bool IOLoginData::savePlayerCustomStats(const PlayerPtr& player, DBInsert& query_insert, PropWriteStream& binary_stream)
+{
+	const Database& db = Database::getInstance();
+	auto& stats = player->getCustomStats();
+	const uint32_t stat_count = stats.size();
+	binary_stream.clear();
+
+	IOLoginData::serializeCustomStats(player, query_insert, binary_stream);
+
+	auto stats_blob = binary_stream.getStream();
+
+	if (not query_insert.addRow(fmt::format("{:d}, {:s}", player->getGUID(), db.escapeString(stats_blob)))) 
 	{
 		return false;
 	}
@@ -604,7 +725,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 	//load inventory items
 	ItemMap itemMap;
 
-	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills` FROM `player_items` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`, `stats` FROM `player_items` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
 		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
 			const std::pair<ItemPtr, int32_t>& pair = it->second;
@@ -629,7 +750,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 	//load depot items
 	itemMap.clear();
 
-	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills` FROM `player_depotitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`, `stats` FROM `player_depotitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
 
 		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
@@ -657,7 +778,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 	// Load reward items
     itemMap.clear();
 
-	if ((result = db.storeQuery(fmt::format("SELECT `sid`, `pid`, `itemtype`, `count`, `attributes`, `augments`, `skills` FROM `player_rewarditems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID()))))
+	if ((result = db.storeQuery(fmt::format("SELECT `sid`, `pid`, `itemtype`, `count`, `attributes`, `augments`, `skills`, `stats` FROM `player_rewarditems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID()))))
 	{
 		loadItems(itemMap, result);
 		int64_t current_time = time(nullptr);
@@ -709,7 +830,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 	//load inbox items
 	itemMap.clear();
 
-	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills` FROM `player_inboxitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`, `stats` FROM `player_inboxitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
 
 		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
@@ -735,7 +856,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 	//load store inbox items
 	itemMap.clear();
 
-	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills` FROM `player_storeinboxitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
+	if ((result = db.storeQuery(fmt::format("SELECT `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`, `stats` FROM `player_storeinboxitems` WHERE `player_id` = {:d} ORDER BY `sid` DESC", player->getGUID())))) {
 		loadItems(itemMap, result);
 
 		for (ItemMap::const_reverse_iterator it = itemMap.rbegin(), end = itemMap.rend(); it != end; ++it) {
@@ -819,6 +940,43 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 		}
 		}();
 
+
+	// I used a lambda with immediate execution in order to be able to return early in case of corrupt data or failed loading
+	[&]() -> void 
+		{
+		if ((result = db.storeQuery(fmt::format("SELECT `player_id`, `stats` FROM `player_custom_stats` WHERE `player_id` = {:d}", player->getGUID())))) {
+			try
+			{
+				if (not result) 
+				{
+					std::cout << "ERROR: Null result in loading player custom stats" << std::endl;
+					return;
+				}
+
+				uint32_t player_id = result->getNumber<uint32_t>("player_id");
+				auto stat_data = result->getString("stats");
+
+				if (stat_data.empty()) 
+				{
+					return;
+				}
+				
+				PropStream binary_stream;
+				binary_stream.init(stat_data.data(), stat_data.size());
+
+				if (auto stat_set = IOLoginData::deserializeCustomStats(binary_stream); stat_set.size() > 0)
+				{
+					player->setCustomStats(std::move(stat_set));
+				}
+
+			}
+			catch (const std::exception& e) 
+			{
+				std::cout << "ERROR: Failed to load custom stats : " << e.what() << std::endl;
+			}
+		}
+		}();
+
 	//load vip list
 	if ((result = db.storeQuery(fmt::format("SELECT `player_id` FROM `account_viplist` WHERE `account_id` = {:d}", player->getAccount())))) {
 		do {
@@ -884,11 +1042,22 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 
 		const auto& skill_data = skill_stream.getStream();
 
-		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}, {:s}",
-			player->getGUID(), pid, runningId, item->getID(), item->getSubType(),
+		auto stat_stream = PropWriteStream();
+
+		IOLoginData::serializeCustomStats(item, query_insert, stat_stream);
+
+		const auto& stat_data = stat_stream.getStream();
+
+		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}, {:s}, {:s}",
+			player->getGUID(),
+			pid,
+			runningId,
+			item->getID(),
+			item->getSubType(),
 			db.escapeString(attributesData),
 			db.escapeString(augmentsData),
-			db.escapeString(skill_data)))) {
+			db.escapeString(skill_data),
+			db.escapeString(stat_data)))) {
 			return false;
 		}
         if (const auto& container = item->getContainer())
@@ -933,11 +1102,22 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 
 			const auto& skill_data = skill_stream.getStream();
 
-			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}, {:s}",
-				player->getGUID(), parentId, runningId, item->getID(), item->getSubType(),
+			auto stat_stream = PropWriteStream();
+
+			IOLoginData::serializeCustomStats(item, query_insert, stat_stream);
+
+			const auto& stat_data = stat_stream.getStream();
+
+			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}, {:s}, {:s}",
+				player->getGUID(),
+				parentId,
+				runningId,
+				item->getID(),
+				item->getSubType(),
 				db.escapeString(attributesData),
 				db.escapeString(augmentsData),
-				db.escapeString(skill_data)))) {
+				db.escapeString(skill_data),
+				db.escapeString(stat_data)))) {
 				return false;
 			}
 
@@ -1035,11 +1215,22 @@ bool IOLoginData::addRewardItems(uint32_t playerID, const ItemBlockList& itemLis
 		IOLoginData::serializeCustomSkills(item, query_insert, skill_stream);
 		const auto& skill_data = skill_stream.getStream();
 
-		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}, {:s}",
-			playerID, pid, runningId, item->getID(), item->getSubType(),
+				auto stat_stream = PropWriteStream();
+
+		IOLoginData::serializeCustomStats(item, query_insert, stat_stream);
+
+		const auto& stat_data = stat_stream.getStream();
+
+		if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}, {:s}, {:s}",
+			playerID,
+			pid,
+			runningId,
+			item->getID(),
+			item->getSubType(),
 			db.escapeString(attributesData),
 			db.escapeString(augmentsData),
-			db.escapeString(skill_data)))) {
+			db.escapeString(skill_data),
+			db.escapeString(stat_data)))) {
 			return false;
 		}
 
@@ -1082,11 +1273,22 @@ bool IOLoginData::addRewardItems(uint32_t playerID, const ItemBlockList& itemLis
 
 			const auto& skill_data = skill_stream.getStream();
 
-			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}, {:s}",
-				playerID, parentId, runningId, item->getID(), item->getSubType(),
+			auto stat_stream = PropWriteStream();
+
+			IOLoginData::serializeCustomStats(item, query_insert, stat_stream);
+
+			const auto& stat_data = stat_stream.getStream();
+
+			if (!query_insert.addRow(fmt::format("{:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:s}, {:s}, {:s}",
+				playerID,
+				parentId,
+				runningId,
+				item->getID(),
+				item->getSubType(),
 				db.escapeString(attributesData),
 				db.escapeString(augmentsData),
-				db.escapeString(skill_data)))) {
+				db.escapeString(skill_data),
+				db.escapeString(stat_data)))) {
 				return false;
 			}
 
@@ -1241,7 +1443,7 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 		return false;
 	}
 
-	DBInsert itemsQuery("INSERT INTO `player_items` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills` ) VALUES ");
+	DBInsert itemsQuery("INSERT INTO `player_items` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`, `stats`) VALUES ");
 
 	ItemBlockList itemList;
 	for (int32_t slotId = CONST_SLOT_FIRST; slotId <= CONST_SLOT_LAST; ++slotId) {
@@ -1259,7 +1461,7 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 		return false;
 	}
 
-	DBInsert depotQuery("INSERT INTO `player_depotitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`) VALUES ");
+	DBInsert depotQuery("INSERT INTO `player_depotitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`, `stats`) VALUES ");
 	itemList.clear();
 
 	for (const auto& it : player->depotChests) {
@@ -1277,7 +1479,7 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 		return false;
 	}
 
-	DBInsert rewardQuery("INSERT INTO `player_rewarditems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`) VALUES ");
+	DBInsert rewardQuery("INSERT INTO `player_rewarditems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`, `stats`) VALUES ");
 	itemList.clear();
 
 	for (auto item : player->getRewardChest()->getItemList()) {
@@ -1294,7 +1496,7 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 		return false;
 	}
 
-	DBInsert inboxQuery("INSERT INTO `player_inboxitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`,  `augments`, `skills`) VALUES ");
+	DBInsert inboxQuery("INSERT INTO `player_inboxitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`, `stats`) VALUES ");
 	itemList.clear();
 
 	for (auto item : player->getInbox()->getItemList()) {
@@ -1310,7 +1512,7 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 		return false;
 	}
 
-	DBInsert storeInboxQuery("INSERT INTO `player_storeinboxitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`) VALUES ");
+	DBInsert storeInboxQuery("INSERT INTO `player_storeinboxitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`, `stats`) VALUES ");
 	itemList.clear();
 
 	for (auto item : player->getStoreInbox()->getItemList()) {
@@ -1356,9 +1558,14 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 	}
 
 	DBInsert skill_query("INSERT INTO `player_custom_skills` (`player_id`, `skills`) VALUES ");
-	PropWriteStream binary_stream;
+	PropWriteStream skills_stream;
 
-	savePlayerCustomSkills(player, skill_query, binary_stream);
+	savePlayerCustomSkills(player, skill_query, skills_stream);
+
+	DBInsert stats_query("INSERT INTO `player_custom_stats` (`player_id`, `stats`) VALUES ");
+	PropWriteStream stats_stream;
+
+	savePlayerCustomStats(player, stats_query, stats_stream);
 
 
 	//End the transaction
@@ -1446,6 +1653,10 @@ void IOLoginData::loadItems(ItemMap& itemMap, const DBResult_ptr& result)
 		PropStream skill_stream;
 		skill_stream.init(skill_data.data(), skill_data.size());
 
+		auto stat_data = result->getString("stats");
+		PropStream stat_stream;
+		stat_stream.init(stat_data.data(), stat_data.size());
+
 
 		if (auto item = Item::CreateItem(type, count)) {
 			// Deserialize the item's attributes
@@ -1459,6 +1670,11 @@ void IOLoginData::loadItems(ItemMap& itemMap, const DBResult_ptr& result)
 			if (auto skill_set = IOLoginData::deserializeCustomSkills(skill_stream); skill_set.size() > 0)
 			{
 				item->setCustomSkills(std::move(skill_set));
+			}
+
+			if (auto stat_set = IOLoginData::deserializeCustomStats(stat_stream); stat_set.size() > 0)
+			{
+				item->setCustomStats(std::move(stat_set));
 			}
 
 			// Add item to the itemMap

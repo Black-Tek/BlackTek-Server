@@ -13,11 +13,13 @@
 #include "creatureevent.h"
 #include "declarations.h"
 #include "skills.h"
+#include "pointbasedstat.h"
 
 class Map;
 using ConditionList = std::list<Condition*>;
 using CreatureEventList = std::list<CreatureEvent*>;
 using namespace Components::Skills;
+using namespace Components::Stats;
 
 enum slots_t : uint8_t {
 	CONST_SLOT_WHEREEVER = 0,
@@ -510,6 +512,68 @@ class Creature : virtual public Thing, public SharedObject
 			c_skills = skill_set;
 		}
 
+		bool giveCustomStat(uint32_t id, uint32_t max_points, uint32_t current_points = 0);
+		bool giveCustomStat(uint32_t id, Components::Stats::StandardStatPtr new_skill);
+
+		bool removeCustomStat(uint32_t id);
+
+		bool increaseCustomStat(uint32_t id, uint32_t amount)
+		{
+			if (not c_stats.get())
+				return false;
+
+			auto& stat = c_stats.get()->find(id)->second;
+			return stat->add(amount);
+		}
+
+		bool decreaseCustomStat(uint32_t id, uint32_t amount)
+		{
+			if (not c_stats.get())
+				return false;
+
+			auto& stat = c_stats.get()->find(id)->second;
+			return stat->remove(amount);
+		}
+
+		bool hasCustomStats()
+		{
+			return c_stats.get() != nullptr;
+		}
+
+		bool hasCustomStat(uint32_t id)
+		{
+			if (not c_stats.get())
+				return false;
+
+			auto result = c_stats.get()->find(id);
+			return result != c_stats.get()->end();
+		}
+
+		const Components::Stats::StatRegistry& getCustomStats()
+		{
+			if (not c_stats.get())
+				c_stats = std::make_unique<Components::Stats::StatRegistry>();
+
+			return *c_stats;
+		}
+
+		const Components::Stats::StandardStatPtr getCustomStat(uint32_t id)
+		{
+			if (not c_stats.get())
+				return nullptr;
+
+			auto it = c_stats.get()->find(id);
+			if (it != c_stats.get()->end())
+				return it->second;
+
+			return nullptr;
+		}
+
+		void setCustomStats(StatRegistry&& stat_set)
+		{
+			c_stats = std::make_unique<StatRegistry>(stat_set);
+		}
+
 		//creature script events
 		bool registerCreatureEvent(const std::string& name);
 		bool unregisterCreatureEvent(const std::string& name);
@@ -601,6 +665,7 @@ class Creature : virtual public Thing, public SharedObject
 
 		std::vector<Direction> listWalkDir;
 		SkillRegistry c_skills;
+		std::unique_ptr<StatRegistry> c_stats;
 
 		TileWeakPtr tile;
 		CreatureWeakPtr attackedCreature;

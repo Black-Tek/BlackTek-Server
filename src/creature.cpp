@@ -1568,6 +1568,32 @@ std::shared_ptr<CustomSkill> Creature::getCustomSkill(std::string_view name)
 	return nullptr;
 }
 
+bool Creature::giveCustomStat(uint32_t id, uint32_t max_points, uint32_t current_points)
+{
+	if (not c_stats.get())
+		c_stats = std::make_unique<StatRegistry>();
+
+	auto stat = std::make_shared<StandardStat>(id, current_points, max_points);
+	return c_stats.get()->try_emplace(id, stat).second;
+}
+
+bool Creature::giveCustomStat(uint32_t id, StandardStatPtr stat)
+{
+	if (not c_stats.get())
+		c_stats = std::make_unique<StatRegistry>();
+
+	return c_stats.get()->try_emplace(id, stat).second;
+}
+
+bool Creature::removeCustomStat(uint32_t id)
+{
+	if (auto stats = c_stats.get())
+	{
+		return stats->erase(id) > 0;
+	}
+	return false;
+}
+
 
 bool Creature::registerCreatureEvent(const std::string& name)
 {
