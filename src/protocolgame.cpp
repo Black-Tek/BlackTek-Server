@@ -1770,7 +1770,7 @@ void ProtocolGame::sendChannelMessage(const std::string& author, const std::stri
 {
 	NetworkMessage msg;
 	msg.add(ServerCode::CreatureSay);
-	msg.add<SpecialCode>(SpecialCode::Zero);
+	msg.add<uint32_t>(0); // statement guid (unused by clients)
 	msg.addString(author);
 	msg.add<SpecialCode>(SpecialCode::Zero);
 	msg.addByte(type);
