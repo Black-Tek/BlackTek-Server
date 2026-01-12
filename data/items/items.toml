@@ -1,39 +1,3 @@
-
-[[items]]
-id = 19
-article = ""
-name = "mud"
-
-[[items]]
-id = 21
-article = ""
-name = "fruit juice"
-
-[[items]]
-id = 26
-article = ""
-name = "lava"
-
-[[items]]
-id = 27
-article = ""
-name = "rum"
-
-[[items]]
-id = 28
-article = ""
-name = "swamp"
-
-[[items]]
-id = 35
-article = ""
-name = "tea"
-
-[[items]]
-id = 43
-article = ""
-name = "mead"
-
 [[items]]
 id = 100
 article = ""
