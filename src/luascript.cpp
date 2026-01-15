@@ -17668,7 +17668,8 @@ int LuaScriptInterface::luaCreateCustomSkill(lua_State* L)
 	auto difficulty = (isNumber(L, 6)) ? getNumber<float>(L, 6) : 50;
 	auto threshold = (isNumber(L, 7)) ? getNumber<float>(L, 7) : 10;
 
-	auto skill = Components::Skills::CustomSkill::make_skill();
+	// note: the factory method handles the params in a different order than our lua constructor
+	auto skill = Components::Skills::CustomSkill::make_skill(level, formula, max, multiplier, difficulty, threshold);
 	pushSharedPtr(L, skill);
 	setMetatable(L, -1, "Skill");
 
