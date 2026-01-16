@@ -1019,6 +1019,18 @@ void LuaScriptInterface::pushLoot(lua_State* L, const std::vector<LootBlock>& lo
 #define registerEnum(value) { std::string enumName = #value; registerGlobalVariable(enumName.substr(enumName.find_last_of(':') + 1), value); }
 #define registerEnumIn(tableName, value) { std::string enumName = #value; registerVariable(tableName, enumName.substr(enumName.find_last_of(':') + 1), value); }
 
+#define registerEnumClass(value) { \
+    std::string enumName = #value; \
+    size_t pos = enumName.find_last_of(':'); \
+    if (pos != std::string::npos && pos > 0) { \
+        size_t prevPos = enumName.find_last_of(':', pos - 1); \
+        enumName = enumName.substr(prevPos != std::string::npos ? prevPos + 1 : 0); \
+        std::replace(enumName.begin(), enumName.end(), ':', '_'); \
+    } \
+    registerGlobalVariable(enumName, \
+        static_cast<std::underlying_type_t<decltype(value)>>(value)); \
+}
+
 void LuaScriptInterface::registerFunctions()
 {
 	//doPlayerAddItem(uid, itemid, <optional: default: 1> count/subtype)
@@ -2030,6 +2042,11 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(DEFENSE_MODIFIER_REFORM)
 	registerEnum(DEFENSE_MODIFIER_WEAKNESS)
 	registerEnum(DEFENSE_MODIFIER_LAST)
+	registerEnumClass(Components::Stats::StatModifierType::None)
+	registerEnumClass(Components::Stats::StatModifierType::Add)
+	registerEnumClass(Components::Stats::StatModifierType::Subtract)
+	registerEnumClass(Components::Stats::StatModifierType::Divide)
+	registerEnumClass(Components::Stats::StatModifierType::Multiply)
 
 	// _G
 	registerGlobalVariable("INDEX_WHEREEVER", INDEX_WHEREEVER);
@@ -2429,6 +2446,14 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Item", "getSkill", LuaScriptInterface::luaItemGetCustomSkillLevel);
 	registerMethod("Item", "skill", LuaScriptInterface::luaItemGetCustomSkillUserData);
 
+	registerMethod("Item", "giveStat", LuaScriptInterface::luaItemGiveStat);
+	registerMethod("Item", "removeStat", LuaScriptInterface::luaItemRemoveStat);
+	registerMethod("Item", "increaseStat", LuaScriptInterface::luaItemIncreaseStat);
+	registerMethod("Item", "decreaseStat", LuaScriptInterface::luaItemDecreaseStat);
+	registerMethod("Item", "hasStat", LuaScriptInterface::luaItemHasStat);
+	registerMethod("Item", "getStat", LuaScriptInterface::luaItemGetStat);
+	registerMethod("Item", "getStats", LuaScriptInterface::luaItemGetStats);
+
 	// Imbuement
 	registerClass("Imbuement", "", LuaScriptInterface::luaImbuementCreate);
 	registerMetaMethod("Imbuement", "__eq", LuaScriptInterface::luaUserdataCompare);
@@ -2597,6 +2622,38 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Creature", "canSkill", LuaScriptInterface::luaCreatureCanGainSkillLevels);
 	registerMethod("Creature", "getSkill", LuaScriptInterface::luaCreatureGetCustomSkillLevel);
 	registerMethod("Creature", "skill", LuaScriptInterface::luaCreatureGetCustomSkillUserData);
+
+	registerMethod("Creature", "giveStat", LuaScriptInterface::luaCreatureGiveStat);
+	registerMethod("Creature", "removeStat", LuaScriptInterface::luaCreatureRemoveStat);
+	registerMethod("Creature", "increaseStat", LuaScriptInterface::luaCreatureIncreaseStat);
+	registerMethod("Creature", "decreaseStat", LuaScriptInterface::luaCreatureDecreaseStat);
+	registerMethod("Creature", "hasStat", LuaScriptInterface::luaCreatureHasStat);
+	registerMethod("Creature", "getStat", LuaScriptInterface::luaCreatureGetStat);
+	registerMethod("Creature", "getStats", LuaScriptInterface::luaCreatureGetStats);
+
+	// Stat
+	registerClass("Stat", "", LuaScriptInterface::luaStatCreate);
+	registerMetaMethod("Stat", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMetaMethod("Stat", "__gc", LuaScriptInterface::luaStatDestroy);
+	registerMethod("Stat", "id", LuaScriptInterface::luaStatId);
+	registerMethod("Stat", "max", LuaScriptInterface::luaStatMax);
+	registerMethod("Stat", "value", LuaScriptInterface::luaStatValue);
+	registerMethod("Stat", "baseMax", LuaScriptInterface::luaStatBaseMax);
+	registerMethod("Stat", "increase", LuaScriptInterface::luaStatIncrease);
+	registerMethod("Stat", "decrease", LuaScriptInterface::luaStatDecrease);
+	registerMethod("Stat", "increaseMax", LuaScriptInterface::luaStatMaxIncrease);
+	registerMethod("Stat", "decreaseMax", LuaScriptInterface::luaStatMaxDecrease);
+	registerMethod("Stat", "addModifier", LuaScriptInterface::luaStatAddModifier);
+	registerMethod("Stat", "removeModifier", LuaScriptInterface::luaStatRemoveModifier);
+
+	
+
+	registerClass("StatModifier", "", LuaScriptInterface::luaStatModifierCreate);
+	registerMetaMethod("StatModifier", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMetaMethod("StatModifier", "__gc", LuaScriptInterface::luaStatModifierDestroy);
+	registerMethod("StatModifier", "type", LuaScriptInterface::luaStatModifierType);
+	registerMethod("StatModifier", "value", LuaScriptInterface::luaStatModifierValue);
+
 
 	// Player
 	registerClass("Player", "Creature", LuaScriptInterface::luaPlayerCreate);
@@ -8140,6 +8197,175 @@ int LuaScriptInterface::luaItemGetCustomSkillUserData(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaItemGiveStat(lua_State* L)
+{
+	// item:giveStat(id, max_points, <optional> current_points)
+	// item:giveStat(id, stat)
+
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		const auto& stat_id = getNumber<uint32_t>(L, 2);
+		const auto& max_points = getNumber<uint32_t>(L, 3);
+		uint32_t current_points = (lua_gettop(L) > 3 and isNumber(L, 4)) ? getNumber<uint32_t>(L, 4) : 0;
+
+		pushBoolean(L, item->giveCustomStat(stat_id, max_points, current_points));
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	// should be unreachable
+	return 0;
+}
+
+// todo : possibly give option to return the removed stat for reuse to avoid deep copying in scripts.
+int LuaScriptInterface::luaItemRemoveStat(lua_State* L)
+{
+	// item:removeStat(id)
+	// -- returns bool
+
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		const auto stat_id = getNumber<uint32_t>(L, 2);
+		pushBoolean(L, item->removeCustomStat(stat_id));
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	// should be unreachable
+	return 0;
+}
+
+int LuaScriptInterface::luaItemIncreaseStat(lua_State* L)
+{
+	// item:increaseStat(id, number)
+	// -- returns bool
+
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		const auto stat_id = getNumber<uint32_t>(L, 2);
+		const auto amount = getNumber<uint32_t>(L, 3);
+		pushBoolean(L, item->increaseCustomStat(stat_id, amount));
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+
+	return 0;
+}
+
+int LuaScriptInterface::luaItemDecreaseStat(lua_State* L)
+{
+	// item:decreaseStat(id, number)
+	// -- returns bool
+
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		const auto stat_id = getNumber<uint32_t>(L, 2);
+		const auto amount = getNumber<uint32_t>(L, 3);
+		pushBoolean(L, item->decreaseCustomStat(stat_id, amount));
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+
+	return 0;
+}
+
+int LuaScriptInterface::luaItemHasStat(lua_State* L)
+{
+	// item:hasStat(id)
+	// -- returns bool
+
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		const auto stat_id = getNumber<uint32_t>(L, 2);
+		pushBoolean(L, item->hasCustomStat(stat_id));
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+
+	return 0;
+}
+
+int LuaScriptInterface::luaItemGetStat(lua_State* L)
+{
+	// item:getStat(id)
+	// -- returns bool
+
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		const auto stat_id = getNumber<uint32_t>(L, 2);
+		const auto has_stat = item->getCustomStat(stat_id) ? true : false;
+		pushBoolean(L, has_stat);
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+
+	return 0;
+}
+
+int LuaScriptInterface::luaItemGetStats(lua_State* L)
+{
+	// item:getStats()
+	// -- returns false if there are none, or a table of all the stats the item has if any exist
+
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+
+		if (not item->hasCustomStats())
+		{
+			pushBoolean(L, false);
+			return 1;
+		}
+
+		const auto& stats = item->getCustomStats();
+
+		lua_createtable(L, stats.size(), 0);
+
+		int index = 0;
+		for (const auto& stat : stats) {
+			pushSharedPtr(L, stat.second);
+			setMetatable(L, -1, "Stat");
+			lua_rawseti(L, -2, ++index);
+		}
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+
+	return 0;
+}
+
 // Imbuement
 
 int LuaScriptInterface::luaImbuementCreate(lua_State* L)
@@ -10527,6 +10753,570 @@ int LuaScriptInterface::luaCreatureGetCustomSkillUserData(lua_State* L)
 		}
 	}
 	return 1;
+}
+
+int LuaScriptInterface::luaCreatureGiveStat(lua_State* L)
+{
+	// creature:giveStat(id, max_points, <optional> current_points)
+	// creature:giveStat(id, stat)
+
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		const auto stat_id = getNumber<uint32_t>(L, 2);
+		const auto max_points = getNumber<uint32_t>(L, 3);
+		uint32_t current_points = (lua_gettop(L) > 3 and isNumber(L, 4)) ? getNumber<uint32_t>(L, 4) : 0;
+
+		pushBoolean(L, creature->giveCustomStat(stat_id, max_points, current_points));
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	// should be unreachable
+	return 0;
+}
+
+// todo : possibly give option to return the removed stat for reuse to avoid deep copying in scripts.
+int LuaScriptInterface::luaCreatureRemoveStat(lua_State* L)
+{
+	// creature:removeStat(id)
+	// -- returns bool
+
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		const auto stat_id = getNumber<uint32_t>(L, 2);
+		pushBoolean(L, creature->removeCustomStat(stat_id));
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	// should be unreachable
+	return 0;
+}
+
+int LuaScriptInterface::luaCreatureIncreaseStat(lua_State* L)
+{
+	// creature:increaseStat(id, number)
+	// -- returns bool
+
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		const auto stat_id = getNumber<uint32_t>(L, 2);
+		const auto amount = getNumber<uint32_t>(L, 3);
+		pushBoolean(L, creature->increaseCustomStat(stat_id, amount));
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+
+	return 0;
+}
+
+int LuaScriptInterface::luaCreatureDecreaseStat(lua_State* L)
+{
+	// creature:decreaseStat(id, number)
+	// -- returns bool
+
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		const auto stat_id = getNumber<uint32_t>(L, 2);
+		const auto amount = getNumber<uint32_t>(L, 3);
+		pushBoolean(L, creature->decreaseCustomStat(stat_id, amount));
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+
+	return 0;
+}
+
+int LuaScriptInterface::luaCreatureHasStat(lua_State* L)
+{
+	// creature:hasStat(id)
+	// -- returns bool
+
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		const auto stat_id = getNumber<uint32_t>(L, 2);
+		pushBoolean(L, creature->hasCustomStat(stat_id));
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+
+	return 0;
+}
+
+int LuaScriptInterface::luaCreatureGetStat(lua_State* L)
+{
+	// creature:getStat(id)
+	// -- returns bool
+
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+		const auto stat_id = getNumber<uint32_t>(L, 2);
+		const auto has_stat = creature->getCustomStat(stat_id) ? true : false;
+		pushBoolean(L, has_stat);
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+
+	return 0;
+}
+
+int LuaScriptInterface::luaCreatureGetStats(lua_State* L)
+{
+	// creature:getStats()
+	// -- returns false if there are none, or a table of all the stats the creature has if any exist
+
+	if (auto& creature = getSharedPtr<Creature>(L, 1))
+	{
+
+		if (not creature->hasCustomStats())
+		{
+			pushBoolean(L, false);
+			return 1;
+		}
+
+		const auto& stats = creature->getCustomStats();
+
+		lua_createtable(L, stats.size(), 0);
+
+		int index = 0;
+		for (const auto& stat : stats) {
+			pushSharedPtr(L, stat.second);
+			setMetatable(L, -1, "Stat");
+			lua_rawseti(L, -2, ++index);
+		}
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+
+	return 0;
+}
+
+// todo : add support for raw table as param for consructor (this and all classes in lua I can)
+int LuaScriptInterface::luaStatCreate(lua_State* L)
+{
+	// Stat(number: id, number: max_points, [number: current_points, bool: proportional_scaling ])
+	// Stat(number: id, userdata: stat) -- this allows for handling deep copy in source instead of lua
+
+	if (const auto& stat_id = getNumber<uint32_t>(L, 2))
+	{
+		if (const auto& other_stat = getSharedPtr<StandardStat>(L, 3))
+		{
+			const auto& stat = std::make_shared<StandardStat>(stat_id, other_stat.get()->current(), other_stat.get()->max());
+			pushSharedPtr(L, stat);
+			setMetatable(L, -1, "Stat");
+			return 1;
+		}
+		else
+		{
+			const auto max_points = getNumber<uint32_t>(L, 3);
+			if (not max_points)
+			{
+				// todo: give error, details, and log it
+				lua_pushnil(L);
+				return 1;
+			}
+			
+			if (const auto current_points = getNumber<uint32_t>(L, 4))
+			{
+				const bool scale = getBoolean(L, 4, true);
+				const auto& stat = std::make_shared<StandardStat>(stat_id, max_points, current_points, scale);
+				pushSharedPtr(L, stat);
+				setMetatable(L, -1, "Stat");
+				return 1;
+			}
+			else
+			{
+				// todo: give error, details, and log it
+				lua_pushnil(L);
+				return 1;
+			}
+		}
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+
+	return 0;
+}
+
+int LuaScriptInterface::luaStatDestroy(lua_State* L)
+{
+	auto& obj_ref = getSharedPtr<StandardStat>(L, 1);
+	std::destroy_at(std::addressof(obj_ref));
+	return 0;
+}
+
+int LuaScriptInterface::luaStatIncrease(lua_State* L)
+{
+	// stat:increase(number: amount)
+	if (const auto& stat = getSharedPtr<StandardStat>(L, 1))
+	{
+		if (const auto& amount = getNumber<uint32_t>(L, 2))
+		{
+			pushBoolean(L, stat->add(amount));
+			return 1;
+		}
+		else
+		{
+			// todo: give error, details, and log it
+			lua_pushnil(L);
+			return 1;
+		}
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	return 0;
+}
+
+int LuaScriptInterface::luaStatDecrease(lua_State* L)
+{
+	// stat:decrease(number: amount)
+	if (const auto& stat = getSharedPtr<StandardStat>(L, 1))
+	{
+		if (const auto& amount = getNumber<uint32_t>(L, 2))
+		{
+			pushBoolean(L, stat->remove(amount));
+			return 1;
+		}
+		else
+		{
+			// todo: give error, details, and log it
+			lua_pushnil(L);
+			return 1;
+		}
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	return 0;
+}
+
+int LuaScriptInterface::luaStatMaxIncrease(lua_State* L)
+{
+	// stat:increaseMax(number: amount, [bool: scale_curent_points = true])
+	if (const auto& stat = getSharedPtr<StandardStat>(L, 1))
+	{
+		if (const auto& amount = getNumber<uint32_t>(L, 2))
+		{
+			pushBoolean(L, stat->increaseMax(amount));
+			return 1;
+		}
+		else
+		{
+			// todo: give error, details, and log it
+			lua_pushnil(L);
+			return 1;
+		}
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	return 0;
+}
+
+int LuaScriptInterface::luaStatMaxDecrease(lua_State* L)
+{
+	// stat:decreaseMax(number: amount, [bool: scale_current_points = true])
+	if (const auto& stat = getSharedPtr<StandardStat>(L, 1))
+	{
+		if (const auto& amount = getNumber<uint32_t>(L, 2))
+		{
+			pushBoolean(L, stat->decreaseMax(amount));
+			return 1;
+		}
+		else
+		{
+			// todo: give error, details, and log it
+			lua_pushnil(L);
+			return 1;
+		}
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	return 0;
+}
+
+int LuaScriptInterface::luaStatMax(lua_State* L)
+{
+	// stat:max() -- returns max points
+	if (const auto& stat = getSharedPtr<StandardStat>(L, 1))
+	{
+		lua_pushinteger(L, stat->max());
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	return 0;
+}
+
+int LuaScriptInterface::luaStatValue(lua_State* L)
+{
+	// stat:value() -- returns current points
+	if (const auto& stat = getSharedPtr<StandardStat>(L, 1))
+	{
+		lua_pushinteger(L, stat->current());
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	return 0;
+}
+
+int LuaScriptInterface::luaStatAddModifier(lua_State* L)
+{
+	// stat:addModifier(modifier: mod)
+	// stat:addModifier(enum: type, number: value)
+	if (const auto& stat = getSharedPtr<StandardStat>(L, 1))
+	{
+		if (const auto& modifier = getSharedPtr<StandardStatMod>(L, 2))
+		{
+
+		}
+		else if (const auto mod_number = getNumber<uint32_t>(L, 3))
+		{
+			const auto mod_type = static_cast<StatModifierType>(mod_number);
+			if (const auto amount = getNumber<uint32_t>(L, 4))
+			{
+				stat->addModifier(mod_type, amount);
+				pushBoolean(L, true);
+				return 1;
+			}
+			else
+			{
+				// todo: give error, details, and log it
+				lua_pushnil(L);
+				return 1;
+			}
+		}
+		else
+		{
+			// todo: give error, details, and log it
+			lua_pushnil(L);
+			return 1;
+		}
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	return 0;
+}
+
+int LuaScriptInterface::luaStatRemoveModifier(lua_State* L)
+{
+	// stat:removeModifier(modifier: mod)
+	// stat:removeModifier(enum: type, number: value)
+	if (const auto& stat = getSharedPtr<StandardStat>(L, 1))
+	{
+		if (const auto& modifier = getSharedPtr<StandardStatMod>(L, 2))
+		{
+			pushBoolean(L, stat->removeModifier(*modifier));
+			return 1;
+		}
+		else
+		{
+			if (const auto mod_number = getNumber<uint32_t>(L, 2))
+			{
+				auto mod_type = static_cast<StatModifierType>(mod_number);
+				const auto amount = getNumber<uint32_t>(L, 3);
+
+				if (not amount)
+				{
+					// todo: give error, details, and log it
+					lua_pushnil(L);
+					return 1;
+				}
+
+				pushBoolean(L, stat->removeModifier(mod_type, amount));
+				return 1;
+			}
+
+			// todo: give error, details, and log it
+			lua_pushnil(L);
+			return 1;
+		}
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	return 0;
+}
+
+int LuaScriptInterface::luaStatId(lua_State* L)
+{
+	// stat:id() -- returns stat id
+	if (const auto& stat = getSharedPtr<StandardStat>(L, 1))
+	{
+		lua_pushinteger(L, stat->getId());
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	return 0;
+}
+
+int LuaScriptInterface::luaStatBaseMax(lua_State* L)
+{
+	// stat:baseMax() -- returns base max points (before modifiers)
+	if (const auto& stat = getSharedPtr<StandardStat>(L, 1))
+	{
+		lua_pushinteger(L, stat->baseMax());
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	return 0;
+}
+
+int LuaScriptInterface::luaStatModifierCreate(lua_State* L)
+{
+	// StatModifier(enum: type, number: value)
+	if (const auto& mod_number = getNumber<uint32_t>(L, 2))
+	{
+		const auto mod_type = static_cast<StatModifierType>(mod_number);
+		if (const auto amount = getNumber<uint32_t>(L, 3))
+		{
+			pushSharedPtr<StandardStatMod>(L, StandardStatMod(mod_type, amount));
+			setMetatable(L, -1, "StatModifier");
+			return 1;
+		}
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	return 0;
+}
+
+int LuaScriptInterface::luaStatModifierDestroy(lua_State* L)
+{
+	auto& obj_ref = getSharedPtr<StandardStatMod>(L, 1);
+	std::destroy_at(std::addressof(obj_ref));
+	return 0;
+}
+
+int LuaScriptInterface::luaStatModifierType(lua_State* L)
+{
+	// statmodifier:type() -- returns enum value (number)
+	// statmodifier:type(type) -- sets type
+	if (const auto& modifier = getSharedPtr<StandardStatMod>(L, 1))
+	{
+		if (const auto& mod_number = getNumber<uint32_t>(L, 2))
+		{
+			auto mod_type = static_cast<StatModifierType>(mod_number);
+			modifier->type_ = mod_type;
+			pushBoolean(L, true);
+			return 1;
+		}
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	return 0;
+}
+
+int LuaScriptInterface::luaStatModifierValue(lua_State* L)
+{
+	// statmodifier:value() -- returns number
+	// statmodifier:value(number) -- sets value
+	if (const auto& modifier = getSharedPtr<StandardStatMod>(L, 1))
+	{
+		if (const auto& amount = getNumber<uint32_t>(L, 2))
+		{
+			modifier->value_ = amount;
+			pushBoolean(L, true);
+			return 1;
+		}
+	}
+	else
+	{
+		// todo: give error, details, and log it
+		lua_pushnil(L);
+		return 1;
+	}
+	return 0;
 }
 
 // Player
@@ -16878,7 +17668,8 @@ int LuaScriptInterface::luaCreateCustomSkill(lua_State* L)
 	auto difficulty = (isNumber(L, 6)) ? getNumber<float>(L, 6) : 50;
 	auto threshold = (isNumber(L, 7)) ? getNumber<float>(L, 7) : 10;
 
-	auto skill = Components::Skills::CustomSkill::make_skill();
+	// note: the factory method handles the params in a different order than our lua constructor
+	auto skill = Components::Skills::CustomSkill::make_skill(level, formula, max, multiplier, difficulty, threshold);
 	pushSharedPtr(L, skill);
 	setMetatable(L, -1, "Skill");
 

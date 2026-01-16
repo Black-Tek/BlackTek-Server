@@ -392,6 +392,17 @@ CREATE TABLE `player_custom_skills` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `player_custom_stats`
+--
+
+CREATE TABLE `player_custom_stats` (
+    `player_id` int NOT NULL,
+    `stats` blob NOT NULL
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb3;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `player_deaths`
 --
 
@@ -421,7 +432,8 @@ CREATE TABLE `player_depotitems` (
     `count` smallint NOT NULL DEFAULT '0',
     `attributes` blob NOT NULL,
     `augments` blob NOT NULL,
-    `skills` blob NOT NULL
+    `skills` blob NOT NULL,
+    `stats` blob NOT NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb3;
 
 -- --------------------------------------------------------
@@ -438,7 +450,8 @@ CREATE TABLE `player_inboxitems` (
     `count` smallint NOT NULL DEFAULT '0',
     `attributes` blob NOT NULL,
     `augments` blob NOT NULL,
-    `skills` blob NOT NULL
+    `skills` blob NOT NULL,
+    `stats` blob NOT NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb3;
 
 -- --------------------------------------------------------
@@ -455,7 +468,8 @@ CREATE TABLE `player_items` (
     `count` smallint NOT NULL DEFAULT '0',
     `attributes` blob NOT NULL,
     `augments` blob NOT NULL,
-    `skills` blob NOT NULL
+    `skills` blob NOT NULL,
+    `stats` blob NOT NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb3;
 
 -- --------------------------------------------------------
@@ -485,7 +499,8 @@ CREATE TABLE `player_rewarditems` (
     `count` smallint NOT NULL DEFAULT '0',
     `attributes` blob NOT NULL,
     `augments` blob NOT NULL,
-    `skills` blob NOT NULL
+    `skills` blob NOT NULL,
+    `stats` blob NOT NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb3;
 
 -- --------------------------------------------------------
@@ -525,7 +540,8 @@ CREATE TABLE `player_storeinboxitems` (
     `count` smallint NOT NULL DEFAULT '0',
     `attributes` blob NOT NULL,
     `augments` blob NOT NULL,
-    `skills` blob NOT NULL
+    `skills` blob NOT NULL,
+    `stats` blob NOT NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb3;
 
 -- --------------------------------------------------------
@@ -695,6 +711,12 @@ ALTER TABLE `player_augments` ADD KEY `player_id` (`player_id`);
 -- Indexes for table `player_custom_skills`
 --
 ALTER TABLE `player_custom_skills`
+ADD KEY `player_id` (`player_id`);
+
+--
+-- Indexes for table `player_custom_stats`
+--
+ALTER TABLE `player_custom_stats`
 ADD KEY `player_id` (`player_id`);
 
 --
@@ -1006,6 +1028,12 @@ ADD CONSTRAINT `player_augments_ibfk_1` FOREIGN KEY (`player_id`) REFERENCES `pl
 --
 ALTER TABLE `player_custom_skills`
 ADD CONSTRAINT `player_custom_skills_ibfk_1` FOREIGN KEY (`player_id`) REFERENCES `players` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `player_custom_stats`
+--
+ALTER TABLE `player_custom_stats`
+ADD CONSTRAINT `player_custom_stats_ibfk_1` FOREIGN KEY (`player_id`) REFERENCES `players` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `player_deaths`

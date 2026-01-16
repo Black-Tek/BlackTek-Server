@@ -304,70 +304,41 @@ IntegerVector vectorAtoi(const std::vector<std::string_view>& stringVector)
 	return returnVector;
 }
 
-std::mt19937& getRandomGenerator() {
-	static thread_local std::random_device rd;
-	static thread_local std::mt19937 generator(rd());
+std::mt19937& getRandomGenerator()
+{
+	static std::random_device rd;
+	static std::mt19937 generator(rd());
 	return generator;
 }
 
-struct NormalDistParams {
-	float mean;
-	float stddev;
-
-	bool operator<(const NormalDistParams& other) const {
-		if (mean != other.mean) return mean < other.mean;
-		return stddev < other.stddev;
-	}
-};
-
-static thread_local std::map<NormalDistParams, std::normal_distribution<float>> cached_normal_distributions;
-int32_t normal_random(int32_t minNumber, int32_t maxNumber) {
-    if (minNumber == maxNumber) 
-	{
-        return minNumber;
-    }
-	auto&& [a, b] = std::minmax(minNumber, maxNumber);
-
-	float mean = static_cast<float>(a + b) / 2.0f;
-	float stddev = static_cast<float>(b - a) / 6.0f;
-
-	NormalDistParams params_key = { mean, stddev };
-
-	auto it = cached_normal_distributions.find(params_key);
-	std::normal_distribution<float>* normalRandPtr;
-
-	if (it == cached_normal_distributions.end()) {
-		it = cached_normal_distributions.emplace(params_key, std::normal_distribution<float>(mean, stddev)).first;
-	}
-	normalRandPtr = &it->second;
-
-	float v = (*normalRandPtr)(getRandomGenerator());
-
-	v = std::max(static_cast<float>(a), std::min(static_cast<float>(b), v));
-	return static_cast<int32_t>(std::lround(v));
-}
-
-int32_t uniform_random(int32_t minNumber, int32_t maxNumber) 
+int32_t uniform_random(int32_t minNumber, int32_t maxNumber)
 {
-	if (minNumber == maxNumber)
-	{
+	static std::uniform_int_distribution<int32_t> uniformRand;
+	if (minNumber == maxNumber) {
 		return minNumber;
-	}
-	else if (minNumber > maxNumber)
-	{
+	} else if (minNumber > maxNumber) {
 		std::swap(minNumber, maxNumber);
 	}
-	std::uniform_int_distribution<int32_t> uniformRand(minNumber, maxNumber);
-	return uniformRand(getRandomGenerator());
+	return uniformRand(getRandomGenerator(), std::uniform_int_distribution<int32_t>::param_type(minNumber, maxNumber));
 }
 
-bool boolean_random(double probability /*= 0.5*/) 
+int32_t normal_random(int32_t minNumber, int32_t maxNumber)
 {
-	if (probability < 0.0) probability = 0.0;
-	if (probability > 1.0) probability = 1.0;
+	static std::normal_distribution<float> normalRand(0.5f, 0.25f);
 
-	std::bernoulli_distribution booleanRand(probability);
-	return booleanRand(getRandomGenerator());
+	float v;
+	do {
+		v = normalRand(getRandomGenerator());
+	} while (v < 0.0 || v > 1.0);
+
+	auto&& [a, b] = std::minmax(minNumber, maxNumber);
+	return a + std::lround(v * (b - a));
+}
+
+bool boolean_random(double probability /* = 0.5*/)
+{
+	static std::bernoulli_distribution booleanRand;
+	return booleanRand(getRandomGenerator(), std::bernoulli_distribution::param_type(probability));
 }
 
 void trimString(std::string& str)

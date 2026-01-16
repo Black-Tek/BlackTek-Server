@@ -56,9 +56,13 @@ class IOLoginData
 		static bool saveAugments(const PlayerConstPtr& player, DBInsert& query_insert, PropWriteStream& augmentStream);
 		static void loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augmentList, const DBResult_ptr& result);
 		static void serializeCustomSkills(const PlayerConstPtr player, DBInsert query, PropWriteStream& binary_stream);
+		static void serializeCustomStats(PlayerPtr player, DBInsert query, PropWriteStream& binary_stream);
+		static void serializeCustomStats(ItemPtr item, DBInsert query, PropWriteStream& binary_stream);
 		static void serializeCustomSkills(const ItemConstPtr item, DBInsert query, PropWriteStream& binary_stream);
 		static SkillRegistry deserializeCustomSkills(PropStream binary_stream);
+		static StatRegistry deserializeCustomStats(PropStream binary_stream);
 		static bool savePlayerCustomSkills(const PlayerConstPtr& player, DBInsert& query_insert, PropWriteStream& binary_stream);
+		static bool savePlayerCustomStats(const PlayerPtr& player, DBInsert& query_insert, PropWriteStream& binary_stream);
 };
 
 #endif
