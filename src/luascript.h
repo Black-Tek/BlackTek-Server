@@ -641,6 +641,7 @@ class LuaScriptInterface
 		static int luaGameSaveAccountStorageValues(lua_State* L);
 
 		static int luaGameSendDiscordWebhook(lua_State* L);
+		static int luaGameSendTelegramMessage(lua_State* L);
 
 		// Variant
 		static int luaVariantCreate(lua_State* L);
