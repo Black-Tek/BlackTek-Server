@@ -77,6 +77,27 @@ int32_t uniform_random(int32_t minNumber, int32_t maxNumber);
 int32_t normal_random(int32_t minNumber, int32_t maxNumber);
 bool boolean_random(double probability = 0.5);
 
+[[nodiscard]]
+static inline uint8_t generate_percent() noexcept
+{
+    static uint32_t x = 0xA341316Cu;
+
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+
+    return static_cast<uint8_t>((uint64_t(x) * 100u >> 32) + 1);
+}
+
+[[nodiscard]]
+static inline uint8_t generate_percent(uint32_t seed) noexcept
+{
+    seed ^= seed << 13;
+    seed ^= seed >> 17;
+    seed ^= seed << 5;
+
+    return static_cast<uint8_t>((uint64_t(seed) * 100u >> 32) + 1);
+}
 Direction getDirection(const std::string& string);
 Position getNextPosition(Direction direction, Position pos);
 Direction getDirectionTo(const Position& from, const Position& to);

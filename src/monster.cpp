@@ -788,28 +788,21 @@ void Monster::doAttacking(const uint32_t interval)
     updateLookDirection();
     const Position& myPos = getPosition();
     const Position& targetPos = attacked_creature->getPosition();
+	uint32_t index = 0;
     
-    // Generate ONE large random number
-    const uint64_t random_seed = static_cast<uint64_t>(uniform_random(0, UINT32_MAX));
-    uint32_t index = 0;
-    constexpr uint32_t hash_base = 2654435761u;
-    
-    auto ready_spells = mType->info.attackSpells 
-        | std::views::filter([random_seed, &index](const spellBlock_t& spell) { 
-            // Use different bits/hash of the seed for each spell
-            uint32_t spell_random = static_cast<uint32_t>((random_seed * hash_base + index++) >> 16) % 100 + 1;
-            return spell_random <= spell.chance;
-        });
-    
-    for (const spellBlock_t& spellBlock : ready_spells)
+    for (const spellBlock_t& spellBlock : mType->info.attackSpells)
     {
         if (attackedCreature.expired()) 
         {
             break;
         }
-        
+
+		++index;
         bool inRange = false;
-        if (canUseSpell(myPos, targetPos, spellBlock, interval, inRange, resetTicks))
+		uint32_t seed = self->getID() + self->getHealth() + index;
+
+		const uint32_t chance = generate_percent(seed);
+        if (chance <= spellBlock.chance and canUseSpell(myPos, targetPos, spellBlock, interval, inRange, resetTicks))
         {
             minCombatValue = spellBlock.minCombatValue;
             maxCombatValue = spellBlock.maxCombatValue;
