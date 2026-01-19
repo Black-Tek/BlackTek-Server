@@ -788,7 +788,7 @@ void Monster::doAttacking(const uint32_t interval)
     updateLookDirection();
     const Position& myPos = getPosition();
     const Position& targetPos = attacked_creature->getPosition();
-	uint32_t index = 0;
+	static uint32_t index = 0;
     
     for (const spellBlock_t& spellBlock : mType->info.attackSpells)
     {
