@@ -788,8 +788,7 @@ void Monster::doAttacking(const uint32_t interval)
     updateLookDirection();
     const Position& myPos = getPosition();
     const Position& targetPos = attacked_creature->getPosition();
-	static uint32_t index = 0;
-    
+
     for (const spellBlock_t& spellBlock : mType->info.attackSpells)
     {
         if (attackedCreature.expired()) 
@@ -797,11 +796,9 @@ void Monster::doAttacking(const uint32_t interval)
             break;
         }
 
-		++index;
         bool inRange = false;
-		uint32_t seed = self->getID() + self->getHealth() + index;
+		const uint32_t chance = uniform_random(1, 100);
 
-		const uint32_t chance = generate_percent(seed);
         if (chance <= spellBlock.chance and canUseSpell(myPos, targetPos, spellBlock, interval, inRange, resetTicks))
         {
             minCombatValue = spellBlock.minCombatValue;
