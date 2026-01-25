@@ -1509,15 +1509,15 @@ void Combat::applyDamageIncreaseModifier
 	const int32_t percentValue,
 	const int32_t flatValue) {
 
+	if (flatValue) {
+		damage.primary.value += flatValue;
+	}
 	if (percentValue) {
 		if (percentValue <= 100) {
 			damage.primary.value += damage.primary.value * (percentValue / 100.0);
 		} else {
 			damage.primary.value *= 2;
 		}
-	}
-	if (percentValue) {
-		damage.primary.value += percentValue;
 	}
 }
 
