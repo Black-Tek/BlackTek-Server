@@ -2497,7 +2497,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Augment", "getDescription", LuaScriptInterface::luaAugmentGetDescription);
 	registerMethod("Augment", "addDamageModifier", LuaScriptInterface::luaAugmentAddDamageModifier);
 	registerMethod("Augment", "removeDamageModifier", LuaScriptInterface::luaAugmentRemoveDamageModifier);
-	registerMethod("Augment", "getAttackModifiers", LuaScriptInterface::luaAugmentGetDefenseModifiers);
+	registerMethod("Augment", "getAttackModifiers", LuaScriptInterface::luaAugmentGetAttackModifiers);
 	registerMethod("Augment", "getDefenseModifiers", LuaScriptInterface::luaAugmentGetDefenseModifiers);
 
 	// Container
