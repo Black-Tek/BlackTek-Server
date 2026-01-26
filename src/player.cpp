@@ -5360,7 +5360,8 @@ const bool Player::hasAugment(const std::string_view augmentName, bool checkItem
 			{
 				if (item->isAugmented()) 
 				{
-					for (const auto& aug : augments) 
+					const auto& itemAugments = item->getAugments();
+					for (const auto& aug : *itemAugments) 
 					{
 						if (aug->getName() == augmentName) 
 						{
@@ -5391,7 +5392,8 @@ const bool Player::hasAugment(const std::shared_ptr<Augment>& augment, bool chec
 			{
                 if (item->isAugmented()) 
 				{
-					for (const auto& aug : augments) 
+					const auto& itemAugments = item->getAugments();
+					for (const auto& aug : *itemAugments) 
 					{
                         if (aug == augment) 
 						{
