@@ -989,7 +989,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 			/// we do conversion here incase someone wants to convert say healing to mana or mana to death.
 
 			const auto& conversionTotals = casterPlayer->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage.primary.type, damage.origin, targetType, target->getRace(), target->getName());
-			if (!conversionTotals.empty() and not isAugmented) {
+			if (!conversionTotals.empty() and not damage.augmented) {
 				casterPlayer->convertDamage(target->getCreature(), damage, conversionTotals);
 				if (damage.primary.value == 0) {
 					return;
@@ -1067,9 +1067,12 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 						damage.critical = true;
 						damage.augmented = true;
 					}
-				}
+					}
 
-				if (target->isPlayer() and (caster != target) and not isAugmented) {
+					// Update cache after all attack modifiers have run
+					isAugmented = damage.augmented;
+
+					if (target->isPlayer() and (caster != target) and not isAugmented) {
 					const auto& targetPlayer = target->getPlayer();
 					const auto& reformTotals = targetPlayer->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
 					if (!reformTotals.empty()) {
