@@ -5423,7 +5423,7 @@ const bool Player::removeAugment(std::string_view augmentName) {
 		              return augment->getName() == augmentName;
 	              });
 	
-	return augments.size() > originalSize;
+	return augments.size() < originalSize;
 }
 
 
