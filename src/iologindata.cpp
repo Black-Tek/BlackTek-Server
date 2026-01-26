@@ -1144,7 +1144,7 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 
 bool IOLoginData::saveAugments(const PlayerConstPtr& player, DBInsert& query_insert, PropWriteStream& augmentStream) {
 	const Database& db = Database::getInstance();
-	auto& augments = player->getPlayerAugments();
+	const auto& augments = player->getPlayerAugments();
 	const uint32_t augmentCount = augments.size();
 	augmentStream.clear();
 	augmentStream.write<uint32_t>(augmentCount);

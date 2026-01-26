@@ -1423,7 +1423,7 @@ class Player final : public Creature, public Cylinder
 		const bool isAugmented() const;
 		const bool hasAugment(const std::string_view augmentName, const bool checkItems);
 		const bool hasAugment(const std::shared_ptr<Augment>& augmentName, const bool checkItems);
-		const std::vector<std::shared_ptr<Augment>> getPlayerAugments() const;
+		const std::vector<std::shared_ptr<Augment>>& getPlayerAugments() const;
 
 		// To-do : convert all these params to const and ref.
 		void absorbDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);

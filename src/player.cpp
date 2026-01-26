@@ -5408,7 +5408,7 @@ const bool Player::hasAugment(const std::shared_ptr<Augment>& augment, bool chec
 	return false;
 }
 
-const std::vector<std::shared_ptr<Augment>> Player::getPlayerAugments() const {
+const std::vector<std::shared_ptr<Augment>>& Player::getPlayerAugments() const {
 	return augments;
 }
 
