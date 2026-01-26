@@ -50,6 +50,7 @@ struct alignas(16) ChunkKey {
 static ChunkKey chunkKey;
 
 struct ChunkKeyHash {
+	[[nodiscard]]
 	std::size_t operator()(const ChunkKey& key) const noexcept {
 		std::size_t hash = 0;
 		hash_combine(hash, key.minRangeX, key.maxRangeX, key.minRangeY, key.maxRangeY,
