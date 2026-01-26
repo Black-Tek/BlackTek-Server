@@ -13596,7 +13596,7 @@ int LuaScriptInterface::luaPlayerGetAugments(lua_State* L)
 		return 1;
 	}
 
-	const std::vector<std::shared_ptr<Augment>> augments;
+	const auto& augments = player->getPlayerAugments();
 	
 	lua_newtable(L);
 	int index = 1;
