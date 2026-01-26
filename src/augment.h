@@ -129,7 +129,7 @@ private:
 
 
 inline std::shared_ptr<Augment> Augment::MakeAugment(std::string augmentName, std::string description) {
-	auto augment = std::make_shared<Augment>(augmentName);
+	auto augment = std::make_shared<Augment>(augmentName, description);
 	return augment;
 }
 
