@@ -779,53 +779,42 @@ void Monster::doAttacking(const uint32_t interval)
 {
     const auto& attacked_creature = getAttackedCreature();
     const auto& self = getCreature();
-	if (not attacked_creature or (isSummon() and attacked_creature == self)) 
-	{
-		return;
-	}
+    if (not attacked_creature or (isSummon() and attacked_creature == self)) 
+    {
+        return;
+    }
+    bool resetTicks = interval != 0;
+    attackTicks += interval;
+    updateLookDirection();
+    const Position& myPos = getPosition();
+    const Position& targetPos = attacked_creature->getPosition();
 
-	bool resetTicks = interval != 0;
-	attackTicks += interval;
-	updateLookDirection();
+    for (const spellBlock_t& spellBlock : mType->info.attackSpells)
+    {
+        if (attackedCreature.expired()) 
+        {
+            break;
+        }
 
-	const Position& myPos = getPosition();
-	const Position& targetPos = attacked_creature->getPosition();
-	auto chance = static_cast<uint32_t>(uniform_random(1, 100));
-	auto ready_spells = mType->info.attackSpells | std::views::filter([chance](const auto& spell) { return spell.chance >= chance; });
+        bool inRange = false;
+		const uint32_t chance = uniform_random(1, 100);
 
-	// Todo : sort spells by chance with highest chances in back (reverse iterator for reading)
-	for (const spellBlock_t& spellBlock : ready_spells) 
-	{
-		bool inRange = false;
-
-		if (attackedCreature.expired()) 
-		{
-			break;
-		}
-
-		auto success = (canUseSpell(myPos, targetPos, spellBlock, interval, inRange, resetTicks));
-        if (success)
-		{
-			// We are updating the monsters own personal min/max values here..
-			// which means we are updating it to the last spell it ever casts..
-			// the spell already has these values, why do we need to save them to the monster?
-			// todo  : investigate why we are saving these values to monsters, and if it's pointless,
-			// comeback and eliminate this nonsense and just let the castSpell handle that...
-			minCombatValue = spellBlock.minCombatValue;
-			maxCombatValue = spellBlock.maxCombatValue;
-			spellBlock.spell->castSpell(self, attacked_creature);
-
-			if (spellBlock.isMelee)
-			{
-				lastMeleeAttack = inRange ? OTSYS_TIME() : 0;
-			}
-		}
-	}
-
-	if (resetTicks) 
-	{
-		attackTicks = 0;
-	}
+        if (chance <= spellBlock.chance and canUseSpell(myPos, targetPos, spellBlock, interval, inRange, resetTicks))
+        {
+            minCombatValue = spellBlock.minCombatValue;
+            maxCombatValue = spellBlock.maxCombatValue;
+            spellBlock.spell->castSpell(self, attacked_creature);
+            if (spellBlock.isMelee)
+            {
+                lastMeleeAttack = inRange ? OTSYS_TIME() : 0;
+            }
+        }
+    }
+    
+    if (resetTicks) 
+    {
+        attackTicks = 0;
+    }
 }
 
 bool Monster::canUseAttack(const Position& pos, const CreatureConstPtr& target) const

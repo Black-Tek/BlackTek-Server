@@ -5916,22 +5916,23 @@ void Game::addMapItemDecay(Expirable entry) noexcept
 CoroTask Game::equipment_decay_cycle() noexcept
 {
     while (true) 
-	{
+    {
         uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         while (not equipped_expirables.empty() and equipped_expirables.top().getExpiration() <= call_time)
         {
-            const auto& expired_data = equipped_expirables.top();
+            Expirable expired_data = equipped_expirables.top();
             equipped_expirables.pop();
 
             if (auto it = decaying_eq.find(expired_data); it != decaying_eq.end()) 
-			{
+            {
+                decaying_eq.erase(it);
                 internalDecayItem(expired_data.getItem());
             }
         }
 
         uint32_t next_time = EquipmentDecayMaxInterval;
         if (not equipped_expirables.empty()) 
-		{
+        {
             uint32_t next_expiration_time = equipped_expirables.top().getExpiration();
             next_time = std::min<uint32_t>((next_expiration_time - call_time), EquipmentDecayMaxInterval);
         }
@@ -5944,12 +5945,16 @@ CoroTask Game::item_decay_cycle() noexcept
     while (true) 
 	{
         uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        while (not map_expirables.empty() and map_expirables.top().getExpiration() <= call_time)
-        {
-            const auto& expired_data = map_expirables.top();
-            map_expirables.pop();
-            internalDecayItem(expired_data.getItem());
-        }
+       while (not map_expirables.empty() and map_expirables.top().getExpiration() <= call_time)
+		{
+			auto item = map_expirables.top().getItem();
+			map_expirables.pop();
+    
+			if (item and not item->isRemoved() and item->getDecaying() == DECAYING_TRUE)
+			{
+				internalDecayItem(item);
+			}
+		}
 
         uint32_t next_time = MapDecayMaxInterval;
         if (not map_expirables.empty()) 

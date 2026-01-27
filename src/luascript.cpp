@@ -2497,7 +2497,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Augment", "getDescription", LuaScriptInterface::luaAugmentGetDescription);
 	registerMethod("Augment", "addDamageModifier", LuaScriptInterface::luaAugmentAddDamageModifier);
 	registerMethod("Augment", "removeDamageModifier", LuaScriptInterface::luaAugmentRemoveDamageModifier);
-	registerMethod("Augment", "getAttackModifiers", LuaScriptInterface::luaAugmentGetDefenseModifiers);
+	registerMethod("Augment", "getAttackModifiers", LuaScriptInterface::luaAugmentGetAttackModifiers);
 	registerMethod("Augment", "getDefenseModifiers", LuaScriptInterface::luaAugmentGetDefenseModifiers);
 
 	// Container
@@ -7771,13 +7771,11 @@ int LuaScriptInterface::luaItemGetAugments(lua_State* L)
 
 	if (not item->isAugmented())
 	{
-        std::cout << "Returning empty table";
         lua_createtable(L, 0, 0);
         return 1;
 	}
     const auto& augments = item->getAugments();
 	lua_createtable(L, augments->size(), 0);
-    std::cout << "we found some augments, building the table now";
 	int index = 0;
 	for (const auto& augment : *augments) {
 		pushSharedPtr(L, augment);
@@ -13596,7 +13594,7 @@ int LuaScriptInterface::luaPlayerGetAugments(lua_State* L)
 		return 1;
 	}
 
-	const std::vector<std::shared_ptr<Augment>> augments;
+	const auto& augments = player->getPlayerAugments();
 	
 	lua_newtable(L);
 	int index = 1;
