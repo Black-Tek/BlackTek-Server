@@ -1641,7 +1641,7 @@ void ValueCallback::getMinMaxValues(const PlayerPtr& player, CombatDamage& damag
         {
 			// onGetPlayerMinMaxValues(player, target)
             LuaScriptInterface::pushSharedPtr(L, target);
-            LuaScriptInterface::setMetatable(L, -2, "Creature");
+            LuaScriptInterface::setCreatureMetatable(L, -1, target);
             parameters += 1;
             break;
 		}
