@@ -315,6 +315,7 @@ bool ConfigManager::load()
 	integer[PARTY_EXP_SHARE_FLOORS] = getGlobalNumber(L, "partyExpShareFloors", 1);
 	integer[MAXIMUM_PARTY_SIZE] = getGlobalNumber(L, "maximumPartySize", 10);
 	integer[MAXIMUM_INVITE_COUNT] = getGlobalNumber(L, "maximumInviteCount", 20);
+	integer[PLAYER_SPEED_PER_LEVEL] = getGlobalNumber(L, "playerSpeedPerLevel", 2);
 	integer[PLAYER_MAX_SPEED] = getGlobalNumber(L, "playerMaxSpeed", 1500);
 	integer[PLAYER_MIN_SPEED] = getGlobalNumber(L, "playerMinSpeed", 120);
 

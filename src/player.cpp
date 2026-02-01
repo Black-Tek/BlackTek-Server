@@ -43,8 +43,9 @@ int32_t Player::getStepSpeed() const
 
 void Player::updateBaseSpeed()
 {
-	if (!hasFlag(PlayerFlag_SetMaxSpeed)) {
-		baseSpeed = vocation->getBaseSpeed() + (2 * (level - 1));
+	if (not hasFlag(PlayerFlag_SetMaxSpeed)) {
+		const int32_t speedPerLevel = g_config.getNumber(ConfigManager::PLAYER_SPEED_PER_LEVEL);
+		baseSpeed = vocation->getBaseSpeed() + (speedPerLevel * (level - 1));
 	} else {
 		baseSpeed = g_config.getNumber(ConfigManager::PLAYER_MAX_SPEED);
 	}

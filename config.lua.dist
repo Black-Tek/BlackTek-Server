@@ -117,8 +117,9 @@ checkDuplicateStorageKeys = false
 bedOfflineTraining = true
 
 -- Player speed
--- NOTE: Clients will usually show speed as divided by 2. So a max speed of 1500 = 750.
--- WARNING: Low minSpeed can result in desync and other bad behaviour on most clients.
+-- NOTE: Most clients display speed at half its actual value (e.g. 1500 shows as 750).
+-- WARNING: Setting minSpeed too low can cause desync and other client issues.
+playerSpeedPerLevel = 2
 playerMinSpeed = 120
 playerMaxSpeed = 1500
 
