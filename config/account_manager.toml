@@ -1,6 +1,7 @@
 # addons (0–3): 0 = none, 1 = first addon, 2 = second addon, 3 = both addons.
 # premium = true: restricts this option to premium accounts only.
 # showPremiumOption = true: shows the premium option to free accounts but keeps it locked.
+# mount uses clientid from mounts.toml
 
 [Citizen]
 startingLevel = 1
@@ -12,7 +13,7 @@ showPremiumOption = false
 vocation = 0
 sex = "male"
 towns = [1, 2, 3]
-outfit = {id = 128, head = 1, body = 1, legs = 1, feet = 1, addons = 0}
+outfit = {id = 128, head = 1, body = 1, legs = 1, feet = 1, addons = 0, mount = 0}
 skills = {fist = 1, sword = 1, axe = 1, club = 1, shield = 1, fishing = 1}
 
 [Resident]
@@ -25,5 +26,5 @@ showPremiumOption = false
 vocation = 0
 sex = "female"
 towns = [1, 2, 3]
-outfit = {id = 136, head = 1, body = 1, legs = 1, feet = 1, addons = 0}
+outfit = {id = 136, head = 1, body = 1, legs = 1, feet = 1, addons = 0, mount = 0}
 skills = {fist = 1, sword = 1, axe = 1, club = 1, shield = 1, fishing = 1}

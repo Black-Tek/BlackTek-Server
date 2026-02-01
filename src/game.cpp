@@ -4350,6 +4350,22 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 						"INSERT INTO `player_storage` (`player_id`, `key`, `value`) VALUES ({:d}, {:d}, {:d})",
 						playerId, storageKey, storageValue));
 				}
+				if (not (playerId == 0) and config.outfit[2] > 0) {
+					const auto mountClientId = static_cast<uint16_t>(config.outfit[2]);
+					const auto mount = mounts.getMountByClientID(mountClientId);
+					if (mount) {
+						const uint8_t mountId = mount->id;
+						const uint8_t tmpMountId = mountId - 1;
+						const uint32_t mountKey = PSTRG_MOUNTS_RANGE_START + (tmpMountId / 31);
+						const uint32_t mountValueBits = (1 << (tmpMountId % 31));
+						db.executeQuery(fmt::format(
+							"INSERT INTO `player_storage` (`player_id`, `key`, `value`) VALUES ({:d}, {:d}, {:d})",
+							playerId, mountKey, mountValueBits));
+						db.executeQuery(fmt::format(
+							"INSERT INTO `player_storage` (`player_id`, `key`, `value`) VALUES ({:d}, {:d}, {:d})",
+							playerId, PSTRG_MOUNTS_CURRENTMOUNT, mountId));
+					}
+				}
 				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_SUCCESS));
 				break;
 			} // else
