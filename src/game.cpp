@@ -3603,7 +3603,12 @@ void Game::playerSay(const uint32_t playerId, const uint16_t channelId, const Sp
 	}
 }
 
-ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId, const uint32_t optionId /* = 0 */)
+ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId, const uint32_t optionId)
+{
+	return CreatePrivateAccountManagerWindow(modalWindowId, nullptr, optionId);
+}
+
+ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId, const PlayerPtr& player, const uint32_t optionId)
 {	// todo : trade out magic numbers here and below with enums
 	auto window = ModalWindow(modalWindowId, "Account Manager", "");
 	window.priority = true;
@@ -3629,16 +3634,28 @@ ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId
 		// CHARACTER CREATION
 		case AccountManager::PRIVATE_CHARACTER_VOCATION: // asks for vocation
 		{
-			// Todo : filter by account premium status or not
 			window.message = "This is a great day to be born anew! Which cast shall you take?";
+			bool hasChoices = false;
 			for (const auto& choice : character_options) 
 			{
-				auto sex = choice.sex ? " (male)\n" : " (female)\n";
+				if (choice.premium and not (player and player->isPremium()) and not choice.showPremiumOption) {
+					continue;
+				}
+				auto sex = choice.sex ? " (male)" : " (female)";
 				auto displayName = choice.name + sex;
+				if (choice.premium) {
+					displayName += " (Premium)";
+				}
 				window.choices.emplace_back(displayName, choice.id);
+				hasChoices = true;
 			}
-			window.buttons.emplace_back("Select", ButtonID::PRIMARY);
-			window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			if (hasChoices) {
+				window.buttons.emplace_back("Select", ButtonID::PRIMARY);
+				window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			} else {
+				window.message = "No character options are available for your account.";
+				window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			}
 			break;
 		}
 
@@ -3670,10 +3687,19 @@ ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId
 		case AccountManager::PRIVATE_CHARACTER_FAILED: // asks for name
 		{
 			window.title = "Unacceptable Name";
-			window.message = "Well I know you like to be creative, but we both know you can't use that as a character name... I dopn't believe I need to tell you why!\n\n Let me know when you have come up with something more appropriate";
+			window.message = "Well I know you like to be creative, but we both know you can't use that as a character name... I don't believe I need to tell you why!\n\n Let me know when you have come up with something more appropriate";
 			window.buttons.emplace_back("Ready", ButtonID::PRIMARY);
 			window.buttons.emplace_back("Back", ButtonID::SECONDARY);
 			window.buttons.emplace_back("Main Menu", ButtonID::TERTIARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_CHARACTER_PREMIUM_REQUIRED:
+		{
+			window.title = "Premium Required";
+			window.message = "That character option requires a premium account.";
+			window.buttons.emplace_back("Back", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Main Menu", ButtonID::SECONDARY);
 			break;
 		}
 
@@ -3817,7 +3843,7 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 			{
 				if (choice == ChoiceID::FIRST)
 				{
-					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION));
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION, player));
 					return;
 				}
 				if (choice == ChoiceID::SECOND)
@@ -3846,7 +3872,17 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 		case AccountManager::PRIVATE_CHARACTER_VOCATION:
 		{
 			if (button == ButtonID::PRIMARY)
-			{	
+			{
+				if (choice >= character_options.size()) {
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION, player));
+					return;
+				}
+
+				if (character_options[choice].premium and not (player and player->isPremium())) {
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_PREMIUM_REQUIRED));
+					return;
+				}
+
 				player->setTempCharacterChoice(choice);
 				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_TOWN, choice));
 				return;
@@ -3873,7 +3909,7 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 			if (button == ButtonID::SECONDARY)
 			{
 				player->onModalWindowHandled(modalWindowId);
-				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION));
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION, player));
 				break;
 			}
 			if (button == ButtonID::TERTIARY)
@@ -3918,6 +3954,21 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 				break;
 			}
 			if (button == ButtonID::TERTIARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_CHARACTER_PREMIUM_REQUIRED:
+		{
+			if (button == ButtonID::PRIMARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION, player));
+				break;
+			}
+			if (button == ButtonID::SECONDARY)
 			{
 				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
 				break;
@@ -4225,7 +4276,16 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 			// insert here any list of names to filter, probably in config.lua or extend the accountmanager.toml parser.
 
 			auto& db = Database::getInstance();
-			const auto& config = character_options[player->getTempCharacterChoice()];
+			const auto choice = player->getTempCharacterChoice();
+			if (choice >= character_options.size()) {
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_FAILED));
+				break;
+			}
+			const auto& config = character_options[choice];
+			if (config.premium and not (player and player->isPremium())) {
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_PREMIUM_REQUIRED));
+				break;
+			}
 			const auto& vocation = g_vocations.getVocation(config.vocation);
 			const auto& startingPos = player->getTempPosition();
 			const auto sex = config.sex ? 1 : 0;

@@ -20,6 +20,7 @@ struct CharacterOption {
     uint32_t baseMana;
     uint32_t baseCapacity;
     bool premium = false;
+    bool showPremiumOption = false;
     bool allowTowns = true;
     bool needsPosition = true;
     std::vector<int32_t> town_list;
@@ -104,6 +105,7 @@ public:
         PRIVATE_CHARACTER_TOWN,
         PRIVATE_CHARACTER,
         PRIVATE_CHARACTER_FAILED,
+        PRIVATE_CHARACTER_PREMIUM_REQUIRED,
         PRIVATE_CHARACTER_CONFIRMATION,
         PRIVATE_CHARACTER_SUCCESS,
 

@@ -1,9 +1,13 @@
+# If premium = true and showPremiumOption = false, non-premium accounts won't see this option.
+# If premium = true and showPremiumOption = true, it will be shown but blocked for non-premium accounts.
+
 [Citizen]
 startingLevel = 10
 baseHealth = 150
 baseMana = 0
 baseCapacity = 400
-premium = false
+premium = true
+showPremiumOption = false
 vocation = 0
 sex = "male"
 towns = [1, 2, 3]
@@ -16,6 +20,7 @@ baseHealth = 150
 baseMana = 0
 baseCapacity = 400
 premium = false
+showPremiumOption = false
 vocation = 0
 sex = "female"
 towns = [1, 2, 3]

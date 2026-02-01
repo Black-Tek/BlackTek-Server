@@ -12,7 +12,6 @@ void AccountManager::initialize()
 		int32_t option_id = 0;
 		for (const auto& [index, entry] : tbl) 
 		{
-
 			if (!entry.is_table()) 
 			{
 				std::cerr << "Invalid entry in accountmanager.toml! \n";
@@ -38,6 +37,7 @@ void AccountManager::initialize()
 
 			option.level = option_data["startingLevel"].value_or(1);
 			option.premium = option_data["premium"].value_or(false);
+			option.showPremiumOption = option_data["showPremiumOption"].value_or(false);
 
 			if (const auto& towns = option_data["towns"].as_array()) 
 			{
