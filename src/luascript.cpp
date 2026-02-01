@@ -17663,8 +17663,8 @@ int LuaScriptInterface::luaCreateCustomSkill(lua_State* L)
 	auto max = (isNumber(L, 3)) ? getNumber<uint16_t>(L, 3) : 0;
 	auto formula = (isNumber(L, 4)) ? getNumber<FormulaType>(L, 4) : FormulaType::EXPONENTIAL;
 	auto multiplier = (isNumber(L, 5)) ? getNumber<float>(L, 5) : 1.0;
-	auto difficulty = (isNumber(L, 6)) ? getNumber<float>(L, 6) : 50;
-	auto threshold = (isNumber(L, 7)) ? getNumber<float>(L, 7) : 10;
+	auto difficulty = (isNumber(L, 6)) ? getNumber<float>(L, 6) : 10;
+	auto threshold = (isNumber(L, 7)) ? getNumber<float>(L, 7) : 50;
 
 	// note: the factory method handles the params in a different order than our lua constructor
 	auto skill = Components::Skills::CustomSkill::make_skill(level, formula, max, multiplier, difficulty, threshold);
