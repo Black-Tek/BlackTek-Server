@@ -3603,7 +3603,12 @@ void Game::playerSay(const uint32_t playerId, const uint16_t channelId, const Sp
 	}
 }
 
-ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId, const uint32_t optionId /* = 0 */)
+ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId, const uint32_t optionId)
+{
+	return CreatePrivateAccountManagerWindow(modalWindowId, nullptr, optionId);
+}
+
+ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId, const PlayerPtr& player, const uint32_t optionId)
 {	// todo : trade out magic numbers here and below with enums
 	auto window = ModalWindow(modalWindowId, "Account Manager", "");
 	window.priority = true;
@@ -3629,16 +3634,28 @@ ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId
 		// CHARACTER CREATION
 		case AccountManager::PRIVATE_CHARACTER_VOCATION: // asks for vocation
 		{
-			// Todo : filter by account premium status or not
 			window.message = "This is a great day to be born anew! Which cast shall you take?";
+			bool hasChoices = false;
 			for (const auto& choice : character_options) 
 			{
-				auto sex = choice.sex ? " (male)\n" : " (female)\n";
+				if (choice.premium and not (player and player->isPremium()) and not choice.showPremiumOption) {
+					continue;
+				}
+				auto sex = choice.sex ? " (male)" : " (female)";
 				auto displayName = choice.name + sex;
+				if (choice.premium) {
+					displayName += " (Premium)";
+				}
 				window.choices.emplace_back(displayName, choice.id);
+				hasChoices = true;
 			}
-			window.buttons.emplace_back("Select", ButtonID::PRIMARY);
-			window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			if (hasChoices) {
+				window.buttons.emplace_back("Select", ButtonID::PRIMARY);
+				window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			} else {
+				window.message = "No character options are available for your account.";
+				window.buttons.emplace_back("Back", ButtonID::SECONDARY);
+			}
 			break;
 		}
 
@@ -3670,10 +3687,19 @@ ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId
 		case AccountManager::PRIVATE_CHARACTER_FAILED: // asks for name
 		{
 			window.title = "Unacceptable Name";
-			window.message = "Well I know you like to be creative, but we both know you can't use that as a character name... I dopn't believe I need to tell you why!\n\n Let me know when you have come up with something more appropriate";
+			window.message = "Well I know you like to be creative, but we both know you can't use that as a character name... I don't believe I need to tell you why!\n\n Let me know when you have come up with something more appropriate";
 			window.buttons.emplace_back("Ready", ButtonID::PRIMARY);
 			window.buttons.emplace_back("Back", ButtonID::SECONDARY);
 			window.buttons.emplace_back("Main Menu", ButtonID::TERTIARY);
+			break;
+		}
+
+		case AccountManager::PRIVATE_CHARACTER_PREMIUM_REQUIRED:
+		{
+			window.title = "Premium Required";
+			window.message = "That character option requires a premium account.";
+			window.buttons.emplace_back("Back", ButtonID::PRIMARY);
+			window.buttons.emplace_back("Main Menu", ButtonID::SECONDARY);
 			break;
 		}
 
@@ -3817,7 +3843,7 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 			{
 				if (choice == ChoiceID::FIRST)
 				{
-					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION));
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION, player));
 					return;
 				}
 				if (choice == ChoiceID::SECOND)
@@ -3846,7 +3872,17 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 		case AccountManager::PRIVATE_CHARACTER_VOCATION:
 		{
 			if (button == ButtonID::PRIMARY)
-			{	
+			{
+				if (choice >= character_options.size()) {
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION, player));
+					return;
+				}
+
+				if (character_options[choice].premium and not (player and player->isPremium())) {
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_PREMIUM_REQUIRED));
+					return;
+				}
+
 				player->setTempCharacterChoice(choice);
 				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_TOWN, choice));
 				return;
@@ -3873,7 +3909,7 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 			if (button == ButtonID::SECONDARY)
 			{
 				player->onModalWindowHandled(modalWindowId);
-				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION));
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION, player));
 				break;
 			}
 			if (button == ButtonID::TERTIARY)
@@ -3918,6 +3954,21 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 				break;
 			}
 			if (button == ButtonID::TERTIARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
+				break;
+			}
+			break;
+		}
+
+		case AccountManager::PRIVATE_CHARACTER_PREMIUM_REQUIRED:
+		{
+			if (button == ButtonID::PRIMARY)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION, player));
+				break;
+			}
+			if (button == ButtonID::SECONDARY)
 			{
 				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_LOGIN));
 				break;
@@ -4225,7 +4276,16 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 			// insert here any list of names to filter, probably in config.lua or extend the accountmanager.toml parser.
 
 			auto& db = Database::getInstance();
-			const auto& config = character_options[player->getTempCharacterChoice()];
+			const auto choice = player->getTempCharacterChoice();
+			if (choice >= character_options.size()) {
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_FAILED));
+				break;
+			}
+			const auto& config = character_options[choice];
+			if (config.premium and not (player and player->isPremium())) {
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_PREMIUM_REQUIRED));
+				break;
+			}
 			const auto& vocation = g_vocations.getVocation(config.vocation);
 			const auto& startingPos = player->getTempPosition();
 			const auto sex = config.sex ? 1 : 0;
@@ -4239,23 +4299,25 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 			std::string query = fmt::format(fmt::runtime(
 				"INSERT INTO `players` ("
 								"`account_id`, `name`, `vocation`, `health`, `healthmax`, `maglevel`, `mana`, `manamax`, `cap`, `sex`, `level`,"
-				"`skill_fist`,`skill_fist_tries`,"
-				"`skill_club`,`skill_club_tries`,"
-				"`skill_sword`,`skill_sword_tries`,"
-				"`skill_axe`,`skill_axe_tries`,"
-				"`skill_dist`,`skill_dist_tries`,"
-				"`skill_shielding`,`skill_shielding_tries`,"
-				"`skill_fishing`,`skill_fishing_tries`,"
+				"`skill_fist`,"
+				"`skill_club`,"
+				"`skill_sword`,"
+				"`skill_axe`,"
+				"`skill_dist`,"
+				"`skill_shielding`,"
+				"`skill_fishing`,"
+				"`looktype`,`lookhead`,`lookbody`,`looklegs`,`lookfeet`,`lookaddons`,"
 				"`town_id`,`posx`,`posy`,`posz`"
 				") VALUES ("
 				"{:d}, {:s}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d},"
-				"{:d}, {:d}, "
-				"{:d}, {:d}, "
-				"{:d}, {:d}, "
-				"{:d}, {:d}, "
-				"{:d}, {:d}, "
-				"{:d}, {:d}, "
-				"{:d}, {:d}, "
+				"{:d}, "
+				"{:d}, "
+				"{:d}, "
+				"{:d}, "
+				"{:d}, "
+				"{:d}, "
+				"{:d}, "
+				"{:d}, {:d}, {:d}, {:d}, {:d}, {:d}, "
 				"{:d}, {:d}, {:d}, {:d}"
 				")"),
 				player->getAccount(),
@@ -4265,19 +4327,45 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 				config.magiclevel,
 				mana, manamax,
 				cap, sex, level,
-				config.skills[SKILL_FIST], vocation->getReqSkillTries(SKILL_FIST, config.skills[SKILL_FIST]),
-				config.skills[SKILL_CLUB], vocation->getReqSkillTries(SKILL_CLUB, config.skills[SKILL_CLUB]),
-				config.skills[SKILL_SWORD], vocation->getReqSkillTries(SKILL_SWORD, config.skills[SKILL_SWORD]),
-				config.skills[SKILL_AXE], vocation->getReqSkillTries(SKILL_AXE, config.skills[SKILL_AXE]),
-				config.skills[SKILL_DISTANCE], vocation->getReqSkillTries(SKILL_DISTANCE, config.skills[SKILL_DISTANCE]),
-				config.skills[SKILL_SHIELD], vocation->getReqSkillTries(SKILL_SHIELD, config.skills[SKILL_SHIELD]),
-				config.skills[SKILL_FISHING], vocation->getReqSkillTries(SKILL_FISHING, config.skills[SKILL_FISHING]),
+				config.skills[SKILL_FIST],
+				config.skills[SKILL_CLUB],
+				config.skills[SKILL_SWORD],
+				config.skills[SKILL_AXE],
+				config.skills[SKILL_DISTANCE],
+				config.skills[SKILL_SHIELD],
+				config.skills[SKILL_FISHING],
+				config.outfit[0], config.outfit[3], config.outfit[4], config.outfit[5], config.outfit[6], config.outfit[7],
 				player->getTempTownId(),
 				startingPos.x, startingPos.y, startingPos.z
 			);
 
 			if (const auto& result = db.executeQuery(query))
 			{
+				const auto playerId = db.getLastInsertId();
+				if (not (playerId == 0) and config.outfit[7] > 0) {
+					const uint32_t storageKey = PSTRG_OUTFITS_RANGE_START + 1;
+					const uint32_t storageValue = (static_cast<uint32_t>(config.outfit[0]) << 16)
+						| (static_cast<uint32_t>(config.outfit[7]) & 0xFF);
+					db.executeQuery(fmt::format(
+						"INSERT INTO `player_storage` (`player_id`, `key`, `value`) VALUES ({:d}, {:d}, {:d})",
+						playerId, storageKey, storageValue));
+				}
+				if (not (playerId == 0) and config.outfit[2] > 0) {
+					const auto mountClientId = static_cast<uint16_t>(config.outfit[2]);
+					const auto mount = mounts.getMountByClientID(mountClientId);
+					if (mount) {
+						const uint8_t mountId = mount->id;
+						const uint8_t tmpMountId = mountId - 1;
+						const uint32_t mountKey = PSTRG_MOUNTS_RANGE_START + (tmpMountId / 31);
+						const uint32_t mountValueBits = (1 << (tmpMountId % 31));
+						db.executeQuery(fmt::format(
+							"INSERT INTO `player_storage` (`player_id`, `key`, `value`) VALUES ({:d}, {:d}, {:d})",
+							playerId, mountKey, mountValueBits));
+						db.executeQuery(fmt::format(
+							"INSERT INTO `player_storage` (`player_id`, `key`, `value`) VALUES ({:d}, {:d}, {:d})",
+							playerId, PSTRG_MOUNTS_CURRENTMOUNT, mountId));
+					}
+				}
 				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_SUCCESS));
 				break;
 			} // else
