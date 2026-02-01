@@ -345,7 +345,7 @@ void ProtocolGame::logout(bool displayEffect, bool forced)
 		return;
 	}
 
-	if (player->isRemoved())
+	if (not player->isRemoved())
 	{
 		if (not forced)
 		{
@@ -586,7 +586,7 @@ void ProtocolGame::parsePacket(NetworkMessage& msg)
 			return;
 		}
 
-		if (static_cast<ClientCode>(recvbyte) == ClientCode::Logout) // todo check if this is needed
+		if (static_cast<ClientCode>(recvbyte) != ClientCode::Logout)
 		{
 			return;
 		}
