@@ -44,7 +44,7 @@ namespace Components {
         class CustomSkill {
         public:
 
-            CustomSkill(uint16_t level = 1, uint8_t form = FormulaType::EXPONENTIAL, uint16_t max = 0, float x = 1.0, float y = 50, float z = 10) :
+            CustomSkill(uint16_t level = 1, uint8_t form = FormulaType::EXPONENTIAL, uint16_t max = 0, float x = 1.0, float y = 10, float z = 50) :
                 current_level(level),
                 _multiplier(x),
                 _difficulty(y),
@@ -500,7 +500,7 @@ namespace Components {
                 }
 
                 double base = static_cast<double>(_difficulty);
-                double result = static_cast<double>(_threshold) * std::pow(base, (target_level - (static_cast<double>(_multiplier) + 1)));
+                double result = static_cast<double>(_threshold) * std::pow(_multiplier, (target_level - (static_cast<double>(base) + 1)));
 
                 return safeRound(result);
             }
