@@ -13,7 +13,7 @@ showPremiumOption = false
 vocation = 0
 sex = "male"
 towns = [1, 2, 3]
-outfit = {id = 128, head = 1, body = 1, legs = 1, feet = 1, addons = 0, mount = 0}
+outfit = {id = 128, head = 128, body = 114, legs = 128, feet = 114, addons = 0, mount = 0}
 skills = {fist = 10, sword = 21, axe = 10, club = 10, distance = 10, shield = 10, fishing = 10, magiclevel = 0}
 
 [Resident]
@@ -26,5 +26,5 @@ showPremiumOption = false
 vocation = 0
 sex = "female"
 towns = [1, 2, 3]
-outfit = {id = 136, head = 1, body = 1, legs = 1, feet = 1, addons = 0, mount = 0}
+outfit = {id = 136, head = 128, body = 114, legs = 128, feet = 114, addons = 0, mount = 0}
 skills = {fist = 10, sword = 10, axe = 10, club = 10, distance = 10, shield = 10, fishing = 10, magiclevel = 0}
