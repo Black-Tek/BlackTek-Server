@@ -315,6 +315,8 @@ bool ConfigManager::load()
 	integer[PARTY_EXP_SHARE_FLOORS] = getGlobalNumber(L, "partyExpShareFloors", 1);
 	integer[MAXIMUM_PARTY_SIZE] = getGlobalNumber(L, "maximumPartySize", 10);
 	integer[MAXIMUM_INVITE_COUNT] = getGlobalNumber(L, "maximumInviteCount", 20);
+	integer[PLAYER_MAX_SPEED] = getGlobalNumber(L, "playerMaxSpeed", 1500);
+	integer[PLAYER_MIN_SPEED] = getGlobalNumber(L, "playerMinSpeed", 120);
 
 	floats[REWARD_BASE_RATE] = getGlobalFloat(L, "rewardBaseRate", 1.0f);
 	floats[REWARD_RATE_DAMAGE_DONE] = getGlobalFloat(L, "rewardRateDamageDone", 1.0f);

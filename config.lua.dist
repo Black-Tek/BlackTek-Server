@@ -116,6 +116,12 @@ showPlayerLogInConsole = true
 checkDuplicateStorageKeys = false
 bedOfflineTraining = true
 
+-- Player speed
+-- NOTE: Clients will usually show speed as divided by 2. So a max speed of 1500 = 750.
+-- WARNING: Low minSpeed can result in desync and other bad behaviour on most clients.
+playerMinSpeed = 120
+playerMaxSpeed = 1500
+
 -- VIP and Depot limits
 -- NOTE: you can set custom limits per group in data/XML/groups.xml
 vipFreeLimit = 20
