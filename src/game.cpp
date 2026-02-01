@@ -4299,24 +4299,24 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 			std::string query = fmt::format(fmt::runtime(
 				"INSERT INTO `players` ("
 								"`account_id`, `name`, `vocation`, `health`, `healthmax`, `maglevel`, `mana`, `manamax`, `cap`, `sex`, `level`,"
-				"`skill_fist`,`skill_fist_tries`,"
-				"`skill_club`,`skill_club_tries`,"
-				"`skill_sword`,`skill_sword_tries`,"
-				"`skill_axe`,`skill_axe_tries`,"
-				"`skill_dist`,`skill_dist_tries`,"
-				"`skill_shielding`,`skill_shielding_tries`,"
-				"`skill_fishing`,`skill_fishing_tries`,"
+				"`skill_fist`,"
+				"`skill_club`,"
+				"`skill_sword`,"
+				"`skill_axe`,"
+				"`skill_dist`,"
+				"`skill_shielding`,"
+				"`skill_fishing`,"
 				"`looktype`,`lookhead`,`lookbody`,`looklegs`,`lookfeet`,`lookaddons`,"
 				"`town_id`,`posx`,`posy`,`posz`"
 				") VALUES ("
 				"{:d}, {:s}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d},"
-				"{:d}, {:d}, "
-				"{:d}, {:d}, "
-				"{:d}, {:d}, "
-				"{:d}, {:d}, "
-				"{:d}, {:d}, "
-				"{:d}, {:d}, "
-				"{:d}, {:d}, "
+				"{:d}, "
+				"{:d}, "
+				"{:d}, "
+				"{:d}, "
+				"{:d}, "
+				"{:d}, "
+				"{:d}, "
 				"{:d}, {:d}, {:d}, {:d}, {:d}, {:d}, "
 				"{:d}, {:d}, {:d}, {:d}"
 				")"),
@@ -4327,13 +4327,13 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 				config.magiclevel,
 				mana, manamax,
 				cap, sex, level,
-				config.skills[SKILL_FIST], vocation->getReqSkillTries(SKILL_FIST, config.skills[SKILL_FIST]),
-				config.skills[SKILL_CLUB], vocation->getReqSkillTries(SKILL_CLUB, config.skills[SKILL_CLUB]),
-				config.skills[SKILL_SWORD], vocation->getReqSkillTries(SKILL_SWORD, config.skills[SKILL_SWORD]),
-				config.skills[SKILL_AXE], vocation->getReqSkillTries(SKILL_AXE, config.skills[SKILL_AXE]),
-				config.skills[SKILL_DISTANCE], vocation->getReqSkillTries(SKILL_DISTANCE, config.skills[SKILL_DISTANCE]),
-				config.skills[SKILL_SHIELD], vocation->getReqSkillTries(SKILL_SHIELD, config.skills[SKILL_SHIELD]),
-				config.skills[SKILL_FISHING], vocation->getReqSkillTries(SKILL_FISHING, config.skills[SKILL_FISHING]),
+				config.skills[SKILL_FIST],
+				config.skills[SKILL_CLUB],
+				config.skills[SKILL_SWORD],
+				config.skills[SKILL_AXE],
+				config.skills[SKILL_DISTANCE],
+				config.skills[SKILL_SHIELD],
+				config.skills[SKILL_FISHING],
 				config.outfit[0], config.outfit[3], config.outfit[4], config.outfit[5], config.outfit[6], config.outfit[7],
 				player->getTempTownId(),
 				startingPos.x, startingPos.y, startingPos.z

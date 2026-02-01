@@ -91,7 +91,7 @@ void AccountManager::initialize()
 				option.skills[4] = skill["distance"].value_or(1);
 				option.skills[5] = skill["shield"].value_or(1);
 				option.skills[6] = skill["fishing"].value_or(1);
-				option.magiclevel = skill["magiclevel"].value_or(1);
+				option.magiclevel = skill["magiclevel"].value_or(0);
 			} // todo else { // log warning / error}
 
 			option.name = std::string(index.str());

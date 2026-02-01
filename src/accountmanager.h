@@ -29,7 +29,7 @@ struct CharacterOption {
     // using magic number here, do this a better way
     int32_t outfit[8] = { 0,0,0,0,0,0,0 };
     int32_t skills[7] = { 1,1,1,1,1,1,1 };
-    uint32_t magiclevel;
+    uint32_t magiclevel = 0;
     // todo : add support for configuring starting items 
     // int32_t helmet;
     // int32_t armor;
