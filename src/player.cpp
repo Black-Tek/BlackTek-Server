@@ -34,6 +34,23 @@ MuteCountMap Player::muteCountMap;
 
 uint32_t Player::playerAutoID = 0x10000000;
 
+int32_t Player::getStepSpeed() const
+{
+	const int32_t minSpeed = g_config.getNumber(ConfigManager::PLAYER_MIN_SPEED);
+	const int32_t maxSpeed = g_config.getNumber(ConfigManager::PLAYER_MAX_SPEED);
+	return std::max<int32_t>(minSpeed, std::min<int32_t>(maxSpeed, getSpeed()));
+}
+
+void Player::updateBaseSpeed()
+{
+	if (not hasFlag(PlayerFlag_SetMaxSpeed)) {
+		const int32_t speedPerLevel = g_config.getNumber(ConfigManager::PLAYER_SPEED_PER_LEVEL);
+		baseSpeed = vocation->getBaseSpeed() + (speedPerLevel * (level - 1));
+	} else {
+		baseSpeed = g_config.getNumber(ConfigManager::PLAYER_MAX_SPEED);
+	}
+}
+
 // Stuff needed for combat situations
 
 using RawArea = std::vector<uint32_t>;
