@@ -51,12 +51,7 @@ enum GameState_t {
 	GAME_STATE_MAINTAIN,
 };
 
-enum DiscordMessageType {
-	MESSAGE_NORMAL = 0,
-	MESSAGE_ERROR,
-	MESSAGE_LOG,
-	MESSAGE_INFO
-};
+
 
 static constexpr int32_t PLAYER_NAME_LENGTH = 25;
 static constexpr int32_t EVENT_LIGHTINTERVAL = 10000;

@@ -2010,11 +2010,7 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(ImbuementType::IMBUEMENT_TYPE_MAGIC_LEVEL);
 	registerEnum(ImbuementType::IMBUEMENT_TYPE_LAST);
 
-	// Discord webhook enums
-	registerEnum(DiscordMessageType::MESSAGE_NORMAL);
-	registerEnum(DiscordMessageType::MESSAGE_ERROR);
-	registerEnum(DiscordMessageType::MESSAGE_LOG);
-	registerEnum(DiscordMessageType::MESSAGE_INFO);
+
 
 	// Attack Modifiers
 	registerEnum(ATTACK_MODIFIER_FIRST)
@@ -2233,7 +2229,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Game", "setAccountStorageValue", LuaScriptInterface::luaGameSetAccountStorageValue);
 	registerMethod("Game", "saveAccountStorageValues", LuaScriptInterface::luaGameSaveAccountStorageValues);
 
-	registerMethod("Game", "sendDiscordMessage", LuaScriptInterface::luaGameSendDiscordWebhook);
+	registerMethod("Game", "sendHttpRequest", LuaScriptInterface::luaGameSendHttpRequest);
 
 	// Variant
 	registerClass("Variant", "", LuaScriptInterface::luaVariantCreate);
@@ -5208,89 +5204,97 @@ int LuaScriptInterface::luaGameSaveAccountStorageValues(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaGameSendDiscordWebhook(lua_State* L)
+int LuaScriptInterface::luaGameSendHttpRequest(lua_State* L)
 {
-	// Game.sendDiscordMessage(token, message_type, message)
-
-	std::string token;
-	DiscordMessageType messageType;
-	std::string msg;
-
-	if (isString(L, 1))
-		token = getString(L, 1);
-	if (isNumber(L, 2))
-		messageType = getNumber<DiscordMessageType>(L, 2);
-	if (isString(L, 3))
-		msg = getString(L, 3);
-
-	if (token.length() > 0 && msg.length() > 0 && messageType >= 0) {
-		// "{\"content\": null,\"embeds\":[{\"title\": \"testing\",\"description\": \"tetsign\",\"color\": 4062976}],\"attachments\": []}"
-		std::string field;
-		struct curl_slist* headers = nullptr;
-		headers = curl_slist_append(headers, "Content-Type: application/json");
-
-		switch (messageType) {
-		case DiscordMessageType::MESSAGE_NORMAL:
-			field = R"({
-				"content": null,
-				"embeds" : [{
-					"title": "~MESSAGE~",
-					"description" : ")" + msg + R"(",
-					"color" : 1815333
-				}]
-			})";
-			break;
-		case DiscordMessageType::MESSAGE_ERROR:
-			field = R"({
-				"content": null,
-				"embeds" : [{
-					"title": "~ERROR~",
-					"description" : ")" + msg + R"(",
-					"color" : 16711680
-				}]
-			})";
-			break;
-		case DiscordMessageType::MESSAGE_LOG:
-			field = R"({
-				"content": null,
-				"embeds" : [{
-					"title": "~LOG~",
-					"description" : ")" + msg + R"(",
-					"color" : 41727
-				}]
-			})";
-			break;
-		case DiscordMessageType::MESSAGE_INFO:
-			field = R"({
-				"content": null,
-				"embeds" : [{
-					"title": "~INFO~",
-					"description" : ")" + msg + R"(",
-					"color" : 16762880
-				}]
-			})";
-			break;
-
-		default:
-			return 1;
+	std::string url = getString(L, 1);
+	std::string method = getString(L, 2, "POST");
+	
+	struct curl_slist* headers = nullptr;
+	if (isTable(L, 3)) {
+		lua_pushnil(L);
+		while (lua_next(L, 3) != 0) {
+			std::string key = getString(L, -2);
+			std::string value = getString(L, -1);
+			std::string header = key + ": " + value;
+			headers = curl_slist_append(headers, header.c_str());
+			lua_pop(L, 1);
 		}
-
-		auto curl = g_game.curl;
-
-		g_utility_boss.addTask(createTask([curl, token, field, headers]() {
-			curl_easy_setopt(curl, CURLOPT_URL, token.data());
-			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, field.data());
-			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-			auto response = curl_easy_perform(curl);
-
-			if (response != CURLE_OK)
-				std::cout << "Curl failed - reason: " << curl_easy_strerror(response) << std::endl;
-		}));
 	}
-
+	
+	std::string body = getString(L, 4, "");
+	int32_t callbackId = -1;
+	
+	if (isFunction(L, 5)) {
+		lua_pushvalue(L, 5);
+		callbackId = luaL_ref(L, LUA_REGISTRYINDEX);
+	}
+	
+	int32_t timeout = getNumber<int32_t>(L, 6, 10);
+	
+	auto curl = curl_easy_init();
+	if (!curl) {
+		pushBoolean(L, false);
+		return 1;
+	}
+	
+	g_utility_boss.addTask(createTask([curl, url, method, headers, body, callbackId, timeout, L]() {
+		std::string responseBody;
+		long responseCode = 0;
+		
+		curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method.c_str());
+		
+		if (headers) {
+			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+		}
+		
+		if (!body.empty()) {
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+		}
+		
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, +[](char* ptr, size_t size, size_t nmemb, std::string* data) -> size_t {
+			data->append(ptr, size * nmemb);
+			return size * nmemb;
+		});
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBody);
+		
+		CURLcode result = curl_easy_perform(curl);
+		bool success = (result == CURLE_OK);
+		
+		if (success) {
+			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
+		}
+		
+		if (headers) {
+			curl_slist_free_all(headers);
+		}
+		curl_easy_cleanup(curl);
+		
+		if (callbackId != -1) {
+			g_dispatcher.addTask(createTask([callbackId, success, responseCode, responseBody]() {
+				lua_State* L = g_luaEnvironment.getLuaState();
+				if (!L) return;
+				
+				lua_rawgeti(L, LUA_REGISTRYINDEX, callbackId);
+				pushBoolean(L, success);
+				lua_pushinteger(L, responseCode);
+				pushString(L, responseBody);
+				
+				if (lua_pcall(L, 3, 0, 0) != LUA_OK) {
+					std::cout << "[Error] HTTP callback: " << lua_tostring(L, -1) << std::endl;
+					lua_pop(L, 1);
+				}
+				
+				luaL_unref(L, LUA_REGISTRYINDEX, callbackId);
+			}));
+		}
+	}));
+	
+	pushBoolean(L, true);
 	return 1;
 }
+
 
 // Variant
 int LuaScriptInterface::luaVariantCreate(lua_State* L)

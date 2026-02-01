@@ -16,3 +16,6 @@ dofile('data/lib/core/position.lua')
 dofile('data/lib/core/teleport.lua')
 dofile('data/lib/core/tile.lua')
 dofile('data/lib/core/vocation.lua')
+dofile('data/lib/core/notifications.lua')
+dofile('data/lib/core/json.lua')
+
