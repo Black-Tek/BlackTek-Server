@@ -4306,6 +4306,7 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 				"`skill_dist`,`skill_dist_tries`,"
 				"`skill_shielding`,`skill_shielding_tries`,"
 				"`skill_fishing`,`skill_fishing_tries`,"
+				"`looktype`,`lookhead`,`lookbody`,`looklegs`,`lookfeet`,`lookaddons`,"
 				"`town_id`,`posx`,`posy`,`posz`"
 				") VALUES ("
 				"{:d}, {:s}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d},"
@@ -4316,6 +4317,7 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 				"{:d}, {:d}, "
 				"{:d}, {:d}, "
 				"{:d}, {:d}, "
+				"{:d}, {:d}, {:d}, {:d}, {:d}, {:d}, "
 				"{:d}, {:d}, {:d}, {:d}"
 				")"),
 				player->getAccount(),
@@ -4332,12 +4334,22 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 				config.skills[SKILL_DISTANCE], vocation->getReqSkillTries(SKILL_DISTANCE, config.skills[SKILL_DISTANCE]),
 				config.skills[SKILL_SHIELD], vocation->getReqSkillTries(SKILL_SHIELD, config.skills[SKILL_SHIELD]),
 				config.skills[SKILL_FISHING], vocation->getReqSkillTries(SKILL_FISHING, config.skills[SKILL_FISHING]),
+				config.outfit[0], config.outfit[3], config.outfit[4], config.outfit[5], config.outfit[6], config.outfit[7],
 				player->getTempTownId(),
 				startingPos.x, startingPos.y, startingPos.z
 			);
 
 			if (const auto& result = db.executeQuery(query))
 			{
+				const auto playerId = db.getLastInsertId();
+				if (not (playerId == 0) and config.outfit[7] > 0) {
+					const uint32_t storageKey = PSTRG_OUTFITS_RANGE_START + 1;
+					const uint32_t storageValue = (static_cast<uint32_t>(config.outfit[0]) << 16)
+						| (static_cast<uint32_t>(config.outfit[7]) & 0xFF);
+					db.executeQuery(fmt::format(
+						"INSERT INTO `player_storage` (`player_id`, `key`, `value`) VALUES ({:d}, {:d}, {:d})",
+						playerId, storageKey, storageValue));
+				}
 				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_SUCCESS));
 				break;
 			} // else
