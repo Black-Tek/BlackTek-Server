@@ -244,6 +244,9 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 		if (isAccountManager)
 		{
 			player->accountNumber = accountId;
+			// sync premium time from player account
+			const auto account = IOLoginData::loadAccount(accountId);
+			player->premiumEndsAt = account.premiumEndsAt;
 			auto x = static_cast<uint16_t>(g_config.getNumber(ConfigManager::ACCOUNT_MANAGER_POS_X));
 			auto y = static_cast<uint16_t>(g_config.getNumber(ConfigManager::ACCOUNT_MANAGER_POS_Y));
 			auto z = static_cast<uint8_t>(g_config.getNumber(ConfigManager::ACCOUNT_MANAGER_POS_Z));
@@ -345,7 +348,7 @@ void ProtocolGame::logout(bool displayEffect, bool forced)
 		return;
 	}
 
-	if (player->isRemoved())
+	if (not player->isRemoved())
 	{
 		if (not forced)
 		{
@@ -586,7 +589,7 @@ void ProtocolGame::parsePacket(NetworkMessage& msg)
 			return;
 		}
 
-		if (static_cast<ClientCode>(recvbyte) == ClientCode::Logout) // todo check if this is needed
+		if (static_cast<ClientCode>(recvbyte) != ClientCode::Logout)
 		{
 			return;
 		}

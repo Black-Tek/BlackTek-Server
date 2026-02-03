@@ -125,8 +125,6 @@ struct Skill {
 
 using MuteCountMap = gtl::btree_map<uint32_t, uint32_t>;
 
-static constexpr int32_t PLAYER_MAX_SPEED = 1500;
-static constexpr int32_t PLAYER_MIN_SPEED = 10;
 static constexpr int32_t NOTIFY_DEPOT_BOX_RANGE = 1;
 
 class Player final : public Creature, public Cylinder
@@ -1688,16 +1686,8 @@ class Player final : public Creature, public Cylinder
 		static uint32_t playerAutoID;
 
 		void updateItemsLight(bool internal = false);
-		int32_t getStepSpeed() const override {
-			return std::max<int32_t>(PLAYER_MIN_SPEED, std::min<int32_t>(PLAYER_MAX_SPEED, getSpeed()));
-		}
-		void updateBaseSpeed() {
-			if (!hasFlag(PlayerFlag_SetMaxSpeed)) {
-				baseSpeed = vocation->getBaseSpeed() + (2 * (level - 1));
-			} else {
-				baseSpeed = PLAYER_MAX_SPEED;
-			}
-		}
+		int32_t getStepSpeed() const override;
+		void updateBaseSpeed();
 
 		bool isPromoted() const;
 

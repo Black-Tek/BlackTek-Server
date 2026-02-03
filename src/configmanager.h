@@ -141,6 +141,9 @@ class ConfigManager
 			PARTY_EXP_SHARE_FLOORS,
 			MAXIMUM_PARTY_SIZE,
 			MAXIMUM_INVITE_COUNT,
+			PLAYER_SPEED_PER_LEVEL,
+			PLAYER_MAX_SPEED,
+			PLAYER_MIN_SPEED,
 
 			LAST_INTEGER_CONFIG /* this must be the last one */
 		};
