@@ -318,7 +318,7 @@ class Map
 			return QTreeNode::getLeafStatic<QTreeLeafNode*, QTreeNode*>(&root, x, y);
 		}
 
-		Spawns spawns;
+		//Spawns spawns;
 		Towns towns;
 		Houses houses;
 

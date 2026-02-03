@@ -97,16 +97,16 @@ class IOMap
 		 * \param map pointer to the Map class
 		 * \returns Returns true if the spawns were loaded successfully
 		 */
-		static bool loadSpawns(Map* map) {
-			if (map->spawnfile.empty()) {
-				//OTBM file doesn't tell us about the spawnfile,
-				//lets guess it is mapname-spawn.xml.
-				map->spawnfile = g_config.getString(ConfigManager::MAP_NAME);
-				map->spawnfile += "-spawn.xml";
-			}
+		//static bool loadSpawns(Map* map) {
+		//	if (map->spawnfile.empty()) {
+		//		//OTBM file doesn't tell us about the spawnfile,
+		//		//lets guess it is mapname-spawn.xml.
+		//		map->spawnfile = g_config.getString(ConfigManager::MAP_NAME);
+		//		map->spawnfile += "-spawn.xml";
+		//	}
 
-			return map->spawns.loadFromXml(map->spawnfile.string());
-		}
+		//	return map->spawns.loadFromXml(map->spawnfile.string());
+		//}
 
 		/* Load the houses (not house tile-data)
 		 * \param map pointer to the Map class

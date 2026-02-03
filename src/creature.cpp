@@ -9,6 +9,9 @@
 #include "configmanager.h"
 #include "scheduler.h"
 #include "events.h"
+#include <chrono>
+#include <iomanip>
+#include <ctime>
 #include "party.h"
 
 double Creature::speedA = 857.36;
@@ -524,9 +527,40 @@ void Creature::onCreatureMove(const CreaturePtr& creature,
 			}
 		}
 
+		// todo : unify zones by moving these into others
 		if (newTile->getZone() != oldTile->getZone()) {
 			onChangeZone(getZone());
 		}
+
+		if (const auto& player = getPlayer())
+        {
+            auto new_spawn = Spawns::System::GetSpawns(newPos);
+            auto old_spawn = Spawns::System::GetSpawns(oldPos);
+
+            if (new_spawn and old_spawn)
+            {
+                // Compare IDs if they both exist
+                bool different_zones = new_spawn != old_spawn;
+
+                if (different_zones)
+                {
+                    std::cout << "found a player entering into zoned spawn and exiting a zoned spawn\n";
+                    new_spawn->trigger(player, Spawns::SpawnTrigger::Enter);
+                    old_spawn->trigger(player, Spawns::SpawnTrigger::Leave);
+                }
+            }
+            else if (new_spawn and not old_spawn)
+            {
+                std::cout << "found a player entering into zoned spawns \n";
+                new_spawn->trigger(player, Spawns::SpawnTrigger::Enter);
+            }
+            else if (old_spawn and not new_spawn)
+            {
+                std::cout << "found a player leaving spawn zone \n";
+                old_spawn->trigger(player, Spawns::SpawnTrigger::Leave);
+            }
+        }
+			
 
 		//update map cache
 		if (isMapLoaded) {
