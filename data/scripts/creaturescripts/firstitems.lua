@@ -1,6 +1,6 @@
 local firstItems = {2050, 2382}
 
-function onLogin(player)
+local function onLogin(player)
 	if player:getLastLoginSaved() == 0 then
 		for i = 1, #firstItems do
 			player:addItem(firstItems[i], 1)
@@ -10,3 +10,10 @@ function onLogin(player)
 	end
 	return true
 end
+
+-- Revscript registrations
+local FirstItems = CreatureEvent("FirstItems")
+function FirstItems.onLogin(...)
+    return onLogin(...)
+end
+FirstItems:register()

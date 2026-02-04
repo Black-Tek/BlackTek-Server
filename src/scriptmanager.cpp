@@ -87,13 +87,6 @@ bool ScriptingManager::loadScriptSystems()
 	}
 
 	[[unlikely]]
-	if (not g_creatureEvents->loadFromXml())
-	{
-		std::cout << "> ERROR: Unable to load creature events!" << std::endl;
-		return false;
-	}
-
-	[[unlikely]]
 	if (not g_events->load())
 	{
 		std::cout << "> ERROR: Unable to load events!" << std::endl;

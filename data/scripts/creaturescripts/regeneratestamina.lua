@@ -1,4 +1,4 @@
-function onLogin(player)
+local function onLogin(player)
 	if not configManager.getBoolean(configKeys.STAMINA_SYSTEM) then
 		return true
 	end
@@ -25,3 +25,10 @@ function onLogin(player)
 	player:setStamina(staminaMinutes)
 	return true
 end
+
+-- Revscript registrations
+local RegenerateStamina = CreatureEvent("RegenerateStamina")
+function RegenerateStamina.onLogin(...)
+    return onLogin(...)
+end
+RegenerateStamina:register()
