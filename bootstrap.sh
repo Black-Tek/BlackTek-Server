@@ -5,26 +5,20 @@ RED="\033[0;31m"
 GREEN="\033[0;32m"
 ORANGE="\033[31;33m"
 END="\033[0;0m"
-
 #Premake standard path (the path can be changed and arguments added):
 premake_cmd="${HOME}/.local/bin/premake5"
 premake_args=""
-
 # Prerequisite packages:
 debian_install="apt-get -y install git zip unzip tar curl build-essential uuid-dev"
 arch_install="pacman -Syu git zip"
 fedora_install="dnf -y install git make gcc-c++ libuuid-devel perl-IPC-Cmd"
 suse_install="zypper -y install git-core make gcc-c++ libuuid-devel"
-
-# Read kernel architecture (and version):
-	# Posible values: https://stackoverflow.com/questions/45125516/possible-values-for-uname-m .
+# Read kernel architecture (and version), possible values: https://stackoverflow.com/questions/45125516/possible-values-for-uname-m .
 arch=$(uname -m)
-
 build_arch="64"
 make_debug="make -j \`nproc\` config=debug_${build_arch}"
 make_release="make -j \`nproc\` config=release_${build_arch}"
-
-# Commands for specific architectures:
+# Commands for building on ARM architectures (Skips VCPKG):
 case "$arch" in
 	aarch64 | armv8* | armv9* | arm64)
 		build_arch="arm64"
@@ -59,7 +53,6 @@ case "$arch" in
 		read -p "Press [Enter] to continue or [Ctrl + C] to cancel." _
 		;;
 esac
-
 # Check if dependencies are met:
 check_deps () {
 	if ! command -v "git" &> /dev/null \
@@ -69,24 +62,19 @@ check_deps () {
 	|| ( command -v "pkg-config" &> /dev/null && ! pkg-config -xists uuid &> /dev/null ); then
 		return 1
 	fi
-
 	if [ "$build_arch" = "ARM64" ] && ( ! command -v "cmake" &> /dev/null || ! command -v "ninja" &> /dev/null ); then
 		return 1
 	fi
-
 	return 0
 }
-
 # Read the Gnu Compiler Collection version:
 gcc_version=`gcc --version | awk 'NR==1 {print $3}' | cut -f 1 -d "."`
-
 # Check if the Gnu Compiler Collection is too old:
 if [ ${gcc_version} -lt 10 ]
 then
 	echo "${RED}=== GCC version 10 or above is required. ===${END}"
 	exit 1
 fi
-
 # Automatically install missing dependencies:
 if ! check_deps then
 	echo "Some required software could not be found."
@@ -102,7 +90,6 @@ if ! check_deps then
 		echo "OpenSUSE: ${suse_install}"
 		exit 1
 	fi
-
 	# Check if Advance Package Manager (on Debian, Ubutu or similar distro) is installed for automated dependencies install:
 	if command -v "apt" &> /dev/null
 		then
@@ -115,7 +102,6 @@ if ! check_deps then
 			echo "${RED}=== Configuration is not finished ===${END}"
 			exit 1
 		fi
-
 	# Check if Pacman (on Arch or similar distro) is installed for automated dependencies install:
 	elif command -v "pacman" &> /dev/null
 	then
@@ -127,7 +113,6 @@ if ! check_deps then
 			echo "${RED}=== Configuration is not finished ===${END}"
 			exit 1
 		fi
-
 	# Check if Dandified Yum (on Fedora, Oracle, RHEL or similar distro) is installed for automated dependencies install:
 	elif command -v "dnf" &> /dev/null
 	then
@@ -138,8 +123,7 @@ if ! check_deps then
 			echo "${RED}=== Configuration is not finished ===${END}"
 			exit 1
 		fi
-
-	# Check if Zipper (on SuSE or similar distro) is installed for automated dependencies install:
+	# Check if ZYpp (on SuSE or similar distro) is installed for automated dependencies install:
 	elif command -v "zypper" &> /dev/null
 	then
 		echo  "${GREEN}Installing required software${END}"
@@ -149,7 +133,6 @@ if ! check_deps then
 			echo "${RED}=== Configuration is not finished ===${END}"
 			exit 1
 		fi
-
 	# Print manual dependencies install commands:
 	else
 		echo "Automatic install is not supported on your distribution."
@@ -164,16 +147,13 @@ if ! check_deps then
 		exit 1
 	fi
 then
-
 # Save BlackTek-Server path:
 dir=`pwd`
-
 # Create essential folder:
 if [ ! -d ~/.local/bin ]
 then
 	mkdir -p ~/.local/bin
 fi
-
 # Install/Build and update Premake build configurator:
 if ! command -v "${premake_cmd}" &> /dev/null
 then
@@ -202,8 +182,7 @@ then
 		fi
 	fi
 fi
-
-# Use (or not) VCPKG:
+# Omitted in ARM derivatives:
 if [ ! $skip_vcpkg ]
 then
 	# Check for VCPKG in enviroment variables:
@@ -233,17 +212,14 @@ then
 		cp -f ./vcpkg ~/.local/bin/vcpkg
 	fi
 fi
-
 # Go to BlackTek-Server path:
 cd $dir
-
 # In case .local/bin is not in path we use the path where we installed it instead:
 if ! ${premake_cmd} gmake2 ${premake_args}
 then
 	echo "${RED}=== An error occured while executing premake. Configuration is not complete. ===${END}"
 	exit 1
 fi
-
 # VCPKG not found:
 if [ ! $skip_vcpkg ]
 then
@@ -253,13 +229,11 @@ then
 		exit 1
 	fi
 fi
-
 # Build type selection:
 echo "${GREEN}=== Configuration Finished ===${END}"
 echo
 read -p "Would you like to compile the server now? (n: No, d: Debug, r: Release) " compile
-
-# Stop script and print build commands:
+# Print manual build commands:
 if ([ ! $compile ] || [ $compile = "n" ])
 then
 	echo "To compile the server run:"
@@ -267,7 +241,6 @@ then
 	echo "Release: ${make_release}"
 	exit 0
 fi
-
 # Build bebug version:
 elif [ $compile = "d" ]
 then
@@ -289,7 +262,6 @@ then
 		echo "${RED}=== Compilation Failed ===${END}"
 		exit 1
 	fi
-	
 # Build realease version:
 elif [ $compile = "r" ]
 then
