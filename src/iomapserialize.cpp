@@ -11,6 +11,7 @@
 
 extern Game g_game;
 
+// todo: turn into std::expected and return time taken and items loaded
 void IOMapSerialize::loadHouseItems(Map* map)
 {
 	int64_t start = OTSYS_TIME();
@@ -46,7 +47,6 @@ void IOMapSerialize::loadHouseItems(Map* map)
 			loadItem(propStream, tile);
 		}
 	} while (result->next());
-	std::cout << "> Loaded house items in: " << (OTSYS_TIME() - start) / (1000.) << " s" << std::endl;
 }
 
 bool IOMapSerialize::saveHouseItems()

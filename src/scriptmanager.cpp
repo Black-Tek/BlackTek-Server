@@ -44,49 +44,58 @@ ScriptingManager::~ScriptingManager()
 
 bool ScriptingManager::loadScriptSystems()
 {
-	if (g_luaEnvironment.loadFile("data/global.lua") == -1) {
+	if (g_luaEnvironment.loadFile("data/global.lua") == -1)
+	{
 		std::cout << "[Warning - ScriptingManager::loadScriptSystems] Can not load data/global.lua" << std::endl;
 	}
 
+	// It's ok for us to go ahead and create all of these in the expectation that they will succeed
+	// because if any fail we will abort starting server anyways, so the only time this could possibly be an
+	// extremely minor performance hit, is in the case in which we quit anyways.
 	g_scripts = new Scripts();
-	std::cout << ">> Loading lua libs" << std::endl;
-	if (!g_scripts->loadScripts("scripts/lib", true, false)) {
+	g_chat = new Chat();
+	g_weapons = new Weapons();
+	g_spells = new Spells();
+	g_actions = new Actions();
+	g_talkActions = new TalkActions();
+	g_moveEvents = new MoveEvents();
+	g_creatureEvents = new CreatureEvents();
+	g_globalEvents = new GlobalEvents();
+	g_events = new Events();
+
+	[[unlikely]]
+	if (not g_scripts->loadScripts("scripts/lib", true, false))
+	{
 		std::cout << "> ERROR: Unable to load lua libs!" << std::endl;
 		return false;
 	}
 
-	g_chat = new Chat();
-
-	g_weapons = new Weapons();
-
 	g_weapons->loadDefaults();
 
-	g_spells = new Spells();
-
-	g_actions = new Actions();
-	if (!g_actions->loadFromXml()) {
+	[[unlikely]]
+	if (not g_actions->loadFromXml())
+	{
 		std::cout << "> ERROR: Unable to load actions!" << std::endl;
 		return false;
 	}
 
-	g_talkActions = new TalkActions();
-
-	g_moveEvents = new MoveEvents();
-	if (!g_moveEvents->loadFromXml()) {
+	[[unlikely]]
+	if (not g_moveEvents->loadFromXml())
+	{
 		std::cout << "> ERROR: Unable to load move events!" << std::endl;
 		return false;
 	}
 
-	g_creatureEvents = new CreatureEvents();
-	if (!g_creatureEvents->loadFromXml()) {
+	[[unlikely]]
+	if (not g_creatureEvents->loadFromXml())
+	{
 		std::cout << "> ERROR: Unable to load creature events!" << std::endl;
 		return false;
 	}
 
-	g_globalEvents = new GlobalEvents();
-
-	g_events = new Events();
-	if (!g_events->load()) {
+	[[unlikely]]
+	if (not g_events->load())
+	{
 		std::cout << "> ERROR: Unable to load events!" << std::endl;
 		return false;
 	}

@@ -140,6 +140,11 @@ void Augments::reload()
     // if (config::deleteOldAugments) { CleanPlayerAugments(); }
 }
 
+size_t Augments::count()
+{
+    return global_augments.size();
+}
+
 const ModifierStance Augments::ParseStance(std::string_view modName) noexcept
 {
     if (ParseAttackModifier(modName) != ATTACK_MODIFIER_NONE) {

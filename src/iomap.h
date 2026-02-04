@@ -9,6 +9,7 @@
 #include "house.h"
 #include "spawn.h"
 #include "configmanager.h"
+#include <expected>
 
 extern ConfigManager g_config;
 
@@ -63,6 +64,22 @@ enum OTBM_TileFlag_t : uint32_t {
 	OTBM_TILEFLAG_PVPZONE = 1 << 4
 };
 
+enum class MapErrorCode : uint8_t
+{
+	None = 0,
+	Root,
+	Header,
+	Version,
+	ChildNode,
+	DataParse,
+	TileArea,
+	Towns,
+	Waypoints,
+	InvalidFormat,
+	
+	Unknown = 0xFF
+};
+
 #pragma pack(1)
 
 struct OTBM_root_header {
@@ -86,12 +103,35 @@ struct OTBM_Tile_coords {
 
 #pragma pack()
 
+
+constexpr uint32_t pack_map_size(uint16_t x, uint16_t y) noexcept
+{
+    return (static_cast<uint32_t>(x) << 16)
+         | static_cast<uint32_t>(y);
+}
+
+constexpr uint16_t unpack_x(uint32_t packed) noexcept
+{
+    return static_cast<uint16_t>(packed >> 16);
+}
+
+constexpr uint16_t unpack_y(uint32_t packed) noexcept
+{
+    return static_cast<uint16_t>(packed & 0xFFFF);
+}
+
+struct MapLoadStats
+{
+	int64_t time;
+	uint32_t dimensions;
+};
+
 class IOMap
 {
 	static TilePtr createTile(ItemPtr& ground, uint16_t x, uint16_t y, uint8_t z);
 
 	public:
-		bool loadMap(Map* map, const std::filesystem::path& fileName);
+		std::expected<MapLoadStats, MapErrorCode> loadMap(Map* map, const std::filesystem::path& fileName);
 
 		/* Load the spawns
 		 * \param map pointer to the Map class

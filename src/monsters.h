@@ -243,6 +243,11 @@ class Monsters
 		std::unique_ptr<LuaScriptInterface> scriptInterface;
 		std::map<std::string, MonsterType> monsters;
 
+		size_t count()
+		{
+			return monsters.size();
+		}
+
 	private:
 		ConditionDamage* getDamageCondition(ConditionType_t conditionType,
 		                                    int32_t maxDamage, int32_t minDamage, int32_t startDamage, uint32_t tickInterval);
