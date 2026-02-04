@@ -20,7 +20,7 @@ SET time_zone = "+00:00";
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */
 ;
 /*!40101 SET NAMES utf8mb4 */
-;
+;	
 
 --
 -- Database: `acc_manager`
@@ -125,7 +125,7 @@ CREATE TRIGGER `oncreate_guilds` AFTER INSERT ON `guilds` FOR EACH ROW BEGIN
 END
 $$
 
-DELIMITER;
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -357,7 +357,7 @@ CREATE TRIGGER `ondelete_players` BEFORE DELETE ON `players` FOR EACH ROW BEGIN
 END
 $$
 
-DELIMITER;
+DELIMITER ;
 
 -- --------------------------------------------------------
 
