@@ -1,11 +1,34 @@
 name: Linux Build
-on: [workflow_dispatch, pull_request, push]
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Build type'
+        required: true
+        default: 'edge'
+        type: choice
+        options:
+          - edge
+          - release
+      version:
+        description: 'Version tag (only for release type, e.g., v1.0.0)'
+        required: false
+        type: string
+  pull_request:
+  push:
+    branches:
+      - master
+      - main
+    tags:
+      - 'v[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+-*'
+
 jobs:
   linux_build:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-22.04]
+        os: [ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     permissions:
       packages: write
@@ -113,18 +136,57 @@ jobs:
       with:
         path: ${{ github.workspace }}/premake-core
     
-    - name: Prepare Compressed Assets
+    # Determine if this is a release build
+    - name: Determine Release Type
+      id: release_type
+      run: |
+        IS_RELEASE="false"
+        VERSION=""
+        
+        # Check if triggered by tag push
+        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          IS_RELEASE="true"
+          VERSION="${{ github.ref_name }}"
+          echo "Detected tag push: $VERSION"
+        fi
+        
+        # Check if workflow_dispatch with release type
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.release_type }}" == "release" ]]; then
+          IS_RELEASE="true"
+          VERSION="${{ github.event.inputs.version }}"
+          if [[ -z "$VERSION" ]]; then
+            echo "Error: Version is required for release builds"
+            exit 1
+          fi
+          echo "Manual release triggered: $VERSION"
+        fi
+        
+        echo "is_release=$IS_RELEASE" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Release build: $IS_RELEASE, Version: $VERSION"
+    
+    - name: Prepare Compressed Assets (Edge Build)
+      if: steps.release_type.outputs.is_release != 'true'
       run: |
         echo "Commit SHA: ${{ github.sha }}" > version.info
+        echo "Build Date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> version.info
+        echo "OS: ${{ matrix.os }}" >> version.info
         zip -r BlackTek-Server-${{ github.sha }}.zip ${{ github.workspace }}
-        zip -r BlackTek-Server.zip version.info
+    
+    - name: Prepare Compressed Assets (Release Build)
+      if: steps.release_type.outputs.is_release == 'true' && matrix.os == 'ubuntu-24.04'
+      run: |
+        VERSION="${{ steps.release_type.outputs.version }}"
+        echo "Version: $VERSION" > version.info
+        echo "Commit SHA: ${{ github.sha }}" >> version.info
+        echo "Build Date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> version.info
+        echo "OS: ${{ matrix.os }}" >> version.info
+        zip -r BlackTek-Server-Linux-${VERSION}.zip ${{ github.workspace }}
     
     - name: Cleanup Old Release Assets
       if: (github.event_name == 'push') && (matrix.os == 'ubuntu-24.04') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && (matrix.os == 'ubuntu-24.04') && github.event.pull_request.merged == true)
       run: |
         # GH CLI is already installed on GitHub runners
-        # Use directly without setting GH_TOKEN as an environment variable
-        # Authenticate using the GITHUB_TOKEN from the action
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
         # Get the list of assets from the edge release
         ASSETS=$(gh release view Linux-Edge-Build --json assets -q '.assets[].name' | grep "BlackTek-Server-" | sort)
@@ -144,7 +206,11 @@ jobs:
         fi
     
     - name: Upload Assets for Edge Build
-      if: (github.event_name == 'push') && (matrix.os == 'ubuntu-24.04') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && (matrix.os == 'ubuntu-24.04') && github.event.pull_request.merged == true)
+      if: |
+        steps.release_type.outputs.is_release != 'true' &&
+        ((github.event_name == 'push' && matrix.os == 'ubuntu-24.04' && !startsWith(github.ref, 'refs/tags/')) ||
+         (github.event_name == 'pull_request' && matrix.os == 'ubuntu-24.04' && github.event.pull_request.merged == true) ||
+         (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type == 'edge' && matrix.os == 'ubuntu-24.04'))
       uses: softprops/action-gh-release@v2
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -156,3 +222,33 @@ jobs:
           This is an automated Linux Edge build for commit ${{ github.sha }}
           OS-BuildType: ${{ matrix.os }}
         files: BlackTek-Server-${{ github.sha }}.zip
+    
+    # Official Release Upload
+    - name: Create and Upload Official Release
+      if: steps.release_type.outputs.is_release == 'true' && matrix.os == 'ubuntu-24.04'
+      uses: softprops/action-gh-release@v2
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        prerelease: false
+        tag_name: ${{ steps.release_type.outputs.version }}
+        name: BlackTek Server ${{ steps.release_type.outputs.version }}
+        generate_release_notes: true
+        body: |
+          ## BlackTek Server ${{ steps.release_type.outputs.version }}
+          
+          ### Release Information
+          - **Version:** ${{ steps.release_type.outputs.version }}
+          - **Commit:** ${{ github.sha }}
+          - **Build Date:** ${{ github.event.head_commit.timestamp }}
+          - **Platform:** Linux (Ubuntu 24.04)
+          
+          ### Installation
+          1. Download the zip file below
+          2. Extract to your desired location
+          3. Configure your server settings
+          4. Run the server executable
+          
+          ### What's Changed
+          See the auto-generated release notes below for a full list of changes.
+        files: BlackTek-Server-Linux-${{ steps.release_type.outputs.version }}.zip
