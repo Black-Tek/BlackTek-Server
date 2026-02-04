@@ -8,6 +8,8 @@
 #include "position.h"
 #include "baseevents.h"
 
+#include <toml++/toml.hpp>
+
 enum RaidState_t {
 	RAIDSTATE_IDLE,
 	RAIDSTATE_EXECUTING,
@@ -40,7 +42,7 @@ class Raids
 		Raids(const Raids&) = delete;
 		Raids& operator=(const Raids&) = delete;
 
-		bool loadFromXml();
+		bool loadFromToml();
 		bool startup();
 
 		void clear();
@@ -54,8 +56,7 @@ class Raids
 			return started;
 		}
 
-		Raid* getRunning() const
-		{
+		Raid* getRunning() const {
 			return running;
 		}
 	
@@ -80,6 +81,8 @@ class Raids
 		}
 
 	private:
+		static constexpr std::string_view folder = "data/raids";
+		
 		LuaScriptInterface scriptInterface{"Raid Interface"};
 
 		std::list<Raid*> raidList;
@@ -101,7 +104,7 @@ class Raid
 		Raid(const Raid&) = delete;
 		Raid& operator=(const Raid&) = delete;
 
-		bool loadFromXml(const std::string& filename);
+		bool loadEvents(const toml::array& events);
 
 		void startRaid();
 
@@ -153,15 +156,15 @@ class RaidEvent
 	public:
 		virtual ~RaidEvent() = default;
 
-		virtual bool configureRaidEvent(const pugi::xml_node& eventNode);
+		virtual bool configureRaidEvent(const toml::table& eventTable);
 
 		virtual bool executeEvent() = 0;
 		uint32_t getDelay() const {
 			return delay;
 		}
 
-	private:
-		uint32_t delay;
+	protected:
+		uint32_t delay = 0;
 };
 
 class AnnounceEvent final : public RaidEvent
@@ -169,7 +172,7 @@ class AnnounceEvent final : public RaidEvent
 	public:
 		AnnounceEvent() = default;
 
-		bool configureRaidEvent(const pugi::xml_node& eventNode) override;
+		bool configureRaidEvent(const toml::table& eventTable) override;
 
 		bool executeEvent() override;
 
@@ -181,7 +184,7 @@ class AnnounceEvent final : public RaidEvent
 class SingleSpawnEvent final : public RaidEvent
 {
 	public:
-		bool configureRaidEvent(const pugi::xml_node& eventNode) override;
+		bool configureRaidEvent(const toml::table& eventTable) override;
 
 		bool executeEvent() override;
 
@@ -193,7 +196,7 @@ class SingleSpawnEvent final : public RaidEvent
 class AreaSpawnEvent final : public RaidEvent
 {
 	public:
-		bool configureRaidEvent(const pugi::xml_node& eventNode) override;
+		bool configureRaidEvent(const toml::table& eventTable) override;
 
 		bool executeEvent() override;
 
@@ -207,7 +210,7 @@ class ScriptEvent final : public RaidEvent, public Event
 	public:
 		explicit ScriptEvent(LuaScriptInterface* interface) : Event(interface) {}
 
-		bool configureRaidEvent(const pugi::xml_node& eventNode) override;
+		bool configureRaidEvent(const toml::table& eventTable) override;
 		bool configureEvent(const pugi::xml_node&) override {
 			return false;
 		}
