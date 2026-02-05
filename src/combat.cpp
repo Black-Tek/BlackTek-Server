@@ -1336,7 +1336,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				if (lifeStealGain) {
 					auto lifeStealCombat = CombatDamage(COMBAT_LIFEDRAIN, ORIGIN_AUGMENT, BLOCK_NONE, lifeStealGain, damage.critical, true, true);
 					lifeStealCombat.primary.value = std::abs(lifeStealGain);
-					g_game.combatChangeHealth(target, caster, lifeStealCombat);
+					g_game.combatChangeHealth(caster, target, lifeStealCombat);
 				}
 
 				/// Manasteal
@@ -1354,7 +1354,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 
 				if (manaStealGain) {
 					auto manaStealCombat = CombatDamage(COMBAT_MANADRAIN, ORIGIN_AUGMENT, BLOCK_NONE, manaStealGain, damage.critical, true, true);
-					g_game.combatChangeMana(target, caster, manaStealCombat);
+					g_game.combatChangeMana(caster, target, manaStealCombat);
 				}
 
 				/// Staminasteal
