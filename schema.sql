@@ -125,7 +125,7 @@ CREATE TRIGGER `oncreate_guilds` AFTER INSERT ON `guilds` FOR EACH ROW BEGIN
 END
 $$
 
-DELIMITER;
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -357,7 +357,7 @@ CREATE TRIGGER `ondelete_players` BEFORE DELETE ON `players` FOR EACH ROW BEGIN
 END
 $$
 
-DELIMITER;
+DELIMITER ;
 
 -- --------------------------------------------------------
 
