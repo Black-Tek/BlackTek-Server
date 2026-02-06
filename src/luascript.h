@@ -886,6 +886,18 @@ class LuaScriptInterface
 		static int luaDamageModifierSetRaceFilter(lua_State* L);
 		static int luaDamageModifierSetCreatureTypeFilter(lua_State* L);
 		static int luaDamageModifierSetCreatureName(lua_State* L);
+		static int luaDamageModifierGetType(lua_State* L);
+		static int luaDamageModifierGetStance(lua_State* L);
+		static int luaDamageModifierGetChance(lua_State* L);
+		static int luaDamageModifierGetValue(lua_State* L);
+		static int luaDamageModifierGetFactor(lua_State* L);
+		static int luaDamageModifierGetCombatType(lua_State* L);
+		static int luaDamageModifierGetOriginType(lua_State* L);
+		static int luaDamageModifierGetRaceType(lua_State* L);
+		static int luaDamageModifierGetCreatureType(lua_State* L);
+		static int luaDamageModifierGetCreatureName(lua_State* L);
+		static int luaDamageModifierGetConversionType(lua_State* L);
+		static int luaDamageModifierIsPercent(lua_State* L);
 
 
 		// Augment

@@ -2485,6 +2485,18 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("DamageModifier", "setCreatureType", LuaScriptInterface::luaDamageModifierSetCreatureTypeFilter);
 	registerMethod("DamageModifier", "setRace", LuaScriptInterface::luaDamageModifierSetRaceFilter);
 	registerMethod("DamageModifier", "setCreatureName", LuaScriptInterface::luaDamageModifierSetCreatureName);
+	registerMethod("DamageModifier", "getType", LuaScriptInterface::luaDamageModifierGetType);
+	registerMethod("DamageModifier", "getStance", LuaScriptInterface::luaDamageModifierGetStance);
+	registerMethod("DamageModifier", "getChance", LuaScriptInterface::luaDamageModifierGetChance);
+	registerMethod("DamageModifier", "getValue", LuaScriptInterface::luaDamageModifierGetValue);
+	registerMethod("DamageModifier", "getFactor", LuaScriptInterface::luaDamageModifierGetFactor);
+	registerMethod("DamageModifier", "getCombat", LuaScriptInterface::luaDamageModifierGetCombatType);
+	registerMethod("DamageModifier", "getOrigin", LuaScriptInterface::luaDamageModifierGetOriginType);
+	registerMethod("DamageModifier", "getCreatureType", LuaScriptInterface::luaDamageModifierGetCreatureType);
+	registerMethod("DamageModifier", "getRace", LuaScriptInterface::luaDamageModifierGetRaceType);
+	registerMethod("DamageModifier", "getCreatureName", LuaScriptInterface::luaDamageModifierGetCreatureName);
+	registerMethod("DamageModifier", "getConversion", LuaScriptInterface::luaDamageModifierGetConversionType);
+	registerMethod("DamageModifier", "isPercent", LuaScriptInterface::luaDamageModifierIsPercent);
 
 
 	// Augment
@@ -8738,6 +8750,138 @@ int LuaScriptInterface::luaDamageModifierSetCreatureName(lua_State* L)
 	}
 	else
 	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetType(lua_State* L)
+{
+	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		lua_pushinteger(L, modifier->getType());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetStance(lua_State* L)
+{
+	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		lua_pushinteger(L, modifier->getStance());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetChance(lua_State* L)
+{
+	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		lua_pushinteger(L, modifier->getChance());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetValue(lua_State* L)
+{
+	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		lua_pushinteger(L, modifier->getValue());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetFactor(lua_State* L)
+{
+	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		lua_pushinteger(L, modifier->isPercent() ? PERCENT_MODIFIER : FLAT_MODIFIER);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetCombatType(lua_State* L)
+{
+	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		lua_pushinteger(L, modifier->getDamageType());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetOriginType(lua_State* L)
+{
+	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		lua_pushinteger(L, modifier->getOriginType());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetRaceType(lua_State* L)
+{
+	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		lua_pushinteger(L, modifier->getRaceType());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetCreatureType(lua_State* L)
+{
+	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		lua_pushinteger(L, modifier->getCreatureType());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetCreatureName(lua_State* L)
+{
+	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		pushString(L, modifier->getMonsterName());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetConversionType(lua_State* L)
+{
+	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		lua_pushinteger(L, modifier->getConversionType());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierIsPercent(lua_State* L)
+{
+	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (modifier) {
+		lua_pushboolean(L, modifier->isPercent());
+	} else {
 		lua_pushnil(L);
 	}
 	return 1;
