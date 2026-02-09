@@ -451,6 +451,14 @@ void mainLoader(int, char*[], ServiceManager* services)
 	// ========================================================================
 	g_utility_boss.addTask(createTask([]() { Console::printSection("GAME DATA"); }));
 
+	// Load vocations
+	if (not g_vocations.loadFromToml())
+	{
+		startupErrorMessage("Unable to load vocations!");
+		return;
+	}
+	g_utility_boss.addTask(createTask([]() { Console::printProgress("Vocations", true, std::to_string(g_vocations.getVocations().size())); }));
+
 	// Load items
 	if (not Item::items.loadFromDat(g_config.getString(ConfigManager::ASSETS_DAT_PATH)))
 	{
@@ -480,15 +488,6 @@ void mainLoader(int, char*[], ServiceManager* services)
 		startupErrorMessage("Failed to load lua scripts");
 		return;
 	}
-
-
-	// Load vocations
-	if (not g_vocations.loadFromToml())
-	{
-		startupErrorMessage("Unable to load vocations!");
-		return;
-	}
-	g_utility_boss.addTask(createTask([]() { Console::printProgress("Vocations", true, std::to_string(g_vocations.getVocations().size())); }));
 
 	// Load outfits
 	if (not Outfits::getInstance().load())
