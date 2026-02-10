@@ -89,6 +89,7 @@ struct LuaTimerEventDesc {
 	LuaTimerEventDesc(LuaTimerEventDesc&& other) = default;
 };
 
+
 class ScriptEnvironment
 {
 	public:
@@ -1843,6 +1844,8 @@ class LuaScriptInterface
 		static int32_t scriptEnvIndex;
 
 		std::string loadingFile;
+		template<class UserDataType>
+		int luaDestroySharedUserData(lua_State* L);
 };
 
 class LuaEnvironment : public LuaScriptInterface
@@ -1888,5 +1891,14 @@ class LuaEnvironment : public LuaScriptInterface
 		friend class LuaScriptInterface;
 		friend class CombatSpell;
 };
+
+template <class UserDataType>
+static int destroySharedUserData(lua_State* L)
+{
+	auto& obj_ref = LuaScriptInterface::getSharedPtr<UserDataType>(L, 1);
+	std::destroy_at(std::addressof(obj_ref));
+	return 0;
+}
+
 
 #endif

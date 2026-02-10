@@ -2259,7 +2259,7 @@ void LuaScriptInterface::registerFunctions()
 	// Tile
 	registerClass("Tile", "", LuaScriptInterface::luaTileCreate);
 	registerMetaMethod("Tile", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("Tile", "__gc", LuaScriptInterface::luaTileDelete);
+	registerMetaMethod("Tile", "__gc", destroySharedUserData<Tile>);
 
 	registerMethod("Tile", "remove", LuaScriptInterface::luaTileRemove);
 
@@ -2364,7 +2364,7 @@ void LuaScriptInterface::registerFunctions()
 	// Item
 	registerClass("Item", "", LuaScriptInterface::luaItemCreate);
 	registerMetaMethod("Item", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("Item", "__gc", LuaScriptInterface::luaItemDelete);
+	registerMetaMethod("Item", "__gc", destroySharedUserData<Item>);
 
 	registerMethod("Item", "isItem", LuaScriptInterface::luaItemIsItem);
 
@@ -2457,6 +2457,7 @@ void LuaScriptInterface::registerFunctions()
 	// Imbuement
 	registerClass("Imbuement", "", LuaScriptInterface::luaImbuementCreate);
 	registerMetaMethod("Imbuement", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMetaMethod("Imbuement", "__gc", destroySharedUserData<Imbuement>);
 	registerMethod("Imbuement", "getType", LuaScriptInterface::luaImbuementGetType);
 	registerMethod("Imbuement", "isSkill", LuaScriptInterface::luaImbuementIsSkill);
 	registerMethod("Imbuement", "isSpecialSkill", LuaScriptInterface::luaImbuementIsSpecialSkill);
@@ -2475,6 +2476,7 @@ void LuaScriptInterface::registerFunctions()
 	// DamageModifer
 	registerClass("DamageModifier", "", LuaScriptInterface::luaDamageModifierCreate);
 	registerMetaMethod("DamageModifier", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMetaMethod("DamageModifier", "__gc", destroySharedUserData<DamageModifier>);
 	registerMethod("DamageModifier", "setType", LuaScriptInterface::luaDamageModifierSetType);
 	registerMethod("DamageModifier", "setStance", LuaScriptInterface::luaDamageModifierSetStance);
 	registerMethod("DamageModifier", "setValue", LuaScriptInterface::luaDamageModifierSetValue);
@@ -2502,6 +2504,7 @@ void LuaScriptInterface::registerFunctions()
 	// Augment
 	registerClass("Augment", "", LuaScriptInterface::luaAugmentCreate);
 	registerMetaMethod("Augment", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerMetaMethod("Augment", "__gc", destroySharedUserData<Augment>);
 	registerMethod("Augment", "register", LuaScriptInterface::luaAugmentRegister);
 	registerMethod("Augment", "setName", LuaScriptInterface::luaAugmentSetName);
 	registerMethod("Augment", "setDescription", LuaScriptInterface::luaAugmentSetDescription);
@@ -2515,7 +2518,7 @@ void LuaScriptInterface::registerFunctions()
 	// Container
 	registerClass("Container", "Item", LuaScriptInterface::luaContainerCreate);
 	registerMetaMethod("Container", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("Container", "__gc", LuaScriptInterface::luaContainerDelete);
+	registerMetaMethod("Container", "__gc", destroySharedUserData<Container>);
 
 	registerMethod("Container", "getSize", LuaScriptInterface::luaContainerGetSize);
 	registerMethod("Container", "getCapacity", LuaScriptInterface::luaContainerGetCapacity);
@@ -2534,7 +2537,7 @@ void LuaScriptInterface::registerFunctions()
 	// Teleport
 	registerClass("Teleport", "Item", LuaScriptInterface::luaTeleportCreate);
 	registerMetaMethod("Teleport", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("Teleport", "__gc", LuaScriptInterface::luaTeleportDelete);
+	registerMetaMethod("Teleport", "__gc", destroySharedUserData<Teleport>);
 
 	registerMethod("Teleport", "getDestination", LuaScriptInterface::luaTeleportGetDestination);
 	registerMethod("Teleport", "setDestination", LuaScriptInterface::luaTeleportSetDestination);
@@ -2542,7 +2545,7 @@ void LuaScriptInterface::registerFunctions()
 	// Creature
 	registerClass("Creature", "", LuaScriptInterface::luaCreatureCreate);
 	registerMetaMethod("Creature", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("Creature", "__gc", LuaScriptInterface::luaCreatureDelete);
+	registerMetaMethod("Creature", "__gc", destroySharedUserData<Creature>);
 
 	registerMethod("Creature", "getEvents", LuaScriptInterface::luaCreatureGetEvents);
 	registerMethod("Creature", "registerEvent", LuaScriptInterface::luaCreatureRegisterEvent);
@@ -2646,7 +2649,7 @@ void LuaScriptInterface::registerFunctions()
 	// Stat
 	registerClass("Stat", "", LuaScriptInterface::luaStatCreate);
 	registerMetaMethod("Stat", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("Stat", "__gc", LuaScriptInterface::luaStatDestroy);
+	registerMetaMethod("Stat", "__gc", destroySharedUserData<StandardStat>);
 	registerMethod("Stat", "id", LuaScriptInterface::luaStatId);
 	registerMethod("Stat", "max", LuaScriptInterface::luaStatMax);
 	registerMethod("Stat", "value", LuaScriptInterface::luaStatValue);
@@ -2662,7 +2665,7 @@ void LuaScriptInterface::registerFunctions()
 
 	registerClass("StatModifier", "", LuaScriptInterface::luaStatModifierCreate);
 	registerMetaMethod("StatModifier", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("StatModifier", "__gc", LuaScriptInterface::luaStatModifierDestroy);
+	registerMetaMethod("StatModifier", "__gc", destroySharedUserData<StandardStatMod>);
 	registerMethod("StatModifier", "type", LuaScriptInterface::luaStatModifierType);
 	registerMethod("StatModifier", "value", LuaScriptInterface::luaStatModifierValue);
 
@@ -2670,7 +2673,7 @@ void LuaScriptInterface::registerFunctions()
 	// Player
 	registerClass("Player", "Creature", LuaScriptInterface::luaPlayerCreate);
 	registerMetaMethod("Player", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("Player", "__gc", LuaScriptInterface::luaPlayerDelete);
+	registerMetaMethod("Player", "__gc", destroySharedUserData<Player>);
 
 	registerMethod("Player", "isPlayer", LuaScriptInterface::luaPlayerIsPlayer);
 
@@ -2859,7 +2862,7 @@ void LuaScriptInterface::registerFunctions()
 	// Monster
 	registerClass("Monster", "Creature", LuaScriptInterface::luaMonsterCreate);
 	registerMetaMethod("Monster", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("Monster", "__gc", LuaScriptInterface::luaMonsterDelete);
+	registerMetaMethod("Monster", "__gc", destroySharedUserData<Monster>);
 
 	registerMethod("Monster", "getId", LuaScriptInterface::luaMonsterGetId);
 	registerMethod("Monster", "isMonster", LuaScriptInterface::luaMonsterIsMonster);
@@ -2897,7 +2900,7 @@ void LuaScriptInterface::registerFunctions()
 	// Npc
 	registerClass("Npc", "Creature", LuaScriptInterface::luaNpcCreate);
 	registerMetaMethod("Npc", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("Npc", "__gc", LuaScriptInterface::luaNpcDelete);
+	registerMetaMethod("Npc", "__gc", destroySharedUserData<Npc>);
 
 	registerMethod("Npc", "isNpc", LuaScriptInterface::luaNpcIsNpc);
 
