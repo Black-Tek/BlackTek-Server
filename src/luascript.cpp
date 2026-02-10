@@ -2234,6 +2234,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Game", "saveAccountStorageValues", LuaScriptInterface::luaGameSaveAccountStorageValues);
 
 	registerMethod("Game", "sendDiscordMessage", LuaScriptInterface::luaGameSendDiscordWebhook);
+	registerMethod("Game", "sendTelegramMessage", LuaScriptInterface::luaGameSendTelegramMessage);
 
 	// Variant
 	registerClass("Variant", "", LuaScriptInterface::luaVariantCreate);
@@ -5291,6 +5292,68 @@ int LuaScriptInterface::luaGameSendDiscordWebhook(lua_State* L)
 
 		g_utility_boss.addTask(createTask([curl, token, field, headers]() {
 			curl_easy_setopt(curl, CURLOPT_URL, token.data());
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, field.data());
+			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+			auto response = curl_easy_perform(curl);
+
+			if (response != CURLE_OK)
+				std::cout << "Curl failed - reason: " << curl_easy_strerror(response) << std::endl;
+		}));
+	}
+
+	return 1;
+}
+
+int LuaScriptInterface::luaGameSendTelegramMessage(lua_State* L)
+{
+	// Game.sendTelegramMessage(token, chatId, message)
+
+	std::string token;
+	std::string chatId;
+	std::string msg;
+
+	if (isString(L, 1))
+		token = getString(L, 1);
+
+	if (isNumber(L, 2))
+		chatId = std::to_string(getNumber<int64_t>(L, 2));
+	else if (isString(L, 2))
+		chatId = getString(L, 2);
+
+	if (isString(L, 3))
+		msg = getString(L, 3);
+
+	if (token.length() > 0 && chatId.length() > 0 && msg.length() > 0) {
+		std::string field;
+		struct curl_slist* headers = nullptr;
+		headers = curl_slist_append(headers, "Content-Type: application/json");
+
+		std::string escapedMsg;
+		escapedMsg.reserve(msg.length());
+		for (char c : msg) {
+			if (c == '"') {
+				escapedMsg += "\\\"";
+			} else if (c == '\\') {
+				escapedMsg += "\\\\";
+			} else if (c == '\n') {
+				escapedMsg += "\\n";
+			} else if (c == '\r') {
+				escapedMsg += "\\r";
+			} else if (c == '\t') {
+				escapedMsg += "\\t";
+			} else {
+				escapedMsg += c;
+			}
+		}
+
+		field = "{\"chat_id\": \"" + chatId + "\", \"text\": \"" + escapedMsg + "\"}";
+
+		auto curl = g_game.curl;
+		std::string url = "https://api.telegram.org/bot" + token + "/sendMessage";
+
+		g_utility_boss.addTask(createTask([curl, url, field, headers]() {
+			curl_easy_setopt(curl, CURLOPT_URL, url.data());
 			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, field.data());
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
