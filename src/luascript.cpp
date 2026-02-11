@@ -2162,1349 +2162,1349 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::REWARD_RATE_HEALING_DONE);
 
 	// os
-	registerMethod("os", "mtime", LuaScriptInterface::luaSystemTime);
+	registerMethod("os", "mtime", luaSystemTime);
 
 	// table
-	registerMethod("table", "create", LuaScriptInterface::luaTableCreate);
-	registerMethod("table", "pack", LuaScriptInterface::luaTablePack);
+	registerMethod("table", "create", luaTableCreate);
+	registerMethod("table", "pack", luaTablePack);
 
 	// DB Insert
-	registerClass("DBInsert", "", LuaScriptInterface::luaDBInsertCreate);
-	registerMetaMethod("DBInsert", "__gc", LuaScriptInterface::luaDBInsertDelete);
+	registerClass("DBInsert", "", luaDBInsertCreate);
+	registerMetaMethod("DBInsert", "__gc", luaDBInsertDelete);
 
-	registerMethod("DBInsert", "addRow", LuaScriptInterface::luaDBInsertAddRow);
-	registerMethod("DBInsert", "execute", LuaScriptInterface::luaDBInsertExecute);
+	registerMethod("DBInsert", "addRow", luaDBInsertAddRow);
+	registerMethod("DBInsert", "execute", luaDBInsertExecute);
 
 	// DB Transaction
-	registerClass("DBTransaction", "", LuaScriptInterface::luaDBTransactionCreate);
-	registerMetaMethod("DBTransaction", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("DBTransaction", "__gc", LuaScriptInterface::luaDBTransactionDelete);
+	registerClass("DBTransaction", "", luaDBTransactionCreate);
+	registerMetaMethod("DBTransaction", "__eq", luaUserdataCompare);
+	registerMetaMethod("DBTransaction", "__gc", luaDBTransactionDelete);
 
-	registerMethod("DBTransaction", "begin", LuaScriptInterface::luaDBTransactionBegin);
-	registerMethod("DBTransaction", "commit", LuaScriptInterface::luaDBTransactionCommit);
-	registerMethod("DBTransaction", "rollback", LuaScriptInterface::luaDBTransactionDelete);
+	registerMethod("DBTransaction", "begin", luaDBTransactionBegin);
+	registerMethod("DBTransaction", "commit", luaDBTransactionCommit);
+	registerMethod("DBTransaction", "rollback", luaDBTransactionDelete);
 
 	// Game
 	registerTable("Game");
 
-	registerMethod("Game", "getSpectators", LuaScriptInterface::luaGameGetSpectators);
-	registerMethod("Game", "getPlayers", LuaScriptInterface::luaGameGetPlayers);
-	registerMethod("Game", "getNpcs", LuaScriptInterface::luaGameGetNpcs);
-	registerMethod("Game", "getMonsters", LuaScriptInterface::luaGameGetMonsters);
-	registerMethod("Game", "loadMap", LuaScriptInterface::luaGameLoadMap);
+	registerMethod("Game", "getSpectators", luaGameGetSpectators);
+	registerMethod("Game", "getPlayers", luaGameGetPlayers);
+	registerMethod("Game", "getNpcs", luaGameGetNpcs);
+	registerMethod("Game", "getMonsters", luaGameGetMonsters);
+	registerMethod("Game", "loadMap", luaGameLoadMap);
 
-	registerMethod("Game", "getExperienceStage", LuaScriptInterface::luaGameGetExperienceStage);
-	registerMethod("Game", "getExperienceForLevel", LuaScriptInterface::luaGameGetExperienceForLevel);
-	registerMethod("Game", "getMonsterCount", LuaScriptInterface::luaGameGetMonsterCount);
-	registerMethod("Game", "getPlayerCount", LuaScriptInterface::luaGameGetPlayerCount);
-	registerMethod("Game", "getNpcCount", LuaScriptInterface::luaGameGetNpcCount);
-	registerMethod("Game", "getMonsterTypes", LuaScriptInterface::luaGameGetMonsterTypes);
-	registerMethod("Game", "getCurrencyItems", LuaScriptInterface::luaGameGetCurrencyItems);
+	registerMethod("Game", "getExperienceStage", luaGameGetExperienceStage);
+	registerMethod("Game", "getExperienceForLevel", luaGameGetExperienceForLevel);
+	registerMethod("Game", "getMonsterCount", luaGameGetMonsterCount);
+	registerMethod("Game", "getPlayerCount", luaGameGetPlayerCount);
+	registerMethod("Game", "getNpcCount", luaGameGetNpcCount);
+	registerMethod("Game", "getMonsterTypes", luaGameGetMonsterTypes);
+	registerMethod("Game", "getCurrencyItems", luaGameGetCurrencyItems);
 
-	registerMethod("Game", "getTowns", LuaScriptInterface::luaGameGetTowns);
-	registerMethod("Game", "getHouses", LuaScriptInterface::luaGameGetHouses);
-	registerMethod("Game", "getOutfits", LuaScriptInterface::luaGameGetOutfits);
-	registerMethod("Game", "getMounts", LuaScriptInterface::luaGameGetMounts);
-	registerMethod("Game", "getVocations", LuaScriptInterface::luaGameGetVocations);
+	registerMethod("Game", "getTowns", luaGameGetTowns);
+	registerMethod("Game", "getHouses", luaGameGetHouses);
+	registerMethod("Game", "getOutfits", luaGameGetOutfits);
+	registerMethod("Game", "getMounts", luaGameGetMounts);
+	registerMethod("Game", "getVocations", luaGameGetVocations);
 
-	registerMethod("Game", "getGameState", LuaScriptInterface::luaGameGetGameState);
-	registerMethod("Game", "setGameState", LuaScriptInterface::luaGameSetGameState);
+	registerMethod("Game", "getGameState", luaGameGetGameState);
+	registerMethod("Game", "setGameState", luaGameSetGameState);
 
-	registerMethod("Game", "getWorldType", LuaScriptInterface::luaGameGetWorldType);
-	registerMethod("Game", "setWorldType", LuaScriptInterface::luaGameSetWorldType);
+	registerMethod("Game", "getWorldType", luaGameGetWorldType);
+	registerMethod("Game", "setWorldType", luaGameSetWorldType);
 
-	registerMethod("Game", "getItemAttributeByName", LuaScriptInterface::luaGameGetItemAttributeByName);
-	registerMethod("Game", "getReturnMessage", LuaScriptInterface::luaGameGetReturnMessage);
+	registerMethod("Game", "getItemAttributeByName", luaGameGetItemAttributeByName);
+	registerMethod("Game", "getReturnMessage", luaGameGetReturnMessage);
 
-	registerMethod("Game", "createItem", LuaScriptInterface::luaGameCreateItem);
-	registerMethod("Game", "createContainer", LuaScriptInterface::luaGameCreateContainer);
-	registerMethod("Game", "createMonster", LuaScriptInterface::luaGameCreateMonster);
-	registerMethod("Game", "createNpc", LuaScriptInterface::luaGameCreateNpc);
-	registerMethod("Game", "createTile", LuaScriptInterface::luaGameCreateTile);
-	registerMethod("Game", "createMonsterType", LuaScriptInterface::luaGameCreateMonsterType);
+	registerMethod("Game", "createItem", luaGameCreateItem);
+	registerMethod("Game", "createContainer", luaGameCreateContainer);
+	registerMethod("Game", "createMonster", luaGameCreateMonster);
+	registerMethod("Game", "createNpc", luaGameCreateNpc);
+	registerMethod("Game", "createTile", luaGameCreateTile);
+	registerMethod("Game", "createMonsterType", luaGameCreateMonsterType);
 
-	registerMethod("Game", "startRaid", LuaScriptInterface::luaGameStartRaid);
+	registerMethod("Game", "startRaid", luaGameStartRaid);
 
-	registerMethod("Game", "getClientVersion", LuaScriptInterface::luaGameGetClientVersion);
+	registerMethod("Game", "getClientVersion", luaGameGetClientVersion);
 
-	registerMethod("Game", "reload", LuaScriptInterface::luaGameReload);
+	registerMethod("Game", "reload", luaGameReload);
 
-	registerMethod("Game", "getAccountStorageValue", LuaScriptInterface::luaGameGetAccountStorageValue);
-	registerMethod("Game", "setAccountStorageValue", LuaScriptInterface::luaGameSetAccountStorageValue);
-	registerMethod("Game", "saveAccountStorageValues", LuaScriptInterface::luaGameSaveAccountStorageValues);
+	registerMethod("Game", "getAccountStorageValue", luaGameGetAccountStorageValue);
+	registerMethod("Game", "setAccountStorageValue", luaGameSetAccountStorageValue);
+	registerMethod("Game", "saveAccountStorageValues", luaGameSaveAccountStorageValues);
 
-	registerMethod("Game", "sendDiscordMessage", LuaScriptInterface::luaGameSendDiscordWebhook);
+	registerMethod("Game", "sendDiscordMessage", luaGameSendDiscordWebhook);
 
 	// Variant
-	registerClass("Variant", "", LuaScriptInterface::luaVariantCreate);
+	registerClass("Variant", "", luaVariantCreate);
 
-	registerMethod("Variant", "getNumber", LuaScriptInterface::luaVariantGetNumber);
-	registerMethod("Variant", "getString", LuaScriptInterface::luaVariantGetString);
-	registerMethod("Variant", "getPosition", LuaScriptInterface::luaVariantGetPosition);
+	registerMethod("Variant", "getNumber", luaVariantGetNumber);
+	registerMethod("Variant", "getString", luaVariantGetString);
+	registerMethod("Variant", "getPosition", luaVariantGetPosition);
 
 	// Position
-	registerClass("Position", "", LuaScriptInterface::luaPositionCreate);
-	registerMetaMethod("Position", "__add", LuaScriptInterface::luaPositionAdd);
-	registerMetaMethod("Position", "__sub", LuaScriptInterface::luaPositionSub);
-	registerMetaMethod("Position", "__eq", LuaScriptInterface::luaPositionCompare);
+	registerClass("Position", "", luaPositionCreate);
+	registerMetaMethod("Position", "__add", luaPositionAdd);
+	registerMetaMethod("Position", "__sub", luaPositionSub);
+	registerMetaMethod("Position", "__eq", luaPositionCompare);
 
-	registerMethod("Position", "getDistance", LuaScriptInterface::luaPositionGetDistance);
-	registerMethod("Position", "isSightClear", LuaScriptInterface::luaPositionIsSightClear);
+	registerMethod("Position", "getDistance", luaPositionGetDistance);
+	registerMethod("Position", "isSightClear", luaPositionIsSightClear);
 
-	registerMethod("Position", "sendMagicEffect", LuaScriptInterface::luaPositionSendMagicEffect);
-	registerMethod("Position", "sendDistanceEffect", LuaScriptInterface::luaPositionSendDistanceEffect);
-	registerMethod("Position", "getZones()", LuaScriptInterface::luaPositionGetZones);
-	registerMethod("Position", "hasZone()", LuaScriptInterface::luaPositionHasZone);
+	registerMethod("Position", "sendMagicEffect", luaPositionSendMagicEffect);
+	registerMethod("Position", "sendDistanceEffect", luaPositionSendDistanceEffect);
+	registerMethod("Position", "getZones()", luaPositionGetZones);
+	registerMethod("Position", "hasZone()", luaPositionHasZone);
 
 	// Tile
-	registerClass("Tile", "", LuaScriptInterface::luaTileCreate);
-	registerMetaMethod("Tile", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Tile", "", luaTileCreate);
+	registerMetaMethod("Tile", "__eq", luaUserdataCompare);
 	registerMetaMethod("Tile", "__gc", destroySharedUserData<Tile>);
 
-	registerMethod("Tile", "remove", LuaScriptInterface::luaTileRemove);
+	registerMethod("Tile", "remove", luaTileRemove);
 
-	registerMethod("Tile", "getPosition", LuaScriptInterface::luaTileGetPosition);
-	registerMethod("Tile", "getGround", LuaScriptInterface::luaTileGetGround);
-	registerMethod("Tile", "getThing", LuaScriptInterface::luaTileGetThing);
-	registerMethod("Tile", "getThingCount", LuaScriptInterface::luaTileGetThingCount);
-	registerMethod("Tile", "getTopVisibleThing", LuaScriptInterface::luaTileGetTopVisibleThing);
+	registerMethod("Tile", "getPosition", luaTileGetPosition);
+	registerMethod("Tile", "getGround", luaTileGetGround);
+	registerMethod("Tile", "getThing", luaTileGetThing);
+	registerMethod("Tile", "getThingCount", luaTileGetThingCount);
+	registerMethod("Tile", "getTopVisibleThing", luaTileGetTopVisibleThing);
 
-	registerMethod("Tile", "getTopTopItem", LuaScriptInterface::luaTileGetTopTopItem);
-	registerMethod("Tile", "getTopDownItem", LuaScriptInterface::luaTileGetTopDownItem);
-	registerMethod("Tile", "getFieldItem", LuaScriptInterface::luaTileGetFieldItem);
+	registerMethod("Tile", "getTopTopItem", luaTileGetTopTopItem);
+	registerMethod("Tile", "getTopDownItem", luaTileGetTopDownItem);
+	registerMethod("Tile", "getFieldItem", luaTileGetFieldItem);
 
-	registerMethod("Tile", "getItemById", LuaScriptInterface::luaTileGetItemById);
-	registerMethod("Tile", "getItemByType", LuaScriptInterface::luaTileGetItemByType);
-	registerMethod("Tile", "getItemByTopOrder", LuaScriptInterface::luaTileGetItemByTopOrder);
-	registerMethod("Tile", "getItemCountById", LuaScriptInterface::luaTileGetItemCountById);
+	registerMethod("Tile", "getItemById", luaTileGetItemById);
+	registerMethod("Tile", "getItemByType", luaTileGetItemByType);
+	registerMethod("Tile", "getItemByTopOrder", luaTileGetItemByTopOrder);
+	registerMethod("Tile", "getItemCountById", luaTileGetItemCountById);
 
-	registerMethod("Tile", "getBottomCreature", LuaScriptInterface::luaTileGetBottomCreature);
-	registerMethod("Tile", "getTopCreature", LuaScriptInterface::luaTileGetTopCreature);
-	registerMethod("Tile", "getBottomVisibleCreature", LuaScriptInterface::luaTileGetBottomVisibleCreature);
-	registerMethod("Tile", "getTopVisibleCreature", LuaScriptInterface::luaTileGetTopVisibleCreature);
+	registerMethod("Tile", "getBottomCreature", luaTileGetBottomCreature);
+	registerMethod("Tile", "getTopCreature", luaTileGetTopCreature);
+	registerMethod("Tile", "getBottomVisibleCreature", luaTileGetBottomVisibleCreature);
+	registerMethod("Tile", "getTopVisibleCreature", luaTileGetTopVisibleCreature);
 
-	registerMethod("Tile", "getItems", LuaScriptInterface::luaTileGetItems);
-	registerMethod("Tile", "getItemCount", LuaScriptInterface::luaTileGetItemCount);
-	registerMethod("Tile", "getDownItemCount", LuaScriptInterface::luaTileGetDownItemCount);
-	registerMethod("Tile", "getTopItemCount", LuaScriptInterface::luaTileGetTopItemCount);
+	registerMethod("Tile", "getItems", luaTileGetItems);
+	registerMethod("Tile", "getItemCount", luaTileGetItemCount);
+	registerMethod("Tile", "getDownItemCount", luaTileGetDownItemCount);
+	registerMethod("Tile", "getTopItemCount", luaTileGetTopItemCount);
 
-	registerMethod("Tile", "getCreatures", LuaScriptInterface::luaTileGetCreatures);
-	registerMethod("Tile", "getCreatureCount", LuaScriptInterface::luaTileGetCreatureCount);
+	registerMethod("Tile", "getCreatures", luaTileGetCreatures);
+	registerMethod("Tile", "getCreatureCount", luaTileGetCreatureCount);
 
-	registerMethod("Tile", "getThingIndex", LuaScriptInterface::luaTileGetThingIndex);
+	registerMethod("Tile", "getThingIndex", luaTileGetThingIndex);
 
-	registerMethod("Tile", "hasProperty", LuaScriptInterface::luaTileHasProperty);
-	registerMethod("Tile", "hasFlag", LuaScriptInterface::luaTileHasFlag);
+	registerMethod("Tile", "hasProperty", luaTileHasProperty);
+	registerMethod("Tile", "hasFlag", luaTileHasFlag);
 
-	registerMethod("Tile", "addItem", LuaScriptInterface::luaTileAddItem);
-	registerMethod("Tile", "addItemEx", LuaScriptInterface::luaTileAddItemEx);
+	registerMethod("Tile", "addItem", luaTileAddItem);
+	registerMethod("Tile", "addItemEx", luaTileAddItemEx);
 
-	registerMethod("Tile", "getHouse", LuaScriptInterface::luaTileGetHouse);
+	registerMethod("Tile", "getHouse", luaTileGetHouse);
 
 	// NetworkMessage
-	registerClass("NetworkMessage", "", LuaScriptInterface::luaNetworkMessageCreate);
-	registerMetaMethod("NetworkMessage", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("NetworkMessage", "__gc", LuaScriptInterface::luaNetworkMessageDelete);
-	registerMethod("NetworkMessage", "delete", LuaScriptInterface::luaNetworkMessageDelete);
+	registerClass("NetworkMessage", "", luaNetworkMessageCreate);
+	registerMetaMethod("NetworkMessage", "__eq", luaUserdataCompare);
+	registerMetaMethod("NetworkMessage", "__gc", luaNetworkMessageDelete);
+	registerMethod("NetworkMessage", "delete", luaNetworkMessageDelete);
 
-	registerMethod("NetworkMessage", "getByte", LuaScriptInterface::luaNetworkMessageGetByte);
-	registerMethod("NetworkMessage", "getU16", LuaScriptInterface::luaNetworkMessageGetU16);
-	registerMethod("NetworkMessage", "getU32", LuaScriptInterface::luaNetworkMessageGetU32);
-	registerMethod("NetworkMessage", "getU64", LuaScriptInterface::luaNetworkMessageGetU64);
-	registerMethod("NetworkMessage", "getString", LuaScriptInterface::luaNetworkMessageGetString);
-	registerMethod("NetworkMessage", "getPosition", LuaScriptInterface::luaNetworkMessageGetPosition);
+	registerMethod("NetworkMessage", "getByte", luaNetworkMessageGetByte);
+	registerMethod("NetworkMessage", "getU16", luaNetworkMessageGetU16);
+	registerMethod("NetworkMessage", "getU32", luaNetworkMessageGetU32);
+	registerMethod("NetworkMessage", "getU64", luaNetworkMessageGetU64);
+	registerMethod("NetworkMessage", "getString", luaNetworkMessageGetString);
+	registerMethod("NetworkMessage", "getPosition", luaNetworkMessageGetPosition);
 
-	registerMethod("NetworkMessage", "addByte", LuaScriptInterface::luaNetworkMessageAddByte);
-	registerMethod("NetworkMessage", "addU16", LuaScriptInterface::luaNetworkMessageAddU16);
-	registerMethod("NetworkMessage", "addU32", LuaScriptInterface::luaNetworkMessageAddU32);
-	registerMethod("NetworkMessage", "addU64", LuaScriptInterface::luaNetworkMessageAddU64);
-	registerMethod("NetworkMessage", "addString", LuaScriptInterface::luaNetworkMessageAddString);
-	registerMethod("NetworkMessage", "addPosition", LuaScriptInterface::luaNetworkMessageAddPosition);
-	registerMethod("NetworkMessage", "addDouble", LuaScriptInterface::luaNetworkMessageAddDouble);
-	registerMethod("NetworkMessage", "addItem", LuaScriptInterface::luaNetworkMessageAddItem);
-	registerMethod("NetworkMessage", "addItemId", LuaScriptInterface::luaNetworkMessageAddItemId);
+	registerMethod("NetworkMessage", "addByte", luaNetworkMessageAddByte);
+	registerMethod("NetworkMessage", "addU16", luaNetworkMessageAddU16);
+	registerMethod("NetworkMessage", "addU32", luaNetworkMessageAddU32);
+	registerMethod("NetworkMessage", "addU64", luaNetworkMessageAddU64);
+	registerMethod("NetworkMessage", "addString", luaNetworkMessageAddString);
+	registerMethod("NetworkMessage", "addPosition", luaNetworkMessageAddPosition);
+	registerMethod("NetworkMessage", "addDouble", luaNetworkMessageAddDouble);
+	registerMethod("NetworkMessage", "addItem", luaNetworkMessageAddItem);
+	registerMethod("NetworkMessage", "addItemId", luaNetworkMessageAddItemId);
 
-	registerMethod("NetworkMessage", "reset", LuaScriptInterface::luaNetworkMessageReset);
-	registerMethod("NetworkMessage", "seek", LuaScriptInterface::luaNetworkMessageSeek);
-	registerMethod("NetworkMessage", "tell", LuaScriptInterface::luaNetworkMessageTell);
-	registerMethod("NetworkMessage", "len", LuaScriptInterface::luaNetworkMessageLength);
-	registerMethod("NetworkMessage", "skipBytes", LuaScriptInterface::luaNetworkMessageSkipBytes);
-	registerMethod("NetworkMessage", "sendToPlayer", LuaScriptInterface::luaNetworkMessageSendToPlayer);
+	registerMethod("NetworkMessage", "reset", luaNetworkMessageReset);
+	registerMethod("NetworkMessage", "seek", luaNetworkMessageSeek);
+	registerMethod("NetworkMessage", "tell", luaNetworkMessageTell);
+	registerMethod("NetworkMessage", "len", luaNetworkMessageLength);
+	registerMethod("NetworkMessage", "skipBytes", luaNetworkMessageSkipBytes);
+	registerMethod("NetworkMessage", "sendToPlayer", luaNetworkMessageSendToPlayer);
 
 	// ModalWindow
-	registerClass("ModalWindow", "", LuaScriptInterface::luaModalWindowCreate);
-	registerMetaMethod("ModalWindow", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("ModalWindow", "__gc", LuaScriptInterface::luaModalWindowDelete);
-	registerMethod("ModalWindow", "delete", LuaScriptInterface::luaModalWindowDelete);
+	registerClass("ModalWindow", "", luaModalWindowCreate);
+	registerMetaMethod("ModalWindow", "__eq", luaUserdataCompare);
+	registerMetaMethod("ModalWindow", "__gc", luaModalWindowDelete);
+	registerMethod("ModalWindow", "delete", luaModalWindowDelete);
 
-	registerMethod("ModalWindow", "getId", LuaScriptInterface::luaModalWindowGetId);
-	registerMethod("ModalWindow", "getTitle", LuaScriptInterface::luaModalWindowGetTitle);
-	registerMethod("ModalWindow", "getMessage", LuaScriptInterface::luaModalWindowGetMessage);
+	registerMethod("ModalWindow", "getId", luaModalWindowGetId);
+	registerMethod("ModalWindow", "getTitle", luaModalWindowGetTitle);
+	registerMethod("ModalWindow", "getMessage", luaModalWindowGetMessage);
 
-	registerMethod("ModalWindow", "setTitle", LuaScriptInterface::luaModalWindowSetTitle);
-	registerMethod("ModalWindow", "setMessage", LuaScriptInterface::luaModalWindowSetMessage);
+	registerMethod("ModalWindow", "setTitle", luaModalWindowSetTitle);
+	registerMethod("ModalWindow", "setMessage", luaModalWindowSetMessage);
 
-	registerMethod("ModalWindow", "getButtonCount", LuaScriptInterface::luaModalWindowGetButtonCount);
-	registerMethod("ModalWindow", "getChoiceCount", LuaScriptInterface::luaModalWindowGetChoiceCount);
+	registerMethod("ModalWindow", "getButtonCount", luaModalWindowGetButtonCount);
+	registerMethod("ModalWindow", "getChoiceCount", luaModalWindowGetChoiceCount);
 
-	registerMethod("ModalWindow", "addButton", LuaScriptInterface::luaModalWindowAddButton);
-	registerMethod("ModalWindow", "addChoice", LuaScriptInterface::luaModalWindowAddChoice);
+	registerMethod("ModalWindow", "addButton", luaModalWindowAddButton);
+	registerMethod("ModalWindow", "addChoice", luaModalWindowAddChoice);
 
-	registerMethod("ModalWindow", "getDefaultEnterButton", LuaScriptInterface::luaModalWindowGetDefaultEnterButton);
-	registerMethod("ModalWindow", "setDefaultEnterButton", LuaScriptInterface::luaModalWindowSetDefaultEnterButton);
+	registerMethod("ModalWindow", "getDefaultEnterButton", luaModalWindowGetDefaultEnterButton);
+	registerMethod("ModalWindow", "setDefaultEnterButton", luaModalWindowSetDefaultEnterButton);
 
-	registerMethod("ModalWindow", "getDefaultEscapeButton", LuaScriptInterface::luaModalWindowGetDefaultEscapeButton);
-	registerMethod("ModalWindow", "setDefaultEscapeButton", LuaScriptInterface::luaModalWindowSetDefaultEscapeButton);
+	registerMethod("ModalWindow", "getDefaultEscapeButton", luaModalWindowGetDefaultEscapeButton);
+	registerMethod("ModalWindow", "setDefaultEscapeButton", luaModalWindowSetDefaultEscapeButton);
 
-	registerMethod("ModalWindow", "hasPriority", LuaScriptInterface::luaModalWindowHasPriority);
-	registerMethod("ModalWindow", "setPriority", LuaScriptInterface::luaModalWindowSetPriority);
+	registerMethod("ModalWindow", "hasPriority", luaModalWindowHasPriority);
+	registerMethod("ModalWindow", "setPriority", luaModalWindowSetPriority);
 
-	registerMethod("ModalWindow", "sendToPlayer", LuaScriptInterface::luaModalWindowSendToPlayer);
+	registerMethod("ModalWindow", "sendToPlayer", luaModalWindowSendToPlayer);
 
 	// Item
-	registerClass("Item", "", LuaScriptInterface::luaItemCreate);
-	registerMetaMethod("Item", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Item", "", luaItemCreate);
+	registerMetaMethod("Item", "__eq", luaUserdataCompare);
 	registerMetaMethod("Item", "__gc", destroySharedUserData<Item>);
 
-	registerMethod("Item", "isItem", LuaScriptInterface::luaItemIsItem);
+	registerMethod("Item", "isItem", luaItemIsItem);
 
-	registerMethod("Item", "getParent", LuaScriptInterface::luaItemGetParent);
-	registerMethod("Item", "getTopParent", LuaScriptInterface::luaItemGetTopParent);
+	registerMethod("Item", "getParent", luaItemGetParent);
+	registerMethod("Item", "getTopParent", luaItemGetTopParent);
 
-	registerMethod("Item", "getId", LuaScriptInterface::luaItemGetId);
+	registerMethod("Item", "getId", luaItemGetId);
 
-	registerMethod("Item", "clone", LuaScriptInterface::luaItemClone);
-	registerMethod("Item", "split", LuaScriptInterface::luaItemSplit);
-	registerMethod("Item", "remove", LuaScriptInterface::luaItemRemove);
+	registerMethod("Item", "clone", luaItemClone);
+	registerMethod("Item", "split", luaItemSplit);
+	registerMethod("Item", "remove", luaItemRemove);
 
-	registerMethod("Item", "getUniqueId", LuaScriptInterface::luaItemGetUniqueId);
-	registerMethod("Item", "getActionId", LuaScriptInterface::luaItemGetActionId);
-	registerMethod("Item", "setActionId", LuaScriptInterface::luaItemSetActionId);
+	registerMethod("Item", "getUniqueId", luaItemGetUniqueId);
+	registerMethod("Item", "getActionId", luaItemGetActionId);
+	registerMethod("Item", "setActionId", luaItemSetActionId);
 
-	registerMethod("Item", "getCount", LuaScriptInterface::luaItemGetCount);
-	registerMethod("Item", "getCharges", LuaScriptInterface::luaItemGetCharges);
-	registerMethod("Item", "getFluidType", LuaScriptInterface::luaItemGetFluidType);
-	registerMethod("Item", "getWeight", LuaScriptInterface::luaItemGetWeight);
-	registerMethod("Item", "getWorth", LuaScriptInterface::luaItemGetWorth);
+	registerMethod("Item", "getCount", luaItemGetCount);
+	registerMethod("Item", "getCharges", luaItemGetCharges);
+	registerMethod("Item", "getFluidType", luaItemGetFluidType);
+	registerMethod("Item", "getWeight", luaItemGetWeight);
+	registerMethod("Item", "getWorth", luaItemGetWorth);
 
-	registerMethod("Item", "getSubType", LuaScriptInterface::luaItemGetSubType);
+	registerMethod("Item", "getSubType", luaItemGetSubType);
 
-	registerMethod("Item", "getName", LuaScriptInterface::luaItemGetName);
-	registerMethod("Item", "getPluralName", LuaScriptInterface::luaItemGetPluralName);
-	registerMethod("Item", "getArticle", LuaScriptInterface::luaItemGetArticle);
+	registerMethod("Item", "getName", luaItemGetName);
+	registerMethod("Item", "getPluralName", luaItemGetPluralName);
+	registerMethod("Item", "getArticle", luaItemGetArticle);
 
-	registerMethod("Item", "getPosition", LuaScriptInterface::luaItemGetPosition);
-	registerMethod("Item", "getTile", LuaScriptInterface::luaItemGetTile);
+	registerMethod("Item", "getPosition", luaItemGetPosition);
+	registerMethod("Item", "getTile", luaItemGetTile);
 
-	registerMethod("Item", "hasAttribute", LuaScriptInterface::luaItemHasAttribute);
-	registerMethod("Item", "getAttribute", LuaScriptInterface::luaItemGetAttribute);
-	registerMethod("Item", "setAttribute", LuaScriptInterface::luaItemSetAttribute);
-	registerMethod("Item", "removeAttribute", LuaScriptInterface::luaItemRemoveAttribute);
-	registerMethod("Item", "getCustomAttribute", LuaScriptInterface::luaItemGetCustomAttribute);
-	registerMethod("Item", "setCustomAttribute", LuaScriptInterface::luaItemSetCustomAttribute);
-	registerMethod("Item", "removeCustomAttribute", LuaScriptInterface::luaItemRemoveCustomAttribute);
+	registerMethod("Item", "hasAttribute", luaItemHasAttribute);
+	registerMethod("Item", "getAttribute", luaItemGetAttribute);
+	registerMethod("Item", "setAttribute", luaItemSetAttribute);
+	registerMethod("Item", "removeAttribute", luaItemRemoveAttribute);
+	registerMethod("Item", "getCustomAttribute", luaItemGetCustomAttribute);
+	registerMethod("Item", "setCustomAttribute", luaItemSetCustomAttribute);
+	registerMethod("Item", "removeCustomAttribute", luaItemRemoveCustomAttribute);
 
-	registerMethod("Item", "moveTo", LuaScriptInterface::luaItemMoveTo);
-	registerMethod("Item", "transform", LuaScriptInterface::luaItemTransform);
-	registerMethod("Item", "decay", LuaScriptInterface::luaItemDecay);
+	registerMethod("Item", "moveTo", luaItemMoveTo);
+	registerMethod("Item", "transform", luaItemTransform);
+	registerMethod("Item", "decay", luaItemDecay);
 
-	registerMethod("Item", "getDescription", LuaScriptInterface::luaItemGetDescription);
-	registerMethod("Item", "getSpecialDescription", LuaScriptInterface::luaItemGetSpecialDescription);
+	registerMethod("Item", "getDescription", luaItemGetDescription);
+	registerMethod("Item", "getSpecialDescription", luaItemGetSpecialDescription);
 
-	registerMethod("Item", "hasProperty", LuaScriptInterface::luaItemHasProperty);
-	registerMethod("Item", "isLoadedFromMap", LuaScriptInterface::luaItemIsLoadedFromMap);
+	registerMethod("Item", "hasProperty", luaItemHasProperty);
+	registerMethod("Item", "isLoadedFromMap", luaItemIsLoadedFromMap);
 
-	registerMethod("Item", "setStoreItem", LuaScriptInterface::luaItemSetStoreItem);
-	registerMethod("Item", "isStoreItem", LuaScriptInterface::luaItemIsStoreItem);
+	registerMethod("Item", "setStoreItem", luaItemSetStoreItem);
+	registerMethod("Item", "isStoreItem", luaItemIsStoreItem);
 
-	registerMethod("Item", "getImbuementSlots", LuaScriptInterface::luaItemGetImbuementSlots);
-	registerMethod("Item", "getFreeImbuementSlots", LuaScriptInterface::luaItemGetFreeImbuementSlots);
-	registerMethod("Item", "canImbue", LuaScriptInterface::luaItemCanImbue);
-	registerMethod("Item", "addImbuementSlots", LuaScriptInterface::luaItemAddImbuementSlots);
-	registerMethod("Item", "removeImbuementSlots", LuaScriptInterface::luaItemRemoveImbuementSlots);
-	registerMethod("Item", "hasImbuementType", LuaScriptInterface::luaItemHasImbuementType);
-	registerMethod("Item", "hasImbuements", LuaScriptInterface::luaItemHasImbuements); // change to isImbued
-	registerMethod("Item", "addImbuement", LuaScriptInterface::luaItemAddImbuement);
-	registerMethod("Item", "removeImbuement", LuaScriptInterface::luaItemRemoveImbuement);
-	registerMethod("Item", "getImbuements", LuaScriptInterface::luaItemGetImbuements);
+	registerMethod("Item", "getImbuementSlots", luaItemGetImbuementSlots);
+	registerMethod("Item", "getFreeImbuementSlots", luaItemGetFreeImbuementSlots);
+	registerMethod("Item", "canImbue", luaItemCanImbue);
+	registerMethod("Item", "addImbuementSlots", luaItemAddImbuementSlots);
+	registerMethod("Item", "removeImbuementSlots", luaItemRemoveImbuementSlots);
+	registerMethod("Item", "hasImbuementType", luaItemHasImbuementType);
+	registerMethod("Item", "hasImbuements", luaItemHasImbuements); // change to isImbued
+	registerMethod("Item", "addImbuement", luaItemAddImbuement);
+	registerMethod("Item", "removeImbuement", luaItemRemoveImbuement);
+	registerMethod("Item", "getImbuements", luaItemGetImbuements);
 
-	registerMethod("Item", "addAugment", LuaScriptInterface::luaItemAddAugment);
-	registerMethod("Item", "removeAugment", LuaScriptInterface::luaItemRemoveAugment);
-	registerMethod("Item", "isAugmented", LuaScriptInterface::luaItemIsAugmented);
-	registerMethod("Item", "hasAugment", LuaScriptInterface::luaItemHasAugment);
-	registerMethod("Item", "getAugments", LuaScriptInterface::luaItemGetAugments);
+	registerMethod("Item", "addAugment", luaItemAddAugment);
+	registerMethod("Item", "removeAugment", luaItemRemoveAugment);
+	registerMethod("Item", "isAugmented", luaItemIsAugmented);
+	registerMethod("Item", "hasAugment", luaItemHasAugment);
+	registerMethod("Item", "getAugments", luaItemGetAugments);
 
-	registerMethod("Item", "giveSkill", LuaScriptInterface::luaItemGiveCustomSkill);
-	registerMethod("Item", "addSkill", LuaScriptInterface::luaItemAddCustomSkill);
-	registerMethod("Item", "subtractSkill", LuaScriptInterface::luaItemSubtractCustomSkill);
-	registerMethod("Item", "addBonusSkill", LuaScriptInterface::luaItemAddBonusCustomSkill);
-	registerMethod("Item", "subtractBonusSkill", LuaScriptInterface::luaItemSubtractBonusSkill);
-	registerMethod("Item", "clearBonusSkill", LuaScriptInterface::luaItemClearBonusSkill);
-	registerMethod("Item", "removeSkill", LuaScriptInterface::luaItemRemoveCustomSkill);
-	registerMethod("Item", "hasSkill", LuaScriptInterface::luaItemHasCustomSkill);
-	registerMethod("Item", "canSkill", LuaScriptInterface::luaItemCanGainSkillLevels);
-	registerMethod("Item", "getSkill", LuaScriptInterface::luaItemGetCustomSkillLevel);
-	registerMethod("Item", "skill", LuaScriptInterface::luaItemGetCustomSkillUserData);
+	registerMethod("Item", "giveSkill", luaItemGiveCustomSkill);
+	registerMethod("Item", "addSkill", luaItemAddCustomSkill);
+	registerMethod("Item", "subtractSkill", luaItemSubtractCustomSkill);
+	registerMethod("Item", "addBonusSkill", luaItemAddBonusCustomSkill);
+	registerMethod("Item", "subtractBonusSkill", luaItemSubtractBonusSkill);
+	registerMethod("Item", "clearBonusSkill", luaItemClearBonusSkill);
+	registerMethod("Item", "removeSkill", luaItemRemoveCustomSkill);
+	registerMethod("Item", "hasSkill", luaItemHasCustomSkill);
+	registerMethod("Item", "canSkill", luaItemCanGainSkillLevels);
+	registerMethod("Item", "getSkill", luaItemGetCustomSkillLevel);
+	registerMethod("Item", "skill", luaItemGetCustomSkillUserData);
 
-	registerMethod("Item", "giveStat", LuaScriptInterface::luaItemGiveStat);
-	registerMethod("Item", "removeStat", LuaScriptInterface::luaItemRemoveStat);
-	registerMethod("Item", "increaseStat", LuaScriptInterface::luaItemIncreaseStat);
-	registerMethod("Item", "decreaseStat", LuaScriptInterface::luaItemDecreaseStat);
-	registerMethod("Item", "hasStat", LuaScriptInterface::luaItemHasStat);
-	registerMethod("Item", "getStat", LuaScriptInterface::luaItemGetStat);
-	registerMethod("Item", "getStats", LuaScriptInterface::luaItemGetStats);
+	registerMethod("Item", "giveStat", luaItemGiveStat);
+	registerMethod("Item", "removeStat", luaItemRemoveStat);
+	registerMethod("Item", "increaseStat", luaItemIncreaseStat);
+	registerMethod("Item", "decreaseStat", luaItemDecreaseStat);
+	registerMethod("Item", "hasStat", luaItemHasStat);
+	registerMethod("Item", "getStat", luaItemGetStat);
+	registerMethod("Item", "getStats", luaItemGetStats);
 
 	// Imbuement
-	registerClass("Imbuement", "", LuaScriptInterface::luaImbuementCreate);
-	registerMetaMethod("Imbuement", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Imbuement", "", luaImbuementCreate);
+	registerMetaMethod("Imbuement", "__eq", luaUserdataCompare);
 	registerMetaMethod("Imbuement", "__gc", destroySharedUserData<Imbuement>);
-	registerMethod("Imbuement", "getType", LuaScriptInterface::luaImbuementGetType);
-	registerMethod("Imbuement", "isSkill", LuaScriptInterface::luaImbuementIsSkill);
-	registerMethod("Imbuement", "isSpecialSkill", LuaScriptInterface::luaImbuementIsSpecialSkill);
-	registerMethod("Imbuement", "isStat", LuaScriptInterface::luaImbuementIsStat);
-	registerMethod("Imbuement", "isDamage", LuaScriptInterface::luaImbuementIsDamage);
-	registerMethod("Imbuement", "isResist", LuaScriptInterface::luaImbuementIsResist);
-	registerMethod("Imbuement", "getValue", LuaScriptInterface::luaImbuementGetValue);
-	registerMethod("Imbuement", "setValue", LuaScriptInterface::luaImbuementSetValue);
-	registerMethod("Imbuement", "getDuration", LuaScriptInterface::luaImbuementGetDuration);
-	registerMethod("Imbuement", "setDuration", LuaScriptInterface::luaImbuementSetDuration);
-	registerMethod("Imbuement", "makeEquipDecayed", LuaScriptInterface::luaImbuementSetEquipDecay);
-	registerMethod("Imbuement", "makeInfightDecayed", LuaScriptInterface::luaImbuementSetInfightDecay);
-	registerMethod("Imbuement", "isEquipDecayed", LuaScriptInterface::luaImbuementIsEquipDecay);
-	registerMethod("Imbuement", "isInfightDecayed", LuaScriptInterface::luaImbuementIsInfightDecay);
+	registerMethod("Imbuement", "getType", luaImbuementGetType);
+	registerMethod("Imbuement", "isSkill", luaImbuementIsSkill);
+	registerMethod("Imbuement", "isSpecialSkill", luaImbuementIsSpecialSkill);
+	registerMethod("Imbuement", "isStat", luaImbuementIsStat);
+	registerMethod("Imbuement", "isDamage", luaImbuementIsDamage);
+	registerMethod("Imbuement", "isResist", luaImbuementIsResist);
+	registerMethod("Imbuement", "getValue", luaImbuementGetValue);
+	registerMethod("Imbuement", "setValue", luaImbuementSetValue);
+	registerMethod("Imbuement", "getDuration", luaImbuementGetDuration);
+	registerMethod("Imbuement", "setDuration", luaImbuementSetDuration);
+	registerMethod("Imbuement", "makeEquipDecayed", luaImbuementSetEquipDecay);
+	registerMethod("Imbuement", "makeInfightDecayed", luaImbuementSetInfightDecay);
+	registerMethod("Imbuement", "isEquipDecayed", luaImbuementIsEquipDecay);
+	registerMethod("Imbuement", "isInfightDecayed", luaImbuementIsInfightDecay);
 
 	// DamageModifer
-	registerClass("DamageModifier", "", LuaScriptInterface::luaDamageModifierCreate);
-	registerMetaMethod("DamageModifier", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("DamageModifier", "", luaDamageModifierCreate);
+	registerMetaMethod("DamageModifier", "__eq", luaUserdataCompare);
 	registerMetaMethod("DamageModifier", "__gc", destroySharedUserData<DamageModifier>);
-	registerMethod("DamageModifier", "setType", LuaScriptInterface::luaDamageModifierSetType);
-	registerMethod("DamageModifier", "setStance", LuaScriptInterface::luaDamageModifierSetStance);
-	registerMethod("DamageModifier", "setValue", LuaScriptInterface::luaDamageModifierSetValue);
-	registerMethod("DamageModifier", "setChance", LuaScriptInterface::luaDamageModifierSetChance);
-	registerMethod("DamageModifier", "setFactor", LuaScriptInterface::luaDamageModifierSetRateFactor);
-	registerMethod("DamageModifier", "setCombat", LuaScriptInterface::luaDamageModifierSetCombatFilter);
-	registerMethod("DamageModifier", "setOrigin", LuaScriptInterface::luaDamageModifierSetOriginFilter);
-	registerMethod("DamageModifier", "setCreatureType", LuaScriptInterface::luaDamageModifierSetCreatureTypeFilter);
-	registerMethod("DamageModifier", "setRace", LuaScriptInterface::luaDamageModifierSetRaceFilter);
-	registerMethod("DamageModifier", "setCreatureName", LuaScriptInterface::luaDamageModifierSetCreatureName);
-	registerMethod("DamageModifier", "getType", LuaScriptInterface::luaDamageModifierGetType);
-	registerMethod("DamageModifier", "getStance", LuaScriptInterface::luaDamageModifierGetStance);
-	registerMethod("DamageModifier", "getChance", LuaScriptInterface::luaDamageModifierGetChance);
-	registerMethod("DamageModifier", "getValue", LuaScriptInterface::luaDamageModifierGetValue);
-	registerMethod("DamageModifier", "getFactor", LuaScriptInterface::luaDamageModifierGetFactor);
-	registerMethod("DamageModifier", "getCombat", LuaScriptInterface::luaDamageModifierGetCombatType);
-	registerMethod("DamageModifier", "getOrigin", LuaScriptInterface::luaDamageModifierGetOriginType);
-	registerMethod("DamageModifier", "getCreatureType", LuaScriptInterface::luaDamageModifierGetCreatureType);
-	registerMethod("DamageModifier", "getRace", LuaScriptInterface::luaDamageModifierGetRaceType);
-	registerMethod("DamageModifier", "getCreatureName", LuaScriptInterface::luaDamageModifierGetCreatureName);
-	registerMethod("DamageModifier", "getConversion", LuaScriptInterface::luaDamageModifierGetConversionType);
-	registerMethod("DamageModifier", "isPercent", LuaScriptInterface::luaDamageModifierIsPercent);
+	registerMethod("DamageModifier", "setType", luaDamageModifierSetType);
+	registerMethod("DamageModifier", "setStance", luaDamageModifierSetStance);
+	registerMethod("DamageModifier", "setValue", luaDamageModifierSetValue);
+	registerMethod("DamageModifier", "setChance", luaDamageModifierSetChance);
+	registerMethod("DamageModifier", "setFactor", luaDamageModifierSetRateFactor);
+	registerMethod("DamageModifier", "setCombat", luaDamageModifierSetCombatFilter);
+	registerMethod("DamageModifier", "setOrigin", luaDamageModifierSetOriginFilter);
+	registerMethod("DamageModifier", "setCreatureType", luaDamageModifierSetCreatureTypeFilter);
+	registerMethod("DamageModifier", "setRace", luaDamageModifierSetRaceFilter);
+	registerMethod("DamageModifier", "setCreatureName", luaDamageModifierSetCreatureName);
+	registerMethod("DamageModifier", "getType", luaDamageModifierGetType);
+	registerMethod("DamageModifier", "getStance", luaDamageModifierGetStance);
+	registerMethod("DamageModifier", "getChance", luaDamageModifierGetChance);
+	registerMethod("DamageModifier", "getValue", luaDamageModifierGetValue);
+	registerMethod("DamageModifier", "getFactor", luaDamageModifierGetFactor);
+	registerMethod("DamageModifier", "getCombat", luaDamageModifierGetCombatType);
+	registerMethod("DamageModifier", "getOrigin", luaDamageModifierGetOriginType);
+	registerMethod("DamageModifier", "getCreatureType", luaDamageModifierGetCreatureType);
+	registerMethod("DamageModifier", "getRace", luaDamageModifierGetRaceType);
+	registerMethod("DamageModifier", "getCreatureName", luaDamageModifierGetCreatureName);
+	registerMethod("DamageModifier", "getConversion", luaDamageModifierGetConversionType);
+	registerMethod("DamageModifier", "isPercent", luaDamageModifierIsPercent);
 
 
 	// Augment
-	registerClass("Augment", "", LuaScriptInterface::luaAugmentCreate);
-	registerMetaMethod("Augment", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Augment", "", luaAugmentCreate);
+	registerMetaMethod("Augment", "__eq", luaUserdataCompare);
 	registerMetaMethod("Augment", "__gc", destroySharedUserData<Augment>);
-	registerMethod("Augment", "register", LuaScriptInterface::luaAugmentRegister);
-	registerMethod("Augment", "setName", LuaScriptInterface::luaAugmentSetName);
-	registerMethod("Augment", "setDescription", LuaScriptInterface::luaAugmentSetDescription);
-	registerMethod("Augment", "getName", LuaScriptInterface::luaAugmentGetName);
-	registerMethod("Augment", "getDescription", LuaScriptInterface::luaAugmentGetDescription);
-	registerMethod("Augment", "addDamageModifier", LuaScriptInterface::luaAugmentAddDamageModifier);
-	registerMethod("Augment", "removeDamageModifier", LuaScriptInterface::luaAugmentRemoveDamageModifier);
-	registerMethod("Augment", "getAttackModifiers", LuaScriptInterface::luaAugmentGetAttackModifiers);
-	registerMethod("Augment", "getDefenseModifiers", LuaScriptInterface::luaAugmentGetDefenseModifiers);
+	registerMethod("Augment", "register", luaAugmentRegister);
+	registerMethod("Augment", "setName", luaAugmentSetName);
+	registerMethod("Augment", "setDescription", luaAugmentSetDescription);
+	registerMethod("Augment", "getName", luaAugmentGetName);
+	registerMethod("Augment", "getDescription", luaAugmentGetDescription);
+	registerMethod("Augment", "addDamageModifier", luaAugmentAddDamageModifier);
+	registerMethod("Augment", "removeDamageModifier", luaAugmentRemoveDamageModifier);
+	registerMethod("Augment", "getAttackModifiers", luaAugmentGetAttackModifiers);
+	registerMethod("Augment", "getDefenseModifiers", luaAugmentGetDefenseModifiers);
 
 	// Container
-	registerClass("Container", "Item", LuaScriptInterface::luaContainerCreate);
-	registerMetaMethod("Container", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Container", "Item", luaContainerCreate);
+	registerMetaMethod("Container", "__eq", luaUserdataCompare);
 	registerMetaMethod("Container", "__gc", destroySharedUserData<Container>);
 
-	registerMethod("Container", "getSize", LuaScriptInterface::luaContainerGetSize);
-	registerMethod("Container", "getCapacity", LuaScriptInterface::luaContainerGetCapacity);
-	registerMethod("Container", "getEmptySlots", LuaScriptInterface::luaContainerGetEmptySlots);
-	registerMethod("Container", "getContentDescription", LuaScriptInterface::luaContainerGetContentDescription);
-	registerMethod("Container", "getItems", LuaScriptInterface::luaContainerGetItems);
-	registerMethod("Container", "getItemHoldingCount", LuaScriptInterface::luaContainerGetItemHoldingCount);
-	registerMethod("Container", "getItemCountById", LuaScriptInterface::luaContainerGetItemCountById);
+	registerMethod("Container", "getSize", luaContainerGetSize);
+	registerMethod("Container", "getCapacity", luaContainerGetCapacity);
+	registerMethod("Container", "getEmptySlots", luaContainerGetEmptySlots);
+	registerMethod("Container", "getContentDescription", luaContainerGetContentDescription);
+	registerMethod("Container", "getItems", luaContainerGetItems);
+	registerMethod("Container", "getItemHoldingCount", luaContainerGetItemHoldingCount);
+	registerMethod("Container", "getItemCountById", luaContainerGetItemCountById);
 
-	registerMethod("Container", "getItem", LuaScriptInterface::luaContainerGetItem);
-	registerMethod("Container", "hasItem", LuaScriptInterface::luaContainerHasItem);
-	registerMethod("Container", "addItem", LuaScriptInterface::luaContainerAddItem);
-	registerMethod("Container", "addItemEx", LuaScriptInterface::luaContainerAddItemEx);
-	registerMethod("Container", "getCorpseOwner", LuaScriptInterface::luaContainerGetCorpseOwner);
+	registerMethod("Container", "getItem", luaContainerGetItem);
+	registerMethod("Container", "hasItem", luaContainerHasItem);
+	registerMethod("Container", "addItem", luaContainerAddItem);
+	registerMethod("Container", "addItemEx", luaContainerAddItemEx);
+	registerMethod("Container", "getCorpseOwner", luaContainerGetCorpseOwner);
 
 	// Teleport
-	registerClass("Teleport", "Item", LuaScriptInterface::luaTeleportCreate);
-	registerMetaMethod("Teleport", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Teleport", "Item", luaTeleportCreate);
+	registerMetaMethod("Teleport", "__eq", luaUserdataCompare);
 	registerMetaMethod("Teleport", "__gc", destroySharedUserData<Teleport>);
 
-	registerMethod("Teleport", "getDestination", LuaScriptInterface::luaTeleportGetDestination);
-	registerMethod("Teleport", "setDestination", LuaScriptInterface::luaTeleportSetDestination);
+	registerMethod("Teleport", "getDestination", luaTeleportGetDestination);
+	registerMethod("Teleport", "setDestination", luaTeleportSetDestination);
 
 	// Creature
-	registerClass("Creature", "", LuaScriptInterface::luaCreatureCreate);
-	registerMetaMethod("Creature", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Creature", "", luaCreatureCreate);
+	registerMetaMethod("Creature", "__eq", luaUserdataCompare);
 	registerMetaMethod("Creature", "__gc", destroySharedUserData<Creature>);
 
-	registerMethod("Creature", "getEvents", LuaScriptInterface::luaCreatureGetEvents);
-	registerMethod("Creature", "registerEvent", LuaScriptInterface::luaCreatureRegisterEvent);
-	registerMethod("Creature", "unregisterEvent", LuaScriptInterface::luaCreatureUnregisterEvent);
+	registerMethod("Creature", "getEvents", luaCreatureGetEvents);
+	registerMethod("Creature", "registerEvent", luaCreatureRegisterEvent);
+	registerMethod("Creature", "unregisterEvent", luaCreatureUnregisterEvent);
 
-	registerMethod("Creature", "isRemoved", LuaScriptInterface::luaCreatureIsRemoved);
-	registerMethod("Creature", "isCreature", LuaScriptInterface::luaCreatureIsCreature);
-	registerMethod("Creature", "isInGhostMode", LuaScriptInterface::luaCreatureIsInGhostMode);
-	registerMethod("Creature", "isHealthHidden", LuaScriptInterface::luaCreatureIsHealthHidden);
-	registerMethod("Creature", "isMovementBlocked", LuaScriptInterface::luaCreatureIsMovementBlocked);
-	registerMethod("Creature", "isImmune", LuaScriptInterface::luaCreatureIsImmune);
+	registerMethod("Creature", "isRemoved", luaCreatureIsRemoved);
+	registerMethod("Creature", "isCreature", luaCreatureIsCreature);
+	registerMethod("Creature", "isInGhostMode", luaCreatureIsInGhostMode);
+	registerMethod("Creature", "isHealthHidden", luaCreatureIsHealthHidden);
+	registerMethod("Creature", "isMovementBlocked", luaCreatureIsMovementBlocked);
+	registerMethod("Creature", "isImmune", luaCreatureIsImmune);
 
-	registerMethod("Creature", "canSee", LuaScriptInterface::luaCreatureCanSee);
-	registerMethod("Creature", "canSeeCreature", LuaScriptInterface::luaCreatureCanSeeCreature);
-	registerMethod("Creature", "canSeeGhostMode", LuaScriptInterface::luaCreatureCanSeeGhostMode);
-	registerMethod("Creature", "canSeeInvisibility", LuaScriptInterface::luaCreatureCanSeeInvisibility);
+	registerMethod("Creature", "canSee", luaCreatureCanSee);
+	registerMethod("Creature", "canSeeCreature", luaCreatureCanSeeCreature);
+	registerMethod("Creature", "canSeeGhostMode", luaCreatureCanSeeGhostMode);
+	registerMethod("Creature", "canSeeInvisibility", luaCreatureCanSeeInvisibility);
 
-	registerMethod("Creature", "getParent", LuaScriptInterface::luaCreatureGetParent);
+	registerMethod("Creature", "getParent", luaCreatureGetParent);
 
-	registerMethod("Creature", "getId", LuaScriptInterface::luaCreatureGetId);
-	registerMethod("Creature", "getName", LuaScriptInterface::luaCreatureGetName);
+	registerMethod("Creature", "getId", luaCreatureGetId);
+	registerMethod("Creature", "getName", luaCreatureGetName);
 
-	registerMethod("Creature", "getTarget", LuaScriptInterface::luaCreatureGetTarget);
-	registerMethod("Creature", "setTarget", LuaScriptInterface::luaCreatureSetTarget);
+	registerMethod("Creature", "getTarget", luaCreatureGetTarget);
+	registerMethod("Creature", "setTarget", luaCreatureSetTarget);
 
-	registerMethod("Creature", "getFollowCreature", LuaScriptInterface::luaCreatureGetFollowCreature);
-	registerMethod("Creature", "setFollowCreature", LuaScriptInterface::luaCreatureSetFollowCreature);
+	registerMethod("Creature", "getFollowCreature", luaCreatureGetFollowCreature);
+	registerMethod("Creature", "setFollowCreature", luaCreatureSetFollowCreature);
 
-	registerMethod("Creature", "getMaster", LuaScriptInterface::luaCreatureGetMaster);
-	registerMethod("Creature", "setMaster", LuaScriptInterface::luaCreatureSetMaster);
+	registerMethod("Creature", "getMaster", luaCreatureGetMaster);
+	registerMethod("Creature", "setMaster", luaCreatureSetMaster);
 
-	registerMethod("Creature", "getLight", LuaScriptInterface::luaCreatureGetLight);
-	registerMethod("Creature", "setLight", LuaScriptInterface::luaCreatureSetLight);
+	registerMethod("Creature", "getLight", luaCreatureGetLight);
+	registerMethod("Creature", "setLight", luaCreatureSetLight);
 
-	registerMethod("Creature", "getSpeed", LuaScriptInterface::luaCreatureGetSpeed);
-	registerMethod("Creature", "getBaseSpeed", LuaScriptInterface::luaCreatureGetBaseSpeed);
-	registerMethod("Creature", "changeSpeed", LuaScriptInterface::luaCreatureChangeSpeed);
+	registerMethod("Creature", "getSpeed", luaCreatureGetSpeed);
+	registerMethod("Creature", "getBaseSpeed", luaCreatureGetBaseSpeed);
+	registerMethod("Creature", "changeSpeed", luaCreatureChangeSpeed);
 
-	registerMethod("Creature", "setDropLoot", LuaScriptInterface::luaCreatureSetDropLoot);
-	registerMethod("Creature", "setSkillLoss", LuaScriptInterface::luaCreatureSetSkillLoss);
+	registerMethod("Creature", "setDropLoot", luaCreatureSetDropLoot);
+	registerMethod("Creature", "setSkillLoss", luaCreatureSetSkillLoss);
 
-	registerMethod("Creature", "getPosition", LuaScriptInterface::luaCreatureGetPosition);
-	registerMethod("Creature", "getTile", LuaScriptInterface::luaCreatureGetTile);
-	registerMethod("Creature", "getDirection", LuaScriptInterface::luaCreatureGetDirection);
-	registerMethod("Creature", "setDirection", LuaScriptInterface::luaCreatureSetDirection);
+	registerMethod("Creature", "getPosition", luaCreatureGetPosition);
+	registerMethod("Creature", "getTile", luaCreatureGetTile);
+	registerMethod("Creature", "getDirection", luaCreatureGetDirection);
+	registerMethod("Creature", "setDirection", luaCreatureSetDirection);
 
-	registerMethod("Creature", "getHealth", LuaScriptInterface::luaCreatureGetHealth);
-	registerMethod("Creature", "setHealth", LuaScriptInterface::luaCreatureSetHealth);
-	registerMethod("Creature", "addHealth", LuaScriptInterface::luaCreatureAddHealth);
-	registerMethod("Creature", "getMaxHealth", LuaScriptInterface::luaCreatureGetMaxHealth);
-	registerMethod("Creature", "setMaxHealth", LuaScriptInterface::luaCreatureSetMaxHealth);
-	registerMethod("Creature", "setHiddenHealth", LuaScriptInterface::luaCreatureSetHiddenHealth);
-	registerMethod("Creature", "setMovementBlocked", LuaScriptInterface::luaCreatureSetMovementBlocked);
+	registerMethod("Creature", "getHealth", luaCreatureGetHealth);
+	registerMethod("Creature", "setHealth", luaCreatureSetHealth);
+	registerMethod("Creature", "addHealth", luaCreatureAddHealth);
+	registerMethod("Creature", "getMaxHealth", luaCreatureGetMaxHealth);
+	registerMethod("Creature", "setMaxHealth", luaCreatureSetMaxHealth);
+	registerMethod("Creature", "setHiddenHealth", luaCreatureSetHiddenHealth);
+	registerMethod("Creature", "setMovementBlocked", luaCreatureSetMovementBlocked);
 
-	registerMethod("Creature", "getSkull", LuaScriptInterface::luaCreatureGetSkull);
-	registerMethod("Creature", "setSkull", LuaScriptInterface::luaCreatureSetSkull);
+	registerMethod("Creature", "getSkull", luaCreatureGetSkull);
+	registerMethod("Creature", "setSkull", luaCreatureSetSkull);
 
-	registerMethod("Creature", "getOutfit", LuaScriptInterface::luaCreatureGetOutfit);
-	registerMethod("Creature", "setOutfit", LuaScriptInterface::luaCreatureSetOutfit);
+	registerMethod("Creature", "getOutfit", luaCreatureGetOutfit);
+	registerMethod("Creature", "setOutfit", luaCreatureSetOutfit);
 
-	registerMethod("Creature", "getCondition", LuaScriptInterface::luaCreatureGetCondition);
-	registerMethod("Creature", "addCondition", LuaScriptInterface::luaCreatureAddCondition);
-	registerMethod("Creature", "removeCondition", LuaScriptInterface::luaCreatureRemoveCondition);
-	registerMethod("Creature", "hasCondition", LuaScriptInterface::luaCreatureHasCondition);
+	registerMethod("Creature", "getCondition", luaCreatureGetCondition);
+	registerMethod("Creature", "addCondition", luaCreatureAddCondition);
+	registerMethod("Creature", "removeCondition", luaCreatureRemoveCondition);
+	registerMethod("Creature", "hasCondition", luaCreatureHasCondition);
 
-	registerMethod("Creature", "remove", LuaScriptInterface::luaCreatureRemove);
-	registerMethod("Creature", "teleportTo", LuaScriptInterface::luaCreatureTeleportTo);
-	registerMethod("Creature", "say", LuaScriptInterface::luaCreatureSay);
+	registerMethod("Creature", "remove", luaCreatureRemove);
+	registerMethod("Creature", "teleportTo", luaCreatureTeleportTo);
+	registerMethod("Creature", "say", luaCreatureSay);
 
-	registerMethod("Creature", "getDamageMap", LuaScriptInterface::luaCreatureGetDamageMap);
+	registerMethod("Creature", "getDamageMap", luaCreatureGetDamageMap);
 
-	registerMethod("Creature", "getSummons", LuaScriptInterface::luaCreatureGetSummons);
+	registerMethod("Creature", "getSummons", luaCreatureGetSummons);
 
-	registerMethod("Creature", "getDescription", LuaScriptInterface::luaCreatureGetDescription);
+	registerMethod("Creature", "getDescription", luaCreatureGetDescription);
 
-	registerMethod("Creature", "getPathTo", LuaScriptInterface::luaCreatureGetPathTo);
-	registerMethod("Creature", "move", LuaScriptInterface::luaCreatureMove);
+	registerMethod("Creature", "getPathTo", luaCreatureGetPathTo);
+	registerMethod("Creature", "move", luaCreatureMove);
 
-	registerMethod("Creature", "getZone", LuaScriptInterface::luaCreatureGetZone);
+	registerMethod("Creature", "getZone", luaCreatureGetZone);
 
-	registerMethod("Creature", "giveSkill", LuaScriptInterface::luaCreatureGiveCustomSkill);
-	registerMethod("Creature", "addSkill", LuaScriptInterface::luaCreatureAddCustomSkill);
-	registerMethod("Creature", "subtractSkill", LuaScriptInterface::luaCreatureSubtractCustomSkill);
-	registerMethod("Creature", "addBonusSkill", LuaScriptInterface::luaCreatureAddBonusCustomSkill);
-	registerMethod("Creature", "subtractBonusSkill", LuaScriptInterface::luaCreatureSubtractBonusSkill);
-	registerMethod("Creature", "clearBonusSkill", LuaScriptInterface::luaCreatureClearBonusSkill);
-	registerMethod("Creature", "removeSkill", LuaScriptInterface::luaCreatureRemoveCustomSkill);
-	registerMethod("Creature", "hasSkill", LuaScriptInterface::luaCreatureHasCustomSkill);
-	registerMethod("Creature", "canSkill", LuaScriptInterface::luaCreatureCanGainSkillLevels);
-	registerMethod("Creature", "getSkill", LuaScriptInterface::luaCreatureGetCustomSkillLevel);
-	registerMethod("Creature", "skill", LuaScriptInterface::luaCreatureGetCustomSkillUserData);
+	registerMethod("Creature", "giveSkill", luaCreatureGiveCustomSkill);
+	registerMethod("Creature", "addSkill", luaCreatureAddCustomSkill);
+	registerMethod("Creature", "subtractSkill", luaCreatureSubtractCustomSkill);
+	registerMethod("Creature", "addBonusSkill", luaCreatureAddBonusCustomSkill);
+	registerMethod("Creature", "subtractBonusSkill", luaCreatureSubtractBonusSkill);
+	registerMethod("Creature", "clearBonusSkill", luaCreatureClearBonusSkill);
+	registerMethod("Creature", "removeSkill", luaCreatureRemoveCustomSkill);
+	registerMethod("Creature", "hasSkill", luaCreatureHasCustomSkill);
+	registerMethod("Creature", "canSkill", luaCreatureCanGainSkillLevels);
+	registerMethod("Creature", "getSkill", luaCreatureGetCustomSkillLevel);
+	registerMethod("Creature", "skill", luaCreatureGetCustomSkillUserData);
 
-	registerMethod("Creature", "giveStat", LuaScriptInterface::luaCreatureGiveStat);
-	registerMethod("Creature", "removeStat", LuaScriptInterface::luaCreatureRemoveStat);
-	registerMethod("Creature", "increaseStat", LuaScriptInterface::luaCreatureIncreaseStat);
-	registerMethod("Creature", "decreaseStat", LuaScriptInterface::luaCreatureDecreaseStat);
-	registerMethod("Creature", "hasStat", LuaScriptInterface::luaCreatureHasStat);
-	registerMethod("Creature", "getStat", LuaScriptInterface::luaCreatureGetStat);
-	registerMethod("Creature", "getStats", LuaScriptInterface::luaCreatureGetStats);
+	registerMethod("Creature", "giveStat", luaCreatureGiveStat);
+	registerMethod("Creature", "removeStat", luaCreatureRemoveStat);
+	registerMethod("Creature", "increaseStat", luaCreatureIncreaseStat);
+	registerMethod("Creature", "decreaseStat", luaCreatureDecreaseStat);
+	registerMethod("Creature", "hasStat", luaCreatureHasStat);
+	registerMethod("Creature", "getStat", luaCreatureGetStat);
+	registerMethod("Creature", "getStats", luaCreatureGetStats);
 
 	// Stat
-	registerClass("Stat", "", LuaScriptInterface::luaStatCreate);
-	registerMetaMethod("Stat", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Stat", "", luaStatCreate);
+	registerMetaMethod("Stat", "__eq", luaUserdataCompare);
 	registerMetaMethod("Stat", "__gc", destroySharedUserData<StandardStat>);
-	registerMethod("Stat", "id", LuaScriptInterface::luaStatId);
-	registerMethod("Stat", "max", LuaScriptInterface::luaStatMax);
-	registerMethod("Stat", "value", LuaScriptInterface::luaStatValue);
-	registerMethod("Stat", "baseMax", LuaScriptInterface::luaStatBaseMax);
-	registerMethod("Stat", "increase", LuaScriptInterface::luaStatIncrease);
-	registerMethod("Stat", "decrease", LuaScriptInterface::luaStatDecrease);
-	registerMethod("Stat", "increaseMax", LuaScriptInterface::luaStatMaxIncrease);
-	registerMethod("Stat", "decreaseMax", LuaScriptInterface::luaStatMaxDecrease);
-	registerMethod("Stat", "addModifier", LuaScriptInterface::luaStatAddModifier);
-	registerMethod("Stat", "removeModifier", LuaScriptInterface::luaStatRemoveModifier);
+	registerMethod("Stat", "id", luaStatId);
+	registerMethod("Stat", "max", luaStatMax);
+	registerMethod("Stat", "value", luaStatValue);
+	registerMethod("Stat", "baseMax", luaStatBaseMax);
+	registerMethod("Stat", "increase", luaStatIncrease);
+	registerMethod("Stat", "decrease", luaStatDecrease);
+	registerMethod("Stat", "increaseMax", luaStatMaxIncrease);
+	registerMethod("Stat", "decreaseMax", luaStatMaxDecrease);
+	registerMethod("Stat", "addModifier", luaStatAddModifier);
+	registerMethod("Stat", "removeModifier", luaStatRemoveModifier);
 
 	
 
-	registerClass("StatModifier", "", LuaScriptInterface::luaStatModifierCreate);
-	registerMetaMethod("StatModifier", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("StatModifier", "", luaStatModifierCreate);
+	registerMetaMethod("StatModifier", "__eq", luaUserdataCompare);
 	registerMetaMethod("StatModifier", "__gc", destroySharedUserData<StandardStatMod>);
-	registerMethod("StatModifier", "type", LuaScriptInterface::luaStatModifierType);
-	registerMethod("StatModifier", "value", LuaScriptInterface::luaStatModifierValue);
+	registerMethod("StatModifier", "type", luaStatModifierType);
+	registerMethod("StatModifier", "value", luaStatModifierValue);
 
 
 	// Player
-	registerClass("Player", "Creature", LuaScriptInterface::luaPlayerCreate);
-	registerMetaMethod("Player", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Player", "Creature", luaPlayerCreate);
+	registerMetaMethod("Player", "__eq", luaUserdataCompare);
 	registerMetaMethod("Player", "__gc", destroySharedUserData<Player>);
 
-	registerMethod("Player", "isPlayer", LuaScriptInterface::luaPlayerIsPlayer);
+	registerMethod("Player", "isPlayer", luaPlayerIsPlayer);
 
-	registerMethod("Player", "getGuid", LuaScriptInterface::luaPlayerGetGuid);
-	registerMethod("Player", "getIp", LuaScriptInterface::luaPlayerGetIp);
-	registerMethod("Player", "getAccountId", LuaScriptInterface::luaPlayerGetAccountId);
-	registerMethod("Player", "getLastLoginSaved", LuaScriptInterface::luaPlayerGetLastLoginSaved);
-	registerMethod("Player", "getLastLogout", LuaScriptInterface::luaPlayerGetLastLogout);
+	registerMethod("Player", "getGuid", luaPlayerGetGuid);
+	registerMethod("Player", "getIp", luaPlayerGetIp);
+	registerMethod("Player", "getAccountId", luaPlayerGetAccountId);
+	registerMethod("Player", "getLastLoginSaved", luaPlayerGetLastLoginSaved);
+	registerMethod("Player", "getLastLogout", luaPlayerGetLastLogout);
 
-	registerMethod("Player", "getAccountType", LuaScriptInterface::luaPlayerGetAccountType);
-	registerMethod("Player", "setAccountType", LuaScriptInterface::luaPlayerSetAccountType);
+	registerMethod("Player", "getAccountType", luaPlayerGetAccountType);
+	registerMethod("Player", "setAccountType", luaPlayerSetAccountType);
 
-	registerMethod("Player", "getCapacity", LuaScriptInterface::luaPlayerGetCapacity);
-	registerMethod("Player", "setCapacity", LuaScriptInterface::luaPlayerSetCapacity);
+	registerMethod("Player", "getCapacity", luaPlayerGetCapacity);
+	registerMethod("Player", "setCapacity", luaPlayerSetCapacity);
 
-	registerMethod("Player", "getFreeCapacity", LuaScriptInterface::luaPlayerGetFreeCapacity);
-	registerMethod("Player", "getDepotItemCount", LuaScriptInterface::luaPlayerGetDepotItemCount);
+	registerMethod("Player", "getFreeCapacity", luaPlayerGetFreeCapacity);
+	registerMethod("Player", "getDepotItemCount", luaPlayerGetDepotItemCount);
 
-	registerMethod("Player", "getDepotChest", LuaScriptInterface::luaPlayerGetDepotChest);
-	registerMethod("Player", "getInbox", LuaScriptInterface::luaPlayerGetInbox);
-	registerMethod("Player", "getRewardChest", LuaScriptInterface::luaPlayerGetRewardChest);
+	registerMethod("Player", "getDepotChest", luaPlayerGetDepotChest);
+	registerMethod("Player", "getInbox", luaPlayerGetInbox);
+	registerMethod("Player", "getRewardChest", luaPlayerGetRewardChest);
 
-	registerMethod("Player", "getSkullTime", LuaScriptInterface::luaPlayerGetSkullTime);
-	registerMethod("Player", "setSkullTime", LuaScriptInterface::luaPlayerSetSkullTime);
-	registerMethod("Player", "getDeathPenalty", LuaScriptInterface::luaPlayerGetDeathPenalty);
+	registerMethod("Player", "getSkullTime", luaPlayerGetSkullTime);
+	registerMethod("Player", "setSkullTime", luaPlayerSetSkullTime);
+	registerMethod("Player", "getDeathPenalty", luaPlayerGetDeathPenalty);
 
-	registerMethod("Player", "getExperience", LuaScriptInterface::luaPlayerGetExperience);
-	registerMethod("Player", "addExperience", LuaScriptInterface::luaPlayerAddExperience);
-	registerMethod("Player", "removeExperience", LuaScriptInterface::luaPlayerRemoveExperience);
-	registerMethod("Player", "getLevel", LuaScriptInterface::luaPlayerGetLevel);
+	registerMethod("Player", "getExperience", luaPlayerGetExperience);
+	registerMethod("Player", "addExperience", luaPlayerAddExperience);
+	registerMethod("Player", "removeExperience", luaPlayerRemoveExperience);
+	registerMethod("Player", "getLevel", luaPlayerGetLevel);
 
-	registerMethod("Player", "getMagicLevel", LuaScriptInterface::luaPlayerGetMagicLevel);
-	registerMethod("Player", "getBaseMagicLevel", LuaScriptInterface::luaPlayerGetBaseMagicLevel);
-	registerMethod("Player", "getMana", LuaScriptInterface::luaPlayerGetMana);
-	registerMethod("Player", "addMana", LuaScriptInterface::luaPlayerAddMana);
-	registerMethod("Player", "getMaxMana", LuaScriptInterface::luaPlayerGetMaxMana);
-	registerMethod("Player", "setMaxMana", LuaScriptInterface::luaPlayerSetMaxMana);
-	registerMethod("Player", "getManaSpent", LuaScriptInterface::luaPlayerGetManaSpent);
-	registerMethod("Player", "addManaSpent", LuaScriptInterface::luaPlayerAddManaSpent);
-	registerMethod("Player", "removeManaSpent", LuaScriptInterface::luaPlayerRemoveManaSpent);
+	registerMethod("Player", "getMagicLevel", luaPlayerGetMagicLevel);
+	registerMethod("Player", "getBaseMagicLevel", luaPlayerGetBaseMagicLevel);
+	registerMethod("Player", "getMana", luaPlayerGetMana);
+	registerMethod("Player", "addMana", luaPlayerAddMana);
+	registerMethod("Player", "getMaxMana", luaPlayerGetMaxMana);
+	registerMethod("Player", "setMaxMana", luaPlayerSetMaxMana);
+	registerMethod("Player", "getManaSpent", luaPlayerGetManaSpent);
+	registerMethod("Player", "addManaSpent", luaPlayerAddManaSpent);
+	registerMethod("Player", "removeManaSpent", luaPlayerRemoveManaSpent);
 
-	registerMethod("Player", "getBaseMaxHealth", LuaScriptInterface::luaPlayerGetBaseMaxHealth);
-	registerMethod("Player", "getBaseMaxMana", LuaScriptInterface::luaPlayerGetBaseMaxMana);
+	registerMethod("Player", "getBaseMaxHealth", luaPlayerGetBaseMaxHealth);
+	registerMethod("Player", "getBaseMaxMana", luaPlayerGetBaseMaxMana);
 
-	registerMethod("Player", "getSkillLevel", LuaScriptInterface::luaPlayerGetSkillLevel);
-	registerMethod("Player", "getEffectiveSkillLevel", LuaScriptInterface::luaPlayerGetEffectiveSkillLevel);
-	registerMethod("Player", "getSkillPercent", LuaScriptInterface::luaPlayerGetSkillPercent);
-	registerMethod("Player", "getSkillTries", LuaScriptInterface::luaPlayerGetSkillTries);
-	registerMethod("Player", "addSkillTries", LuaScriptInterface::luaPlayerAddSkillTries);
-	registerMethod("Player", "removeSkillTries", LuaScriptInterface::luaPlayerRemoveSkillTries);
-	registerMethod("Player", "getSpecialSkill", LuaScriptInterface::luaPlayerGetSpecialSkill);
-	registerMethod("Player", "addSpecialSkill", LuaScriptInterface::luaPlayerAddSpecialSkill);
+	registerMethod("Player", "getSkillLevel", luaPlayerGetSkillLevel);
+	registerMethod("Player", "getEffectiveSkillLevel", luaPlayerGetEffectiveSkillLevel);
+	registerMethod("Player", "getSkillPercent", luaPlayerGetSkillPercent);
+	registerMethod("Player", "getSkillTries", luaPlayerGetSkillTries);
+	registerMethod("Player", "addSkillTries", luaPlayerAddSkillTries);
+	registerMethod("Player", "removeSkillTries", luaPlayerRemoveSkillTries);
+	registerMethod("Player", "getSpecialSkill", luaPlayerGetSpecialSkill);
+	registerMethod("Player", "addSpecialSkill", luaPlayerAddSpecialSkill);
 
-	registerMethod("Player", "addOfflineTrainingTime", LuaScriptInterface::luaPlayerAddOfflineTrainingTime);
-	registerMethod("Player", "getOfflineTrainingTime", LuaScriptInterface::luaPlayerGetOfflineTrainingTime);
-	registerMethod("Player", "removeOfflineTrainingTime", LuaScriptInterface::luaPlayerRemoveOfflineTrainingTime);
+	registerMethod("Player", "addOfflineTrainingTime", luaPlayerAddOfflineTrainingTime);
+	registerMethod("Player", "getOfflineTrainingTime", luaPlayerGetOfflineTrainingTime);
+	registerMethod("Player", "removeOfflineTrainingTime", luaPlayerRemoveOfflineTrainingTime);
 
-	registerMethod("Player", "addOfflineTrainingTries", LuaScriptInterface::luaPlayerAddOfflineTrainingTries);
+	registerMethod("Player", "addOfflineTrainingTries", luaPlayerAddOfflineTrainingTries);
 
-	registerMethod("Player", "getOfflineTrainingSkill", LuaScriptInterface::luaPlayerGetOfflineTrainingSkill);
-	registerMethod("Player", "setOfflineTrainingSkill", LuaScriptInterface::luaPlayerSetOfflineTrainingSkill);
+	registerMethod("Player", "getOfflineTrainingSkill", luaPlayerGetOfflineTrainingSkill);
+	registerMethod("Player", "setOfflineTrainingSkill", luaPlayerSetOfflineTrainingSkill);
 
-	registerMethod("Player", "getItemCount", LuaScriptInterface::luaPlayerGetItemCount);
-	registerMethod("Player", "getItemById", LuaScriptInterface::luaPlayerGetItemById);
+	registerMethod("Player", "getItemCount", luaPlayerGetItemCount);
+	registerMethod("Player", "getItemById", luaPlayerGetItemById);
 
-	registerMethod("Player", "getVocation", LuaScriptInterface::luaPlayerGetVocation);
-	registerMethod("Player", "setVocation", LuaScriptInterface::luaPlayerSetVocation);
+	registerMethod("Player", "getVocation", luaPlayerGetVocation);
+	registerMethod("Player", "setVocation", luaPlayerSetVocation);
 
-	registerMethod("Player", "getSex", LuaScriptInterface::luaPlayerGetSex);
-	registerMethod("Player", "setSex", LuaScriptInterface::luaPlayerSetSex);
+	registerMethod("Player", "getSex", luaPlayerGetSex);
+	registerMethod("Player", "setSex", luaPlayerSetSex);
 
-	registerMethod("Player", "getTown", LuaScriptInterface::luaPlayerGetTown);
-	registerMethod("Player", "setTown", LuaScriptInterface::luaPlayerSetTown);
+	registerMethod("Player", "getTown", luaPlayerGetTown);
+	registerMethod("Player", "setTown", luaPlayerSetTown);
 
-	registerMethod("Player", "getGuild", LuaScriptInterface::luaPlayerGetGuild);
-	registerMethod("Player", "setGuild", LuaScriptInterface::luaPlayerSetGuild);
+	registerMethod("Player", "getGuild", luaPlayerGetGuild);
+	registerMethod("Player", "setGuild", luaPlayerSetGuild);
 
-	registerMethod("Player", "getGuildLevel", LuaScriptInterface::luaPlayerGetGuildLevel);
-	registerMethod("Player", "setGuildLevel", LuaScriptInterface::luaPlayerSetGuildLevel);
+	registerMethod("Player", "getGuildLevel", luaPlayerGetGuildLevel);
+	registerMethod("Player", "setGuildLevel", luaPlayerSetGuildLevel);
 
-	registerMethod("Player", "getGuildNick", LuaScriptInterface::luaPlayerGetGuildNick);
-	registerMethod("Player", "setGuildNick", LuaScriptInterface::luaPlayerSetGuildNick);
+	registerMethod("Player", "getGuildNick", luaPlayerGetGuildNick);
+	registerMethod("Player", "setGuildNick", luaPlayerSetGuildNick);
 
-	registerMethod("Player", "getGroup", LuaScriptInterface::luaPlayerGetGroup);
-	registerMethod("Player", "setGroup", LuaScriptInterface::luaPlayerSetGroup);
+	registerMethod("Player", "getGroup", luaPlayerGetGroup);
+	registerMethod("Player", "setGroup", luaPlayerSetGroup);
 
-	registerMethod("Player", "getStamina", LuaScriptInterface::luaPlayerGetStamina);
-	registerMethod("Player", "setStamina", LuaScriptInterface::luaPlayerSetStamina);
+	registerMethod("Player", "getStamina", luaPlayerGetStamina);
+	registerMethod("Player", "setStamina", luaPlayerSetStamina);
 
-	registerMethod("Player", "getSoul", LuaScriptInterface::luaPlayerGetSoul);
-	registerMethod("Player", "addSoul", LuaScriptInterface::luaPlayerAddSoul);
-	registerMethod("Player", "getMaxSoul", LuaScriptInterface::luaPlayerGetMaxSoul);
+	registerMethod("Player", "getSoul", luaPlayerGetSoul);
+	registerMethod("Player", "addSoul", luaPlayerAddSoul);
+	registerMethod("Player", "getMaxSoul", luaPlayerGetMaxSoul);
 
-	registerMethod("Player", "getBankBalance", LuaScriptInterface::luaPlayerGetBankBalance);
-	registerMethod("Player", "setBankBalance", LuaScriptInterface::luaPlayerSetBankBalance);
+	registerMethod("Player", "getBankBalance", luaPlayerGetBankBalance);
+	registerMethod("Player", "setBankBalance", luaPlayerSetBankBalance);
 
-	registerMethod("Player", "getStorageValue", LuaScriptInterface::luaPlayerGetStorageValue);
-	registerMethod("Player", "setStorageValue", LuaScriptInterface::luaPlayerSetStorageValue);
+	registerMethod("Player", "getStorageValue", luaPlayerGetStorageValue);
+	registerMethod("Player", "setStorageValue", luaPlayerSetStorageValue);
 
-	registerMethod("Player", "addItem", LuaScriptInterface::luaPlayerAddItem);
-	registerMethod("Player", "addItemEx", LuaScriptInterface::luaPlayerAddItemEx);
-	registerMethod("Player", "removeItem", LuaScriptInterface::luaPlayerRemoveItem);
+	registerMethod("Player", "addItem", luaPlayerAddItem);
+	registerMethod("Player", "addItemEx", luaPlayerAddItemEx);
+	registerMethod("Player", "removeItem", luaPlayerRemoveItem);
 
-	registerMethod("Player", "getMoney", LuaScriptInterface::luaPlayerGetMoney);
-	registerMethod("Player", "addMoney", LuaScriptInterface::luaPlayerAddMoney);
-	registerMethod("Player", "removeMoney", LuaScriptInterface::luaPlayerRemoveMoney);
+	registerMethod("Player", "getMoney", luaPlayerGetMoney);
+	registerMethod("Player", "addMoney", luaPlayerAddMoney);
+	registerMethod("Player", "removeMoney", luaPlayerRemoveMoney);
 
-	registerMethod("Player", "showTextDialog", LuaScriptInterface::luaPlayerShowTextDialog);
+	registerMethod("Player", "showTextDialog", luaPlayerShowTextDialog);
 
-	registerMethod("Player", "sendTextMessage", LuaScriptInterface::luaPlayerSendTextMessage);
-	registerMethod("Player", "sendChannelMessage", LuaScriptInterface::luaPlayerSendChannelMessage);
-	registerMethod("Player", "sendPrivateMessage", LuaScriptInterface::luaPlayerSendPrivateMessage);
-	registerMethod("Player", "channelSay", LuaScriptInterface::luaPlayerChannelSay);
-	registerMethod("Player", "openChannel", LuaScriptInterface::luaPlayerOpenChannel);
+	registerMethod("Player", "sendTextMessage", luaPlayerSendTextMessage);
+	registerMethod("Player", "sendChannelMessage", luaPlayerSendChannelMessage);
+	registerMethod("Player", "sendPrivateMessage", luaPlayerSendPrivateMessage);
+	registerMethod("Player", "channelSay", luaPlayerChannelSay);
+	registerMethod("Player", "openChannel", luaPlayerOpenChannel);
 
-	registerMethod("Player", "getSlotItem", LuaScriptInterface::luaPlayerGetSlotItem);
+	registerMethod("Player", "getSlotItem", luaPlayerGetSlotItem);
 
-	registerMethod("Player", "getParty", LuaScriptInterface::luaPlayerGetParty);
+	registerMethod("Player", "getParty", luaPlayerGetParty);
 
-	registerMethod("Player", "addOutfit", LuaScriptInterface::luaPlayerAddOutfit);
-	registerMethod("Player", "addOutfitAddon", LuaScriptInterface::luaPlayerAddOutfitAddon);
-	registerMethod("Player", "removeOutfit", LuaScriptInterface::luaPlayerRemoveOutfit);
-	registerMethod("Player", "removeOutfitAddon", LuaScriptInterface::luaPlayerRemoveOutfitAddon);
-	registerMethod("Player", "hasOutfit", LuaScriptInterface::luaPlayerHasOutfit);
-	registerMethod("Player", "canWearOutfit", LuaScriptInterface::luaPlayerCanWearOutfit);
-	registerMethod("Player", "sendOutfitWindow", LuaScriptInterface::luaPlayerSendOutfitWindow);
+	registerMethod("Player", "addOutfit", luaPlayerAddOutfit);
+	registerMethod("Player", "addOutfitAddon", luaPlayerAddOutfitAddon);
+	registerMethod("Player", "removeOutfit", luaPlayerRemoveOutfit);
+	registerMethod("Player", "removeOutfitAddon", luaPlayerRemoveOutfitAddon);
+	registerMethod("Player", "hasOutfit", luaPlayerHasOutfit);
+	registerMethod("Player", "canWearOutfit", luaPlayerCanWearOutfit);
+	registerMethod("Player", "sendOutfitWindow", luaPlayerSendOutfitWindow);
 
-	registerMethod("Player", "addMount", LuaScriptInterface::luaPlayerAddMount);
-	registerMethod("Player", "removeMount", LuaScriptInterface::luaPlayerRemoveMount);
-	registerMethod("Player", "hasMount", LuaScriptInterface::luaPlayerHasMount);
+	registerMethod("Player", "addMount", luaPlayerAddMount);
+	registerMethod("Player", "removeMount", luaPlayerRemoveMount);
+	registerMethod("Player", "hasMount", luaPlayerHasMount);
 
-	registerMethod("Player", "getPremiumEndsAt", LuaScriptInterface::luaPlayerGetPremiumEndsAt);
-	registerMethod("Player", "setPremiumEndsAt", LuaScriptInterface::luaPlayerSetPremiumEndsAt);
+	registerMethod("Player", "getPremiumEndsAt", luaPlayerGetPremiumEndsAt);
+	registerMethod("Player", "setPremiumEndsAt", luaPlayerSetPremiumEndsAt);
 
-	registerMethod("Player", "hasBlessing", LuaScriptInterface::luaPlayerHasBlessing);
-	registerMethod("Player", "addBlessing", LuaScriptInterface::luaPlayerAddBlessing);
-	registerMethod("Player", "removeBlessing", LuaScriptInterface::luaPlayerRemoveBlessing);
+	registerMethod("Player", "hasBlessing", luaPlayerHasBlessing);
+	registerMethod("Player", "addBlessing", luaPlayerAddBlessing);
+	registerMethod("Player", "removeBlessing", luaPlayerRemoveBlessing);
 
-	registerMethod("Player", "canLearnSpell", LuaScriptInterface::luaPlayerCanLearnSpell);
-	registerMethod("Player", "learnSpell", LuaScriptInterface::luaPlayerLearnSpell);
-	registerMethod("Player", "forgetSpell", LuaScriptInterface::luaPlayerForgetSpell);
-	registerMethod("Player", "hasLearnedSpell", LuaScriptInterface::luaPlayerHasLearnedSpell);
+	registerMethod("Player", "canLearnSpell", luaPlayerCanLearnSpell);
+	registerMethod("Player", "learnSpell", luaPlayerLearnSpell);
+	registerMethod("Player", "forgetSpell", luaPlayerForgetSpell);
+	registerMethod("Player", "hasLearnedSpell", luaPlayerHasLearnedSpell);
 
-	registerMethod("Player", "sendTutorial", LuaScriptInterface::luaPlayerSendTutorial);
-	registerMethod("Player", "addMapMark", LuaScriptInterface::luaPlayerAddMapMark);
+	registerMethod("Player", "sendTutorial", luaPlayerSendTutorial);
+	registerMethod("Player", "addMapMark", luaPlayerAddMapMark);
 
-	registerMethod("Player", "save", LuaScriptInterface::luaPlayerSave);
-	registerMethod("Player", "popupFYI", LuaScriptInterface::luaPlayerPopupFYI);
+	registerMethod("Player", "save", luaPlayerSave);
+	registerMethod("Player", "popupFYI", luaPlayerPopupFYI);
 
-	registerMethod("Player", "isPzLocked", LuaScriptInterface::luaPlayerIsPzLocked);
+	registerMethod("Player", "isPzLocked", luaPlayerIsPzLocked);
 
-	registerMethod("Player", "getClient", LuaScriptInterface::luaPlayerGetClient);
+	registerMethod("Player", "getClient", luaPlayerGetClient);
 
-	registerMethod("Player", "getHouse", LuaScriptInterface::luaPlayerGetHouse);
-	registerMethod("Player", "sendHouseWindow", LuaScriptInterface::luaPlayerSendHouseWindow);
-	registerMethod("Player", "setEditHouse", LuaScriptInterface::luaPlayerSetEditHouse);
+	registerMethod("Player", "getHouse", luaPlayerGetHouse);
+	registerMethod("Player", "sendHouseWindow", luaPlayerSendHouseWindow);
+	registerMethod("Player", "setEditHouse", luaPlayerSetEditHouse);
 
-	registerMethod("Player", "setGhostMode", LuaScriptInterface::luaPlayerSetGhostMode);
+	registerMethod("Player", "setGhostMode", luaPlayerSetGhostMode);
 
-	registerMethod("Player", "getContainerId", LuaScriptInterface::luaPlayerGetContainerId);
-	registerMethod("Player", "getContainerById", LuaScriptInterface::luaPlayerGetContainerById);
-	registerMethod("Player", "getContainerIndex", LuaScriptInterface::luaPlayerGetContainerIndex);
+	registerMethod("Player", "getContainerId", luaPlayerGetContainerId);
+	registerMethod("Player", "getContainerById", luaPlayerGetContainerById);
+	registerMethod("Player", "getContainerIndex", luaPlayerGetContainerIndex);
 
-	registerMethod("Player", "getInstantSpells", LuaScriptInterface::luaPlayerGetInstantSpells);
-	registerMethod("Player", "canCast", LuaScriptInterface::luaPlayerCanCast);
+	registerMethod("Player", "getInstantSpells", luaPlayerGetInstantSpells);
+	registerMethod("Player", "canCast", luaPlayerCanCast);
 
-	registerMethod("Player", "hasChaseMode", LuaScriptInterface::luaPlayerHasChaseMode);
-	registerMethod("Player", "hasSecureMode", LuaScriptInterface::luaPlayerHasSecureMode);
-	registerMethod("Player", "getFightMode", LuaScriptInterface::luaPlayerGetFightMode);
+	registerMethod("Player", "hasChaseMode", luaPlayerHasChaseMode);
+	registerMethod("Player", "hasSecureMode", luaPlayerHasSecureMode);
+	registerMethod("Player", "getFightMode", luaPlayerGetFightMode);
 
-	registerMethod("Player", "getStoreInbox", LuaScriptInterface::luaPlayerGetStoreInbox);
-	registerMethod("Player", "isNearDepotBox", LuaScriptInterface::luaPlayerIsNearDepotBox);
+	registerMethod("Player", "getStoreInbox", luaPlayerGetStoreInbox);
+	registerMethod("Player", "isNearDepotBox", luaPlayerIsNearDepotBox);
 
-	registerMethod("Player", "getIdleTime", LuaScriptInterface::luaPlayerGetIdleTime);
-	registerMethod("Player", "resetIdleTime", LuaScriptInterface::luaPlayerResetIdleTime);
+	registerMethod("Player", "getIdleTime", luaPlayerGetIdleTime);
+	registerMethod("Player", "resetIdleTime", luaPlayerResetIdleTime);
 
-	registerMethod("Player", "sendCreatureSquare", LuaScriptInterface::luaPlayerSendCreatureSquare);
-	registerMethod("Player", "getEquipment", LuaScriptInterface::luaPlayerGetEquipment);
+	registerMethod("Player", "sendCreatureSquare", luaPlayerSendCreatureSquare);
+	registerMethod("Player", "getEquipment", luaPlayerGetEquipment);
 
-	registerMethod("Player", "addAugment", LuaScriptInterface::luaPlayerAddAugment);
-	registerMethod("Player", "removeAugment", LuaScriptInterface::luaPlayerRemoveAugment);
-	registerMethod("Player", "isAugmented", LuaScriptInterface::luaPlayerIsAugmented);
-	registerMethod("Player", "hasAugment", LuaScriptInterface::luaPlayerHasAugment);
-	registerMethod("Player", "getAugments", LuaScriptInterface::luaPlayerGetAugments);
+	registerMethod("Player", "addAugment", luaPlayerAddAugment);
+	registerMethod("Player", "removeAugment", luaPlayerRemoveAugment);
+	registerMethod("Player", "isAugmented", luaPlayerIsAugmented);
+	registerMethod("Player", "hasAugment", luaPlayerHasAugment);
+	registerMethod("Player", "getAugments", luaPlayerGetAugments);
 
 	// Monster
-	registerClass("Monster", "Creature", LuaScriptInterface::luaMonsterCreate);
-	registerMetaMethod("Monster", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Monster", "Creature", luaMonsterCreate);
+	registerMetaMethod("Monster", "__eq", luaUserdataCompare);
 	registerMetaMethod("Monster", "__gc", destroySharedUserData<Monster>);
 
-	registerMethod("Monster", "getId", LuaScriptInterface::luaMonsterGetId);
-	registerMethod("Monster", "isMonster", LuaScriptInterface::luaMonsterIsMonster);
+	registerMethod("Monster", "getId", luaMonsterGetId);
+	registerMethod("Monster", "isMonster", luaMonsterIsMonster);
 
-	registerMethod("Monster", "getType", LuaScriptInterface::luaMonsterGetType);
+	registerMethod("Monster", "getType", luaMonsterGetType);
 
-	registerMethod("Monster", "rename", LuaScriptInterface::luaMonsterRename);
+	registerMethod("Monster", "rename", luaMonsterRename);
 
-	registerMethod("Monster", "getSpawnPosition", LuaScriptInterface::luaMonsterGetSpawnPosition);
-	registerMethod("Monster", "isInSpawnRange", LuaScriptInterface::luaMonsterIsInSpawnRange);
+	registerMethod("Monster", "getSpawnPosition", luaMonsterGetSpawnPosition);
+	registerMethod("Monster", "isInSpawnRange", luaMonsterIsInSpawnRange);
 
-	registerMethod("Monster", "isIdle", LuaScriptInterface::luaMonsterIsIdle);
-	registerMethod("Monster", "setIdle", LuaScriptInterface::luaMonsterSetIdle);
+	registerMethod("Monster", "isIdle", luaMonsterIsIdle);
+	registerMethod("Monster", "setIdle", luaMonsterSetIdle);
 
-	registerMethod("Monster", "isTarget", LuaScriptInterface::luaMonsterIsTarget);
-	registerMethod("Monster", "isOpponent", LuaScriptInterface::luaMonsterIsOpponent);
-	registerMethod("Monster", "isFriend", LuaScriptInterface::luaMonsterIsFriend);
+	registerMethod("Monster", "isTarget", luaMonsterIsTarget);
+	registerMethod("Monster", "isOpponent", luaMonsterIsOpponent);
+	registerMethod("Monster", "isFriend", luaMonsterIsFriend);
 
-	registerMethod("Monster", "addFriend", LuaScriptInterface::luaMonsterAddFriend);
-	registerMethod("Monster", "removeFriend", LuaScriptInterface::luaMonsterRemoveFriend);
-	registerMethod("Monster", "getFriendList", LuaScriptInterface::luaMonsterGetFriendList);
-	registerMethod("Monster", "getFriendCount", LuaScriptInterface::luaMonsterGetFriendCount);
+	registerMethod("Monster", "addFriend", luaMonsterAddFriend);
+	registerMethod("Monster", "removeFriend", luaMonsterRemoveFriend);
+	registerMethod("Monster", "getFriendList", luaMonsterGetFriendList);
+	registerMethod("Monster", "getFriendCount", luaMonsterGetFriendCount);
 
-	registerMethod("Monster", "addTarget", LuaScriptInterface::luaMonsterAddTarget);
-	registerMethod("Monster", "removeTarget", LuaScriptInterface::luaMonsterRemoveTarget);
-	registerMethod("Monster", "getTargetList", LuaScriptInterface::luaMonsterGetTargetList);
-	registerMethod("Monster", "getTargetCount", LuaScriptInterface::luaMonsterGetTargetCount);
+	registerMethod("Monster", "addTarget", luaMonsterAddTarget);
+	registerMethod("Monster", "removeTarget", luaMonsterRemoveTarget);
+	registerMethod("Monster", "getTargetList", luaMonsterGetTargetList);
+	registerMethod("Monster", "getTargetCount", luaMonsterGetTargetCount);
 
-	registerMethod("Monster", "selectTarget", LuaScriptInterface::luaMonsterSelectTarget);
-	registerMethod("Monster", "searchTarget", LuaScriptInterface::luaMonsterSearchTarget);
+	registerMethod("Monster", "selectTarget", luaMonsterSelectTarget);
+	registerMethod("Monster", "searchTarget", luaMonsterSearchTarget);
 
-	registerMethod("Monster", "isWalkingToSpawn", LuaScriptInterface::luaMonsterIsWalkingToSpawn);
-	registerMethod("Monster", "walkToSpawn", LuaScriptInterface::luaMonsterWalkToSpawn);
+	registerMethod("Monster", "isWalkingToSpawn", luaMonsterIsWalkingToSpawn);
+	registerMethod("Monster", "walkToSpawn", luaMonsterWalkToSpawn);
 
 	// Npc
-	registerClass("Npc", "Creature", LuaScriptInterface::luaNpcCreate);
-	registerMetaMethod("Npc", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Npc", "Creature", luaNpcCreate);
+	registerMetaMethod("Npc", "__eq", luaUserdataCompare);
 	registerMetaMethod("Npc", "__gc", destroySharedUserData<Npc>);
 
-	registerMethod("Npc", "isNpc", LuaScriptInterface::luaNpcIsNpc);
+	registerMethod("Npc", "isNpc", luaNpcIsNpc);
 
-	registerMethod("Npc", "setMasterPos", LuaScriptInterface::luaNpcSetMasterPos);
+	registerMethod("Npc", "setMasterPos", luaNpcSetMasterPos);
 
-	registerMethod("Npc", "getSpeechBubble", LuaScriptInterface::luaNpcGetSpeechBubble);
-	registerMethod("Npc", "setSpeechBubble", LuaScriptInterface::luaNpcSetSpeechBubble);
+	registerMethod("Npc", "getSpeechBubble", luaNpcGetSpeechBubble);
+	registerMethod("Npc", "setSpeechBubble", luaNpcSetSpeechBubble);
 
-	registerMethod("Npc", "getSpectators", LuaScriptInterface::luaNpcGetSpectators);
+	registerMethod("Npc", "getSpectators", luaNpcGetSpectators);
 
 	// Guild
-	registerClass("Guild", "", LuaScriptInterface::luaGuildCreate);
-	registerMetaMethod("Guild", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Guild", "", luaGuildCreate);
+	registerMetaMethod("Guild", "__eq", luaUserdataCompare);
 
-	registerMethod("Guild", "getId", LuaScriptInterface::luaGuildGetId);
-	registerMethod("Guild", "getName", LuaScriptInterface::luaGuildGetName);
-	registerMethod("Guild", "getMembersOnline", LuaScriptInterface::luaGuildGetMembersOnline);
+	registerMethod("Guild", "getId", luaGuildGetId);
+	registerMethod("Guild", "getName", luaGuildGetName);
+	registerMethod("Guild", "getMembersOnline", luaGuildGetMembersOnline);
 
-	registerMethod("Guild", "addRank", LuaScriptInterface::luaGuildAddRank);
-	registerMethod("Guild", "getRankById", LuaScriptInterface::luaGuildGetRankById);
-	registerMethod("Guild", "getRankByLevel", LuaScriptInterface::luaGuildGetRankByLevel);
+	registerMethod("Guild", "addRank", luaGuildAddRank);
+	registerMethod("Guild", "getRankById", luaGuildGetRankById);
+	registerMethod("Guild", "getRankByLevel", luaGuildGetRankByLevel);
 
-	registerMethod("Guild", "getMotd", LuaScriptInterface::luaGuildGetMotd);
-	registerMethod("Guild", "setMotd", LuaScriptInterface::luaGuildSetMotd);
+	registerMethod("Guild", "getMotd", luaGuildGetMotd);
+	registerMethod("Guild", "setMotd", luaGuildSetMotd);
 
 	// Group
-	registerClass("Group", "", LuaScriptInterface::luaGroupCreate);
-	registerMetaMethod("Group", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Group", "", luaGroupCreate);
+	registerMetaMethod("Group", "__eq", luaUserdataCompare);
 
-	registerMethod("Group", "getId", LuaScriptInterface::luaGroupGetId);
-	registerMethod("Group", "getName", LuaScriptInterface::luaGroupGetName);
-	registerMethod("Group", "getFlags", LuaScriptInterface::luaGroupGetFlags);
-	registerMethod("Group", "getAccess", LuaScriptInterface::luaGroupGetAccess);
-	registerMethod("Group", "getMaxDepotItems", LuaScriptInterface::luaGroupGetMaxDepotItems);
-	registerMethod("Group", "getMaxVipEntries", LuaScriptInterface::luaGroupGetMaxVipEntries);
-	registerMethod("Group", "hasFlag", LuaScriptInterface::luaGroupHasFlag);
+	registerMethod("Group", "getId", luaGroupGetId);
+	registerMethod("Group", "getName", luaGroupGetName);
+	registerMethod("Group", "getFlags", luaGroupGetFlags);
+	registerMethod("Group", "getAccess", luaGroupGetAccess);
+	registerMethod("Group", "getMaxDepotItems", luaGroupGetMaxDepotItems);
+	registerMethod("Group", "getMaxVipEntries", luaGroupGetMaxVipEntries);
+	registerMethod("Group", "hasFlag", luaGroupHasFlag);
 
 	// Vocation
-	registerClass("Vocation", "", LuaScriptInterface::luaVocationCreate);
-	registerMetaMethod("Vocation", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Vocation", "", luaVocationCreate);
+	registerMetaMethod("Vocation", "__eq", luaUserdataCompare);
 
-	registerMethod("Vocation", "getId", LuaScriptInterface::luaVocationGetId);
-	registerMethod("Vocation", "getClientId", LuaScriptInterface::luaVocationGetClientId);
-	registerMethod("Vocation", "getName", LuaScriptInterface::luaVocationGetName);
-	registerMethod("Vocation", "getDescription", LuaScriptInterface::luaVocationGetDescription);
+	registerMethod("Vocation", "getId", luaVocationGetId);
+	registerMethod("Vocation", "getClientId", luaVocationGetClientId);
+	registerMethod("Vocation", "getName", luaVocationGetName);
+	registerMethod("Vocation", "getDescription", luaVocationGetDescription);
 
-	registerMethod("Vocation", "getRequiredSkillTries", LuaScriptInterface::luaVocationGetRequiredSkillTries);
-	registerMethod("Vocation", "getRequiredManaSpent", LuaScriptInterface::luaVocationGetRequiredManaSpent);
+	registerMethod("Vocation", "getRequiredSkillTries", luaVocationGetRequiredSkillTries);
+	registerMethod("Vocation", "getRequiredManaSpent", luaVocationGetRequiredManaSpent);
 
-	registerMethod("Vocation", "getCapacityGain", LuaScriptInterface::luaVocationGetCapacityGain);
+	registerMethod("Vocation", "getCapacityGain", luaVocationGetCapacityGain);
 
-	registerMethod("Vocation", "getHealthGain", LuaScriptInterface::luaVocationGetHealthGain);
-	registerMethod("Vocation", "getHealthGainTicks", LuaScriptInterface::luaVocationGetHealthGainTicks);
-	registerMethod("Vocation", "getHealthGainAmount", LuaScriptInterface::luaVocationGetHealthGainAmount);
+	registerMethod("Vocation", "getHealthGain", luaVocationGetHealthGain);
+	registerMethod("Vocation", "getHealthGainTicks", luaVocationGetHealthGainTicks);
+	registerMethod("Vocation", "getHealthGainAmount", luaVocationGetHealthGainAmount);
 
-	registerMethod("Vocation", "getManaGain", LuaScriptInterface::luaVocationGetManaGain);
-	registerMethod("Vocation", "getManaGainTicks", LuaScriptInterface::luaVocationGetManaGainTicks);
-	registerMethod("Vocation", "getManaGainAmount", LuaScriptInterface::luaVocationGetManaGainAmount);
+	registerMethod("Vocation", "getManaGain", luaVocationGetManaGain);
+	registerMethod("Vocation", "getManaGainTicks", luaVocationGetManaGainTicks);
+	registerMethod("Vocation", "getManaGainAmount", luaVocationGetManaGainAmount);
 
-	registerMethod("Vocation", "getMaxSoul", LuaScriptInterface::luaVocationGetMaxSoul);
-	registerMethod("Vocation", "getSoulGainTicks", LuaScriptInterface::luaVocationGetSoulGainTicks);
+	registerMethod("Vocation", "getMaxSoul", luaVocationGetMaxSoul);
+	registerMethod("Vocation", "getSoulGainTicks", luaVocationGetSoulGainTicks);
 
-	registerMethod("Vocation", "getAttackSpeed", LuaScriptInterface::luaVocationGetAttackSpeed);
-	registerMethod("Vocation", "getBaseSpeed", LuaScriptInterface::luaVocationGetBaseSpeed);
+	registerMethod("Vocation", "getAttackSpeed", luaVocationGetAttackSpeed);
+	registerMethod("Vocation", "getBaseSpeed", luaVocationGetBaseSpeed);
 
-	registerMethod("Vocation", "getDemotion", LuaScriptInterface::luaVocationGetDemotion);
-	registerMethod("Vocation", "getPromotion", LuaScriptInterface::luaVocationGetPromotion);
+	registerMethod("Vocation", "getDemotion", luaVocationGetDemotion);
+	registerMethod("Vocation", "getPromotion", luaVocationGetPromotion);
 
-	registerMethod("Vocation", "allowsPvp", LuaScriptInterface::luaVocationAllowsPvp);
+	registerMethod("Vocation", "allowsPvp", luaVocationAllowsPvp);
 
 	// Town
-	registerClass("Town", "", LuaScriptInterface::luaTownCreate);
-	registerMetaMethod("Town", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Town", "", luaTownCreate);
+	registerMetaMethod("Town", "__eq", luaUserdataCompare);
 
-	registerMethod("Town", "getId", LuaScriptInterface::luaTownGetId);
-	registerMethod("Town", "getName", LuaScriptInterface::luaTownGetName);
-	registerMethod("Town", "getTemplePosition", LuaScriptInterface::luaTownGetTemplePosition);
+	registerMethod("Town", "getId", luaTownGetId);
+	registerMethod("Town", "getName", luaTownGetName);
+	registerMethod("Town", "getTemplePosition", luaTownGetTemplePosition);
 
 	// House
-	registerClass("House", "", LuaScriptInterface::luaHouseCreate);
-	registerMetaMethod("House", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("House", "", luaHouseCreate);
+	registerMetaMethod("House", "__eq", luaUserdataCompare);
 
-	registerMethod("House", "getId", LuaScriptInterface::luaHouseGetId);
-	registerMethod("House", "getName", LuaScriptInterface::luaHouseGetName);
-	registerMethod("House", "getTown", LuaScriptInterface::luaHouseGetTown);
-	registerMethod("House", "getExitPosition", LuaScriptInterface::luaHouseGetExitPosition);
-	registerMethod("House", "getRent", LuaScriptInterface::luaHouseGetRent);
-	registerMethod("House", "setRent", LuaScriptInterface::luaHouseSetRent);
+	registerMethod("House", "getId", luaHouseGetId);
+	registerMethod("House", "getName", luaHouseGetName);
+	registerMethod("House", "getTown", luaHouseGetTown);
+	registerMethod("House", "getExitPosition", luaHouseGetExitPosition);
+	registerMethod("House", "getRent", luaHouseGetRent);
+	registerMethod("House", "setRent", luaHouseSetRent);
 
-	registerMethod("House", "getPaidUntil", LuaScriptInterface::luaHouseGetPaidUntil);
-	registerMethod("House", "setPaidUntil", LuaScriptInterface::luaHouseSetPaidUntil);
+	registerMethod("House", "getPaidUntil", luaHouseGetPaidUntil);
+	registerMethod("House", "setPaidUntil", luaHouseSetPaidUntil);
 
-	registerMethod("House", "getPayRentWarnings", LuaScriptInterface::luaHouseGetPayRentWarnings);
-	registerMethod("House", "setPayRentWarnings", LuaScriptInterface::luaHouseSetPayRentWarnings);
+	registerMethod("House", "getPayRentWarnings", luaHouseGetPayRentWarnings);
+	registerMethod("House", "setPayRentWarnings", luaHouseSetPayRentWarnings);
 
-	registerMethod("House", "getOwnerGuid", LuaScriptInterface::luaHouseGetOwnerGuid);
-	registerMethod("House", "setOwnerGuid", LuaScriptInterface::luaHouseSetOwnerGuid);
-	registerMethod("House", "startTrade", LuaScriptInterface::luaHouseStartTrade);
+	registerMethod("House", "getOwnerGuid", luaHouseGetOwnerGuid);
+	registerMethod("House", "setOwnerGuid", luaHouseSetOwnerGuid);
+	registerMethod("House", "startTrade", luaHouseStartTrade);
 
-	registerMethod("House", "getBeds", LuaScriptInterface::luaHouseGetBeds);
-	registerMethod("House", "getBedCount", LuaScriptInterface::luaHouseGetBedCount);
+	registerMethod("House", "getBeds", luaHouseGetBeds);
+	registerMethod("House", "getBedCount", luaHouseGetBedCount);
 
-	registerMethod("House", "getDoors", LuaScriptInterface::luaHouseGetDoors);
-	registerMethod("House", "getDoorCount", LuaScriptInterface::luaHouseGetDoorCount);
-	registerMethod("House", "getDoorIdByPosition", LuaScriptInterface::luaHouseGetDoorIdByPosition);
+	registerMethod("House", "getDoors", luaHouseGetDoors);
+	registerMethod("House", "getDoorCount", luaHouseGetDoorCount);
+	registerMethod("House", "getDoorIdByPosition", luaHouseGetDoorIdByPosition);
 
-	registerMethod("House", "getTiles", LuaScriptInterface::luaHouseGetTiles);
-	registerMethod("House", "getItems", LuaScriptInterface::luaHouseGetItems);
-	registerMethod("House", "getTileCount", LuaScriptInterface::luaHouseGetTileCount);
+	registerMethod("House", "getTiles", luaHouseGetTiles);
+	registerMethod("House", "getItems", luaHouseGetItems);
+	registerMethod("House", "getTileCount", luaHouseGetTileCount);
 
-	registerMethod("House", "canEditAccessList", LuaScriptInterface::luaHouseCanEditAccessList);
-	registerMethod("House", "getAccessList", LuaScriptInterface::luaHouseGetAccessList);
-	registerMethod("House", "setAccessList", LuaScriptInterface::luaHouseSetAccessList);
+	registerMethod("House", "canEditAccessList", luaHouseCanEditAccessList);
+	registerMethod("House", "getAccessList", luaHouseGetAccessList);
+	registerMethod("House", "setAccessList", luaHouseSetAccessList);
 
-	registerMethod("House", "kickPlayer", LuaScriptInterface::luaHouseKickPlayer);
+	registerMethod("House", "kickPlayer", luaHouseKickPlayer);
 
-	registerMethod("House", "save", LuaScriptInterface::luaHouseSave);
+	registerMethod("House", "save", luaHouseSave);
 
 	// ItemType
-	registerClass("ItemType", "", LuaScriptInterface::luaItemTypeCreate);
-	registerMetaMethod("ItemType", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("ItemType", "", luaItemTypeCreate);
+	registerMetaMethod("ItemType", "__eq", luaUserdataCompare);
 
-	registerMethod("ItemType", "isCorpse", LuaScriptInterface::luaItemTypeIsCorpse);
-	registerMethod("ItemType", "isDoor", LuaScriptInterface::luaItemTypeIsDoor);
-	registerMethod("ItemType", "isContainer", LuaScriptInterface::luaItemTypeIsContainer);
-	registerMethod("ItemType", "isFluidContainer", LuaScriptInterface::luaItemTypeIsFluidContainer);
-	registerMethod("ItemType", "isMovable", LuaScriptInterface::luaItemTypeIsMovable);
-	registerMethod("ItemType", "isRune", LuaScriptInterface::luaItemTypeIsRune);
-	registerMethod("ItemType", "isStackable", LuaScriptInterface::luaItemTypeIsStackable);
-	registerMethod("ItemType", "isReadable", LuaScriptInterface::luaItemTypeIsReadable);
-	registerMethod("ItemType", "isWritable", LuaScriptInterface::luaItemTypeIsWritable);
-	registerMethod("ItemType", "isBlocking", LuaScriptInterface::luaItemTypeIsBlocking);
-	registerMethod("ItemType", "isGroundTile", LuaScriptInterface::luaItemTypeIsGroundTile);
-	registerMethod("ItemType", "isMagicField", LuaScriptInterface::luaItemTypeIsMagicField);
-	registerMethod("ItemType", "isUseable", LuaScriptInterface::luaItemTypeIsUseable);
-	registerMethod("ItemType", "isPickupable", LuaScriptInterface::luaItemTypeIsPickupable);
-	registerMethod("ItemType", "isRotatable", LuaScriptInterface::luaItemTypeIsRotatable);
+	registerMethod("ItemType", "isCorpse", luaItemTypeIsCorpse);
+	registerMethod("ItemType", "isDoor", luaItemTypeIsDoor);
+	registerMethod("ItemType", "isContainer", luaItemTypeIsContainer);
+	registerMethod("ItemType", "isFluidContainer", luaItemTypeIsFluidContainer);
+	registerMethod("ItemType", "isMovable", luaItemTypeIsMovable);
+	registerMethod("ItemType", "isRune", luaItemTypeIsRune);
+	registerMethod("ItemType", "isStackable", luaItemTypeIsStackable);
+	registerMethod("ItemType", "isReadable", luaItemTypeIsReadable);
+	registerMethod("ItemType", "isWritable", luaItemTypeIsWritable);
+	registerMethod("ItemType", "isBlocking", luaItemTypeIsBlocking);
+	registerMethod("ItemType", "isGroundTile", luaItemTypeIsGroundTile);
+	registerMethod("ItemType", "isMagicField", luaItemTypeIsMagicField);
+	registerMethod("ItemType", "isUseable", luaItemTypeIsUseable);
+	registerMethod("ItemType", "isPickupable", luaItemTypeIsPickupable);
+	registerMethod("ItemType", "isRotatable", luaItemTypeIsRotatable);
 
-	registerMethod("ItemType", "getType", LuaScriptInterface::luaItemTypeGetType);
-	registerMethod("ItemType", "getGroup", LuaScriptInterface::luaItemTypeGetGroup);
-	registerMethod("ItemType", "getId", LuaScriptInterface::luaItemTypeGetId);
-	registerMethod("ItemType", "getClientId", LuaScriptInterface::luaItemTypeGetClientId);
-	registerMethod("ItemType", "getName", LuaScriptInterface::luaItemTypeGetName);
-	registerMethod("ItemType", "getPluralName", LuaScriptInterface::luaItemTypeGetPluralName);
-	registerMethod("ItemType", "getRotateTo", LuaScriptInterface::luaItemTypeGetRotateTo);
-	registerMethod("ItemType", "getArticle", LuaScriptInterface::luaItemTypeGetArticle);
-	registerMethod("ItemType", "getDescription", LuaScriptInterface::luaItemTypeGetDescription);
-	registerMethod("ItemType", "getSlotPosition", LuaScriptInterface::luaItemTypeGetSlotPosition);
+	registerMethod("ItemType", "getType", luaItemTypeGetType);
+	registerMethod("ItemType", "getGroup", luaItemTypeGetGroup);
+	registerMethod("ItemType", "getId", luaItemTypeGetId);
+	registerMethod("ItemType", "getClientId", luaItemTypeGetClientId);
+	registerMethod("ItemType", "getName", luaItemTypeGetName);
+	registerMethod("ItemType", "getPluralName", luaItemTypeGetPluralName);
+	registerMethod("ItemType", "getRotateTo", luaItemTypeGetRotateTo);
+	registerMethod("ItemType", "getArticle", luaItemTypeGetArticle);
+	registerMethod("ItemType", "getDescription", luaItemTypeGetDescription);
+	registerMethod("ItemType", "getSlotPosition", luaItemTypeGetSlotPosition);
 
-	registerMethod("ItemType", "getCharges", LuaScriptInterface::luaItemTypeGetCharges);
-	registerMethod("ItemType", "getFluidSource", LuaScriptInterface::luaItemTypeGetFluidSource);
-	registerMethod("ItemType", "getCapacity", LuaScriptInterface::luaItemTypeGetCapacity);
-	registerMethod("ItemType", "getWeight", LuaScriptInterface::luaItemTypeGetWeight);
-	registerMethod("ItemType", "getWorth", LuaScriptInterface::luaItemTypeGetWorth);
+	registerMethod("ItemType", "getCharges", luaItemTypeGetCharges);
+	registerMethod("ItemType", "getFluidSource", luaItemTypeGetFluidSource);
+	registerMethod("ItemType", "getCapacity", luaItemTypeGetCapacity);
+	registerMethod("ItemType", "getWeight", luaItemTypeGetWeight);
+	registerMethod("ItemType", "getWorth", luaItemTypeGetWorth);
 
-	registerMethod("ItemType", "getHitChance", LuaScriptInterface::luaItemTypeGetHitChance);
-	registerMethod("ItemType", "getShootRange", LuaScriptInterface::luaItemTypeGetShootRange);
+	registerMethod("ItemType", "getHitChance", luaItemTypeGetHitChance);
+	registerMethod("ItemType", "getShootRange", luaItemTypeGetShootRange);
 
-	registerMethod("ItemType", "getAttack", LuaScriptInterface::luaItemTypeGetAttack);
-	registerMethod("ItemType", "getAttackSpeed", LuaScriptInterface::luaItemTypeGetAttackSpeed);
-	registerMethod("ItemType", "getClassification", LuaScriptInterface::luaItemTypeGetClassification);
-	registerMethod("ItemType", "getTier", LuaScriptInterface::luaItemTypeGetTier);
-	registerMethod("ItemType", "getDefense", LuaScriptInterface::luaItemTypeGetDefense);
-	registerMethod("ItemType", "getExtraDefense", LuaScriptInterface::luaItemTypeGetExtraDefense);
-	registerMethod("ItemType", "getArmor", LuaScriptInterface::luaItemTypeGetArmor);
-	registerMethod("ItemType", "getWeaponType", LuaScriptInterface::luaItemTypeGetWeaponType);
+	registerMethod("ItemType", "getAttack", luaItemTypeGetAttack);
+	registerMethod("ItemType", "getAttackSpeed", luaItemTypeGetAttackSpeed);
+	registerMethod("ItemType", "getClassification", luaItemTypeGetClassification);
+	registerMethod("ItemType", "getTier", luaItemTypeGetTier);
+	registerMethod("ItemType", "getDefense", luaItemTypeGetDefense);
+	registerMethod("ItemType", "getExtraDefense", luaItemTypeGetExtraDefense);
+	registerMethod("ItemType", "getArmor", luaItemTypeGetArmor);
+	registerMethod("ItemType", "getWeaponType", luaItemTypeGetWeaponType);
 
-	registerMethod("ItemType", "getElementType", LuaScriptInterface::luaItemTypeGetElementType);
-	registerMethod("ItemType", "getElementDamage", LuaScriptInterface::luaItemTypeGetElementDamage);
+	registerMethod("ItemType", "getElementType", luaItemTypeGetElementType);
+	registerMethod("ItemType", "getElementDamage", luaItemTypeGetElementDamage);
 
-	registerMethod("ItemType", "getTransformEquipId", LuaScriptInterface::luaItemTypeGetTransformEquipId);
-	registerMethod("ItemType", "getTransformDeEquipId", LuaScriptInterface::luaItemTypeGetTransformDeEquipId);
-	registerMethod("ItemType", "getDestroyId", LuaScriptInterface::luaItemTypeGetDestroyId);
-	registerMethod("ItemType", "getDecayId", LuaScriptInterface::luaItemTypeGetDecayId);
-	registerMethod("ItemType", "getRequiredLevel", LuaScriptInterface::luaItemTypeGetRequiredLevel);
-	registerMethod("ItemType", "getAmmoType", LuaScriptInterface::luaItemTypeGetAmmoType);
-	registerMethod("ItemType", "getShootType", LuaScriptInterface::luaItemTypeGetShootType);
-	registerMethod("ItemType", "getCorpseType", LuaScriptInterface::luaItemTypeGetCorpseType);
+	registerMethod("ItemType", "getTransformEquipId", luaItemTypeGetTransformEquipId);
+	registerMethod("ItemType", "getTransformDeEquipId", luaItemTypeGetTransformDeEquipId);
+	registerMethod("ItemType", "getDestroyId", luaItemTypeGetDestroyId);
+	registerMethod("ItemType", "getDecayId", luaItemTypeGetDecayId);
+	registerMethod("ItemType", "getRequiredLevel", luaItemTypeGetRequiredLevel);
+	registerMethod("ItemType", "getAmmoType", luaItemTypeGetAmmoType);
+	registerMethod("ItemType", "getShootType", luaItemTypeGetShootType);
+	registerMethod("ItemType", "getCorpseType", luaItemTypeGetCorpseType);
 
-	registerMethod("ItemType", "getAbilities", LuaScriptInterface::luaItemTypeGetAbilities);
+	registerMethod("ItemType", "getAbilities", luaItemTypeGetAbilities);
 
-	registerMethod("ItemType", "hasShowAttributes", LuaScriptInterface::luaItemTypeHasShowAttributes);
-	registerMethod("ItemType", "hasShowCount", LuaScriptInterface::luaItemTypeHasShowCount);
-	registerMethod("ItemType", "hasShowCharges", LuaScriptInterface::luaItemTypeHasShowCharges);
-	registerMethod("ItemType", "hasShowDuration", LuaScriptInterface::luaItemTypeHasShowDuration);
-	registerMethod("ItemType", "hasAllowDistRead", LuaScriptInterface::luaItemTypeHasAllowDistRead);
-	registerMethod("ItemType", "getWieldInfo", LuaScriptInterface::luaItemTypeGetWieldInfo);
-	registerMethod("ItemType", "getDuration", LuaScriptInterface::luaItemTypeGetDuration);
-	registerMethod("ItemType", "getLevelDoor", LuaScriptInterface::luaItemTypeGetLevelDoor);
-	registerMethod("ItemType", "getVocationString", LuaScriptInterface::luaItemTypeGetVocationString);
-	registerMethod("ItemType", "getMinReqLevel", LuaScriptInterface::luaItemTypeGetMinReqLevel);
-	registerMethod("ItemType", "getMinReqMagicLevel", LuaScriptInterface::luaItemTypeGetMinReqMagicLevel);
+	registerMethod("ItemType", "hasShowAttributes", luaItemTypeHasShowAttributes);
+	registerMethod("ItemType", "hasShowCount", luaItemTypeHasShowCount);
+	registerMethod("ItemType", "hasShowCharges", luaItemTypeHasShowCharges);
+	registerMethod("ItemType", "hasShowDuration", luaItemTypeHasShowDuration);
+	registerMethod("ItemType", "hasAllowDistRead", luaItemTypeHasAllowDistRead);
+	registerMethod("ItemType", "getWieldInfo", luaItemTypeGetWieldInfo);
+	registerMethod("ItemType", "getDuration", luaItemTypeGetDuration);
+	registerMethod("ItemType", "getLevelDoor", luaItemTypeGetLevelDoor);
+	registerMethod("ItemType", "getVocationString", luaItemTypeGetVocationString);
+	registerMethod("ItemType", "getMinReqLevel", luaItemTypeGetMinReqLevel);
+	registerMethod("ItemType", "getMinReqMagicLevel", luaItemTypeGetMinReqMagicLevel);
 
-	registerMethod("ItemType", "hasSubType", LuaScriptInterface::luaItemTypeHasSubType);
+	registerMethod("ItemType", "hasSubType", luaItemTypeHasSubType);
 
-	registerMethod("ItemType", "isStoreItem", LuaScriptInterface::luaItemTypeIsStoreItem);
+	registerMethod("ItemType", "isStoreItem", luaItemTypeIsStoreItem);
 
 	// Combat
-	registerClass("Combat", "", LuaScriptInterface::luaCombatCreate);
-	registerMetaMethod("Combat", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("Combat", "__gc", LuaScriptInterface::luaCombatDelete);
-	registerMethod("Combat", "delete", LuaScriptInterface::luaCombatDelete);
+	registerClass("Combat", "", luaCombatCreate);
+	registerMetaMethod("Combat", "__eq", luaUserdataCompare);
+	registerMetaMethod("Combat", "__gc", luaCombatDelete);
+	registerMethod("Combat", "delete", luaCombatDelete);
 
-	registerMethod("Combat", "setParameter", LuaScriptInterface::luaCombatSetParameter);
-	registerMethod("Combat", "getParameter", LuaScriptInterface::luaCombatGetParameter);
+	registerMethod("Combat", "setParameter", luaCombatSetParameter);
+	registerMethod("Combat", "getParameter", luaCombatGetParameter);
 
-	registerMethod("Combat", "setFormula", LuaScriptInterface::luaCombatSetFormula);
+	registerMethod("Combat", "setFormula", luaCombatSetFormula);
 
-	registerMethod("Combat", "setArea", LuaScriptInterface::luaCombatSetArea);
-	registerMethod("Combat", "addCondition", LuaScriptInterface::luaCombatAddCondition);
-	registerMethod("Combat", "clearConditions", LuaScriptInterface::luaCombatClearConditions);
-	registerMethod("Combat", "setCallback", LuaScriptInterface::luaCombatSetCallback);
-	registerMethod("Combat", "setOrigin", LuaScriptInterface::luaCombatSetOrigin);
+	registerMethod("Combat", "setArea", luaCombatSetArea);
+	registerMethod("Combat", "addCondition", luaCombatAddCondition);
+	registerMethod("Combat", "clearConditions", luaCombatClearConditions);
+	registerMethod("Combat", "setCallback", luaCombatSetCallback);
+	registerMethod("Combat", "setOrigin", luaCombatSetOrigin);
 
-	registerMethod("Combat", "execute", LuaScriptInterface::luaCombatExecute);
+	registerMethod("Combat", "execute", luaCombatExecute);
 
 	// Condition
-	registerClass("Condition", "", LuaScriptInterface::luaConditionCreate);
-	registerMetaMethod("Condition", "__eq", LuaScriptInterface::luaUserdataCompare);
-	registerMetaMethod("Condition", "__gc", LuaScriptInterface::luaConditionDelete);
+	registerClass("Condition", "", luaConditionCreate);
+	registerMetaMethod("Condition", "__eq", luaUserdataCompare);
+	registerMetaMethod("Condition", "__gc", luaConditionDelete);
 
-	registerMethod("Condition", "getId", LuaScriptInterface::luaConditionGetId);
-	registerMethod("Condition", "getSubId", LuaScriptInterface::luaConditionGetSubId);
-	registerMethod("Condition", "getType", LuaScriptInterface::luaConditionGetType);
-	registerMethod("Condition", "getIcons", LuaScriptInterface::luaConditionGetIcons);
-	registerMethod("Condition", "getEndTime", LuaScriptInterface::luaConditionGetEndTime);
+	registerMethod("Condition", "getId", luaConditionGetId);
+	registerMethod("Condition", "getSubId", luaConditionGetSubId);
+	registerMethod("Condition", "getType", luaConditionGetType);
+	registerMethod("Condition", "getIcons", luaConditionGetIcons);
+	registerMethod("Condition", "getEndTime", luaConditionGetEndTime);
 
-	registerMethod("Condition", "clone", LuaScriptInterface::luaConditionClone);
+	registerMethod("Condition", "clone", luaConditionClone);
 
-	registerMethod("Condition", "getTicks", LuaScriptInterface::luaConditionGetTicks);
-	registerMethod("Condition", "setTicks", LuaScriptInterface::luaConditionSetTicks);
+	registerMethod("Condition", "getTicks", luaConditionGetTicks);
+	registerMethod("Condition", "setTicks", luaConditionSetTicks);
 
-	registerMethod("Condition", "setParameter", LuaScriptInterface::luaConditionSetParameter);
-	registerMethod("Condition", "getParameter", LuaScriptInterface::luaConditionGetParameter);
+	registerMethod("Condition", "setParameter", luaConditionSetParameter);
+	registerMethod("Condition", "getParameter", luaConditionGetParameter);
 
-	registerMethod("Condition", "setFormula", LuaScriptInterface::luaConditionSetFormula);
-	registerMethod("Condition", "setOutfit", LuaScriptInterface::luaConditionSetOutfit);
+	registerMethod("Condition", "setFormula", luaConditionSetFormula);
+	registerMethod("Condition", "setOutfit", luaConditionSetOutfit);
 
-	registerMethod("Condition", "addDamage", LuaScriptInterface::luaConditionAddDamage);
+	registerMethod("Condition", "addDamage", luaConditionAddDamage);
 
 	// Outfit
-	registerClass("Outfit", "", LuaScriptInterface::luaOutfitCreate);
-	registerMetaMethod("Outfit", "__eq", LuaScriptInterface::luaOutfitCompare);
+	registerClass("Outfit", "", luaOutfitCreate);
+	registerMetaMethod("Outfit", "__eq", luaOutfitCompare);
 
 	// MonsterType
-	registerClass("MonsterType", "", LuaScriptInterface::luaMonsterTypeCreate);
-	registerMetaMethod("MonsterType", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("MonsterType", "", luaMonsterTypeCreate);
+	registerMetaMethod("MonsterType", "__eq", luaUserdataCompare);
 
-	registerMethod("MonsterType", "isAttackable", LuaScriptInterface::luaMonsterTypeIsAttackable);
-	registerMethod("MonsterType", "isRewardBoss", LuaScriptInterface::luaMonsterTypeIsRewardBoss);
-	registerMethod("MonsterType", "isChallengeable", LuaScriptInterface::luaMonsterTypeIsChallengeable);
-	registerMethod("MonsterType", "isConvinceable", LuaScriptInterface::luaMonsterTypeIsConvinceable);
-	registerMethod("MonsterType", "isSummonable", LuaScriptInterface::luaMonsterTypeIsSummonable);
-	registerMethod("MonsterType", "isIgnoringSpawnBlock", LuaScriptInterface::luaMonsterTypeIsIgnoringSpawnBlock);
-	registerMethod("MonsterType", "isIllusionable", LuaScriptInterface::luaMonsterTypeIsIllusionable);
-	registerMethod("MonsterType", "isHostile", LuaScriptInterface::luaMonsterTypeIsHostile);
-	registerMethod("MonsterType", "isPushable", LuaScriptInterface::luaMonsterTypeIsPushable);
-	registerMethod("MonsterType", "isHealthHidden", LuaScriptInterface::luaMonsterTypeIsHealthHidden);
-	registerMethod("MonsterType", "isBoss", LuaScriptInterface::luaMonsterTypeIsBoss);
+	registerMethod("MonsterType", "isAttackable", luaMonsterTypeIsAttackable);
+	registerMethod("MonsterType", "isRewardBoss", luaMonsterTypeIsRewardBoss);
+	registerMethod("MonsterType", "isChallengeable", luaMonsterTypeIsChallengeable);
+	registerMethod("MonsterType", "isConvinceable", luaMonsterTypeIsConvinceable);
+	registerMethod("MonsterType", "isSummonable", luaMonsterTypeIsSummonable);
+	registerMethod("MonsterType", "isIgnoringSpawnBlock", luaMonsterTypeIsIgnoringSpawnBlock);
+	registerMethod("MonsterType", "isIllusionable", luaMonsterTypeIsIllusionable);
+	registerMethod("MonsterType", "isHostile", luaMonsterTypeIsHostile);
+	registerMethod("MonsterType", "isPushable", luaMonsterTypeIsPushable);
+	registerMethod("MonsterType", "isHealthHidden", luaMonsterTypeIsHealthHidden);
+	registerMethod("MonsterType", "isBoss", luaMonsterTypeIsBoss);
 
-	registerMethod("MonsterType", "canPushItems", LuaScriptInterface::luaMonsterTypeCanPushItems);
-	registerMethod("MonsterType", "canPushCreatures", LuaScriptInterface::luaMonsterTypeCanPushCreatures);
+	registerMethod("MonsterType", "canPushItems", luaMonsterTypeCanPushItems);
+	registerMethod("MonsterType", "canPushCreatures", luaMonsterTypeCanPushCreatures);
 
-	registerMethod("MonsterType", "canWalkOnEnergy", LuaScriptInterface::luaMonsterTypeCanWalkOnEnergy);
-	registerMethod("MonsterType", "canWalkOnFire", LuaScriptInterface::luaMonsterTypeCanWalkOnFire);
-	registerMethod("MonsterType", "canWalkOnPoison", LuaScriptInterface::luaMonsterTypeCanWalkOnPoison);
+	registerMethod("MonsterType", "canWalkOnEnergy", luaMonsterTypeCanWalkOnEnergy);
+	registerMethod("MonsterType", "canWalkOnFire", luaMonsterTypeCanWalkOnFire);
+	registerMethod("MonsterType", "canWalkOnPoison", luaMonsterTypeCanWalkOnPoison);
 
-	registerMethod("MonsterType", "name", LuaScriptInterface::luaMonsterTypeName);
-	registerMethod("MonsterType", "nameDescription", LuaScriptInterface::luaMonsterTypeNameDescription);
+	registerMethod("MonsterType", "name", luaMonsterTypeName);
+	registerMethod("MonsterType", "nameDescription", luaMonsterTypeNameDescription);
 
-	registerMethod("MonsterType", "health", LuaScriptInterface::luaMonsterTypeHealth);
-	registerMethod("MonsterType", "maxHealth", LuaScriptInterface::luaMonsterTypeMaxHealth);
-	registerMethod("MonsterType", "runHealth", LuaScriptInterface::luaMonsterTypeRunHealth);
-	registerMethod("MonsterType", "experience", LuaScriptInterface::luaMonsterTypeExperience);
-	registerMethod("MonsterType", "skull", LuaScriptInterface::luaMonsterTypeSkull);
+	registerMethod("MonsterType", "health", luaMonsterTypeHealth);
+	registerMethod("MonsterType", "maxHealth", luaMonsterTypeMaxHealth);
+	registerMethod("MonsterType", "runHealth", luaMonsterTypeRunHealth);
+	registerMethod("MonsterType", "experience", luaMonsterTypeExperience);
+	registerMethod("MonsterType", "skull", luaMonsterTypeSkull);
 
-	registerMethod("MonsterType", "combatImmunities", LuaScriptInterface::luaMonsterTypeCombatImmunities);
-	registerMethod("MonsterType", "conditionImmunities", LuaScriptInterface::luaMonsterTypeConditionImmunities);
+	registerMethod("MonsterType", "combatImmunities", luaMonsterTypeCombatImmunities);
+	registerMethod("MonsterType", "conditionImmunities", luaMonsterTypeConditionImmunities);
 
-	registerMethod("MonsterType", "getAttackList", LuaScriptInterface::luaMonsterTypeGetAttackList);
-	registerMethod("MonsterType", "addAttack", LuaScriptInterface::luaMonsterTypeAddAttack);
+	registerMethod("MonsterType", "getAttackList", luaMonsterTypeGetAttackList);
+	registerMethod("MonsterType", "addAttack", luaMonsterTypeAddAttack);
 
-	registerMethod("MonsterType", "getDefenseList", LuaScriptInterface::luaMonsterTypeGetDefenseList);
-	registerMethod("MonsterType", "addDefense", LuaScriptInterface::luaMonsterTypeAddDefense);
+	registerMethod("MonsterType", "getDefenseList", luaMonsterTypeGetDefenseList);
+	registerMethod("MonsterType", "addDefense", luaMonsterTypeAddDefense);
 
-	registerMethod("MonsterType", "getElementList", LuaScriptInterface::luaMonsterTypeGetElementList);
-	registerMethod("MonsterType", "addElement", LuaScriptInterface::luaMonsterTypeAddElement);
+	registerMethod("MonsterType", "getElementList", luaMonsterTypeGetElementList);
+	registerMethod("MonsterType", "addElement", luaMonsterTypeAddElement);
 
-	registerMethod("MonsterType", "getVoices", LuaScriptInterface::luaMonsterTypeGetVoices);
-	registerMethod("MonsterType", "addVoice", LuaScriptInterface::luaMonsterTypeAddVoice);
+	registerMethod("MonsterType", "getVoices", luaMonsterTypeGetVoices);
+	registerMethod("MonsterType", "addVoice", luaMonsterTypeAddVoice);
 
-	registerMethod("MonsterType", "getLoot", LuaScriptInterface::luaMonsterTypeGetLoot);
-	registerMethod("MonsterType", "addLoot", LuaScriptInterface::luaMonsterTypeAddLoot);
+	registerMethod("MonsterType", "getLoot", luaMonsterTypeGetLoot);
+	registerMethod("MonsterType", "addLoot", luaMonsterTypeAddLoot);
 
-	registerMethod("MonsterType", "getCreatureEvents", LuaScriptInterface::luaMonsterTypeGetCreatureEvents);
-	registerMethod("MonsterType", "registerEvent", LuaScriptInterface::luaMonsterTypeRegisterEvent);
+	registerMethod("MonsterType", "getCreatureEvents", luaMonsterTypeGetCreatureEvents);
+	registerMethod("MonsterType", "registerEvent", luaMonsterTypeRegisterEvent);
 
-	registerMethod("MonsterType", "eventType", LuaScriptInterface::luaMonsterTypeEventType);
-	registerMethod("MonsterType", "onThink", LuaScriptInterface::luaMonsterTypeEventOnCallback);
-	registerMethod("MonsterType", "onAppear", LuaScriptInterface::luaMonsterTypeEventOnCallback);
-	registerMethod("MonsterType", "onDisappear", LuaScriptInterface::luaMonsterTypeEventOnCallback);
-	registerMethod("MonsterType", "onMove", LuaScriptInterface::luaMonsterTypeEventOnCallback);
-	registerMethod("MonsterType", "onSay", LuaScriptInterface::luaMonsterTypeEventOnCallback);
+	registerMethod("MonsterType", "eventType", luaMonsterTypeEventType);
+	registerMethod("MonsterType", "onThink", luaMonsterTypeEventOnCallback);
+	registerMethod("MonsterType", "onAppear", luaMonsterTypeEventOnCallback);
+	registerMethod("MonsterType", "onDisappear", luaMonsterTypeEventOnCallback);
+	registerMethod("MonsterType", "onMove", luaMonsterTypeEventOnCallback);
+	registerMethod("MonsterType", "onSay", luaMonsterTypeEventOnCallback);
 
-	registerMethod("MonsterType", "getSummonList", LuaScriptInterface::luaMonsterTypeGetSummonList);
-	registerMethod("MonsterType", "addSummon", LuaScriptInterface::luaMonsterTypeAddSummon);
+	registerMethod("MonsterType", "getSummonList", luaMonsterTypeGetSummonList);
+	registerMethod("MonsterType", "addSummon", luaMonsterTypeAddSummon);
 
-	registerMethod("MonsterType", "maxSummons", LuaScriptInterface::luaMonsterTypeMaxSummons);
+	registerMethod("MonsterType", "maxSummons", luaMonsterTypeMaxSummons);
 
-	registerMethod("MonsterType", "armor", LuaScriptInterface::luaMonsterTypeArmor);
-	registerMethod("MonsterType", "defense", LuaScriptInterface::luaMonsterTypeDefense);
-	registerMethod("MonsterType", "outfit", LuaScriptInterface::luaMonsterTypeOutfit);
-	registerMethod("MonsterType", "race", LuaScriptInterface::luaMonsterTypeRace);
-	registerMethod("MonsterType", "corpseId", LuaScriptInterface::luaMonsterTypeCorpseId);
-	registerMethod("MonsterType", "manaCost", LuaScriptInterface::luaMonsterTypeManaCost);
-	registerMethod("MonsterType", "baseSpeed", LuaScriptInterface::luaMonsterTypeBaseSpeed);
-	registerMethod("MonsterType", "light", LuaScriptInterface::luaMonsterTypeLight);
+	registerMethod("MonsterType", "armor", luaMonsterTypeArmor);
+	registerMethod("MonsterType", "defense", luaMonsterTypeDefense);
+	registerMethod("MonsterType", "outfit", luaMonsterTypeOutfit);
+	registerMethod("MonsterType", "race", luaMonsterTypeRace);
+	registerMethod("MonsterType", "corpseId", luaMonsterTypeCorpseId);
+	registerMethod("MonsterType", "manaCost", luaMonsterTypeManaCost);
+	registerMethod("MonsterType", "baseSpeed", luaMonsterTypeBaseSpeed);
+	registerMethod("MonsterType", "light", luaMonsterTypeLight);
 
-	registerMethod("MonsterType", "staticAttackChance", LuaScriptInterface::luaMonsterTypeStaticAttackChance);
-	registerMethod("MonsterType", "targetDistance", LuaScriptInterface::luaMonsterTypeTargetDistance);
-	registerMethod("MonsterType", "yellChance", LuaScriptInterface::luaMonsterTypeYellChance);
-	registerMethod("MonsterType", "yellSpeedTicks", LuaScriptInterface::luaMonsterTypeYellSpeedTicks);
-	registerMethod("MonsterType", "changeTargetChance", LuaScriptInterface::luaMonsterTypeChangeTargetChance);
-	registerMethod("MonsterType", "changeTargetSpeed", LuaScriptInterface::luaMonsterTypeChangeTargetSpeed);
+	registerMethod("MonsterType", "staticAttackChance", luaMonsterTypeStaticAttackChance);
+	registerMethod("MonsterType", "targetDistance", luaMonsterTypeTargetDistance);
+	registerMethod("MonsterType", "yellChance", luaMonsterTypeYellChance);
+	registerMethod("MonsterType", "yellSpeedTicks", luaMonsterTypeYellSpeedTicks);
+	registerMethod("MonsterType", "changeTargetChance", luaMonsterTypeChangeTargetChance);
+	registerMethod("MonsterType", "changeTargetSpeed", luaMonsterTypeChangeTargetSpeed);
 
 	// Loot
-	registerClass("Loot", "", LuaScriptInterface::luaCreateLoot);
-	registerMetaMethod("Loot", "__gc", LuaScriptInterface::luaDeleteLoot);
-	registerMethod("Loot", "delete", LuaScriptInterface::luaDeleteLoot);
+	registerClass("Loot", "", luaCreateLoot);
+	registerMetaMethod("Loot", "__gc", luaDeleteLoot);
+	registerMethod("Loot", "delete", luaDeleteLoot);
 
-	registerMethod("Loot", "setId", LuaScriptInterface::luaLootSetId);
-	registerMethod("Loot", "setMaxCount", LuaScriptInterface::luaLootSetMaxCount);
-	registerMethod("Loot", "setSubType", LuaScriptInterface::luaLootSetSubType);
-	registerMethod("Loot", "setChance", LuaScriptInterface::luaLootSetChance);
-	registerMethod("Loot", "setActionId", LuaScriptInterface::luaLootSetActionId);
-	registerMethod("Loot", "setDescription", LuaScriptInterface::luaLootSetDescription);
-	registerMethod("Loot", "addChildLoot", LuaScriptInterface::luaLootAddChildLoot);
+	registerMethod("Loot", "setId", luaLootSetId);
+	registerMethod("Loot", "setMaxCount", luaLootSetMaxCount);
+	registerMethod("Loot", "setSubType", luaLootSetSubType);
+	registerMethod("Loot", "setChance", luaLootSetChance);
+	registerMethod("Loot", "setActionId", luaLootSetActionId);
+	registerMethod("Loot", "setDescription", luaLootSetDescription);
+	registerMethod("Loot", "addChildLoot", luaLootAddChildLoot);
 
 	// Skill (custom skills)
-	registerClass("Skill", "", LuaScriptInterface::luaCreateCustomSkill);
-	registerMetaMethod("Skill", "__gc", LuaScriptInterface::luaDeleteCustomSkill);
-	registerMetaMethod("Skill", "__add", LuaScriptInterface::luaCustomSkillAddLevels);
-	registerMetaMethod("Skill", "__sub", LuaScriptInterface::luaCustomSkillSubtractLevels);
-	registerMethod("Skill", "level", LuaScriptInterface::luaCustomSkillGetLevel);
-	registerMethod("Skill", "getLevel", LuaScriptInterface::luaCustomSkillGetLevel);
-	registerMethod("Skill", "addLevels", LuaScriptInterface::luaCustomSkillAddLevels);
-	registerMethod("Skill", "subtractLevels", LuaScriptInterface::luaCustomSkillSubtractLevels);
-	registerMethod("Skill", "removeLevels", LuaScriptInterface::luaCustomSkillSubtractLevels);
-	registerMethod("Skill", "clearLevels", LuaScriptInterface::luaCustomSkillClearLevels);
-	registerMethod("Skill", "bonusLevel", LuaScriptInterface::luaCustomSkillGetBonusLevel);
-	registerMethod("Skill", "addBonusLevels", LuaScriptInterface::luaCustomSkillAddBonusLevels);
-	registerMethod("Skill", "subtractBonusLevels", LuaScriptInterface::luaCustomSkillSubtractBonusLevels);
-	registerMethod("Skill", "removeBonusLevels", LuaScriptInterface::luaCustomSkillSubtractBonusLevels);
-	registerMethod("Skill", "clearBonus", LuaScriptInterface::luaCustomSkillClearBonus);
-	registerMethod("Skill", "points", LuaScriptInterface::luaCustomSkillGetPoints);
-	registerMethod("Skill", "getPoints", LuaScriptInterface::luaCustomSkillGetPoints);
-	registerMethod("Skill", "addPoints", LuaScriptInterface::luaCustomSkillAddPoints);
-	registerMethod("Skill", "subtractPoints", LuaScriptInterface::luaCustomSkillSubtractPoints);
-	registerMethod("Skill", "removePoints", LuaScriptInterface::luaCustomSkillSubtractPoints);
-	registerMethod("Skill", "clearPoints", LuaScriptInterface::luaCustomSkillClearPoints);
-	registerMethod("Skill", "pointsNeeded", LuaScriptInterface::luaCustomSkillGetPointsForLevel);
-	registerMethod("Skill", "maxLevel", LuaScriptInterface::luaCustomSkillGetMaxLevel);
-	registerMethod("Skill", "max", LuaScriptInterface::luaCustomSkillGetMaxLevel);
-	registerMethod("Skill", "getMax", LuaScriptInterface::luaCustomSkillGetMaxLevel);
-	registerMethod("Skill", "getMaxLevel", LuaScriptInterface::luaCustomSkillGetMaxLevel);
-	registerMethod("Skill", "percent", LuaScriptInterface::luaCustomSkillGetPercentToLevel);
-	registerMethod("Skill", "getPercent", LuaScriptInterface::luaCustomSkillGetPercentToLevel);
+	registerClass("Skill", "", luaCreateCustomSkill);
+	registerMetaMethod("Skill", "__gc", luaDeleteCustomSkill);
+	registerMetaMethod("Skill", "__add", luaCustomSkillAddLevels);
+	registerMetaMethod("Skill", "__sub", luaCustomSkillSubtractLevels);
+	registerMethod("Skill", "level", luaCustomSkillGetLevel);
+	registerMethod("Skill", "getLevel", luaCustomSkillGetLevel);
+	registerMethod("Skill", "addLevels", luaCustomSkillAddLevels);
+	registerMethod("Skill", "subtractLevels", luaCustomSkillSubtractLevels);
+	registerMethod("Skill", "removeLevels", luaCustomSkillSubtractLevels);
+	registerMethod("Skill", "clearLevels", luaCustomSkillClearLevels);
+	registerMethod("Skill", "bonusLevel", luaCustomSkillGetBonusLevel);
+	registerMethod("Skill", "addBonusLevels", luaCustomSkillAddBonusLevels);
+	registerMethod("Skill", "subtractBonusLevels", luaCustomSkillSubtractBonusLevels);
+	registerMethod("Skill", "removeBonusLevels", luaCustomSkillSubtractBonusLevels);
+	registerMethod("Skill", "clearBonus", luaCustomSkillClearBonus);
+	registerMethod("Skill", "points", luaCustomSkillGetPoints);
+	registerMethod("Skill", "getPoints", luaCustomSkillGetPoints);
+	registerMethod("Skill", "addPoints", luaCustomSkillAddPoints);
+	registerMethod("Skill", "subtractPoints", luaCustomSkillSubtractPoints);
+	registerMethod("Skill", "removePoints", luaCustomSkillSubtractPoints);
+	registerMethod("Skill", "clearPoints", luaCustomSkillClearPoints);
+	registerMethod("Skill", "pointsNeeded", luaCustomSkillGetPointsForLevel);
+	registerMethod("Skill", "maxLevel", luaCustomSkillGetMaxLevel);
+	registerMethod("Skill", "max", luaCustomSkillGetMaxLevel);
+	registerMethod("Skill", "getMax", luaCustomSkillGetMaxLevel);
+	registerMethod("Skill", "getMaxLevel", luaCustomSkillGetMaxLevel);
+	registerMethod("Skill", "percent", luaCustomSkillGetPercentToLevel);
+	registerMethod("Skill", "getPercent", luaCustomSkillGetPercentToLevel);
 
 	// MonsterSpell
-	registerClass("MonsterSpell", "", LuaScriptInterface::luaCreateMonsterSpell);
-	registerMetaMethod("MonsterSpell", "__gc", LuaScriptInterface::luaDeleteMonsterSpell);
-	registerMethod("MonsterSpell", "delete", LuaScriptInterface::luaDeleteMonsterSpell);
+	registerClass("MonsterSpell", "", luaCreateMonsterSpell);
+	registerMetaMethod("MonsterSpell", "__gc", luaDeleteMonsterSpell);
+	registerMethod("MonsterSpell", "delete", luaDeleteMonsterSpell);
 
-	registerMethod("MonsterSpell", "setType", LuaScriptInterface::luaMonsterSpellSetType);
-	registerMethod("MonsterSpell", "setScriptName", LuaScriptInterface::luaMonsterSpellSetScriptName);
-	registerMethod("MonsterSpell", "setChance", LuaScriptInterface::luaMonsterSpellSetChance);
-	registerMethod("MonsterSpell", "setInterval", LuaScriptInterface::luaMonsterSpellSetInterval);
-	registerMethod("MonsterSpell", "setRange", LuaScriptInterface::luaMonsterSpellSetRange);
-	registerMethod("MonsterSpell", "setCombatValue", LuaScriptInterface::luaMonsterSpellSetCombatValue);
-	registerMethod("MonsterSpell", "setCombatType", LuaScriptInterface::luaMonsterSpellSetCombatType);
-	registerMethod("MonsterSpell", "setAttackValue", LuaScriptInterface::luaMonsterSpellSetAttackValue);
-	registerMethod("MonsterSpell", "setNeedTarget", LuaScriptInterface::luaMonsterSpellSetNeedTarget);
-	registerMethod("MonsterSpell", "setNeedDirection", LuaScriptInterface::luaMonsterSpellSetNeedDirection);
-	registerMethod("MonsterSpell", "setCombatLength", LuaScriptInterface::luaMonsterSpellSetCombatLength);
-	registerMethod("MonsterSpell", "setCombatSpread", LuaScriptInterface::luaMonsterSpellSetCombatSpread);
-	registerMethod("MonsterSpell", "setCombatRadius", LuaScriptInterface::luaMonsterSpellSetCombatRadius);
-	registerMethod("MonsterSpell", "setConditionType", LuaScriptInterface::luaMonsterSpellSetConditionType);
-	registerMethod("MonsterSpell", "setConditionDamage", LuaScriptInterface::luaMonsterSpellSetConditionDamage);
-	registerMethod("MonsterSpell", "setConditionSpeedChange", LuaScriptInterface::luaMonsterSpellSetConditionSpeedChange);
-	registerMethod("MonsterSpell", "setConditionDuration", LuaScriptInterface::luaMonsterSpellSetConditionDuration);
-	registerMethod("MonsterSpell", "setConditionDrunkenness", LuaScriptInterface::luaMonsterSpellSetConditionDrunkenness);
-	registerMethod("MonsterSpell", "setConditionTickInterval", LuaScriptInterface::luaMonsterSpellSetConditionTickInterval);
-	registerMethod("MonsterSpell", "setCombatShootEffect", LuaScriptInterface::luaMonsterSpellSetCombatShootEffect);
-	registerMethod("MonsterSpell", "setCombatEffect", LuaScriptInterface::luaMonsterSpellSetCombatEffect);
-	registerMethod("MonsterSpell", "setOutfit", LuaScriptInterface::luaMonsterSpellSetOutfit);
+	registerMethod("MonsterSpell", "setType", luaMonsterSpellSetType);
+	registerMethod("MonsterSpell", "setScriptName", luaMonsterSpellSetScriptName);
+	registerMethod("MonsterSpell", "setChance", luaMonsterSpellSetChance);
+	registerMethod("MonsterSpell", "setInterval", luaMonsterSpellSetInterval);
+	registerMethod("MonsterSpell", "setRange", luaMonsterSpellSetRange);
+	registerMethod("MonsterSpell", "setCombatValue", luaMonsterSpellSetCombatValue);
+	registerMethod("MonsterSpell", "setCombatType", luaMonsterSpellSetCombatType);
+	registerMethod("MonsterSpell", "setAttackValue", luaMonsterSpellSetAttackValue);
+	registerMethod("MonsterSpell", "setNeedTarget", luaMonsterSpellSetNeedTarget);
+	registerMethod("MonsterSpell", "setNeedDirection", luaMonsterSpellSetNeedDirection);
+	registerMethod("MonsterSpell", "setCombatLength", luaMonsterSpellSetCombatLength);
+	registerMethod("MonsterSpell", "setCombatSpread", luaMonsterSpellSetCombatSpread);
+	registerMethod("MonsterSpell", "setCombatRadius", luaMonsterSpellSetCombatRadius);
+	registerMethod("MonsterSpell", "setConditionType", luaMonsterSpellSetConditionType);
+	registerMethod("MonsterSpell", "setConditionDamage", luaMonsterSpellSetConditionDamage);
+	registerMethod("MonsterSpell", "setConditionSpeedChange", luaMonsterSpellSetConditionSpeedChange);
+	registerMethod("MonsterSpell", "setConditionDuration", luaMonsterSpellSetConditionDuration);
+	registerMethod("MonsterSpell", "setConditionDrunkenness", luaMonsterSpellSetConditionDrunkenness);
+	registerMethod("MonsterSpell", "setConditionTickInterval", luaMonsterSpellSetConditionTickInterval);
+	registerMethod("MonsterSpell", "setCombatShootEffect", luaMonsterSpellSetCombatShootEffect);
+	registerMethod("MonsterSpell", "setCombatEffect", luaMonsterSpellSetCombatEffect);
+	registerMethod("MonsterSpell", "setOutfit", luaMonsterSpellSetOutfit);
 
 	// Party
-	registerClass("Party", "", LuaScriptInterface::luaPartyCreate);
-	registerMetaMethod("Party", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Party", "", luaPartyCreate);
+	registerMetaMethod("Party", "__eq", luaUserdataCompare);
 
-	registerMethod("Party", "disband", LuaScriptInterface::luaPartyDisband);
+	registerMethod("Party", "disband", luaPartyDisband);
 
-	registerMethod("Party", "getLeader", LuaScriptInterface::luaPartyGetLeader);
-	registerMethod("Party", "setLeader", LuaScriptInterface::luaPartySetLeader);
+	registerMethod("Party", "getLeader", luaPartyGetLeader);
+	registerMethod("Party", "setLeader", luaPartySetLeader);
 
-	registerMethod("Party", "getMembers", LuaScriptInterface::luaPartyGetMembers);
-	registerMethod("Party", "getMemberCount", LuaScriptInterface::luaPartyGetMemberCount);
+	registerMethod("Party", "getMembers", luaPartyGetMembers);
+	registerMethod("Party", "getMemberCount", luaPartyGetMemberCount);
 
-	registerMethod("Party", "getInvitees", LuaScriptInterface::luaPartyGetInvitees);
-	registerMethod("Party", "getInviteeCount", LuaScriptInterface::luaPartyGetInviteeCount);
+	registerMethod("Party", "getInvitees", luaPartyGetInvitees);
+	registerMethod("Party", "getInviteeCount", luaPartyGetInviteeCount);
 
-	registerMethod("Party", "addInvite", LuaScriptInterface::luaPartyAddInvite);
-	registerMethod("Party", "removeInvite", LuaScriptInterface::luaPartyRemoveInvite);
+	registerMethod("Party", "addInvite", luaPartyAddInvite);
+	registerMethod("Party", "removeInvite", luaPartyRemoveInvite);
 
-	registerMethod("Party", "addMember", LuaScriptInterface::luaPartyAddMember);
-	registerMethod("Party", "removeMember", LuaScriptInterface::luaPartyRemoveMember);
+	registerMethod("Party", "addMember", luaPartyAddMember);
+	registerMethod("Party", "removeMember", luaPartyRemoveMember);
 
-	registerMethod("Party", "isSharedExperienceActive", LuaScriptInterface::luaPartyIsSharedExperienceActive);
-	registerMethod("Party", "isSharedExperienceEnabled", LuaScriptInterface::luaPartyIsSharedExperienceEnabled);
-	registerMethod("Party", "shareExperience", LuaScriptInterface::luaPartyShareExperience);
-	registerMethod("Party", "setSharedExperience", LuaScriptInterface::luaPartySetSharedExperience);
+	registerMethod("Party", "isSharedExperienceActive", luaPartyIsSharedExperienceActive);
+	registerMethod("Party", "isSharedExperienceEnabled", luaPartyIsSharedExperienceEnabled);
+	registerMethod("Party", "shareExperience", luaPartyShareExperience);
+	registerMethod("Party", "setSharedExperience", luaPartySetSharedExperience);
 
 	// Spells
-	registerClass("Spell", "", LuaScriptInterface::luaSpellCreate);
-	registerMetaMethod("Spell", "__eq", LuaScriptInterface::luaUserdataCompare);
+	registerClass("Spell", "", luaSpellCreate);
+	registerMetaMethod("Spell", "__eq", luaUserdataCompare);
 
-	registerMethod("Spell", "onCastSpell", LuaScriptInterface::luaSpellOnCastSpell);
-	registerMethod("Spell", "register", LuaScriptInterface::luaSpellRegister);
-	registerMethod("Spell", "name", LuaScriptInterface::luaSpellName);
-	registerMethod("Spell", "id", LuaScriptInterface::luaSpellId);
-	registerMethod("Spell", "group", LuaScriptInterface::luaSpellGroup);
-	registerMethod("Spell", "cooldown", LuaScriptInterface::luaSpellCooldown);
-	registerMethod("Spell", "groupCooldown", LuaScriptInterface::luaSpellGroupCooldown);
-	registerMethod("Spell", "level", LuaScriptInterface::luaSpellLevel);
-	registerMethod("Spell", "magicLevel", LuaScriptInterface::luaSpellMagicLevel);
-	registerMethod("Spell", "mana", LuaScriptInterface::luaSpellMana);
-	registerMethod("Spell", "manaPercent", LuaScriptInterface::luaSpellManaPercent);
-	registerMethod("Spell", "soul", LuaScriptInterface::luaSpellSoul);
-	registerMethod("Spell", "range", LuaScriptInterface::luaSpellRange);
-	registerMethod("Spell", "isPremium", LuaScriptInterface::luaSpellPremium);
-	registerMethod("Spell", "isEnabled", LuaScriptInterface::luaSpellEnabled);
-	registerMethod("Spell", "needTarget", LuaScriptInterface::luaSpellNeedTarget);
-	registerMethod("Spell", "needWeapon", LuaScriptInterface::luaSpellNeedWeapon);
-	registerMethod("Spell", "needLearn", LuaScriptInterface::luaSpellNeedLearn);
-	registerMethod("Spell", "isSelfTarget", LuaScriptInterface::luaSpellSelfTarget);
-	registerMethod("Spell", "isBlocking", LuaScriptInterface::luaSpellBlocking);
-	registerMethod("Spell", "isAggressive", LuaScriptInterface::luaSpellAggressive);
-	registerMethod("Spell", "isPzLock", LuaScriptInterface::luaSpellPzLock);
-	registerMethod("Spell", "vocation", LuaScriptInterface::luaSpellVocation);
+	registerMethod("Spell", "onCastSpell", luaSpellOnCastSpell);
+	registerMethod("Spell", "register", luaSpellRegister);
+	registerMethod("Spell", "name", luaSpellName);
+	registerMethod("Spell", "id", luaSpellId);
+	registerMethod("Spell", "group", luaSpellGroup);
+	registerMethod("Spell", "cooldown", luaSpellCooldown);
+	registerMethod("Spell", "groupCooldown", luaSpellGroupCooldown);
+	registerMethod("Spell", "level", luaSpellLevel);
+	registerMethod("Spell", "magicLevel", luaSpellMagicLevel);
+	registerMethod("Spell", "mana", luaSpellMana);
+	registerMethod("Spell", "manaPercent", luaSpellManaPercent);
+	registerMethod("Spell", "soul", luaSpellSoul);
+	registerMethod("Spell", "range", luaSpellRange);
+	registerMethod("Spell", "isPremium", luaSpellPremium);
+	registerMethod("Spell", "isEnabled", luaSpellEnabled);
+	registerMethod("Spell", "needTarget", luaSpellNeedTarget);
+	registerMethod("Spell", "needWeapon", luaSpellNeedWeapon);
+	registerMethod("Spell", "needLearn", luaSpellNeedLearn);
+	registerMethod("Spell", "isSelfTarget", luaSpellSelfTarget);
+	registerMethod("Spell", "isBlocking", luaSpellBlocking);
+	registerMethod("Spell", "isAggressive", luaSpellAggressive);
+	registerMethod("Spell", "isPzLock", luaSpellPzLock);
+	registerMethod("Spell", "vocation", luaSpellVocation);
 
 	// only for InstantSpell
-	registerMethod("Spell", "words", LuaScriptInterface::luaSpellWords);
-	registerMethod("Spell", "needDirection", LuaScriptInterface::luaSpellNeedDirection);
-	registerMethod("Spell", "hasParams", LuaScriptInterface::luaSpellHasParams);
-	registerMethod("Spell", "hasPlayerNameParam", LuaScriptInterface::luaSpellHasPlayerNameParam);
-	registerMethod("Spell", "needCasterTargetOrDirection", LuaScriptInterface::luaSpellNeedCasterTargetOrDirection);
-	registerMethod("Spell", "isBlockingWalls", LuaScriptInterface::luaSpellIsBlockingWalls);
+	registerMethod("Spell", "words", luaSpellWords);
+	registerMethod("Spell", "needDirection", luaSpellNeedDirection);
+	registerMethod("Spell", "hasParams", luaSpellHasParams);
+	registerMethod("Spell", "hasPlayerNameParam", luaSpellHasPlayerNameParam);
+	registerMethod("Spell", "needCasterTargetOrDirection", luaSpellNeedCasterTargetOrDirection);
+	registerMethod("Spell", "isBlockingWalls", luaSpellIsBlockingWalls);
 
 	// only for RuneSpells
-	registerMethod("Spell", "runeLevel", LuaScriptInterface::luaSpellRuneLevel);
-	registerMethod("Spell", "runeMagicLevel", LuaScriptInterface::luaSpellRuneMagicLevel);
-	registerMethod("Spell", "runeId", LuaScriptInterface::luaSpellRuneId);
-	registerMethod("Spell", "charges", LuaScriptInterface::luaSpellCharges);
-	registerMethod("Spell", "allowFarUse", LuaScriptInterface::luaSpellAllowFarUse);
-	registerMethod("Spell", "blockWalls", LuaScriptInterface::luaSpellBlockWalls);
-	registerMethod("Spell", "checkFloor", LuaScriptInterface::luaSpellCheckFloor);
+	registerMethod("Spell", "runeLevel", luaSpellRuneLevel);
+	registerMethod("Spell", "runeMagicLevel", luaSpellRuneMagicLevel);
+	registerMethod("Spell", "runeId", luaSpellRuneId);
+	registerMethod("Spell", "charges", luaSpellCharges);
+	registerMethod("Spell", "allowFarUse", luaSpellAllowFarUse);
+	registerMethod("Spell", "blockWalls", luaSpellBlockWalls);
+	registerMethod("Spell", "checkFloor", luaSpellCheckFloor);
 
 	// Action
-	registerClass("Action", "", LuaScriptInterface::luaCreateAction);
-	registerMethod("Action", "onUse", LuaScriptInterface::luaActionOnUse);
-	registerMethod("Action", "register", LuaScriptInterface::luaActionRegister);
-	registerMethod("Action", "id", LuaScriptInterface::luaActionItemId);
-	registerMethod("Action", "aid", LuaScriptInterface::luaActionActionId);
-	registerMethod("Action", "uid", LuaScriptInterface::luaActionUniqueId);
-	registerMethod("Action", "allowFarUse", LuaScriptInterface::luaActionAllowFarUse);
-	registerMethod("Action", "blockWalls", LuaScriptInterface::luaActionBlockWalls);
-	registerMethod("Action", "checkFloor", LuaScriptInterface::luaActionCheckFloor);
+	registerClass("Action", "", luaCreateAction);
+	registerMethod("Action", "onUse", luaActionOnUse);
+	registerMethod("Action", "register", luaActionRegister);
+	registerMethod("Action", "id", luaActionItemId);
+	registerMethod("Action", "aid", luaActionActionId);
+	registerMethod("Action", "uid", luaActionUniqueId);
+	registerMethod("Action", "allowFarUse", luaActionAllowFarUse);
+	registerMethod("Action", "blockWalls", luaActionBlockWalls);
+	registerMethod("Action", "checkFloor", luaActionCheckFloor);
 
 	// TalkAction
-	registerClass("TalkAction", "", LuaScriptInterface::luaCreateTalkaction);
-	registerMethod("TalkAction", "onSay", LuaScriptInterface::luaTalkactionOnSay);
-	registerMethod("TalkAction", "register", LuaScriptInterface::luaTalkactionRegister);
-	registerMethod("TalkAction", "separator", LuaScriptInterface::luaTalkactionSeparator);
-	registerMethod("TalkAction", "access", LuaScriptInterface::luaTalkactionAccess);
-	registerMethod("TalkAction", "accountType", LuaScriptInterface::luaTalkactionAccountType);
+	registerClass("TalkAction", "", luaCreateTalkaction);
+	registerMethod("TalkAction", "onSay", luaTalkactionOnSay);
+	registerMethod("TalkAction", "register", luaTalkactionRegister);
+	registerMethod("TalkAction", "separator", luaTalkactionSeparator);
+	registerMethod("TalkAction", "access", luaTalkactionAccess);
+	registerMethod("TalkAction", "accountType", luaTalkactionAccountType);
 
 	// CreatureEvent
-	registerClass("CreatureEvent", "", LuaScriptInterface::luaCreateCreatureEvent);
-	registerMethod("CreatureEvent", "type", LuaScriptInterface::luaCreatureEventType);
-	registerMethod("CreatureEvent", "register", LuaScriptInterface::luaCreatureEventRegister);
-	registerMethod("CreatureEvent", "onLogin", LuaScriptInterface::luaCreatureEventOnCallback);
-	registerMethod("CreatureEvent", "onLogout", LuaScriptInterface::luaCreatureEventOnCallback);
-	registerMethod("CreatureEvent", "onThink", LuaScriptInterface::luaCreatureEventOnCallback);
-	registerMethod("CreatureEvent", "onPrepareDeath", LuaScriptInterface::luaCreatureEventOnCallback);
-	registerMethod("CreatureEvent", "onDeath", LuaScriptInterface::luaCreatureEventOnCallback);
-	registerMethod("CreatureEvent", "onKill", LuaScriptInterface::luaCreatureEventOnCallback);
-	registerMethod("CreatureEvent", "onAdvance", LuaScriptInterface::luaCreatureEventOnCallback);
-	registerMethod("CreatureEvent", "onModalWindow", LuaScriptInterface::luaCreatureEventOnCallback);
-	registerMethod("CreatureEvent", "onTextEdit", LuaScriptInterface::luaCreatureEventOnCallback);
-	registerMethod("CreatureEvent", "onHealthChange", LuaScriptInterface::luaCreatureEventOnCallback);
-	registerMethod("CreatureEvent", "onManaChange", LuaScriptInterface::luaCreatureEventOnCallback);
-	registerMethod("CreatureEvent", "onExtendedOpcode", LuaScriptInterface::luaCreatureEventOnCallback);
+	registerClass("CreatureEvent", "", luaCreateCreatureEvent);
+	registerMethod("CreatureEvent", "type", luaCreatureEventType);
+	registerMethod("CreatureEvent", "register", luaCreatureEventRegister);
+	registerMethod("CreatureEvent", "onLogin", luaCreatureEventOnCallback);
+	registerMethod("CreatureEvent", "onLogout", luaCreatureEventOnCallback);
+	registerMethod("CreatureEvent", "onThink", luaCreatureEventOnCallback);
+	registerMethod("CreatureEvent", "onPrepareDeath", luaCreatureEventOnCallback);
+	registerMethod("CreatureEvent", "onDeath", luaCreatureEventOnCallback);
+	registerMethod("CreatureEvent", "onKill", luaCreatureEventOnCallback);
+	registerMethod("CreatureEvent", "onAdvance", luaCreatureEventOnCallback);
+	registerMethod("CreatureEvent", "onModalWindow", luaCreatureEventOnCallback);
+	registerMethod("CreatureEvent", "onTextEdit", luaCreatureEventOnCallback);
+	registerMethod("CreatureEvent", "onHealthChange", luaCreatureEventOnCallback);
+	registerMethod("CreatureEvent", "onManaChange", luaCreatureEventOnCallback);
+	registerMethod("CreatureEvent", "onExtendedOpcode", luaCreatureEventOnCallback);
 
 	// MoveEvent
-	registerClass("MoveEvent", "", LuaScriptInterface::luaCreateMoveEvent);
-	registerMethod("MoveEvent", "type", LuaScriptInterface::luaMoveEventType);
-	registerMethod("MoveEvent", "register", LuaScriptInterface::luaMoveEventRegister);
-	registerMethod("MoveEvent", "level", LuaScriptInterface::luaMoveEventLevel);
-	registerMethod("MoveEvent", "magicLevel", LuaScriptInterface::luaMoveEventMagLevel);
-	registerMethod("MoveEvent", "slot", LuaScriptInterface::luaMoveEventSlot);
-	registerMethod("MoveEvent", "id", LuaScriptInterface::luaMoveEventItemId);
-	registerMethod("MoveEvent", "aid", LuaScriptInterface::luaMoveEventActionId);
-	registerMethod("MoveEvent", "uid", LuaScriptInterface::luaMoveEventUniqueId);
-	registerMethod("MoveEvent", "position", LuaScriptInterface::luaMoveEventPosition);
-	registerMethod("MoveEvent", "premium", LuaScriptInterface::luaMoveEventPremium);
-	registerMethod("MoveEvent", "vocation", LuaScriptInterface::luaMoveEventVocation);
-	registerMethod("MoveEvent", "tileItem", LuaScriptInterface::luaMoveEventTileItem);
-	registerMethod("MoveEvent", "onEquip", LuaScriptInterface::luaMoveEventOnCallback);
-	registerMethod("MoveEvent", "onDeEquip", LuaScriptInterface::luaMoveEventOnCallback);
-	registerMethod("MoveEvent", "onStepIn", LuaScriptInterface::luaMoveEventOnCallback);
-	registerMethod("MoveEvent", "onStepOut", LuaScriptInterface::luaMoveEventOnCallback);
-	registerMethod("MoveEvent", "onAddItem", LuaScriptInterface::luaMoveEventOnCallback);
-	registerMethod("MoveEvent", "onRemoveItem", LuaScriptInterface::luaMoveEventOnCallback);
+	registerClass("MoveEvent", "", luaCreateMoveEvent);
+	registerMethod("MoveEvent", "type", luaMoveEventType);
+	registerMethod("MoveEvent", "register", luaMoveEventRegister);
+	registerMethod("MoveEvent", "level", luaMoveEventLevel);
+	registerMethod("MoveEvent", "magicLevel", luaMoveEventMagLevel);
+	registerMethod("MoveEvent", "slot", luaMoveEventSlot);
+	registerMethod("MoveEvent", "id", luaMoveEventItemId);
+	registerMethod("MoveEvent", "aid", luaMoveEventActionId);
+	registerMethod("MoveEvent", "uid", luaMoveEventUniqueId);
+	registerMethod("MoveEvent", "position", luaMoveEventPosition);
+	registerMethod("MoveEvent", "premium", luaMoveEventPremium);
+	registerMethod("MoveEvent", "vocation", luaMoveEventVocation);
+	registerMethod("MoveEvent", "tileItem", luaMoveEventTileItem);
+	registerMethod("MoveEvent", "onEquip", luaMoveEventOnCallback);
+	registerMethod("MoveEvent", "onDeEquip", luaMoveEventOnCallback);
+	registerMethod("MoveEvent", "onStepIn", luaMoveEventOnCallback);
+	registerMethod("MoveEvent", "onStepOut", luaMoveEventOnCallback);
+	registerMethod("MoveEvent", "onAddItem", luaMoveEventOnCallback);
+	registerMethod("MoveEvent", "onRemoveItem", luaMoveEventOnCallback);
 
 	// GlobalEvent
-	registerClass("GlobalEvent", "", LuaScriptInterface::luaCreateGlobalEvent);
-	registerMethod("GlobalEvent", "type", LuaScriptInterface::luaGlobalEventType);
-	registerMethod("GlobalEvent", "register", LuaScriptInterface::luaGlobalEventRegister);
-	registerMethod("GlobalEvent", "time", LuaScriptInterface::luaGlobalEventTime);
-	registerMethod("GlobalEvent", "interval", LuaScriptInterface::luaGlobalEventInterval);
-	registerMethod("GlobalEvent", "onThink", LuaScriptInterface::luaGlobalEventOnCallback);
-	registerMethod("GlobalEvent", "onTime", LuaScriptInterface::luaGlobalEventOnCallback);
-	registerMethod("GlobalEvent", "onStartup", LuaScriptInterface::luaGlobalEventOnCallback);
-	registerMethod("GlobalEvent", "onShutdown", LuaScriptInterface::luaGlobalEventOnCallback);
-	registerMethod("GlobalEvent", "onRecord", LuaScriptInterface::luaGlobalEventOnCallback);
-	registerMethod("GlobalEvent", "onSave", LuaScriptInterface::luaGlobalEventOnCallback);
+	registerClass("GlobalEvent", "", luaCreateGlobalEvent);
+	registerMethod("GlobalEvent", "type", luaGlobalEventType);
+	registerMethod("GlobalEvent", "register", luaGlobalEventRegister);
+	registerMethod("GlobalEvent", "time", luaGlobalEventTime);
+	registerMethod("GlobalEvent", "interval", luaGlobalEventInterval);
+	registerMethod("GlobalEvent", "onThink", luaGlobalEventOnCallback);
+	registerMethod("GlobalEvent", "onTime", luaGlobalEventOnCallback);
+	registerMethod("GlobalEvent", "onStartup", luaGlobalEventOnCallback);
+	registerMethod("GlobalEvent", "onShutdown", luaGlobalEventOnCallback);
+	registerMethod("GlobalEvent", "onRecord", luaGlobalEventOnCallback);
+	registerMethod("GlobalEvent", "onSave", luaGlobalEventOnCallback);
 
 	// Weapon
-	registerClass("Weapon", "", LuaScriptInterface::luaCreateWeapon);
-	registerMethod("Weapon", "action", LuaScriptInterface::luaWeaponAction);
-	registerMethod("Weapon", "register", LuaScriptInterface::luaWeaponRegister);
-	registerMethod("Weapon", "id", LuaScriptInterface::luaWeaponId);
-	registerMethod("Weapon", "level", LuaScriptInterface::luaWeaponLevel);
-	registerMethod("Weapon", "magicLevel", LuaScriptInterface::luaWeaponMagicLevel);
-	registerMethod("Weapon", "mana", LuaScriptInterface::luaWeaponMana);
-	registerMethod("Weapon", "manaPercent", LuaScriptInterface::luaWeaponManaPercent);
-	registerMethod("Weapon", "health", LuaScriptInterface::luaWeaponHealth);
-	registerMethod("Weapon", "healthPercent", LuaScriptInterface::luaWeaponHealthPercent);
-	registerMethod("Weapon", "soul", LuaScriptInterface::luaWeaponSoul);
-	registerMethod("Weapon", "breakChance", LuaScriptInterface::luaWeaponBreakChance);
-	registerMethod("Weapon", "premium", LuaScriptInterface::luaWeaponPremium);
-	registerMethod("Weapon", "wieldUnproperly", LuaScriptInterface::luaWeaponUnproperly);
-	registerMethod("Weapon", "vocation", LuaScriptInterface::luaWeaponVocation);
-	registerMethod("Weapon", "onUseWeapon", LuaScriptInterface::luaWeaponOnUseWeapon);
-	registerMethod("Weapon", "element", LuaScriptInterface::luaWeaponElement);
-	registerMethod("Weapon", "attack", LuaScriptInterface::luaWeaponAttack);
-	registerMethod("Weapon", "defense", LuaScriptInterface::luaWeaponDefense);
-	registerMethod("Weapon", "range", LuaScriptInterface::luaWeaponRange);
-	registerMethod("Weapon", "charges", LuaScriptInterface::luaWeaponCharges);
-	registerMethod("Weapon", "duration", LuaScriptInterface::luaWeaponDuration);
-	registerMethod("Weapon", "decayTo", LuaScriptInterface::luaWeaponDecayTo);
-	registerMethod("Weapon", "transformEquipTo", LuaScriptInterface::luaWeaponTransformEquipTo);
-	registerMethod("Weapon", "transformDeEquipTo", LuaScriptInterface::luaWeaponTransformDeEquipTo);
-	registerMethod("Weapon", "slotType", LuaScriptInterface::luaWeaponSlotType);
-	registerMethod("Weapon", "hitChance", LuaScriptInterface::luaWeaponHitChance);
-	registerMethod("Weapon", "extraElement", LuaScriptInterface::luaWeaponExtraElement);
+	registerClass("Weapon", "", luaCreateWeapon);
+	registerMethod("Weapon", "action", luaWeaponAction);
+	registerMethod("Weapon", "register", luaWeaponRegister);
+	registerMethod("Weapon", "id", luaWeaponId);
+	registerMethod("Weapon", "level", luaWeaponLevel);
+	registerMethod("Weapon", "magicLevel", luaWeaponMagicLevel);
+	registerMethod("Weapon", "mana", luaWeaponMana);
+	registerMethod("Weapon", "manaPercent", luaWeaponManaPercent);
+	registerMethod("Weapon", "health", luaWeaponHealth);
+	registerMethod("Weapon", "healthPercent", luaWeaponHealthPercent);
+	registerMethod("Weapon", "soul", luaWeaponSoul);
+	registerMethod("Weapon", "breakChance", luaWeaponBreakChance);
+	registerMethod("Weapon", "premium", luaWeaponPremium);
+	registerMethod("Weapon", "wieldUnproperly", luaWeaponUnproperly);
+	registerMethod("Weapon", "vocation", luaWeaponVocation);
+	registerMethod("Weapon", "onUseWeapon", luaWeaponOnUseWeapon);
+	registerMethod("Weapon", "element", luaWeaponElement);
+	registerMethod("Weapon", "attack", luaWeaponAttack);
+	registerMethod("Weapon", "defense", luaWeaponDefense);
+	registerMethod("Weapon", "range", luaWeaponRange);
+	registerMethod("Weapon", "charges", luaWeaponCharges);
+	registerMethod("Weapon", "duration", luaWeaponDuration);
+	registerMethod("Weapon", "decayTo", luaWeaponDecayTo);
+	registerMethod("Weapon", "transformEquipTo", luaWeaponTransformEquipTo);
+	registerMethod("Weapon", "transformDeEquipTo", luaWeaponTransformDeEquipTo);
+	registerMethod("Weapon", "slotType", luaWeaponSlotType);
+	registerMethod("Weapon", "hitChance", luaWeaponHitChance);
+	registerMethod("Weapon", "extraElement", luaWeaponExtraElement);
 
 	// exclusively for distance weapons
-	registerMethod("Weapon", "ammoType", LuaScriptInterface::luaWeaponAmmoType);
-	registerMethod("Weapon", "maxHitChance", LuaScriptInterface::luaWeaponMaxHitChance);
+	registerMethod("Weapon", "ammoType", luaWeaponAmmoType);
+	registerMethod("Weapon", "maxHitChance", luaWeaponMaxHitChance);
 
 	// exclusively for wands
-	registerMethod("Weapon", "damage", LuaScriptInterface::luaWeaponWandDamage);
+	registerMethod("Weapon", "damage", luaWeaponWandDamage);
 
 	// exclusively for wands & distance weapons
-	registerMethod("Weapon", "shootType", LuaScriptInterface::luaWeaponShootType);
+	registerMethod("Weapon", "shootType", luaWeaponShootType);
 
 	// XML
-	registerClass("XMLDocument", "", LuaScriptInterface::luaCreateXmlDocument);
-	registerMetaMethod("XMLDocument", "__gc", LuaScriptInterface::luaDeleteXmlDocument);
-	registerMethod("XMLDocument", "delete", LuaScriptInterface::luaDeleteXmlDocument);
+	registerClass("XMLDocument", "", luaCreateXmlDocument);
+	registerMetaMethod("XMLDocument", "__gc", luaDeleteXmlDocument);
+	registerMethod("XMLDocument", "delete", luaDeleteXmlDocument);
 
-	registerMethod("XMLDocument", "child", LuaScriptInterface::luaXmlDocumentChild);
+	registerMethod("XMLDocument", "child", luaXmlDocumentChild);
 
 	registerClass("XMLNode", "");
-	registerMetaMethod("XMLNode", "__gc", LuaScriptInterface::luaDeleteXmlNode);
-	registerMethod("XMLNode", "delete", LuaScriptInterface::luaDeleteXmlNode);
+	registerMetaMethod("XMLNode", "__gc", luaDeleteXmlNode);
+	registerMethod("XMLNode", "delete", luaDeleteXmlNode);
 
-	registerMethod("XMLNode", "attribute", LuaScriptInterface::luaXmlNodeAttribute);
-	registerMethod("XMLNode", "name", LuaScriptInterface::luaXmlNodeName);
-	registerMethod("XMLNode", "firstChild", LuaScriptInterface::luaXmlNodeFirstChild);
-	registerMethod("XMLNode", "nextSibling", LuaScriptInterface::luaXmlNodeNextSibling);
+	registerMethod("XMLNode", "attribute", luaXmlNodeAttribute);
+	registerMethod("XMLNode", "name", luaXmlNodeName);
+	registerMethod("XMLNode", "firstChild", luaXmlNodeFirstChild);
+	registerMethod("XMLNode", "nextSibling", luaXmlNodeNextSibling);
 
-	lua_register(luaState, "Zones", LuaScriptInterface::luaGetZones);
-	registerClass("Zone", "", LuaScriptInterface::luaCreateZone);
-	registerMetaMethod("Zone", "__gc", LuaScriptInterface::luaDeleteZone);
-	registerMethod("Zone", "getId", LuaScriptInterface::luaZoneId);
-	registerMethod("Zone", "getCreatures", LuaScriptInterface::luaZoneCreatures); // lets pass a creature_type for a filter
-	registerMethod("Zone", "getGrounds", LuaScriptInterface::luaZoneGrounds);
-	registerMethod("Zone", "getItems", LuaScriptInterface::luaZoneItems);
-	registerMethod("Zone", "getTiles", LuaScriptInterface::luaZoneTiles);
-	registerMethod("Zone", "getCreatureCount", LuaScriptInterface::luaZoneCreatureCount);
-	registerMethod("Zone", "getItemCount", LuaScriptInterface::luaZoneItemCount);
-	registerMethod("Zone", "getTileCount", LuaScriptInterface::luaZoneTileCount);
+	lua_register(luaState, "Zones", luaGetZones);
+	registerClass("Zone", "", luaCreateZone);
+	registerMetaMethod("Zone", "__gc", luaDeleteZone);
+	registerMethod("Zone", "getId", luaZoneId);
+	registerMethod("Zone", "getCreatures", luaZoneCreatures); // lets pass a creature_type for a filter
+	registerMethod("Zone", "getGrounds", luaZoneGrounds);
+	registerMethod("Zone", "getItems", luaZoneItems);
+	registerMethod("Zone", "getTiles", luaZoneTiles);
+	registerMethod("Zone", "getCreatureCount", luaZoneCreatureCount);
+	registerMethod("Zone", "getItemCount", luaZoneItemCount);
+	registerMethod("Zone", "getTileCount", luaZoneTileCount);
 }
 
 #undef registerEnum
