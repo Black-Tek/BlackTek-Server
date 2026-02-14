@@ -1515,13 +1515,13 @@ bool Monsters::loadLootItem(const pugi::xml_node& node, LootBlock& lootBlock)
     }
 
     if ((attr = node.attribute("countmin"))) {
-        lootBlock.countmin = std::max<int32_t>(1, pugi::cast<int32_t>(attr.value()));
+        lootBlock.countmin = std::max<uint16_t>(1, pugi::cast<uint16_t>(attr.value()));
     } else {
         lootBlock.countmin = 1;
     }
 
     if ((attr = node.attribute("countmax"))) {
-        lootBlock.countmax = std::max<int32_t>(1, pugi::cast<int32_t>(attr.value()));
+        lootBlock.countmax = std::max<uint16_t>(1, pugi::cast<uint16_t>(attr.value()));
     } else {
         lootBlock.countmax = 1;
     }
