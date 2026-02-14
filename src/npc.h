@@ -101,31 +101,38 @@ class Npc final : public Creature
 		Npc(const Npc&) = delete;
 		Npc& operator=(const Npc&) = delete;
 
-		NpcPtr getNpc() override {
+		NpcPtr getNpc() override
+		{
 			return static_shared_this<Npc>();
 		}
 	
-		NpcConstPtr getNpc() const override {
+		NpcConstPtr getNpc() const override
+		{
 			return static_shared_this<Npc>();
 		}
 
-		bool isPushable() const override {
-			return pushable && walkTicks != 0;
+		bool isPushable() const override
+		{
+			return pushable and walkTicks != 0;
 		}
 
-		bool isPhaseable() const {
+		bool isPhaseable() const
+		{
 			return phaseable;
 		}
 
-		void setID() override {
-			if (id == 0) {
+		void setID() override
+		{
+			if (id == 0)
+			{
 				id = ++npcAutoID;
 			}
 		}
 
 		void removeList() override;
 		void addList() override;
-		void makePhaseable() {
+		void makePhaseable()
+		{
 			phaseable = true;
 		}
 
@@ -139,34 +146,41 @@ class Npc final : public Creature
 		bool load();
 		void reload();
 
-		const std::string& getRegisteredName() const override {
+		const std::string& getRegisteredName() const override
+		{
 			return getName();
 		}
 
-		const std::string& getName() const override {
+		const std::string& getName() const override
+		{
 			return name;
 		}
 	
-		const std::string& getNameDescription() const override {
+		const std::string& getNameDescription() const override
+		{
 			return name;
 		}
 
-		CreatureType_t getType(CreaturePtr caller = nullptr) const override {
+		CreatureType_t getType(CreaturePtr caller = nullptr) const override
+		{
 			// Todo : create more enums for creature types being relative to caller
 			// even for players and npc's, this basic expansion of possibilities
 			// applied on this core function would allow vast customization opportunities down the road
 			return CREATURETYPE_NPC;
 		}
 
-		uint8_t getSpeechBubble() const override {
+		uint8_t getSpeechBubble() const override
+		{
 			return speechBubble;
 		}
 	
-		void setSpeechBubble(const uint8_t bubble) {
+		void setSpeechBubble(const uint8_t bubble)
+		{
 			speechBubble = bubble;
 		}
 
-		const auto& getSpectators() { 
+		const auto& getSpectators()
+		{ 
 			return spectators; 
 		}
 
@@ -176,17 +190,21 @@ class Npc final : public Creature
 		bool doMoveTo(const Position& pos, int32_t minTargetDist = 1, int32_t maxTargetDist = 1,
 		              bool fullPathSearch = true, bool clearSight = true, int32_t maxSearchDist = 0);
 
-		int32_t getMasterRadius() const {
+		int32_t getMasterRadius() const
+		{
 			return masterRadius;
 		}
 	
-		const Position& getMasterPos() const {
+		const Position& getMasterPos() const
+		{
 			return masterPos;
 		}
 	
-		void setMasterPos(Position pos, int32_t radius = 1) {
+		void setMasterPos(Position pos, int32_t radius = 1)
+		{
 			masterPos = pos;
-			if (masterRadius == -1) {
+			if (masterRadius == -1)
+			{
 				masterRadius = radius;
 			}
 		}
@@ -215,15 +233,18 @@ class Npc final : public Creature
 		void onThink(uint32_t interval) override;
 		std::string getDescription(int32_t lookDistance) override;
 
-		bool isImmune(CombatType_t) const override {
-			return !attackable;
+		bool isImmune(CombatType_t) const override
+		{
+			return not attackable;
 		}
 	
-		bool isImmune(ConditionType_t) const override {
-			return !attackable;
+		bool isImmune(ConditionType_t) const override
+		{
+			return not attackable;
 		}
 	
-		bool isAttackable() const override {
+		bool isAttackable() const override
+		{
 			return attackable;
 		}
 	
