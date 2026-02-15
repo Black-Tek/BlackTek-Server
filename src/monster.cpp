@@ -1647,7 +1647,7 @@ void Monster::death(const CreaturePtr&)
 							int32_t adjustedChance = (static_cast<int32_t>(lootBlock.chance) * lootRate);
 
 							const auto chance = uniform_random(1, MAX_LOOTCHANCE);
-							const auto count = uniform_random(1, lootBlock.countmax);
+							const auto count = uniform_random(lootBlock.countmin, lootBlock.countmax);
 							
 							if (chance <= adjustedChance) {
 								auto lootItem = Item::CreateItem(lootBlock.id, count);

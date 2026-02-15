@@ -1514,12 +1514,22 @@ bool Monsters::loadLootItem(const pugi::xml_node& node, LootBlock& lootBlock)
         return false;
     }
 
-    // Rest of the function unchanged...
+    if ((attr = node.attribute("countmin"))) {
+        lootBlock.countmin = std::max<uint16_t>(1, pugi::cast<uint16_t>(attr.value()));
+    } else {
+        lootBlock.countmin = 1;
+    }
+
     if ((attr = node.attribute("countmax"))) {
-        lootBlock.countmax = std::max<int32_t>(1, pugi::cast<int32_t>(attr.value()));
+        lootBlock.countmax = std::max<uint16_t>(1, pugi::cast<uint16_t>(attr.value()));
     } else {
         lootBlock.countmax = 1;
     }
+
+	if(lootBlock.countmin > lootBlock.countmax) {
+		std::cout << "[Warning - Monsters::loadLoot] countMin (" << lootBlock.countmin << ") exceeds countmax (" << lootBlock.countmax << ") for loot block, loot id: " << lootBlock.id << ".\n";
+		lootBlock.countmin = lootBlock.countmax;
+	}
 
     if ((attr = node.attribute("chance")) || (attr = node.attribute("chance1"))) {
         int32_t chance = pugi::cast<int32_t>(attr.value());

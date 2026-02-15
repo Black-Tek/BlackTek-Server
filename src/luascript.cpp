@@ -1005,6 +1005,7 @@ void LuaScriptInterface::pushLoot(lua_State* L, const std::vector<LootBlock>& lo
 		setField(L, "itemId", lootBlock.id);
 		setField(L, "chance", lootBlock.chance);
 		setField(L, "subType", lootBlock.subType);
+		setField(L, "minCount", lootBlock.countmin);
 		setField(L, "maxCount", lootBlock.countmax);
 		setField(L, "actionId", lootBlock.actionId);
 		setField(L, "text", lootBlock.text);
@@ -3232,6 +3233,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Loot", "delete", luaDeleteLoot);
 
 	registerMethod("Loot", "setId", luaLootSetId);
+	registerMethod("Loot", "setMinCount", luaLootSetMinCount);
 	registerMethod("Loot", "setMaxCount", luaLootSetMaxCount);
 	registerMethod("Loot", "setSubType", luaLootSetSubType);
 	registerMethod("Loot", "setChance", luaLootSetChance);
@@ -17742,12 +17744,25 @@ int LuaScriptInterface::luaLootSetChance(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaLootSetMinCount(lua_State* L)
+{
+	// loot:setMinCount(min)
+	Loot* loot = getUserdata<Loot>(L, 1);
+	if (loot) {
+		loot->lootBlock.countmin = getNumber<uint16_t>(L, 2);
+		pushBoolean(L, true);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
 int LuaScriptInterface::luaLootSetMaxCount(lua_State* L)
 {
 	// loot:setMaxCount(max)
 	Loot* loot = getUserdata<Loot>(L, 1);
 	if (loot) {
-		loot->lootBlock.countmax = getNumber<uint32_t>(L, 2);
+		loot->lootBlock.countmax = getNumber<uint16_t>(L, 2);
 		pushBoolean(L, true);
 	} else {
 		lua_pushnil(L);
