@@ -25,12 +25,7 @@ on:
 
 jobs:
   linux_build:
-    strategy:
-      fail-fast: false
-      matrix:
-        # Added ubuntu-22.04 to the matrix
-        os: [ubuntu-22.04, ubuntu-24.04]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-24.04
     permissions:
       packages: write
       contents: write
@@ -38,7 +33,6 @@ jobs:
     - name: Set up Git
       uses: actions/checkout@v4
 
-    # NEW: Updated to explicitly install both gcc-14 and g++-14 to support C++23 <print>
     - name: Install GCC 14
       run: |
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
@@ -55,9 +49,9 @@ jobs:
           /usr/local/share/vcpkg/downloads
           /usr/local/share/vcpkg/buildtrees
           ${{ github.workspace }}/vcpkg_installed
-        key: vcpkg-${{ matrix.os }}-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-v2
+        key: vcpkg-ubuntu-24.04-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-v2
         restore-keys: |
-          vcpkg-${{ matrix.os }}-v2-
+          vcpkg-ubuntu-24.04-v2-
     
     - name: Install Uuid
       run: |
@@ -180,8 +174,8 @@ jobs:
       run: |
         echo "Commit SHA: ${{ github.sha }}" > version.info
         echo "Build Date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> version.info
-        echo "OS: ${{ matrix.os }}" >> version.info
-        zip -r BlackTek-Server-${{ matrix.os }}-${{ github.sha }}.zip ${{ github.workspace }}
+        echo "OS: ubuntu-24.04" >> version.info
+        zip -r BlackTek-Server-ubuntu-24.04-${{ github.sha }}.zip ${{ github.workspace }}
     
     - name: Prepare Compressed Assets (Release Build)
       if: steps.release_type.outputs.is_release == 'true'
@@ -190,11 +184,11 @@ jobs:
         echo "Version: $VERSION" > version.info
         echo "Commit SHA: ${{ github.sha }}" >> version.info
         echo "Build Date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> version.info
-        echo "OS: ${{ matrix.os }}" >> version.info
-        zip -r BlackTek-Server-Linux-${{ matrix.os }}-${VERSION}.zip ${{ github.workspace }}
+        echo "OS: ubuntu-24.04" >> version.info
+        zip -r BlackTek-Server-Linux-ubuntu-24.04-${VERSION}.zip ${{ github.workspace }}
     
     - name: Cleanup Old Release Assets
-      if: (github.event_name == 'push') && (matrix.os == 'ubuntu-24.04') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && (matrix.os == 'ubuntu-24.04') && github.event.pull_request.merged == true)
+      if: (github.event_name == 'push') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
       run: |
         # GH CLI is already installed on GitHub runners
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
@@ -230,7 +224,7 @@ jobs:
         name: BlackTek Server Edge Build
         body: |
           This is an automated Linux Edge build for commit ${{ github.sha }}
-        files: BlackTek-Server-${{ matrix.os }}-${{ github.sha }}.zip
+        files: BlackTek-Server-ubuntu-24.04-${{ github.sha }}.zip
     
     # Official Release Upload
     - name: Create and Upload Official Release
@@ -259,4 +253,4 @@ jobs:
           
           ### What's Changed
           See the auto-generated release notes below for a full list of changes.
-        files: BlackTek-Server-Linux-${{ matrix.os }}-${{ steps.release_type.outputs.version }}.zip
+        files: BlackTek-Server-Linux-ubuntu-24.04-${{ steps.release_type.outputs.version }}.zip
