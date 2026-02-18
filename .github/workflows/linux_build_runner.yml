@@ -28,6 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Added ubuntu-22.04 to the matrix
         os: [ubuntu-22.04, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     permissions:
@@ -37,12 +38,12 @@ jobs:
     - name: Set up Git
       uses: actions/checkout@v4
 
-    # Necessary to support C++23 <print> on Ubuntu runners
+    # NEW: Updated to explicitly install both gcc-14 and g++-14 to support C++23 <print>
     - name: Install GCC 14
       run: |
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         sudo apt-get update
-        sudo apt-get install -y g++-14
+        sudo apt-get install -y gcc-14 g++-14
         echo "CC=gcc-14" >> $GITHUB_ENV
         echo "CXX=g++-14" >> $GITHUB_ENV
     
