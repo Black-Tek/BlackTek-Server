@@ -278,6 +278,8 @@ int main(int argc, char* argv[])
 	g_dispatcher.join();
 	g_utility_boss.join();
 
+	BlackTek::Console::Shutdown();
+
 	return 0;
 }
 
