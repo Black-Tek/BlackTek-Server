@@ -8,6 +8,7 @@
 #include "actions.h"
 #include "bed.h"
 #include "configmanager.h"
+#include "console.h"
 #include "creature.h"
 #include "creatureevent.h"
 #include "databasetasks.h"
@@ -6129,6 +6130,8 @@ void Game::shutdown()
 	ConnectionManager::getInstance().closeAll();
 
 	std::cout << " done!" << std::endl;
+
+	BlackTek::Console::Shutdown();
 }
 
 void Game::coro_timer_cycle()
