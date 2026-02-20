@@ -84,134 +84,128 @@ namespace Console {
 	// Print the large BLACKTEK ASCII banner with gradient effect
 	void printBanner()
 	{
-		std::cout << "\n";
-		
-		// Gradient ASCII art - using cyan and magenta
-		fmt::print(fg(dark_purple) | fmt::emphasis::bold,
-			"    ██████╗ ██╗      █████╗  ██████╗██╗  ██╗████████╗███████╗██╗  ██╗\n");
-		fmt::print(fg(dark_purple),
-			"    ██╔══██╗██║     ██╔══██╗██╔════╝██║ ██╔╝╚══██╔══╝██╔════╝██║ ██╔╝\n");
-		fmt::print(fg(dark_purple),
-			"    ██████╔╝██║     ███████║██║     █████╔╝    ██║   █████╗  █████╔╝ \n");
-		fmt::print(fg(dark_purple),
-			"    ██╔══██╗██║     ██╔══██║██║     ██╔═██╗    ██║   ██╔══╝  ██╔═██╗ \n");
-		fmt::print(fg(dark_purple),
-			"    ██████╔╝███████╗██║  ██║╚██████╗██║  ██╗   ██║   ███████╗██║  ██╗\n");
-		fmt::print(fg(dark_purple) | fmt::emphasis::bold,
-			"    ╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝\n");
-		
-		std::cout << "\n";
+		BlackTek::Console::Print("\n");
+		BlackTek::Console::StyledPrint(true, fg(dark_purple) | fmt::emphasis::bold,
+			"    ██████╗ ██╗      █████╗  ██████╗██╗  ██╗████████╗███████╗██╗  ██╗");
+		BlackTek::Console::StyledPrint(true, fg(dark_purple),
+			"    ██╔══██╗██║     ██╔══██╗██╔════╝██║ ██╔╝╚══██╔══╝██╔════╝██║ ██╔╝");
+		BlackTek::Console::StyledPrint(true, fg(dark_purple),
+			"    ██████╔╝██║     ███████║██║     █████╔╝    ██║   █████╗  █████╔╝ ");
+		BlackTek::Console::StyledPrint(true, fg(dark_purple),
+			"    ██╔══██╗██║     ██╔══██║██║     ██╔═██╗    ██║   ██╔══╝  ██╔═██╗ ");
+		BlackTek::Console::StyledPrint(true, fg(dark_purple),
+			"    ██████╔╝███████╗██║  ██║╚██████╗██║  ██╗   ██║   ███████╗██║  ██╗");
+		BlackTek::Console::StyledPrint(true, fg(dark_purple) | fmt::emphasis::bold,
+			"    ╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝");
+		BlackTek::Console::Print("\n");
 	}
 
 	// Print version info bar
 	void printVersionBar()
 	{
-		fmt::print(fg(dark_gray), "    ─────────────────────────────────────────────────────────────────\n");
-		fmt::print(fg(gray), "    VERSION ");
-		fmt::print(fg(white) | fmt::emphasis::bold, "{} ", STATUS_SERVER_VERSION);
-		fmt::print(fg(dark_gray), " · ");
-		fmt::print(fg(gray), " CLIENT ");
-		fmt::print(fg(white) | fmt::emphasis::bold, "{} ", CLIENT_VERSION_STR);
-		fmt::print(fg(dark_gray), " · ");
-		fmt::print(fg(gray), " BUILD ");
+		BlackTek::Console::StyledPrint(false, fg(dark_gray), "    ─────────────────────────────────────────────────────────────────\n");
+		BlackTek::Console::StyledPrint(false, fg(gray),      "    VERSION ");
+		BlackTek::Console::StyledPrint(false, fg(white) | fmt::emphasis::bold, "{} ", STATUS_SERVER_VERSION);
+		BlackTek::Console::StyledPrint(false, fg(dark_gray), " · ");
+		BlackTek::Console::StyledPrint(false, fg(gray),      " CLIENT ");
+		BlackTek::Console::StyledPrint(false, fg(white) | fmt::emphasis::bold, "{} ", CLIENT_VERSION_STR);
+		BlackTek::Console::StyledPrint(false, fg(dark_gray), " · ");
+		BlackTek::Console::StyledPrint(false, fg(gray),      " BUILD ");
 		#if defined(GIT_RETRIEVED_STATE) && GIT_RETRIEVED_STATE
 			#if GIT_IS_DIRTY
-				fmt::print(fg(yellow) | fmt::emphasis::bold, "DIRTY\n");
+				BlackTek::Console::StyledPrint(false, fg(yellow) | fmt::emphasis::bold, "DIRTY\n");
 			#else
-				fmt::print(fg(green) | fmt::emphasis::bold, "CLEAN\n");
+				BlackTek::Console::StyledPrint(false, fg(green)  | fmt::emphasis::bold, "CLEAN\n");
 			#endif
 		#else
-				fmt::print(fg(green) | fmt::emphasis::bold, "OFFICIAL\n");
+				BlackTek::Console::StyledPrint(false, fg(green)  | fmt::emphasis::bold, "OFFICIAL\n");
 		#endif
-		fmt::print(fg(dark_gray), "    ─────────────────────────────────────────────────────────────────\n\n");
+		BlackTek::Console::StyledPrint(false, fg(dark_gray), "    ─────────────────────────────────────────────────────────────────\n\n");
 	}
 
 	// Print a section header
 	void printSection(const std::string& name)
 	{
-		fmt::print(fg(cyan) | fmt::emphasis::bold, "\n    {} {}\n", DIAMOND, name);
-		fmt::print(fg(dark_gray), "    ────────────────────────────────────────\n");
+		std::string out;
+		out += fmt::format(fg(cyan) | fmt::emphasis::bold, "\n    {} {}\n", DIAMOND, name);
+		out += fmt::format(fg(dark_gray), "    ────────────────────────────────────────");
+		BlackTek::Console::LogAndPrint(std::move(out));
 	}
 
 	void printProgress(const std::string& name, bool success = true, const std::string& detail = "")
 	{
-		fmt::print(fg(gray), "    ");
-		fmt::print(fg(white), "{:<24}", name);
-				
+		std::string out;
+		out += fmt::format(fg(gray),  "    ");
+		out += fmt::format(fg(white), "{:<24}", name);
+
 		if (success)
-		{
-			fmt::print(fg(green) | fmt::emphasis::bold, "{}", CHECK);
-		}
+			out += fmt::format(fg(green) | fmt::emphasis::bold, "{}", CHECK);
 		else
-		{
-			fmt::print(fg(red) | fmt::emphasis::bold, "{}", CROSS);
-		}
-		
-		// Optional detail
+			out += fmt::format(fg(red)   | fmt::emphasis::bold, "{}", CROSS);
+
 		if (not detail.empty())
-		{
-			fmt::print(fg(dark_gray), "  {:>12}", detail);
-		}
-		
-		std::cout << "\n";
+			out += fmt::format(fg(dark_gray), "  {:>12}", detail);
+
+		BlackTek::Console::LogAndPrint(std::move(out));
 	}
 
 	// Print a simple status line
 	void printStatus(const std::string& message, bool success = true)
 	{
-		fmt::print(fg(gray), "    {} ", ARROW);
-		fmt::print(fg(white), "{}", message);
+		std::string out;
+		out += fmt::format(fg(gray),  "    {} ", ARROW);
+		out += fmt::format(fg(white), "{}", message);
 		if (success)
-		{
-			fmt::print(fg(green) | fmt::emphasis::bold, " {}\n", CHECK);
-		} 
+			out += fmt::format(fg(green) | fmt::emphasis::bold, " {}", CHECK);
 		else
-		{
-			fmt::print(fg(red) | fmt::emphasis::bold, " {}\n", CROSS);
-		}
+			out += fmt::format(fg(red)   | fmt::emphasis::bold, " {}", CROSS);
+		BlackTek::Console::LogAndPrint(std::move(out));
 	}
 
 	// Print info line
 	void printInfo(const std::string& label, const std::string& value)
 	{
-		fmt::print(fg(dark_gray), ":    {:<16}", label);
-		fmt::print(fg(white), "{}\n", value);
+		std::string out;
+		out += fmt::format(fg(dark_gray), ":    {:<16}", label);
+		out += fmt::format(fg(white),     "{}", value);
+		BlackTek::Console::LogAndPrint(std::move(out));
 	}
 
 	// Print the final online status box
 	void printOnline(const std::string& serverName)
 	{
-		std::cout << "\n";
-		fmt::print(fg(dark_gray), "    ╔══════════════════════════════════════════════════════════════════╗\n");
-		fmt::print(fg(dark_gray), "    ║");
-		
-		// Calculate padding for centered text
 		std::string onlineText = "◆ " + serverName + " SERVER ONLINE ◆";
 		int totalWidth = 68;
-		int textLen = onlineText.length();
+		auto textLen = static_cast<int>(onlineText.length());
 		int padding = (totalWidth - textLen) / 2;
-		
-		fmt::print(fg(cyan), "{:>{}}", "", padding);
-		fmt::print(fg(cyan) | fmt::emphasis::bold, "{}", DIAMOND);
-		fmt::print(fg(white) | fmt::emphasis::bold, " {} ", serverName);
-		fmt::print(fg(green) | fmt::emphasis::bold, "| ONLINE | ");
-		fmt::print(fg(cyan) | fmt::emphasis::bold, "{}", DIAMOND);
-		fmt::print(fg(cyan), "{:<{}}", "", padding - 2);
-		
-		fmt::print(fg(dark_gray), "       ║\n");
-		fmt::print(fg(dark_gray), "    ╚══════════════════════════════════════════════════════════════════╝\n\n");
+
+		std::string out;
+		out += "\n";
+		out += fmt::format(fg(dark_gray), "    ╔══════════════════════════════════════════════════════════════════╗\n");
+		out += fmt::format(fg(dark_gray), "    ║");
+		out += fmt::format(fg(cyan),                              "{:>{}}", "", padding);
+		out += fmt::format(fg(cyan)  | fmt::emphasis::bold,       "{}", DIAMOND);
+		out += fmt::format(fg(white) | fmt::emphasis::bold,       " {} ", serverName);
+		out += fmt::format(fg(green) | fmt::emphasis::bold,       "| ONLINE | ");
+		out += fmt::format(fg(cyan)  | fmt::emphasis::bold,       "{}", DIAMOND);
+		out += fmt::format(fg(cyan),                              "{:<{}}", "", padding - 2);
+		out += fmt::format(fg(dark_gray), "       ║\n");
+		out += fmt::format(fg(dark_gray), "    ╚══════════════════════════════════════════════════════════════════╝\n\n");
+		BlackTek::Console::LogAndPrint(std::move(out));
 	}
 
 	// Print error message
 	void printError(const std::string& message)
 	{
-		fmt::print(fg(red) | fmt::emphasis::bold, "\n    {} ERROR: {}\n\n", CROSS, message);
+		std::string out = fmt::format(fg(red) | fmt::emphasis::bold, "\n    {} ERROR: {}\n\n", CROSS, message);
+		BlackTek::Console::LogAndPrint(std::move(out));
 	}
 
 	// Print warning message
 	void printWarning(const std::string& message)
 	{
-		fmt::print(fg(yellow) | fmt::emphasis::bold, "    ⚠ WARNING: {}\n", message);
+		std::string out = fmt::format(fg(yellow) | fmt::emphasis::bold, "    ⚠ WARNING: {}\n", message);
+		BlackTek::Console::LogAndPrint(std::move(out));
 	}
 }
 
@@ -245,10 +239,9 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	BlackTek::Console::Initialize();
 	// Setup bad allocation handler
 	std::set_new_handler(badAllocationHandler);
-
+	BlackTek::Console::Initialize();
 	ServiceManager serviceManager;
 
 	g_dispatcher.start();
@@ -320,9 +313,9 @@ void mainLoader(int, char*[], ServiceManager* services)
 	#endif
 
 	// banner and version info
-	g_utility_boss.addTask(createTask([]() { printServerVersion(); }));
-	g_utility_boss.addTask(createTask([]() { std::cout <<"\n"; }));
-	g_utility_boss.addTask(createTask([]() { fmt::print(fg(Console::dark_gray), "    ────────────────────────────────────────\n"); }));
+	printServerVersion();
+	BlackTek::Console::Print("\n");
+	BlackTek::Console::LogAndPrint(fmt::format(fg(Console::dark_gray), "    ────────────────────────────────────────"));
 
 	// check if config.lua or config.lua.dist exist
 	const std::string& configFile = g_config.getString(ConfigManager::CONFIG_FILE);
@@ -382,10 +375,10 @@ void mainLoader(int, char*[], ServiceManager* services)
 		return;
 	}
 
-	g_utility_boss.addTask(createTask([]() { Console::printInfo("Compiler", BOOST_COMPILER); }));
-	g_utility_boss.addTask(createTask([]() { Console::printInfo("Compiled", std::string(__DATE__) + " " + __TIME__); }));
-	g_utility_boss.addTask(createTask([]() { Console::printInfo("Lua Version", LUA_VERSION); }));
-	g_utility_boss.addTask(createTask([]() { Console::printInfo("Database", std::string("MariaDB ") + Database::getClientVersion()); }));
+	Console::printInfo("Compiler", BOOST_COMPILER);
+	Console::printInfo("Compiled", std::string(__DATE__) + " " + __TIME__);
+	Console::printInfo("Lua Version", LUA_VERSION);
+	Console::printInfo("Database", std::string("MariaDB ") + Database::getClientVersion());
 
 	// Run database manager
 	if (not DatabaseManager::isDatabaseSetup())
@@ -398,13 +391,13 @@ void mainLoader(int, char*[], ServiceManager* services)
 
 	if (g_config.getBoolean(ConfigManager::OPTIMIZE_DATABASE) && !DatabaseManager::optimizeTables())
 	{
-		g_utility_boss.addTask(createTask([]() { Console::printWarning("No tables were optimized."); }));
+		Console::printWarning("No tables were optimized.");
 	}
 
 	// ========================================================================
 	// SERVER CONFIGURATION
 	// ========================================================================
-	g_utility_boss.addTask(createTask([]() { Console::printSection("SERVER CONFIG"); }));
+	Console::printSection("SERVER CONFIG");
 
 	// Check world type
 	std::string worldType = asLowerCaseString(g_config.getString(ConfigManager::WORLD_TYPE));
@@ -426,35 +419,26 @@ void mainLoader(int, char*[], ServiceManager* services)
 		return;
 	}
 
-	g_utility_boss.addTask(createTask([worldType]()
-	{ 
-		Console::printProgress("World Type", true, asUpperCaseString(worldType)); 
-	}));
+	Console::printProgress("World Type", true, asUpperCaseString(worldType));
 
-	g_utility_boss.addTask(createTask([]()
-	{ 
-		Console::printProgress("World Map", true, g_config.getString(ConfigManager::MAP_NAME)); 
-	}));
+	Console::printProgress("World Map", true, g_config.getString(ConfigManager::MAP_NAME));
 
 
 	// Account Manager
 	if (g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER))
 	{
 		AccountManager::initialize();
-		g_utility_boss.addTask(createTask([]() { Console::printProgress("Account Manager", true, "enabled"); }));
+		Console::printProgress("Account Manager", true, "enabled");
 	}
 
-	g_utility_boss.addTask(createTask([]()
-	{
-		Console::printProgress("Game Port", true, std::to_string(g_config.getNumber(ConfigManager::GAME_PORT)));
-		Console::printProgress("Login Port", true, std::to_string(g_config.getNumber(ConfigManager::LOGIN_PORT)));
-		Console::printProgress("Status Port", true, std::to_string(g_config.getNumber(ConfigManager::STATUS_PORT)));
-	}));
+	Console::printProgress("Game Port",   true, std::to_string(g_config.getNumber(ConfigManager::GAME_PORT)));
+	Console::printProgress("Login Port",  true, std::to_string(g_config.getNumber(ConfigManager::LOGIN_PORT)));
+	Console::printProgress("Status Port", true, std::to_string(g_config.getNumber(ConfigManager::STATUS_PORT)));
 
 	// ========================================================================
 	// GAME DATA
 	// ========================================================================
-	g_utility_boss.addTask(createTask([]() { Console::printSection("GAME DATA"); }));
+	Console::printSection("GAME DATA");
 
 	// Load vocations
 	if (not g_vocations.loadFromToml())
@@ -462,7 +446,7 @@ void mainLoader(int, char*[], ServiceManager* services)
 		startupErrorMessage("Unable to load vocations!");
 		return;
 	}
-	g_utility_boss.addTask(createTask([]() { Console::printProgress("Vocations", true, std::to_string(g_vocations.getVocations().size())); }));
+	Console::printProgress("Vocations", true, std::to_string(g_vocations.getVocations().size()));
 
 	// Load items
 	if (not Item::items.loadFromDat(g_config.getString(ConfigManager::ASSETS_DAT_PATH)))
@@ -475,10 +459,7 @@ void mainLoader(int, char*[], ServiceManager* services)
 		startupErrorMessage("Unable to load items (TOML)!");
 		return;
 	}
-	g_utility_boss.addTask(createTask([]()
-	{ 
-		Console::printProgress("Items", true, std::to_string(Item::items.size())); 
-	}));
+	Console::printProgress("Items", true, std::to_string(Item::items.size()));
 
 	// Load script systems
 	if (not ScriptingManager::getInstance().loadScriptSystems())
@@ -502,14 +483,11 @@ void mainLoader(int, char*[], ServiceManager* services)
 	}
 
 	// todo: split this to show both counts individually
-	g_utility_boss.addTask(createTask([]() { Console::printProgress("Outfits", true, std::to_string(Outfits::getInstance().getOutfits(PLAYERSEX_FEMALE).size() +  Outfits::getInstance().getOutfits(PLAYERSEX_MALE).size())); }));
+	Console::printProgress("Outfits", true, std::to_string(Outfits::getInstance().getOutfits(PLAYERSEX_FEMALE).size() + Outfits::getInstance().getOutfits(PLAYERSEX_MALE).size()));
 
 	// Load guilds
 	IOGuild::loadGuilds();
-	g_utility_boss.addTask(createTask([]()
-	{ 
-		Console::printProgress("Guilds", true, std::to_string(g_game.getGuilds().size())); 
-	}));
+	Console::printProgress("Guilds", true, std::to_string(g_game.getGuilds().size()));
 
 	// Load monsters
 	if (not g_monsters.loadFromXml())
@@ -524,15 +502,15 @@ void mainLoader(int, char*[], ServiceManager* services)
 		startupErrorMessage("Failed to load lua monsters");
 		return;
 	}
-	g_utility_boss.addTask(createTask([]() { Console::printProgress("Monsters", true, std::to_string(g_monsters.count())); }));
+	Console::printProgress("Monsters", true, std::to_string(g_monsters.count()));
 
 	// Load zones
 	Zones::load();
-	g_utility_boss.addTask(createTask([]() { Console::printProgress("Zones", true, std::to_string(Zones::count())); }));
+	Console::printProgress("Zones", true, std::to_string(Zones::count()));
 
 	// Load augments
 	Augments::loadAll();
-	g_utility_boss.addTask(createTask([]() { Console::printProgress("Augments", true, std::to_string(Augments::count())); }));
+	Console::printProgress("Augments", true, std::to_string(Augments::count()));
 
 
 	// Load map

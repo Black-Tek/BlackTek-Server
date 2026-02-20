@@ -39,13 +39,25 @@ namespace BlackTek::Console
 
     struct Message
     {
+        using Style = fmt::text_style;
+
         std::string text;
+        std::optional<Style> secondary_style{};
+        Style primary_style{};
         MessageType msg_type{MessageType::Print};
         PriorityType priority{PriorityType::None};
 
-        bool styled{false};
-        fmt::text_style primary_style{};
-        std::optional<fmt::text_style> secondary_style{};
+        bool styled { false };
+        bool linebreak { true };
+
+        Message() = default;
+        Message(std::string_view msg_data, MessageType message_type, bool l_break = true, bool style = false) : text(msg_data), msg_type(message_type), linebreak(l_break), styled(style) {}
+        Message(std::string_view msg_data, MessageType message_type, Style main_style, bool l_break = true) : text(msg_data), msg_type(message_type), primary_style(main_style), linebreak(l_break) {}
+        Message(std::string_view msg_data, MessageType message_type, Style main_style, std::optional<Style> other_style, bool l_break = true,  bool style = true) : text(msg_data), msg_type(message_type), primary_style(main_style), secondary_style(other_style), linebreak(l_break), styled(style) {}
+
+        Message(std::string msg_data, MessageType message_type, bool l_break = true, bool style = false) : text(msg_data), msg_type(message_type), linebreak(l_break), styled(style) {}
+        Message(std::string msg_data, MessageType message_type, Style main_style, bool l_break = true) : text(msg_data), msg_type(message_type), primary_style(main_style), linebreak(l_break) {}
+        Message(std::string msg_data, MessageType message_type, Style main_style, std::optional<Style> other_style, bool l_break = true, bool style = true) : text(msg_data), msg_type(message_type), primary_style(main_style), secondary_style(other_style), linebreak(l_break), styled(style) {}
     };
 
 
@@ -147,16 +159,12 @@ namespace BlackTek::Console
         const auto printStyled = [&]()
         {
             if (msg.secondary_style.has_value())
-            {
-                fmt::print(msg.primary_style,
-                            "{}",
-                            fmt::styled(msg.text, msg.secondary_style.value()));
-            }
+                fmt::print(msg.primary_style, "{}", fmt::styled(msg.text, msg.secondary_style.value()));
             else
-            {
                 fmt::print(msg.primary_style, "{}", msg.text);
-            }
-            fmt::print("\n");
+
+            if (msg.linebreak)
+                std::println();
         };
 
         const auto printPlain = [&]()
@@ -318,66 +326,66 @@ namespace BlackTek::Console
         PushAndNotify(Message{std::move(text), MessageType::LogAndPrint});
     }
 
-    inline void StyledPrint(std::string text, fmt::text_style primaryStyle)
+    inline void StyledPrint(std::string text, fmt::text_style primaryStyle, bool line_break = true)
     {
         PushAndNotify(Message{
             std::move(text),
             MessageType::StyledPrint,
-            PriorityType::None,
-            true,
             primaryStyle,
-            std::nullopt
+            std::nullopt,
+            line_break
         });
     }
 
     template <typename... Args>
-    inline void StyledPrint(fmt::text_style style, fmt::format_string<Args...> fmtStr, Args&&... args)
+    inline void StyledPrint(bool line_break, fmt::text_style style, fmt::format_string<Args...> fmtStr, Args&&... args)
     {
         PushAndNotify(Message{
             fmt::format(fmtStr, std::forward<Args>(args)...),
             MessageType::StyledPrint,
-            PriorityType::None,
-            true,
-            style
+            style,
+            std::nullopt,
+            line_break,
+            true
         });
     }
 
-    inline void StyledPrint(std::string text, fmt::text_style primaryStyle, fmt::text_style secondaryStyle)
+    inline void StyledPrint(std::string text, fmt::text_style primaryStyle, fmt::text_style secondaryStyle, bool line_break = true)
     {
         PushAndNotify(Message{
             std::move(text),
             MessageType::StyledPrint,
-            PriorityType::None,
-            true,
             primaryStyle,
-            secondaryStyle
+            std::optional<fmt::text_style>(secondaryStyle),
+            line_break,
+            true
         });
     }
 
     template <typename... Args>
-    inline void StyledPrint(fmt::text_style primaryStyle, fmt::text_style secondaryStyle, fmt::format_string<Args...> fmtStr, Args&&... args)
+    inline void StyledPrint(bool line_break, fmt::text_style primaryStyle, fmt::text_style secondaryStyle, fmt::format_string<Args...> fmtStr, Args&&... args)
     {
         PushAndNotify(Message{
             fmt::format(fmtStr, std::forward<Args>(args)...),
             MessageType::StyledPrint,
-            PriorityType::None,
-            true,
             primaryStyle,
-            secondaryStyle
+            secondaryStyle,
+            line_break,
+            true
         });
     }
 
 
 
-    inline void LogAndStyledPrint(std::string text, fmt::text_style primaryStyle)
+    inline void LogAndStyledPrint(std::string text, fmt::text_style primaryStyle, bool line_break = true)
     {
         PushAndNotify(Message{
             std::move(text),
             MessageType::LogAndStyledPrint,
-            PriorityType::None,
-            true,
             primaryStyle,
-            std::nullopt
+            std::nullopt,
+            line_break,
+            true
         });
     }
 
@@ -392,7 +400,6 @@ namespace BlackTek::Console
         PushAndNotify(Message{
             std::move(text),
             MessageType::DebugLog,
-            PriorityType::None,
             false
         });
     }
