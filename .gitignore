@@ -23,3 +23,6 @@ config.lua
 
 # Docker volumes
 db-data
+
+# Log files
+blacktek.log

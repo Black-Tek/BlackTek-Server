@@ -6129,9 +6129,9 @@ void Game::shutdown()
 
 	ConnectionManager::getInstance().closeAll();
 
-	std::cout << " done!" << std::endl;
-
 	BlackTek::Console::Shutdown();
+
+	std::cout << " done!" << std::endl;
 }
 
 void Game::coro_timer_cycle()
