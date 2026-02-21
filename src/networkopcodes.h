@@ -211,6 +211,10 @@ namespace BlackTek {
             TextMessage = 0xB4,
             CancelWalk = 0xB5,
 
+            // WalkWait = 0xB6, // Not implemented
+            UnjustifiedStats = 0xB7,  // Unjustified kill statistics
+            PvpSituations = 0xB8,     // Open PvP situations count
+
             // Floor Changes
             FloorChangeUp = 0xBE,
             FloorChangeDown = 0xBF,

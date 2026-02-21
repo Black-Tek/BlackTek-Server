@@ -89,6 +89,7 @@ struct LuaTimerEventDesc {
 	LuaTimerEventDesc(LuaTimerEventDesc&& other) = default;
 };
 
+
 class ScriptEnvironment
 {
 	public:
@@ -886,6 +887,18 @@ class LuaScriptInterface
 		static int luaDamageModifierSetRaceFilter(lua_State* L);
 		static int luaDamageModifierSetCreatureTypeFilter(lua_State* L);
 		static int luaDamageModifierSetCreatureName(lua_State* L);
+		static int luaDamageModifierGetType(lua_State* L);
+		static int luaDamageModifierGetStance(lua_State* L);
+		static int luaDamageModifierGetChance(lua_State* L);
+		static int luaDamageModifierGetValue(lua_State* L);
+		static int luaDamageModifierGetFactor(lua_State* L);
+		static int luaDamageModifierGetCombatType(lua_State* L);
+		static int luaDamageModifierGetOriginType(lua_State* L);
+		static int luaDamageModifierGetRaceType(lua_State* L);
+		static int luaDamageModifierGetCreatureType(lua_State* L);
+		static int luaDamageModifierGetCreatureName(lua_State* L);
+		static int luaDamageModifierGetConversionType(lua_State* L);
+		static int luaDamageModifierIsPercent(lua_State* L);
 
 
 		// Augment
@@ -1588,6 +1601,7 @@ class LuaScriptInterface
 		static int luaCreateLoot(lua_State* L);
 		static int luaDeleteLoot(lua_State* L);
 		static int luaLootSetId(lua_State* L);
+		static int luaLootSetMinCount(lua_State* L);
 		static int luaLootSetMaxCount(lua_State* L);
 		static int luaLootSetSubType(lua_State* L);
 		static int luaLootSetChance(lua_State* L);
@@ -1831,6 +1845,8 @@ class LuaScriptInterface
 		static int32_t scriptEnvIndex;
 
 		std::string loadingFile;
+		template<class UserDataType>
+		int luaDestroySharedUserData(lua_State* L);
 };
 
 class LuaEnvironment : public LuaScriptInterface
@@ -1876,5 +1892,14 @@ class LuaEnvironment : public LuaScriptInterface
 		friend class LuaScriptInterface;
 		friend class CombatSpell;
 };
+
+template <class UserDataType>
+static int destroySharedUserData(lua_State* L)
+{
+	auto& obj_ref = LuaScriptInterface::getSharedPtr<UserDataType>(L, 1);
+	std::destroy_at(std::addressof(obj_ref));
+	return 0;
+}
+
 
 #endif

@@ -1,12 +1,28 @@
 name: Windows Build
 on: 
   workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Build type'
+        required: true
+        default: 'edge'
+        type: choice
+        options:
+          - edge
+          - release
+      version:
+        description: 'Version tag (only for release type, e.g., v1.0.0)'
+        required: false
+        type: string
   pull_request:
   push:
     branches:
       - 'master'
-      - '1.0'
-      - '1.1'
+      - 'main'
+    tags:
+      - 'v[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+-*'
+
 jobs:
   BuildForWindows:
     name: ${{ matrix.os }}-${{ matrix.buildtype }}
@@ -17,7 +33,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-2022]
-        buildtype: [windows-release, windows-release-asan, windows-debug]
+        buildtype: [windows-release, windows-debug]
         include:
           - os: windows-2022
             triplet: x64-windows
@@ -128,10 +144,54 @@ jobs:
         run: Remove-Item -Path "D:/a/BlackTek-Server/BlackTek-Server/premake-core" -Recurse -Force
         shell: pwsh
       
-      - name: Prepare Compressed Assets
+      # Determine if this is a release build
+      - name: Determine Release Type
+        id: release_type
+        shell: pwsh
+        run: |
+          $isRelease = "false"
+          $version = ""
+          
+          # Check if triggered by tag push
+          if ("${{ github.ref }}" -like "refs/tags/v*") {
+            $isRelease = "true"
+            $version = "${{ github.ref_name }}"
+            Write-Host "Detected tag push: $version"
+          }
+          
+          # Check if workflow_dispatch with release type
+          if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ github.event.inputs.release_type }}" -eq "release") {
+            $isRelease = "true"
+            $version = "${{ github.event.inputs.version }}"
+            if ([string]::IsNullOrEmpty($version)) {
+              Write-Error "Error: Version is required for release builds"
+              exit 1
+            }
+            Write-Host "Manual release triggered: $version"
+          }
+          
+          echo "is_release=$isRelease" >> $env:GITHUB_OUTPUT
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Release build: $isRelease, Version: $version"
+      
+      - name: Prepare Compressed Assets (Edge Build)
+        if: steps.release_type.outputs.is_release != 'true'
         run: |
           echo "Commit SHA: ${{ github.sha }}" > version.info
           7z a BlackTek-Server-${{ github.sha }}.zip D:/a/BlackTek-Server/BlackTek-Server/
+      
+      - name: Prepare Compressed Assets (Release Build)
+        if: steps.release_type.outputs.is_release == 'true' && matrix.buildtype == 'windows-release'
+        shell: pwsh
+        run: |
+          $version = "${{ steps.release_type.outputs.version }}"
+          @"
+          Version: $version
+          Commit SHA: ${{ github.sha }}
+          Build Date: $(Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+          OS: Windows
+          "@ | Out-File -FilePath version.info -Encoding UTF8
+          7z a "BlackTek-Server-Windows-$version.zip" D:/a/BlackTek-Server/BlackTek-Server/
       
       - name: Cleanup Old Release Assets
         if: (github.event_name == 'push') && (matrix.buildtype == 'windows-release') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && matrix.buildtype == 'windows-release' && github.event.pull_request.merged == true)
@@ -164,7 +224,11 @@ jobs:
           }
       
       - name: Upload Assets for Edge Build
-        if: (github.event_name == 'push') && (matrix.buildtype == 'windows-release') && !startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+        if: |
+          steps.release_type.outputs.is_release != 'true' &&
+          ((github.event_name == 'push' && matrix.buildtype == 'windows-release' && !startsWith(github.ref, 'refs/tags/')) ||
+           (github.event_name == 'pull_request' && matrix.buildtype == 'windows-release' && github.event.pull_request.merged == true) ||
+           (github.event_name == 'workflow_dispatch' && github.event.inputs.release_type == 'edge' && matrix.buildtype == 'windows-release'))
         uses: softprops/action-gh-release@v2
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -177,3 +241,33 @@ jobs:
             OS-BuildType: Windows
             Build date: ${{ github.event.head_commit.timestamp }}
           files: BlackTek-Server-${{ github.sha }}.zip
+      
+      # Official Release Upload
+      - name: Create and Upload Official Release
+        if: steps.release_type.outputs.is_release == 'true' && matrix.buildtype == 'windows-release'
+        uses: softprops/action-gh-release@v2
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          prerelease: false
+          tag_name: ${{ steps.release_type.outputs.version }}
+          name: BlackTek Server ${{ steps.release_type.outputs.version }}
+          generate_release_notes: true
+          body: |
+            ## BlackTek Server ${{ steps.release_type.outputs.version }}
+            
+            ### Release Information
+            - **Version:** ${{ steps.release_type.outputs.version }}
+            - **Commit:** ${{ github.sha }}
+            - **Build Date:** ${{ github.event.head_commit.timestamp }}
+            - **Platform:** Windows
+            
+            ### Installation
+            1. Download the zip file below
+            2. Extract to your desired location
+            3. Configure your server settings
+            4. Run the server executable
+            
+            ### What's Changed
+            See the auto-generated release notes below for a full list of changes.
+          files: BlackTek-Server-Windows-${{ steps.release_type.outputs.version }}.zip

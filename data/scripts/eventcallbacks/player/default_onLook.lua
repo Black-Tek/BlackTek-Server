@@ -126,9 +126,23 @@ ec.onLook = function(self, thing, position, distance, description)
 		end
 
 		if thing:isAugmented() then
-			for index, augment in pairs(thing:getAugments()) do
-				augDesc = augment:getDescription()
-				description = description.. " \n Augment : " .. augment:getName() .. " \n " .. augDesc
+			local augments = thing:getAugments()
+			local label = (#augments > 1) and "Augments: " or "Augment: "
+
+			for _, augment in pairs(augments) do
+				local originalDesc = augment:getDescription()
+				local augDesc = originalDesc
+				if not augDesc or augDesc == "" or augDesc == "unknown" then
+					augDesc = buildAugmentDescription(augment)
+				end
+
+				if augDesc and augDesc ~= "" then
+					if originalDesc and originalDesc ~= "" and originalDesc ~= "unknown" then
+						description = description .. "\n" .. label .. augment:getName() .. "\n" .. augDesc
+					else
+						description = description .. "\n" .. augDesc
+					end
+				end
 			end
 		end
 

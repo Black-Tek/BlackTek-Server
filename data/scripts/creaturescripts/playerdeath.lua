@@ -1,7 +1,7 @@
 local deathListEnabled = true
 local maxDeathRecords = 5
 
-function onDeath(player, corpse, killer, mostDamageKiller, lastHitUnjustified, mostDamageUnjustified)
+local function onDeath(player, corpse, killer, mostDamageKiller, lastHitUnjustified, mostDamageUnjustified)
 	local playerId = player:getId()
 	if nextUseStaminaTime[playerId] then
 		nextUseStaminaTime[playerId] = nil
@@ -87,3 +87,10 @@ function onDeath(player, corpse, killer, mostDamageKiller, lastHitUnjustified, m
 		end
 	end
 end
+
+-- Revscript registrations
+local PlayerDeath = CreatureEvent("PlayerDeath")
+function PlayerDeath.onDeath(...)
+    return onDeath(...)
+end
+PlayerDeath:register()

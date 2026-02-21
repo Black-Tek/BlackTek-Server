@@ -13,7 +13,7 @@ function Container.createLootItem(self, item)
 	
 	if randvalue < item.chance then
 		if itemType:isStackable() then
-			itemCount = randvalue % item.maxCount + 1
+			itemCount = item.minCount + (randvalue % (item.maxCount - item.minCount + 1))
 		else
 			itemCount = 1
 		end

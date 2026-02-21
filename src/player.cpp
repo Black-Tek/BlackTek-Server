@@ -4662,10 +4662,13 @@ void Player::addUnjustifiedDead(const PlayerConstPtr& attacked)
 			setSkull(SKULL_RED);
 		}
 	}
+	sendUnjustifiedStats();
+	sendPvpSituations();
 }
 
 void Player::checkSkullTicks(const int64_t ticks)
 {
+	int64_t oldTicks = skullTicks;
 	if (const int64_t newTicks = skullTicks - ticks; newTicks < 0) {
 		skullTicks = 0;
 	} else {
@@ -4674,6 +4677,17 @@ void Player::checkSkullTicks(const int64_t ticks)
 
 	if ((skull == SKULL_RED || skull == SKULL_BLACK) && skullTicks < 1 && !hasCondition(CONDITION_INFIGHT)) {
 		setSkull(SKULL_NONE);
+	}
+
+	int64_t fragTime = g_config.getNumber(ConfigManager::FRAG_TIME);
+	if (fragTime > 0 and oldTicks != skullTicks)
+	{
+		int64_t oldDays = oldTicks / fragTime;
+		int64_t newDays = skullTicks / fragTime;
+		if (oldDays != newDays)
+		{
+			sendUnjustifiedStats();
+		}
 	}
 }
 

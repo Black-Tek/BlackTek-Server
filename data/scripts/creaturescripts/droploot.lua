@@ -1,4 +1,4 @@
-function onDeath(player, corpse, killer, mostDamageKiller, lastHitUnjustified, mostDamageUnjustified)
+local function onDeath(player, corpse, killer, mostDamageKiller, lastHitUnjustified, mostDamageUnjustified)
 	if player:hasFlag(PlayerFlag_NotGenerateLoot) or player:getVocation():getId() == VOCATION_NONE then
 		return true
 	end
@@ -40,3 +40,10 @@ function onDeath(player, corpse, killer, mostDamageKiller, lastHitUnjustified, m
 	end
 	return true
 end
+
+-- Revscript registrations
+local DropLoot = CreatureEvent("DropLoot")
+function DropLoot.onDeath(...)
+    return onDeath(...)
+end
+DropLoot:register()

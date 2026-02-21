@@ -38,6 +38,7 @@ public:
 	static void loadAll();
 	static void clearAll();
 	static void reload();
+	static size_t count();
 	static void AddAugment(std::shared_ptr<Augment> augment);
 	static void RemoveAugment(const std::shared_ptr<Augment>& augment);
 	static void RemoveAugment(std::string_view augName);

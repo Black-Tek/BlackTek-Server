@@ -1,13 +1,11 @@
 [strangeTalisman]
 name = "strange talisman"
-description = "protection energy +10%"
 modifiers = [
 	{ mod = "resist", value = 10, damage = "energy"}
 ]
 
 [mightRing]
 name = "might ring"
-description = "protection physical +20%, fire +20%, earth +20%, energy +20%, ice +20%, holy +20%, death +20%"
 modifiers = [
 	{ mod = "resist", value = 20, damage = "energy"},
     { mod = "resist", value = 20, damage = "fire"},
@@ -20,14 +18,12 @@ modifiers = [
 
 [silverAmulet]
 name = "silver amulet"
-description = "protection earth +10%"
 modifiers = [
 	{ mod = "resist", value = 10, damage = "earth"}
 ]
 
 [bronzeAmulet]
 name = "bronze amulet"
-description = "protection mana drain +20%"
 modifiers = [
 	{ mod = "resist", value = 20, damage = "manadrain"}
 ]
@@ -35,7 +31,6 @@ modifiers = [
 
 [stoneSkinAmulet]
 name = "stone skin amulet"
-description = "protection physical +80%, death +80%"
 modifiers = [
     { mod = "resist", value = 80, damage = "death"},
     { mod = "resist", value = 80, damage = "physical"}
@@ -44,7 +39,6 @@ modifiers = [
 
 [elvenAmulet]
 name = "elven amulet"
-description = "protection physical +5%, fire +5%, earth +5%, energy +5%, ice +5%, holy +5%, death +5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "earth"},
     { mod = "resist", value = 5, damage = "energy"},
@@ -58,7 +52,6 @@ modifiers = [
 
 [garlicNecklace]
 name = "garlic necklace"
-description = "protection lifedrain +20%"
 modifiers = [
 	{ mod = "resist", value = 20, damage = "lifedrain"}
 ]
@@ -66,7 +59,6 @@ modifiers = [
 
 [protectionAmulet]
 name = "protection amulet"
-description = "protection physical +6%"
 modifiers = [
 	{ mod = "resist", value = 6, damage = "physical"}
 ]
@@ -74,7 +66,6 @@ modifiers = [
 
 [dragonNecklace]
 name = "dragon necklace"
-description = "protection fire +8%"
 modifiers = [
 	{ mod = "resist", value = 8, damage = "fire"}
 ]
@@ -82,7 +73,6 @@ modifiers = [
 
 [dwarvenHelmet]
 name = "dwarven helmet"
-description = "protection physical +2%"
 modifiers = [
 	{ mod = "resist", value = 2, damage = "physical"}
 ]
@@ -90,7 +80,6 @@ modifiers = [
 
 [dwarvenArmor]
 name = "dwarven armor"
-description = "protection physical +5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "physical"}
 ]
@@ -98,7 +87,6 @@ modifiers = [
 
 [dwarvenLegs]
 name = "dwarven legs"
-description = "protection physical +3%"
 modifiers = [
 	{ mod = "resist", value = 3, damage = "physical"}
 ]
@@ -106,7 +94,6 @@ modifiers = [
 
 [woodCape]
 name = "wood cape"
-description = "protection earth +4%"
 modifiers = [
 	{ mod = "resist", value = 4, damage = "earth"}
 ]
@@ -114,7 +101,6 @@ modifiers = [
 
 [helmetOfTheDeep]
 name = "helmet of the deep"
-description = "protection drowning +100%"
 modifiers = [
 	{ mod = "resist", value = 100, damage = "drown"}
 ]
@@ -122,7 +108,6 @@ modifiers = [
 
 [deathRing]
 name = "death ring"
-description = "protection death +5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "death"}
 ]
@@ -130,7 +115,6 @@ modifiers = [
 
 [pairOfEarmuffs]
 name = "pair of earmuffs"
-description = "protection ice +2%"
 modifiers = [
 	{ mod = "resist", value = 2, damage = "ice"}
 ]
@@ -139,7 +123,6 @@ modifiers = [
 
 [terraMantle]
 name = "terra mantle"
-description = "protection earth +8%, fire -8%"
 modifiers = [
 	{ mod = "resist", value = 8, damage = "earth"},
 	{ mod = "weakness", value = 8, damage = "fire"}
@@ -148,7 +131,6 @@ modifiers = [
 
 [terraLegs]
 name = "terra legs"
-description = "protection earth +6%, fire -6%"
 modifiers = [
 	{ mod = "resist", value = 6, damage = "earth"},
 	{ mod = "weakness", value = 6, damage = "fire"}
@@ -156,7 +138,6 @@ modifiers = [
 
 [terraBoots]
 name = "terra boots"
-description = "protection earth +5%, fire -5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "earth"},
 	{ mod = "weakness", value = 5, damage = "fire"}
@@ -165,7 +146,6 @@ modifiers = [
 
 [terraAmulet]
 name = "terra amulet"
-description = "protection earth +20%, fire -10%"
 modifiers = [
 	{ mod = "resist", value = 20, damage = "earth"},
 	{ mod = "weakness", value = 10, damage = "fire"}
@@ -174,7 +154,6 @@ modifiers = [
 
 [glacierAmulet]
 name = "glacier amulet"
-description = "protection ice +20%, energy -10%"
 modifiers = [
 	{ mod = "resist", value = 20, damage = "ice"},
 	{ mod = "weakness", value = 10, damage = "energy"}
@@ -183,7 +162,6 @@ modifiers = [
 
 [lightningPendant]
 name = "lightning pendant"
-description = "protection energy +20%, earth -10%"
 modifiers = [
 	{ mod = "resist", value = 20, damage = "energy"},
 	{ mod = "weakness", value = 10, damage = "earth"}
@@ -192,7 +170,6 @@ modifiers = [
 
 [magmaAmulet]
 name = "magma amulet"
-description = "protection fire +20%, ice -10%"
 modifiers = [
 	{ mod = "resist", value = 20, damage = "fire"},
 	{ mod = "weakness", value = 10, damage = "ice"}
@@ -201,7 +178,6 @@ modifiers = [
 
 [magmaBoots]
 name = ""
-description = "protection fire +5%, ice -5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "fire"},
 	{ mod = "weakness", value = 5, damage = "ice"}
@@ -210,7 +186,6 @@ modifiers = [
 
 [glacierShoes]
 name = "glacier shoes"
-description = "protection ice +5%, energy -5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "ice"},
 	{ mod = "weakness", value = 5, damage = "energy"}
@@ -219,7 +194,6 @@ modifiers = [
 
 [lightningBoots]
 name = "lightning boots"
-description = "protection energy +5%, earth -5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "energy"},
 	{ mod = "weakness", value = 5, damage = "earth"}
@@ -228,7 +202,6 @@ modifiers = [
 
 [magmaLegs]
 name = "magma legs"
-description = "protection fire +6%, ice -6%"
 modifiers = [
 	{ mod = "resist", value = 6, damage = "fire"},
 	{ mod = "weakness", value = 6, damage = "ice"}
@@ -238,7 +211,6 @@ modifiers = [
 
 [lightningLegs]
 name = "lightning legs"
-description = "protection energy +6%, earth -6%"
 modifiers = [
 	{ mod = "resist", value = 6, damage = "energy"},
 	{ mod = "weakness", value = 6, damage = "earth"}
@@ -248,7 +220,6 @@ modifiers = [
 
 [glacierKilt]
 name = "glacier kilt"
-description = "protection ice +6%, energy -6%"
 modifiers = [
 	{ mod = "resist", value = 6, damage = "ice"},
 	{ mod = "weakness", value = 6, damage = "energy"}
@@ -258,7 +229,6 @@ modifiers = [
 
 [glacierRobe]
 name = "glacier robe"
-description = "protection ice +8%, energy -8%"
 modifiers = [
 	{ mod = "resist", value = 8, damage = "ice"},
 	{ mod = "weakness", value = 8, damage = "energy"}
@@ -268,7 +238,6 @@ modifiers = [
 
 [lightningRobe]
 name = "lightning robe"
-description = "protection energy +8%, earth -8%"
 modifiers = [
 	{ mod = "resist", value = 8, damage = "energy"},
 	{ mod = "weakness", value = 8, damage = "earth"}
@@ -278,7 +247,6 @@ modifiers = [
 
 [magmaCoat]
 name = "magma coat"
-description = "protection fire +8%, ice -8%"
 modifiers = [
 	{ mod = "resist", value = 8, damage = "fire"},
 	{ mod = "weakness", value = 8, damage = "ice"}
@@ -288,7 +256,6 @@ modifiers = [
 
 [magmaMonocle]
 name = "magma monocle"
-description = "protection fire +4%, ice -5%"
 modifiers = [
 	{ mod = "resist", value = 4, damage = "fire"},
 	{ mod = "weakness", value = 5, damage = "ice"}
@@ -298,7 +265,6 @@ modifiers = [
 
 [lightningHeadband]
 name = "lightning headband"
-description = "protection energy +4%, earth -5%"
 modifiers = [
 	{ mod = "resist", value = 4, damage = "energy"},
 	{ mod = "weakness", value = 5, damage = "earth"}
@@ -308,7 +274,6 @@ modifiers = [
 
 [glacierMask]
 name = "glacier mask"
-description = "protection ice +4%, energy -5%"
 modifiers = [
 	{ mod = "resist", value = 4, damage = "ice"},
 	{ mod = "weakness", value = 5, damage = "energy"}
@@ -318,7 +283,6 @@ modifiers = [
 
 [terraHood]
 name = "terra hood"
-description = "protection earth +4%, fire -5%"
 modifiers = [
 	{ mod = "resist", value = 4, damage = "earth"},
 	{ mod = "weakness", value = 5, damage = "fire"}
@@ -327,7 +291,6 @@ modifiers = [
 
 [kosheisAmulet]
 name = "koshei's ancient amulet"
-description = "protection death +8%, holy -50%"
 modifiers = [
 	{ mod = "resist", value = 8, damage = "death"},
 	{ mod = "weakness", value = 50, damage = "holy"}
@@ -336,7 +299,6 @@ modifiers = [
 
 [witchhuntersCoat]
 name = "witchhunter's coat"
-description = "protection death +2%, holy -2%"
 modifiers = [
 	{ mod = "resist", value = 2, damage = "death"},
 	{ mod = "weakness", value = 2, damage = "holy"}
@@ -345,7 +307,6 @@ modifiers = [
 
 [darklordsCape]
 name = "dark lord's cape"
-description = "protection death +8%, holy -8%"
 modifiers = [
 	{ mod = "resist", value = 8, damage = "death"},
 	{ mod = "weakness", value = 8, damage = "holy"}
@@ -354,7 +315,6 @@ modifiers = [
 
 [robeOfIceQueen]
 name = "the robe of the ice queen"
-description = "protection ice +12%, energy -12%"
 modifiers = [
 	{ mod = "resist", value = 12, damage = "ice"},
 	{ mod = "weakness", value = 12, damage = "energy"}
@@ -363,7 +323,6 @@ modifiers = [
 
 [dragonRobe]
 name = "dragon robe"
-description = "protection fire +12%, ice -12%"
 modifiers = [
 	{ mod = "resist", value = 12, damage = "fire"},
 	{ mod = "weakness", value = 12, damage = "ice"}
@@ -372,7 +331,6 @@ modifiers = [
 
 [velvetMantle]
 name = "velvet mantle"
-description = "protection energy +12%, earth -12%"
 modifiers = [
 	{ mod = "resist", value = 12, damage = "energy"},
 	{ mod = "weakness", value = 12, damage = "earth"}
@@ -381,7 +339,6 @@ modifiers = [
 
 [greenwoodCoat]
 name = "greenwood coat"
-description = "protection earth +12%, fire -12%"
 modifiers = [
 	{ mod = "resist", value = 12, damage = "earth"},
 	{ mod = "weakness", value = 12, damage = "fire"}
@@ -390,7 +347,6 @@ modifiers = [
 
 [summerDress]
 name = "summer dress"
-description = "protection death +5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "death"}
 ]
@@ -398,7 +354,6 @@ modifiers = [
 
 [lavosArmor]
 name = "lavos armor"
-description = "protection fire +3%, ice -3%"
 modifiers = [
 	{ mod = "resist", value = 3, damage = "fire"},
 	{ mod = "weakness", value = 3, damage = "ice"}
@@ -407,7 +362,6 @@ modifiers = [
 
 [crystallineArmor]
 name = "crystalline armor"
-description = "protection ice +3%, energy -3%"
 modifiers = [
 	{ mod = "resist", value = 3, damage = "ice"},
 	{ mod = "weakness", value = 3, damage = "energy"}
@@ -416,7 +370,6 @@ modifiers = [
 
 [voltageArmor]
 name = "voltage armor"
-description = "protection energy +3%, earth -3%"
 modifiers = [
 	{ mod = "resist", value = 3, damage = "energy"},
 	{ mod = "weakness", value = 3, damage = "earth"}
@@ -425,7 +378,6 @@ modifiers = [
 
 [swamplairArmor]
 name = "swamplair armor"
-description = "protection earth +3%, fire -3%"
 modifiers = [
 	{ mod = "resist", value = 3, damage = "earth"},
 	{ mod = "weakness", value = 3, damage = "fire"}
@@ -434,7 +386,6 @@ modifiers = [
 
 [firebornGiantArmor]
 name = "fireborn giant armor"
-description = "protection fire +5%, ice -5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "fire"},
 	{ mod = "weakness", value = 5, damage = "ice"}
@@ -443,7 +394,6 @@ modifiers = [
 
 [earthbornGiantArmor]
 name = "earthborn giant armor"
-description = "protection earth +5%, fire -5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "earth"},
 	{ mod = "weakness", value = 5, damage = "fire"}
@@ -452,7 +402,6 @@ modifiers = [
 
 [windbornColossusArmor]
 name = "windborn colossus armor"
-description = "protection energy +5%, earth -5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "energy"},
 	{ mod = "weakness", value = 5, damage = "earth"}
@@ -461,7 +410,6 @@ modifiers = [
 
 [oceanbornColossusArmor]
 name = "oceanborn colossus armor"
-description = "protection ice +5%, energy -5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "ice"},
     { mod = "weakness", value = 5, damage = "energy"}
@@ -470,7 +418,6 @@ modifiers = [
 
 [divinePlate]
 name = "divine plate"
-description = "protection death +10%, holy -10%"
 modifiers = [
 	{ mod = "resist", value = 10, damage = "death"},
 	{ mod = "weakness", value = 10, damage = "holy"}
@@ -479,7 +426,6 @@ modifiers = [
 
 [moltenPlate]
 name = "molten plate"
-description = "protection fire +7%, ice -7%"
 modifiers = [
 	{ mod = "resist", value = 7, damage = "fire"},
 	{ mod = "weakness", value = 7, damage = "ice"}
@@ -488,7 +434,6 @@ modifiers = [
 
 [frozenPlate]
 name = "frozen plate"
-description = "protection ice +7%, energy -7%"
 modifiers = [
 	{ mod = "resist", value = 7, damage = "ice"},
 	{ mod = "weakness", value = 7, damage = "energy"}
@@ -497,7 +442,6 @@ modifiers = [
 
 [skullcrackerArmor]
 name = "skullcracker armor"
-description = "protection death +5%, holy -5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "death"},
 	{ mod = "weakness", value = 5, damage = "holy"}
@@ -506,7 +450,6 @@ modifiers = [
 
 [robeOfTheUnderworld]
 name = "robe of the underworld"
-description = "protection death +12%, holy -12%"
 modifiers = [
 	{ mod = "resist", value = 12, damage = "death"},
 	{ mod = "weakness", value = 12, damage = "holy"}
@@ -515,7 +458,6 @@ modifiers = [
 
 [yalahariArmor]
 name = "yalahari armor"
-description = "protection death +3%"
 modifiers = [
 	{ mod = "resist", value = 3, damage = "death"}
 ]
@@ -523,7 +465,6 @@ modifiers = [
 
 [yalahariLegs]
 name = "yalahari leg piece"
-description = "protection death +5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "death"}
 ]
@@ -531,7 +472,6 @@ modifiers = [
 
 [bonfireAmulet]
 name = "bonfire amulet"
-description = "protection physical +60%, fire +40%"
 modifiers = [
 	{ mod = "resist", value = 60, damage = "physical"},
 	{ mod = "resist", value = 40, damage = "fire"}
@@ -540,7 +480,6 @@ modifiers = [
 
 [sacredTreeAmulet]
 name = "sacred tree amulet"
-description = "protection physical +60%, earth +40%"
 modifiers = [
 	{ mod = "resist", value = 60, damage = "physical"},
 	{ mod = "resist", value = 40, damage = "earth"}
@@ -549,7 +488,6 @@ modifiers = [
 
 [leviathansAmulet]
 name = "leviathan's amulet"
-description = "protection physical +60%, ice +40%"
 modifiers = [
 	{ mod = "resist", value = 60, damage = "physical"},
 	{ mod = "resist", value = 40, damage = "ice"}
@@ -558,7 +496,6 @@ modifiers = [
 
 [shockwaveAmulet]
 name = "shockwave amulet"
-description = "protection physical +60%, energy +40%"
 modifiers = [
 	{ mod = "resist", value = 60, damage = "physical"},
 	{ mod = "resist", value = 40, damage = "energy"}
@@ -567,7 +504,6 @@ modifiers = [
 
 [witchHat]
 name = "witch hat"
-description = "protection manadrain +5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "manadrain"}
 ]
@@ -575,7 +511,6 @@ modifiers = [
 
 [crystalBoots]
 name = "crystal boots"
-description = "protection ice +3%, energy -3%"
 modifiers = [
 	{ mod = "resist", value = 3, damage = "ice"},
 	{ mod = "weakness", value = 3, damage = "energy"}
@@ -584,7 +519,6 @@ modifiers = [
 
 [dragonScaleBoots]
 name = "dragon scale boots"
-description = "protection fire +3%, ice -3%"
 modifiers = [
 	{ mod = "resist", value = 3, damage = "fire"},
 	{ mod = "weakness", value = 3, damage = "ice"}
@@ -593,7 +527,6 @@ modifiers = [
 
 [guardianBoots]
 name = "guardian boots"
-description = "protection physical +2%, holy +2%"
 modifiers = [
     { mod = "resist", value = 2, damage = "physical"},
 	{ mod = "weakness", value = 2, damage = "holy"}
@@ -602,7 +535,6 @@ modifiers = [
 
 [zaoanHelmet]
 name = "zaoan helmet"
-description = "protection physical +5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "physical"}
 ]
@@ -610,7 +542,6 @@ modifiers = [
 
 [zaoanLegs]
 name = "zaoan legs"
-description = "protection physical +2%"
 modifiers = [
 	{ mod = "resist", value = 2, damage = "physical"}
 ]
@@ -618,7 +549,6 @@ modifiers = [
 
 [spellweaverRobe]
 name = "spellweaver robe"
-description = "protection energy +10%, earth -10%"
 modifiers = [
 	{ mod = "resist", value = 10, damage = "energy"},
 	{ mod = "weakness", value = 10, damage = "earth"}
@@ -627,7 +557,6 @@ modifiers = [
 
 [zaoanRobe]
 name = "zaoan robe"
-description = "protection fire +10%, ice -10%"
 modifiers = [
 	{ mod = "resist", value = 10, damage = "fire"},
 	{ mod = "weakness", value = 10, damage = "ice"}
@@ -636,7 +565,6 @@ modifiers = [
 
 [cobraCrown]
 name = "cobra crown"
-description = "protection fire +5%, earth -5%"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "fire"},
 	{ mod = "weakness", value = 5, damage = "earth"}
@@ -644,7 +572,6 @@ modifiers = [
 
 [royalDrakenMail]
 name = "royal draken mail"
-description = "protection physical +5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "physical"}
 ]
@@ -652,98 +579,84 @@ modifiers = [
 
 [royalScaleRobe]
 name = "royal scale robe"
-description = "protection fire +5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "fire"}
 ]
 
 [eliteDrakenHelmet]
 name = "elite draken helmet"
-description = "protection death +3%"
 modifiers = [
     { mod = "resist", value = 3, damage = "death"}
 ]
 
 [magesCap]
 name = "mage's cap"
-description = "protection fire +4%"
 modifiers = [
     { mod = "resist", value = 4, damage = "fire"}
 ]
 
 [necklaceOfTheDeep ]
 name = "necklace of the deep"
-description = "protection lifedrain +50%"
 modifiers = [
     { mod = "resist", value = 50, damage = "lifedrain"}
 ]
 
 [ornateChestplate]
 name = "ornate chestplate"
-description = "protection physical +8%"
 modifiers = [
     { mod = "resist", value = 8, damage = "physical"}
 ]
 
 [deapthLorica]
 name = "deapth lorica"
-description = "protection death +5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "death"}
 ]
 
 [deathGalea]
 name = "death galea"
-description = "protection drown +100%"
 modifiers = [
     { mod = "resist", value = 100, damage = "drown"}
 ]
 
 [deathOcrea]
 name = "death ocrea"
-description = "protection manadrain +15%"
 modifiers = [
     { mod = "resist", value = 15, damage = "manadrain"}
 ]
 
 [depthCalcei]
 name = "depth calcei"
-description = "protection physical +5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "physical"}
 ]
 
 [ornateLegs]
 name = "ornate legs"
-description = "protection physical +5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "fiphysicalre"}
 ]
 
 [ornateShield]
 name = "ornate shield"
-description = "protection physical +5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "physical"}
 ]
 
 [calopteryxCape]
 name = "calopteryx cape"
-description = "protection ice +5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "ice"}
 ]
 
 [spellbookOfAncientArcana]
 name = "spellbook of ancient arcana"
-description = "protection death +5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "death"}
 ]
 
 [gillGugel]
 name = "gill gugel"
-description = "protection earth +6%, fire -6%"
 modifiers = [
     { mod = "resist", value = 6, damage = "earth"},
     { mod = "weakness", value = 6, damage = "fire"}
@@ -751,7 +664,6 @@ modifiers = [
 
 [gillCoat]
 name = "gill coat"
-description = "protection earth +10%, fire -10%"
 modifiers = [
     { mod = "resist", value = 10, damage = "earth"},
     { mod = "weakness", value = 10, damage = "fire"}
@@ -759,7 +671,6 @@ modifiers = [
 
 [gillLegs]
 name = "gill legs"
-description = "protection earth +8%, fire -8%"
 modifiers = [
     { mod = "resist", value = 8, damage = "earth"},
     { mod = "weakness", value = 8, damage = "fire"}
@@ -767,7 +678,6 @@ modifiers = [
 
 [spellbookOfVigilance]
 name = "spellbook of vigilance"
-description = "protection earth +3%, fire -5%"
 modifiers = [
     { mod = "resist", value = 3, damage = "earth"},
     { mod = "weakness", value = 3, damage = "fire"}
@@ -775,7 +685,6 @@ modifiers = [
 
 [gillNecklace]
 name = "gill necklace"
-description = "protection physical +15%, earth 10%"
 modifiers = [
     { mod = "resist", value = 15, damage = "physical"},
     { mod = "resist", value = 10, damage = "earth"}
@@ -783,35 +692,30 @@ modifiers = [
 
 [prismaticHelmet]
 name = "prismatic helmet"
-description = "protection physical +5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "physical"}
 ]
 
 [prismaticArmor]
 name = "prismatic armor"
-description = "protection physical +5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "physical"}
 ]
 
 [prismaticLegs]
 name = "prismatic legs"
-description = "protection physical +3%"
 modifiers = [
     { mod = "resist", value = 3, damage = "physical"}
 ]
 
 [prismaticBoots]
 name = "prismatic boots"
-description = "protection death +3%"
 modifiers = [
     { mod = "resist", value = 3, damage = "death"}
 ]
 
 [prismaticNecklace]
 name = "prismatic necklace"
-description = "protection physical +10%, energy +15%"
 modifiers = [
     { mod = "resist", value = 10, damage = "physical"},
     { mod = "resist", value = 15, damage = "energy"}
@@ -819,7 +723,6 @@ modifiers = [
 
 [prismaticRing]
 name = "prismatic ring"
-description = "protection physical +10%, energy +8%"
 modifiers = [
     { mod = "resist", value = 10, damage = "physical"},
     { mod = "resist", value = 8, damage = "energy"}
@@ -827,21 +730,18 @@ modifiers = [
 
 [prismaticShield]
 name = "prismatic shield"
-description = "protection physical +4%"
 modifiers = [
     { mod = "resist", value = 4, damage = "physical"}
 ]
 
 [icyCulotte]
 name = "icy culotte"
-description = "protection ice +8%"
 modifiers = [
     { mod = "resist", value = 8, damage = "ice"}
 ]
 
 [gooShell]
 name = "goo shell"
-description = "protection earth +2%, fire -2%"
 modifiers = [
     { mod = "resist", value = 2, damage = "earth"},
     { mod = "weakness", value = 2, damage = "fire"}
@@ -849,14 +749,12 @@ modifiers = [
 
 [furiousFrock]
 name = "furious frock"
-description = "protection fire +5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "fire"}
 ]
 
 [crudeUmbralSpellbook]
 name = "crude umbral spellbook"
-description = "protection earth +2%, fire +2%, ice +2%, energy +2%"
 modifiers = [
     { mod = "resist", value = 2, damage = "earth"},
     { mod = "resist", value = 2, damage = "fire"},
@@ -866,7 +764,6 @@ modifiers = [
 
 [umbralSpellbook]
 name = "umbral spellbook"
-description = "protection earth +3%, fire +3%, ice +3%, energy +3%"
 modifiers = [
     { mod = "resist", value = 3, damage = "earth"},
     { mod = "resist", value = 3, damage = "fire"},
@@ -876,7 +773,6 @@ modifiers = [
 
 [umbralMasterSpellbook]
 name = "umbral master spellbook"
-description = "protection earth +5%, fire +5%, ice +5%, energy +5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "earth"},
     { mod = "resist", value = 5, damage = "fire"},
@@ -886,7 +782,6 @@ modifiers = [
 
 [gloothCape]
 name = "glooth cape"
-description = "protection earth +5%, fire -5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "earth"},
     { mod = "weakness", value = 5, damage = "fire"}
@@ -894,7 +789,6 @@ modifiers = [
 
 [rubberCap]
 name = "rubber cap"
-description = "protection earth +3%, fire -3%"
 modifiers = [
     { mod = "resist", value = 3, damage = "earth"},
     { mod = "weakness", value = 3, damage = "fire"}
@@ -902,14 +796,12 @@ modifiers = [
 
 [metalSpats]
 name = "metal spats"
-description = "protection physical +1%"
 modifiers = [
     { mod = "resist", value = 1, damage = "physical"}
 ]
 
 [gloothAmulet]
 name = "glooth amulet"
-description = "protection physical +10%, fire +10%, earth +10%, energy +10%, ice +10%, holy +10%, death +10%"
 modifiers = [
     { mod = "resist", value = 10, damage = "earth"},
     { mod = "resist", value = 10, damage = "energy"},
@@ -922,7 +814,6 @@ modifiers = [
 
 [crestOfTheDeepSeas]
 name = "crest of the deep seas"
-description = "protection ice +5%"
 modifiers = [
     { mod = "resist", value = 5, damage = "ice"}
 ]

@@ -167,6 +167,8 @@ public:
 
 	const CombatType_t& getDamageType() const;
 	const CombatOrigin& getOriginType() const;
+	const CreatureType_t& getCreatureType() const;
+	const RaceType_t& getRaceType() const;
 
 	const bool isPercent() const;
 	const bool isFlatValue() const;
@@ -384,6 +386,16 @@ inline const std::string& DamageModifier::getMonsterName() const
 inline const CombatType_t& DamageModifier::getConversionType() const
 {
 	return m_to_damage_type;
+}
+
+inline const CreatureType_t& DamageModifier::getCreatureType() const
+{
+	return m_creature_type;
+}
+
+inline const RaceType_t& DamageModifier::getRaceType() const
+{
+	return m_race_type;
 }
 
 #endif

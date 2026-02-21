@@ -12,7 +12,8 @@ extern	gtl::flat_hash_map<std::string, SkillRegistry> monster_skills;
 
 struct LootBlock {
 	uint16_t id;
-	uint32_t countmax;
+	uint16_t countmin;
+	uint16_t countmax;
 	uint32_t chance;
 
 	//optional
@@ -24,6 +25,7 @@ struct LootBlock {
 	std::vector<LootBlock> childLoot;
 	LootBlock() {
 		id = 0;
+		countmin = 1;
 		countmax = 1;
 		chance = 0;
 
@@ -242,6 +244,11 @@ class Monsters
 
 		std::unique_ptr<LuaScriptInterface> scriptInterface;
 		std::map<std::string, MonsterType> monsters;
+
+		size_t count()
+		{
+			return monsters.size();
+		}
 
 	private:
 		ConditionDamage* getDamageCondition(ConditionType_t conditionType,

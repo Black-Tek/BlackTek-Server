@@ -1161,6 +1161,18 @@ class Player final : public Creature, public Cylinder
 				client->sendBasicData();
 			}
 		}
+
+		void sendUnjustifiedStats() const {
+			if (client) {
+				client->sendUnjustifiedStats();
+			}
+		}
+
+		void sendPvpSituations() const {
+			if (client) {
+				client->sendPvpSituations();
+			}
+		}
 	
 		void sendSkills() const {
 			if (client) {

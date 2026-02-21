@@ -1,0 +1,128 @@
+# Raids Configuration
+# Place .toml files anywhere in data/raids/ (supports subfolders)
+# Each raid entry needs: name, interval, margin, events[]
+#
+# Time units:
+#   interval/margin = minutes
+#   delay = milliseconds
+
+[orc_raid]
+name = "Orc Raid"
+interval = 120
+margin = 60
+repeat = true
+
+[[orc_raid.events]]
+type = "announce"
+delay = 0
+message = "Orcs gathering near the city!"
+messagetype = "warning"
+
+[[orc_raid.events]]
+type = "announce"
+delay = 60000
+message = "The orc invasion has begun!"
+messagetype = "event"
+
+[[orc_raid.events]]
+type = "areaspawn"
+delay = 65000
+from = [800, 800, 7]
+to = [850, 850, 7]
+
+[[orc_raid.events.monsters]]
+name = "Orc"
+minamount = 10
+maxamount = 20
+
+[[orc_raid.events.monsters]]
+name = "Orc Warrior"
+amount = 5
+
+[[orc_raid.events]]
+type = "singlespawn"
+delay = 90000
+name = "Orc Warlord"
+position = [825, 825, 7]
+
+
+[dragon_attack]
+name = "Dragon Attack"
+interval = 240
+margin = 120
+repeat = true
+
+[[dragon_attack.events]]
+type = "announce"
+delay = 0
+message = "A dragon has been spotted!"
+messagetype = "warning"
+
+[[dragon_attack.events]]
+type = "singlespawn"
+delay = 30000
+name = "Dragon Lord"
+x = 1000
+y = 1000
+z = 7
+
+
+[undead_invasion]
+name = "Undead Invasion"
+interval = 180
+margin = 90
+repeat = true
+
+[[undead_invasion.events]]
+type = "announce"
+delay = 0
+message = "The dead are rising!"
+messagetype = "warning"
+
+[[undead_invasion.events]]
+type = "areaspawn"
+delay = 30000
+radius = 15
+center = [900, 900, 7]
+
+[[undead_invasion.events.monsters]]
+name = "Skeleton"
+minamount = 5
+maxamount = 10
+
+[[undead_invasion.events.monsters]]
+name = "Ghoul"
+amount = 3
+
+
+#[custom_event]
+#name = "Custom Event"
+#interval = 60
+#margin = 30
+#repeat = true
+
+#[[custom_event.events]]
+#type = "script"
+#delay = 5000
+#script = "custom_raid.lua"
+
+
+# =============================================================================
+# Reference:
+# =============================================================================
+# Event types: announce, singlespawn, areaspawn, script
+#
+# Message types: warning, event, default, description, smallstatus, blueconsole, redconsole
+#
+# Position formats:
+#   position = [x, y, z]   OR   x = 100, y = 200, z = 7
+#
+# Area formats:
+#   from = [x, y, z], to = [x, y, z]
+#   fromx, fromy, fromz, tox, toy, toz
+#   radius + center = [x, y, z]
+#   radius + centerx, centery, centerz
+#
+# Monster amounts:
+#   amount = 5                     (spawns exactly 5)
+#   minamount = 3, maxamount = 8   (spawns 3-8)

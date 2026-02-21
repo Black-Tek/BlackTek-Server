@@ -1,4 +1,4 @@
-function onLogin(player)
+local function onLogin(player)
 	local serverName = configManager.getString(configKeys.SERVER_NAME)
 	local loginStr = "Welcome to " .. serverName .. "!"
 	if player:getLastLoginSaved() <= 0 then
@@ -42,3 +42,10 @@ function onLogin(player)
 	player:registerEvent("DropLoot")
 	return true
 end
+
+-- Revscript registrations
+local PlayerLogin = CreatureEvent("PlayerLogin")
+function PlayerLogin.onLogin(...)
+    return onLogin(...)
+end
+PlayerLogin:register()

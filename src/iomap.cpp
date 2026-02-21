@@ -9,6 +9,7 @@
 
 #include <fmt/format.h>
 
+
 /*
 	OTBM_ROOTV1
 	|
@@ -47,31 +48,38 @@ TilePtr IOMap::createTile(ItemPtr& ground, uint16_t x, uint16_t y, uint8_t z)
 	return tile;
 }
 
-bool IOMap::loadMap(Map* map, const std::filesystem::path& fileName)
+
+std::expected<MapLoadStats, MapErrorCode> IOMap::loadMap(Map* map, const std::filesystem::path& fileName)
 {
 	const auto start = OTSYS_TIME();
-	try {
+	using Error = MapErrorCode;
+	uint32_t map_size = 0;
+	try
+	{
 		OTB::Loader loader{ fileName.string(), OTB::Identifier{{'O', 'T', 'B', 'M'}} };
 
 		const auto& root = loader.parseTree();
 		PropStream propStream;
-		if (!loader.getProps(root, propStream)) {
+		if (not loader.getProps(root, propStream))
+		{
 			setLastErrorString("Could not read root property.");
-			return false;
+			return std::unexpected(Error::Root);
 		}
 
 		OTBM_root_header root_header{};
-		if (!propStream.read(root_header)) {
+		if (not propStream.read(root_header))
+		{
 			setLastErrorString("Could not read header.");
-			return false;
+			return std::unexpected(Error::Header);
 		}
 
 		const uint32_t headerVersion = root_header.version;
-		if (headerVersion == 0 || headerVersion > 2) {
+		if (headerVersion == 0 or headerVersion > 2)
+		{
 			setLastErrorString(headerVersion == 0
 				? "This map need to be upgraded by using the latest map editor version to be able to load correctly."
 				: "Unknown OTBM version detected.");
-			return false;
+			return std::unexpected(Error::Version);
 		}
 
 		// to-do - we remove OTB so we no longer are able to have warnings about outdated items file being used
@@ -82,49 +90,56 @@ bool IOMap::loadMap(Map* map, const std::filesystem::path& fileName)
 		map->width = root_header.width;
 		map->height = root_header.height;
 
-		std::cout << "> Map size: " << root_header.width << "x" << root_header.height << '.' << std::endl;
+		map_size = pack_map_size(root_header.width, root_header.height);
 
-		if (root.children.empty() || root.children[0].type != OTBM_MAP_DATA) {
+		if (root.children.empty() or root.children[0].type != OTBM_MAP_DATA)
+		{
 			setLastErrorString("Could not read data node.");
-			return false;
+			return std::unexpected(Error::ChildNode);
 		}
 
 		const auto& mapNode = root.children[0];
 
-		[[unlikely]] if (!parseMapDataAttributes(loader, mapNode, *map, fileName)) {
-			return false;
+		[[unlikely]]
+		if (not parseMapDataAttributes(loader, mapNode, *map, fileName))
+		{
+			return std::unexpected(Error::DataParse);
 		}
 
-		for (const auto& mapDataNode : mapNode.children) {
-			switch (mapDataNode.type) {
+		for (const auto& mapDataNode : mapNode.children)
+		{
+			switch (mapDataNode.type)
+			{
 			case OTBM_TILE_AREA:
-				[[unlikely]] if (!parseTileArea(loader, mapDataNode, *map)) {
-					return false;
+				[[unlikely]]
+				if (not parseTileArea(loader, mapDataNode, *map))
+				{
+					return std::unexpected(Error::TileArea);
 				}
 				break;
 			case OTBM_TOWNS:
 				[[unlikely]] if (!parseTowns(loader, mapDataNode, *map)) {
-					return false;
+					return std::unexpected(Error::Towns);
 				}
 				break;
 			case OTBM_WAYPOINTS:
 				[[unlikely]] if (headerVersion > 1 && !parseWaypoints(loader, mapDataNode, *map)) {
-					return false;
+					return std::unexpected(Error::Waypoints);
 				}
 				break;
 			[[unlikely]] default:
 				setLastErrorString("Unknown map node.");
-				return false;
+				return std::unexpected(Error::Unknown);
 			}
 		}
 	}
-	catch (const OTB::InvalidOTBFormat& err) {
+	catch (const OTB::InvalidOTBFormat& err)
+	{
 		setLastErrorString(err.what());
-		return false;
+		return std::unexpected(Error::InvalidFormat);
 	}
 
-	std::cout << "> Map loading time: " << (OTSYS_TIME() - start) / (1000.) << " seconds." << std::endl;
-	return true;
+	return MapLoadStats { (OTSYS_TIME() - start) / (1000), map_size};
 }
 
 bool IOMap::parseMapDataAttributes(OTB::Loader& loader, const OTB::Node& mapNode, Map& map,	const std::filesystem::path& fileName)

@@ -2444,6 +2444,74 @@ void ProtocolGame::sendMarketDetail(uint16_t itemId)
 	writeToOutputBuffer(msg);
 }
 
+void ProtocolGame::sendUnjustifiedStats()
+{
+	NetworkMessage msg;
+	msg.add(ServerCode::UnjustifiedStats);
+
+	int64_t fragTime = g_config.getNumber(ConfigManager::FRAG_TIME); // returned in seconds
+	if (fragTime <= 0)
+	{
+		fragTime = 24 * 60 * 60; // Default 24 hours
+	}
+
+	int64_t skullTicks = player->getSkullTicks();
+	uint8_t killsDay = 0;
+	uint8_t killsWeek = 0;
+	uint8_t killsMonth = 0;
+	
+	if (skullTicks > 0)
+	{
+		// Total kills = skullTicks / fragTime (rounded up)
+		int64_t totalKills = (skullTicks + fragTime - 1) / fragTime;
+		killsDay = static_cast<uint8_t>(std::min<int64_t>(totalKills, 255));
+		killsWeek = static_cast<uint8_t>(std::min<int64_t>(totalKills, 255));
+		killsMonth = static_cast<uint8_t>(std::min<int64_t>(totalKills, 255));
+	}
+
+	uint8_t killsToRed = static_cast<uint8_t>(g_config.getNumber(ConfigManager::KILLS_TO_RED));
+	uint8_t killsToBlack = static_cast<uint8_t>(g_config.getNumber(ConfigManager::KILLS_TO_BLACK));
+	
+	// Calculate progress percentages (0-100)
+	uint8_t dayProgress = killsDay > 0 ? static_cast<uint8_t>(std::min<int64_t>((killsDay * 100) / killsToRed, 100)) : 0;
+	uint8_t weekProgress = killsWeek > 0 ? static_cast<uint8_t>(std::min<int64_t>((killsWeek * 100) / killsToRed, 100)) : 0;
+	uint8_t monthProgress = killsMonth > 0 ? static_cast<uint8_t>(std::min<int64_t>((killsMonth * 100) / killsToBlack, 100)) : 0;
+
+	// Calculate remaining kills until red skull
+	uint8_t dayRemaining = killsDay < killsToRed ? (killsToRed - killsDay) : 0;
+	uint8_t weekRemaining = killsWeek < killsToRed ? (killsToRed - killsWeek) : 0;
+	uint8_t monthRemaining = killsMonth < killsToBlack ? (killsToBlack - killsMonth) : 0;
+
+	// Calculate skull time in days
+	uint8_t skullTimeDays = 0;
+	if (skullTicks > 0)
+	{
+		skullTimeDays = static_cast<uint8_t>(std::min<int64_t>((skullTicks / (24 * 60 * 60)) + 1, 255));
+	}
+
+	msg.addByte(dayProgress);        // Day kills progress %
+	msg.addByte(dayRemaining);       // Day kills remaining
+	msg.addByte(weekProgress);       // Week kills progress %
+	msg.addByte(weekRemaining);      // Week kills remaining
+	msg.addByte(monthProgress);      // Month kills progress %
+	msg.addByte(monthRemaining);     // Month kills remaining
+	msg.addByte(skullTimeDays);      // Skull time in days
+
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendPvpSituations()
+{
+	NetworkMessage msg;
+	msg.add(ServerCode::PvpSituations);  // 0xB8
+	
+	// Open PvP situations - number of players you've attacked recently
+	uint8_t openPvpSituations = static_cast<uint8_t>(std::min<size_t>(player->attackedSet.size(), 255));
+	
+	msg.addByte(openPvpSituations);
+	writeToOutputBuffer(msg);
+}
+
 void ProtocolGame::sendQuestLog()
 {
 	NetworkMessage msg;
@@ -3018,6 +3086,8 @@ void ProtocolGame::sendAddCreature(const CreatureConstPtr& creature, const Posit
 
 	sendStats();
 	sendSkills();
+	sendUnjustifiedStats();
+	sendPvpSituations();
 
 	//gameworld light-settings
 	sendWorldLight(g_game.getWorldLightInfo());

@@ -153,8 +153,30 @@ function isDoor(itemId)
     return false, nil, nil
 end
 
+local function isValidDoorStorageCreature(creature)
+    if not creature or creature:isRemoved() then
+        return false
+    end
+
+    if creature:isMonster() and creature:getHealth() <= 0 then
+        return false
+    end
+
+    return true
+end
+
+local function isActiveDoorCreature(creature)
+    if not creature or creature:isRemoved() then
+        return false
+    end
+
+    return creature:getHealth() > 0
+end
+
 function storeCreatureEntryPosition(creature, fromPosition)
-    if not creature then return end
+    if not isValidDoorStorageCreature(creature) then
+        return
+    end
 
     creature:setStorageValue(DOOR_ENTRY_STORAGE.X, fromPosition.x)
     creature:setStorageValue(DOOR_ENTRY_STORAGE.Y, fromPosition.y)
@@ -162,7 +184,9 @@ function storeCreatureEntryPosition(creature, fromPosition)
 end
 
 function getCreatureEntryPosition(creature)
-    if not creature then return nil end
+    if not isValidDoorStorageCreature(creature) then
+        return nil
+    end
 
     local x = creature:getStorageValue(DOOR_ENTRY_STORAGE.X)
     local y = creature:getStorageValue(DOOR_ENTRY_STORAGE.Y)
@@ -176,7 +200,9 @@ function getCreatureEntryPosition(creature)
 end
 
 function clearCreatureEntryPosition(creature)
-    if not creature then return end
+    if not isValidDoorStorageCreature(creature) then
+        return
+    end
 
     creature:setStorageValue(DOOR_ENTRY_STORAGE.X, -1)
     creature:setStorageValue(DOOR_ENTRY_STORAGE.Y, -1)
@@ -244,7 +270,16 @@ function canPushToPosition(position, round, doorPosition)
     end
 
     local creatures = tile:getCreatures()
-    local creatureCount = creatures and #creatures or 0
+    local activeCreatures = {}
+    if creatures then
+        for _, creature in ipairs(creatures) do
+            if isActiveDoorCreature(creature) then
+                table.insert(activeCreatures, creature)
+            end
+        end
+    end
+
+    local creatureCount = #activeCreatures
 
     if round == 1 and creatureCount == 0 then
         return true
@@ -252,7 +287,7 @@ function canPushToPosition(position, round, doorPosition)
 
     if round == 2 and creatureCount > 0 then
 
-        for _, creature in ipairs(creatures) do
+        for _, creature in ipairs(activeCreatures) do
             if creature:isPlayer() and not doorConfig.allowPushOntoPlayers then
                 return false
             end
@@ -262,7 +297,7 @@ function canPushToPosition(position, round, doorPosition)
         end
 
         local hasSkull = false
-        for _, creature in ipairs(creatures) do
+        for _, creature in ipairs(activeCreatures) do
             if creature:isPlayer() and creature:getSkull() > SKULL_NONE then
                 hasSkull = true
                 break
@@ -284,7 +319,9 @@ function canPushToPosition(position, round, doorPosition)
 end
 
 function pushCreatureFromDoor(creature, doorPosition)
-    if not creature then return false end
+    if not isActiveDoorCreature(creature) then
+        return true
+    end
 
     if creature:isPlayer() and not doorConfig.allowPushPlayers then
         return false
@@ -393,9 +430,11 @@ function closeDoor(doorPosition, doorItem)
     local creatures = tile:getCreatures()
     if creatures then
         for _, creature in ipairs(creatures) do
-            if not (doorConfig.allowGamemasterBypass and creature:isPlayer() and creature:hasGamemasterAccess()) then
-                if not pushCreatureFromDoor(creature, doorPosition) then
-                    return false
+            if isActiveDoorCreature(creature) then
+                if not (doorConfig.allowGamemasterBypass and creature:isPlayer() and creature:hasGamemasterAccess()) then
+                    if not pushCreatureFromDoor(creature, doorPosition) then
+                        return false
+                    end
                 end
             end
         end

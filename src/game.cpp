@@ -8,6 +8,7 @@
 #include "actions.h"
 #include "bed.h"
 #include "configmanager.h"
+#include "console.h"
 #include "creature.h"
 #include "creatureevent.h"
 #include "databasetasks.h"
@@ -130,7 +131,7 @@ void Game::setGameState(GameState_t newState)
 			//map.spawns.startup();
             Spawns::System::LoadSpawns();
 
-			raids.loadFromXml();
+			raids.loadFromToml();
 			raids.startup();
 
 			quests.loadFromToml();
@@ -6129,6 +6130,8 @@ void Game::shutdown()
 	}
 
 	ConnectionManager::getInstance().closeAll();
+
+	BlackTek::Console::Shutdown();
 
 	std::cout << " done!" << std::endl;
 }

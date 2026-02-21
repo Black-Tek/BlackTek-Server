@@ -117,7 +117,7 @@ function levelDoorStepOut.onStepOut(creature, item, position, fromPosition)
         local creatures = tile:getCreatures()
         if creatures then
             for _, c in ipairs(creatures) do
-                if not (doorConfig.allowGamemasterBypass and c:hasGamemasterAccess()) then
+                if not c:isRemoved() and c:getHealth() > 0 and not (doorConfig.allowGamemasterBypass and c:isPlayer() and c:hasGamemasterAccess()) then
                     return true
                 end
             end
