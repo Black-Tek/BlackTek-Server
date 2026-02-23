@@ -21,16 +21,9 @@ bool Map::loadMap(const std::string& identifier, bool loadHouses)
 		return false;
 	}
 
-<<<<<<< spawns_overhaul
-	//if (!IOMap::loadSpawns(this)) {
+	//if (not IOMap::loadSpawns(this)) {
 	//	std::cout << "[Warning - Map::loadMap] Failed to load spawn data." << std::endl;
 	//}
-=======
-	if (not IOMap::loadSpawns(this))
-	{
-		std::cout << "[Warning - Map::loadMap] Failed to load spawn data." << std::endl;
-	}
->>>>>>> master
 
 	if (loadHouses)
 	{
