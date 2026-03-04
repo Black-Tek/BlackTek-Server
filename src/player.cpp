@@ -3023,213 +3023,265 @@ bool Player::hasCapacity(const ItemPtr& item, uint32_t count) const
 ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr)
 {
 	const auto& item = thing->getItem();
-	if (item == nullptr) {
-		return RETURNVALUE_NOTPOSSIBLE;
-	}
 
-	if (const bool childIsOwner = hasBitSet(FLAG_CHILDISOWNER, flags)) {
-		//a child container is querying the player, just check if enough capacity
+	if (item == nullptr)
+		return RETURNVALUE_NOTPOSSIBLE;
+
+
+	if (const bool childIsOwner = hasBitSet(FLAG_CHILDISOWNER, flags))
+	{
+		// a child container is querying the player, just check if enough capacity
 		bool skipLimit = hasBitSet(FLAG_NOLIMIT, flags);
-		if (skipLimit || hasCapacity(item, count)) {
+
+		if (skipLimit or hasCapacity(item, count))
 			return RETURNVALUE_NOERROR;
-		}
+
 		return RETURNVALUE_NOTENOUGHCAPACITY;
 	}
 
-	if (!item->isPickupable()) {
+	if (not item->isPickupable())
 		return RETURNVALUE_CANNOTPICKUP;
-	}
 
-	if (item->isStoreItem()) {
+
+	if (item->isStoreItem())
 		return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
-	}
+
 
 	ReturnValue ret = RETURNVALUE_NOTPOSSIBLE;
-
 	const int32_t& slotPosition = item->getSlotPosition();
-	if ((slotPosition & SLOTP_HEAD) || (slotPosition & SLOTP_NECKLACE) ||
-	        (slotPosition & SLOTP_BACKPACK) || (slotPosition & SLOTP_ARMOR) ||
-	        (slotPosition & SLOTP_LEGS) || (slotPosition & SLOTP_FEET) ||
-	        (slotPosition & SLOTP_RING)) {
+
+	if ((slotPosition & SLOTP_HEAD)
+		or (slotPosition & SLOTP_NECKLACE)
+		or (slotPosition & SLOTP_BACKPACK)
+		or (slotPosition & SLOTP_ARMOR)
+		or (slotPosition & SLOTP_LEGS)
+		or (slotPosition & SLOTP_FEET)
+		or (slotPosition & SLOTP_RING))
 		ret = RETURNVALUE_CANNOTBEDRESSED;
-	} else if (slotPosition & SLOTP_TWO_HAND) {
+
+	else if (slotPosition & SLOTP_TWO_HAND)
 		ret = RETURNVALUE_PUTTHISOBJECTINBOTHHANDS;
-	} else if ((slotPosition & SLOTP_RIGHT) || (slotPosition & SLOTP_LEFT)) {
-		if (!g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS)) {
+	else if ((slotPosition & SLOTP_RIGHT) or (slotPosition & SLOTP_LEFT))
+	{
+		if (not g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
 			ret = RETURNVALUE_CANNOTBEDRESSED;
-		} else {
+		else
 			ret = RETURNVALUE_PUTTHISOBJECTINYOURHAND;
-		}
 	}
 
-	switch (index) {
-		case CONST_SLOT_HEAD: {
-			if (slotPosition & SLOTP_HEAD) {
-				ret = RETURNVALUE_NOERROR;
-			}
-			break;
-		}
+	switch (index)
+	{
+		case CONST_SLOT_HEAD:
 
-		case CONST_SLOT_NECKLACE: {
-			if (slotPosition & SLOTP_NECKLACE) {
+			if (slotPosition & SLOTP_HEAD)
 				ret = RETURNVALUE_NOERROR;
-			}
 			break;
-		}
 
-		case CONST_SLOT_BACKPACK: {
-			if (slotPosition & SLOTP_BACKPACK) {
+
+		case CONST_SLOT_NECKLACE:
+
+			if (slotPosition & SLOTP_NECKLACE)
 				ret = RETURNVALUE_NOERROR;
-			}
 			break;
-		}
 
-		case CONST_SLOT_ARMOR: {
-			if (slotPosition & SLOTP_ARMOR) {
+
+		case CONST_SLOT_BACKPACK:
+
+			if (slotPosition & SLOTP_BACKPACK)
 				ret = RETURNVALUE_NOERROR;
-			}
 			break;
-		}
 
-		case CONST_SLOT_RIGHT: {
-			if (slotPosition & SLOTP_RIGHT) {
-				if (!g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS)) {
-					if (item->getWeaponType() != WEAPON_SHIELD && item->getWeaponType() != WEAPON_QUIVER) {
+
+		case CONST_SLOT_ARMOR:
+
+			if (slotPosition & SLOTP_ARMOR)
+				ret = RETURNVALUE_NOERROR;
+			break;
+
+
+		case CONST_SLOT_RIGHT:
+		{
+			if (slotPosition & SLOTP_RIGHT)
+			{
+				if (not g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
+				{
+					if (item->getWeaponType() != WEAPON_SHIELD and item->getWeaponType() != WEAPON_QUIVER)
 						ret = RETURNVALUE_CANNOTBEDRESSED;
-					} else {
+
+					else
+					{
 						const auto& leftItem = inventory[CONST_SLOT_LEFT];
-						if (leftItem) {
-							if ((leftItem->getSlotPosition() | slotPosition) & SLOTP_TWO_HAND) {
-								if (leftItem->getWeaponType() != WEAPON_DISTANCE ||
-									item->getWeaponType() != WEAPON_QUIVER) {
+
+						if (leftItem)
+
+							if ((leftItem->getSlotPosition() | slotPosition) & SLOTP_TWO_HAND)
+
+								if (leftItem->getWeaponType() != WEAPON_DISTANCE or	item->getWeaponType() != WEAPON_QUIVER)
 									ret = RETURNVALUE_BOTHHANDSNEEDTOBEFREE;
-								} else {
+
+								else
 									ret = RETURNVALUE_NOERROR;
-								}
-							} else {
+
+							else
 								ret = RETURNVALUE_NOERROR;
-							}
-						} else {
+
+						else
 							ret = RETURNVALUE_NOERROR;
-						}
+
 					}
-				} else if (slotPosition & SLOTP_TWO_HAND) {
+				}
+				else if (slotPosition & SLOTP_TWO_HAND)
+				{
 					const auto& leftItem = inventory[CONST_SLOT_LEFT];
-					if (leftItem && leftItem != item) {
+					if (leftItem and leftItem != item)
 						ret = RETURNVALUE_BOTHHANDSNEEDTOBEFREE;
-					} else {
+					else
 						ret = RETURNVALUE_NOERROR;
-					}
-				} else if (inventory[CONST_SLOT_LEFT]) {
+
+				}
+				else if (inventory[CONST_SLOT_LEFT])
+				{
 					const auto& leftItem = inventory[CONST_SLOT_LEFT];
 					WeaponType_t type = item->getWeaponType(), leftType = leftItem->getWeaponType();
 
-					if (leftItem->getSlotPosition() & SLOTP_TWO_HAND) {
-						if (leftItem->getWeaponType() != WEAPON_DISTANCE || type != WEAPON_QUIVER) {
+					if (leftItem->getSlotPosition() & SLOTP_TWO_HAND)
+					{
+						if (leftItem->getWeaponType() != WEAPON_DISTANCE or type != WEAPON_QUIVER)
 							ret = RETURNVALUE_DROPTWOHANDEDITEM;
-						} else {
+						else
 							ret = RETURNVALUE_NOERROR;
-						}
-					} else if (item == leftItem && count == item->getItemCount()) {
-						ret = RETURNVALUE_NOERROR;
-					} else if (leftType == WEAPON_SHIELD && type == WEAPON_SHIELD) {
-						ret = RETURNVALUE_CANONLYUSEONESHIELD;
-					} else if (leftType == WEAPON_NONE || type == WEAPON_NONE || leftType == WEAPON_SHIELD ||
-						type == WEAPON_SHIELD || leftType == WEAPON_AMMO || type == WEAPON_AMMO ||
-						leftType == WEAPON_QUIVER || type == WEAPON_QUIVER) {
-						ret = RETURNVALUE_NOERROR;
-					} else {
-						ret = RETURNVALUE_CANONLYUSEONEWEAPON;
+
 					}
-				} else {
-					ret = RETURNVALUE_NOERROR;
+					else if (item == leftItem and count == item->getItemCount())
+						ret = RETURNVALUE_NOERROR;
+
+					else if (leftType == WEAPON_SHIELD and type == WEAPON_SHIELD)
+						ret = RETURNVALUE_CANONLYUSEONESHIELD;
+
+					else if (leftType == WEAPON_NONE
+						or type == WEAPON_NONE
+						or leftType == WEAPON_SHIELD
+						or type == WEAPON_SHIELD
+						or leftType == WEAPON_AMMO
+						or type == WEAPON_AMMO
+						or leftType == WEAPON_QUIVER
+						or type == WEAPON_QUIVER)
+						ret = RETURNVALUE_NOERROR;
+					else
+						ret = RETURNVALUE_CANONLYUSEONEWEAPON;
+
 				}
+				else
+					ret = RETURNVALUE_NOERROR;
+
 			}
 			break;
 		}
 
-		case CONST_SLOT_LEFT: {
-			if (slotPosition & SLOTP_LEFT) {
-				if (!g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS)) {
+		case CONST_SLOT_LEFT:
+		{
+			if (slotPosition & SLOTP_LEFT)
+			{
+				if (not g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
+				{
 					WeaponType_t type = item->getWeaponType();
 					const auto& rightItem = inventory[CONST_SLOT_RIGHT];
-					if (type == WEAPON_NONE || type == WEAPON_SHIELD || type == WEAPON_AMMO || type == WEAPON_QUIVER) {
+
+					if (type == WEAPON_NONE or type == WEAPON_SHIELD or type == WEAPON_AMMO or type == WEAPON_QUIVER)
 						ret = RETURNVALUE_CANNOTBEDRESSED;
-					} else if (rightItem && (slotPosition & SLOTP_TWO_HAND)) {
-						if (type != WEAPON_DISTANCE || rightItem->getWeaponType() != WEAPON_QUIVER) {
+
+					else if (rightItem and (slotPosition & SLOTP_TWO_HAND))
+
+						if (type != WEAPON_DISTANCE or rightItem->getWeaponType() != WEAPON_QUIVER)
 							ret = RETURNVALUE_BOTHHANDSNEEDTOBEFREE;
-						} else {
+
+						else
 							ret = RETURNVALUE_NOERROR;
-						}
-					} else {
+
+					else
 						ret = RETURNVALUE_NOERROR;
-					}
-				} else if (slotPosition & SLOTP_TWO_HAND) {
+				}
+				else if (slotPosition & SLOTP_TWO_HAND)
+				{
 					const auto& rightItem = inventory[CONST_SLOT_RIGHT];
-					if (rightItem && rightItem != item) {
-						if (item->getWeaponType() != WEAPON_DISTANCE || rightItem->getWeaponType() != WEAPON_QUIVER) {
+
+					if (rightItem and rightItem != item)
+
+						if (item->getWeaponType() != WEAPON_DISTANCE or rightItem->getWeaponType() != WEAPON_QUIVER)
 							ret = RETURNVALUE_BOTHHANDSNEEDTOBEFREE;
-						} else {
+
+						else
 							ret = RETURNVALUE_NOERROR;
-						}
-					} else {
+
+					else
 						ret = RETURNVALUE_NOERROR;
-					}
-				} else if (inventory[CONST_SLOT_RIGHT]) {
+
+				}
+				else if (inventory[CONST_SLOT_RIGHT])
+				{
 					const auto& rightItem = inventory[CONST_SLOT_RIGHT];
 					WeaponType_t type = item->getWeaponType(), rightType = rightItem->getWeaponType();
 
-					if (rightItem->getSlotPosition() & SLOTP_TWO_HAND) {
-						if (type != WEAPON_DISTANCE || rightItem->getWeaponType() != WEAPON_QUIVER) {
+					if (rightItem->getSlotPosition() & SLOTP_TWO_HAND)
+
+						if (type != WEAPON_DISTANCE or rightItem->getWeaponType() != WEAPON_QUIVER)
 							ret = RETURNVALUE_DROPTWOHANDEDITEM;
-						} else {
+
+						else
 							ret = RETURNVALUE_NOERROR;
-						}
-					} else if (item == rightItem && count == item->getItemCount()) {
+
+					else if (item == rightItem and count == item->getItemCount())
 						ret = RETURNVALUE_NOERROR;
-					} else if (rightType == WEAPON_SHIELD && type == WEAPON_SHIELD) {
+
+					else if (rightType == WEAPON_SHIELD and type == WEAPON_SHIELD)
 						ret = RETURNVALUE_CANONLYUSEONESHIELD;
-					} else if (rightType == WEAPON_NONE || type == WEAPON_NONE || rightType == WEAPON_SHIELD ||
-					           type == WEAPON_SHIELD || rightType == WEAPON_AMMO || type == WEAPON_AMMO ||
-					           rightType == WEAPON_QUIVER || type == WEAPON_QUIVER) {
+
+					else if (rightType == WEAPON_NONE
+						or type == WEAPON_NONE
+						or rightType == WEAPON_SHIELD
+						or type == WEAPON_SHIELD
+						or rightType == WEAPON_AMMO
+						or type == WEAPON_AMMO
+						or rightType == WEAPON_QUIVER
+						or type == WEAPON_QUIVER)
 						ret = RETURNVALUE_NOERROR;
-					} else {
+
+					else
 						ret = RETURNVALUE_CANONLYUSEONEWEAPON;
-					}
-				} else {
-					ret = RETURNVALUE_NOERROR;
+
 				}
+				else
+					ret = RETURNVALUE_NOERROR;
 			}
 			break;
 		}
 
-		case CONST_SLOT_LEGS: {
-			if (slotPosition & SLOTP_LEGS) {
-				ret = RETURNVALUE_NOERROR;
-			}
-			break;
-		}
+		case CONST_SLOT_LEGS:
 
-		case CONST_SLOT_FEET: {
-			if (slotPosition & SLOTP_FEET) {
+			if (slotPosition & SLOTP_LEGS)
 				ret = RETURNVALUE_NOERROR;
-			}
 			break;
-		}
 
-		case CONST_SLOT_RING: {
-			if (slotPosition & SLOTP_RING) {
-				ret = RETURNVALUE_NOERROR;
-			}
-			break;
-		}
+		case CONST_SLOT_FEET:
 
-		case CONST_SLOT_AMMO: {
-			if ((slotPosition & SLOTP_AMMO) || g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS)) {
+			if (slotPosition & SLOTP_FEET)
 				ret = RETURNVALUE_NOERROR;
-			}
 			break;
-		}
+
+
+		case CONST_SLOT_RING:
+
+			if (slotPosition & SLOTP_RING)
+				ret = RETURNVALUE_NOERROR;
+			break;
+
+
+		case CONST_SLOT_AMMO:
+
+			if ((slotPosition & SLOTP_AMMO) or g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
+				ret = RETURNVALUE_NOERROR;
+			break;
+
 
 		case CONST_SLOT_WHEREEVER:
 		case -1:
@@ -3241,30 +3293,34 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 			break;
 	}
 
-	if (ret != RETURNVALUE_NOERROR && ret != RETURNVALUE_NOTENOUGHROOM) {
+	if (ret != RETURNVALUE_NOERROR and ret != RETURNVALUE_NOTENOUGHROOM)
 		return ret;
-	}
 
 	//check if enough capacity
-	if (!hasCapacity(item, count)) {
+	if (not hasCapacity(item, count))
 		return RETURNVALUE_NOTENOUGHCAPACITY;
-	}
 
-	if (index != CONST_SLOT_WHEREEVER && index != -1) { // we don't try to equip whereever call
+
+	// we don't try to equip whereever call
+	if (index != CONST_SLOT_WHEREEVER and index != -1)
+	{ 
 		ret = g_moveEvents->onPlayerEquip(std::const_pointer_cast<Player>(this->getPlayer()), std::const_pointer_cast<Item>(item), static_cast<slots_t>(index), true);
-		if (ret != RETURNVALUE_NOERROR) {
+
+		if (ret != RETURNVALUE_NOERROR)
 			return ret;
-		}
 	}
 
 	//need an exchange with source? (destination item is swapped with currently moved item)
 	const auto& inventoryItem = getInventoryItem(static_cast<slots_t>(index));
-	if (inventoryItem && (!inventoryItem->isStackable() || inventoryItem->getID() != item->getID())) {
-		if (!g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS)) {
+	if (inventoryItem and (not inventoryItem->isStackable() or inventoryItem->getID() != item->getID()))
+	{
+		if (not g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
+		{
 			const auto& cylinder = item->getTopParent();
-			if (cylinder && (std::dynamic_pointer_cast<const DepotChest>(cylinder) || std::dynamic_pointer_cast<const Player>(cylinder))) {
+
+			if (cylinder and (std::dynamic_pointer_cast<const DepotChest>(cylinder) or std::dynamic_pointer_cast<const Player>(cylinder)))
 				return RETURNVALUE_NEEDEXCHANGE;
-			}
+
 			return RETURNVALUE_NOTENOUGHROOM;	
 		}
 		return RETURNVALUE_NEEDEXCHANGE;
@@ -3276,93 +3332,118 @@ ReturnValue Player::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t
 		uint32_t flags)
 {
 	auto item = thing->getItem();
-	if (item == nullptr) {
+
+	if (item == nullptr)
+	{
 		maxQueryCount = 0;
 		return RETURNVALUE_NOTPOSSIBLE;
 	}
 
-	if (index == INDEX_WHEREEVER) {
+	if (index == INDEX_WHEREEVER)
+	{
 		uint32_t n = 0;
-		for (int32_t slotIndex = CONST_SLOT_FIRST; slotIndex <= CONST_SLOT_LAST; ++slotIndex) {
-			if (const auto& inventoryItem = inventory[slotIndex]) {
-				if (auto subContainer = inventoryItem->getContainer()) {
+
+		for (int32_t slotIndex = CONST_SLOT_FIRST; slotIndex <= CONST_SLOT_LAST; ++slotIndex)
+		{
+			if (const auto& inventoryItem = inventory[slotIndex])
+			{
+				if (auto subContainer = inventoryItem->getContainer())
+				{
 					uint32_t queryCount = 0;
 					subContainer->queryMaxCount(INDEX_WHEREEVER, item, item->getItemCount(), queryCount, flags);
 					n += queryCount;
 
-					//iterate through all items, including sub-containers (deep search)
-					for (ContainerIterator it = subContainer->iterator(); it.hasNext(); it.advance()) {
-						if (auto tmpContainer = (*it)->getContainer()) {
+					// iterate through all items, including sub-containers (deep search)
+					for (ContainerIterator it = subContainer->iterator(); it.hasNext(); it.advance())
+					{
+						if (auto tmpContainer = (*it)->getContainer())
+						{
 							queryCount = 0;
 							tmpContainer->queryMaxCount(INDEX_WHEREEVER, item, item->getItemCount(), queryCount, flags);
 							n += queryCount;
 						}
 					}
-				} else if (inventoryItem->isStackable() && item->equals(inventoryItem) && inventoryItem->getItemCount() < 100) {
+				}
+				else if (inventoryItem->isStackable() and item->equals(inventoryItem) and inventoryItem->getItemCount() < 100)
+				{
 					const uint32_t remainder = (100 - inventoryItem->getItemCount());
 
-					if (queryAdd(slotIndex, item, remainder, flags) == RETURNVALUE_NOERROR) {
+					if (queryAdd(slotIndex, item, remainder, flags) == RETURNVALUE_NOERROR)
 						n += remainder;
-					}
 				}
-			} else if (queryAdd(slotIndex, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) { //empty slot
-				if (item->isStackable()) {
+			}
+			
+			// empty slot
+			else if (queryAdd(slotIndex, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
+			{ 
+				if (item->isStackable())
 					n += 100;
-				} else {
+				else
 					++n;
-				}
 			}
 		}
 
 		maxQueryCount = n;
-	} else {
+	}
+	else
+	{
 		ItemPtr destItem = nullptr;
 
-		if (const auto& destThing = getThing(index)) {
+		if (const auto& destThing = getThing(index))
 			destItem = destThing->getItem();
+
+
+		if (destItem)
+		{
+			if (destItem->isStackable() and item->equals(destItem) and destItem->getItemCount() < 100)
+				maxQueryCount = 100 - destItem->getItemCount();
+
+			else
+				maxQueryCount = 0;
 		}
 
-		if (destItem) {
-			if (destItem->isStackable() && item->equals(destItem) && destItem->getItemCount() < 100) {
-				maxQueryCount = 100 - destItem->getItemCount();
-			} else {
-				maxQueryCount = 0;
-			}
-		} else if (queryAdd(index, item, count, flags) == RETURNVALUE_NOERROR) { //empty slot
-			if (item->isStackable()) {
+		// empty slot
+		else if (queryAdd(index, item, count, flags) == RETURNVALUE_NOERROR)
+		{
+			if (item->isStackable())
 				maxQueryCount = 100;
-			} else {
+
+			else
 				maxQueryCount = 1;
-			}
 
 			return RETURNVALUE_NOERROR;
 		}
 	}
 
-	if (maxQueryCount < count) {
+	if (maxQueryCount < count)
 		return RETURNVALUE_NOTENOUGHROOM;
-	} else {
+
+	else
 		return RETURNVALUE_NOERROR;
-	}
 }
 
 ReturnValue Player::queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr /*= nullptr*/)
 {
 	int32_t index = getThingIndex(thing);
-	if (index == -1) {
+	if (index == -1)
+	{
 		return RETURNVALUE_NOTPOSSIBLE;
 	}
 
 	const auto& item = thing->getItem();
-	if (item == nullptr) {
+
+	if (item == nullptr)
+	{
 		return RETURNVALUE_NOTPOSSIBLE;
 	}
 
-	if (count == 0 || (item->isStackable() && count > item->getItemCount())) {
+	if (count == 0 or (item->isStackable() and count > item->getItemCount()))
+	{
 		return RETURNVALUE_NOTPOSSIBLE;
 	}
 
-	if (!item->isMoveable() && !hasBitSet(FLAG_IGNORENOTMOVEABLE, flags)) {
+	if (not item->isMoveable() and not hasBitSet(FLAG_IGNORENOTMOVEABLE, flags))
+	{
 		return RETURNVALUE_NOTMOVEABLE;
 	}
 
@@ -3372,29 +3453,37 @@ ReturnValue Player::queryRemove(const ThingPtr& thing, uint32_t count, uint32_t 
 CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem,
 	uint32_t& flags)
 {
-	if (index == 0 /*drop to capacity window*/ || index == INDEX_WHEREEVER) {
+	if (index == 0 /*drop to capacity window*/ or index == INDEX_WHEREEVER)
+	{
 		destItem.reset();
 
 		ItemPtr item = thing ? thing->getItem() : nullptr;
-		if (!item) {
+		if (not item)
+		{
 			return this->getPlayer();
 		}
 
-		const bool autoStack = !(flags & FLAG_IGNOREAUTOSTACK);
+		const bool autoStack = not (flags & FLAG_IGNOREAUTOSTACK);
 		const bool isStackable = item->isStackable();
 
 		std::vector<ContainerPtr> containers;
 
-		for (uint32_t slotIndex = CONST_SLOT_FIRST; slotIndex <= CONST_SLOT_LAST; ++slotIndex) {
-			if (auto inventoryItem = inventory[slotIndex]) {
-				if (inventoryItem == tradeItem || inventoryItem == item) {
+		for (uint32_t slotIndex = CONST_SLOT_FIRST; slotIndex <= CONST_SLOT_LAST; ++slotIndex)
+		{
+			if (auto& inventoryItem = inventory[slotIndex])
+			{
+				if (inventoryItem == tradeItem or inventoryItem == item)
+				{
 					continue;
 				}
 
-				if (autoStack && isStackable) {
+				if (autoStack and isStackable)
+				{
 					// Try to find an already existing item to stack with
-					if (queryAdd(slotIndex, item, item->getItemCount(), 0) == RETURNVALUE_NOERROR) {
-						if (inventoryItem->equals(item) && inventoryItem->getItemCount() < 100) {
+					if (queryAdd(slotIndex, item, item->getItemCount(), 0) == RETURNVALUE_NOERROR)
+					{
+						if (inventoryItem->equals(item) and inventoryItem->getItemCount() < 100)
+						{
 							index = slotIndex;
 							destItem = inventoryItem;
 							return this->getPlayer();
@@ -3402,11 +3491,13 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 					}
 				}
 
-				if (auto subContainer = inventoryItem->getContainer()) {
+				if (auto subContainer = inventoryItem->getContainer())
+				{
 					containers.push_back(subContainer);
 				}
 			}
-			else if (queryAdd(slotIndex, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) {
+			else if (queryAdd(slotIndex, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
+			{
 				index = slotIndex;
 				destItem.reset();
 				return this->getPlayer();
@@ -3414,13 +3505,20 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 		}
 
 		size_t i = 0;
-		while (i < containers.size()) {
-			auto tmpContainer = containers[i++];
-			if (tmpContainer) {
-				if (!autoStack || !isStackable) {
+
+		while (i < containers.size())
+		{
+			auto& tmpContainer = containers[i++];
+
+			if (tmpContainer)
+			{
+				if (not autoStack or not isStackable)
+				{
 					uint32_t n = tmpContainer->capacity() - std::min(tmpContainer->capacity(), static_cast<uint32_t>(tmpContainer->size()));
-					while (n) {
-						if (tmpContainer->queryAdd(tmpContainer->capacity() - n, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) {
+					while (n)
+					{
+						if (tmpContainer->queryAdd(tmpContainer->capacity() - n, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
+						{
 							index = tmpContainer->capacity() - n;
 							destItem.reset();
 							return tmpContainer;
@@ -3429,23 +3527,28 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 					}
 				}
 
-				for (const auto& tmpContainerItem : tmpContainer->getItemList()) {
-					if (tmpContainerItem == tradeItem || tmpContainerItem == item) {
+				for (const auto& tmpContainerItem : tmpContainer->getItemList())
+				{
+					if (tmpContainerItem == tradeItem or tmpContainerItem == item)
+					{
 						continue;
 					}
 
-					if (autoStack && isStackable && tmpContainerItem->equals(item) && tmpContainerItem->getItemCount() < 100) {
+					if (autoStack and isStackable and tmpContainerItem->equals(item) and tmpContainerItem->getItemCount() < 100)
+					{
 						index = tmpContainer->size();
 						destItem = tmpContainerItem;
 						return tmpContainer;
 					}
 
-					if (auto subContainer = tmpContainerItem->getContainer()) {
+					if (auto subContainer = tmpContainerItem->getContainer())
+					{
 						containers.push_back(subContainer);
 					}
 				}
 
-				if (tmpContainer->size() < tmpContainer->capacity() && tmpContainer->queryAdd(tmpContainer->size(), item, item->getItemCount(), flags) == RETURNVALUE_NOERROR) {
+				if (tmpContainer->size() < tmpContainer->capacity() and tmpContainer->queryAdd(tmpContainer->size(), item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
+				{
 					index = tmpContainer->size();
 					destItem.reset();
 					return tmpContainer;
@@ -3457,11 +3560,13 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 	}
 
 	auto destThing = getThing(index);
-	if (destThing) {
+	if (destThing)
+	{
 		destItem = destThing->getItem();
 	}
 
-	if (auto subCylinder = std::dynamic_pointer_cast<Cylinder>(destThing)) {
+	if (auto subCylinder = std::dynamic_pointer_cast<Cylinder>(destThing))
+	{
 		index = INDEX_WHEREEVER;
 		destItem.reset();
 		return subCylinder;
