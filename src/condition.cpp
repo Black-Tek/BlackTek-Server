@@ -1326,7 +1326,14 @@ bool ConditionDamage::doDamage(CreaturePtr creature, int32_t healthChange) const
 
 	if (!creature->isAttackable() || Combat::canDoCombat(attacker, creature) != RETURNVALUE_NOERROR) {
 		if (!creature->isInGhostMode()) {
-			g_game.addMagicEffect(creature->getPosition(), CONST_ME_POFF);
+			SpectatorVec spectators;
+			g_game.map.getSpectators(spectators, creature->getPosition(), true, true);
+			for (const auto& spectator : spectators) {
+				const auto spectatorPlayer = spectator->getPlayer();
+				if (spectatorPlayer && spectatorPlayer->compareInstance(creature->getInstanceID())) {
+					spectatorPlayer->sendMagicEffect(creature->getPosition(), CONST_ME_POFF);
+				}
+			}
 		}
 		return false;
 	}

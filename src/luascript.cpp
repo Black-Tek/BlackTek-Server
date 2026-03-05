@@ -2455,6 +2455,10 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Item", "getStat", luaItemGetStat);
 	registerMethod("Item", "getStats", luaItemGetStats);
 
+	// BlackTek Instance System
+	registerMethod("Item", "getInstanceId", luaItemGetInstanceId);
+	registerMethod("Item", "setInstanceId", luaItemSetInstanceId);
+
 	// Imbuement
 	registerClass("Imbuement", "", luaImbuementCreate);
 	registerMetaMethod("Imbuement", "__eq", luaUserdataCompare);
@@ -2647,6 +2651,10 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Creature", "getStat", luaCreatureGetStat);
 	registerMethod("Creature", "getStats", luaCreatureGetStats);
 
+	// BlackTek Instance System
+	registerMethod("Creature", "getInstanceId", luaCreatureGetInstanceId);
+	registerMethod("Creature", "setInstanceId", luaCreatureSetInstanceId);
+
 	// Stat
 	registerClass("Stat", "", luaStatCreate);
 	registerMetaMethod("Stat", "__eq", luaUserdataCompare);
@@ -2787,6 +2795,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "sendTextMessage", luaPlayerSendTextMessage);
 	registerMethod("Player", "sendChannelMessage", luaPlayerSendChannelMessage);
 	registerMethod("Player", "sendPrivateMessage", luaPlayerSendPrivateMessage);
+	registerMethod("Player", "refreshWorldView", luaPlayerRefreshWorldView);
 	registerMethod("Player", "channelSay", luaPlayerChannelSay);
 	registerMethod("Player", "openChannel", luaPlayerOpenChannel);
 
@@ -3584,6 +3593,76 @@ void LuaScriptInterface::registerClass(const std::string& className, const std::
 
 	// pop className, className.metatable
 	lua_pop(luaState, 2);
+}
+
+// BlackTek Instance System
+int LuaScriptInterface::luaCreatureGetInstanceId(lua_State* L)
+{
+	if (const auto creature = getSharedPtr<Creature>(L, 1))
+		lua_pushinteger(L, creature->getInstanceID());
+	else
+		lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCreatureSetInstanceId(lua_State* L)
+{
+	// creature:setInstanceId(instanceId)
+	const auto creature = getSharedPtr<Creature>(L, 1);
+	if (!creature)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	uint32_t id = getNumber<uint32_t>(L, 2, 0);
+	const uint32_t previousInstanceId = creature->getInstanceID();
+	creature->setInstanceID(id);
+
+	if (previousInstanceId != id) {
+		SpectatorVec spectators;
+		g_game.map.getSpectators(spectators, creature->getPosition(), true, true);
+		for (const auto& spectator : spectators)
+		{
+			const auto spectatorPlayer = spectator->getPlayer();
+			if (!spectatorPlayer)
+				continue;
+
+			spectatorPlayer->refreshWorldView();
+		}
+
+		if (const auto player = creature->getPlayer())
+			player->refreshWorldView();
+	}
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaItemGetInstanceId(lua_State* L)
+{
+	// item:getInstanceId()
+	if (const auto item = getSharedPtr<Item>(L, 1))
+		lua_pushinteger(L, item->getInstanceID());
+	else
+		lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaItemSetInstanceId(lua_State* L)
+{
+	// item:setInstanceId(instanceId)
+	const auto item = getSharedPtr<Item>(L, 1);
+	if (!item)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	uint32_t id = getNumber<uint32_t>(L, 2, 0);
+	item->setInstanceID(id);
+	pushBoolean(L, true);
+	return 1;
 }
 
 void LuaScriptInterface::registerTable(const std::string& tableName) const
@@ -12806,6 +12885,21 @@ int LuaScriptInterface::luaPlayerSendTextMessage(lua_State* L)
 	player->sendTextMessage(message);
 	pushBoolean(L, true);
 
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerRefreshWorldView(lua_State* L)
+{
+	// player:refreshWorldView()
+	const auto player = getSharedPtr<Player>(L, 1);
+	if (!player)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	player->refreshWorldView();
+	pushBoolean(L, true);
 	return 1;
 }
 

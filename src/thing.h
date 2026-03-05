@@ -76,9 +76,17 @@ class Thing
         virtual bool isRemoved() const {
             return true;
         }
+
+        // BlackTek Instance System
+        uint32_t getInstanceID() const { return instanceID; }
+        void setInstanceID(uint32_t id) { instanceID = id; }
+        bool compareInstance(uint32_t id) const { return instanceID == id; }
     
     protected:
         constexpr Thing() = default;
+    private:
+        // BlackTek Instance System
+        uint32_t instanceID = 0; // 0 = global instance
 };
 
 #endif

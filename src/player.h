@@ -1029,6 +1029,12 @@ class Player final : public Creature, public Cylinder
 			}
 		}
 
+		void refreshWorldView() const {
+			if (client) {
+				client->refreshWorldView();
+			}
+		}
+
 		void sendQuiverUpdate(bool sendAll = false)	{
 			if (!sendAll) {
 				// update one slot
