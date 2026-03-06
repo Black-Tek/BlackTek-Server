@@ -24,9 +24,20 @@ extern ConfigManager g_config;
 Tile real_nullptr_tile(0xFFFF, 0xFFFF, 0xFF);
 
 // BlackTek Instance System
-constexpr bool canSeeItemInInstance(uint32_t viewerInstanceId, uint32_t itemInstanceId)
+bool canSeeItemInInstance(uint32_t viewerInstanceId, const ItemConstPtr& item)
 {
-	return itemInstanceId == 0 || itemInstanceId == viewerInstanceId;
+	if (!item) {
+		return false;
+	}
+
+	const uint32_t itemInstanceId = item->getInstanceID();
+	if (itemInstanceId == viewerInstanceId) {
+		return true;
+	}
+
+	// Keep static map decorations/tiles shared across instances,
+	// but isolate runtime-spawned items and fields.
+	return itemInstanceId == 0 && item->isLoadedFromMap();
 }
 
 bool Tile::hasProperty(ITEMPROPERTY prop) const
@@ -251,6 +262,7 @@ CreaturePtr Tile::getTopVisibleCreature(const CreaturePtr creature) const
 	{
 		for (const auto& tile_creature : *creatures) 
 		{
+			// BlackTek Instance System
 			if (creature && !creature->compareInstance(tile_creature->getInstanceID())) {
 				continue;
 			}
@@ -271,6 +283,7 @@ CreatureConstPtr Tile::getBottomVisibleCreature(const CreatureConstPtr& creature
 	if (const auto creatures = getCreatures()) {
 		if (creature) {
 			for (auto it = creatures->rbegin(), end = creatures->rend(); it != end; ++it) {
+				// BlackTek Instance System
 				if (!creature->compareInstance((*it)->getInstanceID()))
 					continue;
 				if (creature->canSeeCreature(*it)) {
@@ -366,7 +379,7 @@ void Tile::onAddTileItem(ItemPtr& item)
 	for (const auto spectator : spectators) {
 		if (const auto spectatorPlayer = spectator->getPlayer()) {
 			// BlackTek Instance System
-			if (!canSeeItemInInstance(spectatorPlayer->getInstanceID(), item->getInstanceID())) 
+			if (!canSeeItemInInstance(spectatorPlayer->getInstanceID(), item)) 
 				continue;
 			spectatorPlayer->sendAddTileItem(getTile(), cylinderMapPos, item);
 		}
@@ -411,7 +424,7 @@ void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, con
 	for (const auto spectator : spectators) {
 		if (const auto spectatorPlayer = spectator->getPlayer()) {
 			// BlackTek Instance System
-			if (!canSeeItemInInstance(spectatorPlayer->getInstanceID(), newItem->getInstanceID()))
+			if (!canSeeItemInInstance(spectatorPlayer->getInstanceID(), newItem))
 				continue;
 			spectatorPlayer->sendUpdateTileItem(getTile(), cylinderMapPos, newItem);
 		}
@@ -441,7 +454,7 @@ void Tile::onRemoveTileItem(const SpectatorVec& spectators, const std::vector<in
 	for (const auto spectator : spectators) {
 		if (const auto tmpPlayer = spectator->getPlayer()) {
 			// BlackTek Instance System
-			if (!canSeeItemInInstance(tmpPlayer->getInstanceID(), item->getInstanceID()))
+			if (!canSeeItemInInstance(tmpPlayer->getInstanceID(), item))
 				continue;
 			tmpPlayer->sendRemoveTileThing(cylinderMapPos, oldStackPosVector[i++]);
 		}
@@ -1185,7 +1198,7 @@ void Tile::removeThing(ThingPtr thing, uint32_t count)
 		for (const auto& spectator : spectators) {
 			if (const auto& spectatorPlayer = spectator->getPlayer()) {
 				// BlackTek Instance System
-				if (!canSeeItemInInstance(spectatorPlayer->getInstanceID(), item->getInstanceID())) {
+				if (!canSeeItemInInstance(spectatorPlayer->getInstanceID(), item)) {
 					continue;
 				}
 				oldStackPosVector.push_back(getStackposOfItem(spectatorPlayer, item));
@@ -1213,7 +1226,7 @@ void Tile::removeThing(ThingPtr thing, uint32_t count)
 			for (const auto& spectator : spectators) {
 				if (const auto& spectatorPlayer = spectator->getPlayer()) {
 					// BlackTek Instance System
-					if (!canSeeItemInInstance(spectatorPlayer->getInstanceID(), item->getInstanceID())) {
+					if (!canSeeItemInInstance(spectatorPlayer->getInstanceID(), item)) {
 						continue;
 					}
 					oldStackPosVector.push_back(getStackposOfItem(spectatorPlayer, item));
@@ -1305,7 +1318,7 @@ int32_t Tile::getClientIndexOfCreature(const PlayerConstPtr& player, const Creat
 	if (const auto& items = getItemList()) {
 		// BlackTek Instance System
 		for (auto it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it) {
-			if (!canSeeItemInInstance(player->getInstanceID(), (*it)->getInstanceID()))
+			if (!canSeeItemInInstance(player->getInstanceID(), *it))
 				continue;
 			++n;
 		}
@@ -1326,7 +1339,7 @@ int32_t Tile::getClientIndexOfCreature(const PlayerConstPtr& player, const Creat
 int32_t Tile::getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr& item) const
 {
 	// BlackTek Instance System
-	if (!canSeeItemInInstance(player->getInstanceID(), item->getInstanceID())) {
+	if (!canSeeItemInInstance(player->getInstanceID(), item)) {
 		return -1;
 	}
 
@@ -1343,7 +1356,7 @@ int32_t Tile::getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr
 		if (item->isAlwaysOnTop()) {
 			for (auto it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it) {
 				// BlackTek Instance System
-				if (!canSeeItemInInstance(player->getInstanceID(), (*it)->getInstanceID())) {
+				if (!canSeeItemInInstance(player->getInstanceID(), *it)) {
 					continue;
 				}
 				if (*it == item) {
@@ -1355,7 +1368,7 @@ int32_t Tile::getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr
 		} else {
 			// BlackTek Instance System
 			for (auto it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it) {
-				if (!canSeeItemInInstance(player->getInstanceID(), (*it)->getInstanceID())) {
+				if (!canSeeItemInInstance(player->getInstanceID(), *it)) {
 					continue;
 				}
 				if (++n >= 10) {
@@ -1378,7 +1391,7 @@ int32_t Tile::getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr
 	if (items && !item->isAlwaysOnTop()) {
 		for (auto it = items->getBeginDownItem(), end = items->getEndDownItem(); it != end; ++it) {
 			// BlackTek Instance System
-			if (!canSeeItemInInstance(player->getInstanceID(), (*it)->getInstanceID())) {
+			if (!canSeeItemInInstance(player->getInstanceID(), *it)) {
 				continue;
 			}
 			if (*it == item) {
