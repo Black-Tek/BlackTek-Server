@@ -484,21 +484,27 @@ ReturnValue Tile::queryAdd(CreaturePtr creature, uint32_t flags)
 		for (const auto& tileCreature : *creatures)
 		{
 			if (not tileCreature->isInGhostMode() and (tileCreature->getPlayer() and not tileCreature->getPlayer()->isAccessPlayer()))
+			{
 				if (creature->getPlayer() and not creature->getPlayer()->isAccessPlayer() and not creature->getPlayer()->canWalkthrough(tileCreature))
 					return RETURNVALUE_NOTENOUGHROOM;
+			}
 		}
 	}
 
     // If the FLAG_IGNOREBLOCKITEM bit isn't set we dont have to iterate every single item
-    if (not hasBitSet(FLAG_IGNOREBLOCKITEM, flags))
-        if (hasFlag(TILESTATE_BLOCKSOLID))
-            return RETURNVALUE_NOTENOUGHROOM;
+	if (not hasBitSet(FLAG_IGNOREBLOCKITEM, flags))
+	{
+		if (hasFlag(TILESTATE_BLOCKSOLID))
+			return RETURNVALUE_NOTENOUGHROOM;
+	}
 	else
 	{
         //FLAG_IGNOREBLOCKITEM is set
-        if (ground)
-	        if (const ItemType& iiType = Item::items[ground->getID()]; iiType.blockSolid and (not iiType.moveable or ground->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)))
-                return RETURNVALUE_NOTPOSSIBLE;
+		if (ground)
+		{
+			if (const ItemType& iiType = Item::items[ground->getID()]; iiType.blockSolid and (not iiType.moveable or ground->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)))
+				return RETURNVALUE_NOTPOSSIBLE;
+		}
 
         if (const auto items = getItemList())
 		{
@@ -529,16 +535,20 @@ ReturnValue Tile::queryAdd(PlayerPtr player, uint32_t flags)
 
 	// If we aren't a GM/Admin can't walk on a tile that has a creature, if we don't have walkthrough enabled.
 	if (creatures and not creatures->empty() and not hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags) and not player->isAccessPlayer())
+	{
 		for (const auto& tileCreature : *creatures)
 		{
 			if (not player->canWalkthrough(tileCreature))
 				return RETURNVALUE_NOTPOSSIBLE;
 		}
+	}
 	
 	// We are auto-walking, lets not step on a field that would hurt us.
 	if (const auto field = getFieldItem())
+	{
 		if (field->getDamage() != 0 and hasBitSet(FLAG_PATHFINDING, flags) and not hasBitSet(FLAG_IGNOREFIELDDAMAGE, flags))
 			return RETURNVALUE_NOTPOSSIBLE;
+	}
 	
 
 	// Player is trying to login to a "no logout" tile.
@@ -552,11 +562,14 @@ ReturnValue Tile::queryAdd(PlayerPtr player, uint32_t flags)
 	if (playerTile and player->isPzLocked())
 	{
 		if (not playerTile->hasFlag(TILESTATE_PVPZONE))
+		{
 			if (hasFlag(TILESTATE_PVPZONE))
 				return RETURNVALUE_PLAYERISPZLOCKEDENTERPVPZONE;
-
+		}
 		else if (not hasFlag(TILESTATE_PVPZONE))
+		{
 			return RETURNVALUE_PLAYERISPZLOCKEDLEAVEPVPZONE;
+		}
 
 		// player is trying to enter a non-pvp/protection zone while being pz-locked
 		if ((not playerTile->hasFlag(TILESTATE_NOPVPZONE)
@@ -569,7 +582,8 @@ ReturnValue Tile::queryAdd(PlayerPtr player, uint32_t flags)
 }
 
 
-ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags) {
+ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags)
+{
 	// Monsters
 	// Monsters cannot enter pz, jump floors, or step into teleports
 	if (hasFlag(TILESTATE_PROTECTIONZONE | TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT))
@@ -595,12 +609,13 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags) {
 
 	// We have creatures on the tile we are trying to step on
 	if (creatures and not creatures->empty())
+	{
 		for (const auto& tileCreature : *creatures)
 		{
 			// creature is not in ghost mode
 			if (not tileCreature->isInGhostMode())
 				return RETURNVALUE_NOTENOUGHROOM;
-			
+
 			if (monster->canPushCreatures() and not monster->isSummon())
 			{
 				// the creature is a player in ghost mode.
@@ -613,6 +628,7 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags) {
 					return RETURNVALUE_NOTPOSSIBLE;
 			}
 		}
+	}
 
 
 	// If the magic field is safe, return early
@@ -625,10 +641,12 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags) {
 	if (not monster->isImmune(combatType))
 	{
 		if (hasBitSet(FLAG_IGNOREFIELDDAMAGE, flags))
+		{
 			if (not (monster->canWalkOnFieldType(combatType) or monster->isIgnoringFieldDamage()))
 				return RETURNVALUE_NOTPOSSIBLE;
 			else
 				return RETURNVALUE_NOTPOSSIBLE;
+		}
 	}
 
     return RETURNVALUE_NOERROR;
@@ -645,9 +663,8 @@ ReturnValue Tile::queryAdd(NpcPtr npc, uint32_t flags)
 
 	const auto creatures = getCreatures();
 
-	if (creatures and not creatures->empty() and not hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags)) {
+	if (creatures and not creatures->empty() and not hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags))
 		return RETURNVALUE_NOTENOUGHROOM;
-	}
 
 	// Here we can add more options specifically for NPC's
 	// realistically, there is likely more use cases not considered for NPC's that should probably
@@ -681,18 +698,23 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
 			return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
 
 		if (mover and g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
+		{
 			if (not house->isInvited(mover->getPlayer()))
 				return RETURNVALUE_PLAYERISNOTINVITED;
+		}
 	}
 
 
     // If there is any creature there, who is not in ghost mode... don't think this should be here...
     const auto& creatures = getCreatures();
+
     if (creatures and not creatures->empty() and item->isBlocking() and not hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags))
 	{
-        for (const auto& tileCreature : *creatures)
-            if (not tileCreature->isInGhostMode())
-                return RETURNVALUE_NOTENOUGHROOM;
+		for (const auto& tileCreature : *creatures)
+		{
+			if (not tileCreature->isInGhostMode())
+				return RETURNVALUE_NOTENOUGHROOM;
+		}
     }
 
 	//////////////////////////////////////////////////////////////
@@ -704,9 +726,11 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
 	{
         if (items)
 		{
-            for (const auto& tileItem : *items)
-                if (tileItem->isHangable())
-                    return RETURNVALUE_NEEDEXCHANGE;
+			for (const auto& tileItem : *items)
+			{
+				if (tileItem->isHangable())
+					return RETURNVALUE_NEEDEXCHANGE;
+			}
         }
 	// I believe this 'else' is not needed, and potentially limiting where we don't want to be.
     } 
@@ -785,8 +809,10 @@ ReturnValue Tile::queryRemove(const ThingPtr& thing, const uint32_t count, uint3
 		return RETURNVALUE_NOTPOSSIBLE;
 
 	if (actor and g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
+	{
 		if (isHouseTile() and not house->isInvited(actor->getPlayer()))
 			return RETURNVALUE_PLAYERISNOTINVITED;
+	}
 
 	if (count == 0 or (item->isStackable() and count > item->getItemCount()))
 		return RETURNVALUE_NOTPOSSIBLE;
@@ -882,8 +908,10 @@ CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, I
 		flags |= FLAG_NOLIMIT;
 
 	if (destTile)
+	{
 		if (auto destThing = destTile->getTopDownItem())
 			destItem = destThing->getItem();
+	}
 
 	return destTile;
 }

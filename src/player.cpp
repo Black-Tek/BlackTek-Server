@@ -3057,10 +3057,13 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 		or (slotPosition & SLOTP_LEGS)
 		or (slotPosition & SLOTP_FEET)
 		or (slotPosition & SLOTP_RING))
+	{
 		ret = RETURNVALUE_CANNOTBEDRESSED;
-
+	}
 	else if (slotPosition & SLOTP_TWO_HAND)
+	{
 		ret = RETURNVALUE_PUTTHISOBJECTINBOTHHANDS;
+	}
 	else if ((slotPosition & SLOTP_RIGHT) or (slotPosition & SLOTP_LEFT))
 	{
 		if (not g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
@@ -3106,8 +3109,9 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 				if (not g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
 				{
 					if (item->getWeaponType() != WEAPON_SHIELD and item->getWeaponType() != WEAPON_QUIVER)
+					{
 						ret = RETURNVALUE_CANNOTBEDRESSED;
-
+					}
 					else
 					{
 						const auto& leftItem = inventory[CONST_SLOT_LEFT];
@@ -3153,11 +3157,13 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 
 					}
 					else if (item == leftItem and count == item->getItemCount())
+					{
 						ret = RETURNVALUE_NOERROR;
-
+					}
 					else if (leftType == WEAPON_SHIELD and type == WEAPON_SHIELD)
+					{
 						ret = RETURNVALUE_CANONLYUSEONESHIELD;
-
+					}
 					else if (leftType == WEAPON_NONE
 						or type == WEAPON_NONE
 						or leftType == WEAPON_SHIELD
@@ -3166,14 +3172,19 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 						or type == WEAPON_AMMO
 						or leftType == WEAPON_QUIVER
 						or type == WEAPON_QUIVER)
+					{
 						ret = RETURNVALUE_NOERROR;
+					}
 					else
+					{
 						ret = RETURNVALUE_CANONLYUSEONEWEAPON;
+					}
 
 				}
 				else
+				{
 					ret = RETURNVALUE_NOERROR;
-
+				}
 			}
 			break;
 		}
@@ -3188,33 +3199,41 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 					const auto& rightItem = inventory[CONST_SLOT_RIGHT];
 
 					if (type == WEAPON_NONE or type == WEAPON_SHIELD or type == WEAPON_AMMO or type == WEAPON_QUIVER)
+					{
 						ret = RETURNVALUE_CANNOTBEDRESSED;
-
+					}
 					else if (rightItem and (slotPosition & SLOTP_TWO_HAND))
-
+					{
 						if (type != WEAPON_DISTANCE or rightItem->getWeaponType() != WEAPON_QUIVER)
 							ret = RETURNVALUE_BOTHHANDSNEEDTOBEFREE;
-
 						else
 							ret = RETURNVALUE_NOERROR;
-
+					}
 					else
+					{
 						ret = RETURNVALUE_NOERROR;
+					}
 				}
 				else if (slotPosition & SLOTP_TWO_HAND)
 				{
 					const auto& rightItem = inventory[CONST_SLOT_RIGHT];
 
 					if (rightItem and rightItem != item)
+					{
 
 						if (item->getWeaponType() != WEAPON_DISTANCE or rightItem->getWeaponType() != WEAPON_QUIVER)
+						{
 							ret = RETURNVALUE_BOTHHANDSNEEDTOBEFREE;
-
+						}
 						else
+						{
 							ret = RETURNVALUE_NOERROR;
-
+						}
+					}
 					else
+					{
 						ret = RETURNVALUE_NOERROR;
+					}
 
 				}
 				else if (inventory[CONST_SLOT_RIGHT])
@@ -3223,19 +3242,21 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 					WeaponType_t type = item->getWeaponType(), rightType = rightItem->getWeaponType();
 
 					if (rightItem->getSlotPosition() & SLOTP_TWO_HAND)
-
+					{
 						if (type != WEAPON_DISTANCE or rightItem->getWeaponType() != WEAPON_QUIVER)
 							ret = RETURNVALUE_DROPTWOHANDEDITEM;
 
 						else
 							ret = RETURNVALUE_NOERROR;
-
+					}
 					else if (item == rightItem and count == item->getItemCount())
+					{
 						ret = RETURNVALUE_NOERROR;
-
+					}
 					else if (rightType == WEAPON_SHIELD and type == WEAPON_SHIELD)
+					{
 						ret = RETURNVALUE_CANONLYUSEONESHIELD;
-
+					}
 					else if (rightType == WEAPON_NONE
 						or type == WEAPON_NONE
 						or rightType == WEAPON_SHIELD
@@ -3244,14 +3265,18 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 						or type == WEAPON_AMMO
 						or rightType == WEAPON_QUIVER
 						or type == WEAPON_QUIVER)
+					{
 						ret = RETURNVALUE_NOERROR;
-
+					}
 					else
+					{
 						ret = RETURNVALUE_CANONLYUSEONEWEAPON;
-
+					}
 				}
 				else
+				{
 					ret = RETURNVALUE_NOERROR;
+				}
 			}
 			break;
 		}
@@ -3319,8 +3344,9 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 			const auto& cylinder = item->getTopParent();
 
 			if (cylinder and (std::dynamic_pointer_cast<const DepotChest>(cylinder) or std::dynamic_pointer_cast<const Player>(cylinder)))
+			{
 				return RETURNVALUE_NEEDEXCHANGE;
-
+			}
 			return RETURNVALUE_NOTENOUGHROOM;	
 		}
 		return RETURNVALUE_NEEDEXCHANGE;
@@ -3417,7 +3443,6 @@ ReturnValue Player::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t
 
 	if (maxQueryCount < count)
 		return RETURNVALUE_NOTENOUGHROOM;
-
 	else
 		return RETURNVALUE_NOERROR;
 }
