@@ -471,7 +471,7 @@ ReturnValue Tile::queryAdd(CreaturePtr creature, uint32_t flags)
     if (hasBitSet(FLAG_NOLIMIT, flags))
         return RETURNVALUE_NOERROR;
 
-    if (hasBitSet(FLAG_PATHFINDING, flags) && hasFlag(TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT))
+    if (hasBitSet(FLAG_PATHFINDING, flags) and hasFlag(TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT))
         return RETURNVALUE_NOTPOSSIBLE;
 
     if (ground == nullptr)
@@ -527,7 +527,6 @@ ReturnValue Tile::queryAdd(CreaturePtr creature, uint32_t flags)
 
 ReturnValue Tile::queryAdd(PlayerPtr player, uint32_t flags)
 {
-
 	const auto creatures = getCreatures();
 
 	if (isHouseTile() and not house->isInvited(player))
@@ -550,7 +549,6 @@ ReturnValue Tile::queryAdd(PlayerPtr player, uint32_t flags)
 			return RETURNVALUE_NOTPOSSIBLE;
 	}
 	
-
 	// Player is trying to login to a "no logout" tile.
 	// note: might need to check for std::nullopt here as well actually.
 	if (player->getParent() == nullptr and hasFlag(TILESTATE_NOLOGOUT))
@@ -602,8 +600,10 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags)
 
 	// Monster is looking for a clear path, some stuff is blocking it.
 	if (hasFlag(TILESTATE_BLOCKSOLID) or (hasBitSet(FLAG_PATHFINDING, flags) and hasFlag(TILESTATE_NOFIELDBLOCKPATH)))
+	{
 		if (not (monster->canPushItems() or hasBitSet(FLAG_IGNOREBLOCKITEM, flags)))
 			return RETURNVALUE_NOTPOSSIBLE;
+	}
 
 	const auto creatures = getCreatures();
 
@@ -624,6 +624,7 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags)
 
 				// the creature is a monster this monster can't push.
 				const auto creatureMonster = tileCreature->getMonster();
+
 				if (not creatureMonster or not tileCreature->isPushable() or (creatureMonster->isSummon() and creatureMonster->getMaster()->getPlayer()))
 					return RETURNVALUE_NOTPOSSIBLE;
 			}
@@ -633,6 +634,7 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags)
 
 	// If the magic field is safe, return early
     const auto field = getFieldItem();
+
     if (not field or field->isBlocking() or field->getDamage() == 0)
         return RETURNVALUE_NOERROR;
 

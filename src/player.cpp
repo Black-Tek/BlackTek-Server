@@ -3226,7 +3226,6 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 					{
 						ret = RETURNVALUE_NOERROR;
 					}
-
 				}
 				else if (inventory[CONST_SLOT_RIGHT])
 				{
@@ -3313,7 +3312,6 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 	if (not hasCapacity(item, count))
 		return RETURNVALUE_NOTENOUGHCAPACITY;
 
-
 	// we don't try to equip whereever call
 	if (index != CONST_SLOT_WHEREEVER and index != -1)
 	{ 
@@ -3396,7 +3394,6 @@ ReturnValue Player::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t
 					++n;
 			}
 		}
-
 		maxQueryCount = n;
 	}
 	else
@@ -3406,12 +3403,10 @@ ReturnValue Player::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t
 		if (const auto& destThing = getThing(index))
 			destItem = destThing->getItem();
 
-
 		if (destItem)
 		{
 			if (destItem->isStackable() and item->equals(destItem) and destItem->getItemCount() < 100)
 				maxQueryCount = 100 - destItem->getItemCount();
-
 			else
 				maxQueryCount = 0;
 		}
@@ -3421,7 +3416,6 @@ ReturnValue Player::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t
 		{
 			if (item->isStackable())
 				maxQueryCount = 100;
-
 			else
 				maxQueryCount = 1;
 
