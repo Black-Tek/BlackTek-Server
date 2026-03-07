@@ -3027,7 +3027,6 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 	if (item == nullptr)
 		return RETURNVALUE_NOTPOSSIBLE;
 
-
 	if (const bool childIsOwner = hasBitSet(FLAG_CHILDISOWNER, flags))
 	{
 		// a child container is querying the player, just check if enough capacity
@@ -3042,20 +3041,18 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 	if (not item->isPickupable())
 		return RETURNVALUE_CANNOTPICKUP;
 
-
 	if (item->isStoreItem())
 		return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
-
 
 	ReturnValue ret = RETURNVALUE_NOTPOSSIBLE;
 	const int32_t& slotPosition = item->getSlotPosition();
 
-	if ((slotPosition & SLOTP_HEAD)
-		or (slotPosition & SLOTP_NECKLACE)
-		or (slotPosition & SLOTP_BACKPACK)
+	if ((slotPosition & SLOTP_BACKPACK)
 		or (slotPosition & SLOTP_ARMOR)
 		or (slotPosition & SLOTP_LEGS)
+		or (slotPosition & SLOTP_HEAD)
 		or (slotPosition & SLOTP_FEET)
+		or (slotPosition & SLOTP_NECKLACE)
 		or (slotPosition & SLOTP_RING))
 	{
 		ret = RETURNVALUE_CANNOTBEDRESSED;
@@ -3117,21 +3114,23 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 						const auto& leftItem = inventory[CONST_SLOT_LEFT];
 
 						if (leftItem)
-
+						{
 							if ((leftItem->getSlotPosition() | slotPosition) & SLOTP_TWO_HAND)
-
-								if (leftItem->getWeaponType() != WEAPON_DISTANCE or	item->getWeaponType() != WEAPON_QUIVER)
+							{
+								if (leftItem->getWeaponType() != WEAPON_DISTANCE or item->getWeaponType() != WEAPON_QUIVER)
 									ret = RETURNVALUE_BOTHHANDSNEEDTOBEFREE;
-
 								else
 									ret = RETURNVALUE_NOERROR;
-
+							}
 							else
+							{
 								ret = RETURNVALUE_NOERROR;
-
+							}
+						}
 						else
+						{
 							ret = RETURNVALUE_NOERROR;
-
+						}
 					}
 				}
 				else if (slotPosition & SLOTP_TWO_HAND)
@@ -3141,7 +3140,6 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 						ret = RETURNVALUE_BOTHHANDSNEEDTOBEFREE;
 					else
 						ret = RETURNVALUE_NOERROR;
-
 				}
 				else if (inventory[CONST_SLOT_LEFT])
 				{
@@ -3154,7 +3152,6 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 							ret = RETURNVALUE_DROPTWOHANDEDITEM;
 						else
 							ret = RETURNVALUE_NOERROR;
-
 					}
 					else if (item == leftItem and count == item->getItemCount())
 					{
@@ -3179,7 +3176,6 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 					{
 						ret = RETURNVALUE_CANONLYUSEONEWEAPON;
 					}
-
 				}
 				else
 				{
@@ -3245,7 +3241,6 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 					{
 						if (type != WEAPON_DISTANCE or rightItem->getWeaponType() != WEAPON_QUIVER)
 							ret = RETURNVALUE_DROPTWOHANDEDITEM;
-
 						else
 							ret = RETURNVALUE_NOERROR;
 					}
