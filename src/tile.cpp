@@ -828,7 +828,6 @@ ReturnValue Tile::queryRemove(const ThingPtr& thing, const uint32_t count, uint3
 CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, ItemPtr& destItem, uint32_t& flags)
 {
 	TilePtr destTile;
-	destItem.reset();
 
 	if (not thingPtr)
 		return getTile();
@@ -843,15 +842,15 @@ CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, I
 				auto destTile = g_game.map.getTile(entryPos);
 
 				if (not destTile)
+				[[unlikely]]
 				{
 					destTile = g_game.map.getTile(player->getTemplePosition());
 
-					if (not destTile)
+					if (not destTile) [[unlikely]]
 						destTile = std::make_shared<Tile>(0xFFFF, 0xFFFF, 0xFF);
 				}
 
 				someInt = -1;
-				destItem.reset();
 				return destTile;
 			}
 		}
@@ -864,18 +863,22 @@ CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, I
 		uint8_t dz = tilePos.z + 1;
 
 		if (auto southDownTile = g_game.map.getTile(dx, dy - 1, dz); southDownTile and southDownTile->hasFlag(TILESTATE_FLOORCHANGE_SOUTH_ALT))
+		[[unlikely]]
 		{
 			dy -= 2;
 			destTile = g_game.map.getTile(dx, dy, dz);
 		}
 		else if (auto eastDownTile = g_game.map.getTile(dx - 1, dy, dz); eastDownTile and eastDownTile->hasFlag(TILESTATE_FLOORCHANGE_EAST_ALT))
+		[[unlikely]]
 		{
 			dx -= 2;
 			destTile = g_game.map.getTile(dx, dy, dz);
 		}
 		else
+		[[likely]]
 		{
 			if (auto downTile = g_game.map.getTile(dx, dy, dz))
+			[[likely]]
 			{
 				if (downTile->hasFlag(TILESTATE_FLOORCHANGE_NORTH)) ++dy;
 				if (downTile->hasFlag(TILESTATE_FLOORCHANGE_SOUTH)) --dy;
