@@ -77,6 +77,11 @@ bool Creature::canSeeCreature(const CreatureConstPtr& creature) const
 	if (!canSeeInvisibility() && creature->isInvisible()) {
 		return false;
 	}
+
+	// BlackTek Instance System
+	if (not compareInstance(creature->getInstanceID()))
+		return false;
+	
 	return true;
 }
 
