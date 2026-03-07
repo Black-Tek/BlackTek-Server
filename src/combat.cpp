@@ -22,11 +22,19 @@ namespace {
 	SpectatorVec filterSpectatorsByInstance(const SpectatorVec& spectators, uint32_t instanceId)
 	{
 		SpectatorVec filtered;
-		for (const auto& spectator : spectators) {
-			const auto spectatorPlayer = spectator->getPlayer();
-			if (spectatorPlayer && spectatorPlayer->compareInstance(instanceId)) {
-				filtered.emplace_back(spectator);
+
+		const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
+		{
+			if (!s) {
+				return false;
 			}
+			const PlayerPtr& spectatorPlayer = s->getPlayer();
+			return spectatorPlayer and spectatorPlayer->compareInstance(instanceId);
+		};
+		
+		for (const auto& spectator : spectators | std::views::filter(sameInstance))
+		{
+			filtered.emplace_back(spectator);
 		}
 		return filtered;
 	}
@@ -397,9 +405,8 @@ ReturnValue Combat::canDoCombat(const CreaturePtr& attacker, const CreaturePtr& 
 		return g_events->eventCreatureOnTargetCombat(attacker, target);
 	}
 	// BlackTek Instance System
-	if (target && !attacker->compareInstance(target->getInstanceID())) {
+	if (target and not attacker->compareInstance(target->getInstanceID()))
 		return RETURNVALUE_YOUMAYNOTATTACKTHISCREATURE;
-	}
 
 	if (const auto& targetPlayer = target->getPlayer()) 
 	{

@@ -1452,7 +1452,7 @@ bool Player::canSeeCreature(const CreatureConstPtr& creature) const
 	}
 
 	// BlackTek Instance System
-	if (!compareInstance(creature->getInstanceID()))
+	if (not compareInstance(creature->getInstanceID()))
 		return false;
 	
 	return true;

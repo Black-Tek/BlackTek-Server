@@ -67,16 +67,21 @@ static bool operator<(const CreatureRoster& a, const CreatureRoster& b)
 // BlackTek Instance System
 static bool canInteractInSameInstance(const CreatureConstPtr& first, const CreatureConstPtr& second)
 {
-	return first && second && first->compareInstance(second->getInstanceID());
+	return first and second and first->compareInstance(second->getInstanceID());
 }
 
 static void sendMagicEffectToInstance(const SpectatorVec& spectators, const Position& pos, const uint8_t effect, uint32_t instanceId)
 {
-	for (const auto& spectator : spectators) {
-		const auto tmpPlayer = spectator->getPlayer();
-		if (tmpPlayer && tmpPlayer->compareInstance(instanceId)) {
-			tmpPlayer->sendMagicEffect(pos, effect);
+	const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
+	{
+		if (!s) {
+			return false;
 		}
+		const PlayerPtr& tmpPlayer = s->getPlayer();
+		return tmpPlayer and tmpPlayer->compareInstance(instanceId);
+	};
+	for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
+		spectator->getPlayer()->sendMagicEffect(pos, effect); // we already know getPlayer will return valid player object due to the views filter :)
 	}
 }
 
@@ -1341,12 +1346,12 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 	//add item
 	if (moveItem /*m - n > 0*/) {
 		// BlackTek Instance System
-		if (actorPlayer && toCylinder->getTile())
+		if (actorPlayer and toCylinder->getTile())
 			moveItem->setInstanceID(actorPlayer->getInstanceID());
 		toCylinder->addThing(index, moveItem);
 	}
 
-	if (item && itemIndex != -1) {
+	if (item and itemIndex != -1) {
 		fromCylinder->postRemoveNotification(item, toCylinder, itemIndex);
 	}
 
@@ -2390,7 +2395,7 @@ void Game::playerUseWithCreature(const uint32_t playerId, const Position& fromPo
 		return;
 	}
 	// BlackTek Instance System
-	if (!canInteractInSameInstance(player, creature)) {
+	if (not canInteractInSameInstance(player, creature)) {
 		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
 		return;
 	}
@@ -2770,7 +2775,7 @@ void Game::playerRequestTrade(const uint32_t playerId, const Position& pos, uint
 		return;
 	}
 	// BlackTek Instance System
-	if (!canInteractInSameInstance(player, tradePartner)) {
+	if (not canInteractInSameInstance(player, tradePartner)) {
 		player->sendCancelMessage("Select a player to trade with.");
 		return;
 	}
@@ -2874,7 +2879,7 @@ void Game::playerRequestTrade(const uint32_t playerId, const Position& pos, uint
 bool Game::internalStartTrade(const PlayerPtr& player, const PlayerPtr& tradePartner, const ItemPtr& tradeItem)
 {
 	// BlackTek Instance System
-	if (!canInteractInSameInstance(player, tradePartner)) {
+	if (not canInteractInSameInstance(player, tradePartner)) {
 		player->sendCancelMessage("Select a player to trade with.");
 		return false;
 	}
@@ -2923,7 +2928,7 @@ void Game::playerAcceptTrade(const uint32_t playerId)
 		return;
 	}
 	// BlackTek Instance System
-	if (!canInteractInSameInstance(player, tradePartner)) {
+	if (not canInteractInSameInstance(player, tradePartner)) {
 		internalCloseTrade(player, false);
 		return;
 	}
@@ -3370,7 +3375,7 @@ void Game::playerSetAttackedCreature(const uint32_t playerId, const uint32_t cre
 		return;
 	}
 	// BlackTek Instance System
-	if (!canInteractInSameInstance(player, attackCreature)) {
+	if (not canInteractInSameInstance(player, attackCreature)) {
 		player->sendCancelTarget();
 		player->setAttackedCreature(nullptr);
 		return;
@@ -3397,7 +3402,7 @@ void Game::playerFollowCreature(const uint32_t playerId, const uint32_t creature
 
 	const auto followCreature = getCreatureByID(creatureId);
 	// BlackTek Instance System
-	if (followCreature && !canInteractInSameInstance(player, followCreature)) {
+	if (followCreature and not canInteractInSameInstance(player, followCreature)) {
 		player->setFollowCreature(nullptr);
 		return;
 	}
@@ -4797,26 +4802,20 @@ void Game::playerWhisper(const PlayerPtr& player, const std::string& text)
 	              Map::maxClientViewportX, Map::maxClientViewportX,
 	              Map::maxClientViewportY, Map::maxClientViewportY);
 
-	//send to client
-	for (const auto spectator : spectators) {
+	//send to client + trigger event callback
+	// BlackTek Instance System
+	const auto sameInstance = [&](const auto& s)
+	{
+		return canInteractInSameInstance(player, s);
+	};
+	
+	for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
 		if (const auto spectatorPlayer = spectator->getPlayer()) {
-			// BlackTek Instance System
-			if (!canInteractInSameInstance(player, spectator)) {
-				continue;
-			}
 			if (!Position::areInRange<1, 1>(player->getPosition(), spectatorPlayer->getPosition())) {
 				spectatorPlayer->sendCreatureSay(player, TALKTYPE_WHISPER, "pspsps");
 			} else {
 				spectatorPlayer->sendCreatureSay(player, TALKTYPE_WHISPER, text);
 			}
-		}
-	}
-
-	//event method
-	for (const auto spectator : spectators) {
-		// BlackTek Instance System
-		if (!canInteractInSameInstance(player, spectator)) {
-			continue;
 		}
 		spectator->onCreatureSay(player, TALKTYPE_WHISPER, text);
 	}
@@ -4905,7 +4904,7 @@ void Game::playerSpeakToNpc(const PlayerPtr& player, const std::string& text)
 	map.getSpectators(spectators, player->getPosition());
 	for (const auto spectator : spectators) {
 		// BlackTek Instance System
-		if (spectator->getNpc() && canInteractInSameInstance(player, spectator)) {
+		if (spectator->getNpc() and canInteractInSameInstance(player, spectator)) {
 			spectator->onCreatureSay(player, TALKTYPE_PRIVATE_PN, text);
 		}
 	}
@@ -4970,26 +4969,21 @@ bool Game::internalCreatureSay(const CreaturePtr& creature, const SpeakClasses t
 		spectators = (*spectatorsPtr);
 	}
 
-	//send to client
-	for (const auto& spectator : spectators) {
-		// BlackTek Instance System
-		if (!canInteractInSameInstance(creature, spectator)) {
-			continue;
-		}
+	//send to client + event callback
+	// BlackTek Instance System
+	const auto sameInstance = [&](const auto& s)
+	{
+		return canInteractInSameInstance(creature, s);
+	};
+	for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
 		if (const auto& tmpPlayer = spectator->getPlayer()) {
 			if (!ghostMode || tmpPlayer->canSeeCreature(creature)) {
 				tmpPlayer->sendCreatureSay(creature, type, text, pos);
 			}
 		}
-	}
 
-	//event method
-	if (!echo) {
-		for (const auto& spectator : spectators) {
-			// BlackTek Instance System
-			if (!canInteractInSameInstance(creature, spectator)) {
-				continue;
-			}
+		if (not echo)
+		{
 			spectator->onCreatureSay(creature, type, text);
 			if (creature != spectator) {
 				g_events->eventCreatureOnHear(spectator, creature, text, type);
@@ -5065,9 +5059,9 @@ void Game::creature_think_cycle() noexcept
 {
     auto& checkCreatureList = slots_[current_slot_];
     current_slot_ = (current_slot_ + 1) % 20;
-auto valid_creatures = checkCreatureList 
-        | std::views::filter([](const auto& creature) { return creature->creatureCheck; })
-        | std::views::filter([](const auto& creature) { return creature->getHealth() > 0; });
+	auto valid_creatures = checkCreatureList
+		| std::views::filter([](const auto& creature) { return creature && creature->creatureCheck; })
+		| std::views::filter([](const auto& creature) { return creature->getHealth() > 0; });
 
     for (auto& creature : valid_creatures)
     {
@@ -5153,7 +5147,7 @@ bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, con
 	}
 
 	// BlackTek Instance System
-	if (attacker && !canInteractInSameInstance(attacker, target)) {
+	if (attacker and not canInteractInSameInstance(attacker, target)) {
 		return true;
 	}
 
@@ -5449,7 +5443,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 	auto targetPlayer = target && target->getPlayer() ? target->getPlayer() : nullptr;
 
 	// BlackTek Instance System
-	if (attacker && !canInteractInSameInstance(attacker, target)) {
+	if (attacker and not canInteractInSameInstance(attacker, target)) {
 		return false;
 	}
 
@@ -5519,13 +5513,21 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			SpectatorVec spectators;
 			map.getSpectators(spectators, targetPos, false, true);
 
-			for (const auto& spectator : spectators) {
-				// BlackTek Instance System
-				auto spectatorPlayer = std::static_pointer_cast<Player>(spectator);
-				if (!spectatorPlayer->compareInstance(target->getInstanceID())) {
+			// BlackTek Instance System
+			const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
+			{
+				if (!s) {
+					return false;
+				}
+				const PlayerPtr& spectatorPlayer = s->getPlayer();
+				return spectatorPlayer and spectatorPlayer->compareInstance(target->getInstanceID());
+			};
+			for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
+				const PlayerPtr& spectatorPlayer = spectator->getPlayer();
+				if (!spectatorPlayer) {
 					continue;
 				}
-				if (spectatorPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
+				if (spectatorPlayer == attackerPlayer and attackerPlayer != targetPlayer) {
 					message.type = MESSAGE_HEALED;
 					message.text = "You heal " + targetNameDesc + " for " + damageString + ".";
 				}
@@ -5606,16 +5608,24 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 					message.primary.value = manaDamage;
 					message.primary.color = TEXTCOLOR_BLUE;
 
+					// BlackTek Instance System
+					const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
+					{
+						if (!s) {
+							return false;
+						}
+						const PlayerPtr spectatorPlayer = s->getPlayer();
+						return spectatorPlayer && spectatorPlayer->compareInstance(target->getInstanceID());
+					};
+
 					// Notify spectators about mana loss
-					for (const auto& spectator : spectators) {
-						PlayerPtr spectatorPlayer = std::static_pointer_cast<Player>(spectator);
-						// BlackTek Instance System
-						if (!spectatorPlayer->compareInstance(target->getInstanceID())) {
+					for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
+						const PlayerPtr& spectatorPlayer = spectator->getPlayer();
+						if (!spectatorPlayer) {
 							continue;
 						}
-						if (spectatorPlayer->getPosition().z != targetPos.z) {
+						if (spectatorPlayer->getPosition().z != targetPos.z)
 							continue;
-						}
 
 						if (spectatorPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
 							message.type = MESSAGE_DAMAGE_DEALT;
@@ -5703,15 +5713,18 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			}
 			spectatorMessage[0] = std::toupper(spectatorMessage[0]);
 
-			for (const auto& spectator : spectators) {
+			// BlackTek Instance System
+			const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
+			{
+				const PlayerPtr& tmpPlayer = s->getPlayer();
+				return tmpPlayer and tmpPlayer->compareInstance(target->getInstanceID());
+			};
+
+			for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
 				const auto& tmpPlayer = spectator->getPlayer();
-				// BlackTek Instance System
-				if (!tmpPlayer || !tmpPlayer->compareInstance(target->getInstanceID())) {
+
+				if (tmpPlayer->getPosition().z != targetPos.z)
 					continue;
-				}
-				if (tmpPlayer->getPosition().z != targetPos.z) {
-					continue;
-				}
 
 				if (tmpPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
 					message.type = MESSAGE_DAMAGE_DEALT;
@@ -5782,7 +5795,7 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 	}
 
 	// BlackTek Instance System
-	if (attacker && !canInteractInSameInstance(attacker, target)) {
+	if (attacker and not canInteractInSameInstance(attacker, target)) {
 		return false;
 	}
 
@@ -5898,12 +5911,23 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 
 			SpectatorVec spectators;
 			map.getSpectators(spectators, targetPos, false, true);
-			for (const auto& spectator : spectators) {
-				// BlackTek Instance System
-				PlayerPtr spectatorPlayer = std::static_pointer_cast<Player>(spectator);
-				if (!spectatorPlayer->compareInstance(target->getInstanceID())) {
+
+			// BlackTek Instance System
+			const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
+			{
+				if (!s) {
+					return false;
+				}
+				const PlayerPtr& spectatorPlayer = s->getPlayer();
+				return spectatorPlayer and spectatorPlayer->compareInstance(target->getInstanceID());
+			};
+			
+			for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
+				PlayerPtr spectatorPlayer = spectator->getPlayer();
+				if (!spectatorPlayer) {
 					continue;
 				}
+				
 				if (spectatorPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
 					message.type = MESSAGE_DAMAGE_DEALT;
 					message.text = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana due to your attack.";
