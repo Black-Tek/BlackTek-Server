@@ -1,7 +1,9 @@
 #ifndef BT_DECLARATIONS_H
 #define BT_DECLARATIONS_H
 #include <memory>
+#include <queue>
 #include <vector>
+#include <functional>
 
 
 class Thing;
@@ -97,4 +99,106 @@ using TileCreaturesPtr = std::shared_ptr<CreatureVector>;
 using TileCreaturesConstPtr = std::shared_ptr<const CreatureVector>;
 
 
+
+#include <coroutine>
+#include <chrono>
+
+struct CoroTask
+{
+    struct promise_type
+    {
+        CoroTask get_return_object() { return {}; }
+        std::suspend_never initial_suspend() noexcept { return {}; }
+        std::suspend_never final_suspend() noexcept { return {}; }
+        void return_void() noexcept { }
+        void unhandled_exception() { std::terminate(); }
+    };
+};
+
+// todo : move this to a more appropriate location
+// and reuse this for all the timer wheel tasks, and spawns too
+// possibly eliminate entire usage of dispatcher/scheduler for game tasks
+// only excluding possible things that can benefit to being offloaded from main loop
+struct TimerQueue
+{
+    using Clock = std::chrono::system_clock;
+    using TimePoint = Clock::time_point;
+
+    struct Entry
+    {
+        TimePoint wake;
+        std::coroutine_handle<> handle;
+        bool operator>(const Entry& other) const { return wake > other.wake; }
+    };
+
+    std::priority_queue<Entry, std::vector<Entry>, std::greater<>> queue;
+
+    void add(TimePoint when, std::coroutine_handle<> handle)
+    {
+        queue.push({ when, handle });
+    }
+
+    void tick()
+    {
+        auto now = Clock::now();
+        while (not queue.empty() and queue.top().wake <= now)
+        {
+            auto handle = queue.top().handle;
+            queue.pop();
+            handle.resume();
+        }
+    }
+};
+
+inline TimerQueue g_timer_queue;
+
+struct SleepFor
+{
+    uint32_t ms;
+    bool await_ready() const noexcept { return ms == 0; }
+    void await_suspend(std::coroutine_handle<> handle) const
+    {
+        g_timer_queue.add(TimerQueue::Clock::now() + std::chrono::milliseconds(ms), handle);
+    }
+    void await_resume() const noexcept { }
+};
+
+// This is good example code I would like to use
+// along with the normal sleepFor awaitable as components
+// built on top of each other to build elaborate and complex
+// self maintaining systems
+struct SleepOrEvent
+{
+    uint32_t ms;
+    std::function<void(std::function<void()>)> reg;
+
+    bool await_ready() const noexcept { return false; }
+
+    void await_suspend(std::coroutine_handle<> h) const
+    {
+        auto resume = [h]() mutable
+        {
+            h.resume();
+        };
+
+        g_timer_queue.add(TimerQueue::Clock::now() + std::chrono::milliseconds(ms), h);
+
+        reg(resume);
+    }
+
+    void await_resume() const noexcept { }
+};
+
+struct ReturnHandle
+{
+    std::coroutine_handle<> _handle;
+
+    bool await_ready() const noexcept { return false; }
+    bool await_suspend(std::coroutine_handle<> handle) noexcept
+    {
+        _handle = handle;
+        return false; // Do not suspend; resume immediately.
+    }
+    std::coroutine_handle<> await_resume() noexcept { return _handle; }
+};
 #endif
