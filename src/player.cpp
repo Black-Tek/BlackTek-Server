@@ -3077,13 +3077,11 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 				ret = RETURNVALUE_NOERROR;
 			break;
 
-
 		case CONST_SLOT_NECKLACE:
 
 			if (slotPosition & SLOTP_NECKLACE)
 				ret = RETURNVALUE_NOERROR;
 			break;
-
 
 		case CONST_SLOT_BACKPACK:
 
@@ -3091,13 +3089,11 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 				ret = RETURNVALUE_NOERROR;
 			break;
 
-
 		case CONST_SLOT_ARMOR:
 
 			if (slotPosition & SLOTP_ARMOR)
 				ret = RETURNVALUE_NOERROR;
 			break;
-
 
 		case CONST_SLOT_RIGHT:
 		{
@@ -3288,20 +3284,17 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 				ret = RETURNVALUE_NOERROR;
 			break;
 
-
 		case CONST_SLOT_RING:
 
 			if (slotPosition & SLOTP_RING)
 				ret = RETURNVALUE_NOERROR;
 			break;
 
-
 		case CONST_SLOT_AMMO:
 
 			if ((slotPosition & SLOTP_AMMO) or g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
 				ret = RETURNVALUE_NOERROR;
 			break;
-
 
 		case CONST_SLOT_WHEREEVER:
 		case -1:
