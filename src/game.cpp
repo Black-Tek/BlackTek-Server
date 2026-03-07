@@ -74,9 +74,6 @@ static void sendMagicEffectToInstance(const SpectatorVec& spectators, const Posi
 {
 	const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
 	{
-		if (!s) {
-			return false;
-		}
 		const PlayerPtr& tmpPlayer = s->getPlayer();
 		return tmpPlayer and tmpPlayer->compareInstance(instanceId);
 	};
@@ -5516,9 +5513,6 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			// BlackTek Instance System
 			const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
 			{
-				if (!s) {
-					return false;
-				}
 				const PlayerPtr& spectatorPlayer = s->getPlayer();
 				return spectatorPlayer and spectatorPlayer->compareInstance(target->getInstanceID());
 			};
@@ -5611,9 +5605,6 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 					// BlackTek Instance System
 					const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
 					{
-						if (!s) {
-							return false;
-						}
 						const PlayerPtr spectatorPlayer = s->getPlayer();
 						return spectatorPlayer && spectatorPlayer->compareInstance(target->getInstanceID());
 					};
@@ -5915,9 +5906,6 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 			// BlackTek Instance System
 			const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
 			{
-				if (!s) {
-					return false;
-				}
 				const PlayerPtr& spectatorPlayer = s->getPlayer();
 				return spectatorPlayer and spectatorPlayer->compareInstance(target->getInstanceID());
 			};

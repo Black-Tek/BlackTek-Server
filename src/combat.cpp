@@ -25,9 +25,6 @@ namespace {
 
 		const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
 		{
-			if (!s) {
-				return false;
-			}
 			const PlayerPtr& spectatorPlayer = s->getPlayer();
 			return spectatorPlayer and spectatorPlayer->compareInstance(instanceId);
 		};

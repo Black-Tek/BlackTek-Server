@@ -376,9 +376,6 @@ void Tile::onAddTileItem(ItemPtr& item)
 	// BlackTek Instance System
 	const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
 	{
-		if (!s) {
-			return false;
-		}
 		const PlayerPtr& spectatorPlayer = s->getPlayer();
 		return spectatorPlayer and canSeeItemInInstance(spectatorPlayer->getInstanceID(), item);
 	};
@@ -423,9 +420,6 @@ void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, con
 	// BlackTek Instance System
 	const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
 	{
-		if (!s) {
-			return false;
-		}
 		const PlayerPtr& spectatorPlayer = s->getPlayer();
 		return spectatorPlayer and canSeeItemInInstance(spectatorPlayer->getInstanceID(), newItem);
 	};
@@ -453,9 +447,6 @@ void Tile::onRemoveTileItem(const SpectatorVec& spectators, const std::vector<in
 	// BlackTek Instance System
 	const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
 	{
-		if (!s) {
-			return false;
-		}
 		const PlayerPtr& spectatorPlayer = s->getPlayer();
 		return spectatorPlayer and canSeeItemInInstance(spectatorPlayer->getInstanceID(), item);
 	};
@@ -1190,9 +1181,6 @@ void Tile::removeThing(ThingPtr thing, uint32_t count)
 	// BlackTek Instance System
 	const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
 	{
-		if (!s) {
-			return false;
-		}
 		const PlayerPtr& spectatorPlayer = s->getPlayer();
 		return spectatorPlayer and canSeeItemInInstance(spectatorPlayer->getInstanceID(), item);
 	};
