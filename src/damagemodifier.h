@@ -158,6 +158,8 @@ public:
 		m_creature_name(creatureName)			// if none, all creatures.
 	{}
 
+	static std::shared_ptr<DamageModifier> makeModifier() { return std::make_shared<DamageModifier>(); }
+	static std::shared_ptr<DamageModifier> makeModifier(const DamageModifier& mod) { return std::make_shared<DamageModifier>(mod); }
 	static std::shared_ptr<DamageModifier> makeModifier(uint8_t stance, uint8_t modType, uint16_t amount, ModFactor factorType, uint8_t chance, CombatType_t combatType = COMBAT_NONE, CombatOrigin source = ORIGIN_NONE, CreatureType_t creatureType = CREATURETYPE_ATTACKABLE, RaceType_t race = RACE_NONE, std::string_view creatureName = "none");
 
 	const uint8_t& getStance() const;

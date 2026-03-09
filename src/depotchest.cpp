@@ -9,33 +9,32 @@
 DepotChest::DepotChest(uint16_t type, bool paginated /*= true*/) :
 	Container{ type, items[type].maxItems, true, paginated } {}
 
-ReturnValue DepotChest::queryAdd(int32_t index, const ThingPtr& thing, uint32_t count,
-                                 uint32_t flags, CreaturePtr actor/* = nullptr*/)
+ReturnValue DepotChest::queryAdd(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor/* = nullptr*/)
 {
 	auto item = thing->getItem();
-	if (item == nullptr) {
+
+	if (item == nullptr)
 		return RETURNVALUE_NOTPOSSIBLE;
-	}
 
 	bool skipLimit = hasBitSet(FLAG_NOLIMIT, flags);
-	if (!skipLimit) {
+
+	if (not skipLimit)
+	{
 		int32_t addCount = 0;
 
-		if ((item->isStackable() && item->getItemCount() != count)) {
+		if ((item->isStackable() and item->getItemCount() != count))
 			addCount = 1;
-		}
 
-		if (item->getTopParent().get() != this) {
-			if (const auto container = item->getContainer()) {
+		if (item->getTopParent().get() != this)
+		{
+			if (const auto container = item->getContainer())
 				addCount = container->getItemHoldingCount() + 1;
-			} else {
+			else
 				addCount = 1;
-			}
 		}
 
-		if (getItemHoldingCount() + addCount > maxDepotItems) {
+		if (getItemHoldingCount() + addCount > maxDepotItems)
 			return RETURNVALUE_DEPOTISFULL;
-		}
 	}
 
 	return Container::queryAdd(index, thing, count, flags, actor);
