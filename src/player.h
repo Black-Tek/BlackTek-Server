@@ -154,7 +154,8 @@ class Player final : public Creature, public Cylinder
 
 		void setID() override {
 			if (id == 0) {
-				id = playerAutoID++;
+				id = 0x10000000 + guid;
+				playerAutoID = std::max<uint32_t>(playerAutoID, id);
 			}
 		}
 
