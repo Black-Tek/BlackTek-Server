@@ -18,6 +18,7 @@
 #include "npc.h"
 #include "wildcardtree.h"
 #include "quests.h"
+#include "console.h"
 
 #include <gtl/phmap.hpp>
 
