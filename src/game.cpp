@@ -65,6 +65,15 @@ static bool operator<(const CreatureRoster& a, const CreatureRoster& b)
 }
 
 Game::Game()
+	: raw_game_block(GamePoolSize)
+	, game_block(raw_game_block.data(), raw_game_block.size(), std::pmr::new_delete_resource())
+	, player_pool(std::pmr::pool_options(1000, sizeof(Player)), & game_block)
+	, monster_pool(std::pmr::pool_options(50000, sizeof(Player)), &game_block)
+	, npc_pool(std::pmr::pool_options(200, sizeof(Player)), &game_block)
+	, players(&player_pool)
+	, mappedPlayerGuids(&player_pool)
+	, monsters(&monster_pool)
+	, npcs(&npc_pool)
 {
 	offlineTrainingWindow.defaultEnterButton = 0;
 	offlineTrainingWindow.defaultEscapeButton = 1;
