@@ -20,6 +20,13 @@ local function exitInstance(player)
 end
 
 local function onSay(player, words, param)
+	if not player:getGroup():getAccess() then
+    return true
+  end
+	if player:getAccountType() < ACCOUNT_TYPE_GOD then
+		return false
+	end
+
 	local loweredWords = words:lower()
 
 	if loweredWords == "/exitinstance" then
