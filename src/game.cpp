@@ -66,14 +66,14 @@ static bool operator<(const CreatureRoster& a, const CreatureRoster& b)
 
 Game::Game()
 	: raw_game_block(GamePoolSize)
-	, game_block(raw_game_block.data(), raw_game_block.size(), std::pmr::new_delete_resource())
-	, player_pool(std::pmr::pool_options(1000, sizeof(Player)), & game_block)
-	, monster_pool(std::pmr::pool_options(50000, sizeof(Player)), &game_block)
-	, npc_pool(std::pmr::pool_options(200, sizeof(Player)), &game_block)
-	, players(&player_pool)
-	, mappedPlayerGuids(&player_pool)
-	, monsters(&monster_pool)
-	, npcs(&npc_pool)
+	, game_block(raw_game_block.data(), raw_game_block.size())
+	, player_pool(std::pmr::pool_options(1000, sizeof(PlayerPtr)), &game_block)
+	, monster_pool(std::pmr::pool_options(50000, sizeof(MonsterPtr)), &game_block)
+	, npc_pool(std::pmr::pool_options(200, sizeof(NpcPtr)), &game_block)
+	, players(&creature_pointer_pool)
+	, mappedPlayerGuids(&creature_pointer_pool)
+	, monsters(&creature_pointer_pool)
+	, npcs(&creature_pointer_pool)
 {
 	offlineTrainingWindow.defaultEnterButton = 0;
 	offlineTrainingWindow.defaultEscapeButton = 1;
@@ -4716,6 +4716,38 @@ void Game::doAccountManagerLogin(const PlayerPtr& player)
 		player->sendModalWindow(loginWindow);
 		return;
 	}
+}
+
+PlayerPtr Game::MakePlayer(ProtocolGame_ptr client)
+{
+	std::pmr::polymorphic_allocator<Player> allocator(&player_pool);
+	auto player = std::allocate_shared<Player>(allocator, client);
+	player->storeInbox->setParent(player);
+	return player;
+}
+
+MonsterPtr Game::MakeMonster(const std::string& name)
+{
+	const auto& mType = g_monsters.getMonsterType(name);
+
+	if (not mType) return nullptr;
+
+	std::pmr::polymorphic_allocator<Monster> allocator(&monster_pool);
+	auto monster = std::allocate_shared<Monster>(allocator, mType);
+	return monster;
+}
+
+NpcPtr Game::MakeNpc(const std::string& name)
+{
+	std::pmr::polymorphic_allocator<Npc> allocator(&npc_pool);
+	auto npc = std::allocate_shared<Npc>(allocator, name);
+	if (not npc->load())
+	{
+		return nullptr;
+	}
+
+	npc->setCustomSkills(Npcs::getRegisteredSkills(name));
+	return npc;
 }
 
 bool Game::playerSaySpell(const PlayerPtr& player, const SpeakClasses type, const std::string& text)

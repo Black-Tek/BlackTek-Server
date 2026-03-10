@@ -725,6 +725,10 @@ class Game
 		CURL* curl;
 		std::unordered_set<Expirable> decaying_eq;
 
+		PlayerPtr MakePlayer(ProtocolGame_ptr client);
+		MonsterPtr MakeMonster(const std::string& name);
+		NpcPtr MakeNpc(const std::string& name);
+
 	private:
 		bool playerSaySpell(const PlayerPtr& player, SpeakClasses type, const std::string& text);
 		void playerWhisper(const PlayerPtr& player, const std::string& text);
@@ -740,6 +744,9 @@ class Game
 		std::pmr::unsynchronized_pool_resource player_pool;
 		std::pmr::unsynchronized_pool_resource monster_pool;
 		std::pmr::unsynchronized_pool_resource npc_pool;
+		std::pmr::unsynchronized_pool_resource creature_pointer_pool;
+		std::pmr::unsynchronized_pool_resource item_pointer_pool;
+		std::pmr::unsynchronized_pool_resource item_pool;
 
 		std::unordered_map<uint32_t, Guild_ptr> guilds;
 

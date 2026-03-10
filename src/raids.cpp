@@ -465,7 +465,7 @@ bool SingleSpawnEvent::configureRaidEvent(const toml::table& eventTable)
 
 bool SingleSpawnEvent::executeEvent()
 {
-	auto monster = Monster::createMonster(monsterName);
+	auto monster = g_game.MakeMonster(monsterName);
 	if (not monster)
 	{
 		std::cerr << "[Error - SingleSpawnEvent::executeEvent] Can't create monster " << monsterName << std::endl;
@@ -684,7 +684,7 @@ bool AreaSpawnEvent::executeEvent()
 		uint32_t amount = uniform_random(spawn.minAmount, spawn.maxAmount);
 		for (uint32_t i = 0; i < amount; ++i)
 		{
-			auto monster = Monster::createMonster(spawn.name);
+			auto monster = g_game.MakeMonster(spawn.name);
 			if (not monster)
 			{
 				std::cerr << "[Error - AreaSpawnEvent::executeEvent] Can't create monster " << spawn.name << std::endl;

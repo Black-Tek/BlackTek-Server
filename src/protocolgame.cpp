@@ -160,7 +160,7 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 	const auto isAccountManager = characterId == AccountManager::ID and managerEnabled;
 	if (not foundPlayer or g_config.getBoolean(ConfigManager::ALLOW_CLONES) or isAccountManager)
 	{
-		player = Player::makePlayer(getThis());
+		player = g_game.MakePlayer(getThis());
 		
 		player->setID();
 		player->setGUID(characterId);
