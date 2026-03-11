@@ -33,6 +33,20 @@ using namespace BlackTek::Network;
 
 namespace 
 {
+	// BlackTek Instance System
+	bool canSeeItemInInstance(uint32_t viewerInstanceId, const ItemConstPtr& item)
+	{
+		if (not item)
+			return false;
+
+		const uint32_t itemInstanceId = item->getInstanceID();
+		if (itemInstanceId == viewerInstanceId)
+			return true;
+
+		// Keep static map decorations/tiles shared across instances
+		// isolate runtime-spawned items and fields
+		return itemInstanceId == 0 and item->isLoadedFromMap();
+	}
 
 	std::deque<std::pair<int64_t, uint32_t>> waitList; // (timeout, player guid)
 	auto priorityEnd = waitList.end();
@@ -735,6 +749,10 @@ void ProtocolGame::GetTileDescription(const TileConstPtr& tile, NetworkMessage& 
 	{
 		for (auto it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it)
 		{
+			// BlackTek Instance System
+			if (not canSeeItemInInstance(player->getInstanceID(), *it))
+				continue;
+			
 			msg.addItem(*it);
 
 			if (++count == 10)
@@ -765,6 +783,10 @@ void ProtocolGame::GetTileDescription(const TileConstPtr& tile, NetworkMessage& 
 	{
 		for (auto it = items->getBeginDownItem(), end = items->getEndDownItem(); it != end; ++it)
 		{
+			// BlackTek Instance System
+			if (not canSeeItemInInstance(player->getInstanceID(), *it))
+				continue;
+			
 			msg.addItem(*it);
 
 			if (++count == 10)
@@ -888,6 +910,10 @@ bool ProtocolGame::canSee(const CreatureConstPtr& creature) const
 	{
 		return false;
 	}
+
+	// BlackTek Instance System
+	if (not player->compareInstance(creature->getInstanceID()))
+		return false;
 
 	return canSee(creature->getPosition());
 }
@@ -2854,12 +2880,25 @@ void ProtocolGame::sendMapDescription(const Position& pos)
 	writeToOutputBuffer(msg);
 }
 
+void ProtocolGame::refreshWorldView()
+{
+	if (!player) {
+		return;
+	}
+
+	knownCreatureSet.clear();
+	sendMapDescription(player->getPosition());
+}
+
 void ProtocolGame::sendAddTileItem(const Position& pos, uint32_t stackpos, const ItemConstPtr& item)
 {
 	if (not canSee(pos))
 	{
 		return;
 	}
+	// BlackTek Instance System
+	if (not canSeeItemInInstance(player->getInstanceID(), item))
+		return;
 
 	NetworkMessage msg;
 	msg.add(ServerCode::AddTileThing);
@@ -2873,6 +2912,10 @@ void ProtocolGame::sendUpdateTileItem(const Position& pos, uint32_t stackpos, co
 {
 	if (not canSee(pos))
 	{
+		return;
+	}
+	// BlackTek Instance System
+	if (not canSeeItemInInstance(player->getInstanceID(), item)) {
 		return;
 	}
 

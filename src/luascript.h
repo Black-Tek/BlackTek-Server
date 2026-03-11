@@ -1230,6 +1230,7 @@ class LuaScriptInterface
 		static int luaPlayerSendTextMessage(lua_State* L);
 		static int luaPlayerSendChannelMessage(lua_State* L);
 		static int luaPlayerSendPrivateMessage(lua_State* L);
+		static int luaPlayerRefreshWorldView(lua_State* L);
 
 		static int luaPlayerChannelSay(lua_State* L);
 		static int luaPlayerOpenChannel(lua_State* L);
@@ -1889,6 +1890,12 @@ class LuaScriptInterface
 		static int luaZoneCreatureCount(lua_State* L);
 		static int luaZoneItemCount(lua_State* L);
 		static int luaZoneTileCount(lua_State* L);
+
+		// BlackTek Instance System
+		static int luaCreatureGetInstanceId(lua_State* L);
+		static int luaCreatureSetInstanceId(lua_State* L);
+		static int luaItemGetInstanceId(lua_State* L);
+		static int luaItemSetInstanceId(lua_State* L);
 		
 
 		//
