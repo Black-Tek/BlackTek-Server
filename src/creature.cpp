@@ -787,6 +787,7 @@ bool Creature::dropCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr&
 		TilePtr tile = getTile();
 		CylinderPtr c_tile = tile;
 		if (splash) {
+			splash->setInstanceID(getInstanceID());
 			g_game.internalAddItem(c_tile, splash, INDEX_WHEREEVER, FLAG_NOLIMIT);
 			g_game.startDecay(splash);
 		}
