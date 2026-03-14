@@ -115,6 +115,9 @@ struct Floor {
 	Floor(const Floor&) = delete;
 	Floor& operator=(const Floor&) = delete;
 
+	// Due to the contiguous, fixed size of arrays, this offers the same benefits as a memory pool
+	// but possibly with better cache locality, so we will leave this for now, in the future
+	// we have probably already mostly eliminated the need for a shared pointer, and will likely eliminate them
 	TilePtr tiles[FLOOR_SIZE][FLOOR_SIZE] = {};
 };
 

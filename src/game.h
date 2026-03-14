@@ -729,6 +729,10 @@ class Game
 		MonsterPtr MakeMonster(const std::string& name);
 		NpcPtr MakeNpc(const std::string& name);
 
+		std::optional<std::pmr::unsynchronized_pool_resource>& getTilePool() { return tile_pool; }
+        std::vector<std::byte>& getRawMapBlock() { return raw_map_block; }
+        std::optional<std::pmr::monotonic_buffer_resource>& getMapBlock() { return map_block; }
+
 	private:
 		bool playerSaySpell(const PlayerPtr& player, SpeakClasses type, const std::string& text);
 		void playerWhisper(const PlayerPtr& player, const std::string& text);
@@ -739,14 +743,17 @@ class Game
 
 		// Todo : the entire game class's memory layout needs rearranged
 		std::vector<std::byte> raw_game_block;
+        std::vector<std::byte> raw_map_block;
 		std::pmr::monotonic_buffer_resource game_block;
-
+        std::optional<std::pmr::monotonic_buffer_resource> map_block;
 		std::pmr::unsynchronized_pool_resource player_pool;
 		std::pmr::unsynchronized_pool_resource monster_pool;
 		std::pmr::unsynchronized_pool_resource npc_pool;
 		std::pmr::unsynchronized_pool_resource creature_pointer_pool;
 		std::pmr::unsynchronized_pool_resource item_pointer_pool;
 		std::pmr::unsynchronized_pool_resource item_pool;
+
+		std::optional<std::pmr::unsynchronized_pool_resource> tile_pool;
 
 		std::unordered_map<uint32_t, Guild_ptr> guilds;
 
