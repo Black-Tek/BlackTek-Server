@@ -47,7 +47,7 @@ SkillRegistry Npcs::getRegisteredSkills(std::string npc_name)
 
 void Npcs::reload()
 {
-	const std::map<uint32_t, NpcPtr>& npcs = g_game.getNpcs();
+	const auto& npcs = g_game.getNpcs();
 	for (const auto& val : npcs | std::views::values)
 	{
 		val->closeAllShopWindows();

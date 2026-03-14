@@ -83,6 +83,15 @@ static void sendMagicEffectToInstance(const SpectatorVec& spectators, const Posi
 }
 
 Game::Game()
+	: raw_game_block(GamePoolSize)
+	, game_block(raw_game_block.data(), raw_game_block.size())
+	, player_pool(std::pmr::pool_options(1000, sizeof(Player)), &game_block)
+	, monster_pool(std::pmr::pool_options(50000, sizeof(Monster)), &game_block)
+	, npc_pool(std::pmr::pool_options(200, sizeof(Npc)), &game_block)
+	, players(&creature_pointer_pool)
+	, mappedPlayerGuids(&creature_pointer_pool)
+	, monsters(&creature_pointer_pool)
+	, npcs(&creature_pointer_pool)
 {
 	offlineTrainingWindow.defaultEnterButton = 0;
 	offlineTrainingWindow.defaultEscapeButton = 1;
@@ -209,28 +218,25 @@ void Game::setGameState(GameState_t newState)
 
 void Game::saveGameState()
 {
-	if (gameState == GAME_STATE_NORMAL) {
+	if (gameState == GAME_STATE_NORMAL)
 		setGameState(GAME_STATE_MAINTAIN);
-	}
 
-	std::cout << "Saving server..." << std::endl;
+	BlackTek::Console::Print("Saving server...");
 
-	if (!saveAccountStorageValues()) {
-		std::cout << "[Error - Game::saveGameState] Failed to save account-level storage values." << std::endl;
-	}
+	if (not saveAccountStorageValues())
+		BlackTek::Console::Error("Failed to save account - level storage values.");
 
-	for (const auto& it : players) {
+	for (const auto& it : players)
+	{
 		it.second->loginPosition = it.second->getPosition();
 		IOLoginData::savePlayer(it.second);
 	}
 
 	Map::save();
-
 	g_databaseTasks.flush();
 
-	if (gameState == GAME_STATE_MAINTAIN) {
+	if (gameState == GAME_STATE_MAINTAIN)
 		setGameState(GAME_STATE_NORMAL);
-	}
 }
 
 bool Game::loadMainMap(const std::string& filename)
@@ -1744,7 +1750,7 @@ ItemPtr Game::transformItem(const ItemPtr& item, const uint16_t newId, const int
 	}
 
 	if (item->isAugmented() || item->hasImbuements()) {
-		std::cout << "Warning! Attempted to transform imbued/augmented item : " << item->getName() << " \n";
+		BlackTek::Console::Warn("Attempted to transform imbued or augmented item : {}", item->getName());
 		return item;
 	}
 
@@ -2037,30 +2043,29 @@ void Game::playerCancelMove(uint32_t playerId)
 
 bool Game::playerBroadcastMessage(const PlayerPtr& player, const std::string& text) const
 {
-	if (!player->hasFlag(PlayerFlag_CanBroadcast)) {
+	if (not player->hasFlag(PlayerFlag_CanBroadcast))
 		return false;
-	}
 
-	std::cout << "> " << player->getName() << " broadcasted: \"" << text << "\"." << std::endl;
+	// maybe this should be a config to show in console or not?
+	BlackTek::Console::Print("> {} broadcasted: {}.", player->getName(), text);
 
-	for (const auto& val : players | std::views::values) {
+	for (const auto& val : players | std::views::values)
 		val->sendPrivateMessage(player, TALKTYPE_BROADCAST, text);
-	}
 
 	return true;
 }
 
 void Game::playerCreatePrivateChannel(const uint32_t playerId)
 {
-	const auto player = getPlayerByID(playerId);
-	if (!player || !player->isPremium()) {
+	const auto& player = getPlayerByID(playerId);
+
+	if (not player or not player->isPremium())
 		return;
-	}
 
 	ChatChannel* channel = g_chat->createChannel(player, CHANNEL_PRIVATE);
-	if (!channel || !channel->addUser(player)) {
+
+	if (not channel or not channel->addUser(player))
 		return;
-	}
 
 	player->sendCreatePrivateChannel(channel->getId(), channel->getName());
 }
@@ -4768,6 +4773,38 @@ void Game::doAccountManagerLogin(const PlayerPtr& player)
 	}
 }
 
+PlayerPtr Game::MakePlayer(ProtocolGame_ptr client)
+{
+	std::pmr::polymorphic_allocator<Player> allocator(&player_pool);
+	auto player = std::allocate_shared<Player>(allocator, client);
+	player->storeInbox->setParent(player);
+	return player;
+}
+
+MonsterPtr Game::MakeMonster(const std::string& name)
+{
+	const auto& mType = g_monsters.getMonsterType(name);
+
+	if (not mType) return nullptr;
+
+	std::pmr::polymorphic_allocator<Monster> allocator(&monster_pool);
+	auto monster = std::allocate_shared<Monster>(allocator, mType);
+	return monster;
+}
+
+NpcPtr Game::MakeNpc(const std::string& name)
+{
+	std::pmr::polymorphic_allocator<Npc> allocator(&npc_pool);
+	auto npc = std::allocate_shared<Npc>(allocator, name);
+	if (not npc->load())
+	{
+		return nullptr;
+	}
+
+	npc->setCustomSkills(Npcs::getRegisteredSkills(name));
+	return npc;
+}
+
 bool Game::playerSaySpell(const PlayerPtr& player, const SpeakClasses type, const std::string& text)
 {
 	std::string words = text;
@@ -6115,12 +6152,12 @@ void Game::internalDecayItem(const ItemPtr& item)
 
         if (const ReturnValue ret = internalRemoveItem(item); ret != RETURNVALUE_NOERROR) 
 		{
-            std::cout << "[Warning - Game::internalDecayItem] Failed to remove item, error: " << static_cast<uint32_t>(ret) << ", item id: " << item->getID() << std::endl;
+			BlackTek::Console::Warn("Game::internalDecayItem ~ Failed to remove item, error: {}, item id: {}", static_cast<int>(ret), item->getID());
         }
     }
     else 
 	{
-        std::cout << "[Error - Game::internalDecayItem] Invalid decayTo value: " << decayTo << ", item id: " << item->getID() << std::endl;
+        BlackTek::Console::Error("Game::internalDecayItem ~ Invalid decayTo value: {}, item id: {}", decayTo, item->getID());
     }
 }
 

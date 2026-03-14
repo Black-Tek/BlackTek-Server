@@ -18,8 +18,10 @@
 #include "npc.h"
 #include "wildcardtree.h"
 #include "quests.h"
+#include "console.h"
 
 #include <gtl/phmap.hpp>
+#include <memory_resource>
 
 class ServiceManager;
 class Creature;
@@ -77,6 +79,8 @@ static constexpr int32_t RANGE_REQUEST_TRADE_INTERVAL = 400;
 static constexpr uint32_t EquipmentDecayMaxInterval = 100;
 static constexpr uint32_t MapDecayMaxInterval = 250;
 static constexpr size_t MaxCreatureThinkSlots = 20;
+
+constexpr size_t GamePoolSize = 1024 * 1024 * 512; // 512 mb
 
 #include <coroutine>
 #include <chrono>
@@ -629,9 +633,9 @@ class Game
 
 		void sendOfflineTrainingDialog(const PlayerPtr& player) const;
 
-		const gtl::node_hash_map<uint32_t, PlayerPtr>& getPlayers() const { return players; }
-		const std::map<uint32_t, NpcPtr>& getNpcs() const { return npcs; }
-		const std::map<uint32_t, MonsterPtr>& getMonsters() const { return monsters; }
+		const std::pmr::unordered_map<uint32_t, PlayerPtr>& getPlayers() const { return players; }
+		const std::pmr::map<uint32_t, NpcPtr>& getNpcs() const  { return npcs; }
+		const std::pmr::map<uint32_t, MonsterPtr>& getMonsters() const { return monsters; }
 
 		void addPlayer(PlayerPtr player);
 		void removePlayer(const PlayerPtr& player);
@@ -721,6 +725,10 @@ class Game
 		CURL* curl;
 		std::unordered_set<Expirable> decaying_eq;
 
+		PlayerPtr MakePlayer(ProtocolGame_ptr client);
+		MonsterPtr MakeMonster(const std::string& name);
+		NpcPtr MakeNpc(const std::string& name);
+
 	private:
 		bool playerSaySpell(const PlayerPtr& player, SpeakClasses type, const std::string& text);
 		void playerWhisper(const PlayerPtr& player, const std::string& text);
@@ -729,11 +737,22 @@ class Game
 		void playerSpeakToNpc(const PlayerPtr& player, const std::string& text);
 		void internalDecayItem(const ItemPtr& item);
 
+		// Todo : the entire game class's memory layout needs rearranged
+		std::vector<std::byte> raw_game_block;
+		std::pmr::monotonic_buffer_resource game_block;
+
+		std::pmr::unsynchronized_pool_resource player_pool;
+		std::pmr::unsynchronized_pool_resource monster_pool;
+		std::pmr::unsynchronized_pool_resource npc_pool;
+		std::pmr::unsynchronized_pool_resource creature_pointer_pool;
+		std::pmr::unsynchronized_pool_resource item_pointer_pool;
+		std::pmr::unsynchronized_pool_resource item_pool;
+
 		std::unordered_map<uint32_t, Guild_ptr> guilds;
 
-		gtl::node_hash_map<uint32_t, PlayerPtr> players;
+		std::pmr::unordered_map<uint32_t, PlayerPtr> players;
 		gtl::node_hash_map<std::string, PlayerPtr> mappedPlayerNames;
-		gtl::node_hash_map<uint32_t, PlayerPtr> mappedPlayerGuids;
+		std::pmr::unordered_map<uint32_t, PlayerPtr> mappedPlayerGuids;
 
 		gtl::node_hash_map<uint16_t, ItemPtr> uniqueItems;
 		gtl::node_hash_map<uint32_t, gtl::flat_hash_map<uint32_t, int32_t>> accountStorageMap;
@@ -755,8 +774,8 @@ class Game
 
 		WildcardTreeNode wildcardTree { false };
 
-		std::map<uint32_t, NpcPtr> npcs;
-		std::map<uint32_t, MonsterPtr> monsters;
+		std::pmr::map<uint32_t, MonsterPtr> monsters;
+		std::pmr::map<uint32_t, NpcPtr> npcs;
 
 		//list of items that are in trading state, mapped to the player
 		std::map<ItemPtr, uint32_t> tradeItems;

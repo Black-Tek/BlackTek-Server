@@ -69,6 +69,12 @@ namespace BlackTek::Console
     inline std::atomic<size_t> notifyCounter{0};
     inline std::ofstream logfile;
 
+    // We make this a configuration option
+    // The purpose is that we can log everything appropriately,
+    // and then the user can decide which things also print to their
+    // console when being logged, based on priority level
+    inline PriorityType print_level = PriorityType::None;
+
     class RingBuffer
     {
     private:
@@ -300,11 +306,10 @@ namespace BlackTek::Console
     }
 
 
-    inline void Print(std::string text)
+    inline void Print(std::string_view text)
     {
-        PushAndNotify({std::move(text), MessageType::Print});
+        PushAndNotify({text, MessageType::Print});
     }
-
 
     template <typename... Args>
     inline void Print(fmt::format_string<Args...> fmtStr, Args&&... args)
@@ -315,21 +320,20 @@ namespace BlackTek::Console
         });
     }
 
-
-    inline void Log(std::string text)
+    inline void Log(std::string_view text)
     {
         PushAndNotify(Message{std::move(text), MessageType::Log});
     }
 
-    inline void LogAndPrint(std::string text)
+    inline void LogAndPrint(std::string_view text)
     {
-        PushAndNotify(Message{std::move(text), MessageType::LogAndPrint});
+        PushAndNotify(Message{text, MessageType::LogAndPrint});
     }
 
-    inline void StyledPrint(std::string text, fmt::text_style primaryStyle, bool line_break = true)
+    inline void StyledPrint(std::string_view text, fmt::text_style primaryStyle, bool line_break = true)
     {
         PushAndNotify(Message{
-            std::move(text),
+            text,
             MessageType::StyledPrint,
             primaryStyle,
             std::nullopt,
@@ -350,10 +354,10 @@ namespace BlackTek::Console
         });
     }
 
-    inline void StyledPrint(std::string text, fmt::text_style primaryStyle, fmt::text_style secondaryStyle, bool line_break = true)
+    inline void StyledPrint(std::string_view text, fmt::text_style primaryStyle, fmt::text_style secondaryStyle, bool line_break = true)
     {
         PushAndNotify(Message{
-            std::move(text),
+            text,
             MessageType::StyledPrint,
             primaryStyle,
             std::optional<fmt::text_style>(secondaryStyle),
@@ -375,12 +379,10 @@ namespace BlackTek::Console
         });
     }
 
-
-
-    inline void LogAndStyledPrint(std::string text, fmt::text_style primaryStyle, bool line_break = true)
+    inline void LogAndStyledPrint(std::string_view text, fmt::text_style primaryStyle, bool line_break = true)
     {
         PushAndNotify(Message{
-            std::move(text),
+            text,
             MessageType::LogAndStyledPrint,
             primaryStyle,
             std::nullopt,
@@ -389,24 +391,65 @@ namespace BlackTek::Console
         });
     }
 
-    // todo : change these debug versions to utilize the priority type system
-    inline void DebugPrint(std::string text)
+    inline void DebugPrint(std::string_view text)
     {
-        StyledPrint(std::move(text), fmt::fg(fmt::color::cyan) | fmt::emphasis::bold);
+        StyledPrint(text, fmt::fg(fmt::color::cyan) | fmt::emphasis::bold);
     }
 
-    inline void DebugLog(std::string text)
+    inline void DebugLog(std::string_view text)
     {
         PushAndNotify(Message{
-            std::move(text),
+            text,
             MessageType::DebugLog,
             false
         });
     }
 
-    inline void DebugLogAndPrint(std::string text)
+    inline void DebugLogAndPrint(std::string_view text)
     {
-        LogAndStyledPrint(std::move(text), fmt::fg(fmt::color::cyan) | fmt::emphasis::bold);
+        LogAndStyledPrint(text, fmt::fg(fmt::color::cyan) | fmt::emphasis::bold);
     }
 
+    // These are the intended "Debugger" methods to be used in the codebase.
+    template <typename... Args>
+    inline void Info(fmt::format_string<Args...> fmtStr, Args&&... args)
+    {
+        std::string text = fmt::format(fmtStr, std::forward<Args>(args)...);
+        if (print_level != PriorityType::None and print_level >= PriorityType::Info)
+        {
+            LogAndStyledPrint(text, fmt::fg(fmt::color::cyan) | fmt::emphasis::bold);
+        }
+        else
+        {
+            Log(text);
+        }
+    }
+
+    template <typename... Args>
+    inline void Warn(fmt::format_string<Args...> fmtStr, Args&&... args)
+    {
+        std::string text = fmt::format(fmtStr, std::forward<Args>(args)...);
+        if (print_level != PriorityType::None and print_level >= PriorityType::Warning)
+        {
+            LogAndStyledPrint(text, fmt::fg(fmt::color::orange) | fmt::emphasis::bold);
+        }
+        else
+        {
+            Log(text);
+        }
+    }
+
+    template <typename... Args>
+    inline void Error(fmt::format_string<Args...> fmtStr, Args&&... args)
+    {
+        std::string text = fmt::format(fmtStr, std::forward<Args>(args)...);
+        if (print_level != PriorityType::None and print_level >= PriorityType::Error)
+        {
+            LogAndStyledPrint(text, fmt::fg(fmt::color::red) | fmt::emphasis::bold);
+        }
+        else
+        {
+            Log(text);
+        }
+    }
 }
