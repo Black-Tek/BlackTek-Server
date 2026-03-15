@@ -680,290 +680,504 @@ TilePtr Map::canWalkTo(CreaturePtr& creature, const Position& pos)
 	return tile;
 }
 
+namespace
+{
+    static constexpr uint32_t ASTAR_HASH_BITS = 10u;
+    static constexpr uint32_t ASTAR_HASH_SIZE = (1u << ASTAR_HASH_BITS);  // 1024
+    static constexpr uint32_t ASTAR_HASH_MASK = ASTAR_HASH_SIZE - 1u;
+    static constexpr uint32_t FIB_MULT = 2654435761u;
+    static constexpr uint16_t ASTAR_INVALID = 0xFFFFu;
+
+    struct AStarWorkspace
+    {
+        AStarNode nodes[MAX_NODES];
+        uint16_t heap[MAX_NODES];
+        uint16_t node_to_heap[MAX_NODES];
+        uint32_t h_table_keys[ASTAR_HASH_SIZE];
+        uint16_t h_table_values[ASTAR_HASH_SIZE];
+        uint16_t used_nodes[MAX_NODES];
+        uint16_t used_count = 0;
+        uint16_t previous_node = 0;
+
+        AStarWorkspace()
+        {
+            std::memset(h_table_values, 0xFF, sizeof(h_table_values));
+            std::memset(node_to_heap, 0xFF, sizeof(node_to_heap));
+        }
+    };
+
+    thread_local AStarWorkspace threaded_workspace;
+}
+
 bool Map::getPathMatching(CreaturePtr& creature, std::vector<Direction>& dirList, const FrozenPathingConditionCall& pathCondition, const FindPathParams& fpp)
 {
-	Position pos = creature->getPosition();
-	Position endPos;
+    Position end_position;
+    auto position = creature->getPosition();
+    auto nodes = AStarNodes(position.x, position.y);
+    const auto& target_position = pathCondition.getTargetPos();
+    const auto manhattan_heuristic = [&](const int_fast32_t nx, const int_fast32_t ny) -> int_fast32_t
+    {
+        return (std::abs(nx - static_cast<int_fast32_t>(target_position.x)) +
+                std::abs(ny - static_cast<int_fast32_t>(target_position.y))) * MAP_NORMALWALKCOST;
+    };
 
-	AStarNodes nodes(pos.x, pos.y);
+    int32_t best_match = 0;
 
-	int32_t bestMatch = 0;
+    static int_fast32_t dirNeighbors[8][5][2] = 
+    {
+        {{-1, 0}, {0, 1}, {1, 0}, {1, 1}, {-1, 1}},
+        {{-1, 0}, {0, 1}, {0, -1}, {-1, -1}, {-1, 1}},
+        {{-1, 0}, {1, 0}, {0, -1}, {-1, -1}, {1, -1}},
+        {{0, 1}, {1, 0}, {0, -1}, {1, -1}, {1, 1}},
+        {{1, 0}, {0, -1}, {-1, -1}, {1, -1}, {1, 1}},
+        {{-1, 0}, {0, -1}, {-1, -1}, {1, -1}, {-1, 1}},
+        {{0, 1}, {1, 0}, {1, -1}, {1, 1}, {-1, 1}},
+        {{-1, 0}, {0, 1}, {-1, -1}, {1, 1}, {-1, 1}}
+    };
 
-	static int_fast32_t dirNeighbors[8][5][2] = {
-		{{-1, 0}, {0, 1}, {1, 0}, {1, 1}, {-1, 1}},
-		{{-1, 0}, {0, 1}, {0, -1}, {-1, -1}, {-1, 1}},
-		{{-1, 0}, {1, 0}, {0, -1}, {-1, -1}, {1, -1}},
-		{{0, 1}, {1, 0}, {0, -1}, {1, -1}, {1, 1}},
-		{{1, 0}, {0, -1}, {-1, -1}, {1, -1}, {1, 1}},
-		{{-1, 0}, {0, -1}, {-1, -1}, {1, -1}, {-1, 1}},
-		{{0, 1}, {1, 0}, {1, -1}, {1, 1}, {-1, 1}},
-		{{-1, 0}, {0, 1}, {-1, -1}, {1, 1}, {-1, 1}}
-	};
-	static int_fast32_t allNeighbors[8][2] = {
-		{-1, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, -1}, {1, -1}, {1, 1}, {-1, 1}
-	};
+    static int_fast32_t allNeighbors[8][2] = {
+        {-1, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, -1}, {1, -1}, {1, 1}, {-1, 1}
+    };
 
-	const Position startPos = pos;
+    const Position start_position = position;
 
-	AStarNode* found = nullptr;
-	while (fpp.maxSearchDist != 0 || nodes.getClosedNodes() < 100) {
-		const auto& n = nodes.getBestNode();
-		if (!n) {
-			if (found) {
-				break;
-			}
-			return false;
-		}
+    AStarNode* found = nullptr;
+    while (fpp.maxSearchDist != 0 or nodes.GetClosedNodes() < 100)
+    {
+        auto* node = nodes.GetBestNode();
+        if (not node)
+        {
+            if (found)
+            {
+                break;
+            }
+            return false;
+        }
 
-		const int_fast32_t x = n->x;
-		const int_fast32_t y = n->y;
-		pos.x = x;
-		pos.y = y;
-		if (pathCondition(startPos, pos, fpp, bestMatch)) {
-			found = n;
-			endPos = pos;
-			if (bestMatch == 0) {
-				break;
-			}
-		}
+        const int_fast32_t x = node->x;
+        const int_fast32_t y = node->y;
+        position.x = x;
+        position.y = y;
 
-		uint_fast32_t dirCount;
-		int_fast32_t* neighbors;
-		if (n->parent) {
-			const int_fast32_t offset_x = n->parent->x - x;
-			const int_fast32_t offset_y = n->parent->y - y;
-			if (offset_y == 0) {
-				if (offset_x == -1) {
-					neighbors = *dirNeighbors[DIRECTION_WEST];
-				} else {
-					neighbors = *dirNeighbors[DIRECTION_EAST];
-				}
-			} else if (!fpp.allowDiagonal || offset_x == 0) {
-				if (offset_y == -1) {
-					neighbors = *dirNeighbors[DIRECTION_NORTH];
-				} else {
-					neighbors = *dirNeighbors[DIRECTION_SOUTH];
-				}
-			} else if (offset_y == -1) {
-				if (offset_x == -1) {
-					neighbors = *dirNeighbors[DIRECTION_NORTHWEST];
-				} else {
-					neighbors = *dirNeighbors[DIRECTION_NORTHEAST];
-				}
-			} else if (offset_x == -1) {
-				neighbors = *dirNeighbors[DIRECTION_SOUTHWEST];
-			} else {
-				neighbors = *dirNeighbors[DIRECTION_SOUTHEAST];
-			}
-			dirCount = fpp.allowDiagonal ? 5 : 3;
-		} else {
-			dirCount = 8;
-			neighbors = *allNeighbors;
-		}
+        if (pathCondition(start_position, position, fpp, best_match))
+        {
+            found = node;
+            end_position = position;
+            if (best_match == 0)
+            {
+                break;
+            }
+        }
 
-		const int_fast32_t f = n->f;
-		for (uint_fast32_t i = 0; i < dirCount; ++i) {
-			pos.x = x + *neighbors++;
-			pos.y = y + *neighbors++;
+        uint_fast32_t direction_count;
+        int_fast32_t* neighbors;
 
-			if (fpp.maxSearchDist != 0 && (Position::getDistanceX(startPos, pos) > fpp.maxSearchDist || Position::getDistanceY(startPos, pos) > fpp.maxSearchDist)) {
-				continue;
-			}
+        if (node->parent)
+        {
+            const int_fast32_t x_offset = node->parent->x - x;
+            const int_fast32_t y_offset = node->parent->y - y;
 
-			if (fpp.keepDistance && !pathCondition.isInRange(startPos, pos, fpp)) {
-				continue;
-			}
+            if (y_offset == 0)
+            {
+                neighbors = (x_offset == -1) ? *dirNeighbors[DIRECTION_WEST]
+                                            : *dirNeighbors[DIRECTION_EAST];
+            }
+            else if (not fpp.allowDiagonal or x_offset == 0)
+            {
+                neighbors = (y_offset == -1) ? *dirNeighbors[DIRECTION_NORTH]
+                                            : *dirNeighbors[DIRECTION_SOUTH];
+            }
+            else if (y_offset == -1)
+            {
+                neighbors = (x_offset == -1) ? *dirNeighbors[DIRECTION_NORTHWEST]
+                                            : *dirNeighbors[DIRECTION_NORTHEAST];
+            }
+            else
+            {
+                neighbors = (x_offset == -1) ? *dirNeighbors[DIRECTION_SOUTHWEST]
+                                            : *dirNeighbors[DIRECTION_SOUTHEAST];
+            }
 
-			auto neighborNode = nodes.getNodeByPosition(pos.x, pos.y);
-			TilePtr tile = neighborNode ? getTile(pos.x, pos.y, pos.z) : canWalkTo(creature, pos);
+            direction_count = fpp.allowDiagonal ? 5 : 3;
+        }
+        else
+        {
+            direction_count = 8;
+            neighbors = *allNeighbors;
+        }
 
-			if (!tile) 
-			{
-				continue;
-			}
-			
-			//The cost (g) for this neighbor
-			const int_fast32_t cost = AStarNodes::getMapWalkCost(n, pos);
-			const int_fast32_t extraCost = AStarNodes::getTileWalkCost(creature, tile);
-			const int_fast32_t newf = f + cost + extraCost;
+        const int_fast32_t parent_g_score = node->g_score;
 
-			if (neighborNode) {
-				if (neighborNode->f <= newf) {
-					//The node on the closed/open list is cheaper than this one
-					continue;
-				}
+        for (uint_fast32_t i = 0; i < direction_count; ++i)
+        {
+            position.x = x + *neighbors++;
+            position.y = y + *neighbors++;
 
-				neighborNode->f = newf;
-				neighborNode->parent = n;
-				nodes.openNode(neighborNode);
-			} else {
-				//Does not exist in the open/closed list, create a new node
-				neighborNode = nodes.createOpenNode(n, pos.x, pos.y, newf);
-				if (!neighborNode) {
-					if (found) {
-						break;
-					}
-					return false;
-				}
-			}
-		}
+            if (fpp.maxSearchDist != 0
+                and (Position::getDistanceX(start_position, position) > fpp.maxSearchDist
+                or Position::getDistanceY(start_position, position) > fpp.maxSearchDist))
+            {
+                continue;
+            }
 
-		nodes.closeNode(n);
-	}
+            if (fpp.keepDistance and not pathCondition.isInRange(start_position, position, fpp))
+            {
+                continue;
+            }
 
-	if (!found) {
-		return false;
-	}
+            auto* neighbor_node = nodes.GetNodeByPosition(position.x, position.y);
+            TilePtr tile = neighbor_node ? getTile(position.x, position.y, position.z) : canWalkTo(creature, position);
 
-	int_fast32_t prevx = endPos.x;
-	int_fast32_t prevy = endPos.y;
+            if (not tile)
+            {
+                continue;
+            }
 
-	found = found->parent;
-	while (found) {
-		pos.x = found->x;
-		pos.y = found->y;
+            const int_fast32_t cost = AStarNodes::GetMapWalkCost(node, position);
+            const int_fast32_t extra_cost = AStarNodes::GetTileWalkCost(creature, tile);
+            const int_fast32_t neighbor_g_score = parent_g_score + cost + extra_cost;
+            const int_fast32_t neighbor_h_score = manhattan_heuristic(position.x, position.y);
+            const int_fast32_t neighbor_f_score = neighbor_g_score + neighbor_h_score;
 
-		const int_fast32_t dx = pos.getX() - prevx;
-		const int_fast32_t dy = pos.getY() - prevy;
+            if (neighbor_node)
+            {
+                if (neighbor_node->f <= neighbor_f_score)
+                {
+                    // Existing path is at least as cheap so lets skip it
+                    continue;
+                }
+                neighbor_node->f = neighbor_f_score;
+                neighbor_node->g_score = neighbor_g_score;
+                neighbor_node->parent = node;
+                // Sifts the node up in the min-heap
+                nodes.OpenNode(neighbor_node);
+            }
+            else
+            {
+                neighbor_node = nodes.CreateOpenNode(node, position.x, position.y, neighbor_f_score, neighbor_g_score);
+                if (not neighbor_node)
+                {
+                    if (found)
+                    {
+                        break;
+                    }
+                    return false;
+                }
+            }
+        }
 
-		prevx = pos.x;
-		prevy = pos.y;
+        nodes.CloseNode(node);
+    }
 
-		if (dx == 1 && dy == 1) {
-			dirList.push_back(DIRECTION_NORTHWEST);
-		} else if (dx == -1 && dy == 1) {
-			dirList.push_back(DIRECTION_NORTHEAST);
-		} else if (dx == 1 && dy == -1) {
-			dirList.push_back(DIRECTION_SOUTHWEST);
-		} else if (dx == -1 && dy == -1) {
-			dirList.push_back(DIRECTION_SOUTHEAST);
-		} else if (dx == 1) {
-			dirList.push_back(DIRECTION_WEST);
-		} else if (dx == -1) {
-			dirList.push_back(DIRECTION_EAST);
-		} else if (dy == 1) {
-			dirList.push_back(DIRECTION_NORTH);
-		} else if (dy == -1) {
-			dirList.push_back(DIRECTION_SOUTH);
-		}
+    if (not found)
+    {
+        return false;
+    }
 
-		found = found->parent;
-	}
-	return true;
+    int_fast32_t prevx = end_position.x;
+    int_fast32_t prevy = end_position.y;
+    found = found->parent;
+
+    while (found)
+    {
+        position.x = found->x;
+        position.y = found->y;
+
+        const int_fast32_t dx = position.getX() - prevx;
+        const int_fast32_t dy = position.getY() - prevy;
+
+        prevx = position.x;
+        prevy = position.y;
+
+        if (dx == 1 and dy == 1)
+        {
+            dirList.push_back(DIRECTION_NORTHWEST);
+        }
+        else if (dx == -1 and dy == 1)
+        {
+            dirList.push_back(DIRECTION_NORTHEAST);
+        }
+        else if (dx == 1 and dy == -1)
+        {
+            dirList.push_back(DIRECTION_SOUTHWEST);
+        }
+        else if (dx == -1 and dy == -1)
+        {
+            dirList.push_back(DIRECTION_SOUTHEAST);
+        }
+        else if (dx == 1)
+        {
+            dirList.push_back(DIRECTION_WEST);
+        }
+        else if (dx == -1)
+        {
+            dirList.push_back(DIRECTION_EAST);
+        }
+        else if (dy == 1)
+        {
+            dirList.push_back(DIRECTION_NORTH);
+        }
+        else if (dy == -1)
+        {
+            dirList.push_back(DIRECTION_SOUTH);
+        }
+
+        found = found->parent;
+    }
+    return true;
 }
 
-// AStarNodes
-
-AStarNodes::AStarNodes(uint32_t x, uint32_t y)
-	: nodes(), openNodes()
+AStarNodes::AStarNodes(uint32_t x, uint32_t y) : heap_size(1), current_node(1), closed_nodes(0)
 {
-	curNode = 1;
-	closedNodes = 0;
-	openNodes[0] = true;
+    auto& workspace = threaded_workspace;
 
-	AStarNode& startNode = nodes[0];
-	startNode.parent = nullptr;
-	startNode.x = x;
-	startNode.y = y;
-	startNode.f = 0;
-	nodeTable[(x << 16) | y] = nodes;
+    // We only clear slots touched by the previous call to avoid memsetting the workspace everytime
+    for (uint16_t i = 0; i < workspace.used_count; ++i)
+    {
+        workspace.h_table_values[workspace.used_nodes[i]] = ASTAR_INVALID;
+    }
+    for (uint16_t i = 0; i < workspace.previous_node; ++i)
+    {
+        workspace.node_to_heap[i] = ASTAR_INVALID;
+    }
+
+    workspace.used_count = 0;
+    auto& start = workspace.nodes[0];
+    start.parent  = nullptr;
+    start.x = static_cast<uint16_t>(x);
+    start.y = static_cast<uint16_t>(y);
+    start.f = 0;
+    start.g_score = 0;
+    workspace.heap[0] = 0;
+    workspace.node_to_heap[0] = 0;
+    Insert((x << 16) | y, 0);
 }
 
-AStarNode* AStarNodes::createOpenNode(AStarNode* parent, uint32_t x, uint32_t y, int_fast32_t f)
+AStarNodes::~AStarNodes()
 {
-	if (curNode >= MAX_NODES) {
-		return nullptr;
-	}
-
-	const size_t retNode = curNode++;
-	openNodes[retNode] = true;
-
-	AStarNode* node = nodes + retNode;
-	nodeTable[(x << 16) | y] = node;
-	node->parent = parent;
-	node->x = x;
-	node->y = y;
-	node->f = f;
-	return node;
+    // We record how many nodes were used so the next call can reset cheaply.
+    threaded_workspace.previous_node = current_node;
 }
 
-AStarNode* AStarNodes::getBestNode()
+void AStarNodes::SiftUp(uint16_t pos)
 {
-	if (curNode == 0) {
-		return nullptr;
-	}
+    auto& workspace = threaded_workspace;
+    const uint16_t node_index = workspace.heap[pos];
+    const int_fast32_t f = workspace.nodes[node_index].f;
 
-	int32_t best_node_f = std::numeric_limits<int32_t>::max();
-	int32_t best_node = -1;
-	for (size_t i = 0; i < curNode; i++) {
-		if (openNodes[i] && nodes[i].f < best_node_f) {
-			best_node_f = nodes[i].f;
-			best_node = i;
-		}
-	}
+    while (pos > 0)
+    {
+        const uint16_t parentPos = (pos - 1u) / 2u;
+        if (workspace.nodes[workspace.heap[parentPos]].f <= f)
+        {
+            break;
+        }
+        workspace.heap[pos] = workspace.heap[parentPos];
+        workspace.node_to_heap[workspace.heap[pos]] = pos;
+        pos = parentPos;
+    }
 
-	if (best_node >= 0) {
-		return nodes + best_node;
-	}
-	return nullptr;
+    workspace.heap[pos] = node_index;
+    workspace.node_to_heap[node_index] = pos;
 }
 
-void AStarNodes::closeNode(const AStarNode* node)
+// We return the final position of the element, so the caller can decide
+// whether a siftUp is also needed (element didn't move downward).
+uint16_t AStarNodes::SiftDown(uint16_t pos)
 {
-	size_t index = node - nodes;
-	assert(index < MAX_NODES);
-	openNodes[index] = false;
-	++closedNodes;
+    auto& workspace = threaded_workspace;
+    const uint16_t node_index = workspace.heap[pos];
+    const int_fast32_t f = workspace.nodes[node_index].f;
+
+    while (true)
+    {
+        uint16_t child = 2u * pos + 1u;
+
+        if (child >= heap_size)
+        {
+            break;
+        }
+
+        if (child + 1u < heap_size and
+            workspace.nodes[workspace.heap[child + 1u]].f < workspace.nodes[workspace.heap[child]].f)
+        {
+            ++child;
+        }
+        if (workspace.nodes[workspace.heap[child]].f >= f)
+        {
+            break;
+        }
+        workspace.heap[pos] = workspace.heap[child];
+        workspace.node_to_heap[workspace.heap[pos]] = pos;
+        pos = child;
+    }
+
+    workspace.heap[pos] = node_index;
+    workspace.node_to_heap[node_index] = pos;
+    return pos;
 }
 
-void AStarNodes::openNode(const AStarNode* node)
+void AStarNodes::Insert(uint32_t key, uint16_t node_index)
 {
-	size_t index = node - nodes;
-	assert(index < MAX_NODES);
-	if (!openNodes[index]) {
-		openNodes[index] = true;
-		--closedNodes;
-	}
+    auto& workspace = threaded_workspace;
+    uint32_t slot = (key * FIB_MULT) >> (32u - ASTAR_HASH_BITS);
+
+    while (workspace.h_table_values[slot] != ASTAR_INVALID)
+    {
+        slot = (slot + 1u) & ASTAR_HASH_MASK;
+    }
+
+    workspace.h_table_keys[slot] = key;
+    workspace.h_table_values[slot] = node_index;
+    // Track which slots are occupied so they can be cleared cheaply next call.
+    workspace.used_nodes[workspace.used_count++] = static_cast<uint16_t>(slot);
 }
 
-int_fast32_t AStarNodes::getClosedNodes() const
+uint16_t AStarNodes::Find(uint32_t key) const
 {
-	return closedNodes;
+    const auto& workspace = threaded_workspace;
+    uint32_t slot = (key * FIB_MULT) >> (32u - ASTAR_HASH_BITS);
+
+    while (workspace.h_table_values[slot] != ASTAR_INVALID)
+    {
+        if (workspace.h_table_keys[slot] == key)
+        {
+            return workspace.h_table_values[slot];
+        }
+        slot = (slot + 1u) & ASTAR_HASH_MASK;
+    }
+    return ASTAR_INVALID;
 }
 
-AStarNode* AStarNodes::getNodeByPosition(const uint32_t x, const uint32_t y)
+AStarNode* AStarNodes::CreateOpenNode(AStarNode* parent, uint32_t x, uint32_t y, int_fast32_t f, int_fast32_t g_score)
 {
-	auto it = nodeTable.find((x << 16) | y);
-	if (it == nodeTable.end()) {
-		return nullptr;
-	}
-	return it->second;
+    if (current_node >= MAX_NODES)
+    {
+        return nullptr;
+    }
+
+    auto& workspace = threaded_workspace;
+    const uint16_t node_index = current_node++;
+    auto& node = workspace.nodes[node_index];
+    node.parent  = parent;
+    node.x = static_cast<uint16_t>(x);
+    node.y = static_cast<uint16_t>(y);
+    node.f = f;
+    node.g_score = g_score;
+    Insert((x << 16) | y, node_index);
+    workspace.heap[heap_size] = node_index;
+    workspace.node_to_heap[node_index] = heap_size;
+    ++heap_size;
+    SiftUp(heap_size - 1u);
+    return &node;
 }
 
-int_fast32_t AStarNodes::getMapWalkCost(const AStarNode* node, const Position& neighborPos)
+// This should now be O(1) since the best node should always be at the root of the heap.
+AStarNode* AStarNodes::GetBestNode()
 {
-	if (std::abs(node->x - neighborPos.x) == std::abs(node->y - neighborPos.y)) {
-		//diagonal movement extra cost
-		return MAP_DIAGONALWALKCOST;
-	}
-	return MAP_NORMALWALKCOST;
+    if (heap_size == 0)
+    {
+        return nullptr;
+    }
+    auto& workspace = threaded_workspace;
+    return &workspace.nodes[workspace.heap[0]];
 }
 
-int_fast32_t AStarNodes::getTileWalkCost(const CreaturePtr creature, const TileConstPtr& tile)
+void AStarNodes::CloseNode(const AStarNode* node)
 {
-	int_fast32_t cost = 0;
-	if (tile->getTopVisibleCreature(creature) != nullptr) {
-		//destroy creature cost
-		cost += MAP_NORMALWALKCOST * 3;
-	}
+    auto& workspace = threaded_workspace;
+    const uint16_t node_index = static_cast<uint16_t>(node - workspace.nodes);
+    const uint16_t position = workspace.node_to_heap[node_index];
 
-	if (const auto& field = tile->getFieldItem()) {
-		const CombatType_t combatType = field->getCombatType();
-		if (const auto& monster = creature->getMonster(); !creature->isImmune(combatType) && !creature->hasCondition(Combat::DamageToConditionType(combatType)) && (monster && !monster->canWalkOnFieldType(combatType))) {
-			cost += MAP_NORMALWALKCOST * 18;
-		}
-	}
-	return cost;
+    assert(position != ASTAR_INVALID);
+
+    workspace.node_to_heap[node_index] = ASTAR_INVALID;
+    ++closed_nodes;
+    --heap_size;
+
+    if (position == heap_size)
+    {
+        return;
+    }
+
+    // Replace the removed slot with the current last element and reheapify.
+    const uint16_t last_index = workspace.heap[heap_size];
+    workspace.heap[position] = last_index;
+    workspace.node_to_heap[last_index] = position;
+    const uint16_t new_position = SiftDown(position);
+
+    if (new_position == position)
+    {
+        SiftUp(position);
+    }
+}
+
+void AStarNodes::OpenNode(AStarNode* node)
+{
+    auto& workspace = threaded_workspace;
+    const uint16_t node_index = static_cast<uint16_t>(node - workspace.nodes);
+
+    if (workspace.node_to_heap[node_index] == ASTAR_INVALID)
+    {
+        workspace.heap[heap_size] = node_index;
+        workspace.node_to_heap[node_index] = heap_size;
+        ++heap_size;
+        SiftUp(heap_size - 1u);
+        --closed_nodes;
+    }
+    else
+    {
+        // The node is already open and its f decreased so we sift up to restore order
+        SiftUp(workspace.node_to_heap[node_index]);
+    }
+}
+
+int_fast32_t AStarNodes::GetClosedNodes() const
+{
+    return closed_nodes;
+}
+
+AStarNode* AStarNodes::GetNodeByPosition(uint32_t x, uint32_t y)
+{
+    const uint16_t index = Find((x << 16) | y);
+    if (index == ASTAR_INVALID)
+    {
+        return nullptr;
+    }
+    return &threaded_workspace.nodes[index];
+}
+
+int_fast32_t AStarNodes::GetMapWalkCost(const AStarNode* node, const Position& neighborPos)
+{
+    if (std::abs(node->x - neighborPos.x) == std::abs(node->y - neighborPos.y))
+    {
+        return MAP_DIAGONALWALKCOST;
+    }
+    return MAP_NORMALWALKCOST;
+}
+
+int_fast32_t AStarNodes::GetTileWalkCost(const CreaturePtr creature, const TileConstPtr& tile)
+{
+    int_fast32_t cost = 0;
+
+    if (tile->getTopVisibleCreature(creature) != nullptr)
+    {
+        cost += MAP_NORMALWALKCOST * 3;
+    }
+
+    if (const auto& field = tile->getFieldItem())
+    {
+        const CombatType_t combatType = field->getCombatType();
+        if (const auto& monster = creature->getMonster();
+            not creature->isImmune(combatType)
+            and not creature->hasCondition(Combat::DamageToConditionType(combatType))
+            and (monster and not monster->canWalkOnFieldType(combatType)))
+        {
+            cost += MAP_NORMALWALKCOST * 18;
+        }
+    }
+
+    return cost;
 }
 
 // Floor
