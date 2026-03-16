@@ -10,6 +10,7 @@ DepotLocker::DepotLocker(uint16_t type) :
 {
 	item_subtype = ItemSubType::DepotLocker;
 	container_subtype = ContainerSubType::DepotLocker;
+	cylinder_subtype = CylinderSubType::DepotLocker;
 }
 
 Attr_ReadValue DepotLocker::readAttr(AttrTypes_t attr, PropStream& propStream)

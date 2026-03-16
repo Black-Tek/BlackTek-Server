@@ -29,6 +29,23 @@ enum cylinderlink_t {
 	LINK_NEAR,
 };
 
+enum class CylinderSubType : uint8_t
+{
+	None,
+	Virtual,
+	Tile,
+	Container,
+	DepotChest,
+	DepotLocker,
+	Inbox,
+	StoreInbox,
+	RewardChest,
+	Player,
+	Teleport,
+	TrashHolder,
+	Mailbox,
+};
+
 class Cylinder : virtual public Thing
 {
 	public:
@@ -186,6 +203,13 @@ class Cylinder : virtual public Thing
 		virtual void internalAddThing(uint32_t index, ThingPtr thing);
 
 		virtual void startDecaying();
+
+	CylinderSubType getCylinderSubType() const {
+		return cylinder_subtype;
+	}
+
+	protected:
+		CylinderSubType cylinder_subtype = CylinderSubType::None;
 };
 
 class VirtualCylinder;
@@ -196,6 +220,11 @@ class VirtualCylinder final : public Cylinder
 {
 	public:
 		static VirtualCylinderPtr virtualCylinder;
+
+		VirtualCylinder()
+		{
+			cylinder_subtype = CylinderSubType::Virtual;
+		}
 
 		virtual ReturnValue queryAdd(int32_t, const ThingPtr&, uint32_t, uint32_t, CreaturePtr = nullptr) override {
 			return RETURNVALUE_NOTPOSSIBLE;

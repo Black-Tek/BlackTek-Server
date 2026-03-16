@@ -139,12 +139,14 @@ class Tile : public Cylinder, public SharedObject
 		Tile(uint16_t x, uint16_t y, uint8_t z) : tilePos(x, y, z) {
 			items = std::make_shared<TileItemVector>();
 			creatures = std::make_shared<CreatureVector>();
+			cylinder_subtype = CylinderSubType::Tile;
 		}
 
 		Tile(uint16_t x, uint16_t y, uint8_t z, House* house) : tilePos(x, y, z) {
 			items = std::make_shared<TileItemVector>();
 			creatures = std::make_shared<CreatureVector>();
 			this->house = house;
+			cylinder_subtype = CylinderSubType::Tile;
 		}
 
 		~Tile() {

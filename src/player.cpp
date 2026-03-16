@@ -702,6 +702,7 @@ Player::Player(ProtocolGame_ptr p) :
 	lastPing(OTSYS_TIME()), lastPong(lastPing), client(std::move(p)), inbox(std::make_shared<Inbox>(ITEM_INBOX)), storeInbox(std::make_shared<StoreInbox>(ITEM_STORE_INBOX))
 {
 	creature_subtype = CreatureSubType::Player;
+	cylinder_subtype = CylinderSubType::Player;
 }
 
 Player::~Player()

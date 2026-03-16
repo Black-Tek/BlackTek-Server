@@ -9,6 +9,7 @@ RewardChest::RewardChest(uint16_t type, bool paginated /*= true*/) :
 {
 	item_subtype = ItemSubType::RewardChest;
 	container_subtype = ContainerSubType::RewardChest;
+	cylinder_subtype = CylinderSubType::RewardChest;
 }
 
 ReturnValue RewardChest::queryAdd(int32_t, const ThingPtr&, uint32_t, uint32_t, CreaturePtr actor/* = std::nullopt*/)

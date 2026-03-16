@@ -19,6 +19,7 @@ Container::Container(uint16_t type, uint16_t size, bool unlocked /*= true*/, boo
 	pagination(pagination)
 {
 	item_subtype = ItemSubType::Container;
+	cylinder_subtype = CylinderSubType::Container;
 }
 
 Container::Container(const TilePtr& tile) : Container(ITEM_BROWSEFIELD, 30, false, true) { setParent(tile); }
@@ -483,7 +484,7 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 	{
 		index = INDEX_WHEREEVER;
 
-		if (auto parentContainer = std::dynamic_pointer_cast<Cylinder>(getParent()))
+		if (auto parentContainer = getParent())
 			return parentContainer;
 
 		return getContainer();

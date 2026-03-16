@@ -11,6 +11,7 @@ DepotChest::DepotChest(uint16_t type, bool paginated /*= true*/) :
 {
 	item_subtype = ItemSubType::DepotChest;
 	container_subtype = ContainerSubType::DepotChest;
+	cylinder_subtype = CylinderSubType::DepotChest;
 }
 
 ReturnValue DepotChest::queryAdd(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor/* = nullptr*/)

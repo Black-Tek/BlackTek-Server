@@ -14,6 +14,7 @@ class TrashHolder final : public Item, public Cylinder
 		explicit TrashHolder(uint16_t itemId) : Item(itemId)
 		{
 			item_subtype = ItemSubType::TrashHolder;
+			cylinder_subtype = CylinderSubType::TrashHolder;
 		}
 
 		TrashHolderPtr getTrashHolder() override {

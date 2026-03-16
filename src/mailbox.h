@@ -13,6 +13,7 @@ class Mailbox final : public Item, public Cylinder
 		explicit Mailbox(const uint16_t itemId) : Item(itemId)
 		{
 			item_subtype = ItemSubType::Mailbox;
+			cylinder_subtype = CylinderSubType::Mailbox;
 		}
 
 		MailboxPtr getMailbox() override {

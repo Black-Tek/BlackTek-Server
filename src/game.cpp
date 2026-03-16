@@ -939,7 +939,7 @@ ReturnValue Game::internalMoveCreature(CreaturePtr creature, TilePtr toTile, uin
 	
 
 	while ((subCylinder = toCylinder->queryDestination(index, creature, toItem, flags)) != toCylinder) {
-		const auto subTile = std::dynamic_pointer_cast<Tile>(subCylinder);
+		const auto subTile = subCylinder->getTile();
 		map.moveCreature(creature, subTile);
 
         if (creature->getParent() != subCylinder) {
@@ -1119,7 +1119,7 @@ void Game::playerMoveItem(const PlayerPtr& player,
 			        && !Position::areInRange<1, 1, 0>(mapFromPos, walkPos)) {
 				//need to pickup the item first
 				ItemPtr moveItem = nullptr;
-				CylinderPtr p_cylinder = std::dynamic_pointer_cast<Cylinder>(player);
+				CylinderPtr p_cylinder = std::static_pointer_cast<Cylinder>(player);
 				ReturnValue ret = internalMoveItem(fromCylinder, p_cylinder, INDEX_WHEREEVER, item, count, std::ref(moveItem), 0, player, nullptr, &fromPos, &toPos);
 				if (ret != RETURNVALUE_NOERROR) {
 					player->sendCancelMessage(ret);
@@ -1221,7 +1221,7 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 		return RETURNVALUE_NOERROR; //silently ignore move
 	}
 
-	if (ContainerPtr toContainer = std::dynamic_pointer_cast<Container>(toCylinder)) {
+	if (ContainerPtr toContainer = toCylinder->getContainer()) {
 		if (toContainer->isRewardCorpse() || toContainer->getID() == ITEM_REWARD_CONTAINER) {
 			return RETURNVALUE_NOTPOSSIBLE;
 		}
@@ -1394,18 +1394,18 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 		const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 		const uint32_t expiration = duration + call_time;
 		auto expirable_data = Expirable(item, expiration, call_time);
-		if (moveItem->getDecaying() != DECAYING_TRUE) 
+		if (moveItem->getDecaying() != DECAYING_TRUE)
 		{
-			if (const auto& player = std::dynamic_pointer_cast<Player>(toCylinder); player and item_type.resumable) 
+			if (toCylinder->getCylinderSubType() == CylinderSubType::Player and item_type.resumable)
 			{
 				moveItem->setDecaying(DECAYING_FALSE);
-			} 
+			}
 			else
 			{
 				moveItem->setDecaying(DECAYING_TRUE);
 			}
 		}
-		else if (const auto& player = std::dynamic_pointer_cast<Player>(toCylinder); player and item_type.resumable) 
+		else if (toCylinder->getCylinderSubType() == CylinderSubType::Player and item_type.resumable)
 		{
 			g_game.equipped_decay_precache.push_back(std::move(expirable_data));
 		}
