@@ -8,6 +8,7 @@
 #include "scheduler.h"
 #include "configmanager.h"
 #include "ban.h"
+#include "console.h"
 
 extern ConfigManager g_config;
 Ban g_bans;
@@ -149,20 +150,68 @@ void ServicePort::open(uint16_t port)
 	serverPort = port;
 	pendingStart = false;
 
-	try {
-		if (g_config.getBoolean(ConfigManager::BIND_ONLY_GLOBAL_ADDRESS)) {
+	const bool useIPv6 = g_config.getBoolean(ConfigManager::ENABLE_IPV6);
+	const bool bindGlobal = g_config.getBoolean(ConfigManager::BIND_ONLY_GLOBAL_ADDRESS);
+
+	auto bindIPv4 = [&]()
+	{
+		if (bindGlobal)
+		{
 			acceptor.reset(new boost::asio::ip::tcp::acceptor(io_context, boost::asio::ip::tcp::endpoint(
-			            boost::asio::ip::address(boost::asio::ip::make_address(g_config.getString(ConfigManager::IP))), serverPort)));
-		} else {
+			            boost::asio::ip::make_address(g_config.getString(ConfigManager::IP)), serverPort)));
+		}
+		else
+		{
 			acceptor.reset(new boost::asio::ip::tcp::acceptor(io_context, boost::asio::ip::tcp::endpoint(
-			            boost::asio::ip::address(boost::asio::ip::address_v4(INADDR_ANY)), serverPort)));
+			            boost::asio::ip::address_v4::any(), serverPort)));
+		}
+	};
+
+	try
+	{
+		if (useIPv6)
+		{
+			if (bindGlobal)
+			{
+				acceptor.reset(new boost::asio::ip::tcp::acceptor(io_context, boost::asio::ip::tcp::endpoint(
+				            boost::asio::ip::make_address(g_config.getString(ConfigManager::IPV6)), serverPort)));
+			}
+			else
+			{
+				acceptor.reset(new boost::asio::ip::tcp::acceptor(io_context, boost::asio::ip::tcp::endpoint(
+				            boost::asio::ip::address_v6::any(), serverPort)));
+				acceptor->set_option(boost::asio::ip::v6_only(false));
+			}
+		}
+		else
+		{
+			bindIPv4();
 		}
 
 		acceptor->set_option(boost::asio::ip::tcp::no_delay(true));
-
 		accept();
-	} catch (boost::system::system_error& e) {
-		std::cout << "[ServicePort::open] Error: " << e.what() << std::endl;
+	}
+	catch (boost::system::system_error& e)
+	{
+		if (useIPv6 and g_config.getBoolean(ConfigManager::IPV6_FALLBACK_TO_IPV4))
+		{
+			BlackTek::Console::Warn("[ServicePort::open] IPv6 unavailable falling back to IPv4. Error Code {}: {}", e.code().value(), e.what());
+			try
+			{
+				bindIPv4();
+				acceptor->set_option(boost::asio::ip::tcp::no_delay(true));
+				accept();
+				return;
+			}
+			catch (boost::system::system_error& e2)
+			{
+				BlackTek::Console::Error("[ServicePort::open] Error: {}: {}", e2.code().value(), e2.what());
+			}
+		}
+		else
+		{
+			BlackTek::Console::Error("[ServicePort::open] Error: {}: {}", e.code().value(), e.what());
+		}
 
 		pendingStart = true;
 		g_scheduler.addEvent(createSchedulerTask(15000, [=, thisPtr = std::weak_ptr<ServicePort>(shared_from_this())]() { ServicePort::openAcceptor(thisPtr, serverPort); }));

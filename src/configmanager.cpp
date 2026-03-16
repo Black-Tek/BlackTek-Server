@@ -182,9 +182,15 @@ bool ConfigManager::load()
 	if (!loaded) { //info that must be loaded one time (unless we reset the modules involved)
 		boolean[BIND_ONLY_GLOBAL_ADDRESS] = getGlobalBoolean(L, "bindOnlyGlobalAddress", false);
 		boolean[OPTIMIZE_DATABASE] = getGlobalBoolean(L, "startupDatabaseOptimization", true);
+		boolean[ENABLE_IPV6] = getGlobalBoolean(L, "enableIPv6", false);
+		boolean[IPV6_FALLBACK_TO_IPV4] = getGlobalBoolean(L, "ipv6FallbackToIPv4", true);
 
 		if (string[IP] == "") {
 			string[IP] = getGlobalString(L, "ip", "127.0.0.1");
+		}
+
+		if (string[IPV6] == "") {
+			string[IPV6] = getGlobalString(L, "ipv6", "::");
 		}
 
 		string[MAP_NAME] = getGlobalString(L, "mapName", "forgotten");

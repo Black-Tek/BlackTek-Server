@@ -64,6 +64,8 @@ class ConfigManager
 			HEALTH_REGEN_NOTIFICATION,
 			MANA_REGEN_NOTIFICATION,
 			AUTO_OPEN_CONTAINERS,
+			ENABLE_IPV6,
+			IPV6_FALLBACK_TO_IPV4,
 
 			LAST_BOOLEAN_CONFIG /* this must be the last one */
 		};
@@ -89,6 +91,7 @@ class ConfigManager
 			CONFIG_FILE,
 			ACCOUNT_MANAGER_AUTH,
 			ASSETS_DAT_PATH,
+			IPV6,
 
 			LAST_STRING_CONFIG /* this must be the last one */
 		};
