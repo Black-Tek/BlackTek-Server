@@ -36,7 +36,8 @@ WORKDIR /build
 
 COPY vcpkg.json premake5.lua ./
 
-RUN /opt/vcpkg/vcpkg install --triplet x64-linux
+RUN /opt/vcpkg/vcpkg install --triplet x64-linux && \
+    /opt/vcpkg/vcpkg install --triplet x64-linux-static
 
 # compile project
 FROM dependencies AS build

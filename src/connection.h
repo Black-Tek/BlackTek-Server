@@ -4,6 +4,7 @@
 #ifndef FS_CONNECTION_H
 #define FS_CONNECTION_H
 
+#include <atomic>
 #include <unordered_set>
 #include <gtl/phmap.hpp>
 #include "networkmessage.h"
@@ -56,6 +57,7 @@ class Connection : public std::enable_shared_from_this<Connection>
 		ConstServicePort_ptr service_port) :
 			readTimer(io_context),
 			writeTimer(io_context),
+			strand(boost::asio::make_strand(io_context)),
 			service_port(std::move(service_port)),
 			socket(io_context),
 			timeConnected(time(nullptr)) {}
@@ -89,21 +91,16 @@ class Connection : public std::enable_shared_from_this<Connection>
 		friend class ServicePort;
 
 		NetworkMessage msg;
-
 		boost::asio::steady_timer readTimer;
 		boost::asio::steady_timer writeTimer;
-
-		std::recursive_mutex connectionLock;
-
+		boost::asio::strand<boost::asio::io_context::executor_type> strand;
 		std::list<OutputMessage_ptr> messageQueue;
-
 		ConstServicePort_ptr service_port;
 		Protocol_ptr protocol;
-
 		boost::asio::ip::tcp::socket socket;
-
 		time_t timeConnected;
 		uint32_t packetsSent = 0;
+		std::atomic<uint32_t> cachedIP{0};
 
 		bool closed = false;
 		bool receivedFirst = false;

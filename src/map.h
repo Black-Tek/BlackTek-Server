@@ -27,7 +27,8 @@ static constexpr int32_t MAP_MAX_LAYERS = 16;
 struct FindPathParams;
 struct AStarNode {
 	AStarNode* parent;
-	int_fast32_t f;
+	int_fast32_t f;        // f = g_score + h_score, used for heap ordering
+	int_fast32_t g_score;  // actual accumulated cost from start to this node
 	uint16_t x, y;
 };
 
@@ -80,25 +81,33 @@ using ChunkCache = gtl::node_hash_map<ChunkKey, SpectatorVec, ChunkKeyHash, Chun
 
 class AStarNodes
 {
-	public:
-		AStarNodes(uint32_t x, uint32_t y);
+    public:
+        AStarNodes(uint32_t x, uint32_t y);
+        ~AStarNodes();
 
-		AStarNode* createOpenNode(AStarNode* parent, uint32_t x, uint32_t y, int_fast32_t f);
-		AStarNode* getBestNode();
-		void closeNode(const AStarNode* node);
-		void openNode(const AStarNode* node);
-		int_fast32_t getClosedNodes() const;
-		AStarNode* getNodeByPosition(uint32_t x, uint32_t y);
+        // non-copyable
+        AStarNodes(const AStarNodes&) = delete;
+        AStarNodes& operator=(const AStarNodes&) = delete;
 
-		static int_fast32_t getMapWalkCost(const AStarNode* node, const Position& neighborPos);
-		static int_fast32_t getTileWalkCost(const CreaturePtr creature, const TileConstPtr& tile);
+        AStarNode* CreateOpenNode(AStarNode* parent, uint32_t x, uint32_t y, int_fast32_t f, int_fast32_t g_score);
+        AStarNode* GetBestNode();
+        void CloseNode(const AStarNode* node);
+        void OpenNode(AStarNode* node);
+        int_fast32_t GetClosedNodes() const;
+        AStarNode* GetNodeByPosition(uint32_t x, uint32_t y);
 
-	private:
-		AStarNode nodes[MAX_NODES];
-		bool openNodes[MAX_NODES];
-		gtl::node_hash_map<uint32_t, AStarNode*> nodeTable;
-		size_t curNode;
-		int_fast32_t closedNodes;
+        static int_fast32_t GetMapWalkCost(const AStarNode* node, const Position& neighborPos);
+        static int_fast32_t GetTileWalkCost(const CreaturePtr creature, const TileConstPtr& tile);
+
+    private:
+        void SiftUp(uint16_t pos);
+        uint16_t SiftDown(uint16_t pos);
+        void Insert(uint32_t key, uint16_t nodeIdx);
+        uint16_t Find(uint32_t key) const;
+
+        uint16_t heap_size;
+        uint16_t current_node;
+        int_fast32_t closed_nodes;
 };
 
 using SpectatorCache = std::map<Position, SpectatorVec>;
@@ -115,6 +124,9 @@ struct Floor {
 	Floor(const Floor&) = delete;
 	Floor& operator=(const Floor&) = delete;
 
+	// Due to the contiguous, fixed size of arrays, this offers the same benefits as a memory pool
+	// but possibly with better cache locality, so we will leave this for now, in the future
+	// we have probably already mostly eliminated the need for a shared pointer, and will likely eliminate them
 	TilePtr tiles[FLOOR_SIZE][FLOOR_SIZE] = {};
 };
 

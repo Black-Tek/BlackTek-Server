@@ -25,6 +25,13 @@ manaSpentNotifications = false
 -- NOTE: allowWalkthrough is only applicable to players
 ip = "127.0.0.1"
 bindOnlyGlobalAddress = false
+-- IPv6 settings
+-- NOTE: enableIPv6 = true will use a dual-stack socket (accepts both IPv4 and IPv6) unless bindOnlyGlobalAddress is true
+-- NOTE: ipv6 is only used when bindOnlyGlobalAddress = true, to specify a particular IPv6 address
+-- NOTE: ipv6FallbackToIPv4 = true will fall back to IPv4 if the system does not support IPv6
+enableIPv6 = false
+ipv6 = "::"
+ipv6FallbackToIPv4 = true
 loginProtocolPort = 7171
 gameProtocolPort = 7172
 statusProtocolPort = 7171

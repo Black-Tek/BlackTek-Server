@@ -62,6 +62,14 @@ concept Boolean = std::is_same_v<T, bool>;
 template<typename T>
 concept StringType = std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>;
 
+template <typename T>
+concept SharedPtr = requires(T t)
+{
+	typename T::element_type;
+	{ t.get() } -> std::convertible_to<typename T::element_type*>;
+	{ t.operator->() } -> std::convertible_to<typename T::element_type*>;
+};
+
 enum {
 	EVENT_ID_LOADING = 1,
 	EVENT_ID_USER = 1000,
@@ -262,11 +270,58 @@ class LuaScriptInterface
 			*userdata = value;
 		}
 
-		// Shared Ptr
-		template<class T>
-		static void pushSharedPtr(lua_State* L, T value)
+		static void initSharedPtrCache(lua_State* L)
 		{
-			new (lua_newuserdata(L, sizeof(T))) T(std::move(value));
+			lua_newtable(L); 
+			lua_newtable(L); 
+			lua_pushstring(L, "v");
+			lua_setfield(L, -2, "__mode"); 
+			lua_setmetatable(L, -2);
+    
+			lua_setfield(L, LUA_REGISTRYINDEX, "sp_cache");
+		}
+
+		// todo: refine all the userdata in the future to just go by an embedded GUID for lookup
+		// thereby reducing size of userdata, C++ maintains ownership and lifecycle responsibility of the objects
+		// and with those two things comes better performance and stability
+		template <SharedPtr T>
+		static inline void pushSharedPtr(lua_State* L, T value, int nuvalue = 1) 
+		{
+			const void* key = value.get();
+
+			if (key)
+			{
+				// optional: we could create more caches, a cache for each metatable/class type, and that would boost performance on lua even further
+				lua_getfield(L, LUA_REGISTRYINDEX, "sp_cache");
+        
+				if (lua_rawgetp(L, -1, key) == LUA_TUSERDATA)
+				{
+					auto* cached = static_cast<T*>(lua_touserdata(L, -1));
+
+					if (cached and cached->get() != nullptr)
+					{
+						lua_remove(L, -2);
+						return;
+					}
+				}
+				lua_pop(L, 1); // Pop nil/invalid result baecause if we made it here, we have one
+
+				void* ud = lua_newuserdatauv(L, sizeof(T), nuvalue);
+				new (ud) T(std::move(value));
+
+				lua_pushvalue(L, -1);
+				lua_rawsetp(L, -3, key);
+        
+				lua_remove(L, -2);
+			} 
+			else
+			{
+				// Key is null
+				// Currently we push a userdata containing an empty shared_ptr
+				// We might need to push nil, but it should be the same result..
+				// in the future we do extensive tests on whats best for this situation.
+				new (lua_newuserdatauv(L, sizeof(T), nuvalue)) T(std::move(value));
+			}
 		}
 
 		template <class T>
@@ -1175,6 +1230,7 @@ class LuaScriptInterface
 		static int luaPlayerSendTextMessage(lua_State* L);
 		static int luaPlayerSendChannelMessage(lua_State* L);
 		static int luaPlayerSendPrivateMessage(lua_State* L);
+		static int luaPlayerRefreshWorldView(lua_State* L);
 
 		static int luaPlayerChannelSay(lua_State* L);
 		static int luaPlayerOpenChannel(lua_State* L);
@@ -1834,6 +1890,12 @@ class LuaScriptInterface
 		static int luaZoneCreatureCount(lua_State* L);
 		static int luaZoneItemCount(lua_State* L);
 		static int luaZoneTileCount(lua_State* L);
+
+		// BlackTek Instance System
+		static int luaCreatureGetInstanceId(lua_State* L);
+		static int luaCreatureSetInstanceId(lua_State* L);
+		static int luaItemGetInstanceId(lua_State* L);
+		static int luaItemSetInstanceId(lua_State* L);
 		
 
 		//

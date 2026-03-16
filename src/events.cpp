@@ -1279,7 +1279,7 @@ void Events::eventPlayerOnAugment(const PlayerPtr& player, std::shared_ptr<Augme
 	LuaScriptInterface::pushSharedPtr(L, player);
 	LuaScriptInterface::setMetatable(L, -1, "Player");
 
-	LuaScriptInterface::pushSharedPtr<Augment>(L, augment);
+	LuaScriptInterface::pushSharedPtr(L, augment);
 	LuaScriptInterface::setMetatable(L, -1, "Augment");
 
 	scriptInterface.callVoidFunction(2);
@@ -1306,7 +1306,7 @@ void Events::eventPlayerOnRemoveAugment(const PlayerPtr& player, std::shared_ptr
 	LuaScriptInterface::pushSharedPtr(L, player);
 	LuaScriptInterface::setMetatable(L, -1, "Player");
 
-	LuaScriptInterface::pushSharedPtr<Augment>(L, augment);
+	LuaScriptInterface::pushSharedPtr(L, augment);
 	LuaScriptInterface::setMetatable(L, -1, "Augment");
 
 	scriptInterface.callVoidFunction(2);
@@ -1490,7 +1490,7 @@ void Events::eventItemOnAugment(const ItemPtr& item, std::shared_ptr<Augment> au
 	LuaScriptInterface::pushSharedPtr(L, item);
 	LuaScriptInterface::setMetatable(L, -1, "Item");
 
-	LuaScriptInterface::pushSharedPtr<Augment>(L, augment);
+	LuaScriptInterface::pushSharedPtr(L, augment);
 	LuaScriptInterface::setMetatable(L, -1, "Augment");
 
 	scriptInterface.callVoidFunction(2);
@@ -1517,7 +1517,7 @@ void Events::eventItemOnRemoveAugment(const ItemPtr& item, std::shared_ptr<Augme
 	LuaScriptInterface::pushSharedPtr(L, item);
 	LuaScriptInterface::setMetatable(L, -1, "Item");
 
-	LuaScriptInterface::pushSharedPtr<Augment>(L, augment);
+	LuaScriptInterface::pushSharedPtr(L, augment);
 	LuaScriptInterface::setMetatable(L, -1, "Augment");
 
 	scriptInterface.callVoidFunction(2);
@@ -1548,7 +1548,7 @@ void Events::eventItemOnModifierAttack(const ItemPtr &item, const PlayerPtr &ite
 	LuaScriptInterface::pushSharedPtr(L, defender);
 	LuaScriptInterface::setCreatureMetatable(L, -1, defender);
 	LuaScriptInterface::pushDamageModifier(L, modifier);
-	LuaScriptInterface::pushSharedPtr(L, damage);
+	LuaScriptInterface::pushUserdata<CombatDamage>(L, &damage);
 	LuaScriptInterface::setMetatable(L, -1, "CombatDamage");
 
 	scriptInterface.callVoidFunction(5);
@@ -1585,7 +1585,7 @@ void Events::eventItemOnModifierDefend(const ItemPtr &item, const PlayerPtr &ite
     }
     
     LuaScriptInterface::pushDamageModifier(L, modifier);
-    LuaScriptInterface::pushSharedPtr(L, damage);
+    LuaScriptInterface::pushUserdata(L, &damage);
     LuaScriptInterface::setMetatable(L, -1, "CombatDamage");
 
     scriptInterface.callVoidFunction(5);

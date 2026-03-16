@@ -10,6 +10,7 @@
 #include "spawn.h"
 #include "configmanager.h"
 #include <expected>
+#include <memory_resource>
 
 extern ConfigManager g_config;
 
@@ -128,10 +129,10 @@ struct MapLoadStats
 
 class IOMap
 {
-	static TilePtr createTile(ItemPtr& ground, uint16_t x, uint16_t y, uint8_t z);
+    static TilePtr createTile(std::pmr::polymorphic_allocator<Tile>& allocator, ItemPtr& ground, uint16_t x, uint16_t y, uint8_t z);
 
 	public:
-		std::expected<MapLoadStats, MapErrorCode> loadMap(Map* map, const std::filesystem::path& fileName);
+        std::expected<MapLoadStats, MapErrorCode> loadMap(Map* map, const std::filesystem::path& fileName, std::vector<std::byte>& buffer, std::optional<std::pmr::monotonic_buffer_resource>& block, std::optional<std::pmr::unsynchronized_pool_resource>& tile_pool);
 
 		/* Load the spawns
 		 * \param map pointer to the Map class
@@ -175,7 +176,7 @@ class IOMap
 		bool parseMapDataAttributes(OTB::Loader& loader, const OTB::Node& mapNode, Map& map, const std::filesystem::path& fileName);
 		bool parseWaypoints(OTB::Loader& loader, const OTB::Node& waypointsNode, Map& map);
 		bool parseTowns(OTB::Loader& loader, const OTB::Node& townsNode, Map& map);
-		bool parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Map& map);
+        bool parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Map& map, std::pmr::polymorphic_allocator<Tile> allocator);
 		std::string errorString;
 };
 

@@ -80,6 +80,11 @@ bool Creature::canSeeCreature(const CreatureConstPtr& creature) const
 	if (!canSeeInvisibility() && creature->isInvisible()) {
 		return false;
 	}
+
+	// BlackTek Instance System
+	if (not compareInstance(creature->getInstanceID()))
+		return false;
+	
 	return true;
 }
 
@@ -816,12 +821,14 @@ bool Creature::dropCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr&
 		TilePtr tile = getTile();
 		CylinderPtr c_tile = tile;
 		if (splash) {
+			splash->setInstanceID(getInstanceID());
 			g_game.internalAddItem(c_tile, splash, INDEX_WHEREEVER, FLAG_NOLIMIT);
 			g_game.startDecay(splash);
 		}
 
 		ItemPtr corpse = getCorpse(lastHitCreature, mostDamageCreature);
 		if (corpse) {
+			corpse->setInstanceID(getInstanceID());
 			g_game.internalAddItem(c_tile, corpse, INDEX_WHEREEVER, FLAG_NOLIMIT);
 			g_game.startDecay(corpse);
 		}

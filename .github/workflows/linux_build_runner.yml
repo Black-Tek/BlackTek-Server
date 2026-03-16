@@ -49,9 +49,9 @@ jobs:
           /usr/local/share/vcpkg/downloads
           /usr/local/share/vcpkg/buildtrees
           ${{ github.workspace }}/vcpkg_installed
-        key: vcpkg-ubuntu-24.04-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-v2
+        key: vcpkg-ubuntu-24.04-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-v3
         restore-keys: |
-          vcpkg-ubuntu-24.04-v2-
+          vcpkg-ubuntu-24.04-v3-
     
     - name: Install Uuid
       run: |
@@ -96,8 +96,8 @@ jobs:
         
         while [ $attempt -le $max_attempts ]; do
           echo "Installation attempt $attempt of $max_attempts"
-          
-          if vcpkg install; then
+
+          if vcpkg install --triplet x64-linux --overlay-triplets=${{ github.workspace }}/triplets && vcpkg install --triplet x64-linux-static --overlay-triplets=${{ github.workspace }}/triplets; then
             echo "Installation successful!"
             exit 0
           else

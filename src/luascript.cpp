@@ -2260,7 +2260,7 @@ void LuaScriptInterface::registerFunctions()
 	// Tile
 	registerClass("Tile", "", luaTileCreate);
 	registerMetaMethod("Tile", "__eq", luaUserdataCompare);
-	registerMetaMethod("Tile", "__gc", destroySharedUserData<Tile>);
+	//registerMetaMethod("Tile", "__gc", destroySharedUserData<Tile>);
 
 	registerMethod("Tile", "remove", luaTileRemove);
 
@@ -2365,7 +2365,7 @@ void LuaScriptInterface::registerFunctions()
 	// Item
 	registerClass("Item", "", luaItemCreate);
 	registerMetaMethod("Item", "__eq", luaUserdataCompare);
-	registerMetaMethod("Item", "__gc", destroySharedUserData<Item>);
+	//registerMetaMethod("Item", "__gc", destroySharedUserData<Item>);
 
 	registerMethod("Item", "isItem", luaItemIsItem);
 
@@ -2455,10 +2455,14 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Item", "getStat", luaItemGetStat);
 	registerMethod("Item", "getStats", luaItemGetStats);
 
+	// BlackTek Instance System
+	registerMethod("Item", "getInstanceId", luaItemGetInstanceId);
+	registerMethod("Item", "setInstanceId", luaItemSetInstanceId);
+
 	// Imbuement
 	registerClass("Imbuement", "", luaImbuementCreate);
 	registerMetaMethod("Imbuement", "__eq", luaUserdataCompare);
-	registerMetaMethod("Imbuement", "__gc", destroySharedUserData<Imbuement>);
+	//registerMetaMethod("Imbuement", "__gc", destroySharedUserData<Imbuement>);
 	registerMethod("Imbuement", "getType", luaImbuementGetType);
 	registerMethod("Imbuement", "isSkill", luaImbuementIsSkill);
 	registerMethod("Imbuement", "isSpecialSkill", luaImbuementIsSpecialSkill);
@@ -2477,7 +2481,7 @@ void LuaScriptInterface::registerFunctions()
 	// DamageModifer
 	registerClass("DamageModifier", "", luaDamageModifierCreate);
 	registerMetaMethod("DamageModifier", "__eq", luaUserdataCompare);
-	registerMetaMethod("DamageModifier", "__gc", destroySharedUserData<DamageModifier>);
+	//registerMetaMethod("DamageModifier", "__gc", destroySharedUserData<DamageModifier>);
 	registerMethod("DamageModifier", "setType", luaDamageModifierSetType);
 	registerMethod("DamageModifier", "setStance", luaDamageModifierSetStance);
 	registerMethod("DamageModifier", "setValue", luaDamageModifierSetValue);
@@ -2505,7 +2509,7 @@ void LuaScriptInterface::registerFunctions()
 	// Augment
 	registerClass("Augment", "", luaAugmentCreate);
 	registerMetaMethod("Augment", "__eq", luaUserdataCompare);
-	registerMetaMethod("Augment", "__gc", destroySharedUserData<Augment>);
+	//registerMetaMethod("Augment", "__gc", destroySharedUserData<Augment>);
 	registerMethod("Augment", "register", luaAugmentRegister);
 	registerMethod("Augment", "setName", luaAugmentSetName);
 	registerMethod("Augment", "setDescription", luaAugmentSetDescription);
@@ -2519,7 +2523,7 @@ void LuaScriptInterface::registerFunctions()
 	// Container
 	registerClass("Container", "Item", luaContainerCreate);
 	registerMetaMethod("Container", "__eq", luaUserdataCompare);
-	registerMetaMethod("Container", "__gc", destroySharedUserData<Container>);
+	//registerMetaMethod("Container", "__gc", destroySharedUserData<Container>);
 
 	registerMethod("Container", "getSize", luaContainerGetSize);
 	registerMethod("Container", "getCapacity", luaContainerGetCapacity);
@@ -2538,7 +2542,7 @@ void LuaScriptInterface::registerFunctions()
 	// Teleport
 	registerClass("Teleport", "Item", luaTeleportCreate);
 	registerMetaMethod("Teleport", "__eq", luaUserdataCompare);
-	registerMetaMethod("Teleport", "__gc", destroySharedUserData<Teleport>);
+	//registerMetaMethod("Teleport", "__gc", destroySharedUserData<Teleport>);
 
 	registerMethod("Teleport", "getDestination", luaTeleportGetDestination);
 	registerMethod("Teleport", "setDestination", luaTeleportSetDestination);
@@ -2546,7 +2550,7 @@ void LuaScriptInterface::registerFunctions()
 	// Creature
 	registerClass("Creature", "", luaCreatureCreate);
 	registerMetaMethod("Creature", "__eq", luaUserdataCompare);
-	registerMetaMethod("Creature", "__gc", destroySharedUserData<Creature>);
+	//registerMetaMethod("Creature", "__gc", destroySharedUserData<Creature>);
 
 	registerMethod("Creature", "getEvents", luaCreatureGetEvents);
 	registerMethod("Creature", "registerEvent", luaCreatureRegisterEvent);
@@ -2647,10 +2651,14 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Creature", "getStat", luaCreatureGetStat);
 	registerMethod("Creature", "getStats", luaCreatureGetStats);
 
+	// BlackTek Instance System
+	registerMethod("Creature", "getInstanceId", luaCreatureGetInstanceId);
+	registerMethod("Creature", "setInstanceId", luaCreatureSetInstanceId);
+
 	// Stat
 	registerClass("Stat", "", luaStatCreate);
 	registerMetaMethod("Stat", "__eq", luaUserdataCompare);
-	registerMetaMethod("Stat", "__gc", destroySharedUserData<StandardStat>);
+	//registerMetaMethod("Stat", "__gc", destroySharedUserData<StandardStat>);
 	registerMethod("Stat", "id", luaStatId);
 	registerMethod("Stat", "max", luaStatMax);
 	registerMethod("Stat", "value", luaStatValue);
@@ -2666,7 +2674,7 @@ void LuaScriptInterface::registerFunctions()
 
 	registerClass("StatModifier", "", luaStatModifierCreate);
 	registerMetaMethod("StatModifier", "__eq", luaUserdataCompare);
-	registerMetaMethod("StatModifier", "__gc", destroySharedUserData<StandardStatMod>);
+	//registerMetaMethod("StatModifier", "__gc", destroySharedUserData<StandardStatMod>);
 	registerMethod("StatModifier", "type", luaStatModifierType);
 	registerMethod("StatModifier", "value", luaStatModifierValue);
 
@@ -2674,7 +2682,7 @@ void LuaScriptInterface::registerFunctions()
 	// Player
 	registerClass("Player", "Creature", luaPlayerCreate);
 	registerMetaMethod("Player", "__eq", luaUserdataCompare);
-	registerMetaMethod("Player", "__gc", destroySharedUserData<Player>);
+	//registerMetaMethod("Player", "__gc", destroySharedUserData<Player>);
 
 	registerMethod("Player", "isPlayer", luaPlayerIsPlayer);
 
@@ -2787,6 +2795,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "sendTextMessage", luaPlayerSendTextMessage);
 	registerMethod("Player", "sendChannelMessage", luaPlayerSendChannelMessage);
 	registerMethod("Player", "sendPrivateMessage", luaPlayerSendPrivateMessage);
+	registerMethod("Player", "refreshWorldView", luaPlayerRefreshWorldView);
 	registerMethod("Player", "channelSay", luaPlayerChannelSay);
 	registerMethod("Player", "openChannel", luaPlayerOpenChannel);
 
@@ -2863,7 +2872,7 @@ void LuaScriptInterface::registerFunctions()
 	// Monster
 	registerClass("Monster", "Creature", luaMonsterCreate);
 	registerMetaMethod("Monster", "__eq", luaUserdataCompare);
-	registerMetaMethod("Monster", "__gc", destroySharedUserData<Monster>);
+	//registerMetaMethod("Monster", "__gc", destroySharedUserData<Monster>);
 
 	registerMethod("Monster", "getId", luaMonsterGetId);
 	registerMethod("Monster", "isMonster", luaMonsterIsMonster);
@@ -2901,7 +2910,7 @@ void LuaScriptInterface::registerFunctions()
 	// Npc
 	registerClass("Npc", "Creature", luaNpcCreate);
 	registerMetaMethod("Npc", "__eq", luaUserdataCompare);
-	registerMetaMethod("Npc", "__gc", destroySharedUserData<Npc>);
+	//registerMetaMethod("Npc", "__gc", destroySharedUserData<Npc>);
 
 	registerMethod("Npc", "isNpc", luaNpcIsNpc);
 
@@ -3584,6 +3593,79 @@ void LuaScriptInterface::registerClass(const std::string& className, const std::
 
 	// pop className, className.metatable
 	lua_pop(luaState, 2);
+}
+
+// BlackTek Instance System
+int LuaScriptInterface::luaCreatureGetInstanceId(lua_State* L)
+{
+	if (const auto creature = getSharedPtr<Creature>(L, 1))
+		lua_pushinteger(L, creature->getInstanceID());
+	else
+		lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaCreatureSetInstanceId(lua_State* L)
+{
+	// creature:setInstanceId(instanceId)
+	const auto creature = getSharedPtr<Creature>(L, 1);
+	if (!creature)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	uint32_t id = getNumber<uint32_t>(L, 2, 0);
+	const uint32_t previousInstanceId = creature->getInstanceID();
+	creature->setInstanceID(id);
+
+	if (previousInstanceId != id) {
+		SpectatorVec spectators;
+		g_game.map.getSpectators(spectators, creature->getPosition(), true, true);
+
+		const auto& specFilter = [&](const std::shared_ptr<Creature>& s)
+		{
+			const PlayerPtr& specPlayer = s->getPlayer();
+			return specPlayer != nullptr;
+		};
+		
+		for (const auto& spectator : spectators | std::views::filter(specFilter))
+		{
+			spectator->getPlayer()->refreshWorldView(); // getPlayer should be valid here, filter should eliminate call on nullptr 
+		}
+
+		if (const auto& player = creature->getPlayer())
+			player->refreshWorldView();
+	}
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaItemGetInstanceId(lua_State* L)
+{
+	// item:getInstanceId()
+	if (const auto item = getSharedPtr<Item>(L, 1))
+		lua_pushinteger(L, item->getInstanceID());
+	else
+		lua_pushnil(L);
+	return 1;
+}
+
+int LuaScriptInterface::luaItemSetInstanceId(lua_State* L)
+{
+	// item:setInstanceId(instanceId)
+	const auto item = getSharedPtr<Item>(L, 1);
+	if (!item)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	uint32_t id = getNumber<uint32_t>(L, 2, 0);
+	item->setInstanceID(id);
+	pushBoolean(L, true);
+	return 1;
 }
 
 void LuaScriptInterface::registerTable(const std::string& tableName) const
@@ -8559,7 +8641,7 @@ int LuaScriptInterface::luaDamageModifierCreate(lua_State* L)
 {
 	// DamageModifier()
 	if (lua_gettop(L) < 2) {
-		pushSharedPtr(L, DamageModifier());
+		pushSharedPtr(L, DamageModifier::makeModifier());
 		setMetatable(L, -1, "DamageModifier");
 		return 1;
 	}
@@ -8594,7 +8676,7 @@ int LuaScriptInterface::luaDamageModifierCreate(lua_State* L)
 	// DamageModifier(damageModifier)
 	if (const auto& originalModifier = getSharedPtr<DamageModifier>(L, 2))
 	{
-		pushSharedPtr(L, DamageModifier(*originalModifier.get()));
+		pushSharedPtr(L, DamageModifier::makeModifier(*originalModifier.get()));
 		setMetatable(L, -1, "DamageModifier");
 		return 1;
 	}
@@ -11394,7 +11476,7 @@ int LuaScriptInterface::luaStatModifierCreate(lua_State* L)
 		const auto mod_type = static_cast<StatModifierType>(mod_number);
 		if (const auto amount = getNumber<uint32_t>(L, 3))
 		{
-			pushSharedPtr<StandardStatMod>(L, StandardStatMod(mod_type, amount));
+			pushSharedPtr(L, std::make_shared<StandardStatMod>(mod_type, amount));
 			setMetatable(L, -1, "StatModifier");
 			return 1;
 		}
@@ -12806,6 +12888,21 @@ int LuaScriptInterface::luaPlayerSendTextMessage(lua_State* L)
 	player->sendTextMessage(message);
 	pushBoolean(L, true);
 
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerRefreshWorldView(lua_State* L)
+{
+	// player:refreshWorldView()
+	const auto player = getSharedPtr<Player>(L, 1);
+	if (!player)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	player->refreshWorldView();
+	pushBoolean(L, true);
 	return 1;
 }
 
@@ -14722,7 +14819,7 @@ int LuaScriptInterface::luaVocationGetDemotion(lua_State* L)
 
 	const auto demotedVocation = g_vocations.getVocation(fromId);
 	if (demotedVocation && demotedVocation != vocation) {
-		pushSharedPtr(L, demotedVocation);
+		pushUserdata(L, demotedVocation);
 		setMetatable(L, -1, "Vocation");
 	} else {
 		lua_pushnil(L);
@@ -14747,7 +14844,7 @@ int LuaScriptInterface::luaVocationGetPromotion(lua_State* L)
 
 	const auto promotedVocation = g_vocations.getVocation(promotedId);
 	if (promotedVocation && promotedVocation != vocation) {
-		pushSharedPtr(L, promotedVocation);
+		pushUserdata(L, promotedVocation);
 		setMetatable(L, -1, "Vocation");
 	} else {
 		lua_pushnil(L);
@@ -21491,6 +21588,7 @@ bool LuaEnvironment::initState()
 	}
 
 	luaL_openlibs(luaState);
+	LuaScriptInterface::initSharedPtrCache(luaState);
 	registerFunctions();
 
 	runningEventId = EVENT_ID_USER;

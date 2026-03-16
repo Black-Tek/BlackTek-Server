@@ -17,6 +17,26 @@ extern Weapons* g_weapons;
 extern ConfigManager g_config;
 extern Events* g_events;
 
+namespace {
+	// BlackTek Instance System
+	SpectatorVec filterSpectatorsByInstance(const SpectatorVec& spectators, uint32_t instanceId)
+	{
+		SpectatorVec filtered;
+
+		const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
+		{
+			const PlayerPtr& spectatorPlayer = s->getPlayer();
+			return spectatorPlayer and spectatorPlayer->compareInstance(instanceId);
+		};
+		
+		for (const auto& spectator : spectators | std::views::filter(sameInstance))
+		{
+			filtered.emplace_back(spectator);
+		}
+		return filtered;
+	}
+}
+
 // we use a thread-local tile buffer for reuse across calls to avoid repeated allocations
 thread_local std::vector<TilePtr> area_tile_buffer;
 
@@ -381,6 +401,9 @@ ReturnValue Combat::canDoCombat(const CreaturePtr& attacker, const CreaturePtr& 
 	if (not attacker) {
 		return g_events->eventCreatureOnTargetCombat(attacker, target);
 	}
+	// BlackTek Instance System
+	if (target and not attacker->compareInstance(target->getInstanceID()))
+		return RETURNVALUE_YOUMAYNOTATTACKTHISCREATURE;
 
 	if (const auto& targetPlayer = target->getPlayer()) 
 	{
@@ -717,6 +740,8 @@ void Combat::combatTileEffects(const SpectatorVec& spectators,const CreaturePtr&
 		auto item = Item::CreateItem(itemId);
 		if (caster) {
 			item->setOwner(caster->getID());
+			// BlackTek Instance System
+			item->setInstanceID(caster->getInstanceID());
 		}
 		CylinderPtr holder = tile;
 		ReturnValue ret = g_game.internalAddItem(holder, item);
@@ -730,7 +755,13 @@ void Combat::combatTileEffects(const SpectatorVec& spectators,const CreaturePtr&
 	}
 
 	if (params.impactEffect != CONST_ME_NONE) {
-		Game::addMagicEffect(spectators, tile->getPosition(), params.impactEffect);
+		if (caster) {
+			// BlackTek Instance System
+			const auto filteredSpectators = filterSpectatorsByInstance(spectators, caster->getInstanceID());
+			Game::addMagicEffect(filteredSpectators, tile->getPosition(), params.impactEffect);
+		} else {
+			Game::addMagicEffect(spectators, tile->getPosition(), params.impactEffect);
+		}
 	}
 }
 
@@ -770,7 +801,19 @@ void Combat::addDistanceEffect(const CreaturePtr& caster, const Position& fromPo
 	}
 
 	if (effect != CONST_ANI_NONE) {
-		g_game.addDistanceEffect(fromPos, toPos, effect);
+		if (caster) {
+			SpectatorVec spectators;
+			SpectatorVec toPosSpectators;
+			g_game.map.getSpectators(spectators, fromPos, true, true);
+			g_game.map.getSpectators(toPosSpectators, toPos, true, true);
+			spectators.addSpectators(toPosSpectators);
+
+			// BlackTek Instance System
+			const auto filteredSpectators = filterSpectatorsByInstance(spectators, caster->getInstanceID());
+			g_game.addDistanceEffect(filteredSpectators, fromPos, toPos, effect);
+		} else {
+			g_game.addDistanceEffect(fromPos, toPos, effect);
+		}
 	}
 }
 
@@ -799,7 +842,11 @@ void Combat::doCombat(const CreaturePtr& caster, const CreaturePtr& target) cons
 
 		if (p.impactEffect != CONST_ME_NONE && (caster == target or canCombat)) 
 		{
-			g_game.addMagicEffect(target->getPosition(), p.impactEffect);
+			SpectatorVec spectators;
+			g_game.map.getSpectators(spectators, target->getPosition(), true, true);
+			// BlackTek Instance System
+			const auto filteredSpectators = filterSpectatorsByInstance(spectators, target->getInstanceID());
+			Game::addMagicEffect(filteredSpectators, target->getPosition(), p.impactEffect);
 		}
 
 		if (canCombat) 
@@ -1382,7 +1429,11 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					} else {
 						casterPlayer->addStamina(MaximumStamina - casterPlayer->getStaminaMinutes());
 					}
-					g_game.addMagicEffect(casterPlayer->getPosition(), CONST_ME_YELLOWENERGY);
+					SpectatorVec spectators;
+					g_game.map.getSpectators(spectators, casterPlayer->getPosition(), true, true);
+					// BlackTek Instance System
+					const auto filteredSpectators = filterSpectatorsByInstance(spectators, casterPlayer->getInstanceID());
+					Game::addMagicEffect(filteredSpectators, casterPlayer->getPosition(), CONST_ME_YELLOWENERGY);
 				}
 
 				// Soulsteal
@@ -1409,7 +1460,10 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 						casterPlayer->addSoul(casterPlayer->getVocation()->getSoulMax() - casterPlayer->getSoul());
 					}
 
-					g_game.addMagicEffect(casterPlayer->getPosition(), CONST_ME_MAGIC_GREEN);
+					SpectatorVec spectators;
+					g_game.map.getSpectators(spectators, casterPlayer->getPosition(), true, true);
+					const auto filteredSpectators = filterSpectatorsByInstance(spectators, casterPlayer->getInstanceID());
+					Game::addMagicEffect(filteredSpectators, casterPlayer->getPosition(), CONST_ME_MAGIC_GREEN);
 				}
 			}
 		}

@@ -1326,7 +1326,20 @@ bool ConditionDamage::doDamage(CreaturePtr creature, int32_t healthChange) const
 
 	if (!creature->isAttackable() || Combat::canDoCombat(attacker, creature) != RETURNVALUE_NOERROR) {
 		if (!creature->isInGhostMode()) {
-			g_game.addMagicEffect(creature->getPosition(), CONST_ME_POFF);
+			SpectatorVec spectators;
+			g_game.map.getSpectators(spectators, creature->getPosition(), true, true);
+
+			// BlackTek Instance System
+			const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
+			{
+				const PlayerPtr& spectatorPlayer = s->getPlayer();
+				return spectatorPlayer and spectatorPlayer->compareInstance(creature->getInstanceID());
+			};
+			
+			for (const auto& spectator : spectators | std::views::filter(sameInstance))
+			{
+				spectator->getPlayer()->sendMagicEffect(creature->getPosition(), CONST_ME_POFF); // we know getPlayer is valid as per the views filter
+			}
 		}
 		return false;
 	}
