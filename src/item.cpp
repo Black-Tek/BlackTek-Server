@@ -292,7 +292,7 @@ void Item::setDefaultSubtype()
 
 void Item::onRemoved()
 {
-	ScriptEnvironment::removeTempItem(std::dynamic_pointer_cast<Item>(shared_from_this()));
+	ScriptEnvironment::removeTempItem(std::static_pointer_cast<Item>(shared_from_this()));
 
 	if (hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)) {
 		g_game.removeUniqueItem(getUniqueId());	
