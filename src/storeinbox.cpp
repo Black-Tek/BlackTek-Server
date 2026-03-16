@@ -8,6 +8,7 @@
 StoreInbox::StoreInbox(uint16_t type) : Container(type, 20, true, true)
 {
 	item_subtype = ItemSubType::StoreInbox;
+	container_subtype = ContainerSubType::StoreInbox;
 }
 
 ReturnValue StoreInbox::queryAdd(int32_t, const ThingPtr& thing, uint32_t, uint32_t flags, CreaturePtr)

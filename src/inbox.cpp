@@ -9,6 +9,7 @@
 Inbox::Inbox(uint16_t type) : Container(type, 30, false, true)
 {
 	item_subtype = ItemSubType::Inbox;
+	container_subtype = ContainerSubType::Inbox;
 }
 
 ReturnValue Inbox::queryAdd(int32_t, const ThingPtr& thing, uint32_t,

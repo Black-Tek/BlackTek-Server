@@ -9,6 +9,7 @@ DepotLocker::DepotLocker(uint16_t type) :
 	Container(type), depotId(0)
 {
 	item_subtype = ItemSubType::DepotLocker;
+	container_subtype = ContainerSubType::DepotLocker;
 }
 
 Attr_ReadValue DepotLocker::readAttr(AttrTypes_t attr, PropStream& propStream)

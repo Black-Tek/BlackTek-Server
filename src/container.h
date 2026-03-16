@@ -27,6 +27,16 @@ class ContainerIterator
 		friend class Container;
 };
 
+enum class ContainerSubType : uint8_t
+{
+	None,
+	DepotChest,
+	DepotLocker,
+	Inbox,
+	StoreInbox,
+	RewardChest,
+};
+
 class Container : public Item, public Cylinder
 {
 	public:
@@ -45,9 +55,13 @@ class Container : public Item, public Cylinder
 		ContainerPtr getContainer() override final {
 			return static_shared_this<Container>();
 		}
-	
+
 		ContainerConstPtr getContainer() const override final {
 			return static_shared_this<const Container>();
+		}
+
+		ContainerSubType getContainerSubType() const {
+			return container_subtype;
 		}
 
 		virtual DepotLockerPtr getDepotLocker() {
@@ -163,6 +177,7 @@ class Container : public Item, public Cylinder
 
 	protected:
 		ItemDeque itemlist;
+		ContainerSubType container_subtype = ContainerSubType::None;
 
 	private:
 		std::ostringstream& getContentDescription(std::ostringstream& os) const;

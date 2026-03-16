@@ -3345,8 +3345,12 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 		if (not g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
 		{
 			const auto& cylinder = item->getTopParent();
+			const auto container = cylinder ? cylinder->getContainer() : nullptr;
+			const auto creature = cylinder ? cylinder->getCreature() : nullptr;
 
-			if (cylinder and (std::dynamic_pointer_cast<const DepotChest>(cylinder) or std::dynamic_pointer_cast<const Player>(cylinder)))
+			if (cylinder
+				and ((container and container->getContainerSubType() == ContainerSubType::DepotChest)
+				or (creature and creature->getCreatureSubType() == CreatureSubType::Player)))
 			{
 				return RETURNVALUE_NEEDEXCHANGE;
 			}
@@ -3931,7 +3935,8 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 			} else if (container->getItem()->getTopParent() == this->getPlayer()) {
 				onSendContainer(container);
 			} else if (auto topContainer = std::dynamic_pointer_cast<Container>(container->getItem()->getTopParent())) {
-				if (auto depotChest = std::dynamic_pointer_cast<DepotChest>(topContainer)) {
+				if (topContainer->getContainerSubType() == ContainerSubType::DepotChest) {
+					const auto depotChest = std::static_pointer_cast<DepotChest>(topContainer);
 					bool isOwner = false;
 
 					for (const auto& it : depotChests) {
@@ -3944,7 +3949,8 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 					if (!isOwner) {
 						autoCloseContainers(container);
 					}
-				} else if (auto inboxContainer = std::dynamic_pointer_cast<Inbox>(topContainer)) {
+				} else if (topContainer->getContainerSubType() == ContainerSubType::Inbox) {
+					const auto inboxContainer = std::static_pointer_cast<Inbox>(topContainer);
 					if (inboxContainer == inbox) {
 						onSendContainer(container);
 					} else {
