@@ -97,7 +97,10 @@ jobs:
         while [ $attempt -le $max_attempts ]; do
           echo "Installation attempt $attempt of $max_attempts"
 
-          if vcpkg install --triplet x64-linux --overlay-triplets=${{ github.workspace }}/triplets && vcpkg install --triplet x64-linux-static --overlay-triplets=${{ github.workspace }}/triplets; then
+          OVERLAY="${{ github.workspace }}/triplets"
+          INSTALL_ROOT="${{ github.workspace }}/vcpkg_installed"
+          if vcpkg install --triplet x64-linux --overlay-triplets="$OVERLAY" --x-install-root="$INSTALL_ROOT" && \
+             vcpkg install --triplet x64-linux-static --overlay-triplets="$OVERLAY" --x-install-root="$INSTALL_ROOT"; then
             echo "Installation successful!"
             exit 0
           else
