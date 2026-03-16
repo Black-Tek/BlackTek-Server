@@ -305,12 +305,19 @@ void mainLoader(int, char*[], ServiceManager* services)
 	#ifdef _WIN32
 		SetConsoleTitle(STATUS_SERVER_NAME);
 
-		// fixes a problem with escape characters not being processed in Windows consoles
+		// Enable ANSI/VT100 escape code processing
 		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
 		DWORD dwMode = 0;
 		GetConsoleMode(hOut, &dwMode);
 		dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
 		SetConsoleMode(hOut, dwMode);
+
+		// We disable quick edit mode because it causes the server to freeze whenever a user clicks the console window
+		HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+		DWORD dwInMode = 0;
+		GetConsoleMode(hIn, &dwInMode);
+		dwInMode &= ~ENABLE_QUICK_EDIT_MODE;
+		SetConsoleMode(hIn, dwInMode);
 	#endif
 
 	// banner and version info
