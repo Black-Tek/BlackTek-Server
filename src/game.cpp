@@ -4967,8 +4967,16 @@ bool Game::internalCreatureTurn(const CreaturePtr& creature, const Direction dir
 	//send to client
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto& spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	// the second boolean as true in the above getSpectators ensures its only players
+	// but just to be safe lets use a view filter anyways
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		std::static_pointer_cast<Player>(spectator)->sendCreatureTurn(creature);
 	}
 	return true;
@@ -5094,7 +5102,7 @@ void Game::creature_think_cycle() noexcept
     auto& checkCreatureList = slots_[current_slot_];
     current_slot_ = (current_slot_ + 1) % 20;
 	auto valid_creatures = checkCreatureList
-		| std::views::filter([](const auto& creature) { return creature && creature->creatureCheck; })
+		| std::views::filter([](const auto& creature) { return creature and creature->creatureCheck; })
 		| std::views::filter([](const auto& creature) { return creature->getHealth() > 0; });
 
     for (auto& creature : valid_creatures)
@@ -5125,29 +5133,39 @@ void Game::changeSpeed(const CreaturePtr& creature, const int32_t varSpeedDelta)
 	//send to clients
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), false, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		std::static_pointer_cast<Player>(spectator)->sendChangeSpeed(creature, creature->getStepSpeed());
 	}
 }
 
 void Game::internalCreatureChangeOutfit(const CreaturePtr& creature, const Outfit_t& outfit)
 {
-	if (!g_events->eventCreatureOnChangeOutfit(creature, outfit)) {
+	if (not g_events->eventCreatureOnChangeOutfit(creature, outfit))
 		return;
-	}
 
 	creature->setCurrentOutfit(outfit);
 
-	if (creature->isInvisible()) {
+	if (creature->isInvisible())
 		return;
-	}
 
 	//send to clients
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto spectator : spectators)
+	{
 		std::static_pointer_cast<Player>(spectator)->sendCreatureChangeOutfit(creature, outfit);
 	}
 }
@@ -5157,8 +5175,14 @@ void Game::internalCreatureChangeVisible(const CreaturePtr& creature, bool visib
 	//send to clients
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		std::static_pointer_cast<Player>(spectator)->sendCreatureChangeVisible(creature, visible);
 	}
 }
@@ -5168,7 +5192,14 @@ void Game::changeLight(const CreatureConstPtr& creature)
 	//send to clients
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto spectator : spectators) {
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
 		std::static_pointer_cast<Player>(spectator)->sendCreatureLight(creature);
 	}
@@ -6343,10 +6374,15 @@ void Game::updateCreatureWalkthrough(const CreatureConstPtr& creature)
 	//send to clients
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
 
-		const PlayerPtr spectatorPlayer = std::static_pointer_cast<Player>(spectator);
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
+		const auto& spectatorPlayer = std::static_pointer_cast<Player>(spectator);
 		spectatorPlayer->sendCreatureWalkthrough(creature, spectatorPlayer->canWalkthroughEx(creature));
 	}
 }
@@ -6356,22 +6392,33 @@ void Game::notifySpectators(const CreatureConstPtr& creature)
 	// send to clients
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		std::static_pointer_cast<Player>(spectator)->sendUpdateTileCreature(creature);
 	}
 }
 
 void Game::updateCreatureSkull(const CreatureConstPtr& creature)
 {
-	if (getWorldType() != WORLD_TYPE_PVP) {
+	if (getWorldType() != WORLD_TYPE_PVP)
 		return;
-	}
 
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		std::static_pointer_cast<Player>(spectator)->sendCreatureSkull(creature);
 	}
 }
@@ -6380,8 +6427,14 @@ void Game::updatePlayerShield(const PlayerPtr& player)
 {
 	SpectatorVec spectators;
 	map.getSpectators(spectators, player->getPosition(), true, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		std::static_pointer_cast<Player>(spectator)->sendCreatureShield(player);
 	}
 }
@@ -6393,7 +6446,14 @@ void Game::updatePlayerHelpers(const PlayerConstPtr& player)
 
 	SpectatorVec spectators;
 	map.getSpectators(spectators, player->getPosition(), true, true);
-	for (const auto spectator : spectators) {
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		spectator->getPlayer()->sendCreatureHelpers(creatureId, helpers);
 	}
 }

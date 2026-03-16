@@ -484,9 +484,12 @@ void Tile::onUpdateTile(const SpectatorVec& spectators)
 {
 	const Position& cylinderMapPos = getPosition();
 
-	//send to clients
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players) {
 		std::static_pointer_cast<Player>(spectator)->sendUpdateTile(getTile(), cylinderMapPos);
 	}
 }
@@ -543,10 +546,10 @@ ReturnValue Tile::queryAdd(CreaturePtr creature, uint32_t flags)
         }
     }
 
-	if (auto player = std::dynamic_pointer_cast<Player>(creature))
-		results = queryAdd(player, flags);
-	else if (auto monster = std::dynamic_pointer_cast<Monster>(creature))
-		results = queryAdd(monster, flags);
+	if (creature->getCreatureSubType() == CreatureSubType::Player)
+		results = queryAdd(std::static_pointer_cast<Player>(creature), flags);
+	else if (creature->getCreatureSubType() == CreatureSubType::Monster)
+		results = queryAdd(std::static_pointer_cast<Monster>(creature), flags);
 
 	return results;
 }
@@ -1470,8 +1473,11 @@ void Tile::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t in
 {
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), true, true);
-	for (auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	// another test location
+
+	for (auto& spectator : spectators)
+	{
 		std::static_pointer_cast<Player>(spectator)->postAddNotification(thing, oldParent, index, LINK_NEAR);
 	}
 
@@ -1514,8 +1520,13 @@ void Tile::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t
 		onUpdateTile(spectators);
 	}
 
-	for (auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+	// Final test location, if the spectators internals were ever failing to filter only players
+	// then npcs would trigger, spawns would trigger, and moving things to and from tiles, would trigger
+	// and we would know about it pretty quickly, howevever if this doesn't happen, and this new RTTI tagging
+	// works as well as anticipated, I will cleanup the view changes, and apply the same system for thing, cylinder and item based classes.
+
+	for (auto& spectator : spectators)
+	{
 		std::static_pointer_cast<Player>(spectator)->postRemoveNotification(thing, newParent, index, LINK_NEAR);
 	}
 

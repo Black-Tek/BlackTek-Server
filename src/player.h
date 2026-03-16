@@ -132,12 +132,6 @@ class Player final : public Creature, public Cylinder
 	public:
 		explicit Player(ProtocolGame_ptr p);
 		
-		static std::shared_ptr<Player> makePlayer(ProtocolGame_ptr p) {
-			auto player = std::shared_ptr<Player>(new Player(p));
-			player->storeInbox->setParent(player);
-			return player;
-		}
-
 		~Player() override;
 
 		// non-copyable

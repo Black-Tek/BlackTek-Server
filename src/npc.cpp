@@ -77,6 +77,7 @@ Npc::Npc(const std::string& name) :
 	masterRadius(-1),
 	loaded(false)
 {
+	creature_subtype = CreatureSubType::Npc;
 	reset();
 }
 
@@ -134,9 +135,14 @@ void Npc::reload()
 
 	SpectatorVec players;
 	g_game.map.getSpectators(players, getPosition(), true, true);
-	for (const auto& player : players)
+
+	auto player_list = players | std::views::filter([](const auto& spectator)
 	{
-		assert(std::dynamic_pointer_cast<Player>(player) != nullptr);
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& player : player_list)
+	{
 		spectators.insert(std::static_pointer_cast<Player>(player));
 	}
 
@@ -368,9 +374,10 @@ void Npc::onCreatureAppear(const CreaturePtr& creature, bool isLogin)
 		SpectatorVec players;
 		g_game.map.getSpectators(players, getPosition(), true, true);
 
+		// we leave this one without the view filter as a sort of test to see if anything slips through
+
 		for (const auto& player : players)
 		{
-			assert(std::dynamic_pointer_cast<Player>(player) != nullptr);
 			spectators.insert(std::static_pointer_cast<Player>(player));
 		}
 

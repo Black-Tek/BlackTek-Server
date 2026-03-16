@@ -701,7 +701,7 @@ static std::vector<uint32_t> GetDiaganolDeflectArea(uint32_t targets) {
 Player::Player(ProtocolGame_ptr p) :
 	lastPing(OTSYS_TIME()), lastPong(lastPing), client(std::move(p)), inbox(std::make_shared<Inbox>(ITEM_INBOX)), storeInbox(std::make_shared<StoreInbox>(ITEM_STORE_INBOX))
 {
-
+	creature_subtype = CreatureSubType::Player;
 }
 
 Player::~Player()
@@ -2468,8 +2468,14 @@ void Player::addExperience(const CreaturePtr& source, uint64_t exp, bool sendTex
 		if (!spectators.empty()) {
 			message.type = MESSAGE_EXPERIENCE_OTHERS;
 			message.text = getName() + " gained " + expString;
-			for (const auto& spectator : spectators) {
-				assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+			auto players = spectators | std::views::filter([](const auto& spectator)
+			{
+				return spectator->getCreatureSubType() == CreatureSubType::Player;
+			});
+
+			for (const auto& spectator : players)
+			{
 				std::static_pointer_cast<Player>(spectator)->sendTextMessage(message);
 			}
 		}
@@ -2555,8 +2561,14 @@ void Player::removeExperience(uint64_t exp, const bool sendText/* = false*/)
 		if (!spectators.empty()) {
 			message.type = MESSAGE_EXPERIENCE_OTHERS;
 			message.text = getName() + " lost " + expString;
-			for (const auto& spectator : spectators) {
-				assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+			auto players = spectators | std::views::filter([](const auto& spectator)
+			{
+				return spectator->getCreatureSubType() == CreatureSubType::Player;
+			});
+
+			for (const auto& spectator : players)
+			{
 				std::static_pointer_cast<Player>(spectator)->sendTextMessage(message);
 			}
 		}

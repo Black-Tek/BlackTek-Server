@@ -41,6 +41,7 @@ Monster::Monster(MonsterType* mType) :
 	baseSpeed = mType->info.baseSpeed;
 	internalLight = mType->info.light;
 	hiddenHealth = mType->info.hiddenHealth;
+	creature_subtype = CreatureSubType::Monster;
 	targetList.reserve(24);
 
 	// register creature events
@@ -1921,9 +1922,11 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
         if (caller == owner)
             return CREATURETYPE_SUMMON_OWN;
 
-        if (auto calling_player = caller->getPlayer(); calling_player)
+		auto caller_type = caller->getCreatureSubType();
+
+        if (caller_type == CreatureSubType::Player; auto calling_player = std::static_pointer_cast<Player>(caller))
         {
-            if (auto player = std::dynamic_pointer_cast<Player>(owner); player)
+            if (owner->getCreatureSubType() == CreatureSubType::Player; auto player = std::static_pointer_cast<Player>(owner))
             {
                 // Todo : we could set priority in config for party of guild, or allow as aditional param
                 auto owner_guild = player->getGuild();
@@ -1941,7 +1944,7 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
                 return CREATURETYPE_SUMMON_OTHER;
             }
 
-            if (auto monster = owner->getMonster(); monster)
+			if (owner->getCreatureSubType() == CreatureSubType::Monster; auto monster = std::static_pointer_cast<Monster>(owner))
             {
                 for (const auto& weakPtr : monster->getTargetList())
                 {
@@ -1951,7 +1954,7 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
             }
         }
 
-        if (auto calling_monster = std::dynamic_pointer_cast<Monster>(caller); calling_monster)
+        if (caller_type == CreatureSubType::Monster; auto calling_monster = std::static_pointer_cast<Monster>(caller))
         {
             if (auto player = std::dynamic_pointer_cast<Player>(owner); player)
             {

@@ -13466,40 +13466,53 @@ int LuaScriptInterface::luaPlayerSetEditHouse(lua_State* L)
 int LuaScriptInterface::luaPlayerSetGhostMode(lua_State* L)
 {
 	// player:setGhostMode(enabled[, magicEffect = CONST_ME_TELEPORT])
-	const auto player = getSharedPtr<Player>(L, 1);
-	if (!player) {
+	const auto& player = getSharedPtr<Player>(L, 1);
+	if (not player)
+	{
 		lua_pushnil(L);
 		return 1;
 	}
 
 	const bool enabled = getBoolean(L, 2);
-	if (player->isInGhostMode() == enabled) {
+	if (player->isInGhostMode() == enabled)
+	{
 		pushBoolean(L, true);
 		return 1;
 	}
 
 	const auto magicEffect = getNumber<MagicEffectClasses>(L, 3, CONST_ME_TELEPORT);
-
 	player->switchGhostMode();
-
 	const auto tile = player->getTile();
-	const Position& position = player->getPosition();
+	const auto& position = player->getPosition();
 	const bool isInvisible = player->isInvisible();
 
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, position, true, true);
-	for (auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
 
-		PlayerPtr spectatorPlayer = std::static_pointer_cast<Player>(spectator);
-		if (spectatorPlayer != player && !spectatorPlayer->isAccessPlayer()) {
-			if (enabled) {
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (auto& spectator : players)
+	{
+		auto spectatorPlayer = std::static_pointer_cast<Player>(spectator);
+
+		if (spectatorPlayer != player and not spectatorPlayer->isAccessPlayer())
+		{
+			if (enabled)
+			{
 				spectatorPlayer->sendRemoveTileCreature(player, position, tile->getClientIndexOfCreature(spectatorPlayer, player));
-			} else {
+			}
+			else
+			{
 				spectatorPlayer->sendCreatureAppear(player, position, magicEffect);
 			}
-		} else {
-			if (isInvisible) {
+		}
+		else
+		{
+			if (isInvisible)
+			{
 				continue;
 			}
 
@@ -13507,18 +13520,21 @@ int LuaScriptInterface::luaPlayerSetGhostMode(lua_State* L)
 		}
 	}
 
-	if (player->isInGhostMode()) {
-		for (const auto& val : g_game.getPlayers() | std::views::values) {
-			if (!val->isAccessPlayer()) {
+	if (player->isInGhostMode())
+	{
+		for (const auto& val : g_game.getPlayers() | std::views::values) 
+		{
+			if (not val->isAccessPlayer())
 				val->notifyStatusChange(player, VIPSTATUS_OFFLINE);
-			}
 		}
 		IOLoginData::updateOnlineStatus(player->getGUID(), false);
-	} else {
-		for (const auto& val : g_game.getPlayers() | std::views::values) {
-			if (!val->isAccessPlayer()) {
+	}
+	else
+	{
+		for (const auto& val : g_game.getPlayers() | std::views::values)
+		{
+			if (not val->isAccessPlayer())
 				val->notifyStatusChange(player, VIPSTATUS_ONLINE);
-			}
 		}
 		IOLoginData::updateOnlineStatus(player->getGUID(), true);
 	}
