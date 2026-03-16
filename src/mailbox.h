@@ -10,7 +10,10 @@
 class Mailbox final : public Item, public Cylinder
 {
 	public:
-		explicit Mailbox(const uint16_t itemId) : Item(itemId) {}
+		explicit Mailbox(const uint16_t itemId) : Item(itemId)
+		{
+			item_subtype = ItemSubType::Mailbox;
+		}
 
 		MailboxPtr getMailbox() override {
 			return static_shared_this<Mailbox>();

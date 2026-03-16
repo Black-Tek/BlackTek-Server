@@ -5,7 +5,9 @@
 #include "rewardchest.h"
 
 RewardChest::RewardChest(uint16_t type, bool paginated /*= true*/) :
-    Container{ type, items[type].maxItems, true, paginated } {
+    Container{ type, items[type].maxItems, true, paginated }
+{
+	item_subtype = ItemSubType::RewardChest;
 }
 
 ReturnValue RewardChest::queryAdd(int32_t, const ThingPtr&, uint32_t, uint32_t, CreaturePtr actor/* = std::nullopt*/)

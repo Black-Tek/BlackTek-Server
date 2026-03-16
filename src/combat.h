@@ -169,7 +169,10 @@ class Combat
 class MagicField final : public Item
 {
 	public:
-		explicit MagicField(uint16_t type) : Item(type), createTime(OTSYS_TIME()) {}
+		explicit MagicField(uint16_t type) : Item(type), createTime(OTSYS_TIME())
+		{
+			item_subtype = ItemSubType::MagicField;
+		}
 
 		MagicFieldPtr getMagicField() override {
 			return static_shared_this<MagicField>();

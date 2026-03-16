@@ -6,7 +6,10 @@
 #include "depotlocker.h"
 
 DepotLocker::DepotLocker(uint16_t type) :
-	Container(type), depotId(0) {}
+	Container(type), depotId(0)
+{
+	item_subtype = ItemSubType::DepotLocker;
+}
 
 Attr_ReadValue DepotLocker::readAttr(AttrTypes_t attr, PropStream& propStream)
 {
