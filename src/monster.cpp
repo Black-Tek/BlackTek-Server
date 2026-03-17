@@ -1925,9 +1925,9 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
 
 		auto caller_type = caller->getCreatureSubType();
 
-        if (caller_type == CreatureSubType::Player; auto calling_player = std::static_pointer_cast<Player>(caller))
+        if (auto isPlayer = caller_type == CreatureSubType::Player; auto calling_player = std::static_pointer_cast<Player>(caller))
         {
-            if (owner->getCreatureSubType() == CreatureSubType::Player; auto player = std::static_pointer_cast<Player>(owner))
+            if (auto alsoPlayer = owner->getCreatureSubType() == CreatureSubType::Player; auto player = std::static_pointer_cast<Player>(owner))
             {
                 // Todo : we could set priority in config for party of guild, or allow as aditional param
                 auto owner_guild = player->getGuild();
@@ -1945,7 +1945,7 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
                 return CREATURETYPE_SUMMON_OTHER;
             }
 
-			if (owner->getCreatureSubType() == CreatureSubType::Monster; auto monster = std::static_pointer_cast<Monster>(owner))
+			if (auto isMonster = owner->getCreatureSubType() == CreatureSubType::Monster; auto monster = std::static_pointer_cast<Monster>(owner))
             {
                 for (const auto& weakPtr : monster->getTargetList())
                 {
@@ -1955,7 +1955,7 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
             }
         }
 
-        if (caller_type == CreatureSubType::Monster; auto calling_monster = std::static_pointer_cast<Monster>(caller))
+        if (auto isMonster = caller_type == CreatureSubType::Monster; auto calling_monster = std::static_pointer_cast<Monster>(caller))
         {
             if (auto player = owner->getPlayer(); player)
             {
