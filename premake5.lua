@@ -16,7 +16,8 @@ project "Black-Tek-Server"
     files { "src/**.cpp", "src/**.h" }
     pchheader "otpch.h"
     pchsource "src/otpch.cpp"
-    flags { "MultiProcessorCompile" }
+    enablepch "On"
+    multiprocessorcompile "On"
     enableunitybuild "On"
     intrinsics "On"
     editandcontinue "Off"
@@ -71,7 +72,7 @@ project "Black-Tek-Server"
         staticruntime "Off"
         symbols "On"
         optimize "Debug"
-        flags { "NoIncrementalLink" }
+        incrementallink "Off"
 
     filter "configurations:Release"
         defines { "NDEBUG" }

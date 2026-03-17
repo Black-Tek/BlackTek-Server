@@ -69,7 +69,7 @@ jobs:
         cd premake-core
         make -f Bootstrap.mak linux
         cd ..
-        ./premake-core/bin/release/premake5 gmake2
+        ./premake-core/bin/release/premake5 gmake
     
     - name: Setup vcpkg environment
       env:
