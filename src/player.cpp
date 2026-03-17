@@ -701,6 +701,7 @@ static std::vector<uint32_t> GetDiaganolDeflectArea(uint32_t targets) {
 Player::Player(ProtocolGame_ptr p) :
 	lastPing(OTSYS_TIME()), lastPong(lastPing), client(std::move(p)), inbox(std::make_shared<Inbox>(ITEM_INBOX)), storeInbox(std::make_shared<StoreInbox>(ITEM_STORE_INBOX))
 {
+	thing_subtype = ThingSubType::Player;
 	creature_subtype = CreatureSubType::Player;
 	cylinder_subtype = CylinderSubType::Player;
 }
@@ -2193,14 +2194,14 @@ void Player::checkTradeState(const ItemPtr& item)
 	if (tradeItem == item) {
 		g_game.internalCloseTrade(this->getPlayer());
 	} else {
-		auto container = std::dynamic_pointer_cast<Container>(item->getParent());
+		auto container = item->getParent()->getContainer();
 		while (container) {
 			if (container == tradeItem) {
 				g_game.internalCloseTrade(this->getPlayer());
 				break;
 			}
 
-			container = std::dynamic_pointer_cast<Container>(container->getParent());
+			container = container->getParent()->getContainer();
 		}
 	}
 }
@@ -3009,7 +3010,7 @@ void Player::autoCloseContainers(const ContainerPtr container)
 				break;
 			}
 
-			tmpContainer = dynamic_pointer_cast<Container>(tmpContainer->getParent());
+			tmpContainer = tmpContainer->getParent()->getContainer();
 		}
 	}
 
@@ -3594,7 +3595,7 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 		destItem = destThing->getItem();
 	}
 
-	if (auto subCylinder = std::dynamic_pointer_cast<Cylinder>(destThing))
+	if (auto subCylinder = destThing->getCylinder())
 	{
 		index = INDEX_WHEREEVER;
 		destItem.reset();
@@ -3919,7 +3920,7 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 		assert(i ? i->getContainer() != nullptr : true);
 
 		if (i) {
-			requireListUpdate = std::dynamic_pointer_cast<Container>(i)->getHoldingPlayer() != getPlayer();
+			requireListUpdate = i->getContainer()->getHoldingPlayer() != getPlayer();
 		} else {
 			requireListUpdate = newParent != getPlayer();
 		} 

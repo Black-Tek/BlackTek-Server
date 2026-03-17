@@ -491,6 +491,7 @@ void AccessList::getList(std::string& list) const
 
 Door::Door(const uint16_t type) : Item(type)
 {
+	thing_subtype = ThingSubType::Door;
 	item_subtype = ItemSubType::Door;
 }
 

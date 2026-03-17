@@ -108,6 +108,7 @@ class HouseTransferItem final : public Item
 
 		explicit HouseTransferItem(House* house) : Item(0), house(house)
 		{
+			thing_subtype = ThingSubType::HouseTransferItem;
 			item_subtype = ItemSubType::HouseTransferItem;
 		}
 

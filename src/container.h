@@ -60,6 +60,14 @@ class Container : public Item, public Cylinder
 			return static_shared_this<const Container>();
 		}
 
+		CylinderPtr getCylinder() override final {
+			return static_shared_this<Container>();
+		}
+
+		CylinderConstPtr getCylinder() const override final {
+			return static_shared_this<const Container>();
+		}
+
 		ContainerSubType getContainerSubType() const {
 			return container_subtype;
 		}

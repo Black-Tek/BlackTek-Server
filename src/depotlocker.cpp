@@ -8,6 +8,7 @@
 DepotLocker::DepotLocker(uint16_t type) :
 	Container(type), depotId(0)
 {
+	thing_subtype = ThingSubType::DepotLocker;
 	item_subtype = ItemSubType::DepotLocker;
 	container_subtype = ContainerSubType::DepotLocker;
 	cylinder_subtype = CylinderSubType::DepotLocker;

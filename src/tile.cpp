@@ -811,10 +811,10 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
 
 ReturnValue Tile::queryAdd(int32_t, const ThingPtr& thing, uint32_t, uint32_t flags, CreaturePtr mover)
 {
-	if (auto creature = std::dynamic_pointer_cast<Creature>(thing))
+	if (auto creature = thing->getCreature())
 		return queryAdd(creature, flags);
 
-	if (auto item = std::dynamic_pointer_cast<Item>(thing))
+	if (auto item = thing->getItem())
 		return queryAdd(item, flags, mover);
 
 	std::cout << "|| WARNING || Tile::queryAdd() passed the object "<< typeid(thing).name() << ", that is not a creature or item! " << "\n";

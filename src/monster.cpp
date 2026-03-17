@@ -41,6 +41,7 @@ Monster::Monster(MonsterType* mType) :
 	baseSpeed = mType->info.baseSpeed;
 	internalLight = mType->info.light;
 	hiddenHealth = mType->info.hiddenHealth;
+	thing_subtype = ThingSubType::Monster;
 	creature_subtype = CreatureSubType::Monster;
 	targetList.reserve(24);
 
@@ -1956,7 +1957,7 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
 
         if (caller_type == CreatureSubType::Monster; auto calling_monster = std::static_pointer_cast<Monster>(caller))
         {
-            if (auto player = std::dynamic_pointer_cast<Player>(owner); player)
+            if (auto player = owner->getPlayer(); player)
             {
                 for (const auto& weakPtr : calling_monster->getTargetList())
                 {

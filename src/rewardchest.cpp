@@ -7,6 +7,7 @@
 RewardChest::RewardChest(uint16_t type, bool paginated /*= true*/) :
     Container{ type, items[type].maxItems, true, paginated }
 {
+	thing_subtype = ThingSubType::RewardChest;
 	item_subtype = ItemSubType::RewardChest;
 	container_subtype = ContainerSubType::RewardChest;
 	cylinder_subtype = CylinderSubType::RewardChest;

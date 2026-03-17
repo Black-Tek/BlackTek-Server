@@ -141,8 +141,16 @@ class Player final : public Creature, public Cylinder
 		PlayerPtr getPlayer() override {
 			return static_shared_this<Player>();
 		}
-	
+
 		PlayerConstPtr getPlayer() const override {
+			return static_shared_this<const Player>();
+		}
+
+		CylinderPtr getCylinder() override final {
+			return static_shared_this<Player>();
+		}
+
+		CylinderConstPtr getCylinder() const override final {
 			return static_shared_this<const Player>();
 		}
 

@@ -171,6 +171,7 @@ class MagicField final : public Item
 	public:
 		explicit MagicField(uint16_t type) : Item(type), createTime(OTSYS_TIME())
 		{
+			thing_subtype = ThingSubType::MagicField;
 			item_subtype = ItemSubType::MagicField;
 		}
 

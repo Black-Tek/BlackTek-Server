@@ -77,6 +77,7 @@ Npc::Npc(const std::string& name) :
 	masterRadius(-1),
 	loaded(false)
 {
+	thing_subtype = ThingSubType::Npc;
 	creature_subtype = CreatureSubType::Npc;
 	reset();
 }

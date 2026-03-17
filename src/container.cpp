@@ -18,6 +18,7 @@ Container::Container(uint16_t type, uint16_t size, bool unlocked /*= true*/, boo
 	unlocked(unlocked),
 	pagination(pagination)
 {
+	thing_subtype = ThingSubType::Container;
 	item_subtype = ItemSubType::Container;
 	cylinder_subtype = CylinderSubType::Container;
 }
@@ -57,7 +58,7 @@ Container::~Container()
 
 ItemPtr Container::clone() const
 {
-	const auto& clone = std::dynamic_pointer_cast<Container>(Item::clone());
+	const auto& clone = Item::clone()->getContainer();
 	for (const auto& item : itemlist) {
 		clone->addItem(item->clone());
 	}
@@ -75,12 +76,13 @@ ContainerPtr Container::getParentContainer() {
 
 std::string Container::getName(bool addArticle /* = false*/) const {
 	const ItemType& it = items[id];
-	return getNameDescription(it, std::dynamic_pointer_cast<const Container>(shared_from_this()), -1, addArticle);
+	return getNameDescription(it, getContainer(), -1, addArticle);
 }
 
 bool Container::hasParent()
 {
-	return getID() != ITEM_BROWSEFIELD && std::dynamic_pointer_cast<Player>(getParent()) == nullptr;
+	const auto parent = getParent();
+	return getID() != ITEM_BROWSEFIELD and not (parent and parent->getCylinderSubType() == CylinderSubType::Player);
 }
 
 void Container::addItem(const ItemPtr& item)
@@ -221,18 +223,20 @@ void Container::onAddContainerItem(ItemPtr& item)
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), false, true, 1, 1, 1, 1);
 	
-	for (auto spectator : spectators) {
+	for (auto& spectator : spectators)
+	{
 		if (const auto c_player = spectator->getPlayer())
 		{
-			const auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
+			const auto t_container = getContainer();
 			c_player->sendAddContainerItem(t_container, item);
 		}
 	}
 
-	for (auto spectator : spectators) {
+	for (auto& spectator : spectators)
+	{
 		if (const auto c_player = spectator->getPlayer())
 		{
-			const auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
+			const auto t_container = getContainer();
 			c_player->onAddContainerItem(item);
 		}
 	}
@@ -243,18 +247,20 @@ void Container::onUpdateContainerItem(uint32_t index, const ItemPtr& oldItem, co
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), false, true, 1, 1, 1, 1);
 	
-	for (auto spectator : spectators) {
+	for (auto& spectator : spectators)
+	{
 		if (const auto c_player = spectator->getPlayer())
 		{
-			auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
+			auto t_container = getContainer();
 			c_player->sendUpdateContainerItem(t_container, index, newItem);
 		}
 	}
 
-	for (auto spectator : spectators) {
+	for (auto& spectator : spectators)
+	{
 		if (const auto c_player = spectator->getPlayer())
 		{
-			auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
+			auto t_container = getContainer();
 			c_player->onUpdateContainerItem(t_container, oldItem, newItem);
 		}
 	}
@@ -265,18 +271,20 @@ void Container::onRemoveContainerItem(uint32_t index, const ItemPtr& item)
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), false, true, 1, 1, 1, 1);
 	
-	for (auto spectator : spectators) {
+	for (auto spectator : spectators)
+	{
 		if (const auto c_player = spectator->getPlayer())
 		{
-			auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
+			auto t_container = getContainer();
 			c_player->sendRemoveContainerItem(t_container, index);
 		}
 	}
 
-	for (auto spectator : spectators) {
+	for (auto spectator : spectators)
+	{
 		if (const auto c_player = spectator->getPlayer())
 		{
-			auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
+			auto t_container = getContainer();
 			c_player->onRemoveContainerItem(t_container, item);
 		}
 	}
@@ -503,10 +511,10 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 		if (auto itemFromIndex = getItemByIndex(index))
 			destItem = itemFromIndex;
 		
-		if (destItem and std::dynamic_pointer_cast<Cylinder>(destItem))
+		if (destItem and destItem->getCylinder())
 		{
 			index = INDEX_WHEREEVER;
-			return std::dynamic_pointer_cast<Cylinder>(destItem);
+			return destItem->getCylinder();
 		}
 	}
 
@@ -782,7 +790,7 @@ ContainerIterator Container::iterator() const
 {
 	ContainerIterator cit;
 	if (!itemlist.empty()) {
-		cit.over.push_back(std::dynamic_pointer_cast<const Container>(shared_from_this()));
+		cit.over.push_back(getContainer());
 		cit.cur = itemlist.begin();
 	}
 	return cit;

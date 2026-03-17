@@ -406,11 +406,12 @@ void Game::internalGetPosition(const ItemPtr& item, Position& pos, uint8_t& stac
 
 	
 	if (auto topParent = item->getTopParent()) {
-		if (auto player = std::dynamic_pointer_cast<Player>(topParent)) {
+		const auto topCreature = topParent->getCreature();
+		if (auto player = topCreature ? topCreature->getPlayer() : nullptr) {
 			pos.x = 0xFFFF;
 
-                if (const auto container = std::dynamic_pointer_cast<Container>(item->getParent())) {
-                    pos.y = static_cast<uint16_t>(0x40) | static_cast<uint16_t>(player->getContainerID(std::dynamic_pointer_cast<const Container>(container)));
+                if (const auto container = item->getParent()->getContainer()) {
+                    pos.y = static_cast<uint16_t>(0x40) | static_cast<uint16_t>(player->getContainerID(container));
                     pos.z = container->getThingIndex(item);
                     stackpos = pos.z;
                 } else {
@@ -1227,7 +1228,7 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 		}
 	}
 
-	if (ContainerPtr itemContainer = std::dynamic_pointer_cast<Container>(item)) {
+	if (ContainerPtr itemContainer = item->getContainer()) {
 		if (itemContainer->isRewardCorpse() || item->getID() == ITEM_REWARD_CONTAINER) {
 			return RETURNVALUE_NOERROR; // silently ignore move
 		}
@@ -2508,7 +2509,7 @@ void Game::playerMoveUpContainer(const uint32_t playerId, uint8_t cid)
 		return;
 	}
 
-	auto parentContainer = std::dynamic_pointer_cast<Container>(container->getRealParent());
+	auto parentContainer = container->getRealParent()->getContainer();
 	if (!parentContainer) {
 		const auto tile = container->getTile();
 		if (!tile) {
@@ -2602,8 +2603,10 @@ void Game::playerWriteItem(const uint32_t playerId, const uint32_t windowTextId,
 	}
 
 	const auto topParent = writeItem->getTopParent();
+	const auto topParentCreature = topParent ? topParent->getCreature() : nullptr;
 
-	if (const auto owner = std::dynamic_pointer_cast<Player>(topParent); owner && owner != player) {
+	if (const auto& owner = topParentCreature ? topParentCreature->getPlayer() : nullptr; owner and owner != player)
+	{
 		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
 		return;
 	}
@@ -5200,7 +5203,7 @@ void Game::changeLight(const CreatureConstPtr& creature)
 
 	for (const auto& spectator : players)
 	{
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+		assert(spectator->getCreatureSubType() == CreatureSubType::Player);
 		std::static_pointer_cast<Player>(spectator)->sendCreatureLight(creature);
 	}
 }

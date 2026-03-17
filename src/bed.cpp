@@ -14,6 +14,7 @@ extern Game g_game;
 
 BedItem::BedItem(uint16_t id) : Item(id)
 {
+	thing_subtype = ThingSubType::BedItem;
 	item_subtype = ItemSubType::BedItem;
 	internalRemoveSleeper();
 }

@@ -8,6 +8,7 @@
 
 Inbox::Inbox(uint16_t type) : Container(type, 30, false, true)
 {
+	thing_subtype = ThingSubType::Inbox;
 	item_subtype = ItemSubType::Inbox;
 	container_subtype = ContainerSubType::Inbox;
 	cylinder_subtype = CylinderSubType::Inbox;

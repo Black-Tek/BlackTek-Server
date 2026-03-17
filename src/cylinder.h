@@ -223,6 +223,7 @@ class VirtualCylinder final : public Cylinder
 
 		VirtualCylinder()
 		{
+			thing_subtype = ThingSubType::Virtual;
 			cylinder_subtype = CylinderSubType::Virtual;
 		}
 
