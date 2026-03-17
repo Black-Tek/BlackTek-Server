@@ -7185,9 +7185,12 @@ std::vector<ItemPtr> Game::getMarketItemList(const uint16_t wareId, const uint16
 	uint16_t count = 0;
 	std::list<ContainerPtr> containers{ player->getInbox() };
 
-	for (const auto& val : player->depotChests | std::views::values) {
-		if (!val->empty()) {
-			containers.push_front(val);
+	if (player->depotChests)
+	{
+		for (const auto& val : *player->depotChests | std::views::values) 
+		{
+			if (not val->empty())
+				containers.push_front(val);
 		}
 	}
 

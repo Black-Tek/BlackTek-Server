@@ -369,6 +369,7 @@ class ProtocolGame final : public Protocol
 		}
 
 		std::unordered_set<uint32_t> knownCreatureSet;
+		ShopInfoList shopItemList;
 		PlayerPtr player = nullptr;
 		std::string account_name{};
 		std::string account_password{};

@@ -246,8 +246,11 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			return;
 		}
 
-		if (not IOLoginData::loadPlayerById(player, player->getGUID()))
+		std::vector<Condition*> initialConditions;
+
+		if (not IOLoginData::loadPlayerById(player, player->getGUID(), &initialConditions))
 		{
+			for (auto* c : initialConditions) { delete c; }
 			disconnectClient("Your character could not be loaded.");
 			return;
 		}
@@ -257,6 +260,8 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 		// Todo : add back position spawn determined by config.lua
 		if (isAccountManager)
 		{
+			for (auto* c : initialConditions) { delete c; }
+
 			player->accountNumber = accountId;
 			// sync premium time from player account
 			const auto account = IOLoginData::loadAccount(accountId);
@@ -280,10 +285,14 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			{
 				if (not g_game.placeCreature(player, player->getTemplePosition(), false, true))
 				{
+					for (auto* c : initialConditions) { delete c; }
 					disconnectClient("Temple position is wrong. Contact the administrator.");
 					return;
 				}
 			}
+
+			for (auto* c : initialConditions)
+				player->addCondition(c);
 		}
 
 		if (operatingSystem >= CLIENTOS_OTCLIENT_LINUX)
@@ -1999,11 +2008,12 @@ void ProtocolGame::sendMarketEnter()
 	std::map<uint16_t, uint32_t> depotItems;
 	std::forward_list<ContainerPtr> containerList{ player->getInbox() };
 
-	for (const auto& chest : player->depotChests)
+	if (player->depotChests)
 	{
-		if (not chest.second->empty())
+		for (const auto& chest : *player->depotChests)
 		{
-			containerList.push_front(chest.second);
+			if (not chest.second->empty())
+				containerList.push_front(chest.second);
 		}
 	}
 
@@ -2532,7 +2542,7 @@ void ProtocolGame::sendPvpSituations()
 	msg.add(ServerCode::PvpSituations);  // 0xB8
 	
 	// Open PvP situations - number of players you've attacked recently
-	uint8_t openPvpSituations = static_cast<uint8_t>(std::min<size_t>(player->attackedSet.size(), 255));
+	uint8_t openPvpSituations = static_cast<uint8_t>(std::min<size_t>(player->attackedSet ? player->attackedSet->size() : 0, 255));
 	
 	msg.addByte(openPvpSituations);
 	writeToOutputBuffer(msg);

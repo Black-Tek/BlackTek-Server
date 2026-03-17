@@ -1226,13 +1226,13 @@ class Player final : public Creature, public Cylinder
 	
 		void sendShop(const NpcPtr& npc) const {
 			if (client) {
-				client->sendShop(npc, shopItemList);
+				client->sendShop(npc, client->shopItemList);
 			}
 		}
-	
+
 		void sendSaleItemList() const {
 			if (client) {
-				client->sendSaleItemList(shopItemList);
+				client->sendSaleItemList(client->shopItemList);
 			}
 		}
 	
@@ -1578,39 +1578,72 @@ class Player final : public Creature, public Cylinder
 		void internalAddThing(ThingPtr thing) override;
 		void internalAddThing(uint32_t index, ThingPtr thing) override;
 
-		std::unordered_set<uint32_t> attackedSet;
-		std::unordered_set<uint32_t> VIPList;
+		std::unordered_set<uint32_t>& getAttackedSet() {
+			if (!attackedSet) attackedSet = std::make_unique<std::unordered_set<uint32_t>>();
+			return *attackedSet;
+		}
 
-		std::map<uint8_t, OpenContainer> openContainers;
-		std::map<uint32_t, DepotChestPtr> depotChests;
-		gtl::btree_map<uint32_t, int32_t> storageMap;
+		std::unordered_set<uint32_t>& getVIPList() {
+			if (!VIPList) VIPList = std::make_unique<std::unordered_set<uint32_t>>();
+			return *VIPList;
+		}
 
-		std::vector<std::shared_ptr<Augment>> augments;
+		std::map<uint8_t, OpenContainer>& getOpenContainers() {
+			if (!openContainers) openContainers = std::make_unique<std::map<uint8_t, OpenContainer>>();
+			return *openContainers;
+		}
 
-		std::vector<OutfitEntry> outfits;
+		std::map<uint32_t, DepotChestPtr>& getDepotChests() {
+			if (!depotChests) depotChests = std::make_unique<std::map<uint32_t, DepotChestPtr>>();
+			return *depotChests;
+		}
 
-		std::list<ShopInfo> shopItemList;
+		std::vector<std::shared_ptr<Augment>>& getAugments() {
+			if (!augments) augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+			return *augments;
+		}
 
-		// todo cleanup all these wasteful containers below and above, to reduce the insane size of player objects.
-		std::forward_list<PartyPtr> invitePartyList;
-		std::forward_list<uint32_t> modalWindows;
-		std::forward_list<std::string> learnedInstantSpellList;
-		std::forward_list<Condition*> storedConditionList; // TODO: This variable is only temporarily used when logging in, get rid of it somehow
+		std::vector<OutfitEntry>& getOutfits() {
+			if (!outfits) outfits = std::make_unique<std::vector<OutfitEntry>>();
+			return *outfits;
+		}
 
 		std::string name;
 		std::string guildNick;
 		std::string tempAccountName;
 		std::string tempPassword;
+		gtl::btree_map<uint32_t, int32_t> storageMap;
 
 		Skill skills[SKILL_LAST + 1];
-		LightInfo itemsLight;
-		Position loginPosition;
-		Position lastWalkthroughPosition;
+		std::forward_list<PartyPtr> invitePartyList;
+		std::forward_list<uint32_t> modalWindows;
+		std::forward_list<std::string> learnedInstantSpellList;
+
+		std::unique_ptr<std::unordered_set<uint32_t>> attackedSet;
+		std::unique_ptr<std::unordered_set<uint32_t>> VIPList;
+		std::unique_ptr<std::map<uint8_t, OpenContainer>> openContainers;
+		std::unique_ptr<std::map<uint32_t, DepotChestPtr>> depotChests;
+		std::unique_ptr<std::vector<std::shared_ptr<Augment>>> augments;
+		std::unique_ptr<std::vector<OutfitEntry>> outfits;
+
+		ItemPtr inventory[CONST_SLOT_LAST + 1] = {};
+		StoreInboxPtr storeInbox = nullptr;
+		RewardChestPtr rewardChest = nullptr;
+		DepotLockerPtr depotLocker = nullptr;
+		NpcPtr shopOwner = nullptr;
+		PlayerPtr tradePartner = nullptr;
+		InboxPtr inbox;
+		ItemPtr tradeItem = nullptr;
+		ItemPtr writeItem = nullptr;
+		BedItemPtr bedItem = nullptr;
+		Guild_ptr guild = nullptr;
+		GuildRank_ptr guildRank = nullptr;
+		ProtocolGame_ptr client;
 
 		time_t lastLoginSaved = 0;
 		time_t lastLogout = 0;
 		time_t premiumEndsAt = 0;
-
+		
 		uint64_t experience = 0;
 		uint64_t manaSpent = 0;
 		uint64_t lastAttack = 0;
@@ -1623,25 +1656,12 @@ class Player final : public Creature, public Cylinder
 		int64_t lastPing;
 		int64_t lastPong;
 		int64_t nextAction = 0;
-		ProtocolGame_ptr client;
-
-		BedItemPtr bedItem = nullptr;
-		Guild_ptr guild = nullptr;
-		GuildRank_ptr guildRank = nullptr;
+		
 		Group* group = nullptr;
-		InboxPtr inbox;
-		ItemPtr tradeItem = nullptr;
- 		ItemPtr inventory[CONST_SLOT_LAST + 1] = {};
-		ItemPtr writeItem = nullptr;
 		House* editHouse = nullptr;
-		NpcPtr shopOwner = nullptr;
-		PlayerPtr tradePartner = nullptr;
 		SchedulerTask* walkTask = nullptr;
 		Town* town = nullptr;
 		Vocation* vocation = nullptr;
-		StoreInboxPtr storeInbox = nullptr;
-		RewardChestPtr rewardChest = nullptr;
-		DepotLockerPtr depotLocker = nullptr;
 
 		uint32_t party = 0;
 		uint32_t inventoryWeight = 0;
@@ -1673,10 +1693,17 @@ class Player final : public Creature, public Cylinder
 		int32_t offlineTrainingSkill = -1;
 		int32_t offlineTrainingTime = 0;
 		int32_t idleTime = 0;
+		PlayerSex_t sex = PLAYERSEX_FEMALE;
+		static uint32_t playerAutoID;
 
 		uint16_t lastStatsTrainingTime = 0;
 		uint16_t staminaMinutes = 2520;
 		uint16_t maxWriteLen = 0;
+
+		Position loginPosition;
+		Position lastWalkthroughPosition;
+
+		LightInfo itemsLight;
 
 		uint8_t soul = 0;
 		std::bitset<6> blessings;
@@ -1684,8 +1711,6 @@ class Player final : public Creature, public Cylinder
 		uint8_t magLevelPercent = 0;
 		uint8_t accountManagerState = 0;
 
-
-		PlayerSex_t sex = PLAYERSEX_FEMALE;
 		OperatingSystem_t operatingSystem = CLIENTOS_NONE;
 		BlockType_t lastAttackBlockType = BLOCK_NONE;
 		tradestate_t tradeState = TRADE_NONE;
@@ -1703,7 +1728,7 @@ class Player final : public Creature, public Cylinder
 		bool hasImbuedItemEquipped = false;
 		bool inventoryAbilities[CONST_SLOT_LAST + 1] = {};
 
-		static uint32_t playerAutoID;
+		
 
 		void updateItemsLight(bool internal = false);
 		int32_t getStepSpeed() const override;
