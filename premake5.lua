@@ -14,9 +14,6 @@ project "Black-Tek-Server"
     objdir "build/%{cfg.buildcfg}/obj"
     location ""
     files { "src/**.cpp", "src/**.h" }
-    pchheader "otpch.h"
-    pchsource "src/otpch.cpp"
-    enablepch "On"
     multiprocessorcompile "On"
     enableunitybuild "On"
     intrinsics "On"
@@ -105,6 +102,9 @@ project "Black-Tek-Server"
         vsprops { VcpkgEnableManifest = "true" }
         files {"resources.rc", "blackteklogo.ico"}
         symbolspath "$(OutDir)$(TargetName).pdb"
+        pchheader "otpch.h"
+        pchsource "src/otpch.cpp"
+        enablepch "On"
 
     filter { "system:windows", "configurations:Release" }
         vsprops { VcpkgTriplet = "x64-windows-static" }
