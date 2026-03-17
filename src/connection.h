@@ -90,7 +90,7 @@ class Connection : public std::enable_shared_from_this<Connection>
 		}
 		friend class ServicePort;
 
-		NetworkMessage msg;
+		NetworkMessagePtr msg;
 		boost::asio::steady_timer readTimer;
 		boost::asio::steady_timer writeTimer;
 		boost::asio::strand<boost::asio::io_context::executor_type> strand;

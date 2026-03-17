@@ -4,6 +4,7 @@
 #ifndef FS_NETWORKMESSAGE_H
 #define FS_NETWORKMESSAGE_H
 
+#include <memory>
 #include "const.h"
 #include "thing.h"
 
@@ -162,6 +163,26 @@ class NetworkMessage
 			}
 			return true;
 		}
+};
+
+using NetworkMessagePtr = std::shared_ptr<NetworkMessage>;
+
+class NetworkMessagePool
+{
+	public:
+		// non-copyable
+		NetworkMessagePool(const NetworkMessagePool&) = delete;
+		NetworkMessagePool& operator=(const NetworkMessagePool&) = delete;
+
+		static NetworkMessagePool& getInstance() {
+			static NetworkMessagePool instance;
+			return instance;
+		}
+
+		static NetworkMessagePtr getNetworkMessage();
+
+	private:
+		NetworkMessagePool() = default;
 };
 
 #endif // #ifndef __NETWORK_MESSAGE_H__
