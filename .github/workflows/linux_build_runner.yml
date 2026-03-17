@@ -33,13 +33,13 @@ jobs:
     - name: Set up Git
       uses: actions/checkout@v4
 
-    - name: Install GCC 14
+    - name: Install GCC 15
       run: |
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         sudo apt-get update
-        sudo apt-get install -y gcc-14 g++-14
-        echo "CC=gcc-14" >> $GITHUB_ENV
-        echo "CXX=g++-14" >> $GITHUB_ENV
+        sudo apt-get install -y gcc-15 g++-15
+        echo "CC=gcc-15" >> $GITHUB_ENV
+        echo "CXX=g++-15" >> $GITHUB_ENV
     
     - name: Restore vcpkg cache
       uses: actions/cache@v3
