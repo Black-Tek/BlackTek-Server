@@ -1,3 +1,4 @@
+#include "otpch.h"
 #include "damagemodifier.h"
 
 std::shared_ptr<DamageModifier> DamageModifier::makeModifier(uint8_t stance, uint8_t modType, uint16_t amount, ModFactor factor, uint8_t chance, CombatType_t combatType, CombatOrigin source, CreatureType_t creatureType, RaceType_t race, std::string_view creatureName) {

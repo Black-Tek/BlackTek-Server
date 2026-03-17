@@ -14,6 +14,8 @@ project "Black-Tek-Server"
     objdir "build/%{cfg.buildcfg}/obj"
     location ""
     files { "src/**.cpp", "src/**.h" }
+    pchheader "otpch.h"
+    pchsource "src/otpch.cpp"
     flags { "MultiProcessorCompile" }
     enableunitybuild "On"
     intrinsics "On"
