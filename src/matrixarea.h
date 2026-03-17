@@ -1,42 +1,58 @@
-#ifndef BTS_MATRIXAREA
-#define BTS_MATRIXAREA
+// Copyright 2024 Black Tek Server Authors. All rights reserved.
+// Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#include <valarray>
+#pragma once
 
-class MatrixArea
+#include <mdspan>
+#include <vector>
+#include <cstdint>
+#include <utility>
+
+namespace BlackTek
 {
-	using Center = std::pair<uint32_t, uint32_t>;
-	using Container = std::valarray<bool>;
 
-public:
-	MatrixArea() = default;
-	MatrixArea(uint32_t rows, uint32_t cols) : arr(rows * cols), rows{rows}, cols{cols} {}
+    class MatrixArea
+    {
+        using Center = std::pair<uint32_t, uint32_t>;
+        using Storage = std::vector<uint8_t>;
+        using Extents = std::dextents<uint32_t, 2>;
 
-	bool operator()(uint32_t row, uint32_t col) const { return arr[row * cols + col]; }
-	bool& operator()(uint32_t row, uint32_t col) { return arr[row * cols + col]; }
+    public:
+        using View = std::mdspan<uint8_t, Extents>;
+        using ConstView = std::mdspan<const uint8_t, Extents>;
 
-	void setCenter(uint32_t y, uint32_t x) { center = std::make_pair(x, y); }
-	const Center& getCenter() const { return center; }
+        MatrixArea() = default;
+        MatrixArea(uint32_t rows, uint32_t cols) : storage(rows * cols, 0), rows{rows}, cols{cols} {}
 
-	uint32_t getRows() const { return rows; }
-	uint32_t getCols() const { return cols; }
+        bool operator()(uint32_t row, uint32_t col) const { return GetView()[row, col] != 0; }
+        uint8_t& operator()(uint32_t row, uint32_t col) { return GetView()[row, col]; }
 
-	[[nodiscard]] MatrixArea rotate90() const;
-	[[nodiscard]] MatrixArea rotate180() const;
-	[[nodiscard]] MatrixArea rotate270() const;
+        View GetView() { return View{storage.data(), rows, cols}; }
+        ConstView GetView() const { return ConstView{storage.data(), rows, cols}; }
 
-	operator bool() const { return rows == 0 || cols == 0; }
+        void SetCenter(uint32_t y, uint32_t x) { center = {x, y}; }
+        const Center& GetCenter() const { return center; }
 
-private:
-	MatrixArea(Center center, uint32_t rows, uint32_t cols, Container&& arr) :
-	    arr{std::move(arr)}, center{std::move(center)}, rows{rows}, cols{cols}
-	{}
+        uint32_t GetRows() const { return rows; }
+        uint32_t GetCols() const { return cols; }
 
-	Container arr = {};
-	Center center = {};
-	uint32_t rows = 0, cols = 0;
-};
+        [[nodiscard]] MatrixArea Rotate90()  const;
+        [[nodiscard]] MatrixArea Rotate180() const;
+        [[nodiscard]] MatrixArea Rotate270() const;
 
-MatrixArea createArea(const std::vector<uint32_t>& vec, uint32_t rows);
+        operator bool() const { return rows == 0 or cols == 0; }
 
-#endif
+    private:
+        MatrixArea(Center center, uint32_t rows, uint32_t cols, Storage&& storage)
+            : storage{std::move(storage)}, center{std::move(center)}, rows{rows}, cols{cols}
+        {}
+
+        Storage storage = {};
+        Center center = {};
+        uint32_t rows = 0;
+        uint32_t cols = 0;
+    };
+
+MatrixArea CreateArea(const std::vector<uint32_t>& vec, uint32_t rows);
+
+}

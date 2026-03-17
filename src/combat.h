@@ -75,11 +75,11 @@ class AreaCombat
 		void setupArea(int32_t length, int32_t spread);
 		void setupArea(int32_t radius);
 		void setupExtArea(const std::vector<uint32_t>& vec, uint32_t rows);
-		const MatrixArea& getArea(const Position& centerPos, const Position& targetPos) const;
+		const BlackTek::MatrixArea& getArea(const Position& centerPos, const Position& targetPos) const;
 		
 
 	private:
-		std::vector<MatrixArea> areas;
+		std::vector<BlackTek::MatrixArea> areas;
 		bool hasExtArea = false;
 };
 
