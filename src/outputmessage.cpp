@@ -16,7 +16,7 @@ const uint16_t NETWORKMESSAGE_FREE_LIST_CAPACITY = 1024;
 
 } // namespace
 
-NetworkMessage_ptr NetworkMessagePool::getNetworkMessage()
+NetworkMessagePtr NetworkMessagePool::getNetworkMessage()
 {
 	return std::allocate_shared<NetworkMessage>(LockfreePoolingAllocator<void, NETWORKMESSAGE_FREE_LIST_CAPACITY>());
 }
