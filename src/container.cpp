@@ -367,7 +367,7 @@ ReturnValue Container::queryAdd(int32_t index, const ThingPtr& thing, uint32_t c
 
 	const auto topParent = getTopParent();
 
-	if (actor and g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
+	if (actor and g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
 	{
 		if (topParent->getTile()->isHouseTile())
 		{
@@ -466,7 +466,7 @@ ReturnValue Container::queryRemove(const ThingPtr& thing, uint32_t count, uint32
 	if (not item->isMoveable() and not hasBitSet(FLAG_IGNORENOTMOVEABLE, flags))
 		return RETURNVALUE_NOTMOVEABLE;
 
-	if (actor and g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
+	if (actor and g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
 	{
 		if (auto ground_tile = item->getTile(); ground_tile && ground_tile->isHouseTile())
 		{

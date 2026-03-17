@@ -1,0 +1,17 @@
+# Monster and spawn configuration
+
+[despawn]
+# range is the number of floors a monster can be from its spawn position
+range                = 2
+# radius is the tile distance a monster can be from its spawn position
+radius               = 50
+# remove_on_despawn = false teleports the monster back to spawn instead of removing it
+remove_on_despawn    = true
+# walk_to_spawn_radius is the allowed distance when the monster has no targets (0 = disabled)
+walk_to_spawn_radius = 15
+
+[spawn]
+summon_proximity       = 2
+# force_monstertype_load loads all monster types on startup to validate them.
+# Disable to save memory if no errors appear at startup.
+force_monstertype_load = true

@@ -488,7 +488,7 @@ void Monster::onCreatureLeave(const CreaturePtr& creature)
 		updateIdleStatus();
 
 		if (!isSummon() && targetList.empty()) {
-			int32_t walkToSpawnRadius = g_config.getNumber(ConfigManager::DEFAULT_WALKTOSPAWNRADIUS);
+			int32_t walkToSpawnRadius = g_config.GetNumber(ConfigManager::DEFAULT_WALKTOSPAWNRADIUS);
 			if (walkToSpawnRadius > 0 && !Position::areInRange(position, masterPos, walkToSpawnRadius, walkToSpawnRadius)) {
 				walkToSpawn();
 			}
@@ -686,7 +686,7 @@ void Monster::onThink(const uint32_t interval)
 	{
 		g_game.addMagicEffect(getPosition(), CONST_ME_POFF);
 
-		if (g_config.getBoolean(ConfigManager::REMOVE_ON_DESPAWN)) 
+		if (g_config.GetBoolean(ConfigManager::REMOVE_ON_DESPAWN)) 
 		{
 			g_game.removeCreature(self, false);
 		} 
@@ -1627,12 +1627,12 @@ void Monster::death(const CreaturePtr&)
 			for (const auto& [playerId, score] : bossScoreTable.playerScoreTable) {
 
 				const auto contributionScore =
-					(score.damageDone * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE))
-					+ (score.damageTaken * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN))
-					+ (score.healingDone * (g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE)));
+					(score.damageDone * g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE))
+					+ (score.damageTaken * g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN))
+					+ (score.healingDone * (g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE)));
 				// we should never see 0's here, but better safe than sorry.
 				const float expectedScore = (contributionScore) ? (totalScore / (contributors * 3.0)) : 0;
-				const int32_t lootRate = std::max<int32_t>(g_config.getFloat(ConfigManager::REWARD_BASE_RATE), 1.0);
+				const int32_t lootRate = std::max<int32_t>(g_config.GetFloat(ConfigManager::REWARD_BASE_RATE), 1.0);
 				
 				const auto& player = g_game.getPlayerByGUID(playerId);
 				const auto& rewardContainer = Item::CreateItem(ITEM_REWARD_CONTAINER)->getContainer();
@@ -1871,7 +1871,7 @@ void Monster::getPathSearchParams(const CreatureConstPtr& creature, FindPathPara
 
 	if (isSummon()) {
 		if (getMaster() == creature) {
-			fpp.maxTargetDist = g_config.getNumber(ConfigManager::SUMMON_PROXIMITY);
+			fpp.maxTargetDist = g_config.GetNumber(ConfigManager::SUMMON_PROXIMITY);
 			fpp.fullPathSearch = true;
 		} else if (mType->info.targetDistance <= 1) {
 			fpp.fullPathSearch = true;

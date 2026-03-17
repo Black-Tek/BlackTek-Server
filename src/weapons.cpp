@@ -498,14 +498,14 @@ void Weapon::onUsedWeapon(const PlayerPtr& player, const ItemPtr& item, const Ti
 	CylinderPtr t_holder = destTile->getTile();
 	switch (action) {
 		case WEAPONACTION_REMOVECOUNT:
-			if (g_config.getBoolean(ConfigManager::REMOVE_WEAPON_AMMO)) {
+			if (g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_AMMO)) {
 				Weapon::decrementItemCount(item);
 			}
 			break;
 
 		case WEAPONACTION_REMOVECHARGE: {
 			uint16_t charges = item->getCharges();
-			if (charges != 0 && g_config.getBoolean(ConfigManager::REMOVE_WEAPON_CHARGES)) {
+			if (charges != 0 && g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_CHARGES)) {
 				g_game.transformItem(item, item->getID(), charges - 1);
 			}
 			break;

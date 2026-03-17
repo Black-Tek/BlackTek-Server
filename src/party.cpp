@@ -201,7 +201,7 @@ bool Party::joinParty(const PlayerPtr& player)
 	if (not player or player->getPartyId() != 0)	
         return false;
 
-	auto max_party_size = g_config.getNumber(ConfigManager::MAXIMUM_PARTY_SIZE);
+	auto max_party_size = g_config.GetNumber(ConfigManager::MAXIMUM_PARTY_SIZE);
 
 	if (memberList.size() >= max_party_size)
 		return false;
@@ -303,7 +303,7 @@ bool Party::invitePlayer(const PlayerPtr& player)
 	if (isPlayerInvited(player))
 		return false;
 
-	auto max_invites = g_config.getNumber(ConfigManager::MAXIMUM_INVITE_COUNT);
+	auto max_invites = g_config.GetNumber(ConfigManager::MAXIMUM_INVITE_COUNT);
 
 	if (inviteList.size() >= max_invites)
 	{
@@ -476,8 +476,8 @@ SharedExpStatus_t Party::getMemberSharedExperienceStatus(const PlayerConstPtr& p
 	if (player->getLevel() < minLevel)
 		return SHAREDEXP_LEVELDIFFTOOLARGE;
 
-	const auto share_range = g_config.getNumber(ConfigManager::PARTY_EXP_SHARE_RANGE);
-	const auto floor_range = g_config.getNumber(ConfigManager::PARTY_EXP_SHARE_FLOORS);
+	const auto share_range = g_config.GetNumber(ConfigManager::PARTY_EXP_SHARE_RANGE);
+	const auto floor_range = g_config.GetNumber(ConfigManager::PARTY_EXP_SHARE_FLOORS);
 
 	if (not Position::areInRange(leader->getPosition(), player->getPosition(), share_range, share_range, floor_range))
 		return SHAREDEXP_TOOFARAWAY;
@@ -492,7 +492,7 @@ SharedExpStatus_t Party::getMemberSharedExperienceStatus(const PlayerConstPtr& p
 		}
 
 		uint64_t timeDiff = OTSYS_TIME() - it->second;
-		if (timeDiff > static_cast<uint64_t>(g_config.getNumber(ConfigManager::PZ_LOCKED)))
+		if (timeDiff > static_cast<uint64_t>(g_config.GetNumber(ConfigManager::PZ_LOCKED)))
 		{
 			return SHAREDEXP_MEMBERINACTIVE;
 		}

@@ -119,7 +119,7 @@ void Game::start(ServiceManager* manager)
 	serviceManager = manager;
 	updateWorldTime();
 
-	if (g_config.getBoolean(ConfigManager::DEFAULT_WORLD_LIGHT)) {
+	if (g_config.GetBoolean(ConfigManager::DEFAULT_WORLD_LIGHT)) {
 		g_scheduler.addEvent(createSchedulerTask(EVENT_LIGHTINTERVAL, [this]() { checkLight(); }));
 	}
 	g_scheduler.addEvent(createSchedulerTask(20, [this]() { decay_clean_cycle(); }));
@@ -2248,7 +2248,7 @@ void Game::playerUseItemEx(const uint32_t playerId, const Position& fromPos, con
 	}
 
 	const bool isHotkey = (fromPos.x == 0xFFFF && fromPos.y == 0 && fromPos.z == 0);
-	if (isHotkey && !g_config.getBoolean(ConfigManager::AIMBOT_HOTKEY_ENABLED)) {
+	if (isHotkey && !g_config.GetBoolean(ConfigManager::AIMBOT_HOTKEY_ENABLED)) {
 		return;
 	}
 
@@ -2341,7 +2341,7 @@ void Game::playerUseItem(const uint32_t playerId, const Position& pos, const uin
 	}
 
 	const bool isHotkey = (pos.x == 0xFFFF && pos.y == 0 && pos.z == 0);
-	if (isHotkey && !g_config.getBoolean(ConfigManager::AIMBOT_HOTKEY_ENABLED)) {
+	if (isHotkey && !g_config.GetBoolean(ConfigManager::AIMBOT_HOTKEY_ENABLED)) {
 		return;
 	}
 
@@ -2408,7 +2408,7 @@ void Game::playerUseWithCreature(const uint32_t playerId, const Position& fromPo
 	}
 
 	const bool isHotkey = (fromPos.x == 0xFFFF && fromPos.y == 0 && fromPos.z == 0);
-	if (!g_config.getBoolean(ConfigManager::AIMBOT_HOTKEY_ENABLED)) {
+	if (!g_config.GetBoolean(ConfigManager::AIMBOT_HOTKEY_ENABLED)) {
 		if (creature->getPlayer() || isHotkey) {
 			player->sendCancelMessage(RETURNVALUE_DIRECTPLAYERSHOOT);
 			return;
@@ -2807,7 +2807,7 @@ void Game::playerRequestTrade(const uint32_t playerId, const Position& pos, uint
 		return;
 	}
 
-	if (g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
+	if (g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
 		if (tradeItem->getTile()->isHouseTile()) {
 			if (!tradeItem->getTopParent()->getCreature() && !tradeItem->getTile()->getHouse()->isInvited(player)) {
 				player->sendCancelMessage(RETURNVALUE_PLAYERISNOTINVITED);
@@ -3507,7 +3507,7 @@ void Game::playerTurn(const uint32_t playerId, const Direction dir)
 
 void Game::playerRequestOutfit(const uint32_t playerId)
 {
-	if (!g_config.getBoolean(ConfigManager::ALLOW_CHANGEOUTFIT)) {
+	if (!g_config.GetBoolean(ConfigManager::ALLOW_CHANGEOUTFIT)) {
 		return;
 	}
 
@@ -3531,7 +3531,7 @@ void Game::playerToggleMount(const uint32_t playerId, const bool mount)
 
 void Game::playerChangeOutfit(const uint32_t playerId, Outfit_t outfit)
 {
-	if (!g_config.getBoolean(ConfigManager::ALLOW_CHANGEOUTFIT)) {
+	if (!g_config.GetBoolean(ConfigManager::ALLOW_CHANGEOUTFIT)) {
 		return;
 	}
 
@@ -4819,7 +4819,7 @@ bool Game::playerSaySpell(const PlayerPtr& player, const SpeakClasses type, cons
 
 	result = g_spells->playerSaySpell(player, words);
 	if (result == TALKACTION_BREAK) {
-		if (!g_config.getBoolean(ConfigManager::EMOTE_SPELLS)) {
+		if (!g_config.GetBoolean(ConfigManager::EMOTE_SPELLS)) {
 			return internalCreatureSay(player, TALKTYPE_SAY, words, false);
 		} else {
 			return internalCreatureSay(player, TALKTYPE_MONSTER_SAY, words, false);
@@ -4865,8 +4865,8 @@ bool Game::playerYell(const PlayerPtr& player, const std::string& text)
 		return false;
 	}
 
-	if (uint32_t minimumLevel = g_config.getNumber(ConfigManager::YELL_MINIMUM_LEVEL); player->getLevel() < minimumLevel) {
-		if (g_config.getBoolean(ConfigManager::YELL_ALLOW_PREMIUM)) {
+	if (uint32_t minimumLevel = g_config.GetNumber(ConfigManager::YELL_MINIMUM_LEVEL); player->getLevel() < minimumLevel) {
+		if (g_config.GetBoolean(ConfigManager::YELL_ALLOW_PREMIUM)) {
 			if (player->isPremium()) {
 				internalCreatureSay(player, TALKTYPE_YELL, asUpperCaseString(text), false);
 				return true;
@@ -4904,8 +4904,8 @@ bool Game::playerSpeakTo(const PlayerPtr& player, SpeakClasses type, const std::
 	}
 
 	if (!player->isAccessPlayer()) {
-		if (uint32_t minimumLevel = g_config.getNumber(ConfigManager::MINIMUM_LEVEL_TO_SEND_PRIVATE); player->getLevel() < minimumLevel) {
-			if (g_config.getBoolean(ConfigManager::PREMIUM_TO_SEND_PRIVATE)) {
+		if (uint32_t minimumLevel = g_config.GetNumber(ConfigManager::MINIMUM_LEVEL_TO_SEND_PRIVATE); player->getLevel() < minimumLevel) {
+			if (g_config.GetBoolean(ConfigManager::PREMIUM_TO_SEND_PRIVATE)) {
 				if (!player->isPremium()) {
 					player->sendTextMessage(
 						MESSAGE_STATUS_SMALL,
@@ -5354,9 +5354,9 @@ bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, con
 			}
 			
 			if (
-				!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || 
+				!g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || 
 				(item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))) ||
-				(g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
+				(g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
 			) {
 				for (const auto& augment : *item->getAugments()) {
 					for (const auto& modifier : augment->getAttackModifiers()) {
@@ -5378,9 +5378,9 @@ bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, con
 			}
 			
 			if (
-				!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || 
+				!g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || 
 				(item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))) ||
-				(g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
+				(g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
 			) {
 				for (const auto& augment : *item->getAugments()) {
 					for (const auto& modifier : augment->getDefenseModifiers()) {
@@ -5549,7 +5549,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 						int32_t dy = targetPos.y - monsterPos.y;
 						if (dx * dx + dy * dy < 49) { // 7^2 = 49
 							uint32_t playerGuid = targetPlayer->getGUID();
-							rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realHealthChange * g_config.getFloat(ConfigManager::REWARD_RATE_HEALING_DONE);
+							rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realHealthChange * g_config.GetFloat(ConfigManager::REWARD_RATE_HEALING_DONE);
 						}
 					}
 				}
@@ -5815,7 +5815,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			}
 			if (attackerPlayer) {
 				uint32_t playerGuid = attackerPlayer->getGUID();
-				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageDone += realDamage * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE);
+				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageDone += realDamage * g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE);
 			}
 		}
 
@@ -5827,7 +5827,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			}
 			if (target && target->getPlayer()) {
 				uint32_t playerGuid = target->getPlayer()->getGUID();
-				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realDamage * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN);
+				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realDamage * g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN);
 			}
 		}
 
@@ -6510,7 +6510,7 @@ void Game::loadMotdNum()
 	result = db.storeQuery("SELECT `value` FROM `server_config` WHERE `config` = 'motd_hash'");
 	if (result) {
 		motdHash = result->getString("value");
-		if (motdHash != transformToSHA1(g_config.getString(ConfigManager::MOTD))) {
+		if (motdHash != transformToSHA1(g_config.GetString(ConfigManager::MOTD))) {
 			++motdNum;
 		}
 	} else {
@@ -6522,7 +6522,7 @@ void Game::saveMotdNum() const
 {
 	Database& db = Database::getInstance();
 	db.executeQuery(fmt::format("UPDATE `server_config` SET `value` = '{:d}' WHERE `config` = 'motd_num'", motdNum));
-	db.executeQuery(fmt::format("UPDATE `server_config` SET `value` = '{:s}' WHERE `config` = 'motd_hash'", transformToSHA1(g_config.getString(ConfigManager::MOTD))));
+	db.executeQuery(fmt::format("UPDATE `server_config` SET `value` = '{:s}' WHERE `config` = 'motd_hash'", transformToSHA1(g_config.GetString(ConfigManager::MOTD))));
 }
 
 void Game::checkPlayersRecord()
@@ -6848,7 +6848,7 @@ void Game::playerCreateMarketOffer(const uint32_t playerId, uint8_t type, const 
 		return;
 	}
 
-	if (g_config.getBoolean(ConfigManager::MARKET_PREMIUM) && !player->isPremium()) {
+	if (g_config.GetBoolean(ConfigManager::MARKET_PREMIUM) && !player->isPremium()) {
 		player->sendMarketLeave();
 		return;
 	}
@@ -6867,7 +6867,7 @@ void Game::playerCreateMarketOffer(const uint32_t playerId, uint8_t type, const 
 		return;
 	}
 
-	const uint32_t maxOfferCount = g_config.getNumber(ConfigManager::MAX_MARKET_OFFERS_AT_A_TIME_PER_PLAYER);
+	const uint32_t maxOfferCount = g_config.GetNumber(ConfigManager::MAX_MARKET_OFFERS_AT_A_TIME_PER_PLAYER);
 	if (maxOfferCount != 0 && IOMarket::getPlayerOfferCount(player->getGUID()) >= maxOfferCount) {
 		return;
 	}
@@ -6991,7 +6991,7 @@ void Game::playerCancelMarketOffer(const uint32_t playerId, const uint32_t times
 
 	IOMarket::moveOfferToHistory(offer.id, OFFERSTATE_CANCELLED);
 	offer.amount = 0;
-	offer.timestamp += g_config.getNumber(ConfigManager::MARKET_OFFER_DURATION);
+	offer.timestamp += g_config.GetNumber(ConfigManager::MARKET_OFFER_DURATION);
 	player->sendMarketCancelOffer(offer);
 	player->sendMarketEnter();
 }
@@ -7149,7 +7149,7 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 		player->onReceiveMail();
 	}
 
-	const int32_t marketOfferDuration = g_config.getNumber(ConfigManager::MARKET_OFFER_DURATION);
+	const int32_t marketOfferDuration = g_config.GetNumber(ConfigManager::MARKET_OFFER_DURATION);
 
 	IOMarket::appendHistory(player->getGUID(), (offer.type == MARKETACTION_BUY ? MARKETACTION_SELL : MARKETACTION_BUY), offer.itemId, amount, offer.price, offer.timestamp + marketOfferDuration, OFFERSTATE_ACCEPTEDEX);
 
@@ -7419,7 +7419,7 @@ bool Game::reload(const ReloadTypes_t reloadType)
 			return true;
 	   }
 		case RELOAD_TYPE_CHAT: return g_chat->load();
-		case RELOAD_TYPE_CONFIG: return g_config.reload();
+		case RELOAD_TYPE_CONFIG: return g_config.Reload();
 		case RELOAD_TYPE_CREATURESCRIPTS: {
 			g_creatureEvents->reload();
 			g_creatureEvents->removeInvalidEvents();
@@ -7477,7 +7477,7 @@ bool Game::reload(const ReloadTypes_t reloadType)
 			Item::items.reload();
 			quests.reload();
 			mounts.reload();
-			g_config.reload();
+			g_config.Reload();
 			g_events->load();
 			g_chat->load();
 			*/
@@ -7494,7 +7494,7 @@ bool Game::reload(const ReloadTypes_t reloadType)
 			}
 
 			g_actions->reload();
-			g_config.reload();
+			g_config.Reload();
 			g_creatureEvents->reload();
 			g_monsters.reload();
 			g_moveEvents->reload();

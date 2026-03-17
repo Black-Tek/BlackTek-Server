@@ -85,7 +85,7 @@ bool IOLoginData::loginserverAuthentication(const std::string& name, const std::
 	account.accountType = static_cast<AccountType_t>(result->getNumber<int32_t>("type"));
 	account.premiumEndsAt = result->getNumber<time_t>("premium_ends_at");
 
-	if (g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER) and account.id != AccountManager::ID) {
+	if (g_config.GetBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER) and account.id != AccountManager::ID) {
 		account.characters.push_back(AccountManager::NAME);
 	}
 
@@ -483,7 +483,7 @@ std::pair<uint32_t, uint32_t> IOLoginData::getAccountIdByAccountName(std::string
 
 void IOLoginData::updateOnlineStatus(uint32_t guid, bool login)
 {
-	if (g_config.getBoolean(ConfigManager::ALLOW_CLONES)) {
+	if (g_config.GetBoolean(ConfigManager::ALLOW_CLONES)) {
 		return;
 	}
 

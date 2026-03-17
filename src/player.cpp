@@ -36,18 +36,18 @@ uint32_t Player::playerAutoID = 0x10000000;
 
 int32_t Player::getStepSpeed() const
 {
-	const int32_t minSpeed = g_config.getNumber(ConfigManager::PLAYER_MIN_SPEED);
-	const int32_t maxSpeed = g_config.getNumber(ConfigManager::PLAYER_MAX_SPEED);
+	const int32_t minSpeed = g_config.GetNumber(ConfigManager::PLAYER_MIN_SPEED);
+	const int32_t maxSpeed = g_config.GetNumber(ConfigManager::PLAYER_MAX_SPEED);
 	return std::max<int32_t>(minSpeed, std::min<int32_t>(maxSpeed, getSpeed()));
 }
 
 void Player::updateBaseSpeed()
 {
 	if (not hasFlag(PlayerFlag_SetMaxSpeed)) {
-		const int32_t speedPerLevel = g_config.getNumber(ConfigManager::PLAYER_SPEED_PER_LEVEL);
+		const int32_t speedPerLevel = g_config.GetNumber(ConfigManager::PLAYER_SPEED_PER_LEVEL);
 		baseSpeed = vocation->getBaseSpeed() + (speedPerLevel * (level - 1));
 	} else {
-		baseSpeed = g_config.getNumber(ConfigManager::PLAYER_MAX_SPEED);
+		baseSpeed = g_config.GetNumber(ConfigManager::PLAYER_MAX_SPEED);
 	}
 }
 
@@ -1483,17 +1483,17 @@ bool Player::canSeeGhostMode(const CreatureConstPtr&) const
 
 bool Player::canWalkthrough(const CreatureConstPtr& creature) const
 {
-	if (group->access || creature->isInGhostMode() || (g_config.getBoolean(ConfigManager::ALLOW_WALKTHROUGH) && creature->getPlayer() && creature->getPlayer()->isAccessPlayer())) {
+	if (group->access || creature->isInGhostMode() || (g_config.GetBoolean(ConfigManager::ALLOW_WALKTHROUGH) && creature->getPlayer() && creature->getPlayer()->isAccessPlayer())) {
 		return true;
 	}
 
 	const auto& player = creature->getPlayer();
-	if (!player || !g_config.getBoolean(ConfigManager::ALLOW_WALKTHROUGH)) {
+	if (!player || !g_config.GetBoolean(ConfigManager::ALLOW_WALKTHROUGH)) {
 		return false;
 	}
 
 	const auto& playerTile = player->getTile();
-	if (!playerTile || (!playerTile->hasFlag(TILESTATE_PROTECTIONZONE) && player->getLevel() > static_cast<uint32_t>(g_config.getNumber(ConfigManager::PROTECTION_LEVEL)))) {
+	if (!playerTile || (!playerTile->hasFlag(TILESTATE_PROTECTIONZONE) && player->getLevel() > static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PROTECTION_LEVEL)))) {
 		return false;
 	}
 
@@ -1524,12 +1524,12 @@ bool Player::canWalkthroughEx(const CreatureConstPtr& creature) const
 	}
 
 	const auto& player = creature->getPlayer();
-	if (!player || !g_config.getBoolean(ConfigManager::ALLOW_WALKTHROUGH)) {
+	if (!player || !g_config.GetBoolean(ConfigManager::ALLOW_WALKTHROUGH)) {
 		return false;
 	}
 
 	const auto& playerTile = player->getTile();
-	return playerTile && (playerTile->hasFlag(TILESTATE_PROTECTIONZONE) || player->getLevel() <= static_cast<uint32_t>(g_config.getNumber(ConfigManager::PROTECTION_LEVEL)));
+	return playerTile && (playerTile->hasFlag(TILESTATE_PROTECTIONZONE) || player->getLevel() <= static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PROTECTION_LEVEL)));
 }
 
 void Player::onReceiveMail() const
@@ -1913,7 +1913,7 @@ void Player::onCreatureAppear(const CreaturePtr& creature, bool isLogin)
 			g_game.doAccountManagerLogin(acc_manager);
 		}
 
-		if (g_config.getBoolean(ConfigManager::PLAYER_CONSOLE_LOGS)) {
+		if (g_config.GetBoolean(ConfigManager::PLAYER_CONSOLE_LOGS)) {
 			std::cout << name << " has logged in." << std::endl;
 		}
 	}
@@ -2020,7 +2020,7 @@ void Player::onRemoveCreature(const CreaturePtr& creature, bool isLogout)
 
 		g_chat->removeUserFromAllChannels(this->getPlayer());
 
-		if (g_config.getBoolean(ConfigManager::PLAYER_CONSOLE_LOGS)) {
+		if (g_config.GetBoolean(ConfigManager::PLAYER_CONSOLE_LOGS)) {
 			std::cout << getName() << " has logged out." << std::endl;
 		}
 
@@ -2137,7 +2137,7 @@ void Player::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile,
 	}
 
 	if (teleport || oldPos.z != newPos.z) {
-		int32_t ticks = g_config.getNumber(ConfigManager::STAIRHOP_DELAY);
+		int32_t ticks = g_config.GetNumber(ConfigManager::STAIRHOP_DELAY);
 		if (ticks > 0) {
 			if (const auto& condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_PACIFIED, ticks, 0)) {
 				addCondition(condition);
@@ -2311,7 +2311,7 @@ void Player::onThink(const uint32_t interval)
 	if (not getTile()->hasFlag(TILESTATE_NOLOGOUT) and not isAccessPlayer())
 	{
 		idleTime += interval;
-		const int32_t kickAfterMinutes = g_config.getNumber(ConfigManager::KICK_AFTER_MINUTES);
+		const int32_t kickAfterMinutes = g_config.GetNumber(ConfigManager::KICK_AFTER_MINUTES);
 
 		if (idleTime > (kickAfterMinutes * 60000) + 60000)
 			kickPlayer(true);
@@ -2359,7 +2359,7 @@ uint32_t Player::isMuted() const
 
 void Player::addMessageBuffer()
 {
-	if (MessageBufferCount > 0 and g_config.getNumber(ConfigManager::MAX_MESSAGEBUFFER) != 0 and not hasFlag(PlayerFlag_CannotBeMuted))
+	if (MessageBufferCount > 0 and g_config.GetNumber(ConfigManager::MAX_MESSAGEBUFFER) != 0 and not hasFlag(PlayerFlag_CannotBeMuted))
 		--MessageBufferCount;
 }
 
@@ -2369,7 +2369,7 @@ void Player::removeMessageBuffer()
 		return;
 	}
 
-	const int32_t maxMessageBuffer = g_config.getNumber(ConfigManager::MAX_MESSAGEBUFFER);
+	const int32_t maxMessageBuffer = g_config.GetNumber(ConfigManager::MAX_MESSAGEBUFFER);
 	if (maxMessageBuffer != 0 && MessageBufferCount <= maxMessageBuffer + 1) {
 		if (++MessageBufferCount > maxMessageBuffer) {
 			uint32_t muteCount = 1;
@@ -2571,7 +2571,7 @@ void Player::addExperience(const CreaturePtr& source, uint64_t exp, bool sendTex
 		g_game.changeSpeed(this->getPlayer(), 0);
 		g_game.addCreatureHealth(this->getPlayer());
 
-		const uint32_t protectionLevel = static_cast<uint32_t>(g_config.getNumber(ConfigManager::PROTECTION_LEVEL));
+		const uint32_t protectionLevel = static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PROTECTION_LEVEL));
 		if (prevLevel < protectionLevel && level >= protectionLevel) {
 			g_game.updateCreatureWalkthrough(this->getPlayer());
 		}
@@ -2658,7 +2658,7 @@ void Player::removeExperience(uint64_t exp, const bool sendText/* = false*/)
 		g_game.changeSpeed(this->getPlayer(), 0);
 		g_game.addCreatureHealth(this->getPlayer());
 
-		const uint32_t protectionLevel = static_cast<uint32_t>(g_config.getNumber(ConfigManager::PROTECTION_LEVEL));
+		const uint32_t protectionLevel = static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PROTECTION_LEVEL));
 		if (oldLevel >= protectionLevel && level < protectionLevel) {
 			g_game.updateCreatureWalkthrough(this->getPlayer());
 		}
@@ -2783,7 +2783,7 @@ void Player::death(const CreaturePtr& lastHitCreature)
 
 		if (lastHitPlayer) {
 			uint32_t sumLevels = 0;
-			uint32_t inFightTicks = g_config.getNumber(ConfigManager::PZ_LOCKED);
+			uint32_t inFightTicks = g_config.GetNumber(ConfigManager::PZ_LOCKED);
 			for (const auto& it : damageMap) {
 				CountBlock_t cb = it.second;
 				if ((OTSYS_TIME() - cb.ticks) <= inFightTicks) {
@@ -2960,7 +2960,7 @@ void Player::addInFightTicks(const bool pzlock /*= false*/)
 		pzLocked = true;
 	}
 
-	const auto& condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_INFIGHT, g_config.getNumber(ConfigManager::PZ_LOCKED), 0);
+	const auto& condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_INFIGHT, g_config.GetNumber(ConfigManager::PZ_LOCKED), 0);
 	addCondition(condition);
 }
 
@@ -3147,7 +3147,7 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 	}
 	else if ((slotPosition & SLOTP_RIGHT) or (slotPosition & SLOTP_LEFT))
 	{
-		if (not g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
+		if (not g_config.GetBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
 			ret = RETURNVALUE_CANNOTBEDRESSED;
 		else
 			ret = RETURNVALUE_PUTTHISOBJECTINYOURHAND;
@@ -3183,7 +3183,7 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 		{
 			if (slotPosition & SLOTP_RIGHT)
 			{
-				if (not g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
+				if (not g_config.GetBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
 				{
 					if (item->getWeaponType() != WEAPON_SHIELD and item->getWeaponType() != WEAPON_QUIVER)
 					{
@@ -3269,7 +3269,7 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 		{
 			if (slotPosition & SLOTP_LEFT)
 			{
-				if (not g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
+				if (not g_config.GetBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
 				{
 					WeaponType_t type = item->getWeaponType();
 					const auto& rightItem = inventory[CONST_SLOT_RIGHT];
@@ -3375,7 +3375,7 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 
 		case CONST_SLOT_AMMO:
 
-			if ((slotPosition & SLOTP_AMMO) or g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
+			if ((slotPosition & SLOTP_AMMO) or g_config.GetBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
 				ret = RETURNVALUE_NOERROR;
 			break;
 
@@ -3409,7 +3409,7 @@ ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t coun
 	const auto& inventoryItem = getInventoryItem(static_cast<slots_t>(index));
 	if (inventoryItem and (not inventoryItem->isStackable() or inventoryItem->getID() != item->getID()))
 	{
-		if (not g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
+		if (not g_config.GetBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
 		{
 			const auto& cylinder = item->getTopParent();
 			const auto container = cylinder ? cylinder->getContainer() : nullptr;
@@ -4222,7 +4222,7 @@ void Player::doAttacking(uint32_t)
 		const auto& tool = getWeapon();
 		const auto& weapon = g_weapons->getWeapon(tool);
 		uint32_t delay = getAttackSpeed();
-		bool classicSpeed = g_config.getBoolean(ConfigManager::CLASSIC_ATTACK_SPEED);
+		bool classicSpeed = g_config.GetBoolean(ConfigManager::CLASSIC_ATTACK_SPEED);
 
 		if (weapon) {
 			if (!weapon->interruptSwing()) {
@@ -4252,9 +4252,9 @@ void Player::doAttacking(uint32_t)
 
 uint64_t Player::getGainedExperience(const CreaturePtr& attacker) const
 {
-	if (g_config.getBoolean(ConfigManager::EXPERIENCE_FROM_PLAYERS)) {
+	if (g_config.GetBoolean(ConfigManager::EXPERIENCE_FROM_PLAYERS)) {
 		const auto attackerPlayer = attacker->getPlayer();
-		if (attackerPlayer && attackerPlayer != this->getPlayer() && skillLoss && std::abs(static_cast<int32_t>(attackerPlayer->getLevel() - level)) <= g_config.getNumber(ConfigManager::EXP_FROM_PLAYERS_LEVEL_RANGE)) {
+		if (attackerPlayer && attackerPlayer != this->getPlayer() && skillLoss && std::abs(static_cast<int32_t>(attackerPlayer->getLevel() - level)) <= g_config.GetNumber(ConfigManager::EXP_FROM_PLAYERS_LEVEL_RANGE)) {
 			return std::max<uint64_t>(0, std::floor(getLostExperience() * getDamageRatio(attacker) * 0.75));
 		}
 	}
@@ -4574,7 +4574,7 @@ bool Player::onKilledCreature(const CreaturePtr& target, bool lastHit/* = true*/
 
 			if (lastHit && hasCondition(CONDITION_INFIGHT)) {
 				pzLocked = true;
-				Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_INFIGHT, g_config.getNumber(ConfigManager::WHITE_SKULL_TIME) * 1000, 0);
+				Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_INFIGHT, g_config.GetNumber(ConfigManager::WHITE_SKULL_TIME) * 1000, 0);
 				addCondition(condition);
 			}
 		}
@@ -4931,15 +4931,15 @@ void Player::addUnjustifiedDead(const PlayerConstPtr& attacked)
 
 	sendTextMessage(MESSAGE_EVENT_ADVANCE, "Warning! The murder of " + attacked->getName() + " was not justified.");
 
-	skullTicks += g_config.getNumber(ConfigManager::FRAG_TIME);
+	skullTicks += g_config.GetNumber(ConfigManager::FRAG_TIME);
 
 	if (getSkull() != SKULL_BLACK)
 	{
-		if (g_config.getNumber(ConfigManager::KILLS_TO_BLACK) != 0 and skullTicks > (g_config.getNumber(ConfigManager::KILLS_TO_BLACK) - 1) * static_cast<int64_t>(g_config.getNumber(ConfigManager::FRAG_TIME)))
+		if (g_config.GetNumber(ConfigManager::KILLS_TO_BLACK) != 0 and skullTicks > (g_config.GetNumber(ConfigManager::KILLS_TO_BLACK) - 1) * static_cast<int64_t>(g_config.GetNumber(ConfigManager::FRAG_TIME)))
 		{
 			setSkull(SKULL_BLACK);
 		}
-		else if (getSkull() != SKULL_RED and g_config.getNumber(ConfigManager::KILLS_TO_RED) != 0 and skullTicks > (g_config.getNumber(ConfigManager::KILLS_TO_RED) - 1) * static_cast<int64_t>(g_config.getNumber(ConfigManager::FRAG_TIME)))
+		else if (getSkull() != SKULL_RED and g_config.GetNumber(ConfigManager::KILLS_TO_RED) != 0 and skullTicks > (g_config.GetNumber(ConfigManager::KILLS_TO_RED) - 1) * static_cast<int64_t>(g_config.GetNumber(ConfigManager::FRAG_TIME)))
 		{
 			setSkull(SKULL_RED);
 		}
@@ -4959,7 +4959,7 @@ void Player::checkSkullTicks(const int64_t ticks)
 	if ((skull == SKULL_RED or skull == SKULL_BLACK) and skullTicks < 1 and not hasCondition(CONDITION_INFIGHT))
 		setSkull(SKULL_NONE);
 
-	int64_t fragTime = g_config.getNumber(ConfigManager::FRAG_TIME);
+	int64_t fragTime = g_config.GetNumber(ConfigManager::FRAG_TIME);
 
 	if (fragTime > 0 and oldTicks != skullTicks)
 	{
@@ -4980,7 +4980,7 @@ bool Player::isPromoted() const
 
 double Player::getLostPercent() const
 {
-	int32_t deathLosePercent = g_config.getNumber(ConfigManager::DEATH_LOSE_PERCENT);
+	int32_t deathLosePercent = g_config.GetNumber(ConfigManager::DEATH_LOSE_PERCENT);
 	if (deathLosePercent != -1) {
 		if (isPromoted()) {
 			deathLosePercent -= 3;
@@ -5038,7 +5038,7 @@ bool Player::hasLearnedInstantSpell(const std::string& spellName) const
 
 bool Player::isPremium() const
 {
-	if (g_config.getBoolean(ConfigManager::FREE_PREMIUM) || hasFlag(PlayerFlag_IsAlwaysPremium)) {
+	if (g_config.GetBoolean(ConfigManager::FREE_PREMIUM) || hasFlag(PlayerFlag_IsAlwaysPremium)) {
 		return true;
 	}
 
@@ -5609,7 +5609,7 @@ size_t Player::getMaxVIPEntries() const
 		return group->maxVipEntries;
 	}
 
-	return g_config.getNumber(isPremium() ? ConfigManager::VIP_PREMIUM_LIMIT : ConfigManager::VIP_FREE_LIMIT);
+	return g_config.GetNumber(isPremium() ? ConfigManager::VIP_PREMIUM_LIMIT : ConfigManager::VIP_FREE_LIMIT);
 }
 
 size_t Player::getMaxDepotItems() const
@@ -5618,7 +5618,7 @@ size_t Player::getMaxDepotItems() const
 		return group->maxDepotItems;
 	}
 
-	return g_config.getNumber(isPremium() ? ConfigManager::DEPOT_PREMIUM_LIMIT : ConfigManager::DEPOT_FREE_LIMIT);
+	return g_config.GetNumber(isPremium() ? ConfigManager::DEPOT_PREMIUM_LIMIT : ConfigManager::DEPOT_FREE_LIMIT);
 }
 
 const bool Player::addAugment(const std::shared_ptr<Augment>& augment) {
@@ -6161,14 +6161,14 @@ gtl::node_hash_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
                 const auto& augs = item->getAugments();
 				for (const auto& aug : *augs) 
 				{
-					if (not g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) or (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot)))) 
+					if (not g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) or (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot)))) 
 					{
 						for (const auto& mod : aug->getAttackModifiers()) 
 						{
 							modifierMap[mod->getType()].emplace_back(mod);
 						}
 					} 
-					else if ( g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) and (slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE and item->getWeaponType() != WEAPON_AMMO))
+					else if ( g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) and (slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE and item->getWeaponType() != WEAPON_AMMO))
 					{
 						for (const auto& mod : aug->getAttackModifiers()) 
 						{
@@ -6207,14 +6207,14 @@ gtl::node_hash_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
                 const auto& augs = item->getAugments();
 				for (const auto& aug : *augs) 
 				{
-					if (!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) or (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))))
+					if (!g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) or (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))))
 					{
 						for (const auto& mod : aug->getDefenseModifiers()) 
 						{
 							modifierMap[mod->getType()].emplace_back(mod);
 						}
 					} 
-					else if (g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) and (slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO)) 
+					else if (g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) and (slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO)) 
 					{
 						for (const auto& mod : aug->getDefenseModifiers()) 
 						{
@@ -6528,7 +6528,7 @@ void Player::replenishStaminaFromDamage(std::optional<CreaturePtr> attacker,
 		replenishDamage = std::min<int32_t>(replenishDamage,  originalDamageValue);
 		originalDamage.primary.value += replenishDamage;
 
-		if (!g_config.getBoolean(ConfigManager::AUGMENT_STAMINA_RULE)) {
+		if (!g_config.GetBoolean(ConfigManager::AUGMENT_STAMINA_RULE)) {
 			replenishDamage = replenishDamage / 60;
 		}
 
@@ -6811,13 +6811,13 @@ std::vector<ItemPtr> Player::getEquipment(bool validateSlot) const
 			{
 				if (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot)))
 				{
-					if (g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS)
+					if (g_config.GetBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS)
 						and ((slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE and item->getWeaponType() != WEAPON_AMMO))
 						or (slot == CONST_SLOT_AMMO) and (item->getWeaponType() == WEAPON_AMMO or item->getLightInfo().level > 0))
 					{
 						equipment.push_back(item);
 					}
-					else if (!g_config.getBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
+					else if (!g_config.GetBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
 					{
 						equipment.push_back(item);
 					}

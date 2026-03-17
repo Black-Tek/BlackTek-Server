@@ -364,7 +364,7 @@ void Spawn::checkSpawn()
 				continue;
 			}
 
-			if (++spawnCount >= static_cast<uint32_t>(g_config.getNumber(ConfigManager::RATE_SPAWN))) {
+			if (++spawnCount >= static_cast<uint32_t>(g_config.GetNumber(ConfigManager::RATE_SPAWN))) {
 				break;
 			}
 		}

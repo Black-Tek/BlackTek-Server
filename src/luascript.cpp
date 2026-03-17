@@ -3830,7 +3830,7 @@ int LuaScriptInterface::luaGetWorldLight(lua_State* L)
 int LuaScriptInterface::luaSetWorldLight(lua_State* L)
 {
 	//setWorldLight(level, color)
-	if (g_config.getBoolean(ConfigManager::DEFAULT_WORLD_LIGHT)) {
+	if (g_config.GetBoolean(ConfigManager::DEFAULT_WORLD_LIGHT)) {
 		pushBoolean(L, false);
 		return 1;
 	}
@@ -4088,7 +4088,7 @@ int LuaScriptInterface::luaAddEvent(lua_State* L)
 		return 1;
 	}
 
-	if (g_config.getBoolean(ConfigManager::WARN_UNSAFE_SCRIPTS) || g_config.getBoolean(ConfigManager::CONVERT_UNSAFE_SCRIPTS)) {
+	if (g_config.GetBoolean(ConfigManager::WARN_UNSAFE_SCRIPTS) || g_config.GetBoolean(ConfigManager::CONVERT_UNSAFE_SCRIPTS)) {
 		std::vector<std::pair<int32_t, LuaDataType>> indexes;
 		for (int i = 3; i <= parameters; ++i) {
 			if (lua_getmetatable(L, i) == 0) {
@@ -4104,7 +4104,7 @@ int LuaScriptInterface::luaAddEvent(lua_State* L)
 		}
 
 		if (!indexes.empty()) {
-			if (g_config.getBoolean(ConfigManager::WARN_UNSAFE_SCRIPTS)) {
+			if (g_config.GetBoolean(ConfigManager::WARN_UNSAFE_SCRIPTS)) {
 				bool plural = indexes.size() > 1;
 
 				std::string warningString = "Argument";
@@ -4133,7 +4133,7 @@ int LuaScriptInterface::luaAddEvent(lua_State* L)
 				reportErrorFunc(L, warningString);
 			}
 
-			if (g_config.getBoolean(ConfigManager::CONVERT_UNSAFE_SCRIPTS)) {
+			if (g_config.GetBoolean(ConfigManager::CONVERT_UNSAFE_SCRIPTS)) {
 				for (const auto& entry : indexes) {
 					switch (entry.second) {
 						case LuaData_Item:
@@ -4371,19 +4371,19 @@ const luaL_Reg LuaScriptInterface::luaConfigManagerTable[] = {
 
 int LuaScriptInterface::luaConfigManagerGetString(lua_State* L)
 {
-	pushString(L, g_config.getString(getNumber<ConfigManager::string_config_t>(L, -1)));
+	pushString(L, g_config.GetString(getNumber<ConfigManager::StringConfig>(L, -1)));
 	return 1;
 }
 // may need a new one of these for ints, same for registerGlobal methods
 int LuaScriptInterface::luaConfigManagerGetNumber(lua_State* L)
 {
-	lua_pushnumber(L, g_config.getNumber(getNumber<ConfigManager::integer_config_t>(L, -1)));
+	lua_pushnumber(L, g_config.GetNumber(getNumber<ConfigManager::IntegerConfig>(L, -1)));
 	return 1;
 }
 
 int LuaScriptInterface::luaConfigManagerGetBoolean(lua_State* L)
 {
-	pushBoolean(L, g_config.getBoolean(getNumber<ConfigManager::boolean_config_t>(L, -1)));
+	pushBoolean(L, g_config.GetBoolean(getNumber<ConfigManager::BooleanConfig>(L, -1)));
 	return 1;
 }
 
@@ -4830,7 +4830,7 @@ int LuaScriptInterface::luaGameGetExperienceStage(lua_State* L)
 {
 	// Game.getExperienceStage(level)
 	float level = getNumber<float>(L, 1);
-	lua_pushnumber(L, g_config.getExperienceStage(level));
+	lua_pushnumber(L, g_config.GetExperienceStage(level));
 	return 1;
 }
 

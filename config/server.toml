@@ -1,0 +1,53 @@
+# Server identity and network configuration
+
+[identity]
+name        = "Black Tek"
+owner_name  = ""
+owner_email = ""
+url         = ""
+location    = ""
+motd        = "Welcome to The Black Tek Server!"
+
+[world]
+# Valid values: "pvp", "no-pvp", "pvp-enforced"
+type            = "pvp"
+map_name        = "forgotten"
+map_author      = "Unknown"
+assets_dat_path = "data/items/assets.dat"
+
+[startup]
+# Windows only. Valid values: "normal", "above-normal", "high"
+default_priority = "high"
+
+[network]
+ip                       = "127.0.0.1"
+# ipv6 is only used when bind_only_global_address = true
+ipv6                     = "::"
+# enable_ipv6 uses a dual-stack socket (accepts IPv4 and IPv6) unless bind_only_global_address = true
+enable_ipv6              = false
+ipv6_fallback_to_ipv4    = true
+bind_only_global_address = false
+login_port               = 7171
+game_port                = 7172
+status_port              = 7171
+# 0 = no limit
+max_players              = 0
+max_packets_per_second   = 25
+status_timeout           = 5000
+replace_kick_on_login    = true
+allow_clones             = false
+# allow_walkthrough applies to players only
+allow_walkthrough        = true
+
+[accounts]
+one_player_per_account  = true
+free_premium            = false
+online_offline_charlist = false
+
+[account_manager]
+enabled             = true
+allow_no_pass_login = true
+password            = "1"
+position_x          = 0
+position_y          = 0
+position_z          = 0

@@ -58,7 +58,7 @@ namespace
 		g_actions->reload();
 		BlackTek::Console::Info("Reloaded actions.");
 
-		g_config.reload();
+		g_config.Reload();
 		BlackTek::Console::Info("Reloaded config.");
 
 		g_creatureEvents->reload();

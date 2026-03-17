@@ -388,7 +388,7 @@ void Tile::onAddTileItem(ItemPtr& item)
 		spectator->onAddTileItem(tp, cylinderMapPos);
 	}
 
-	if ((!hasFlag(TILESTATE_PROTECTIONZONE) || g_config.getBoolean(ConfigManager::CLEAN_PROTECTION_ZONES)) && item->isCleanable()) {
+	if ((!hasFlag(TILESTATE_PROTECTIONZONE) || g_config.GetBoolean(ConfigManager::CLEAN_PROTECTION_ZONES)) && item->isCleanable()) {
 		if (!isHouseTile()) {
 			g_game.addTileToClean(getTile());
 		}
@@ -459,7 +459,7 @@ void Tile::onRemoveTileItem(const SpectatorVec& spectators, const std::vector<in
 			spectator->onRemoveTileItem(getTile(), cylinderMapPos, iType, item);
 	}
 
-	if (!hasFlag(TILESTATE_PROTECTIONZONE) || g_config.getBoolean(ConfigManager::CLEAN_PROTECTION_ZONES)) {
+	if (!hasFlag(TILESTATE_PROTECTIONZONE) || g_config.GetBoolean(ConfigManager::CLEAN_PROTECTION_ZONES)) {
 		const auto items = getItemList();
 		if (!items || items->empty()) {
 			g_game.removeTileToClean(getTile());
@@ -690,7 +690,7 @@ ReturnValue Tile::queryAdd(NpcPtr npc, uint32_t flags)
 	if (npc->isPhaseable())
 		return RETURNVALUE_NOERROR;
 
-	if (g_config.getBoolean(ConfigManager::NPC_PZ_WALKTHROUGH) and this->hasFlag(TILESTATE_PVPZONE))
+	if (g_config.GetBoolean(ConfigManager::NPC_PZ_WALKTHROUGH) and this->hasFlag(TILESTATE_PVPZONE))
 		return RETURNVALUE_NOERROR;
 
 	const auto creatures = getCreatures();
@@ -729,7 +729,7 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
 		if (item->isStoreItem() and not item->hasAttribute(ITEM_ATTRIBUTE_WRAPID))
 			return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
 
-		if (mover and g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
+		if (mover and g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
 		{
 			if (not house->isInvited(mover->getPlayer()))
 				return RETURNVALUE_PLAYERISNOTINVITED;
@@ -840,7 +840,7 @@ ReturnValue Tile::queryRemove(const ThingPtr& thing, const uint32_t count, uint3
 	if (item == nullptr)
 		return RETURNVALUE_NOTPOSSIBLE;
 
-	if (actor and g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
+	if (actor and g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
 	{
 		if (isHouseTile() and not house->isInvited(actor->getPlayer()))
 			return RETURNVALUE_PLAYERISNOTINVITED;

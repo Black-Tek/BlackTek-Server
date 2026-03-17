@@ -380,7 +380,7 @@ bool Combat::isInPvpZone(const CreatureConstPtr& attacker, const CreatureConstPt
 
 bool Combat::isProtected(const PlayerConstPtr& attacker, const PlayerConstPtr& target)
 {
-	uint32_t protectionLevel = g_config.getNumber(ConfigManager::PROTECTION_LEVEL);
+	uint32_t protectionLevel = g_config.GetNumber(ConfigManager::PROTECTION_LEVEL);
 	if (target->getLevel() < protectionLevel or attacker->getLevel() < protectionLevel) 
 	{
 		return true;
@@ -1185,7 +1185,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 	if (success) {
 		if (target and caster and target != caster) {
 			if (damage.critical) {
-				if ((damage.augmented and g_config.getBoolean(ConfigManager::AUGMENT_CRITICAL_ANIMATION)) or not (damage.augmented)) {
+				if ((damage.augmented and g_config.GetBoolean(ConfigManager::AUGMENT_CRITICAL_ANIMATION)) or not (damage.augmented)) {
 					g_game.addMagicEffect(target->getPosition(), CONST_ME_CRITICAL_DAMAGE);
 				}
 			}
@@ -1418,7 +1418,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 
 				if (staminaGain) {
 					if (staminaGain <= std::numeric_limits<uint16_t>::max()) {
-						const uint16_t trueStaminaGain = g_config.getBoolean(ConfigManager::AUGMENT_STAMINA_RULE) ?
+						const uint16_t trueStaminaGain = g_config.GetBoolean(ConfigManager::AUGMENT_STAMINA_RULE) ?
 							static_cast<uint16_t>(staminaGain) :
 							static_cast<uint16_t>(staminaGain / 60);
 						

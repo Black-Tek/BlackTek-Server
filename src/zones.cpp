@@ -91,7 +91,7 @@ Zone& Zones::createZone(int id, std::vector<Position> positions)
 
 void Zones::load()
 {
-	auto folder = "data/world/" + g_config.getString(ConfigManager::MAP_NAME) + "-zones";
+	auto folder = "data/world/" + g_config.GetString(ConfigManager::MAP_NAME) + "-zones";
 	if (std::filesystem::exists(folder) and std::filesystem::is_directory(folder))
 	{
 		for (const auto& file : std::filesystem::recursive_directory_iterator(folder))

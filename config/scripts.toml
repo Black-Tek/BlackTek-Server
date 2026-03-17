@@ -1,0 +1,13 @@
+# Scripting, logging, and validation configuration
+
+[safety]
+warn_unsafe    = true
+convert_unsafe = true
+
+[logging]
+scripts_in_console = true
+player_in_console  = true
+
+[validation]
+check_duplicate_storage_keys = false
+lua_item_desc                = false
