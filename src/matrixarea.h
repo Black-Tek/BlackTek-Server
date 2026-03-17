@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include <mdspan>
 #include <vector>
 #include <cstdint>
 #include <utility>
@@ -15,11 +14,23 @@ namespace BlackTek
     {
         using Center = std::pair<uint32_t, uint32_t>;
         using Storage = std::vector<uint8_t>;
-        using Extents = std::dextents<uint32_t, 2>;
 
     public:
-        using View = std::mdspan<uint8_t, Extents>;
-        using ConstView = std::mdspan<const uint8_t, Extents>;
+        struct View
+        {
+            uint8_t* data;
+            uint32_t rows, cols;
+            View(uint8_t* d, uint32_t r, uint32_t c) : data(d), rows(r), cols(c) {}
+            uint8_t& operator[](uint32_t row, uint32_t col) { return data[row * cols + col]; }
+        };
+
+        struct ConstView
+        {
+            const uint8_t* data;
+            uint32_t rows, cols;
+            ConstView(const uint8_t* d, uint32_t r, uint32_t c) : data(d), rows(r), cols(c) {}
+            const uint8_t& operator[](uint32_t row, uint32_t col) const { return data[row * cols + col]; }
+        };
 
         MatrixArea() = default;
         MatrixArea(uint32_t rows, uint32_t cols) : storage(rows * cols, 0), rows{rows}, cols{cols} {}
