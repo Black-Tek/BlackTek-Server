@@ -14,7 +14,7 @@ project "Black-Tek-Server"
     objdir "build/%{cfg.buildcfg}/obj"
     location ""
     files { "src/**.cpp", "src/**.h" }
-    flags { "MultiProcessorCompile" }
+    multiprocessorcompile "On"
     enableunitybuild "On"
     intrinsics "On"
     editandcontinue "Off"
@@ -69,7 +69,7 @@ project "Black-Tek-Server"
         staticruntime "Off"
         symbols "On"
         optimize "Debug"
-        flags { "NoIncrementalLink" }
+        incrementallink "Off"
 
     filter "configurations:Release"
         defines { "NDEBUG" }
@@ -102,6 +102,9 @@ project "Black-Tek-Server"
         vsprops { VcpkgEnableManifest = "true" }
         files {"resources.rc", "blackteklogo.ico"}
         symbolspath "$(OutDir)$(TargetName).pdb"
+        pchheader "otpch.h"
+        pchsource "src/otpch.cpp"
+        enablepch "On"
 
     filter { "system:windows", "configurations:Release" }
         vsprops { VcpkgTriplet = "x64-windows-static" }
@@ -122,29 +125,17 @@ project "Black-Tek-Server"
     filter { "system:linux", "not options:verbose" }
         warnings "Off"
 
-    filter { "system:linux", "architecture:ARM", "configurations:Debug" }
+    filter { "system:linux", "architecture:ARM" }
         libdirs { "vcpkg_installed/arm-linux/lib", "/usr/arm-linux-gnueabihf" }
         includedirs { "vcpkg_installed/arm-linux/include", "/usr/arm-linux-gnueabihf" }
 
-    filter { "system:linux", "architecture:ARM", "configurations:Release" }
-        libdirs { "vcpkg_installed/arm-linux-static/lib", "/usr/arm-linux-gnueabihf" }
-        includedirs { "vcpkg_installed/arm-linux-static/include", "/usr/arm-linux-gnueabihf" }
-
-    filter { "system:linux", "architecture:ARM64", "configurations:Debug" }
+    filter { "system:linux", "architecture:ARM64" }
         libdirs { "vcpkg_installed/arm64-linux/lib", "/usr/arm-linux-gnueabi" }
         includedirs { "vcpkg_installed/arm64-linux/include", "/usr/arm-linux-gnueabi" }
 
-    filter { "system:linux", "architecture:ARM64", "configurations:Release" }
-        libdirs { "vcpkg_installed/arm64-linux-static/lib", "/usr/arm-linux-gnueabi" }
-        includedirs { "vcpkg_installed/arm64-linux-static/include", "/usr/arm-linux-gnueabi" }
-
-    filter { "system:linux", "architecture:x86_64", "configurations:Debug" }
+    filter { "system:linux", "architecture:x86_64" }
         libdirs { "vcpkg_installed/x64-linux/lib" }
         includedirs { "vcpkg_installed/x64-linux/include" }
-
-    filter { "system:linux", "architecture:x86_64", "configurations:Release" }
-        libdirs { "vcpkg_installed/x64-linux-static/lib" }
-        includedirs { "vcpkg_installed/x64-linux-static/include" }
 
     filter "system:linux"
         libdirs { "/usr/lib" }

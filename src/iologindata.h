@@ -26,9 +26,9 @@ class IOLoginData
 		static void updateOnlineStatus(uint32_t guid, bool login);
 		static bool preloadPlayer(const PlayerPtr& player);
 
-		static bool loadPlayerById(const PlayerPtr& player, uint32_t id);
+		static bool loadPlayerById(const PlayerPtr& player, uint32_t id, std::vector<Condition*>* outConditions = nullptr);
 		static bool loadPlayerByName(const PlayerPtr& player, const std::string& name);
-		static bool loadPlayer(const PlayerPtr& player, DBResult_ptr result);
+		static bool loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::vector<Condition*>* outConditions = nullptr);
 		static bool savePlayer(const PlayerPtr& player);
 		static uint32_t getGuidByName(const std::string& name);
 		static bool getGuidByNameEx(uint32_t& guid, bool& specialVip, std::string& name);

@@ -150,15 +150,15 @@ void ServicePort::open(uint16_t port)
 	serverPort = port;
 	pendingStart = false;
 
-	const bool useIPv6 = g_config.getBoolean(ConfigManager::ENABLE_IPV6);
-	const bool bindGlobal = g_config.getBoolean(ConfigManager::BIND_ONLY_GLOBAL_ADDRESS);
+	const bool useIPv6 = g_config.GetBoolean(ConfigManager::ENABLE_IPV6);
+	const bool bindGlobal = g_config.GetBoolean(ConfigManager::BIND_ONLY_GLOBAL_ADDRESS);
 
 	auto bindIPv4 = [&]()
 	{
 		if (bindGlobal)
 		{
 			acceptor.reset(new boost::asio::ip::tcp::acceptor(io_context, boost::asio::ip::tcp::endpoint(
-			            boost::asio::ip::make_address(g_config.getString(ConfigManager::IP)), serverPort)));
+			            boost::asio::ip::make_address(g_config.GetString(ConfigManager::IP)), serverPort)));
 		}
 		else
 		{
@@ -174,7 +174,7 @@ void ServicePort::open(uint16_t port)
 			if (bindGlobal)
 			{
 				acceptor.reset(new boost::asio::ip::tcp::acceptor(io_context, boost::asio::ip::tcp::endpoint(
-				            boost::asio::ip::make_address(g_config.getString(ConfigManager::IPV6)), serverPort)));
+				            boost::asio::ip::make_address(g_config.GetString(ConfigManager::IPV6)), serverPort)));
 			}
 			else
 			{
@@ -193,7 +193,7 @@ void ServicePort::open(uint16_t port)
 	}
 	catch (boost::system::system_error& e)
 	{
-		if (useIPv6 and g_config.getBoolean(ConfigManager::IPV6_FALLBACK_TO_IPV4))
+		if (useIPv6 and g_config.GetBoolean(ConfigManager::IPV6_FALLBACK_TO_IPV4))
 		{
 			BlackTek::Console::Warn("[ServicePort::open] IPv6 unavailable falling back to IPv4. Error Code {}: {}", e.code().value(), e.what());
 			try

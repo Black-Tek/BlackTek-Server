@@ -399,7 +399,7 @@ void Tile::onAddTileItem(ItemPtr& item)
 		spectator->onAddTileItem(tp, cylinderMapPos);
 	}
 
-	if ((!hasFlag(TILESTATE_PROTECTIONZONE) || g_config.getBoolean(ConfigManager::CLEAN_PROTECTION_ZONES)) && item->isCleanable()) {
+	if ((!hasFlag(TILESTATE_PROTECTIONZONE) || g_config.GetBoolean(ConfigManager::CLEAN_PROTECTION_ZONES)) && item->isCleanable()) {
 		if (!isHouseTile()) {
 			g_game.addTileToClean(getTile());
 		}
@@ -470,7 +470,7 @@ void Tile::onRemoveTileItem(const SpectatorVec& spectators, const std::vector<in
 			spectator->onRemoveTileItem(getTile(), cylinderMapPos, iType, item);
 	}
 
-	if (!hasFlag(TILESTATE_PROTECTIONZONE) || g_config.getBoolean(ConfigManager::CLEAN_PROTECTION_ZONES)) {
+	if (!hasFlag(TILESTATE_PROTECTIONZONE) || g_config.GetBoolean(ConfigManager::CLEAN_PROTECTION_ZONES)) {
 		const auto items = getItemList();
 		if (!items || items->empty()) {
 			g_game.removeTileToClean(getTile());
@@ -495,9 +495,12 @@ void Tile::onUpdateTile(const SpectatorVec& spectators)
 {
 	const Position& cylinderMapPos = getPosition();
 
-	//send to clients
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players) {
 		std::static_pointer_cast<Player>(spectator)->sendUpdateTile(getTile(), cylinderMapPos);
 	}
 }
@@ -554,10 +557,10 @@ ReturnValue Tile::queryAdd(CreaturePtr creature, uint32_t flags)
         }
     }
 
-	if (auto player = std::dynamic_pointer_cast<Player>(creature))
-		results = queryAdd(player, flags);
-	else if (auto monster = std::dynamic_pointer_cast<Monster>(creature))
-		results = queryAdd(monster, flags);
+	if (creature->getCreatureSubType() == CreatureSubType::Player)
+		results = queryAdd(std::static_pointer_cast<Player>(creature), flags);
+	else if (creature->getCreatureSubType() == CreatureSubType::Monster)
+		results = queryAdd(std::static_pointer_cast<Monster>(creature), flags);
 
 	return results;
 }
@@ -698,7 +701,7 @@ ReturnValue Tile::queryAdd(NpcPtr npc, uint32_t flags)
 	if (npc->isPhaseable())
 		return RETURNVALUE_NOERROR;
 
-	if (g_config.getBoolean(ConfigManager::NPC_PZ_WALKTHROUGH) and this->hasFlag(TILESTATE_PVPZONE))
+	if (g_config.GetBoolean(ConfigManager::NPC_PZ_WALKTHROUGH) and this->hasFlag(TILESTATE_PVPZONE))
 		return RETURNVALUE_NOERROR;
 
 	const auto creatures = getCreatures();
@@ -737,7 +740,7 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
 		if (item->isStoreItem() and not item->hasAttribute(ITEM_ATTRIBUTE_WRAPID))
 			return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
 
-		if (mover and g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
+		if (mover and g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
 		{
 			if (not house->isInvited(mover->getPlayer()))
 				return RETURNVALUE_PLAYERISNOTINVITED;
@@ -819,10 +822,10 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
 
 ReturnValue Tile::queryAdd(int32_t, const ThingPtr& thing, uint32_t, uint32_t flags, CreaturePtr mover)
 {
-	if (auto creature = std::dynamic_pointer_cast<Creature>(thing))
+	if (auto creature = thing->getCreature())
 		return queryAdd(creature, flags);
 
-	if (auto item = std::dynamic_pointer_cast<Item>(thing))
+	if (auto item = thing->getItem())
 		return queryAdd(item, flags, mover);
 
 	std::cout << "|| WARNING || Tile::queryAdd() passed the object "<< typeid(thing).name() << ", that is not a creature or item! " << "\n";
@@ -848,7 +851,7 @@ ReturnValue Tile::queryRemove(const ThingPtr& thing, const uint32_t count, uint3
 	if (item == nullptr)
 		return RETURNVALUE_NOTPOSSIBLE;
 
-	if (actor and g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
+	if (actor and g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
 	{
 		if (isHouseTile() and not house->isInvited(actor->getPlayer()))
 			return RETURNVALUE_PLAYERISNOTINVITED;
@@ -1481,8 +1484,11 @@ void Tile::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t in
 {
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), true, true);
-	for (auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	// another test location
+
+	for (auto& spectator : spectators)
+	{
 		std::static_pointer_cast<Player>(spectator)->postAddNotification(thing, oldParent, index, LINK_NEAR);
 	}
 
@@ -1525,8 +1531,13 @@ void Tile::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t
 		onUpdateTile(spectators);
 	}
 
-	for (auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+	// Final test location, if the spectators internals were ever failing to filter only players
+	// then npcs would trigger, spawns would trigger, and moving things to and from tiles, would trigger
+	// and we would know about it pretty quickly, howevever if this doesn't happen, and this new RTTI tagging
+	// works as well as anticipated, I will cleanup the view changes, and apply the same system for thing, cylinder and item based classes.
+
+	for (auto& spectator : spectators)
+	{
 		std::static_pointer_cast<Player>(spectator)->postRemoveNotification(thing, newParent, index, LINK_NEAR);
 	}
 

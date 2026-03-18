@@ -12,6 +12,17 @@ extern Scheduler g_scheduler;
 
 namespace {
 
+const uint16_t NETWORKMESSAGE_FREE_LIST_CAPACITY = 1024;
+
+} // namespace
+
+NetworkMessagePtr NetworkMessagePool::getNetworkMessage()
+{
+	return std::allocate_shared<NetworkMessage>(LockfreePoolingAllocator<void, NETWORKMESSAGE_FREE_LIST_CAPACITY>());
+}
+
+namespace {
+
 const uint16_t OUTPUTMESSAGE_FREE_LIST_CAPACITY = 2048;
 const std::chrono::milliseconds OUTPUTMESSAGE_AUTOSEND_DELAY {10};
 

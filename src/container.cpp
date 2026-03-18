@@ -17,7 +17,11 @@ Container::Container(uint16_t type, uint16_t size, bool unlocked /*= true*/, boo
 	maxSize(size),
 	unlocked(unlocked),
 	pagination(pagination)
-{}
+{
+	thing_subtype = ThingSubType::Container;
+	item_subtype = ItemSubType::Container;
+	cylinder_subtype = CylinderSubType::Container;
+}
 
 Container::Container(const TilePtr& tile) : Container(ITEM_BROWSEFIELD, 30, false, true) { setParent(tile); }
 
@@ -54,7 +58,7 @@ Container::~Container()
 
 ItemPtr Container::clone() const
 {
-	const auto& clone = std::dynamic_pointer_cast<Container>(Item::clone());
+	const auto& clone = Item::clone()->getContainer();
 	for (const auto& item : itemlist) {
 		clone->addItem(item->clone());
 	}
@@ -72,12 +76,13 @@ ContainerPtr Container::getParentContainer() {
 
 std::string Container::getName(bool addArticle /* = false*/) const {
 	const ItemType& it = items[id];
-	return getNameDescription(it, std::dynamic_pointer_cast<const Container>(shared_from_this()), -1, addArticle);
+	return getNameDescription(it, getContainer(), -1, addArticle);
 }
 
 bool Container::hasParent()
 {
-	return getID() != ITEM_BROWSEFIELD && std::dynamic_pointer_cast<Player>(getParent()) == nullptr;
+	const auto parent = getParent();
+	return getID() != ITEM_BROWSEFIELD and not (parent and parent->getCylinderSubType() == CylinderSubType::Player);
 }
 
 void Container::addItem(const ItemPtr& item)
@@ -218,18 +223,20 @@ void Container::onAddContainerItem(ItemPtr& item)
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), false, true, 1, 1, 1, 1);
 	
-	for (auto spectator : spectators) {
+	for (auto& spectator : spectators)
+	{
 		if (const auto c_player = spectator->getPlayer())
 		{
-			const auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
+			const auto t_container = getContainer();
 			c_player->sendAddContainerItem(t_container, item);
 		}
 	}
 
-	for (auto spectator : spectators) {
+	for (auto& spectator : spectators)
+	{
 		if (const auto c_player = spectator->getPlayer())
 		{
-			const auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
+			const auto t_container = getContainer();
 			c_player->onAddContainerItem(item);
 		}
 	}
@@ -240,18 +247,20 @@ void Container::onUpdateContainerItem(uint32_t index, const ItemPtr& oldItem, co
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), false, true, 1, 1, 1, 1);
 	
-	for (auto spectator : spectators) {
+	for (auto& spectator : spectators)
+	{
 		if (const auto c_player = spectator->getPlayer())
 		{
-			auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
+			auto t_container = getContainer();
 			c_player->sendUpdateContainerItem(t_container, index, newItem);
 		}
 	}
 
-	for (auto spectator : spectators) {
+	for (auto& spectator : spectators)
+	{
 		if (const auto c_player = spectator->getPlayer())
 		{
-			auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
+			auto t_container = getContainer();
 			c_player->onUpdateContainerItem(t_container, oldItem, newItem);
 		}
 	}
@@ -262,111 +271,115 @@ void Container::onRemoveContainerItem(uint32_t index, const ItemPtr& item)
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), false, true, 1, 1, 1, 1);
 	
-	for (auto spectator : spectators) {
+	for (auto spectator : spectators)
+	{
 		if (const auto c_player = spectator->getPlayer())
 		{
-			auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
+			auto t_container = getContainer();
 			c_player->sendRemoveContainerItem(t_container, index);
 		}
 	}
 
-	for (auto spectator : spectators) {
+	for (auto spectator : spectators)
+	{
 		if (const auto c_player = spectator->getPlayer())
 		{
-			auto t_container = std::dynamic_pointer_cast<Container>(shared_from_this());
+			auto t_container = getContainer();
 			c_player->onRemoveContainerItem(t_container, item);
 		}
 	}
 }
 
-ReturnValue Container::queryAdd(int32_t index, const ThingPtr& thing, uint32_t count,
-                                uint32_t flags, CreaturePtr actor/* = std::nullopt*/)
+ReturnValue Container::queryAdd(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor/* = std::nullopt*/)
 {
 	bool childIsOwner = hasBitSet(FLAG_CHILDISOWNER, flags);
-	if (childIsOwner) {
+
+	if (childIsOwner)
+	{
 		//a child container is querying, since we are the top container (not carried by a player)
 		//just return with no error.
 		return RETURNVALUE_NOERROR;
 	}
 
-	if (!unlocked) {
+	if (not unlocked)
 		return RETURNVALUE_NOTPOSSIBLE;
-	}
 
 	const auto item = thing->getItem();
-	if (item == nullptr) {
+
+	if (item == nullptr)
 		return RETURNVALUE_NOTPOSSIBLE;
-	}
 
-	if (!item->isPickupable()) {
+	if (not item->isPickupable())
 		return RETURNVALUE_CANNOTPICKUP;
-	}
 
-    if (item.get() == this) {
+    if (item.get() == this)
 		return RETURNVALUE_THISISIMPOSSIBLE;
-	}
 
 	// quiver: allow ammo only
-	if (getWeaponType() == WEAPON_QUIVER && item->getWeaponType() != WEAPON_AMMO) {
+	if (getWeaponType() == WEAPON_QUIVER and item->getWeaponType() != WEAPON_AMMO)
+	{
 		return RETURNVALUE_QUIVERAMMOONLY;
 	}
 
 	// store items can be only moved into depot chest or store inbox
-	if (item->isStoreItem() && !dynamic_cast<const DepotChest*>(this)) {
+	if (item->isStoreItem() and getItemSubType() != ItemSubType::DepotChest)
 		return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
-	}
 
 	auto cylinder = getParent();
 
 	// don't allow moving items into container that is store item and is in store inbox
-	if (isStoreItem() && std::dynamic_pointer_cast<StoreInbox>(cylinder)) {
+	if (isStoreItem() and cylinder->getContainer() and cylinder->getContainer()->getItemSubType() == ItemSubType::StoreInbox)
+	{
 		ReturnValue ret = RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
-		if (!item->isStoreItem()) {
+
+		if (not item->isStoreItem())
 			ret = RETURNVALUE_CANNOTMOVEITEMISNOTSTOREITEM;
-		}
+
 		return ret;
 	}
 
-	if (!hasBitSet(FLAG_NOLIMIT, flags)) {
-		while (cylinder) {
-			if (cylinder == thing) {
+	if (not hasBitSet(FLAG_NOLIMIT, flags))
+	{
+		while (cylinder)
+		{
+			if (cylinder == thing)
 				return RETURNVALUE_THISISIMPOSSIBLE;
-			}
 
-			if (std::dynamic_pointer_cast<const Inbox>(cylinder)) {
+			if (cylinder->getContainer() and cylinder->getContainer()->getItemSubType() == ItemSubType::Inbox)
 				return RETURNVALUE_CONTAINERNOTENOUGHROOM;
-			}
 
 			cylinder = cylinder->getParent();
 		}
 
-		if (index == INDEX_WHEREEVER && size() >= capacity() && !hasPagination()) {
+		if (index == INDEX_WHEREEVER and size() >= capacity() and not hasPagination())
 			return RETURNVALUE_CONTAINERNOTENOUGHROOM;
-		}
-	} else {
-		while (cylinder) {
-			if (cylinder == thing) {
+	}
+	else
+	{
+		while (cylinder)
+		{
+			if (cylinder == thing)
 				return RETURNVALUE_THISISIMPOSSIBLE;
-			}
 
 			cylinder = cylinder->getParent();
 		}
 	}
 
 	const auto topParent = getTopParent();
-	if (actor && g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
-		if (topParent->getTile()->isHouseTile()) {
-			if (!topParent->getCreature() && !topParent->getTile()->getHouse()->isInvited(actor->getPlayer())) {
+
+	if (actor and g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
+	{
+		if (topParent->getTile()->isHouseTile())
+		{
+			if (not topParent->getCreature() and not topParent->getTile()->getHouse()->isInvited(actor->getPlayer()))
 				return RETURNVALUE_PLAYERISNOTINVITED;
-			}
 		}
 	}
 
-	if (topParent.get() != this) {
+	if (topParent.get() != this)
 		return topParent->queryAdd(INDEX_WHEREEVER, item, count, flags | FLAG_CHILDISOWNER, actor);
-	} else {
+	else
 		return RETURNVALUE_NOERROR;
-	}
 }
 
 ReturnValue Container::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t& maxQueryCount, uint32_t flags)
@@ -453,7 +466,7 @@ ReturnValue Container::queryRemove(const ThingPtr& thing, uint32_t count, uint32
 	if (not item->isMoveable() and not hasBitSet(FLAG_IGNORENOTMOVEABLE, flags))
 		return RETURNVALUE_NOTMOVEABLE;
 
-	if (actor and g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
+	if (actor and g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
 	{
 		if (auto ground_tile = item->getTile(); ground_tile && ground_tile->isHouseTile())
 		{
@@ -479,7 +492,7 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 	{
 		index = INDEX_WHEREEVER;
 
-		if (auto parentContainer = std::dynamic_pointer_cast<Cylinder>(getParent()))
+		if (auto parentContainer = getParent())
 			return parentContainer;
 
 		return getContainer();
@@ -498,10 +511,10 @@ CylinderPtr Container::queryDestination(int32_t& index, const ThingPtr& thing, I
 		if (auto itemFromIndex = getItemByIndex(index))
 			destItem = itemFromIndex;
 		
-		if (destItem and std::dynamic_pointer_cast<Cylinder>(destItem))
+		if (destItem and destItem->getCylinder())
 		{
 			index = INDEX_WHEREEVER;
-			return std::dynamic_pointer_cast<Cylinder>(destItem);
+			return destItem->getCylinder();
 		}
 	}
 
@@ -777,7 +790,7 @@ ContainerIterator Container::iterator() const
 {
 	ContainerIterator cit;
 	if (!itemlist.empty()) {
-		cit.over.push_back(std::dynamic_pointer_cast<const Container>(shared_from_this()));
+		cit.over.push_back(getContainer());
 		cit.cur = itemlist.begin();
 	}
 	return cit;

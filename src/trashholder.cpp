@@ -47,7 +47,7 @@ void TrashHolder::addThing(int32_t, ThingPtr thing)
 
 	const ItemType& it = Item::items[id];
 	if (item->isHangable() && it.isGroundTile()) {
-		const auto& tile = std::dynamic_pointer_cast<Tile>(getParent());
+		const auto& tile = getParent() ? getParent()->getTile() : nullptr;
 		if (tile && tile->hasFlag(TILESTATE_SUPPORTS_HANGABLE)) {
 			return;
 		}

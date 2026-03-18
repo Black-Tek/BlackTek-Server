@@ -5,6 +5,7 @@
 // The GPL 2.0 License that can be found in the LICENSE file.
 // All code found in this file is licensed under MIT and can be found in the LICENSE file.
 
+#include "otpch.h"
 #include <toml++/toml.hpp>
 #include <iostream>
 #include <filesystem>

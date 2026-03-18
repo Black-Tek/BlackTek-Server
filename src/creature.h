@@ -53,6 +53,14 @@ static constexpr int32_t EVENT_CREATURE_THINK_INTERVAL = 1000;
 static constexpr int32_t EVENT_CORO_TIMER_CYCLE = 50;
 static constexpr int32_t EVENT_CHECK_CREATURE_INTERVAL = 100;
 
+enum class CreatureSubType : uint8_t
+{
+	None,
+	Player,
+	Monster,
+	Npc
+};
+
 class FrozenPathingConditionCall
 {
 	public:
@@ -118,6 +126,10 @@ class Creature : virtual public Thing, public SharedObject
 	
 		virtual MonsterConstPtr getMonster() const {
 			return nullptr;
+		}
+
+		CreatureSubType getCreatureSubType() const {
+			return creature_subtype;
 		}
 
 		virtual const std::string& getRegisteredName() const = 0;
@@ -689,6 +701,7 @@ class Creature : virtual public Thing, public SharedObject
 		int32_t healthMax = 1000;
 		uint8_t drunkenness = 0;
 		uint8_t dodgeChance = 0;
+		CreatureSubType creature_subtype = CreatureSubType::None;
 
 		Outfit_t currentOutfit;
 		Outfit_t defaultOutfit;

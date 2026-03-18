@@ -6,7 +6,13 @@
 #include "inbox.h"
 #include "tools.h"
 
-Inbox::Inbox(uint16_t type) : Container(type, 30, false, true) {}
+Inbox::Inbox(uint16_t type) : Container(type, 30, false, true)
+{
+	thing_subtype = ThingSubType::Inbox;
+	item_subtype = ItemSubType::Inbox;
+	container_subtype = ContainerSubType::Inbox;
+	cylinder_subtype = CylinderSubType::Inbox;
+}
 
 ReturnValue Inbox::queryAdd(int32_t, const ThingPtr& thing, uint32_t,
                             uint32_t flags, CreaturePtr)

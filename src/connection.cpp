@@ -110,6 +110,8 @@ void Connection::accept()
 {
 	try
 	{
+		msg = NetworkMessagePool::getNetworkMessage();
+
 		readTimer.expires_after(std::chrono::seconds(CONNECTION_READ_TIMEOUT));
 		readTimer.async_wait(
 			boost::asio::bind_executor(strand,
@@ -119,7 +121,7 @@ void Connection::accept()
 				}));
 
 		boost::asio::async_read(socket,
-			boost::asio::buffer(msg.getBuffer(), NetworkMessage::HEADER_LENGTH),
+			boost::asio::buffer(msg->getBuffer(), NetworkMessage::HEADER_LENGTH),
 			boost::asio::bind_executor(strand,
 				[thisPtr = shared_from_this()](const boost::system::error_code& error, auto /*bytes_transferred*/)
 				{
@@ -149,7 +151,7 @@ void Connection::parseHeader(const boost::system::error_code& error)
 
 	uint32_t timePassed = std::max<uint32_t>(1, (time(nullptr) - timeConnected) + 1);
 
-	if ((++packetsSent / timePassed) > static_cast<uint32_t>(g_config.getNumber(ConfigManager::MAX_PACKETS_PER_SECOND)))
+	if ((++packetsSent / timePassed) > static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MAX_PACKETS_PER_SECOND)))
 	{
 		std::cout << convertIPToString(getIP()) << " disconnected for exceeding packet per second limit." << std::endl;
 		close();
@@ -162,7 +164,7 @@ void Connection::parseHeader(const boost::system::error_code& error)
 		packetsSent = 0;
 	}
 
-	uint16_t size = msg.getLengthHeader();
+	uint16_t size = msg->getLengthHeader();
 	if (size == 0 or size >= NETWORKMESSAGE_MAXSIZE - 16)
 	{
 		close(FORCE_CLOSE);
@@ -179,9 +181,9 @@ void Connection::parseHeader(const boost::system::error_code& error)
 					Connection::handleTimeout(thisPtr, error);
 				}));
 
-		msg.setLength(size + NetworkMessage::HEADER_LENGTH);
+		msg->setLength(size + NetworkMessage::HEADER_LENGTH);
 		boost::asio::async_read(socket,
-			boost::asio::buffer(msg.getBodyBuffer(), size),
+			boost::asio::buffer(msg->getBodyBuffer(), size),
 			boost::asio::bind_executor(strand,
 				[thisPtr = shared_from_this()](const boost::system::error_code& error, auto /*bytes_transferred*/)
 				{
@@ -210,21 +212,21 @@ void Connection::parsePacket(const boost::system::error_code& error)
 	}
 
 	uint32_t checksum;
-	int32_t len = msg.getLength() - msg.getBufferPosition() - NetworkMessage::CHECKSUM_LENGTH;
+	int32_t len = msg->getLength() - msg->getBufferPosition() - NetworkMessage::CHECKSUM_LENGTH;
 
 	if (len > 0)
 	{
-		checksum = adlerChecksum(msg.getBuffer() + msg.getBufferPosition() + NetworkMessage::CHECKSUM_LENGTH, len);
+		checksum = adlerChecksum(msg->getBuffer() + msg->getBufferPosition() + NetworkMessage::CHECKSUM_LENGTH, len);
 	}
 	else
 	{
 		checksum = 0;
 	}
 
-	uint32_t recvChecksum = msg.get<uint32_t>();
+	uint32_t recvChecksum = msg->get<uint32_t>();
 	if (recvChecksum != checksum)
 	{
-		msg.skipBytes(-NetworkMessage::CHECKSUM_LENGTH);
+		msg->skipBytes(-NetworkMessage::CHECKSUM_LENGTH);
 	}
 
 	if (not receivedFirst)
@@ -233,7 +235,7 @@ void Connection::parsePacket(const boost::system::error_code& error)
 
 		if (not protocol)
 		{
-			protocol = service_port->make_protocol(recvChecksum == checksum, msg, shared_from_this());
+			protocol = service_port->make_protocol(recvChecksum == checksum, *msg, shared_from_this());
 			if (not protocol)
 			{
 				close(FORCE_CLOSE);
@@ -242,14 +244,14 @@ void Connection::parsePacket(const boost::system::error_code& error)
 		}
 		else
 		{
-			msg.skipBytes(1); // Skip protocol ID
+			msg->skipBytes(1); // Skip protocol ID
 		}
 
-		protocol->onRecvFirstMessage(msg);
+		protocol->onRecvFirstMessage(*msg);
 	}
 	else
 	{
-		protocol->onRecvMessage(msg); // Send the packet to the current protocol
+		protocol->onRecvMessage(*msg); // Send the packet to the current protocol
 	}
 
 	try
@@ -262,9 +264,12 @@ void Connection::parsePacket(const boost::system::error_code& error)
 					Connection::handleTimeout(thisPtr, error);
 				}));
 
+		// Release the consumed buffer and acquire a fresh one for the next packet
+		msg = NetworkMessagePool::getNetworkMessage();
+
 		// Wait for the next packet
 		boost::asio::async_read(socket,
-			boost::asio::buffer(msg.getBuffer(), NetworkMessage::HEADER_LENGTH),
+			boost::asio::buffer(msg->getBuffer(), NetworkMessage::HEADER_LENGTH),
 			boost::asio::bind_executor(strand,
 				[thisPtr = shared_from_this()](const boost::system::error_code& error, auto /*bytes_transferred*/)
 				{

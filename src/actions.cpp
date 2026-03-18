@@ -332,7 +332,7 @@ ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint
 
 		if (bed->trySleep(player)) {
 			player->setBedItem(bed);
-			if (g_config.getBoolean(ConfigManager::BED_OFFLINE_TRAINING)) {
+			if (g_config.GetBoolean(ConfigManager::BED_OFFLINE_TRAINING)) {
 				g_game.sendOfflineTrainingDialog(player);
 			}
 			else {
@@ -462,7 +462,7 @@ static void showUseHotkeyMessage(const PlayerPtr& player, const ItemConstPtr& it
 
 bool Actions::useItem(PlayerPtr player, const Position& pos, uint8_t index, const ItemPtr& item, bool isHotkey)
 {
-	player->setNextAction(OTSYS_TIME() + g_config.getNumber(ConfigManager::ACTIONS_DELAY_INTERVAL));
+	player->setNextAction(OTSYS_TIME() + g_config.GetNumber(ConfigManager::ACTIONS_DELAY_INTERVAL));
 
 	if (!item) {
 		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
@@ -474,7 +474,7 @@ bool Actions::useItem(PlayerPtr player, const Position& pos, uint8_t index, cons
 		showUseHotkeyMessage(player, item, player->getItemTypeCount(item->getID(), subType != item->getItemCount() ? subType : -1));
 	}
 
-	if (g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
+	if (g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
 		if (auto ground_tile = item->getTile(); ground_tile && ground_tile->isHouseTile()) {
 			auto topParent = item->getTopParent();
 			if (!topParent || (!topParent->getCreature() && !ground_tile->getHouse()->isInvited(player))) {
@@ -501,7 +501,7 @@ bool Actions::useItem(PlayerPtr player, const Position& pos, uint8_t index, cons
 bool Actions::useItemEx(const PlayerPtr& player, const Position& fromPos, const Position& toPos,
                         uint8_t toStackPos, const ItemPtr& item, bool isHotkey, const CreaturePtr& creature/* = nullptr*/)
 {
-	player->setNextAction(OTSYS_TIME() + g_config.getNumber(ConfigManager::EX_ACTIONS_DELAY_INTERVAL));
+	player->setNextAction(OTSYS_TIME() + g_config.GetNumber(ConfigManager::EX_ACTIONS_DELAY_INTERVAL));
 
 	Action* action = getAction(item);
 	if (!action) {
@@ -520,7 +520,7 @@ bool Actions::useItemEx(const PlayerPtr& player, const Position& fromPos, const 
 		showUseHotkeyMessage(player, item, player->getItemTypeCount(item->getID(), subType != item->getItemCount() ? subType : -1));
 	}
 
-	if (g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
+	if (g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
 		if (item->getTile()->isHouseTile()) {
 			if (!item->getTopParent()->getCreature() && !item->getTile()->getHouse()->isInvited(player)) {
 				player->sendCancelMessage(RETURNVALUE_PLAYERISNOTINVITED);

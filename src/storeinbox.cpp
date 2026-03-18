@@ -5,7 +5,13 @@
 
 #include "storeinbox.h"
 
-StoreInbox::StoreInbox(uint16_t type) : Container(type, 20, true, true) {}
+StoreInbox::StoreInbox(uint16_t type) : Container(type, 20, true, true)
+{
+	thing_subtype = ThingSubType::StoreInbox;
+	item_subtype = ItemSubType::StoreInbox;
+	container_subtype = ContainerSubType::StoreInbox;
+	cylinder_subtype = CylinderSubType::StoreInbox;
+}
 
 ReturnValue StoreInbox::queryAdd(int32_t, const ThingPtr& thing, uint32_t, uint32_t flags, CreaturePtr)
 {

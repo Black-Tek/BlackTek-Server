@@ -261,7 +261,7 @@ void Items::clear()
 bool Items::reload()
 {
 	clear();
-	loadFromDat(g_config.getString(ConfigManager::ASSETS_DAT_PATH));
+	loadFromDat(g_config.GetString(ConfigManager::ASSETS_DAT_PATH));
 
 	if (!loadFromToml()) {
 		return false;

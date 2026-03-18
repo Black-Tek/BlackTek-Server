@@ -6,6 +6,7 @@
 // All code found in this file is licensed under MIT and can be found in the LICENSE file.
 
 
+#include "otpch.h"
 #include "augment.h"
 
 Augment::Augment(const std::string& name, const std::string& description) : m_name(name), m_description(description) {

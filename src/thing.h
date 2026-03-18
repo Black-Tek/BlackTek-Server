@@ -11,6 +11,35 @@
 #include "declarations.h"
 
 
+enum class ThingSubType : uint8_t
+{
+	None,
+	// Cylinder-only
+	Tile,
+	Virtual,
+	// Item + Cylinder
+	Container,
+	DepotChest,
+	DepotLocker,
+	Inbox,
+	StoreInbox,
+	RewardChest,
+	Teleport,
+	TrashHolder,
+	Mailbox,
+	// Item-only
+	Item,
+	Door,
+	MagicField,
+	BedItem,
+	HouseTransferItem,
+	// Creature + Cylinder
+	Player,
+	// Creature-only
+	Monster,
+	Npc,
+};
+
 class Thing
 {
     public:
@@ -49,10 +78,18 @@ class Thing
         virtual int32_t getThrowRange() const = 0;
         virtual bool isPushable() const = 0;
 
+        virtual CylinderPtr getCylinder() {
+            return nullptr;
+        }
+
+        virtual CylinderConstPtr getCylinder() const {
+            return nullptr;
+        }
+
         virtual ContainerPtr getContainer() {
             return nullptr;
         }
-    
+
         virtual ContainerConstPtr getContainer() const {
             return nullptr;
         }
@@ -77,13 +114,18 @@ class Thing
             return true;
         }
 
+        ThingSubType getThingSubType() const {
+            return thing_subtype;
+        }
+
         // BlackTek Instance System
         uint32_t getInstanceID() const { return instanceID; }
         void setInstanceID(uint32_t id) { instanceID = id; }
         bool compareInstance(uint32_t id) const { return instanceID == id; }
-    
+
     protected:
         constexpr Thing() = default;
+        ThingSubType thing_subtype = ThingSubType::None;
     private:
         // BlackTek Instance System
         uint32_t instanceID = 0; // 0 = global instance

@@ -120,7 +120,7 @@ void Game::start(ServiceManager* manager)
 	serviceManager = manager;
 	updateWorldTime();
 
-	if (g_config.getBoolean(ConfigManager::DEFAULT_WORLD_LIGHT)) {
+	if (g_config.GetBoolean(ConfigManager::DEFAULT_WORLD_LIGHT)) {
 		g_scheduler.addEvent(createSchedulerTask(EVENT_LIGHTINTERVAL, [this]() { checkLight(); }));
 	}
 	g_scheduler.addEvent(createSchedulerTask(20, [this]() { decay_clean_cycle(); }));
@@ -408,11 +408,12 @@ void Game::internalGetPosition(const ItemPtr& item, Position& pos, uint8_t& stac
 
 	
 	if (auto topParent = item->getTopParent()) {
-		if (auto player = std::dynamic_pointer_cast<Player>(topParent)) {
+		const auto topCreature = topParent->getCreature();
+		if (auto player = topCreature ? topCreature->getPlayer() : nullptr) {
 			pos.x = 0xFFFF;
 
-                if (const auto container = std::dynamic_pointer_cast<Container>(item->getParent())) {
-                    pos.y = static_cast<uint16_t>(0x40) | static_cast<uint16_t>(player->getContainerID(std::dynamic_pointer_cast<const Container>(container)));
+                if (const auto container = item->getParent()->getContainer()) {
+                    pos.y = static_cast<uint16_t>(0x40) | static_cast<uint16_t>(player->getContainerID(container));
                     pos.z = container->getThingIndex(item);
                     stackpos = pos.z;
                 } else {
@@ -941,7 +942,7 @@ ReturnValue Game::internalMoveCreature(CreaturePtr creature, TilePtr toTile, uin
 	
 
 	while ((subCylinder = toCylinder->queryDestination(index, creature, toItem, flags)) != toCylinder) {
-		const auto subTile = std::dynamic_pointer_cast<Tile>(subCylinder);
+		const auto subTile = subCylinder->getTile();
 		map.moveCreature(creature, subTile);
 
         if (creature->getParent() != subCylinder) {
@@ -1121,7 +1122,7 @@ void Game::playerMoveItem(const PlayerPtr& player,
 			        && !Position::areInRange<1, 1, 0>(mapFromPos, walkPos)) {
 				//need to pickup the item first
 				ItemPtr moveItem = nullptr;
-				CylinderPtr p_cylinder = std::dynamic_pointer_cast<Cylinder>(player);
+				CylinderPtr p_cylinder = std::static_pointer_cast<Cylinder>(player);
 				ReturnValue ret = internalMoveItem(fromCylinder, p_cylinder, INDEX_WHEREEVER, item, count, std::ref(moveItem), 0, player, nullptr, &fromPos, &toPos);
 				if (ret != RETURNVALUE_NOERROR) {
 					player->sendCancelMessage(ret);
@@ -1223,13 +1224,13 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 		return RETURNVALUE_NOERROR; //silently ignore move
 	}
 
-	if (ContainerPtr toContainer = std::dynamic_pointer_cast<Container>(toCylinder)) {
+	if (ContainerPtr toContainer = toCylinder->getContainer()) {
 		if (toContainer->isRewardCorpse() || toContainer->getID() == ITEM_REWARD_CONTAINER) {
 			return RETURNVALUE_NOTPOSSIBLE;
 		}
 	}
 
-	if (ContainerPtr itemContainer = std::dynamic_pointer_cast<Container>(item)) {
+	if (ContainerPtr itemContainer = item->getContainer()) {
 		if (itemContainer->isRewardCorpse() || item->getID() == ITEM_REWARD_CONTAINER) {
 			return RETURNVALUE_NOERROR; // silently ignore move
 		}
@@ -1396,18 +1397,18 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 		const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 		const uint32_t expiration = duration + call_time;
 		auto expirable_data = Expirable(item, expiration, call_time);
-		if (moveItem->getDecaying() != DECAYING_TRUE) 
+		if (moveItem->getDecaying() != DECAYING_TRUE)
 		{
-			if (const auto& player = std::dynamic_pointer_cast<Player>(toCylinder); player and item_type.resumable) 
+			if (toCylinder->getCylinderSubType() == CylinderSubType::Player and item_type.resumable)
 			{
 				moveItem->setDecaying(DECAYING_FALSE);
-			} 
+			}
 			else
 			{
 				moveItem->setDecaying(DECAYING_TRUE);
 			}
 		}
-		else if (const auto& player = std::dynamic_pointer_cast<Player>(toCylinder); player and item_type.resumable) 
+		else if (toCylinder->getCylinderSubType() == CylinderSubType::Player and item_type.resumable)
 		{
 			g_game.equipped_decay_precache.push_back(std::move(expirable_data));
 		}
@@ -2249,7 +2250,7 @@ void Game::playerUseItemEx(const uint32_t playerId, const Position& fromPos, con
 	}
 
 	const bool isHotkey = (fromPos.x == 0xFFFF && fromPos.y == 0 && fromPos.z == 0);
-	if (isHotkey && !g_config.getBoolean(ConfigManager::AIMBOT_HOTKEY_ENABLED)) {
+	if (isHotkey && !g_config.GetBoolean(ConfigManager::AIMBOT_HOTKEY_ENABLED)) {
 		return;
 	}
 
@@ -2342,7 +2343,7 @@ void Game::playerUseItem(const uint32_t playerId, const Position& pos, const uin
 	}
 
 	const bool isHotkey = (pos.x == 0xFFFF && pos.y == 0 && pos.z == 0);
-	if (isHotkey && !g_config.getBoolean(ConfigManager::AIMBOT_HOTKEY_ENABLED)) {
+	if (isHotkey && !g_config.GetBoolean(ConfigManager::AIMBOT_HOTKEY_ENABLED)) {
 		return;
 	}
 
@@ -2409,7 +2410,7 @@ void Game::playerUseWithCreature(const uint32_t playerId, const Position& fromPo
 	}
 
 	const bool isHotkey = (fromPos.x == 0xFFFF && fromPos.y == 0 && fromPos.z == 0);
-	if (!g_config.getBoolean(ConfigManager::AIMBOT_HOTKEY_ENABLED)) {
+	if (!g_config.GetBoolean(ConfigManager::AIMBOT_HOTKEY_ENABLED)) {
 		if (creature->getPlayer() || isHotkey) {
 			player->sendCancelMessage(RETURNVALUE_DIRECTPLAYERSHOOT);
 			return;
@@ -2510,7 +2511,7 @@ void Game::playerMoveUpContainer(const uint32_t playerId, uint8_t cid)
 		return;
 	}
 
-	auto parentContainer = std::dynamic_pointer_cast<Container>(container->getRealParent());
+	auto parentContainer = container->getRealParent()->getContainer();
 	if (!parentContainer) {
 		const auto tile = container->getTile();
 		if (!tile) {
@@ -2604,8 +2605,10 @@ void Game::playerWriteItem(const uint32_t playerId, const uint32_t windowTextId,
 	}
 
 	const auto topParent = writeItem->getTopParent();
+	const auto topParentCreature = topParent ? topParent->getCreature() : nullptr;
 
-	if (const auto owner = std::dynamic_pointer_cast<Player>(topParent); owner && owner != player) {
+	if (const auto& owner = topParentCreature ? topParentCreature->getPlayer() : nullptr; owner and owner != player)
+	{
 		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
 		return;
 	}
@@ -2806,7 +2809,7 @@ void Game::playerRequestTrade(const uint32_t playerId, const Position& pos, uint
 		return;
 	}
 
-	if (g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
+	if (g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
 		if (tradeItem->getTile()->isHouseTile()) {
 			if (!tradeItem->getTopParent()->getCreature() && !tradeItem->getTile()->getHouse()->isInvited(player)) {
 				player->sendCancelMessage(RETURNVALUE_PLAYERISNOTINVITED);
@@ -3506,7 +3509,7 @@ void Game::playerTurn(const uint32_t playerId, const Direction dir)
 
 void Game::playerRequestOutfit(const uint32_t playerId)
 {
-	if (!g_config.getBoolean(ConfigManager::ALLOW_CHANGEOUTFIT)) {
+	if (!g_config.GetBoolean(ConfigManager::ALLOW_CHANGEOUTFIT)) {
 		return;
 	}
 
@@ -3530,7 +3533,7 @@ void Game::playerToggleMount(const uint32_t playerId, const bool mount)
 
 void Game::playerChangeOutfit(const uint32_t playerId, Outfit_t outfit)
 {
-	if (!g_config.getBoolean(ConfigManager::ALLOW_CHANGEOUTFIT)) {
+	if (!g_config.GetBoolean(ConfigManager::ALLOW_CHANGEOUTFIT)) {
 		return;
 	}
 
@@ -4818,7 +4821,7 @@ bool Game::playerSaySpell(const PlayerPtr& player, const SpeakClasses type, cons
 
 	result = g_spells->playerSaySpell(player, words);
 	if (result == TALKACTION_BREAK) {
-		if (!g_config.getBoolean(ConfigManager::EMOTE_SPELLS)) {
+		if (!g_config.GetBoolean(ConfigManager::EMOTE_SPELLS)) {
 			return internalCreatureSay(player, TALKTYPE_SAY, words, false);
 		} else {
 			return internalCreatureSay(player, TALKTYPE_MONSTER_SAY, words, false);
@@ -4864,8 +4867,8 @@ bool Game::playerYell(const PlayerPtr& player, const std::string& text)
 		return false;
 	}
 
-	if (uint32_t minimumLevel = g_config.getNumber(ConfigManager::YELL_MINIMUM_LEVEL); player->getLevel() < minimumLevel) {
-		if (g_config.getBoolean(ConfigManager::YELL_ALLOW_PREMIUM)) {
+	if (uint32_t minimumLevel = g_config.GetNumber(ConfigManager::YELL_MINIMUM_LEVEL); player->getLevel() < minimumLevel) {
+		if (g_config.GetBoolean(ConfigManager::YELL_ALLOW_PREMIUM)) {
 			if (player->isPremium()) {
 				internalCreatureSay(player, TALKTYPE_YELL, asUpperCaseString(text), false);
 				return true;
@@ -4903,8 +4906,8 @@ bool Game::playerSpeakTo(const PlayerPtr& player, SpeakClasses type, const std::
 	}
 
 	if (!player->isAccessPlayer()) {
-		if (uint32_t minimumLevel = g_config.getNumber(ConfigManager::MINIMUM_LEVEL_TO_SEND_PRIVATE); player->getLevel() < minimumLevel) {
-			if (g_config.getBoolean(ConfigManager::PREMIUM_TO_SEND_PRIVATE)) {
+		if (uint32_t minimumLevel = g_config.GetNumber(ConfigManager::MINIMUM_LEVEL_TO_SEND_PRIVATE); player->getLevel() < minimumLevel) {
+			if (g_config.GetBoolean(ConfigManager::PREMIUM_TO_SEND_PRIVATE)) {
 				if (!player->isPremium()) {
 					player->sendTextMessage(
 						MESSAGE_STATUS_SMALL,
@@ -4969,8 +4972,16 @@ bool Game::internalCreatureTurn(const CreaturePtr& creature, const Direction dir
 	//send to client
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto& spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	// the second boolean as true in the above getSpectators ensures its only players
+	// but just to be safe lets use a view filter anyways
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		std::static_pointer_cast<Player>(spectator)->sendCreatureTurn(creature);
 	}
 	return true;
@@ -5096,7 +5107,7 @@ void Game::creature_think_cycle() noexcept
     auto& checkCreatureList = slots_[current_slot_];
     current_slot_ = (current_slot_ + 1) % 20;
 	auto valid_creatures = checkCreatureList
-		| std::views::filter([](const auto& creature) { return creature && creature->creatureCheck; })
+		| std::views::filter([](const auto& creature) { return creature and creature->creatureCheck; })
 		| std::views::filter([](const auto& creature) { return creature->getHealth() > 0; });
 
     for (auto& creature : valid_creatures)
@@ -5127,29 +5138,39 @@ void Game::changeSpeed(const CreaturePtr& creature, const int32_t varSpeedDelta)
 	//send to clients
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), false, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		std::static_pointer_cast<Player>(spectator)->sendChangeSpeed(creature, creature->getStepSpeed());
 	}
 }
 
 void Game::internalCreatureChangeOutfit(const CreaturePtr& creature, const Outfit_t& outfit)
 {
-	if (!g_events->eventCreatureOnChangeOutfit(creature, outfit)) {
+	if (not g_events->eventCreatureOnChangeOutfit(creature, outfit))
 		return;
-	}
 
 	creature->setCurrentOutfit(outfit);
 
-	if (creature->isInvisible()) {
+	if (creature->isInvisible())
 		return;
-	}
 
 	//send to clients
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto spectator : spectators)
+	{
 		std::static_pointer_cast<Player>(spectator)->sendCreatureChangeOutfit(creature, outfit);
 	}
 }
@@ -5159,8 +5180,14 @@ void Game::internalCreatureChangeVisible(const CreaturePtr& creature, bool visib
 	//send to clients
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		std::static_pointer_cast<Player>(spectator)->sendCreatureChangeVisible(creature, visible);
 	}
 }
@@ -5170,8 +5197,15 @@ void Game::changeLight(const CreatureConstPtr& creature)
 	//send to clients
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
+		assert(spectator->getCreatureSubType() == CreatureSubType::Player);
 		std::static_pointer_cast<Player>(spectator)->sendCreatureLight(creature);
 	}
 }
@@ -5322,9 +5356,9 @@ bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, con
 			}
 			
 			if (
-				!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || 
+				!g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || 
 				(item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))) ||
-				(g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
+				(g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
 			) {
 				for (const auto& augment : *item->getAugments()) {
 					for (const auto& modifier : augment->getAttackModifiers()) {
@@ -5346,9 +5380,9 @@ bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, con
 			}
 			
 			if (
-				!g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || 
+				!g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || 
 				(item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))) ||
-				(g_config.getBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
+				(g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
 			) {
 				for (const auto& augment : *item->getAugments()) {
 					for (const auto& modifier : augment->getDefenseModifiers()) {
@@ -5517,7 +5551,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 						int32_t dy = targetPos.y - monsterPos.y;
 						if (dx * dx + dy * dy < 49) { // 7^2 = 49
 							uint32_t playerGuid = targetPlayer->getGUID();
-							rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realHealthChange * g_config.getFloat(ConfigManager::REWARD_RATE_HEALING_DONE);
+							rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realHealthChange * g_config.GetFloat(ConfigManager::REWARD_RATE_HEALING_DONE);
 						}
 					}
 				}
@@ -5783,7 +5817,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			}
 			if (attackerPlayer) {
 				uint32_t playerGuid = attackerPlayer->getGUID();
-				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageDone += realDamage * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE);
+				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageDone += realDamage * g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE);
 			}
 		}
 
@@ -5795,7 +5829,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			}
 			if (target && target->getPlayer()) {
 				uint32_t playerGuid = target->getPlayer()->getGUID();
-				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realDamage * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN);
+				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realDamage * g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN);
 			}
 		}
 
@@ -6345,10 +6379,15 @@ void Game::updateCreatureWalkthrough(const CreatureConstPtr& creature)
 	//send to clients
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
 
-		const PlayerPtr spectatorPlayer = std::static_pointer_cast<Player>(spectator);
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
+		const auto& spectatorPlayer = std::static_pointer_cast<Player>(spectator);
 		spectatorPlayer->sendCreatureWalkthrough(creature, spectatorPlayer->canWalkthroughEx(creature));
 	}
 }
@@ -6358,22 +6397,33 @@ void Game::notifySpectators(const CreatureConstPtr& creature)
 	// send to clients
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		std::static_pointer_cast<Player>(spectator)->sendUpdateTileCreature(creature);
 	}
 }
 
 void Game::updateCreatureSkull(const CreatureConstPtr& creature)
 {
-	if (getWorldType() != WORLD_TYPE_PVP) {
+	if (getWorldType() != WORLD_TYPE_PVP)
 		return;
-	}
 
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		std::static_pointer_cast<Player>(spectator)->sendCreatureSkull(creature);
 	}
 }
@@ -6382,8 +6432,14 @@ void Game::updatePlayerShield(const PlayerPtr& player)
 {
 	SpectatorVec spectators;
 	map.getSpectators(spectators, player->getPosition(), true, true);
-	for (const auto spectator : spectators) {
-		assert(std::dynamic_pointer_cast<Player>(spectator) != nullptr);
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		std::static_pointer_cast<Player>(spectator)->sendCreatureShield(player);
 	}
 }
@@ -6395,7 +6451,14 @@ void Game::updatePlayerHelpers(const PlayerConstPtr& player)
 
 	SpectatorVec spectators;
 	map.getSpectators(spectators, player->getPosition(), true, true);
-	for (const auto spectator : spectators) {
+
+	auto players = spectators | std::views::filter([](const auto& spectator)
+	{
+		return spectator->getCreatureSubType() == CreatureSubType::Player;
+	});
+
+	for (const auto& spectator : players)
+	{
 		spectator->getPlayer()->sendCreatureHelpers(creatureId, helpers);
 	}
 }
@@ -6449,7 +6512,7 @@ void Game::loadMotdNum()
 	result = db.storeQuery("SELECT `value` FROM `server_config` WHERE `config` = 'motd_hash'");
 	if (result) {
 		motdHash = result->getString("value");
-		if (motdHash != transformToSHA1(g_config.getString(ConfigManager::MOTD))) {
+		if (motdHash != transformToSHA1(g_config.GetString(ConfigManager::MOTD))) {
 			++motdNum;
 		}
 	} else {
@@ -6461,7 +6524,7 @@ void Game::saveMotdNum() const
 {
 	Database& db = Database::getInstance();
 	db.executeQuery(fmt::format("UPDATE `server_config` SET `value` = '{:d}' WHERE `config` = 'motd_num'", motdNum));
-	db.executeQuery(fmt::format("UPDATE `server_config` SET `value` = '{:s}' WHERE `config` = 'motd_hash'", transformToSHA1(g_config.getString(ConfigManager::MOTD))));
+	db.executeQuery(fmt::format("UPDATE `server_config` SET `value` = '{:s}' WHERE `config` = 'motd_hash'", transformToSHA1(g_config.GetString(ConfigManager::MOTD))));
 }
 
 void Game::checkPlayersRecord()
@@ -6787,7 +6850,7 @@ void Game::playerCreateMarketOffer(const uint32_t playerId, uint8_t type, const 
 		return;
 	}
 
-	if (g_config.getBoolean(ConfigManager::MARKET_PREMIUM) && !player->isPremium()) {
+	if (g_config.GetBoolean(ConfigManager::MARKET_PREMIUM) && !player->isPremium()) {
 		player->sendMarketLeave();
 		return;
 	}
@@ -6806,7 +6869,7 @@ void Game::playerCreateMarketOffer(const uint32_t playerId, uint8_t type, const 
 		return;
 	}
 
-	const uint32_t maxOfferCount = g_config.getNumber(ConfigManager::MAX_MARKET_OFFERS_AT_A_TIME_PER_PLAYER);
+	const uint32_t maxOfferCount = g_config.GetNumber(ConfigManager::MAX_MARKET_OFFERS_AT_A_TIME_PER_PLAYER);
 	if (maxOfferCount != 0 && IOMarket::getPlayerOfferCount(player->getGUID()) >= maxOfferCount) {
 		return;
 	}
@@ -6930,7 +6993,7 @@ void Game::playerCancelMarketOffer(const uint32_t playerId, const uint32_t times
 
 	IOMarket::moveOfferToHistory(offer.id, OFFERSTATE_CANCELLED);
 	offer.amount = 0;
-	offer.timestamp += g_config.getNumber(ConfigManager::MARKET_OFFER_DURATION);
+	offer.timestamp += g_config.GetNumber(ConfigManager::MARKET_OFFER_DURATION);
 	player->sendMarketCancelOffer(offer);
 	player->sendMarketEnter();
 }
@@ -7088,7 +7151,7 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 		player->onReceiveMail();
 	}
 
-	const int32_t marketOfferDuration = g_config.getNumber(ConfigManager::MARKET_OFFER_DURATION);
+	const int32_t marketOfferDuration = g_config.GetNumber(ConfigManager::MARKET_OFFER_DURATION);
 
 	IOMarket::appendHistory(player->getGUID(), (offer.type == MARKETACTION_BUY ? MARKETACTION_SELL : MARKETACTION_BUY), offer.itemId, amount, offer.price, offer.timestamp + marketOfferDuration, OFFERSTATE_ACCEPTEDEX);
 
@@ -7124,9 +7187,12 @@ std::vector<ItemPtr> Game::getMarketItemList(const uint16_t wareId, const uint16
 	uint16_t count = 0;
 	std::list<ContainerPtr> containers{ player->getInbox() };
 
-	for (const auto& val : player->depotChests | std::views::values) {
-		if (!val->empty()) {
-			containers.push_front(val);
+	if (player->depotChests)
+	{
+		for (const auto& val : *player->depotChests | std::views::values) 
+		{
+			if (not val->empty())
+				containers.push_front(val);
 		}
 	}
 
@@ -7355,7 +7421,7 @@ bool Game::reload(const ReloadTypes_t reloadType)
 			return true;
 	   }
 		case RELOAD_TYPE_CHAT: return g_chat->load();
-		case RELOAD_TYPE_CONFIG: return g_config.reload();
+		case RELOAD_TYPE_CONFIG: return g_config.Reload();
 		case RELOAD_TYPE_CREATURESCRIPTS: {
 			g_creatureEvents->reload();
 			g_creatureEvents->removeInvalidEvents();
@@ -7413,7 +7479,7 @@ bool Game::reload(const ReloadTypes_t reloadType)
 			Item::items.reload();
 			quests.reload();
 			mounts.reload();
-			g_config.reload();
+			g_config.Reload();
 			g_events->load();
 			g_chat->load();
 			*/
@@ -7430,7 +7496,7 @@ bool Game::reload(const ReloadTypes_t reloadType)
 			}
 
 			g_actions->reload();
-			g_config.reload();
+			g_config.Reload();
 			g_creatureEvents->reload();
 			g_monsters.reload();
 			g_moveEvents->reload();

@@ -1,0 +1,35 @@
+# Combat and PVP configuration
+
+[pvp]
+protection_level             = 1
+experience_from_players      = false
+exp_from_players_level_range = 75
+
+[skull]
+kills_to_red     = 3
+kills_to_black   = 6
+# frag_time in seconds
+frag_time        = 86400
+# white_skull_time in seconds
+white_skull_time = 900
+# pz_locked in milliseconds
+pz_locked        = 60000
+
+[hotkey]
+aimbot_enabled = true
+
+[items]
+remove_rune_charges   = true
+remove_weapon_ammo    = true
+remove_weapon_charges = true
+remove_potion_charges = true
+
+[movement]
+# stairhop_delay in milliseconds
+stairhop_delay = 2000
+
+[classic]
+# classicAttackSpeed makes players attack at constant intervals regardless of other actions.
+# WARNING: May cause high CPU usage with many players.
+equipment_slots = false
+attack_speed    = false

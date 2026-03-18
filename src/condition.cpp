@@ -885,7 +885,7 @@ bool ConditionRegeneration::executeCondition(const CreaturePtr creature, int32_t
 		CombatDamage regen;
 		regen.primary.value = static_cast<int32_t>(healthGain);
 		regen.primary.type = COMBAT_HEALING;
-		const bool sendMsg = g_config.getBoolean(ConfigManager::HEALTH_REGEN_NOTIFICATION);
+		const bool sendMsg = g_config.GetBoolean(ConfigManager::HEALTH_REGEN_NOTIFICATION);
 		g_game.combatChangeHealth(nullptr, creature, regen, sendMsg);
 	}
 
@@ -897,7 +897,7 @@ bool ConditionRegeneration::executeCondition(const CreaturePtr creature, int32_t
 			regen.primary.value = static_cast<int32_t>(manaGain);
 			regen.primary.type = COMBAT_HEALING;
 			regen.isUtility = isBuff;
-			const bool sendMsg = g_config.getBoolean(ConfigManager::MANA_REGEN_NOTIFICATION);
+			const bool sendMsg = g_config.GetBoolean(ConfigManager::MANA_REGEN_NOTIFICATION);
 			g_game.combatChangeMana(nullptr, creature, regen, sendMsg);
 		}
 	}

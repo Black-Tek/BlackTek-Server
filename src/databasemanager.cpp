@@ -15,7 +15,7 @@ bool DatabaseManager::optimizeTables()
 {
 	Database& db = Database::getInstance();
 
-	DBResult_ptr result = db.storeQuery(fmt::format("SELECT `TABLE_NAME` FROM `information_schema`.`TABLES` WHERE `TABLE_SCHEMA` = {:s} AND `DATA_FREE` > 0", db.escapeString(g_config.getString(ConfigManager::MYSQL_DB))));
+	DBResult_ptr result = db.storeQuery(fmt::format("SELECT `TABLE_NAME` FROM `information_schema`.`TABLES` WHERE `TABLE_SCHEMA` = {:s} AND `DATA_FREE` > 0", db.escapeString(g_config.GetString(ConfigManager::MYSQL_DB))));
 	if (not result)
 	{
 		return false;
@@ -38,13 +38,13 @@ bool DatabaseManager::optimizeTables()
 bool DatabaseManager::tableExists(const std::string& tableName)
 {
 	Database& db = Database::getInstance();
-	return db.storeQuery(fmt::format("SELECT `TABLE_NAME` FROM `information_schema`.`tables` WHERE `TABLE_SCHEMA` = {:s} AND `TABLE_NAME` = {:s} LIMIT 1", db.escapeString(g_config.getString(ConfigManager::MYSQL_DB)), db.escapeString(tableName))).get() != nullptr;
+	return db.storeQuery(fmt::format("SELECT `TABLE_NAME` FROM `information_schema`.`tables` WHERE `TABLE_SCHEMA` = {:s} AND `TABLE_NAME` = {:s} LIMIT 1", db.escapeString(g_config.GetString(ConfigManager::MYSQL_DB)), db.escapeString(tableName))).get() != nullptr;
 }
 
 bool DatabaseManager::isDatabaseSetup()
 {
 	Database& db = Database::getInstance();
-	return db.storeQuery(fmt::format("SELECT `TABLE_NAME` FROM `information_schema`.`tables` WHERE `TABLE_SCHEMA` = {:s}", db.escapeString(g_config.getString(ConfigManager::MYSQL_DB)))).get() != nullptr;
+	return db.storeQuery(fmt::format("SELECT `TABLE_NAME` FROM `information_schema`.`tables` WHERE `TABLE_SCHEMA` = {:s}", db.escapeString(g_config.GetString(ConfigManager::MYSQL_DB)))).get() != nullptr;
 }
 
 int32_t DatabaseManager::getDatabaseVersion()

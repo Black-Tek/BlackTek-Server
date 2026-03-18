@@ -255,7 +255,7 @@ int main(int argc, char* argv[])
 
 	if (serviceManager.is_running())
 	{
-		Console::printOnline(g_config.getString(ConfigManager::SERVER_NAME));
+		Console::printOnline(g_config.GetString(ConfigManager::SERVER_NAME));
 		serviceManager.run();
 	}
 	else
@@ -305,12 +305,19 @@ void mainLoader(int, char*[], ServiceManager* services)
 	#ifdef _WIN32
 		SetConsoleTitle(STATUS_SERVER_NAME);
 
-		// fixes a problem with escape characters not being processed in Windows consoles
+		// Enable ANSI/VT100 escape code processing
 		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
 		DWORD dwMode = 0;
 		GetConsoleMode(hOut, &dwMode);
 		dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
 		SetConsoleMode(hOut, dwMode);
+
+		// We disable quick edit mode because it causes the server to freeze whenever a user clicks the console window
+		HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+		DWORD dwInMode = 0;
+		GetConsoleMode(hIn, &dwInMode);
+		dwInMode &= ~ENABLE_QUICK_EDIT_MODE;
+		SetConsoleMode(hIn, dwInMode);
 	#endif
 
 	// banner and version info
@@ -318,38 +325,16 @@ void mainLoader(int, char*[], ServiceManager* services)
 	BlackTek::Console::Print("\n");
 	BlackTek::Console::LogAndPrint(fmt::format(fg(Console::dark_gray), "    ────────────────────────────────────────"));
 
-	// check if config.lua or config.lua.dist exist
-	const std::string& configFile = g_config.getString(ConfigManager::CONFIG_FILE);
-	std::ifstream c_test("./" + configFile);
-
-	if (not c_test.is_open())
+	// Load configuration from config/ directory (TOML files)
+	if (not g_config.Load())
 	{
-		// todo: instead of copying from dist here, we should have a default built in
-		std::ifstream config_lua_dist("./config.lua.dist");
-		if (config_lua_dist.is_open())
-		{
-			Console::printStatus("Copying config.lua.dist to " + configFile);
-			std::ofstream config_lua(configFile);
-			config_lua << config_lua_dist.rdbuf();
-			config_lua.close();
-			config_lua_dist.close();
-		}
-	}
-	else
-	{
-		c_test.close();
-	}
-
-	// Load config
-	if (not g_config.load())
-	{
-		startupErrorMessage("Unable to load " + configFile + "!");
+		startupErrorMessage("Unable to load configuration files from the config/ directory!");
 		return;
 	}
 
 	#ifdef _WIN32
-		const std::string& defaultPriority = g_config.getString(ConfigManager::DEFAULT_PRIORITY);
-		if (caseInsensitiveEqual(defaultPriority, "high")) 
+		const std::string& defaultPriority = g_config.GetString(ConfigManager::DEFAULT_PRIORITY);
+		if (caseInsensitiveEqual(defaultPriority, "high"))
 		{
 			SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 		}
@@ -390,7 +375,7 @@ void mainLoader(int, char*[], ServiceManager* services)
 	g_databaseTasks.start();
 	DatabaseManager::updateDatabase();
 
-	if (g_config.getBoolean(ConfigManager::OPTIMIZE_DATABASE) && !DatabaseManager::optimizeTables())
+	if (g_config.GetBoolean(ConfigManager::OPTIMIZE_DATABASE) and not DatabaseManager::optimizeTables())
 	{
 		Console::printWarning("No tables were optimized.");
 	}
@@ -401,7 +386,7 @@ void mainLoader(int, char*[], ServiceManager* services)
 	Console::printSection("SERVER CONFIG");
 
 	// Check world type
-	std::string worldType = asLowerCaseString(g_config.getString(ConfigManager::WORLD_TYPE));
+	std::string worldType = asLowerCaseString(g_config.GetString(ConfigManager::WORLD_TYPE));
 	if (worldType == "pvp")
 	{
 		g_game.setWorldType(WORLD_TYPE_PVP);
@@ -416,25 +401,23 @@ void mainLoader(int, char*[], ServiceManager* services)
 	}
 	else
 	{
-		startupErrorMessage(fmt::format("Unknown world type: {:s}, valid world types are: pvp, no-pvp and pvp-enforced.", g_config.getString(ConfigManager::WORLD_TYPE)));
+		startupErrorMessage(fmt::format("Unknown world type: {:s}, valid world types are: pvp, no-pvp and pvp-enforced.", g_config.GetString(ConfigManager::WORLD_TYPE)));
 		return;
 	}
 
 	Console::printProgress("World Type", true, asUpperCaseString(worldType));
-
-	Console::printProgress("World Map", true, g_config.getString(ConfigManager::MAP_NAME));
-
+	Console::printProgress("World Map",  true, g_config.GetString(ConfigManager::MAP_NAME));
 
 	// Account Manager
-	if (g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER))
+	if (g_config.GetBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER))
 	{
 		AccountManager::initialize();
 		Console::printProgress("Account Manager", true, "enabled");
 	}
 
-	Console::printProgress("Game Port",   true, std::to_string(g_config.getNumber(ConfigManager::GAME_PORT)));
-	Console::printProgress("Login Port",  true, std::to_string(g_config.getNumber(ConfigManager::LOGIN_PORT)));
-	Console::printProgress("Status Port", true, std::to_string(g_config.getNumber(ConfigManager::STATUS_PORT)));
+	Console::printProgress("Game Port",   true, std::to_string(g_config.GetNumber(ConfigManager::GAME_PORT)));
+	Console::printProgress("Login Port",  true, std::to_string(g_config.GetNumber(ConfigManager::LOGIN_PORT)));
+	Console::printProgress("Status Port", true, std::to_string(g_config.GetNumber(ConfigManager::STATUS_PORT)));
 
 	// ========================================================================
 	// GAME DATA
@@ -450,7 +433,7 @@ void mainLoader(int, char*[], ServiceManager* services)
 	Console::printProgress("Vocations", true, std::to_string(g_vocations.getVocations().size()));
 
 	// Load items
-	if (not Item::items.loadFromDat(g_config.getString(ConfigManager::ASSETS_DAT_PATH)))
+	if (not Item::items.loadFromDat(g_config.GetString(ConfigManager::ASSETS_DAT_PATH)))
 	{
 		startupErrorMessage("Unable to load items (DAT)!");
 		return;
@@ -515,7 +498,7 @@ void mainLoader(int, char*[], ServiceManager* services)
 
 
 	// Load map
-	if (not g_game.loadMainMap(g_config.getString(ConfigManager::MAP_NAME)))
+	if (not g_game.loadMainMap(g_config.GetString(ConfigManager::MAP_NAME)))
 	{
 		startupErrorMessage("Failed to load map");
 		return;
@@ -525,18 +508,18 @@ void mainLoader(int, char*[], ServiceManager* services)
 	g_game.setGameState(GAME_STATE_INIT);
 
 	// Game client protocols
-	services->add<ProtocolGame>(static_cast<uint16_t>(g_config.getNumber(ConfigManager::GAME_PORT)));
-	services->add<ProtocolLogin>(static_cast<uint16_t>(g_config.getNumber(ConfigManager::LOGIN_PORT)));
+	services->add<ProtocolGame>(static_cast<uint16_t>(g_config.GetNumber(ConfigManager::GAME_PORT)));
+	services->add<ProtocolLogin>(static_cast<uint16_t>(g_config.GetNumber(ConfigManager::LOGIN_PORT)));
 
 	// OT protocols
-	services->add<ProtocolStatus>(static_cast<uint16_t>(g_config.getNumber(ConfigManager::STATUS_PORT)));
+	services->add<ProtocolStatus>(static_cast<uint16_t>(g_config.GetNumber(ConfigManager::STATUS_PORT)));
 
 	// Legacy login protocol
-	services->add<ProtocolOld>(static_cast<uint16_t>(g_config.getNumber(ConfigManager::LOGIN_PORT)));
+	services->add<ProtocolOld>(static_cast<uint16_t>(g_config.GetNumber(ConfigManager::LOGIN_PORT)));
 
 	// House rent
 	RentPeriod_t rentPeriod;
-	std::string strRentPeriod = asLowerCaseString(g_config.getString(ConfigManager::HOUSE_RENT_PERIOD));
+	std::string strRentPeriod = asLowerCaseString(g_config.GetString(ConfigManager::HOUSE_RENT_PERIOD));
 
 
 	// TODO: I want to add the load times for things, and we are still not displaying the old information about the map size
@@ -590,7 +573,6 @@ bool argumentsHandler(const StringVector& args)
 		if (arg == "--help") {
 			std::clog << "Usage:\n"
 			"\n"
-			"\t--config=$1\t\tAlternate configuration file path.\n"
 			"\t--ip=$1\t\t\tIP address of the server.\n"
 			"\t\t\t\tShould be equal to the global IP.\n"
 			"\t--login-port=$1\tPort for login server to listen on.\n"
@@ -603,14 +585,12 @@ bool argumentsHandler(const StringVector& args)
 
 		auto tmp = explodeString(arg, "=");
 
-		if (tmp[0] == "--config")
-			g_config.setString(ConfigManager::CONFIG_FILE, tmp[1]);
-		else if (tmp[0] == "--ip")
-			g_config.setString(ConfigManager::IP, tmp[1]);
+		if (tmp[0] == "--ip")
+			g_config.SetString(ConfigManager::IP, tmp[1]);
 		else if (tmp[0] == "--login-port")
-			g_config.setNumber(ConfigManager::LOGIN_PORT, std::stoi(tmp[1].data()));
+			g_config.SetNumber(ConfigManager::LOGIN_PORT, std::stoi(tmp[1].data()));
 		else if (tmp[0] == "--game-port")
-			g_config.setNumber(ConfigManager::GAME_PORT, std::stoi(tmp[1].data()));
+			g_config.SetNumber(ConfigManager::GAME_PORT, std::stoi(tmp[1].data()));
 	}
 
 	return true;

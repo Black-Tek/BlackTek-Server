@@ -157,7 +157,7 @@ class IOMap
 			if (map->housefile.empty()) {
 				//OTBM file doesn't tell us about the housefile,
 				//lets guess it is mapname-house.xml.
-				map->housefile = g_config.getString(ConfigManager::MAP_NAME);
+				map->housefile = g_config.GetString(ConfigManager::MAP_NAME);
 				map->housefile += "-house.xml";
 			}
 

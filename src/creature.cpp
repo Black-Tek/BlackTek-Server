@@ -91,7 +91,7 @@ bool Creature::canSeeCreature(const CreatureConstPtr& creature) const
 void Creature::setSkull(Skulls_t newSkull)
 {
 	skull = newSkull;
-	g_game.updateCreatureSkull(std::dynamic_pointer_cast<Creature>(shared_from_this()));
+	g_game.updateCreatureSkull(std::static_pointer_cast<Creature>(shared_from_this()));
 }
 
 int64_t Creature::getTimeSinceLastMove() const
@@ -704,7 +704,7 @@ CreatureVector Creature::getKillers() const
 {
 	CreatureVector killers;
 	const int64_t timeNow = OTSYS_TIME();
-	const uint32_t inFightTicks = g_config.getNumber(ConfigManager::PZ_LOCKED);
+	const uint32_t inFightTicks = g_config.GetNumber(ConfigManager::PZ_LOCKED);
 	for (const auto& it : damageMap) {
 		auto attacker = g_game.getCreatureByID(it.first);
 		if (attacker && attacker != shared_from_this() && timeNow - it.second.ticks <= inFightTicks) {
@@ -730,7 +730,7 @@ void Creature::onDeath()
 	CreaturePtr mostDamageCreature = nullptr;
 
 	const int64_t timeNow = OTSYS_TIME();
-	const uint32_t inFightTicks = g_config.getNumber(ConfigManager::PZ_LOCKED);
+	const uint32_t inFightTicks = g_config.GetNumber(ConfigManager::PZ_LOCKED);
 	int32_t mostDamage = 0;
 	std::map<CreaturePtr, uint64_t> experienceMap;
 	for (const auto& it : damageMap) {
@@ -852,7 +852,7 @@ bool Creature::hasBeenAttacked(uint32_t attackerId)
 	if (it == damageMap.end()) {
 		return false;
 	}
-	return (OTSYS_TIME() - it->second.ticks) <= g_config.getNumber(ConfigManager::PZ_LOCKED);
+	return (OTSYS_TIME() - it->second.ticks) <= g_config.GetNumber(ConfigManager::PZ_LOCKED);
 }
 
 ItemPtr Creature::getCorpse(const CreaturePtr&, const CreaturePtr&)
@@ -884,7 +884,7 @@ void Creature::gainHealth(const CreaturePtr& healer, int32_t healthGain)
 {
 	changeHealth(healthGain);
 	if (healer) {
-		healer->onTargetCreatureGainHealth(std::dynamic_pointer_cast<Creature>(shared_from_this()), healthGain);
+		healer->onTargetCreatureGainHealth(std::static_pointer_cast<Creature>(shared_from_this()), healthGain);
 	}
 }
 
@@ -893,7 +893,7 @@ void Creature::drainHealth(const CreaturePtr& attacker, int32_t damage)
 	changeHealth(-damage, false);
 
 	if (attacker) {
-		attacker->onAttackedCreatureDrainHealth(std::dynamic_pointer_cast<Creature>(shared_from_this()), damage);
+		attacker->onAttackedCreatureDrainHealth(std::static_pointer_cast<Creature>(shared_from_this()), damage);
 	} else {
 		lastHitCreatureId = 0;
 	}
@@ -1185,7 +1185,7 @@ void Creature::onAttacked()
 
 void Creature::onAttackedCreatureDrainHealth(const CreaturePtr& target, int32_t points)
 {
-	target->addDamagePoints(std::dynamic_pointer_cast<Creature>(shared_from_this()), points);
+	target->addDamagePoints(std::static_pointer_cast<Creature>(shared_from_this()), points);
 }
 
 bool Creature::onKilledCreature(const CreaturePtr& target, bool)
@@ -1197,7 +1197,7 @@ bool Creature::onKilledCreature(const CreaturePtr& target, bool)
 	//scripting event - onKill
 	const CreatureEventList& killEvents = getCreatureEvents(CREATURE_EVENT_KILL);
 	for (CreatureEvent* killEvent : killEvents) {
-		killEvent->executeOnKill(std::dynamic_pointer_cast<Creature>(shared_from_this()), target);
+		killEvent->executeOnKill(std::static_pointer_cast<Creature>(shared_from_this()), target);
 	}
 	return false;
 }
@@ -1237,7 +1237,7 @@ bool Creature::setMaster(const CreaturePtr& newMaster) {
 	}
 
 	if (newMaster) {
-		newMaster->summons.push_back(std::dynamic_pointer_cast<Creature>(shared_from_this()));
+		newMaster->summons.push_back(std::static_pointer_cast<Creature>(shared_from_this()));
 	}
 
 	CreaturePtr oldMaster = getMaster();
@@ -1308,12 +1308,12 @@ bool Creature::addCondition(Condition* condition, bool force/* = false*/)
 
 	Condition* prevCond = getCondition(condition->getType(), condition->getId(), condition->getSubId());
 	if (prevCond) {
-		prevCond->addCondition(std::dynamic_pointer_cast<Creature>(shared_from_this()), condition);
+		prevCond->addCondition(std::static_pointer_cast<Creature>(shared_from_this()), condition);
 		delete condition;
 		return true;
 	}
 
-	if (condition->startCondition(std::dynamic_pointer_cast<Creature>(shared_from_this()))) {
+	if (condition->startCondition(std::static_pointer_cast<Creature>(shared_from_this()))) {
 		conditions.push_back(condition);
 		onAddCondition(condition->getType());
 		return true;
@@ -1356,7 +1356,7 @@ void Creature::removeCondition(ConditionType_t type, bool force/* = false*/)
 
 		it = conditions.erase(it);
 
-		condition->endCondition(std::dynamic_pointer_cast<Creature>(shared_from_this()));
+		condition->endCondition(std::static_pointer_cast<Creature>(shared_from_this()));
 		delete condition;
 
 		onEndCondition(type);
@@ -1383,7 +1383,7 @@ void Creature::removeCondition(ConditionType_t type, ConditionId_t conditionId, 
 
 		it = conditions.erase(it);
 
-		condition->endCondition(std::dynamic_pointer_cast<Creature>(shared_from_this()));
+		condition->endCondition(std::static_pointer_cast<Creature>(shared_from_this()));
 		delete condition;
 
 		onEndCondition(type);
@@ -1421,7 +1421,7 @@ void Creature::removeCondition(Condition* condition, bool force/* = false*/)
 
 	conditions.erase(it);
 
-	condition->endCondition(std::dynamic_pointer_cast<Creature>(shared_from_this()));
+	condition->endCondition(std::static_pointer_cast<Creature>(shared_from_this()));
 	onEndCondition(condition->getType());
 	delete condition;
 }
@@ -1455,11 +1455,11 @@ void Creature::executeConditions(uint32_t interval)
 			continue;
 		}
 
-		if (!condition->executeCondition(std::dynamic_pointer_cast<Creature>(shared_from_this()), interval)) {
+		if (!condition->executeCondition(std::static_pointer_cast<Creature>(shared_from_this()), interval)) {
 			it = std::ranges::find(conditions, condition);
 			if (it != conditions.end()) {
 				conditions.erase(it);
-				condition->endCondition(std::dynamic_pointer_cast<Creature>(shared_from_this()));
+				condition->endCondition(std::static_pointer_cast<Creature>(shared_from_this()));
 				onEndCondition(condition->getType());
 				delete condition;
 			}

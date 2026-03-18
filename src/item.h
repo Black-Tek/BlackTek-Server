@@ -560,6 +560,24 @@ class ItemAttributes
 	friend class Item;
 };
 
+enum class ItemSubType : uint8_t
+{
+	None,
+	Container,
+	DepotChest,
+	DepotLocker,
+	Inbox,
+	StoreInbox,
+	RewardChest,
+	Teleport,
+	TrashHolder,
+	Mailbox,
+	Door,
+	MagicField,
+	BedItem,
+	HouseTransferItem,
+};
+
 class Item : virtual public Thing, public SharedObject
 {
 	public:
@@ -608,7 +626,11 @@ class Item : virtual public Thing, public SharedObject
 		ItemConstPtr getItem() const override final {
 			return static_shared_this<const Item>();
 		}
-	
+
+		ItemSubType getItemSubType() const {
+			return item_subtype;
+		}
+
 		virtual TeleportPtr getTeleport() {
 			return nullptr;
 		}
@@ -1344,6 +1366,7 @@ class Item : virtual public Thing, public SharedObject
 		std::unique_ptr<std::vector<std::shared_ptr<Augment>>> augments;
 	protected:
 		uint16_t id; // the same id as in ItemType
+		ItemSubType item_subtype = ItemSubType::None;
 
 	private:
 		uint16_t imbuementSlots = 0;

@@ -1,0 +1,10 @@
+# Database connection configuration
+
+[mysql]
+host               = "127.0.0.1"
+user               = "forgottenserver"
+pass               = ""
+database           = "forgottenserver"
+port               = 3306
+socket             = ""
+optimize_on_startup = false

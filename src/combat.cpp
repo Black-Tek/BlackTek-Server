@@ -12,6 +12,9 @@
 
 #include <optional>
 
+using BlackTek::MatrixArea;
+using BlackTek::CreateArea;
+
 extern Game g_game;
 extern Weapons* g_weapons;
 extern ConfigManager g_config;
@@ -44,9 +47,9 @@ static std::vector<TilePtr> getList(const MatrixArea& area, const Position& targ
 {
 	const Position casterPos = getNextPosition(dir, targetPos);
 
-	const uint32_t rows = area.getRows();
-	const uint32_t cols = area.getCols();
-	const auto& center = area.getCenter();
+	const uint32_t rows = area.GetRows();
+	const uint32_t cols = area.GetCols();
+	const auto& center = area.GetCenter();
 
 	const int32_t startX = targetPos.x - static_cast<int32_t>(center.first);
 	const int32_t startY = targetPos.y - static_cast<int32_t>(center.second);
@@ -377,7 +380,7 @@ bool Combat::isInPvpZone(const CreatureConstPtr& attacker, const CreatureConstPt
 
 bool Combat::isProtected(const PlayerConstPtr& attacker, const PlayerConstPtr& target)
 {
-	uint32_t protectionLevel = g_config.getNumber(ConfigManager::PROTECTION_LEVEL);
+	uint32_t protectionLevel = g_config.GetNumber(ConfigManager::PROTECTION_LEVEL);
 	if (target->getLevel() < protectionLevel or attacker->getLevel() < protectionLevel) 
 	{
 		return true;
@@ -1182,7 +1185,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 	if (success) {
 		if (target and caster and target != caster) {
 			if (damage.critical) {
-				if ((damage.augmented and g_config.getBoolean(ConfigManager::AUGMENT_CRITICAL_ANIMATION)) or not (damage.augmented)) {
+				if ((damage.augmented and g_config.GetBoolean(ConfigManager::AUGMENT_CRITICAL_ANIMATION)) or not (damage.augmented)) {
 					g_game.addMagicEffect(target->getPosition(), CONST_ME_CRITICAL_DAMAGE);
 				}
 			}
@@ -1415,7 +1418,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 
 				if (staminaGain) {
 					if (staminaGain <= std::numeric_limits<uint16_t>::max()) {
-						const uint16_t trueStaminaGain = g_config.getBoolean(ConfigManager::AUGMENT_STAMINA_RULE) ?
+						const uint16_t trueStaminaGain = g_config.GetBoolean(ConfigManager::AUGMENT_STAMINA_RULE) ?
 							static_cast<uint16_t>(staminaGain) :
 							static_cast<uint16_t>(staminaGain / 60);
 						
@@ -1802,7 +1805,8 @@ void TargetCallback::onTargetCombat(const CreaturePtr& creature, const CreatureP
 	scriptInterface->resetScriptEnv();
 }
 
-const MatrixArea& AreaCombat::getArea(const Position& centerPos, const Position& targetPos) const {
+const MatrixArea& AreaCombat::getArea(const Position& centerPos, const Position& targetPos) const
+{
 	const int32_t dx = Position::getOffsetX(targetPos, centerPos);
 	const int32_t dy = Position::getOffsetY(targetPos, centerPos);
 
@@ -1840,14 +1844,14 @@ const MatrixArea& AreaCombat::getArea(const Position& centerPos, const Position&
 
 void AreaCombat::setupArea(const std::vector<uint32_t>& vec, uint32_t rows)
 {
-	auto area = createArea(vec, rows);
+	auto area = CreateArea(vec, rows);
 	if (areas.size() == 0) {
 		areas.resize(4);
 	}
 
-	areas[DIRECTION_EAST] = area.rotate90();
-	areas[DIRECTION_SOUTH] = area.rotate180();
-	areas[DIRECTION_WEST] = area.rotate270();
+	areas[DIRECTION_EAST] = area.Rotate90();
+	areas[DIRECTION_SOUTH] = area.Rotate180();
+	areas[DIRECTION_WEST] = area.Rotate270();
 	areas[DIRECTION_NORTH] = std::move(area);
 }
 
@@ -1928,11 +1932,11 @@ void AreaCombat::setupExtArea(const std::vector<uint32_t>& vec, uint32_t rows)
 	}
 
 	hasExtArea = true;
-	auto area = createArea(vec, rows);
+	auto area = CreateArea(vec, rows);
 	areas.resize(8);
-	areas[DIRECTION_NORTHEAST] = area.rotate90();
-	areas[DIRECTION_SOUTHEAST] = area.rotate180();
-	areas[DIRECTION_SOUTHWEST] = area.rotate270();
+	areas[DIRECTION_NORTHEAST] = area.Rotate90();
+	areas[DIRECTION_SOUTHEAST] = area.Rotate180();
+	areas[DIRECTION_SOUTHWEST] = area.Rotate270();
 	areas[DIRECTION_NORTHWEST] = std::move(area);
 }
 

@@ -1,6 +1,7 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
+#include "otpch.h"
 #include "zones.h"
 #include "configmanager.h"
 
@@ -90,7 +91,7 @@ Zone& Zones::createZone(int id, std::vector<Position> positions)
 
 void Zones::load()
 {
-	auto folder = "data/world/" + g_config.getString(ConfigManager::MAP_NAME) + "-zones";
+	auto folder = "data/world/" + g_config.GetString(ConfigManager::MAP_NAME) + "-zones";
 	if (std::filesystem::exists(folder) and std::filesystem::is_directory(folder))
 	{
 		for (const auto& file : std::filesystem::recursive_directory_iterator(folder))

@@ -41,6 +41,8 @@ Monster::Monster(MonsterType* mType) :
 	baseSpeed = mType->info.baseSpeed;
 	internalLight = mType->info.light;
 	hiddenHealth = mType->info.hiddenHealth;
+	thing_subtype = ThingSubType::Monster;
+	creature_subtype = CreatureSubType::Monster;
 	targetList.reserve(24);
 
 	// register creature events
@@ -486,7 +488,7 @@ void Monster::onCreatureLeave(const CreaturePtr& creature)
 		updateIdleStatus();
 
 		if (!isSummon() && targetList.empty()) {
-			int32_t walkToSpawnRadius = g_config.getNumber(ConfigManager::DEFAULT_WALKTOSPAWNRADIUS);
+			int32_t walkToSpawnRadius = g_config.GetNumber(ConfigManager::DEFAULT_WALKTOSPAWNRADIUS);
 			if (walkToSpawnRadius > 0 && !Position::areInRange(position, masterPos, walkToSpawnRadius, walkToSpawnRadius)) {
 				walkToSpawn();
 			}
@@ -684,7 +686,7 @@ void Monster::onThink(const uint32_t interval)
 	{
 		g_game.addMagicEffect(getPosition(), CONST_ME_POFF);
 
-		if (g_config.getBoolean(ConfigManager::REMOVE_ON_DESPAWN)) 
+		if (g_config.GetBoolean(ConfigManager::REMOVE_ON_DESPAWN)) 
 		{
 			g_game.removeCreature(self, false);
 		} 
@@ -1640,12 +1642,12 @@ void Monster::death(const CreaturePtr&)
 			for (const auto& [playerId, score] : bossScoreTable.playerScoreTable) {
 
 				const auto contributionScore =
-					(score.damageDone * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE))
-					+ (score.damageTaken * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN))
-					+ (score.healingDone * (g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE)));
+					(score.damageDone * g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE))
+					+ (score.damageTaken * g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN))
+					+ (score.healingDone * (g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE)));
 				// we should never see 0's here, but better safe than sorry.
 				const float expectedScore = (contributionScore) ? (totalScore / (contributors * 3.0)) : 0;
-				const int32_t lootRate = std::max<int32_t>(g_config.getFloat(ConfigManager::REWARD_BASE_RATE), 1.0);
+				const int32_t lootRate = std::max<int32_t>(g_config.GetFloat(ConfigManager::REWARD_BASE_RATE), 1.0);
 				
 				const auto& player = g_game.getPlayerByGUID(playerId);
 				const auto& rewardContainer = Item::CreateItem(ITEM_REWARD_CONTAINER)->getContainer();
@@ -1884,7 +1886,7 @@ void Monster::getPathSearchParams(const CreatureConstPtr& creature, FindPathPara
 
 	if (isSummon()) {
 		if (getMaster() == creature) {
-			fpp.maxTargetDist = g_config.getNumber(ConfigManager::SUMMON_PROXIMITY);
+			fpp.maxTargetDist = g_config.GetNumber(ConfigManager::SUMMON_PROXIMITY);
 			fpp.fullPathSearch = true;
 		} else if (mType->info.targetDistance <= 1) {
 			fpp.fullPathSearch = true;
@@ -1936,9 +1938,11 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
         if (caller == owner)
             return CREATURETYPE_SUMMON_OWN;
 
-        if (auto calling_player = caller->getPlayer(); calling_player)
+		auto caller_type = caller->getCreatureSubType();
+
+        if (auto isPlayer = caller_type == CreatureSubType::Player; auto calling_player = std::static_pointer_cast<Player>(caller))
         {
-            if (auto player = std::dynamic_pointer_cast<Player>(owner); player)
+            if (auto alsoPlayer = owner->getCreatureSubType() == CreatureSubType::Player; auto player = std::static_pointer_cast<Player>(owner))
             {
                 // Todo : we could set priority in config for party of guild, or allow as aditional param
                 auto owner_guild = player->getGuild();
@@ -1956,7 +1960,7 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
                 return CREATURETYPE_SUMMON_OTHER;
             }
 
-            if (auto monster = owner->getMonster(); monster)
+			if (auto isMonster = owner->getCreatureSubType() == CreatureSubType::Monster; auto monster = std::static_pointer_cast<Monster>(owner))
             {
                 for (const auto& weakPtr : monster->getTargetList())
                 {
@@ -1966,9 +1970,9 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
             }
         }
 
-        if (auto calling_monster = std::dynamic_pointer_cast<Monster>(caller); calling_monster)
+        if (auto isMonster = caller_type == CreatureSubType::Monster; auto calling_monster = std::static_pointer_cast<Monster>(caller))
         {
-            if (auto player = std::dynamic_pointer_cast<Player>(owner); player)
+            if (auto player = owner->getPlayer(); player)
             {
                 for (const auto& weakPtr : calling_monster->getTargetList())
                 {

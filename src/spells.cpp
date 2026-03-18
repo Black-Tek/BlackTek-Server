@@ -892,7 +892,7 @@ bool RuneSpell::executeUse(const PlayerPtr& player, const ItemPtr& item, const P
 		}
 	}
 
-	if (hasCharges && item && g_config.getBoolean(ConfigManager::REMOVE_RUNE_CHARGES)) {
+	if (hasCharges && item && g_config.GetBoolean(ConfigManager::REMOVE_RUNE_CHARGES)) {
 		int32_t newCount = std::max<int32_t>(0, item->getItemCount() - 1);
 		g_game.transformItem(item, item->getID(), newCount);
 	}

@@ -102,7 +102,7 @@ namespace
 			return 0;
 		}
 
-		uint32_t maxPlayers = static_cast<uint32_t>(g_config.getNumber(ConfigManager::MAX_PLAYERS));
+		uint32_t maxPlayers = static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MAX_PLAYERS));
 
 		if (maxPlayers == 0 or (waitList.empty() and g_game.getPlayersOnline() < maxPlayers)) 
 		{
@@ -170,9 +170,9 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 {
 	//dispatcher thread
 	const auto& foundPlayer = g_game.getPlayerByGUID(characterId);
-	const auto managerEnabled = g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER);
+	const auto managerEnabled = g_config.GetBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER);
 	const auto isAccountManager = characterId == AccountManager::ID and managerEnabled;
-	if (not foundPlayer or g_config.getBoolean(ConfigManager::ALLOW_CLONES) or isAccountManager)
+	if (not foundPlayer or g_config.GetBoolean(ConfigManager::ALLOW_CLONES) or isAccountManager)
 	{
 		player = g_game.MakePlayer(getThis());
 		
@@ -203,7 +203,7 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			return;
 		}
 
-		if (g_config.getBoolean(ConfigManager::ONE_PLAYER_ON_ACCOUNT) 
+		if (g_config.GetBoolean(ConfigManager::ONE_PLAYER_ON_ACCOUNT) 
 			and characterId != AccountManager::ID 
 			and player->getAccountType() < ACCOUNT_TYPE_GAMEMASTER 
 			and g_game.getPlayerByAccount(player->getAccount()))
@@ -246,8 +246,11 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			return;
 		}
 
-		if (not IOLoginData::loadPlayerById(player, player->getGUID()))
+		std::vector<Condition*> initialConditions;
+
+		if (not IOLoginData::loadPlayerById(player, player->getGUID(), &initialConditions))
 		{
+			for (auto* c : initialConditions) { delete c; }
 			disconnectClient("Your character could not be loaded.");
 			return;
 		}
@@ -257,13 +260,15 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 		// Todo : add back position spawn determined by config.lua
 		if (isAccountManager)
 		{
+			for (auto* c : initialConditions) { delete c; }
+
 			player->accountNumber = accountId;
 			// sync premium time from player account
 			const auto account = IOLoginData::loadAccount(accountId);
 			player->premiumEndsAt = account.premiumEndsAt;
-			auto x = static_cast<uint16_t>(g_config.getNumber(ConfigManager::ACCOUNT_MANAGER_POS_X));
-			auto y = static_cast<uint16_t>(g_config.getNumber(ConfigManager::ACCOUNT_MANAGER_POS_Y));
-			auto z = static_cast<uint8_t>(g_config.getNumber(ConfigManager::ACCOUNT_MANAGER_POS_Z));
+			auto x = static_cast<uint16_t>(g_config.GetNumber(ConfigManager::ACCOUNT_MANAGER_POS_X));
+			auto y = static_cast<uint16_t>(g_config.GetNumber(ConfigManager::ACCOUNT_MANAGER_POS_Y));
+			auto z = static_cast<uint8_t>(g_config.GetNumber(ConfigManager::ACCOUNT_MANAGER_POS_Z));
 			if (not g_game.placeCreature(player, Position{ x, y, z }))
 			{
 				if (not g_game.placeCreature(player, player->getTemplePosition(), false, true))
@@ -280,10 +285,14 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			{
 				if (not g_game.placeCreature(player, player->getTemplePosition(), false, true))
 				{
+					for (auto* c : initialConditions) { delete c; }
 					disconnectClient("Temple position is wrong. Contact the administrator.");
 					return;
 				}
 			}
+
+			for (auto* c : initialConditions)
+				player->addCondition(c);
 		}
 
 		if (operatingSystem >= CLIENTOS_OTCLIENT_LINUX)
@@ -297,7 +306,7 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 	} 
 	else
 	{
-		if (eventConnect != 0 or not g_config.getBoolean(ConfigManager::REPLACE_KICK_ON_LOGIN))
+		if (eventConnect != 0 or not g_config.GetBoolean(ConfigManager::REPLACE_KICK_ON_LOGIN))
 		{
 			//Already trying to connect
 			disconnectClient("You are already logged in.");
@@ -483,11 +492,11 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 
 	if (accountName.empty()
 		and password.empty()
-		and g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER)
-		and g_config.getBoolean(ConfigManager::ENABLE_NO_PASS_LOGIN))
+		and g_config.GetBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER)
+		and g_config.GetBoolean(ConfigManager::ENABLE_NO_PASS_LOGIN))
 	{
-		accountName = g_config.getString(ConfigManager::ACCOUNT_MANAGER_AUTH);
-		password = g_config.getString(ConfigManager::ACCOUNT_MANAGER_AUTH);
+		accountName = g_config.GetString(ConfigManager::ACCOUNT_MANAGER_AUTH);
+		password = g_config.GetString(ConfigManager::ACCOUNT_MANAGER_AUTH);
 	} 
 
 	if (g_game.getGameState() == GAME_STATE_STARTUP)
@@ -1663,7 +1672,7 @@ void ProtocolGame::sendBasicData()
 	if (player->isPremium())
 	{
 		msg.add(CommonCode::True);
-		msg.add<uint32_t>(g_config.getBoolean(ConfigManager::FREE_PREMIUM) ? 0 : player->premiumEndsAt);
+		msg.add<uint32_t>(g_config.GetBoolean(ConfigManager::FREE_PREMIUM) ? 0 : player->premiumEndsAt);
 	} 
 	else
 	{
@@ -1999,11 +2008,12 @@ void ProtocolGame::sendMarketEnter()
 	std::map<uint16_t, uint32_t> depotItems;
 	std::forward_list<ContainerPtr> containerList{ player->getInbox() };
 
-	for (const auto& chest : player->depotChests)
+	if (player->depotChests)
 	{
-		if (not chest.second->empty())
+		for (const auto& chest : *player->depotChests)
 		{
-			containerList.push_front(chest.second);
+			if (not chest.second->empty())
+				containerList.push_front(chest.second);
 		}
 	}
 
@@ -2475,7 +2485,7 @@ void ProtocolGame::sendUnjustifiedStats()
 	NetworkMessage msg;
 	msg.add(ServerCode::UnjustifiedStats);
 
-	int64_t fragTime = g_config.getNumber(ConfigManager::FRAG_TIME); // returned in seconds
+	int64_t fragTime = g_config.GetNumber(ConfigManager::FRAG_TIME); // returned in seconds
 	if (fragTime <= 0)
 	{
 		fragTime = 24 * 60 * 60; // Default 24 hours
@@ -2495,8 +2505,8 @@ void ProtocolGame::sendUnjustifiedStats()
 		killsMonth = static_cast<uint8_t>(std::min<int64_t>(totalKills, 255));
 	}
 
-	uint8_t killsToRed = static_cast<uint8_t>(g_config.getNumber(ConfigManager::KILLS_TO_RED));
-	uint8_t killsToBlack = static_cast<uint8_t>(g_config.getNumber(ConfigManager::KILLS_TO_BLACK));
+	uint8_t killsToRed = static_cast<uint8_t>(g_config.GetNumber(ConfigManager::KILLS_TO_RED));
+	uint8_t killsToBlack = static_cast<uint8_t>(g_config.GetNumber(ConfigManager::KILLS_TO_BLACK));
 	
 	// Calculate progress percentages (0-100)
 	uint8_t dayProgress = killsDay > 0 ? static_cast<uint8_t>(std::min<int64_t>((killsDay * 100) / killsToRed, 100)) : 0;
@@ -2532,7 +2542,7 @@ void ProtocolGame::sendPvpSituations()
 	msg.add(ServerCode::PvpSituations);  // 0xB8
 	
 	// Open PvP situations - number of players you've attacked recently
-	uint8_t openPvpSituations = static_cast<uint8_t>(std::min<size_t>(player->attackedSet.size(), 255));
+	uint8_t openPvpSituations = static_cast<uint8_t>(std::min<size_t>(player->attackedSet ? player->attackedSet->size() : 0, 255));
 	
 	msg.addByte(openPvpSituations);
 	writeToOutputBuffer(msg);
@@ -3123,7 +3133,7 @@ void ProtocolGame::sendAddCreature(const CreatureConstPtr& creature, const Posit
 
 	sendInventoryItem(CONST_SLOT_STORE_INBOX, player->getStoreInbox()->getItem());
 
-	const bool open = g_config.getBoolean(ConfigManager::AUTO_OPEN_CONTAINERS);
+	const bool open = g_config.GetBoolean(ConfigManager::AUTO_OPEN_CONTAINERS);
     if (open)
 		player->autoOpenContainers();
 

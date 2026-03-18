@@ -52,7 +52,7 @@ void ProtocolLogin::getCharacterList(const std::string& accountName, const std::
 		output->addByte(0);
 	}
 
-	const std::string& motd = g_config.getString(ConfigManager::MOTD);
+	const std::string& motd = g_config.GetString(ConfigManager::MOTD);
 	if (!motd.empty()) {
 		//Add MOTD
 		output->addByte(0x14);
@@ -68,29 +68,29 @@ void ProtocolLogin::getCharacterList(const std::string& accountName, const std::
 
 	uint8_t size = std::min<size_t>(std::numeric_limits<uint8_t>::max(), account.characters.size());
 
-	if (g_config.getBoolean(ConfigManager::ONLINE_OFFLINE_CHARLIST)) {
+	if (g_config.GetBoolean(ConfigManager::ONLINE_OFFLINE_CHARLIST)) {
 		output->addByte(2); // number of worlds
 
 		for (uint8_t i = 0; i < 2; i++) {
 			output->addByte(i); // world id
 			output->addString(i == 0 ? "Offline" : "Online");
-			output->addString(g_config.getString(ConfigManager::IP));
-			output->add<uint16_t>(g_config.getNumber(ConfigManager::GAME_PORT));
+			output->addString(g_config.GetString(ConfigManager::IP));
+			output->add<uint16_t>(g_config.GetNumber(ConfigManager::GAME_PORT));
 			output->addByte(0);
 		}
 	} else {
 		output->addByte(1); // number of worlds
 		output->addByte(0); // world id
-		output->addString(g_config.getString(ConfigManager::SERVER_NAME));
-		output->addString(g_config.getString(ConfigManager::IP));
-		output->add<uint16_t>(g_config.getNumber(ConfigManager::GAME_PORT));
+		output->addString(g_config.GetString(ConfigManager::SERVER_NAME));
+		output->addString(g_config.GetString(ConfigManager::IP));
+		output->add<uint16_t>(g_config.GetNumber(ConfigManager::GAME_PORT));
 		output->addByte(0);
 	}
 
 	output->addByte(size);
 	for (uint8_t i = 0; i < size; i++) {
 		const std::string& character = account.characters[i];
-		if (g_config.getBoolean(ConfigManager::ONLINE_OFFLINE_CHARLIST)) {
+		if (g_config.GetBoolean(ConfigManager::ONLINE_OFFLINE_CHARLIST)) {
 			output->addByte(g_game.getPlayerByName(character) ? 1 : 0);
 		} else {
 			output->addByte(0);
@@ -100,7 +100,7 @@ void ProtocolLogin::getCharacterList(const std::string& accountName, const std::
 
 	//Add premium days
 	output->addByte(0);
-	if (g_config.getBoolean(ConfigManager::FREE_PREMIUM)) {
+	if (g_config.GetBoolean(ConfigManager::FREE_PREMIUM)) {
 		output->addByte(1);
 		output->add<uint32_t>(0);
 	} else {
@@ -189,9 +189,9 @@ void ProtocolLogin::onRecvFirstMessage(NetworkMessage& msg)
 	const bool accountNameEmpty = accountName.empty();
 	const bool passwordEmpty = password.empty();
 
-	const bool m_enabled = g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER);
-	const bool quick_pass = g_config.getBoolean(ConfigManager::ENABLE_NO_PASS_LOGIN);
-	const auto& quick_auth = g_config.getString(ConfigManager::ACCOUNT_MANAGER_AUTH);
+	const bool m_enabled = g_config.GetBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER);
+	const bool quick_pass = g_config.GetBoolean(ConfigManager::ENABLE_NO_PASS_LOGIN);
+	const auto& quick_auth = g_config.GetString(ConfigManager::ACCOUNT_MANAGER_AUTH);
 
 	if (accountNameEmpty and passwordEmpty and m_enabled and quick_pass) {
 		accountName = quick_auth;

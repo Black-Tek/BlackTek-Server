@@ -11,10 +11,23 @@
 class TrashHolder final : public Item, public Cylinder
 {
 	public:
-		explicit TrashHolder(uint16_t itemId) : Item(itemId) {}
+		explicit TrashHolder(uint16_t itemId) : Item(itemId)
+		{
+			thing_subtype = ThingSubType::TrashHolder;
+			item_subtype = ItemSubType::TrashHolder;
+			cylinder_subtype = CylinderSubType::TrashHolder;
+		}
 
 		TrashHolderPtr getTrashHolder() override {
 			return static_shared_this<TrashHolder>();
+		}
+
+		CylinderPtr getCylinder() override final {
+			return static_shared_this<TrashHolder>();
+		}
+
+		CylinderConstPtr getCylinder() const override final {
+			return static_shared_this<const TrashHolder>();
 		}
 	
 		TrashHolderConstPtr getTrashHolder() const override {

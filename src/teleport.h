@@ -9,10 +9,23 @@
 class Teleport final : public Item, public Cylinder
 {
 	public:
-		explicit Teleport(uint16_t type) : Item(type) {};
+		explicit Teleport(uint16_t type) : Item(type)
+		{
+			thing_subtype = ThingSubType::Teleport;
+			item_subtype = ItemSubType::Teleport;
+			cylinder_subtype = CylinderSubType::Teleport;
+		}
 
 		TeleportPtr getTeleport() override {
 			return static_shared_this<Teleport>();
+		}
+
+		CylinderPtr getCylinder() override final {
+			return static_shared_this<Teleport>();
+		}
+
+		CylinderConstPtr getCylinder() const override final {
+			return static_shared_this<const Teleport>();
 		}
 	
 		TeleportConstPtr getTeleport() const override {

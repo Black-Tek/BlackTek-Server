@@ -7,7 +7,7 @@ DOOR_ENTRY_STORAGE = {
 }
 
 doorConfig = {
-    allowGamemasterBypass = true,                    -- if true, gamemasters will teleport directly onto doors without opening them
+    allowGamemasterBypass = false,                    -- if true, gamemasters will teleport directly onto doors without opening them
     -- note: defaults are set as recommended
     allowPushPlayers = true,                         -- allow pushing players off the door
     allowPushMonsters = true,                        -- allow pushing monsters off the door

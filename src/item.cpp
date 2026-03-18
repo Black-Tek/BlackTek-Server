@@ -169,6 +169,7 @@ ItemPtr Item::CreateItem(PropStream& propStream)
 Item::Item(const uint16_t type, uint16_t count /*= 0*/) :
 	id(type)
 {
+	thing_subtype = ThingSubType::Item;
 	const ItemType& it = items[id];
 
 	if (it.isFluidContainer() || it.isSplash()) {
@@ -292,7 +293,7 @@ void Item::setDefaultSubtype()
 
 void Item::onRemoved()
 {
-	ScriptEnvironment::removeTempItem(std::dynamic_pointer_cast<Item>(shared_from_this()));
+	ScriptEnvironment::removeTempItem(std::static_pointer_cast<Item>(shared_from_this()));
 
 	if (hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)) {
 		g_game.removeUniqueItem(getUniqueId());	
@@ -334,11 +335,7 @@ void Item::setID(uint16_t newid)
 
 CylinderPtr Item::getTopParent() {
 	CylinderPtr aux = getParent();
-	CylinderPtr prevaux;
-
-	if (auto self = weak_from_this().lock()) {
-		prevaux = std::dynamic_pointer_cast<Cylinder>(self);
-	}
+	CylinderPtr prevaux = getCylinder();
 
 	if (!aux) {
 		return prevaux;
@@ -355,11 +352,7 @@ CylinderPtr Item::getTopParent() {
 
 CylinderConstPtr Item::getTopParent() const {
 	CylinderConstPtr aux = getParent();
-	CylinderConstPtr prevaux;
-
-	if (auto self = weak_from_this().lock()) {
-		prevaux = std::dynamic_pointer_cast<const Cylinder>(self);
-	}
+	CylinderConstPtr prevaux = getCylinder();
 
 	if (!aux) {
 		return prevaux;
@@ -380,7 +373,7 @@ TilePtr Item::getTile()
 	if (cylinder && cylinder->getParent()) {
 		cylinder = cylinder->getParent();
 	}
-	return std::dynamic_pointer_cast<Tile>(cylinder);
+	return cylinder ? cylinder->getTile() : nullptr;
 }
 
 TileConstPtr Item::getTile() const
@@ -390,7 +383,7 @@ TileConstPtr Item::getTile() const
 	if (cylinder && cylinder->getParent()) {
 		cylinder = cylinder->getParent();
 	}
-	return std::dynamic_pointer_cast<const Tile>(cylinder);
+	return cylinder ? cylinder->getTile() : nullptr;
 }
 
 uint16_t Item::getSubType() const
@@ -1318,7 +1311,9 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 			// methods I used here, with const versions for those missing it, so that I can reimplement the const
 			// but we also need to handle checking if this item is actually equipped, a better way than this loop.
 			uint32_t duration = item->getDuration() / 1000;
-			if (const auto& player = dynamic_pointer_cast<Player>(item->getParent()))
+			const auto itemParent = item->getParent();
+			const auto itemParentCreature = itemParent ? itemParent->getCreature() : nullptr;
+			if (const auto& player = itemParentCreature ? itemParentCreature->getPlayer() : nullptr)
 			{
 				const auto slot = item->getEquipSlot();
 
