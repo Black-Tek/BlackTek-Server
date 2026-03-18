@@ -1432,6 +1432,9 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					staminaGain += staminaStealFlatTotal;
 				}
 
+				SpectatorVec stealEffectSpectators;
+				bool stealEffectSpectatorsFetched = false;
+
 				if (staminaGain) {
 					if (staminaGain <= std::numeric_limits<uint16_t>::max()) {
 						const uint16_t trueStaminaGain = g_config.GetBoolean(ConfigManager::AUGMENT_STAMINA_RULE) ?
@@ -1448,10 +1451,10 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					} else {
 						casterPlayer->addStamina(MaximumStamina - casterPlayer->getStaminaMinutes());
 					}
-					SpectatorVec spectators;
-					g_game.map.getSpectators(spectators, casterPlayer->getPosition(), true, true);
+					g_game.map.getSpectators(stealEffectSpectators, casterPlayer->getPosition(), true, true);
+					stealEffectSpectatorsFetched = true;
 					// BlackTek Instance System
-					const auto& filteredSpectators = filterSpectatorsByInstance(spectators, casterPlayer->getInstanceID());
+					const auto& filteredSpectators = filterSpectatorsByInstance(stealEffectSpectators, casterPlayer->getInstanceID());
 					Game::addMagicEffect(filteredSpectators, casterPlayer->getPosition(), CONST_ME_YELLOWENERGY);
 				}
 
@@ -1479,9 +1482,10 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 						casterPlayer->addSoul(casterPlayer->getVocation()->getSoulMax() - casterPlayer->getSoul());
 					}
 
-					SpectatorVec spectators;
-					g_game.map.getSpectators(spectators, casterPlayer->getPosition(), true, true);
-					const auto& filteredSpectators = filterSpectatorsByInstance(spectators, casterPlayer->getInstanceID());
+					if (not stealEffectSpectatorsFetched) {
+						g_game.map.getSpectators(stealEffectSpectators, casterPlayer->getPosition(), true, true);
+					}
+					const auto& filteredSpectators = filterSpectatorsByInstance(stealEffectSpectators, casterPlayer->getInstanceID());
 					Game::addMagicEffect(filteredSpectators, casterPlayer->getPosition(), CONST_ME_MAGIC_GREEN);
 				}
 			}
