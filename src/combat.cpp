@@ -20,30 +20,31 @@ extern Weapons* g_weapons;
 extern ConfigManager g_config;
 extern Events* g_events;
 
+thread_local std::vector<TilePtr> area_tile_buffer;
+thread_local SpectatorVec filtered_spectator_buffer;
+
 namespace {
 	// BlackTek Instance System
-	SpectatorVec filterSpectatorsByInstance(const SpectatorVec& spectators, uint32_t instanceId)
+	// this returns a reference to a thread-local buffer so it's only valid until the next call on this thread
+	const SpectatorVec& filterSpectatorsByInstance(const SpectatorVec& spectators, uint32_t instanceId)
 	{
-		SpectatorVec filtered;
+		filtered_spectator_buffer.clear();
 
 		const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
 		{
 			const PlayerPtr& spectatorPlayer = s->getPlayer();
 			return spectatorPlayer and spectatorPlayer->compareInstance(instanceId);
 		};
-		
+
 		for (const auto& spectator : spectators | std::views::filter(sameInstance))
 		{
-			filtered.emplace_back(spectator);
+			filtered_spectator_buffer.emplace_back(spectator);
 		}
-		return filtered;
+		return filtered_spectator_buffer;
 	}
 }
 
-// we use a thread-local tile buffer for reuse across calls to avoid repeated allocations
-thread_local std::vector<TilePtr> area_tile_buffer;
-
-static std::vector<TilePtr> getList(const MatrixArea& area, const Position& targetPos, const Direction dir) 
+static const std::vector<TilePtr>& getList(const MatrixArea& area, const Position& targetPos, const Direction dir)
 {
 	const Position casterPos = getNextPosition(dir, targetPos);
 
@@ -96,28 +97,31 @@ static std::vector<TilePtr> getList(const MatrixArea& area, const Position& targ
 }
 
 
-std::vector<TilePtr> getCombatArea(const Position& centerPos, const Position& targetPos, const AreaCombat* area)
+const std::vector<TilePtr>& getCombatArea(const Position& centerPos, const Position& targetPos, const AreaCombat* area)
 {
 	[[unlikely]]
-	if (targetPos.z >= MAP_MAX_LAYERS) 
+	if (targetPos.z >= MAP_MAX_LAYERS)
 	{
-		return {};
+		area_tile_buffer.clear();
+		return area_tile_buffer;
 	}
 
 	[[likely]]
-	if (area) 
+	if (area)
 	{
 		return getList(area->getArea(centerPos, targetPos), targetPos, getDirectionTo(targetPos, centerPos));
 	}
 
 	auto tile = g_game.map.getTile(targetPos);
 	[[unlikely]]
-	if (not tile) 
+	if (not tile)
 	{
 		tile = std::make_shared<Tile>(targetPos.x, targetPos.y, targetPos.z);
 		g_game.map.setTile(targetPos, tile);
 	}
-	return {tile};
+	area_tile_buffer.clear();
+	area_tile_buffer.push_back(tile);
+	return area_tile_buffer;
 }
 
 CombatDamage Combat::getCombatDamage(const CreaturePtr& creature, const CreaturePtr& target) const
@@ -760,7 +764,7 @@ void Combat::combatTileEffects(const SpectatorVec& spectators,const CreaturePtr&
 	if (params.impactEffect != CONST_ME_NONE) {
 		if (caster) {
 			// BlackTek Instance System
-			const auto filteredSpectators = filterSpectatorsByInstance(spectators, caster->getInstanceID());
+			const auto& filteredSpectators = filterSpectatorsByInstance(spectators, caster->getInstanceID());
 			Game::addMagicEffect(filteredSpectators, tile->getPosition(), params.impactEffect);
 		} else {
 			Game::addMagicEffect(spectators, tile->getPosition(), params.impactEffect);
@@ -812,7 +816,7 @@ void Combat::addDistanceEffect(const CreaturePtr& caster, const Position& fromPo
 			spectators.addSpectators(toPosSpectators);
 
 			// BlackTek Instance System
-			const auto filteredSpectators = filterSpectatorsByInstance(spectators, caster->getInstanceID());
+			const auto& filteredSpectators = filterSpectatorsByInstance(spectators, caster->getInstanceID());
 			g_game.addDistanceEffect(filteredSpectators, fromPos, toPos, effect);
 		} else {
 			g_game.addDistanceEffect(fromPos, toPos, effect);
@@ -848,7 +852,7 @@ void Combat::doCombat(const CreaturePtr& caster, const CreaturePtr& target) cons
 			SpectatorVec spectators;
 			g_game.map.getSpectators(spectators, target->getPosition(), true, true);
 			// BlackTek Instance System
-			const auto filteredSpectators = filterSpectatorsByInstance(spectators, target->getInstanceID());
+			const auto& filteredSpectators = filterSpectatorsByInstance(spectators, target->getInstanceID());
 			Game::addMagicEffect(filteredSpectators, target->getPosition(), p.impactEffect);
 		}
 
@@ -1447,7 +1451,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					SpectatorVec spectators;
 					g_game.map.getSpectators(spectators, casterPlayer->getPosition(), true, true);
 					// BlackTek Instance System
-					const auto filteredSpectators = filterSpectatorsByInstance(spectators, casterPlayer->getInstanceID());
+					const auto& filteredSpectators = filterSpectatorsByInstance(spectators, casterPlayer->getInstanceID());
 					Game::addMagicEffect(filteredSpectators, casterPlayer->getPosition(), CONST_ME_YELLOWENERGY);
 				}
 
@@ -1477,7 +1481,7 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 
 					SpectatorVec spectators;
 					g_game.map.getSpectators(spectators, casterPlayer->getPosition(), true, true);
-					const auto filteredSpectators = filterSpectatorsByInstance(spectators, casterPlayer->getInstanceID());
+					const auto& filteredSpectators = filterSpectatorsByInstance(spectators, casterPlayer->getInstanceID());
 					Game::addMagicEffect(filteredSpectators, casterPlayer->getPosition(), CONST_ME_MAGIC_GREEN);
 				}
 			}

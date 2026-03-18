@@ -27,6 +27,8 @@ public:
 		}
 	}
 
+	void clear() { vec.clear(); }
+
 	void erase(const CreaturePtr& spectator) {
 		const auto it = std::ranges::find(vec, spectator);
 		if (it == end()) {
