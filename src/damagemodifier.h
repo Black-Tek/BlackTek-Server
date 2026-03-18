@@ -11,6 +11,7 @@
 #include "otpch.h"
 #include "tools.h"
 #include "fileloader.h"
+#include <gtl/phmap.hpp>
 
 struct ModifierTotals {
 	ModifierTotals() = default;
@@ -399,5 +400,10 @@ inline const RaceType_t& DamageModifier::getRaceType() const
 {
 	return m_race_type;
 }
+
+// Pre-collected attack modifier list per modifier type, keyed by ModifierAttackType.
+// Target-independent: built once from a player's augments and equipped items.
+// Used to avoid re-scanning equipment on every target hit by an area spell.
+using RawModifierMap = gtl::node_hash_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>>;
 
 #endif

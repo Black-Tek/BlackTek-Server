@@ -10,6 +10,7 @@
 #include "baseevents.h"
 #include "tools.h"
 #include "matrixarea.h"
+#include "damagemodifier.h"
 
 #include <utility>
 #include <optional>
@@ -112,7 +113,7 @@ class Combat
 		void doCombat(const CreaturePtr& caster,const CreaturePtr& target) const;
 		void doCombat(const CreaturePtr& caster, const Position& position) const;
 
-		static void doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target, CombatDamage& damage, const CombatParams& params, bool sendDistanceEffect = true);
+		static void doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target, CombatDamage& damage, const CombatParams& params, bool sendDistanceEffect = true, const RawModifierMap* precomputedAttackMods = nullptr);
 		static void doAreaCombat(const CreaturePtr& caster, const Position& position, const AreaCombat* area, const CombatDamage& damage, const CombatParams& params);
 
 		static void applyDamageIncreaseModifier(uint8_t modifierType, CombatDamage& damage, int32_t percentValue, int32_t flatValue);

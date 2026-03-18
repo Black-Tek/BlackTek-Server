@@ -6361,6 +6361,20 @@ gtl::node_hash_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(cons
 	return modMap;
 }
 
+gtl::node_hash_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(const RawModifierMap& precomputedMods, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const
+{
+	static const std::vector<std::shared_ptr<DamageModifier>> emptyVec;
+	gtl::node_hash_map<uint8_t, ModifierTotals> modMap;
+	modMap.reserve(ATTACK_MODIFIER_LAST);
+	for (uint8_t i = ATTACK_MODIFIER_NONE; i < ATTACK_MODIFIER_LAST; ++i)
+	{
+		const auto it = precomputedMods.find(i);
+		const auto& modList = (it != precomputedMods.end()) ? it->second : emptyVec;
+		modMap.try_emplace(i, getValidatedTotals(modList, damageType, originType, creatureType, race, creatureName));
+	}
+	return modMap;
+}
+
 gtl::node_hash_map<uint8_t, ModifierTotals> Player::getDefenseModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, std::string_view creatureName) const
 {
 	

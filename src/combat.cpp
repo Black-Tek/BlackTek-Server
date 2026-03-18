@@ -1011,7 +1011,7 @@ void Combat::doCombat(const CreaturePtr& caster, const Position& position) const
 	}
 }
 
-void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target, CombatDamage& damage, const CombatParams& params, bool sendDistanceEffect)
+void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target, CombatDamage& damage, const CombatParams& params, bool sendDistanceEffect, const RawModifierMap* precomputedAttackMods)
 {	
 	// To-do : I need to properly handle augment based damage which requires entire reworking of this method.
 	// The thing that needs to happen is for augment based damage should not interact again with other aumgent
@@ -1035,7 +1035,9 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 			else if (target->getPlayer()) {
 				targetType = CREATURETYPE_PLAYER;
 			}
-			attackModData = casterPlayer->getAttackModifierTotals(damage.primary.type, damage.origin, targetType, target->getRace(), target->getName());
+			attackModData = precomputedAttackMods
+			? casterPlayer->getAttackModifierTotals(*precomputedAttackMods, damage.primary.type, damage.origin, targetType, target->getRace(), target->getName())
+			: casterPlayer->getAttackModifierTotals(damage.primary.type, damage.origin, targetType, target->getRace(), target->getName());
 			/// we do conversion here incase someone wants to convert say healing to mana or mana to death.
 
 			const auto& conversionTotals = casterPlayer->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage.primary.type, damage.origin, targetType, target->getRace(), target->getName());
@@ -1556,10 +1558,19 @@ void Combat::doAreaCombat(const CreaturePtr& caster, const Position& position, c
 		}
 	}
 
-	for (const auto& target : toDamageCreatures) 
+	RawModifierMap areaAttackMods;
+	const RawModifierMap* precomputedAttackMods = nullptr;
+
+	if (casterPlayer)
+	{
+		areaAttackMods = casterPlayer->getAttackModifiers();
+		precomputedAttackMods = &areaAttackMods;
+	}
+
+	for (const auto& target : toDamageCreatures)
 	{
 		CombatDamage local_damage = damage;
-		Combat::doTargetCombat(caster, target, local_damage, p, false);
+		Combat::doTargetCombat(caster, target, local_damage, p, false, precomputedAttackMods);
 	}
 }
 
