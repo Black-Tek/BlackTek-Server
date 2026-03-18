@@ -6152,6 +6152,7 @@ gtl::node_hash_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
 		}
 	}
 
+	const bool slotProtection = g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION);
 	for (uint8_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_RING; ++slot)
 	{
 		if (const auto& item = inventory[slot]; item)
@@ -6159,18 +6160,18 @@ gtl::node_hash_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
             if (item->isAugmented())
 			{
                 const auto& augs = item->getAugments();
-				for (const auto& aug : *augs) 
+				for (const auto& aug : *augs)
 				{
-					if (not g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) or (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot)))) 
+					if (not slotProtection or (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))))
 					{
-						for (const auto& mod : aug->getAttackModifiers()) 
+						for (const auto& mod : aug->getAttackModifiers())
 						{
 							modifierMap[mod->getType()].emplace_back(mod);
 						}
-					} 
-					else if ( g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) and (slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE and item->getWeaponType() != WEAPON_AMMO))
+					}
+					else if (slotProtection and (slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE and item->getWeaponType() != WEAPON_AMMO))
 					{
-						for (const auto& mod : aug->getAttackModifiers()) 
+						for (const auto& mod : aug->getAttackModifiers())
 						{
 							modifierMap[mod->getType()].emplace_back(mod);
 						}
@@ -6198,25 +6199,26 @@ gtl::node_hash_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Playe
 		}
 	}
 
-	for (uint8_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_RING; ++slot) 
+	const bool slotProtection = g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION);
+	for (uint8_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_RING; ++slot)
 	{
-		if (const auto& item = inventory[slot]; item) 
+		if (const auto& item = inventory[slot]; item)
 		{
-            if (item->isAugmented()) 
+            if (item->isAugmented())
 			{
                 const auto& augs = item->getAugments();
-				for (const auto& aug : *augs) 
+				for (const auto& aug : *augs)
 				{
-					if (!g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) or (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))))
+					if (not slotProtection or (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))))
 					{
-						for (const auto& mod : aug->getDefenseModifiers()) 
+						for (const auto& mod : aug->getDefenseModifiers())
 						{
 							modifierMap[mod->getType()].emplace_back(mod);
 						}
-					} 
-					else if (g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) and (slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO)) 
+					}
+					else if (slotProtection and (slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
 					{
-						for (const auto& mod : aug->getDefenseModifiers()) 
+						for (const auto& mod : aug->getDefenseModifiers())
 						{
 							modifierMap[mod->getType()].emplace_back(mod);
 						}

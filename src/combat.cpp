@@ -1203,79 +1203,77 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					target->addCombatCondition(conditionCopy);
 				}
 			}
-			if (caster->isPlayer()
+			const bool processAttackImbuements = caster->isPlayer()
 				and (damage.origin == ORIGIN_MELEE or damage.origin == ORIGIN_RANGED)
-				and (damage.primary.type != COMBAT_HEALING and damage.primary.type != COMBAT_MANADRAIN )) {
-				auto casterPlayer = caster->getPlayer();
+				and (damage.primary.type != COMBAT_HEALING and damage.primary.type != COMBAT_MANADRAIN);
+			const bool processDefenseImbuements = target->isPlayer()
+				and damage.primary.type != COMBAT_HEALING
+				and damage.primary.type != COMBAT_MANADRAIN;
+
+			if (processAttackImbuements or processDefenseImbuements)
+			{
+				const auto& attackerPlayer = processAttackImbuements ? caster->getPlayer() : nullptr;
+				const auto& defenderPlayer = processDefenseImbuements ? target->getPlayer() : nullptr;
+				const auto combatType = damage.primary.type;
+				bool imbuementEarlyExit = false;
+
 				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+					if (processAttackImbuements) {
+						auto item = attackerPlayer->getInventoryItem(slot);
+						if (item and item->hasImbuements()) {
+							auto& imbues = item->getImbuements();
+							for (auto& imbuement : *imbues) {
+								if (!imbuement->value) {
+									continue;
+								}
+								const auto originalDamage = abs(damage.primary.value);
+								const auto conversionAmount = (originalDamage * imbuement->value) / 100;
+								const int32_t difference = (originalDamage - conversionAmount);
 
-					auto item = casterPlayer->getInventoryItem(slot);
-					if (!item) {
-						continue;
-					}
-					if (item->hasImbuements()) {
-						auto& imbues = item->getImbuements();
-						for (auto& imbuement : *imbues) {
-							if (!imbuement->value) {
-								continue;
-							}
-							const auto originalDamage = abs(damage.primary.value);
-							const auto conversionAmount = (originalDamage * imbuement->value) / 100;
-							const int32_t difference = (originalDamage - conversionAmount);
-							
-							CombatDamage imbueDamage;
-							imbueDamage.primary.type = damage.primary.type;
-							imbueDamage.blockType = BLOCK_NONE;
-							imbueDamage.origin = ORIGIN_IMBUEMENT;
+								CombatDamage imbueDamage;
+								imbueDamage.primary.type = combatType;
+								imbueDamage.blockType = BLOCK_NONE;
+								imbueDamage.origin = ORIGIN_IMBUEMENT;
 
-							switch (imbuement->imbuetype) {
-								case IMBUEMENT_TYPE_FIRE_DAMAGE:
-									imbueDamage.primary.type = COMBAT_FIREDAMAGE;
-									break;
-								case IMBUEMENT_TYPE_ENERGY_DAMAGE:
-									imbueDamage.primary.type = COMBAT_ENERGYDAMAGE;
-									break;
-								case IMBUEMENT_TYPE_EARTH_DAMAGE:
-									imbueDamage.primary.type = COMBAT_EARTHDAMAGE;
-									break;
-								case IMBUEMENT_TYPE_ICE_DAMAGE:
-									imbueDamage.primary.type = COMBAT_ICEDAMAGE;
-									break;
-								case IMBUEMENT_TYPE_HOLY_DAMAGE:
-									imbueDamage.primary.type = COMBAT_HOLYDAMAGE;
-									break;
-								case IMBUEMENT_TYPE_DEATH_DAMAGE:
-									imbueDamage.primary.type = COMBAT_DEATHDAMAGE;
-									break;
-								default: [[unlikely]]
-									break;
-							}
+								switch (imbuement->imbuetype) {
+									case IMBUEMENT_TYPE_FIRE_DAMAGE:
+										imbueDamage.primary.type = COMBAT_FIREDAMAGE;
+										break;
+									case IMBUEMENT_TYPE_ENERGY_DAMAGE:
+										imbueDamage.primary.type = COMBAT_ENERGYDAMAGE;
+										break;
+									case IMBUEMENT_TYPE_EARTH_DAMAGE:
+										imbueDamage.primary.type = COMBAT_EARTHDAMAGE;
+										break;
+									case IMBUEMENT_TYPE_ICE_DAMAGE:
+										imbueDamage.primary.type = COMBAT_ICEDAMAGE;
+										break;
+									case IMBUEMENT_TYPE_HOLY_DAMAGE:
+										imbueDamage.primary.type = COMBAT_HOLYDAMAGE;
+										break;
+									case IMBUEMENT_TYPE_DEATH_DAMAGE:
+										imbueDamage.primary.type = COMBAT_DEATHDAMAGE;
+										break;
+									default: [[unlikely]]
+										break;
+								}
 
-							if (difference < 0) {
-								imbueDamage.primary.value -= originalDamage;
+								if (difference < 0) {
+									imbueDamage.primary.value -= originalDamage;
+									g_game.combatChangeHealth(caster, target, imbueDamage);
+									break;
+								}
+								imbueDamage.primary.value -= conversionAmount;
 								g_game.combatChangeHealth(caster, target, imbueDamage);
-								break;
-							} // else
-							imbueDamage.primary.value -= conversionAmount;
-							g_game.combatChangeHealth(caster, target, imbueDamage);
+							}
 						}
 					}
-				}
-			}
 
-			if (target->isPlayer() and damage.primary.type != COMBAT_HEALING and damage.primary.type != COMBAT_MANADRAIN) {
-					const auto& targetPlayer = target->getPlayer();
-					for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot)
-					{
-						auto item = targetPlayer->getInventoryItem(slot);
-						if (!item) {
-							continue;
-						}
-
-						if (item->hasImbuements()) {
+					if (processDefenseImbuements) {
+						auto item = defenderPlayer->getInventoryItem(slot);
+						if (item and item->hasImbuements()) {
 							auto& imbues = item->getImbuements();
 							for (const auto& imbuement : *imbues) {
-								const auto combatType = damage.primary.type;
 								const auto originalDamage = abs(damage.primary.value);
 								const auto resistance = (originalDamage * imbuement->value) / 100;
 								const int32_t difference = (originalDamage - resistance);
@@ -1284,63 +1282,75 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 									if (combatType == COMBAT_FIREDAMAGE) {
 										if (difference < 0) {
 											damage.primary.value = 0;
-											return;
+											imbuementEarlyExit = true;
+										} else {
+											damage.primary.value += difference;
 										}
-										damage.primary.value += difference;
 									}
 									break;
 								case ImbuementType::IMBUEMENT_TYPE_EARTH_RESIST:
 									if (combatType == COMBAT_EARTHDAMAGE) {
 										if (difference < 0) {
 											damage.primary.value = 0;
-											return;
+											imbuementEarlyExit = true;
+										} else {
+											damage.primary.value += difference;
 										}
-										damage.primary.value += difference;
 									}
 									break;
 								case ImbuementType::IMBUEMENT_TYPE_ICE_RESIST:
 									if (combatType == COMBAT_ICEDAMAGE) {
 										if (difference < 0) {
 											damage.primary.value = 0;
-											return;
+											imbuementEarlyExit = true;
+										} else {
+											damage.primary.value += difference;
 										}
-										damage.primary.value += difference;
 									}
 									break;
 								case ImbuementType::IMBUEMENT_TYPE_ENERGY_RESIST:
 									if (combatType == COMBAT_ENERGYDAMAGE) {
 										if (difference < 0) {
 											damage.primary.value = 0;
-											return;
+											imbuementEarlyExit = true;
+										} else {
+											damage.primary.value += difference;
 										}
-										damage.primary.value += difference;
 									}
 									break;
 								case ImbuementType::IMBUEMENT_TYPE_DEATH_RESIST:
 									if (combatType == COMBAT_DEATHDAMAGE) {
 										if (difference < 0) {
 											damage.primary.value = 0;
-											return;
+											imbuementEarlyExit = true;
+										} else {
+											damage.primary.value += difference;
 										}
-										damage.primary.value += difference;
 									}
 									break;
 								case ImbuementType::IMBUEMENT_TYPE_HOLY_RESIST:
 									if (combatType == COMBAT_HOLYDAMAGE) {
 										if (difference < 0) {
 											damage.primary.value = 0;
-											return;
+											imbuementEarlyExit = true;
+										} else {
+											damage.primary.value += difference;
 										}
-										damage.primary.value += difference;
 									}
 									break;
 								default: [[unlikely]]
 									break;
 								}
+								if (imbuementEarlyExit) break;
 							}
 						}
 					}
+
+					if (imbuementEarlyExit) break;
 				}
+
+				if (imbuementEarlyExit) return;
+			}
 
 			if (!damage.leeched 
 				and damage.primary.type != COMBAT_HEALING 
