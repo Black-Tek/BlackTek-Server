@@ -1320,6 +1320,9 @@ ContainerPtr Player::getContainerByID(const uint8_t cid)
 
 int8_t Player::getContainerID(const ContainerConstPtr& container) const
 {
+	if (not openContainers)
+		return -1;
+
 	for (const auto& it : *openContainers)
 	{
 		if (it.second.container == container)
