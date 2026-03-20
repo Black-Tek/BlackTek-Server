@@ -28,6 +28,7 @@
 #include "script.h"
 
 #include <fmt/format.h>
+#include "spawn.h"
 
 extern ConfigManager g_config;
 extern Actions* g_actions;
@@ -154,7 +155,8 @@ void Game::setGameState(GameState_t newState)
 			groups.load();
 			g_chat->load();
 
-			map.spawns.startup();
+			//map.spawns.startup();
+            Spawns::System::LoadSpawns();
 
 			raids.loadFromToml();
 			raids.startup();
@@ -854,11 +856,11 @@ void Game::playerMoveCreature(PlayerPtr& player, CreaturePtr& movingCreature, co
 				}
 			}
 
-			const auto movingNpc = movingCreature->getNpc();
-			if (movingNpc && !Spawns::isInZone(movingNpc->getMasterPos(), movingNpc->getMasterRadius(), toPos)) {
-				player->sendCancelMessage(RETURNVALUE_NOTENOUGHROOM);
-				return;
-			}
+			//const auto movingNpc = movingCreature->getNpc();
+			//if (movingNpc && !Spawns::isInZone(movingNpc->getMasterPos(), movingNpc->getMasterRadius(), toPos)) {
+			//	player->sendCancelMessage(RETURNVALUE_NOTENOUGHROOM);
+			//	return;
+			//}
 		}
 	}
 
@@ -6324,7 +6326,7 @@ void Game::shutdown()
 	g_databaseTasks.shutdown();
 	g_dispatcher.shutdown();
 	g_utility_boss.shutdown();
-	map.spawns.clear();
+	//map.spawns.clear();
 	raids.clear();
 
 	decay_clean_cycle();

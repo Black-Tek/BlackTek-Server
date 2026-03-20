@@ -154,24 +154,35 @@ TeleportPtr Tile::getTeleportItem() const
 	return nullptr;
 }
 
+// todo :: move to it's own storage place for fields separate from items.
 MagicFieldPtr Tile::getFieldItem() const
 {
-	if (!hasFlag(TILESTATE_MAGICFIELD)) {
-		return nullptr;
+    if (not hasFlag(TILESTATE_MAGICFIELD) or not ground)
+    {
+        return nullptr;
+    }
+
+	if (auto field = ground->getMagicField())
+	{
+		return field;
 	}
 
-	if (ground && ground->getMagicField()) {
-		return ground->getMagicField();
-	}
+    const auto& items = getItemList();
+    if (not items)
+    {
+        return nullptr;
+    }
 
-	if (const auto items = getItemList()) {
-		for (auto it = items->rbegin(), end = items->rend(); it != end; ++it) {
-			if ((*it)->getMagicField()) {
-				return (*it)->getMagicField();
-			}
-		}
-	}
-	return nullptr;
+    const size_t size = items->size();
+    for (size_t i = 0; i < size; ++i)
+    {
+        if (auto field = (*items)[i]->getMagicField())
+        {
+            return field;
+        }
+    }
+
+    return nullptr;
 }
 
 TrashHolderPtr Tile::getTrashHolder() const
@@ -635,7 +646,7 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags)
 			return RETURNVALUE_NOTPOSSIBLE;
 	}
 
-	const auto creatures = getCreatures();
+	const auto& creatures = getCreatures();
 
 	// We have creatures on the tile we are trying to step on
 	if (creatures and not creatures->empty())
