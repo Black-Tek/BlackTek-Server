@@ -90,7 +90,7 @@ void Party::disband()
 	leader = nullptr;
 }
 
-bool Party::leaveParty(const PlayerPtr& player, bool forceRemove /* = false */)
+bool Party::leaveParty(const PlayerPtr player, bool forceRemove /* = false */)
 {
 	if (not player or player->getPartyId() == 0)
 		return false;
@@ -121,7 +121,7 @@ bool Party::leaveParty(const PlayerPtr& player, bool forceRemove /* = false */)
 	}
 
 	//since we already passed the leadership, we remove the player from the list
-	if (const auto& it = std::ranges::find(memberList, player); it != memberList.end())
+	if (const auto it = std::ranges::find(memberList, player); it != memberList.end())
 		memberList.erase(it);
 
 	player->setParty(0);
@@ -153,7 +153,8 @@ bool Party::leaveParty(const PlayerPtr& player, bool forceRemove /* = false */)
 
 	return true;
 }
-bool Party::passPartyLeadership(const PlayerPtr& player, bool forceRemove /* = false*/)
+
+bool Party::passPartyLeadership(const PlayerPtr player, bool forceRemove /* = false*/)
 {
 	if (not player or not leader or leader == player or player->getPartyId() == 0) 
 		return false;
@@ -164,7 +165,6 @@ bool Party::passPartyLeadership(const PlayerPtr& player, bool forceRemove /* = f
 	// Remove it before to broadcast the message correctly
 	if (const auto it = std::ranges::find(memberList, player); it != memberList.end())
 	{
-		it->reset();
 		memberList.erase(it);
 	}
 
@@ -196,7 +196,7 @@ bool Party::passPartyLeadership(const PlayerPtr& player, bool forceRemove /* = f
 	return true;
 }
 
-bool Party::joinParty(const PlayerPtr& player)
+bool Party::joinParty(const PlayerPtr player)
 {
 	if (not player or player->getPartyId() != 0)	
         return false;
@@ -244,7 +244,7 @@ bool Party::joinParty(const PlayerPtr& player)
 	return true;
 }
 
-bool Party::removeInvite(const PlayerPtr& player, bool removeFromPlayer/* = true*/)
+bool Party::removeInvite(const PlayerPtr player, bool removeFromPlayer/* = true*/)
 {
 	const auto it = std::find(inviteList.begin(), inviteList.end(), player);
 
