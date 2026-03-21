@@ -1190,6 +1190,10 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 	
 	if (success) {
 		if (target and caster and target != caster) {
+			if (params.impactEffect != CONST_ME_NONE) {
+				g_game.addMagicEffect(target->getPosition(), params.impactEffect);
+			}
+
 			if (damage.critical) {
 				if ((damage.augmented and g_config.GetBoolean(ConfigManager::AUGMENT_CRITICAL_ANIMATION)) or not (damage.augmented)) {
 					g_game.addMagicEffect(target->getPosition(), CONST_ME_CRITICAL_DAMAGE);
