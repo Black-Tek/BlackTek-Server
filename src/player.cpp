@@ -3650,13 +3650,13 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 	if (destThing)
 	{
 		destItem = destThing->getItem();
-	}
 
-	if (auto subCylinder = destThing->getCylinder())
-	{
-		index = INDEX_WHEREEVER;
-		destItem.reset();
-		return subCylinder;
+		if (auto subCylinder = destThing->getCylinder())
+		{
+			index = INDEX_WHEREEVER;
+			destItem.reset();
+			return subCylinder;
+		}
 	}
 
 	return this->getPlayer();
