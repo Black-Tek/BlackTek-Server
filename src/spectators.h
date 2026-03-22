@@ -7,7 +7,7 @@
 #include <span>
 #include <ranges>
 
-class Creature;
+#include "declarations.h"
 
 class SpectatorVec
 {
