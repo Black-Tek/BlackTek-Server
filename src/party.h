@@ -62,12 +62,12 @@ class Party : public std::enable_shared_from_this<Party>
 
 		void disband();
 		bool invitePlayer(const PlayerPtr& player);
-		bool joinParty(const PlayerPtr& player);
+		bool joinParty(const PlayerPtr player);
 		void revokeInvitation(const PlayerPtr& player);
-		bool passPartyLeadership(const PlayerPtr& player, bool forceRemove = false);
-		bool leaveParty(const PlayerPtr& player, bool forceRemove = false);
+		bool passPartyLeadership(const PlayerPtr player, bool forceRemove = false);
+		bool leaveParty(const PlayerPtr player, bool forceRemove = false);
 
-		bool removeInvite(const PlayerPtr& player, bool removeFromPlayer = true);
+		bool removeInvite(const PlayerPtr player, bool removeFromPlayer = true);
 
 		bool isPlayerInvited(const PlayerConstPtr& player) const;
 		void updateAllPartyIcons();
