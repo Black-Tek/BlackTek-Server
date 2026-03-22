@@ -1188,12 +1188,9 @@ void Creature::onGainExperience(uint64_t gainExp, const CreaturePtr& target)
 	message.primary.color = TEXTCOLOR_WHITE_EXP;
 	message.primary.value = gainExp;
 
-	for (CreaturePtr spectator : spectators)
+	for (const auto& spectator : spectators.players())
 	{
-		if (auto player = spectator->getPlayer())
-		{
-			player->sendTextMessage(message);
-		}
+		std::static_pointer_cast<Player>(spectator)->sendTextMessage(message);
 	}
 }
 

@@ -611,9 +611,9 @@ class Game
 		void addCreatureHealth(const CreatureConstPtr& target);
 		static void addCreatureHealth(const SpectatorVec& spectators, const CreatureConstPtr& target);
 		void addMagicEffect(const Position& pos, uint8_t effect);
-		static void addMagicEffect(const SpectatorVec& spectators, const Position& pos, uint8_t effect);
+		static void addMagicEffect(const SpectatorVec& spectators, const Position& pos, uint8_t effect, uint32_t instanceId = 0);
 		void addDistanceEffect(const Position& fromPos, const Position& toPos, uint8_t effect);
-		static void addDistanceEffect(const SpectatorVec& spectators, const Position& fromPos, const Position& toPos, uint8_t effect);
+		static void addDistanceEffect(const SpectatorVec& spectators, const Position& fromPos, const Position& toPos, uint8_t effect, uint32_t instanceId = 0);
 
 		void setAccountStorageValue(const uint32_t accountId, const uint32_t key, const int32_t value);
 		int32_t getAccountStorageValue(const uint32_t accountId, const uint32_t key) const;

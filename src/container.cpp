@@ -223,22 +223,19 @@ void Container::onAddContainerItem(ItemPtr& item)
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), false, true, 1, 1, 1, 1);
 	
-	for (auto& spectator : spectators)
+	// todo: experiment with doing this method and the next two better
+	for (const auto& c : spectators.players())
 	{
-		if (const auto c_player = spectator->getPlayer())
-		{
-			const auto t_container = getContainer();
-			c_player->sendAddContainerItem(t_container, item);
-		}
+		const auto c_player = std::static_pointer_cast<Player>(c);
+		const auto t_container = getContainer();
+		c_player->sendAddContainerItem(t_container, item);
 	}
 
-	for (auto& spectator : spectators)
+	for (const auto& c : spectators.players())
 	{
-		if (const auto c_player = spectator->getPlayer())
-		{
-			const auto t_container = getContainer();
-			c_player->onAddContainerItem(item);
-		}
+		const auto c_player = std::static_pointer_cast<Player>(c);
+		const auto t_container = getContainer();
+		c_player->onAddContainerItem(item);
 	}
 }
 
@@ -247,22 +244,18 @@ void Container::onUpdateContainerItem(uint32_t index, const ItemPtr& oldItem, co
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), false, true, 1, 1, 1, 1);
 	
-	for (auto& spectator : spectators)
+	for (const auto& c : spectators.players())
 	{
-		if (const auto c_player = spectator->getPlayer())
-		{
-			auto t_container = getContainer();
-			c_player->sendUpdateContainerItem(t_container, index, newItem);
-		}
+		const auto c_player = std::static_pointer_cast<Player>(c);
+		auto t_container = getContainer();
+		c_player->sendUpdateContainerItem(t_container, index, newItem);
 	}
 
-	for (auto& spectator : spectators)
+	for (const auto& c : spectators.players())
 	{
-		if (const auto c_player = spectator->getPlayer())
-		{
-			auto t_container = getContainer();
-			c_player->onUpdateContainerItem(t_container, oldItem, newItem);
-		}
+		const auto c_player = std::static_pointer_cast<Player>(c);
+		auto t_container = getContainer();
+		c_player->onUpdateContainerItem(t_container, oldItem, newItem);
 	}
 }
 
@@ -271,22 +264,18 @@ void Container::onRemoveContainerItem(uint32_t index, const ItemPtr& item)
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), false, true, 1, 1, 1, 1);
 	
-	for (auto spectator : spectators)
+	for (const auto& c : spectators.players())
 	{
-		if (const auto c_player = spectator->getPlayer())
-		{
-			auto t_container = getContainer();
-			c_player->sendRemoveContainerItem(t_container, index);
-		}
+		const auto c_player = std::static_pointer_cast<Player>(c);
+		auto t_container = getContainer();
+		c_player->sendRemoveContainerItem(t_container, index);
 	}
 
-	for (auto spectator : spectators)
+	for (const auto& c : spectators.players())
 	{
-		if (const auto c_player = spectator->getPlayer())
-		{
-			auto t_container = getContainer();
-			c_player->onRemoveContainerItem(t_container, item);
-		}
+		const auto c_player = std::static_pointer_cast<Player>(c);
+		auto t_container = getContainer();
+		c_player->onRemoveContainerItem(t_container, item);
 	}
 }
 

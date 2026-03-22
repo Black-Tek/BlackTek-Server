@@ -2531,19 +2531,13 @@ void Player::addExperience(const CreaturePtr& source, uint64_t exp, bool sendTex
 		SpectatorVec spectators;
 		g_game.map.getSpectators(spectators, position, false, true);
 		spectators.erase(this->getPlayer());
-		if (!spectators.empty()) {
+		if (not spectators.empty())
+		{
 			message.type = MESSAGE_EXPERIENCE_OTHERS;
 			message.text = getName() + " gained " + expString;
 
-			auto players = spectators | std::views::filter([](const auto& spectator)
-			{
-				return spectator->getCreatureSubType() == CreatureSubType::Player;
-			});
-
-			for (const auto& spectator : players)
-			{
+			for (const auto& spectator : spectators.players())
 				std::static_pointer_cast<Player>(spectator)->sendTextMessage(message);
-			}
 		}
 	}
 
@@ -2628,12 +2622,7 @@ void Player::removeExperience(uint64_t exp, const bool sendText/* = false*/)
 			message.type = MESSAGE_EXPERIENCE_OTHERS;
 			message.text = getName() + " lost " + expString;
 
-			auto players = spectators | std::views::filter([](const auto& spectator)
-			{
-				return spectator->getCreatureSubType() == CreatureSubType::Player;
-			});
-
-			for (const auto& spectator : players)
+			for (const auto& spectator : spectators.players())
 			{
 				std::static_pointer_cast<Player>(spectator)->sendTextMessage(message);
 			}

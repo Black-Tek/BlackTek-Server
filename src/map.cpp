@@ -269,14 +269,14 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 	spectators.addSpectators(newPosSpectators);
 
 	std::vector<int32_t> oldStackPosVector;
-	for (const auto& spectator : spectators) {
-		if (const auto& tmpPlayer = spectator->getPlayer()) {
-			if (tmpPlayer->canSeeCreature(creature)) {
-				oldStackPosVector.push_back(oldTile->getClientIndexOfCreature(tmpPlayer, creature));
-			} else {
-				oldStackPosVector.push_back(-1);
-			}
-		}
+	for (const auto& c : spectators.players())
+    {
+		const auto& tmpPlayer = std::static_pointer_cast<Player>(c);
+
+		if (tmpPlayer->canSeeCreature(creature))
+			oldStackPosVector.push_back(oldTile->getClientIndexOfCreature(tmpPlayer, creature));
+		else
+			oldStackPosVector.push_back(-1);
 	}
 
 	//remove the creature
@@ -308,23 +308,27 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 		}
 	}
 
-	//send to client
+	// send to client
 	size_t i = 0;
-	for (const auto& spectator : spectators) {
-		if (const auto& tmpPlayer = spectator->getPlayer()) {
-			//Use the correct stackpos
-			if (const int32_t& stackpos = oldStackPosVector[i++]; stackpos != -1) {
-				tmpPlayer->sendCreatureMove(creature, newPos, newTile->getClientIndexOfCreature(tmpPlayer, creature), oldPos, stackpos, teleport);
-			}
-		}
+	for (const auto& c : spectators.players())
+    {
+		const auto& tmpPlayer = std::static_pointer_cast<Player>(c);
+
+		// Use the correct stackpos
+		if (const int32_t& stackpos = oldStackPosVector[i++]; stackpos != -1)
+			tmpPlayer->sendCreatureMove(creature, newPos, newTile->getClientIndexOfCreature(tmpPlayer, creature), oldPos, stackpos, teleport);
 	}
 
-	//event method
-	for (const auto& spectator : spectators) {
-		if (const auto& monster = spectator->getMonster(); monster)
-				monster->setIdle(false);
+    if (creature->getCreatureSubType() == CreatureSubType::Player
+        or (creature->getCreatureSubType() == CreatureSubType::Monster and creature->getMaster() and creature->getMaster()->getCreatureSubType() == CreatureSubType::Player))
+    {
+        for (const auto& c : spectators.monsters())
+            static_cast<Monster*>(c.get())->setIdle(false);
+    }
+
+    // event method
+	for (const auto& spectator : spectators)
 		spectator->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
-	}
 
 	oldTile->postRemoveNotification(creature, newTile, 0);
 	newTile->postAddNotification(creature, oldTile, 0);
@@ -389,6 +393,15 @@ void Map::getSpectatorsInternal(SpectatorVec& spectators, const Position& center
         } else {
             leafS = QTreeNode::getLeafStatic<const QTreeLeafNode*, const QTreeNode*>(&root, startx1, ny + FLOOR_SIZE);
         }
+    }
+
+    if (onlyPlayers)
+    {
+        spectators.setPlayersOnlyMode();
+    }
+    else
+    {
+        spectators.partitionByType();
     }
 }
 

@@ -3619,20 +3619,13 @@ int LuaScriptInterface::luaCreatureSetInstanceId(lua_State* L)
 	const uint32_t previousInstanceId = creature->getInstanceID();
 	creature->setInstanceID(id);
 
-	if (previousInstanceId != id) {
+	if (previousInstanceId != id)
+	{
 		SpectatorVec spectators;
 		g_game.map.getSpectators(spectators, creature->getPosition(), true, true);
 
-		const auto& specFilter = [&](const std::shared_ptr<Creature>& s)
-		{
-			const PlayerPtr& specPlayer = s->getPlayer();
-			return specPlayer != nullptr;
-		};
-		
-		for (const auto& spectator : spectators | std::views::filter(specFilter))
-		{
-			spectator->getPlayer()->refreshWorldView(); // getPlayer should be valid here, filter should eliminate call on nullptr 
-		}
+		for (const auto& spectator : spectators.players())
+			std::static_pointer_cast<Player>(spectator)->refreshWorldView();
 
 		if (const auto& player = creature->getPlayer())
 			player->refreshWorldView();

@@ -367,25 +367,24 @@ void Tile::onAddTileItem(ItemPtr& item)
 	}
 
 	setTileFlags(item);
-
 	const Position& cylinderMapPos = getPosition();
-
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, cylinderMapPos, true);
+	TilePtr self = getTile();
 
-	// BlackTek Instance System
-	const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
+	// send to client and event callback
+	auto can_see_item = [&item](const auto& c)
 	{
-		const PlayerPtr& spectatorPlayer = s->getPlayer();
-		return spectatorPlayer and canSeeItemInInstance(spectatorPlayer->getInstanceID(), item);
+		auto spectator = std::static_pointer_cast<Player>(c);
+		return canSeeItemInInstance(spectator->getInstanceID(), item);
 	};
 
-	//send to client and event callback
-	for (const auto spectator : spectators | std::views::filter(sameInstance)) {
-		spectator->getPlayer()->sendAddTileItem(getTile(), cylinderMapPos, item);
-		
-		TilePtr tp = this->getTile();
-		spectator->onAddTileItem(tp, cylinderMapPos);
+	for (const auto& spectatorPlayer : spectators.players()
+		| std::views::filter(can_see_item)
+		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
+	{
+		spectatorPlayer->sendAddTileItem(getTile(), cylinderMapPos, item);
+		spectatorPlayer->onAddTileItem(self, cylinderMapPos);
 	}
 
 	if ((!hasFlag(TILESTATE_PROTECTIONZONE) || g_config.GetBoolean(ConfigManager::CLEAN_PROTECTION_ZONES)) && item->isCleanable()) {
@@ -413,21 +412,23 @@ void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, con
 	}
 
 	const Position& cylinderMapPos = getPosition();
-
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, cylinderMapPos, true);
+	const auto& self = getTile();
 
-	// BlackTek Instance System
-	const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
-	{
-		const PlayerPtr& spectatorPlayer = s->getPlayer();
-		return spectatorPlayer and canSeeItemInInstance(spectatorPlayer->getInstanceID(), newItem);
-	};
-	
 	//send to client and event callback
-	for (const auto spectator : spectators | std::views::filter(sameInstance)) {
-		spectator->getPlayer()->sendUpdateTileItem(getTile(), cylinderMapPos, newItem);
-		spectator->onUpdateTileItem(getTile(), cylinderMapPos, oldItem, oldType, newItem, newType);
+	auto can_see_new_item = [&newItem](const auto& c)
+	{
+		auto player = std::static_pointer_cast<Player>(c);
+		return canSeeItemInInstance(player->getInstanceID(), newItem);
+	};
+
+	for (const auto& spectatorPlayer : spectators.players()
+		| std::views::filter(can_see_new_item)
+		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
+	{
+		spectatorPlayer->sendUpdateTileItem(self, cylinderMapPos, newItem);
+		spectatorPlayer->onUpdateTileItem(self, cylinderMapPos, oldItem, oldType, newItem, newType);
 	}
 }
 
@@ -444,19 +445,21 @@ void Tile::onRemoveTileItem(const SpectatorVec& spectators, const std::vector<in
 	const Position& cylinderMapPos = getPosition();
 	const ItemType& iType = Item::items[item->getID()];
 
-	// BlackTek Instance System
-	const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
-	{
-		const PlayerPtr& spectatorPlayer = s->getPlayer();
-		return spectatorPlayer and canSeeItemInInstance(spectatorPlayer->getInstanceID(), item);
-	};
-
 	//send to client and event callback
 	size_t i = 0;
-	for (const auto spectator : spectators | std::views::filter(sameInstance))
+
+	auto can_see_item = [&item](const auto& c)
 	{
-			spectator->getPlayer()->sendRemoveTileThing(cylinderMapPos, oldStackPosVector[i++]);
-			spectator->onRemoveTileItem(getTile(), cylinderMapPos, iType, item);
+			auto spectator = std::static_pointer_cast<Player>(c);
+			return canSeeItemInInstance(spectator->getInstanceID(), item);
+	};
+
+	for (const auto& spectatorPlayer : spectators.players()
+		| std::views::filter(can_see_item)
+		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
+	{
+		spectatorPlayer->sendRemoveTileThing(cylinderMapPos, oldStackPosVector[i++]);
+		spectatorPlayer->onRemoveTileItem(getTile(), cylinderMapPos, iType, item);
 	}
 
 	if (!hasFlag(TILESTATE_PROTECTIONZONE) || g_config.GetBoolean(ConfigManager::CLEAN_PROTECTION_ZONES)) {
@@ -484,12 +487,7 @@ void Tile::onUpdateTile(const SpectatorVec& spectators)
 {
 	const Position& cylinderMapPos = getPosition();
 
-	auto players = spectators | std::views::filter([](const auto& spectator)
-	{
-		return spectator->getCreatureSubType() == CreatureSubType::Player;
-	});
-
-	for (const auto& spectator : players) {
+	for (const auto& spectator : spectators.players()) {
 		std::static_pointer_cast<Player>(spectator)->sendUpdateTile(getTile(), cylinderMapPos);
 	}
 }
@@ -1190,12 +1188,7 @@ void Tile::removeThing(ThingPtr thing, uint32_t count)
 		return;
 	}
 
-	// BlackTek Instance System
-	const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
-	{
-		const PlayerPtr& spectatorPlayer = s->getPlayer();
-		return spectatorPlayer and canSeeItemInInstance(spectatorPlayer->getInstanceID(), item);
-	};
+
 
 	const ItemType& itemType = Item::items[item->getID()];
 	if (itemType.alwaysOnTop) {
@@ -1209,8 +1202,11 @@ void Tile::removeThing(ThingPtr thing, uint32_t count)
 		SpectatorVec spectators;
 		g_game.map.getSpectators(spectators, getPosition(), true);
 
-		for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
-			oldStackPosVector.push_back(getStackposOfItem(spectator->getPlayer(), item));
+		for (const auto& c : spectators.players()) {
+			const auto spectatorPlayer = std::static_pointer_cast<Player>(c);
+			if (canSeeItemInInstance(spectatorPlayer->getInstanceID(), item)) {
+				oldStackPosVector.push_back(getStackposOfItem(spectatorPlayer, item));
+			}
 		}
 
 		item->clearParent();
@@ -1231,8 +1227,11 @@ void Tile::removeThing(ThingPtr thing, uint32_t count)
 
 			SpectatorVec spectators;
 			g_game.map.getSpectators(spectators, getPosition(), true);
-			for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
-				oldStackPosVector.push_back(getStackposOfItem(spectator->getPlayer(), item));
+			for (const auto& c : spectators.players()) {
+				const auto spectatorPlayer = std::static_pointer_cast<Player>(c);
+				if (canSeeItemInInstance(spectatorPlayer->getInstanceID(), item)) {
+					oldStackPosVector.push_back(getStackposOfItem(spectatorPlayer, item));
+				}
 			}
 
 			item->clearParent();
@@ -1476,7 +1475,7 @@ void Tile::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t in
 
 	// another test location
 
-	for (auto& spectator : spectators)
+	for (auto& spectator : spectators.players())
 	{
 		std::static_pointer_cast<Player>(spectator)->postAddNotification(thing, oldParent, index, LINK_NEAR);
 	}
@@ -1525,7 +1524,7 @@ void Tile::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t
 	// and we would know about it pretty quickly, howevever if this doesn't happen, and this new RTTI tagging
 	// works as well as anticipated, I will cleanup the view changes, and apply the same system for thing, cylinder and item based classes.
 
-	for (auto& spectator : spectators)
+	for (auto& spectator : spectators.players())
 	{
 		std::static_pointer_cast<Player>(spectator)->postRemoveNotification(thing, newParent, index, LINK_NEAR);
 	}

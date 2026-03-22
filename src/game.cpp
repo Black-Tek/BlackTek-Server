@@ -70,17 +70,6 @@ static bool canInteractInSameInstance(const CreatureConstPtr& first, const Creat
 	return first and second and first->compareInstance(second->getInstanceID());
 }
 
-static void sendMagicEffectToInstance(const SpectatorVec& spectators, const Position& pos, const uint8_t effect, uint32_t instanceId)
-{
-	const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
-	{
-		const PlayerPtr& tmpPlayer = s->getPlayer();
-		return tmpPlayer and tmpPlayer->compareInstance(instanceId);
-	};
-	for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
-		spectator->getPlayer()->sendMagicEffect(pos, effect); // we already know getPlayer will return valid player object due to the views filter :)
-	}
-}
 
 Game::Game()
 	: raw_game_block(GamePoolSize)
@@ -615,21 +604,23 @@ bool Game::placeCreature(CreaturePtr creature, const Position& pos, bool extende
 
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true);
+
+	for (const auto& c : spectators.players())
+		std::static_pointer_cast<Player>(c)->sendCreatureAppear(creature, creature->getPosition(), magicEffect);
+
 	for (const auto& spectator : spectators)
-	{
-		if (const auto& tmpPlayer = spectator->getPlayer()) {
-			tmpPlayer->sendCreatureAppear(creature, creature->getPosition(), magicEffect);
-		}
 		spectator->onCreatureAppear(creature, true);
-		if (const auto& monster = spectator->getMonster()) 
-		{
-			monster->setIdle(false);
-		}
+
+	if (creature->getCreatureSubType() == CreatureSubType::Player
+		or creature->getCreatureSubType() == CreatureSubType::Monster and creature->getMaster() and creature->getMaster()->getCreatureSubType() == CreatureSubType::Player)
+	{
+		for (const auto& c : spectators.monsters())
+			static_cast<Monster*>(c.get())->setIdle(false);
 	}
 
-	if (creature->getParent() != nullptr)	{
+	if (creature->getParent() != nullptr)
 		creature->getParent()->postAddNotification(creature, nullptr, 0);
-	}
+
 	addCreatureCheck(creature);
 	creature->onPlacedCreature();
 	return true;
@@ -637,9 +628,8 @@ bool Game::placeCreature(CreaturePtr creature, const Position& pos, bool extende
 
 bool Game::removeCreature(CreaturePtr creature, bool isLogout/* = true*/)
 {
-	if (creature->isRemoved()) {
+	if (creature->isRemoved())
 		return false;
-	}
 
 	const auto tile = creature->getTile();
 
@@ -647,10 +637,9 @@ bool Game::removeCreature(CreaturePtr creature, bool isLogout/* = true*/)
 
 	SpectatorVec spectators;
 	map.getSpectators(spectators, tile->getPosition(), true);
-	for (const auto spectator : spectators) {
-		if (const auto player = spectator->getPlayer()) {
-			oldStackPosVector.push_back(player->canSeeCreature(creature) ? tile->getClientIndexOfCreature(player, creature) : -1);
-		}
+	for (const auto& c : spectators.players()) {
+		const auto& player = std::static_pointer_cast<Player>(c);
+		oldStackPosVector.push_back(player->canSeeCreature(creature) ? tile->getClientIndexOfCreature(player, creature) : -1);
 	}
 
 	tile->removeCreature(creature);
@@ -659,10 +648,8 @@ bool Game::removeCreature(CreaturePtr creature, bool isLogout/* = true*/)
 
 	//send to client
 	size_t i = 0;
-	for (const auto spectator : spectators) {
-		if (const auto player = spectator->getPlayer()) {
-			player->sendRemoveTileCreature(creature, tilePosition, oldStackPosVector[i++]);
-		}
+	for (const auto& c : spectators.players()) {
+		std::static_pointer_cast<Player>(c)->sendRemoveTileCreature(creature, tilePosition, oldStackPosVector[i++]);
 	}
 
 	//event method
@@ -4840,19 +4827,20 @@ void Game::playerWhisper(const PlayerPtr& player, const std::string& text)
 	              Map::maxClientViewportY, Map::maxClientViewportY);
 
 	//send to client + trigger event callback
-	// BlackTek Instance System
-	const auto sameInstance = [&](const auto& s)
-	{
-		return canInteractInSameInstance(player, s);
-	};
-	
-	for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
-		if (const auto spectatorPlayer = spectator->getPlayer()) {
-			if (!Position::areInRange<1, 1>(player->getPosition(), spectatorPlayer->getPosition())) {
-				spectatorPlayer->sendCreatureSay(player, TALKTYPE_WHISPER, "pspsps");
-			} else {
-				spectatorPlayer->sendCreatureSay(player, TALKTYPE_WHISPER, text);
-			}
+	for (const auto& c : spectators.players()) {
+		if (not canInteractInSameInstance(player, c)) {
+			continue;
+		}
+		const auto spectatorPlayer = std::static_pointer_cast<Player>(c);
+		if (!Position::areInRange<1, 1>(player->getPosition(), spectatorPlayer->getPosition())) {
+			spectatorPlayer->sendCreatureSay(player, TALKTYPE_WHISPER, "pspsps");
+		} else {
+			spectatorPlayer->sendCreatureSay(player, TALKTYPE_WHISPER, text);
+		}
+	}
+	for (const auto& spectator : spectators) {
+		if (not canInteractInSameInstance(player, spectator)) {
+			continue;
 		}
 		spectator->onCreatureSay(player, TALKTYPE_WHISPER, text);
 	}
@@ -4971,14 +4959,7 @@ bool Game::internalCreatureTurn(const CreaturePtr& creature, const Direction dir
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
 
-	// the second boolean as true in the above getSpectators ensures its only players
-	// but just to be safe lets use a view filter anyways
-	auto players = spectators | std::views::filter([](const auto& spectator)
-	{
-		return spectator->getCreatureSubType() == CreatureSubType::Player;
-	});
-
-	for (const auto& spectator : players)
+	for (const auto& spectator : spectators.players())
 	{
 		std::static_pointer_cast<Player>(spectator)->sendCreatureTurn(creature);
 	}
@@ -5014,29 +4995,35 @@ bool Game::internalCreatureSay(const CreaturePtr& creature, const SpeakClasses t
 		spectators = (*spectatorsPtr);
 	}
 
-	//send to client + event callback
-	// BlackTek Instance System
-	const auto sameInstance = [&](const auto& s)
+	auto can_see_interaction = [&](const auto& c)
 	{
-		return canInteractInSameInstance(creature, s);
-	};
-	for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
-		if (const auto& tmpPlayer = spectator->getPlayer()) {
-			if (!ghostMode || tmpPlayer->canSeeCreature(creature)) {
-				tmpPlayer->sendCreatureSay(creature, type, text, pos);
-			}
-		}
+		if (not canInteractInSameInstance(creature, c)) return false;
 
-		if (not echo)
+		auto player = std::static_pointer_cast<Player>(c);
+		return not ghostMode or player->canSeeCreature(creature);
+	};
+
+	for (auto player : spectators.players()
+		| std::views::filter(can_see_interaction)
+		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
+	{
+		player->sendCreatureSay(creature, type, text, pos);
+	}
+	if (not echo)
+	{
+		auto is_interactable = [&](const auto& s) {	return canInteractInSameInstance(creature, s);};
+
+		for (const auto& spectator : spectators | std::views::filter(is_interactable))
 		{
 			spectator->onCreatureSay(creature, type, text);
-			if (creature != spectator) {
+
+			if (creature != spectator)
 				g_events->eventCreatureOnHear(spectator, creature, text, type);
-			}
 		}
 	}
 	return true;
 }
+
 // Todo : Investigate the actual necessity of creature->getHealth() > 0 checks in these methods
 void Game::checkCreatureWalk(const uint32_t creatureId) noexcept
 {
@@ -5137,15 +5124,8 @@ void Game::changeSpeed(const CreaturePtr& creature, const int32_t varSpeedDelta)
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), false, true);
 
-	auto players = spectators | std::views::filter([](const auto& spectator)
-	{
-		return spectator->getCreatureSubType() == CreatureSubType::Player;
-	});
-
-	for (const auto& spectator : players)
-	{
+	for (const auto& spectator : spectators.players())
 		std::static_pointer_cast<Player>(spectator)->sendChangeSpeed(creature, creature->getStepSpeed());
-	}
 }
 
 void Game::internalCreatureChangeOutfit(const CreaturePtr& creature, const Outfit_t& outfit)
@@ -5162,15 +5142,8 @@ void Game::internalCreatureChangeOutfit(const CreaturePtr& creature, const Outfi
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
 
-	auto players = spectators | std::views::filter([](const auto& spectator)
-	{
-		return spectator->getCreatureSubType() == CreatureSubType::Player;
-	});
-
-	for (const auto spectator : spectators)
-	{
+	for (const auto& spectator : spectators.players())
 		std::static_pointer_cast<Player>(spectator)->sendCreatureChangeOutfit(creature, outfit);
-	}
 }
 
 void Game::internalCreatureChangeVisible(const CreaturePtr& creature, bool visible)
@@ -5179,15 +5152,8 @@ void Game::internalCreatureChangeVisible(const CreaturePtr& creature, bool visib
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
 
-	auto players = spectators | std::views::filter([](const auto& spectator)
-	{
-		return spectator->getCreatureSubType() == CreatureSubType::Player;
-	});
-
-	for (const auto& spectator : players)
-	{
+	for (const auto& spectator : spectators.players())
 		std::static_pointer_cast<Player>(spectator)->sendCreatureChangeVisible(creature, visible);
-	}
 }
 
 void Game::changeLight(const CreatureConstPtr& creature)
@@ -5196,75 +5162,68 @@ void Game::changeLight(const CreatureConstPtr& creature)
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
 
-	auto players = spectators | std::views::filter([](const auto& spectator)
-	{
-		return spectator->getCreatureSubType() == CreatureSubType::Player;
-	});
-
-	for (const auto& spectator : players)
-	{
-		assert(spectator->getCreatureSubType() == CreatureSubType::Player);
+	for (const auto& spectator : spectators.players())
 		std::static_pointer_cast<Player>(spectator)->sendCreatureLight(creature);
-	}
 }
 
 bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, const CreaturePtr& target, const bool checkDefense, const bool checkArmor, const bool field, const bool ignoreResistances /*= false */)
 {
-	if (not target or (damage.primary.type == COMBAT_NONE and damage.secondary.type == COMBAT_NONE)) {
+	if (not target or (damage.primary.type == COMBAT_NONE and damage.secondary.type == COMBAT_NONE))
 		return true;
-	}
 
-	// BlackTek Instance System
-	if (attacker and not canInteractInSameInstance(attacker, target)) {
+	if (attacker and not canInteractInSameInstance(attacker, target))
 		return true;
-	}
 
-	if (target->getPlayer() and target->isInGhostMode()) {
+	if (target->getPlayer() and target->isInGhostMode())
 		return true;
-	}
 
-	if (damage.primary.value > 0) {
+	if (damage.primary.value > 0)
 		return false;
-	}
-	// BlackTek Instance System
-	static const auto sendBlockEffect = [this](const BlockType_t blockType, const CombatType_t combatType, const Position& targetPos, uint32_t instanceId) {
+
+	static const auto sendBlockEffect = [this](const BlockType_t blockType, const CombatType_t combatType, const Position& targetPos, uint32_t instanceId)	
+	{
 		SpectatorVec localSpectators;
 		map.getSpectators(localSpectators, targetPos, true, true);
-		if (blockType == BLOCK_DEFENSE) {
-			// BlackTek Instance System
-			sendMagicEffectToInstance(localSpectators, targetPos, CONST_ME_POFF, instanceId);
-		} else if (blockType == BLOCK_ARMOR) {
-			// BlackTek Instance System
-			sendMagicEffectToInstance(localSpectators, targetPos, CONST_ME_BLOCKHIT, instanceId);
-		} else if (blockType == BLOCK_IMMUNITY) {
+
+		if (blockType == BLOCK_DEFENSE)
+		{
+			Game::addMagicEffect(localSpectators, targetPos, CONST_ME_POFF, instanceId);
+		}
+		else if (blockType == BLOCK_ARMOR)
+		{
+			Game::addMagicEffect(localSpectators, targetPos, CONST_ME_BLOCKHIT, instanceId);
+		}
+		else if (blockType == BLOCK_IMMUNITY)
+		{
 			uint8_t hitEffect = 0;
-			switch (combatType) {
-				case COMBAT_UNDEFINEDDAMAGE: {
+
+			switch (combatType)
+			{
+				case COMBAT_UNDEFINEDDAMAGE:
 					return;
-				}
+
 				case COMBAT_ENERGYDAMAGE:
 				case COMBAT_FIREDAMAGE:
 				case COMBAT_PHYSICALDAMAGE:
 				case COMBAT_ICEDAMAGE:
-				case COMBAT_DEATHDAMAGE: {
+				case COMBAT_DEATHDAMAGE:
 					hitEffect = CONST_ME_BLOCKHIT;
 					break;
-				}
-				case COMBAT_EARTHDAMAGE: {
+
+				case COMBAT_EARTHDAMAGE:
 					hitEffect = CONST_ME_GREEN_RINGS;
 					break;
-				}
-				case COMBAT_HOLYDAMAGE: {
+
+				case COMBAT_HOLYDAMAGE:
 					hitEffect = CONST_ME_HOLYDAMAGE;
 					break;
-				}
-				default: {
+
+				default:
 					hitEffect = CONST_ME_POFF;
 					break;
-				}
 			}
-			// BlackTek Instance System
-			sendMagicEffectToInstance(localSpectators, targetPos, hitEffect, instanceId);
+
+			Game::addMagicEffect(localSpectators, targetPos, hitEffect, instanceId);
 		}
 	};
 
@@ -5581,31 +5540,31 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			SpectatorVec spectators;
 			map.getSpectators(spectators, targetPos, false, true);
 
-			// BlackTek Instance System
-			const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
+			auto in_target_instance = [&](const auto& c) { return std::static_pointer_cast<Player>(c)->compareInstance(target->getInstanceID()); };
+			auto to_player = [](const auto& c) { return std::static_pointer_cast<Player>(c); };
+
+			for (const auto& spectatorPlayer : spectators.players()
+				| std::views::filter(in_target_instance)
+				| std::views::transform(to_player))
 			{
-				const PlayerPtr& spectatorPlayer = s->getPlayer();
-				return spectatorPlayer and spectatorPlayer->compareInstance(target->getInstanceID());
-			};
-			for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
-				const PlayerPtr& spectatorPlayer = spectator->getPlayer();
-				if (!spectatorPlayer) {
-					continue;
-				}
-				if (spectatorPlayer == attackerPlayer and attackerPlayer != targetPlayer) {
+				if (spectatorPlayer == attackerPlayer && attackerPlayer != targetPlayer)
+				{
 					message.type = MESSAGE_HEALED;
 					message.text = "You heal " + targetNameDesc + " for " + damageString + ".";
 				}
-				else if (spectatorPlayer == targetPlayer) {
+				else if (spectatorPlayer == targetPlayer)
+				{
 					message.type = MESSAGE_HEALED;
 					message.text = !attacker ? "You are healed for " + damageString + "." :
 						(targetPlayer == attackerPlayer ? "You heal yourself for " + damageString + "." :
 							"You are healed by " + attackerNameDesc + " for " + damageString + ".");
 				}
-				else {
+				else
+				{
 					message.type = MESSAGE_HEALED_OTHERS;
 					message.text = spectatorMessage;
 				}
+
 				spectatorPlayer->sendTextMessage(message);
 			}
 		}
@@ -5615,8 +5574,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			if (!target->isInGhostMode()) {
 				SpectatorVec localSpectators;
 				map.getSpectators(localSpectators, targetPos, true, true);
-				// BlackTek Instance System
-				sendMagicEffectToInstance(localSpectators, targetPos, CONST_ME_POFF, target->getInstanceID());
+				Game::addMagicEffect(localSpectators, targetPos, CONST_ME_POFF, target->getInstanceID());
 			}
 			return true;
 		}
@@ -5650,8 +5608,7 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 
 				// Drain mana and add visual effect
 				targetPlayer->drainMana(attacker, manaDamage);
-				// BlackTek Instance System
-				sendMagicEffectToInstance(spectators, targetPos, CONST_ME_LOSEENERGY, target->getInstanceID());
+				Game::addMagicEffect(spectators, targetPos, CONST_ME_LOSEENERGY, target->getInstanceID());
 
 				if (showMessages) {
 					const auto& targetNameDesc = target->getNameDescription();
@@ -5673,37 +5630,38 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 					message.primary.value = manaDamage;
 					message.primary.color = TEXTCOLOR_BLUE;
 
-					// BlackTek Instance System
-					const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
+
+					auto can_see_mana_loss = [&](const auto& c)
 					{
-						const PlayerPtr spectatorPlayer = s->getPlayer();
-						return spectatorPlayer && spectatorPlayer->compareInstance(target->getInstanceID());
+						auto p = std::static_pointer_cast<Player>(c);
+						return p->compareInstance(target->getInstanceID()) and p->getPosition().z == targetPos.z;
 					};
 
-					// Notify spectators about mana loss
-					for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
-						const PlayerPtr& spectatorPlayer = spectator->getPlayer();
-						if (!spectatorPlayer) {
-							continue;
-						}
-						if (spectatorPlayer->getPosition().z != targetPos.z)
-							continue;
+					auto to_player = [](const auto& c) { return std::static_pointer_cast<Player>(c); };
 
-						if (spectatorPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
+					for (const auto& spectatorPlayer : spectators.players()
+						| std::views::filter(can_see_mana_loss)
+						| std::views::transform(to_player))
+					{
+						if (spectatorPlayer == attackerPlayer and attackerPlayer != targetPlayer)
+						{
 							message.type = MESSAGE_DAMAGE_DEALT;
 							message.text = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana due to your attack.";
-							message.text[0] = std::toupper(message.text[0]);
+							message.text[0] = std::toupper(static_cast<unsigned char>(message.text[0]));
 						}
-						else if (spectatorPlayer == targetPlayer) {
+						else if (spectatorPlayer == targetPlayer)
+						{
 							message.type = MESSAGE_DAMAGE_RECEIVED;
 							message.text = !attacker ? "You lose " + std::to_string(manaDamage) + " mana." :
 								(targetPlayer == attackerPlayer ? "You lose " + std::to_string(manaDamage) + " mana due to your own attack." :
 									"You lose " + std::to_string(manaDamage) + " mana due to an attack by " + attackerNameDesc + ".");
 						}
-						else {
+						else
+						{
 							message.type = MESSAGE_DAMAGE_OTHERS;
 							message.text = spectatorMessage;
 						}
+
 						spectatorPlayer->sendTextMessage(message);
 					}
 				}
@@ -5741,20 +5699,20 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 		message.secondary.value = damage.secondary.value;
 
 		uint8_t hitEffect;
-		if (message.primary.value) {
+		if (message.primary.value)
+		{
 			combatGetTypeInfo(damage.primary.type, target, message.primary.color, hitEffect);
-			if (hitEffect != CONST_ME_NONE) {
-				// BlackTek Instance System
-				sendMagicEffectToInstance(spectators, targetPos, hitEffect, target->getInstanceID());
-			}
+
+			if (hitEffect != CONST_ME_NONE)
+				Game::addMagicEffect(spectators, targetPos, hitEffect, target->getInstanceID());
 		}
 
-		if (message.secondary.value) {
+		if (message.secondary.value)
+		{
 			combatGetTypeInfo(damage.secondary.type, target, message.secondary.color, hitEffect);
-			if (hitEffect != CONST_ME_NONE) {
-				// BlackTek Instance System
-				sendMagicEffectToInstance(spectators, targetPos, hitEffect, target->getInstanceID());
-			}
+
+			if (hitEffect != CONST_ME_NONE)
+				Game::addMagicEffect(spectators, targetPos, hitEffect, target->getInstanceID());
 		}
 
 		if (message.primary.color != TEXTCOLOR_NONE || message.secondary.color != TEXTCOLOR_NONE) {
@@ -5775,34 +5733,38 @@ bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& ta
 			}
 			spectatorMessage[0] = std::toupper(spectatorMessage[0]);
 
-			// BlackTek Instance System
-			const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
+
+			auto is_eligible = [&](const auto& c)
 			{
-				const PlayerPtr& tmpPlayer = s->getPlayer();
-				return tmpPlayer and tmpPlayer->compareInstance(target->getInstanceID());
+				auto p = std::static_pointer_cast<Player>(c);
+				return p->compareInstance(target->getInstanceID()) and p->getPosition().z == targetPos.z;
 			};
 
-			for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
-				const auto& tmpPlayer = spectator->getPlayer();
+			auto to_player = [&](const auto& c) { return std::static_pointer_cast<Player>(c); };
 
-				if (tmpPlayer->getPosition().z != targetPos.z)
-					continue;
-
-				if (tmpPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
+			for (const auto& tmpPlayer : spectators.players()
+				| std::views::filter(is_eligible)
+				| std::views::transform(to_player))
+			{
+				if (tmpPlayer == attackerPlayer && attackerPlayer != targetPlayer)
+				{
 					message.type = MESSAGE_DAMAGE_DEALT;
 					message.text = targetNameDesc + " loses " + damageString + " due to your attack.";
-					message.text[0] = std::toupper(message.text[0]);
+					message.text[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(message.text[0])));
 				}
-				else if (tmpPlayer == targetPlayer) {
+				else if (tmpPlayer == targetPlayer)
+				{
 					message.type = MESSAGE_DAMAGE_RECEIVED;
 					message.text = !attacker ? "You lose " + damageString + "." :
 						(targetPlayer == attackerPlayer ? "You lose " + damageString + " due to your own attack." :
 							"You lose " + damageString + " due to an attack by " + attackerNameDesc + ".");
 				}
-				else {
+				else
+				{
 					message.type = MESSAGE_DAMAGE_OTHERS;
 					message.text = spectatorMessage;
 				}
+
 				tmpPlayer->sendTextMessage(message);
 			}
 		}
@@ -5913,8 +5875,7 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 				if (!target->isInGhostMode()) {
 					SpectatorVec localSpectators;
 					map.getSpectators(localSpectators, targetPos, true, true);
-					// BlackTek Instance System
-					sendMagicEffectToInstance(localSpectators, targetPos, CONST_ME_POFF, target->getInstanceID());
+					Game::addMagicEffect(localSpectators, targetPos, CONST_ME_POFF, target->getInstanceID());
 				}
 				return false;
 			}
@@ -5925,8 +5886,7 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 			if (blockType != BLOCK_NONE) {
 				SpectatorVec localSpectators;
 				map.getSpectators(localSpectators, targetPos, true, true);
-				// BlackTek Instance System
-				sendMagicEffectToInstance(localSpectators, targetPos, CONST_ME_POFF, target->getInstanceID());
+				Game::addMagicEffect(localSpectators, targetPos, CONST_ME_POFF, target->getInstanceID());
 				return false;
 			}
 			if (manaLoss <= 0) {
@@ -5974,40 +5934,43 @@ bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& targ
 			SpectatorVec spectators;
 			map.getSpectators(spectators, targetPos, false, true);
 
-			// BlackTek Instance System
-			const auto& sameInstance = [&](const std::shared_ptr<Creature>& s)
+			auto is_in_target_instance = [&](const auto& c)
 			{
-				const PlayerPtr& spectatorPlayer = s->getPlayer();
-				return spectatorPlayer and spectatorPlayer->compareInstance(target->getInstanceID());
+				return std::static_pointer_cast<Player>(c)->compareInstance(target->getInstanceID());
 			};
-			
-			for (const auto& spectator : spectators | std::views::filter(sameInstance)) {
-				PlayerPtr spectatorPlayer = spectator->getPlayer();
-				if (!spectatorPlayer) {
-					continue;
-				}
-				
-				if (spectatorPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
+
+			for (const auto& spectatorPlayer : spectators.players()
+				| std::views::filter(is_in_target_instance)
+				| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
+			{
+				if (spectatorPlayer == attackerPlayer and attackerPlayer != targetPlayer)
+				{
 					message.type = MESSAGE_DAMAGE_DEALT;
 					message.text = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana due to your attack.";
-					message.text[0] = std::toupper(message.text[0]);
+					message.text[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(message.text[0])));
 				}
-				else if (spectatorPlayer == targetPlayer) {
+				else if (spectatorPlayer == targetPlayer)
+				{
 					message.type = MESSAGE_DAMAGE_RECEIVED;
-					if (!attacker) {
+					if (not attacker)
+					{
 						message.text = "You lose " + std::to_string(manaLoss) + " mana.";
 					}
-					else if (targetPlayer == attackerPlayer) {
+					else if (targetPlayer == attackerPlayer)
+					{
 						message.text = "You lose " + std::to_string(manaLoss) + " mana due to your own attack.";
 					}
-					else {
+					else
+					{
 						message.text = "You lose " + std::to_string(manaLoss) + " mana due to an attack by " + attackerNameDesc + ".";
 					}
 				}
-				else {
+				else
+				{
 					message.type = MESSAGE_DAMAGE_OTHERS;
 					message.text = spectatorMessage;
 				}
+
 				spectatorPlayer->sendTextMessage(message);
 			}
 		}
@@ -6025,13 +5988,14 @@ void Game::addCreatureHealth(const CreatureConstPtr& target)
 
 void Game::addCreatureHealth(const SpectatorVec& spectators, const CreatureConstPtr& target)
 {
-	for (const auto spectator : spectators) {
-		if (const auto tmpPlayer = spectator->getPlayer()) {
-			// BlackTek Instance System
-			if (tmpPlayer->compareInstance(target->getInstanceID())) {
-				tmpPlayer->sendCreatureHealth(target);
-			}
-		}
+	const uint32_t instanceId = target->getInstanceID();
+
+	for (const auto& c : spectators.players())
+	{
+		auto* player = static_cast<Player*>(c.get());
+
+		if (player->compareInstance(instanceId))
+			player->sendCreatureHealth(target);
 	}
 }
 
@@ -6042,12 +6006,14 @@ void Game::addMagicEffect(const Position& pos, const uint8_t effect)
 	addMagicEffect(spectators, pos, effect);
 }
 
-void Game::addMagicEffect(const SpectatorVec& spectators, const Position& pos, const uint8_t effect)
+void Game::addMagicEffect(const SpectatorVec& spectators, const Position& pos, const uint8_t effect, const uint32_t instanceId /*= 0*/)
 {
-	for (const auto spectator : spectators) {
-		if (const auto tmpPlayer = spectator->getPlayer()) {
-			tmpPlayer->sendMagicEffect(pos, effect);
-		}
+	for (const auto& c : spectators.players())
+	{
+		auto* player = static_cast<Player*>(c.get());
+
+		if (instanceId == 0 or player->compareInstance(instanceId))
+			player->sendMagicEffect(pos, effect);
 	}
 }
 
@@ -6061,12 +6027,14 @@ void Game::addDistanceEffect(const Position& fromPos, const Position& toPos, con
 	addDistanceEffect(spectators, fromPos, toPos, effect);
 }
 
-void Game::addDistanceEffect(const SpectatorVec& spectators, const Position& fromPos, const Position& toPos, uint8_t effect)
+void Game::addDistanceEffect(const SpectatorVec& spectators, const Position& fromPos, const Position& toPos, uint8_t effect, const uint32_t instanceId /*= 0*/)
 {
-	for (const auto spectator : spectators) {
-		if (const auto tmpPlayer = spectator->getPlayer()) {
-			tmpPlayer->sendDistanceShoot(fromPos, toPos, effect);
-		}
+	for (const auto& c : spectators.players())
+	{
+		auto* player = static_cast<Player*>(c.get());
+
+		if (instanceId == 0 or player->compareInstance(instanceId))
+			player->sendDistanceShoot(fromPos, toPos, effect);
 	}
 }
 
@@ -6378,12 +6346,7 @@ void Game::updateCreatureWalkthrough(const CreatureConstPtr& creature)
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
 
-	auto players = spectators | std::views::filter([](const auto& spectator)
-	{
-		return spectator->getCreatureSubType() == CreatureSubType::Player;
-	});
-
-	for (const auto& spectator : players)
+	for (const auto& spectator : spectators.players())
 	{
 		const auto& spectatorPlayer = std::static_pointer_cast<Player>(spectator);
 		spectatorPlayer->sendCreatureWalkthrough(creature, spectatorPlayer->canWalkthroughEx(creature));
@@ -6396,12 +6359,7 @@ void Game::notifySpectators(const CreatureConstPtr& creature)
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
 
-	auto players = spectators | std::views::filter([](const auto& spectator)
-	{
-		return spectator->getCreatureSubType() == CreatureSubType::Player;
-	});
-
-	for (const auto& spectator : players)
+	for (const auto& spectator : spectators.players())
 	{
 		std::static_pointer_cast<Player>(spectator)->sendUpdateTileCreature(creature);
 	}
@@ -6415,12 +6373,7 @@ void Game::updateCreatureSkull(const CreatureConstPtr& creature)
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
 
-	auto players = spectators | std::views::filter([](const auto& spectator)
-	{
-		return spectator->getCreatureSubType() == CreatureSubType::Player;
-	});
-
-	for (const auto& spectator : players)
+	for (const auto& spectator : spectators.players())
 	{
 		std::static_pointer_cast<Player>(spectator)->sendCreatureSkull(creature);
 	}
@@ -6431,15 +6384,8 @@ void Game::updatePlayerShield(const PlayerPtr& player)
 	SpectatorVec spectators;
 	map.getSpectators(spectators, player->getPosition(), true, true);
 
-	auto players = spectators | std::views::filter([](const auto& spectator)
-	{
-		return spectator->getCreatureSubType() == CreatureSubType::Player;
-	});
-
-	for (const auto& spectator : players)
-	{
+	for (const auto& spectator : spectators.players())
 		std::static_pointer_cast<Player>(spectator)->sendCreatureShield(player);
-	}
 }
 
 void Game::updatePlayerHelpers(const PlayerConstPtr& player)
@@ -6450,15 +6396,8 @@ void Game::updatePlayerHelpers(const PlayerConstPtr& player)
 	SpectatorVec spectators;
 	map.getSpectators(spectators, player->getPosition(), true, true);
 
-	auto players = spectators | std::views::filter([](const auto& spectator)
-	{
-		return spectator->getCreatureSubType() == CreatureSubType::Player;
-	});
-
-	for (const auto& spectator : players)
-	{
-		spectator->getPlayer()->sendCreatureHelpers(creatureId, helpers);
-	}
+	for (const auto& spectator : spectators.players())
+		std::static_pointer_cast<Player>(spectator)->sendCreatureHelpers(creatureId, helpers);
 }
 
 void Game::updateCreatureType(const CreaturePtr& creature)
@@ -6480,19 +6419,22 @@ void Game::updateCreatureType(const CreaturePtr& creature)
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true, true);
 
-	if (creatureType == CREATURETYPE_SUMMON_HOSTILE) {
-		for (const auto spectator : spectators) {
-			const auto player = spectator->getPlayer();
-			if (masterPlayer == player) {
+	if (creatureType == CREATURETYPE_SUMMON_HOSTILE)
+	{
+		for (const auto& c : spectators.players())
+		{
+			const auto* player = static_cast<Player*>(c.get());
+
+			if (masterPlayer.get() == player)
 				player->sendCreatureType(creatureId, CREATURETYPE_SUMMON_OWN);
-			} else {
+			else
 				player->sendCreatureType(creatureId, creatureType);
-			}
 		}
-	} else {
-		for (const auto spectator : spectators) {
-			spectator->getPlayer()->sendCreatureType(creatureId, creatureType);
-		}
+	}
+	else
+	{
+		for (const auto& c : spectators.players())
+			static_cast<Player*>(c.get())->sendCreatureType(creatureId, creatureType);
 	}
 }
 
