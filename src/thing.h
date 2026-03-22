@@ -114,6 +114,27 @@ class Thing
             return true;
         }
 
+        bool is_player() const { return thing_subtype == ThingSubType::Player; }
+        bool is_monster() const { return thing_subtype == ThingSubType::Monster; }
+        bool is_npc() const { return thing_subtype == ThingSubType::Npc; }
+        bool is_creature() const { return is_player() or is_monster() or is_npc(); }
+        bool is_item() const { return thing_subtype == ThingSubType::Item; }
+        bool is_door() const { return thing_subtype == ThingSubType::Door; }
+        bool is_magic_field() const { return thing_subtype == ThingSubType::MagicField; }
+        bool is_bed_item() const { return thing_subtype == ThingSubType::BedItem; }
+        bool is_house_transfer_item() const { return thing_subtype == ThingSubType::HouseTransferItem; }
+        bool is_container() const { return thing_subtype == ThingSubType::Container; }
+        bool is_depot_chest() const { return thing_subtype == ThingSubType::DepotChest; }
+        bool is_depot_locker() const { return thing_subtype == ThingSubType::DepotLocker; }
+        bool is_inbox() const { return thing_subtype == ThingSubType::Inbox; }
+        bool is_store_inbox() const { return thing_subtype == ThingSubType::StoreInbox; }
+        bool is_reward_chest() const { return thing_subtype == ThingSubType::RewardChest; }
+        bool is_teleport() const { return thing_subtype == ThingSubType::Teleport; }
+        bool is_trash_holder() const { return thing_subtype == ThingSubType::TrashHolder; }
+        bool is_mailbox() const { return thing_subtype == ThingSubType::Mailbox; }
+        bool is_tile() const { return thing_subtype == ThingSubType::Tile; }
+        bool is_virtual_type() const { return thing_subtype == ThingSubType::Virtual; }
+        
         ThingSubType getThingSubType() const {
             return thing_subtype;
         }
