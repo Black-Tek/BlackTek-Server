@@ -1967,7 +1967,7 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
                 }
             }
 
-            if (owner->isMonster()) // remember we already checked if owner == caller
+            if (owner->is_monster()) // remember we already checked if owner == caller
             {
                 // Todo : Extend this logic here and for non summons to account for monster "friends"
                 return CREATURETYPE_SUMMON_MONSTER_FRIEND;

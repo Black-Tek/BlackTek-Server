@@ -200,9 +200,6 @@ class Player final : public Creature, public Cylinder
 		bool hasMount(const Mount* mount) const;
 		void dismount();
 		bool isAccountManager() const { return guid == 1 or name == "Account Manager"; }
-		inline bool isPlayer() const override { return true; }
-		inline bool isMonster() const override { return false; }
-		inline bool isNpc() const override { return false; }
 
 		void sendFYIBox(const std::string& message) const
 		{

@@ -725,7 +725,6 @@ void Combat::combatTileEffects(const SpectatorVec& spectators,const CreaturePtr&
 		auto item = Item::CreateItem(itemId);
 		if (caster) {
 			item->setOwner(caster->getID());
-			// BlackTek Instance System
 			item->setInstanceID(caster->getInstanceID());
 		}
 		CylinderPtr holder = tile;
@@ -741,10 +740,130 @@ void Combat::combatTileEffects(const SpectatorVec& spectators,const CreaturePtr&
 
 	if (params.impactEffect != CONST_ME_NONE) {
 		if (caster) {
-			// BlackTek Instance System
 			Game::addMagicEffect(spectators, tile->getPosition(), params.impactEffect, caster->getInstanceID());
 		} else {
 			Game::addMagicEffect(spectators, tile->getPosition(), params.impactEffect);
+		}
+	}
+}
+
+void Combat::processImbuements(const CreaturePtr& caster, const CreaturePtr& target, CombatDamage& damage)
+{
+	if (not caster->is_player() and not target->is_player())
+		return;
+
+	static constexpr auto FireCombat = 720904U;
+	static constexpr auto EarthCombat = 786436U;
+	static constexpr auto IceCombat = 852480;
+	static constexpr auto EnergyCombat = 917506U;
+	static constexpr auto HolyCombat = 984064;
+	static constexpr auto DeathCombat = 1050624;
+
+	bool processAttackImbuements = caster->is_player() and (damage.origin == ORIGIN_MELEE or damage.origin == ORIGIN_RANGED) and (damage.primary.type != COMBAT_HEALING and damage.primary.type != COMBAT_MANADRAIN);
+	bool processDefenseImbuements = target->is_player() and damage.primary.type != COMBAT_HEALING and damage.primary.type != COMBAT_MANADRAIN;
+
+	if (processAttackImbuements or processDefenseImbuements)
+	{
+		const auto& attackerPlayer = processAttackImbuements ? caster->getPlayer() : nullptr;
+		const auto& defenderPlayer = processDefenseImbuements ? target->getPlayer() : nullptr;
+		const auto combatType = damage.primary.type;
+
+		processAttackImbuements = processAttackImbuements and attackerPlayer /* and attackerPlayer->hasImbuements() or hasAttackImbuements() */;
+		processDefenseImbuements = processDefenseImbuements and defenderPlayer /* and defenderPlayer->hasImbuements() or hasDefenseImbuements() */;
+
+		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot)
+		{
+			if (processAttackImbuements)
+			{
+				auto item = attackerPlayer->getInventoryItem(slot);
+
+				if (item and item->hasImbuements())
+				{
+					auto& imbues = item->getImbuements();
+
+					for (auto& imbuement : *imbues)
+					{
+						if (not imbuement->value)
+							continue;
+
+						const auto originalDamage = abs(damage.primary.value);
+						const auto conversionAmount = (originalDamage * imbuement->value) / 100;
+						const int32_t difference = (originalDamage - conversionAmount);
+
+						CombatDamage imbueDamage;
+						imbueDamage.primary.type = combatType;
+						imbueDamage.blockType = BLOCK_NONE;
+						imbueDamage.origin = ORIGIN_IMBUEMENT;
+
+						switch (imbuement->imbuetype)
+						{
+							case IMBUEMENT_TYPE_FIRE_DAMAGE:	imbueDamage.primary.type = COMBAT_FIREDAMAGE;		break;
+							case IMBUEMENT_TYPE_ENERGY_DAMAGE:	imbueDamage.primary.type = COMBAT_ENERGYDAMAGE;		break;
+							case IMBUEMENT_TYPE_EARTH_DAMAGE:	imbueDamage.primary.type = COMBAT_EARTHDAMAGE;		break;
+							case IMBUEMENT_TYPE_ICE_DAMAGE:		imbueDamage.primary.type = COMBAT_ICEDAMAGE;		break;
+							case IMBUEMENT_TYPE_HOLY_DAMAGE:	imbueDamage.primary.type = COMBAT_HOLYDAMAGE;		break;
+							case IMBUEMENT_TYPE_DEATH_DAMAGE:	imbueDamage.primary.type = COMBAT_DEATHDAMAGE;		break;
+							default: [[unlikely]]
+								break;
+						}
+
+						if (difference < 0)
+						{
+							// this hack here technically secretly makes defense imbuements more powerful and here is why
+							// because if we were to not cap this and the damage amount became a negative value that we held
+							// as a temporary variable and then we applied the defense imbuements, we have a chance of allowing them
+							// defense imbues to bring that damage back up to zero or above, and without doing that, we could be
+							// potentially having that start value higher (at zero instead of a negative value) to start with on calculations
+							// thereby giving defense an unfair advantage... however, as I am writing this, I'm considering the implications of
+							// the inverse of this logic would likely make attack modifiers more powerful? 
+
+							// I think what I should be doing instead is making it a secondary damage if the change is not the same type as the primary,
+							// and there is not a secondary or the secondary is a matching type... perhaps we only create a new combat object if both those things are failures?
+							imbueDamage.primary.value -= originalDamage;
+							g_game.combatChangeHealth(caster, target, imbueDamage);
+							break;
+						}
+						imbueDamage.primary.value -= conversionAmount;
+						g_game.combatChangeHealth(caster, target, imbueDamage);
+					}
+				}
+			}
+
+			if (processDefenseImbuements)
+			{
+				auto item = defenderPlayer->getInventoryItem(slot);
+
+				if (item and item->hasImbuements())
+				{
+					auto& imbues = item->getImbuements();
+					for (const auto& imbuement : *imbues)
+					{
+						const auto originalDamage = abs(damage.primary.value);
+						const auto resistance = (originalDamage * imbuement->value) / 100;
+						const int32_t difference = (originalDamage - resistance);
+						const auto switch_mask = (static_cast<uint32_t>(imbuement->imbuetype) << 16) | static_cast<uint32_t>(combatType);
+
+						if (difference < 0)
+						{
+							damage.primary.value = 0;
+						}
+						else
+						{
+							switch (switch_mask)
+							{
+								case FireCombat:	damage.primary.value += difference;	break;
+								case EarthCombat:	damage.primary.value += difference; break;
+								case IceCombat:		damage.primary.value += difference;	break;
+								case EnergyCombat:	damage.primary.value += difference;	break;
+								case HolyCombat:	damage.primary.value += difference;	break;
+								case DeathCombat:	damage.primary.value += difference;	break;
+								default: [[unlikely]]
+									break;
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 }
@@ -791,8 +910,6 @@ void Combat::addDistanceEffect(const CreaturePtr& caster, const Position& fromPo
 			g_game.map.getSpectators(spectators, fromPos, true, true);
 			g_game.map.getSpectators(toPosSpectators, toPos, true, true);
 			spectators.addSpectators(toPosSpectators);
-
-			// BlackTek Instance System
 			g_game.addDistanceEffect(spectators, fromPos, toPos, effect, caster->getInstanceID());
 		} else {
 			g_game.addDistanceEffect(fromPos, toPos, effect);
@@ -827,7 +944,6 @@ void Combat::doCombat(const CreaturePtr& caster, const CreaturePtr& target) cons
 		{
 			SpectatorVec spectators;
 			g_game.map.getSpectators(spectators, target->getPosition(), true, true);
-			// BlackTek Instance System
 			Game::addMagicEffect(spectators, target->getPosition(), p.impactEffect, target->getInstanceID());
 		}
 
@@ -995,39 +1111,30 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 	// To-do : I need to properly handle augment based damage which requires entire reworking of this method.
 	// The thing that needs to happen is for augment based damage should not interact again with other aumgent
 	// based damage. Instead of using origin for this, would possibly be better as fields on the combat or combat params.
-	
+
 	if (params.distanceEffect != CONST_ANI_NONE and sendDistanceEffect)
 		addDistanceEffect(caster, caster->getPosition(), target->getPosition(), params.distanceEffect);
+
+	if (not target)
+		return;
 
 	gtl::node_hash_map<uint8_t, ModifierTotals> attackModData;
 	bool isAugmented = damage.augmented;
 
 	if (caster)
 	{
-		if (caster->isPlayer() and target)
+		if (caster->is_player())
 		{
 			const auto& casterPlayer = caster->getPlayer();
 			attackModData.reserve(ATTACK_MODIFIER_LAST);
-			auto targetType = CREATURETYPE_ATTACKABLE;
-
-			// to-do: this is ugly, lets make it a function and assign its return to the variable above instead.
-			if (target->getMonster())
-			{
-				targetType = casterPlayer->getCreatureType(target->getMonster());
-			}
-			else if (target->getPlayer())
-			{
-				targetType = CREATURETYPE_PLAYER;
-			}
-
+			auto targetType = target->getMonster()	? casterPlayer->getCreatureType(target->getMonster()) : CREATURETYPE_PLAYER; // we can't target npc's right now so this is safe
 			attackModData = precomputedAttackMods	? casterPlayer->getAttackModifierTotals(*precomputedAttackMods, damage.primary.type, damage.origin, targetType, target->getRace(), target->getName())
 													: casterPlayer->getAttackModifierTotals(damage.primary.type, damage.origin, targetType, target->getRace(), target->getName());
 
 			/// we do conversion here incase someone wants to convert say healing to mana or mana to death.
-			const auto& conversionTotals = casterPlayer->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage.primary.type, damage.origin, targetType, target->getRace(), target->getName());
-
-			if (not conversionTotals.empty() and not damage.augmented)
+			if (casterPlayer->hasConversionModifiers() and not damage.augmented)
 			{
+				const auto& conversionTotals = casterPlayer->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage.primary.type, damage.origin, targetType, target->getRace(), target->getName());
 				casterPlayer->convertDamage(target->getCreature(), damage, conversionTotals);
 
 				if (damage.primary.value == 0)
@@ -1048,7 +1155,6 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 					{
 						const auto piercePercent = static_cast<int32_t>(piercingPercentTotal);
 						piercingDamage = (piercingPercentTotal <= 100) ? (originalDamage * piercePercent / 100)	: damage.primary.value;
-
 					}
 
 					if (piercingFlatTotal)
@@ -1110,23 +1216,22 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 						damage.critical = true;
 						damage.augmented = true;
 					}
-					}
+				}
 
-					// Update cache after all attack modifiers have run
-					isAugmented = damage.augmented;
+				isAugmented = damage.augmented;
 
-					if (target->isPlayer() and (caster != target) and not isAugmented)
+				if (target->is_player() and (caster != target) and not isAugmented)
+				{
+					const auto& targetPlayer = target->getPlayer();
+					const auto& reformTotals = targetPlayer->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
+
+					if (not reformTotals.empty())
 					{
-						const auto& targetPlayer = target->getPlayer();
-						const auto& reformTotals = targetPlayer->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
+						targetPlayer->reformDamage(casterPlayer->getCreature(), damage, reformTotals);
 
-						if (not reformTotals.empty())
-						{
-							targetPlayer->reformDamage(casterPlayer->getCreature(), damage, reformTotals);
-							if (damage.primary.value == 0) {
-								return;
-							}
-						}
+						if (damage.primary.value == 0)
+							return;
+					}
 
 					const auto& defenseModData = targetPlayer->getDefenseModifierTotals(damage.primary.type, damage.origin, CREATURETYPE_PLAYER, caster->getRace(), caster->getName());
 
@@ -1146,29 +1251,31 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				}
 			}
 		}
-		else if (caster->isMonster())
+		else if (caster->is_monster())
 		{
 			const auto& casterMonster = caster->getMonster();
 
 			if (g_game.combatBlockHit(damage, caster, target, params.blockedByShield, params.blockedByArmor, params.itemId != 0, params.ignoreResistances))
 				return;
 
-			if (target and target->isPlayer())
+			if (target->is_player())
 			{
 				const auto& targetPlayer = target->getPlayer();
 				const auto& attackerType = targetPlayer->getCreatureType(casterMonster->getMonster());
-				const auto& defenseModData = targetPlayer->getDefenseModifierTotals(damage.primary.type, damage.origin, attackerType, casterMonster->getRace(), casterMonster->getName());
-				const auto& reformTotals = targetPlayer->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, attackerType, casterMonster->getRace(), casterMonster->getName());
-				if (not reformTotals.empty() and not isAugmented)
+				
+				if (targetPlayer->hasReformModifiers() and not isAugmented)
 				{
+					const auto& reformTotals = targetPlayer->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, damage.origin, attackerType, casterMonster->getRace(), casterMonster->getName());
 					targetPlayer->reformDamage(casterMonster->getCreature(), damage, reformTotals);
 
 					if (damage.primary.value == 0)
 						return;
 				}
 
-				if (not defenseModData.empty() and not isAugmented)
+				if (targetPlayer->hasDefenseModifiers() and not isAugmented)
 				{
+					const auto& defenseModData = targetPlayer->getDefenseModifierTotals(damage.primary.type, damage.origin, attackerType, casterMonster->getRace(), casterMonster->getName());
+
 					for (const auto& [modkind, modTotals] : defenseModData)
 					{
 						if (modTotals.percentTotal or modTotals.flatTotal)
@@ -1213,191 +1320,11 @@ void Combat::doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target
 				}
 			}
 
-			const bool processAttackImbuements = caster->isPlayer()	and (damage.origin == ORIGIN_MELEE or damage.origin == ORIGIN_RANGED) and (damage.primary.type != COMBAT_HEALING and damage.primary.type != COMBAT_MANADRAIN);
-			const bool processDefenseImbuements = target->isPlayer() and damage.primary.type != COMBAT_HEALING and damage.primary.type != COMBAT_MANADRAIN;
-
-			if (processAttackImbuements or processDefenseImbuements)
-			{
-				const auto& attackerPlayer = processAttackImbuements ? caster->getPlayer() : nullptr;
-				const auto& defenderPlayer = processDefenseImbuements ? target->getPlayer() : nullptr;
-				const auto combatType = damage.primary.type;
-				bool imbuementEarlyExit = false;
-
-				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot)
-				{
-					if (processAttackImbuements)
-					{
-						auto item = attackerPlayer->getInventoryItem(slot);
-
-						if (item and item->hasImbuements())
-						{
-							auto& imbues = item->getImbuements();
-
-							for (auto& imbuement : *imbues)
-							{
-								if (not imbuement->value)
-									continue;
-
-								const auto originalDamage = abs(damage.primary.value);
-								const auto conversionAmount = (originalDamage * imbuement->value) / 100;
-								const int32_t difference = (originalDamage - conversionAmount);
-
-								CombatDamage imbueDamage;
-								imbueDamage.primary.type = combatType;
-								imbueDamage.blockType = BLOCK_NONE;
-								imbueDamage.origin = ORIGIN_IMBUEMENT;
-
-								switch (imbuement->imbuetype)
-								{
-									case IMBUEMENT_TYPE_FIRE_DAMAGE:
-										imbueDamage.primary.type = COMBAT_FIREDAMAGE;
-										break;
-									case IMBUEMENT_TYPE_ENERGY_DAMAGE:
-										imbueDamage.primary.type = COMBAT_ENERGYDAMAGE;
-										break;
-									case IMBUEMENT_TYPE_EARTH_DAMAGE:
-										imbueDamage.primary.type = COMBAT_EARTHDAMAGE;
-										break;
-									case IMBUEMENT_TYPE_ICE_DAMAGE:
-										imbueDamage.primary.type = COMBAT_ICEDAMAGE;
-										break;
-									case IMBUEMENT_TYPE_HOLY_DAMAGE:
-										imbueDamage.primary.type = COMBAT_HOLYDAMAGE;
-										break;
-									case IMBUEMENT_TYPE_DEATH_DAMAGE:
-										imbueDamage.primary.type = COMBAT_DEATHDAMAGE;
-										break;
-									default: [[unlikely]]
-										break;
-								}
-
-								if (difference < 0)
-								{
-									imbueDamage.primary.value -= originalDamage;
-									g_game.combatChangeHealth(caster, target, imbueDamage);
-									break;
-								}
-								imbueDamage.primary.value -= conversionAmount;
-								g_game.combatChangeHealth(caster, target, imbueDamage);
-							}
-						}
-					}
-
-					if (processDefenseImbuements)
-					{
-						auto item = defenderPlayer->getInventoryItem(slot);
-
-						if (item and item->hasImbuements())
-						{
-							auto& imbues = item->getImbuements();
-							for (const auto& imbuement : *imbues)
-							{
-								const auto originalDamage = abs(damage.primary.value);
-								const auto resistance = (originalDamage * imbuement->value) / 100;
-								const int32_t difference = (originalDamage - resistance);
-								switch (imbuement->imbuetype)
-								{
-									case ImbuementType::IMBUEMENT_TYPE_FIRE_RESIST:
-										if (combatType == COMBAT_FIREDAMAGE)
-										{
-											if (difference < 0) 
-											{
-												damage.primary.value = 0;
-												imbuementEarlyExit = true;
-											}
-											else
-											{
-												damage.primary.value += difference;
-											}
-										}
-										break;
-									case ImbuementType::IMBUEMENT_TYPE_EARTH_RESIST:
-										if (combatType == COMBAT_EARTHDAMAGE)
-										{
-											if (difference < 0)
-											{
-												damage.primary.value = 0;
-												imbuementEarlyExit = true;
-											}
-											else
-											{
-												damage.primary.value += difference;
-											}
-										}
-										break;
-									case ImbuementType::IMBUEMENT_TYPE_ICE_RESIST:
-										if (combatType == COMBAT_ICEDAMAGE)
-										{
-											if (difference < 0)
-											{
-												damage.primary.value = 0;
-												imbuementEarlyExit = true;
-											}
-											else
-											{
-												damage.primary.value += difference;
-											}
-										}
-										break;
-									case ImbuementType::IMBUEMENT_TYPE_ENERGY_RESIST:
-										if (combatType == COMBAT_ENERGYDAMAGE)
-										{
-											if (difference < 0)
-											{
-												damage.primary.value = 0;
-												imbuementEarlyExit = true;
-											}
-											else
-											{
-												damage.primary.value += difference;
-											}
-										}
-										break;
-									case ImbuementType::IMBUEMENT_TYPE_DEATH_RESIST:
-										if (combatType == COMBAT_DEATHDAMAGE)
-										{
-											if (difference < 0)
-											{
-												damage.primary.value = 0;
-												imbuementEarlyExit = true;
-											}
-											else
-											{
-												damage.primary.value += difference;
-											}
-										}
-										break;
-									case ImbuementType::IMBUEMENT_TYPE_HOLY_RESIST:
-										if (combatType == COMBAT_HOLYDAMAGE)
-										{
-											if (difference < 0)
-											{
-												damage.primary.value = 0;
-												imbuementEarlyExit = true;
-											}
-											else
-											{
-												damage.primary.value += difference;
-											}
-										}
-										break;
-									default: [[unlikely]]
-										break;
-								}
-								if (imbuementEarlyExit) break;
-							}
-						}
-					}
-
-					if (imbuementEarlyExit) break;
-				}
-
-				if (imbuementEarlyExit) return;
-			}
+			processImbuements(caster, target, damage);
 
 			if (not damage.leeched 
 				and damage.primary.type != COMBAT_HEALING 
-				and caster->isPlayer()
+				and caster->is_player()
 				and damage.origin != ORIGIN_CONDITION)
 			{
 				const auto& casterPlayer = caster->getPlayer();

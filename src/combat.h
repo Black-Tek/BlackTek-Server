@@ -152,6 +152,7 @@ class Combat
 
 	private:
 		static void combatTileEffects(const SpectatorVec& spectators,const CreaturePtr& caster, TilePtr tile, const CombatParams& params);
+		static void processImbuements(const CreaturePtr& caster, const CreaturePtr& target, CombatDamage& damage);
 		CombatDamage getCombatDamage(const CreaturePtr& creature, const CreaturePtr& target) const;
 
 		//configurable
