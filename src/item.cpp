@@ -1938,12 +1938,16 @@ const bool Item::addAugment(const std::shared_ptr<Augment>& augment)
 	if (not isAugmented())
 	{
         augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+		attack_modifier_count += augment->attack_mod_count();
+		defense_modifier_count += augment->defense_mod_count();
+		conversion_modifier_count += augment->conversion_mod_count();
+		reform_modifier_count += augment->reform_mod_count();
 		augments->push_back(augment);
 		g_events->eventItemOnAugment(getItem(), augment);
 		return true;
 	}
 
-	for (const auto& aug : *augments) 
+	for (const auto& aug : *augments)
     {
         bool same_pointer = (aug.get() == augment.get());
         bool same_name = (*aug == *augment);
@@ -1951,6 +1955,10 @@ const bool Item::addAugment(const std::shared_ptr<Augment>& augment)
 			return false;
     }
 
+	attack_modifier_count += augment->attack_mod_count();
+	defense_modifier_count += augment->defense_mod_count();
+	conversion_modifier_count += augment->conversion_mod_count();
+	reform_modifier_count += augment->reform_mod_count();
 	augments->push_back(augment);
     g_events->eventItemOnAugment(getItem(), augment);
     return true;
@@ -1962,13 +1970,17 @@ const bool Item::addAugment(std::string_view augmentName)
 	{
         augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
 	}
-	if (auto augment = Augments::GetAugment(augmentName); augment) 
+	if (auto augment = Augments::GetAugment(augmentName); augment)
 	{
-        if (std::ranges::find(*augments, augment) != augments->end()) 
+        if (std::ranges::find(*augments, augment) != augments->end())
 		{
             return false;
         }
 		augments->emplace_back(augment);
+		attack_modifier_count += augment->attack_mod_count();
+		defense_modifier_count += augment->defense_mod_count();
+		conversion_modifier_count += augment->conversion_mod_count();
+		reform_modifier_count += augment->reform_mod_count();
 		g_events->eventItemOnAugment(std::static_pointer_cast<Item>(shared_from_this()), augment);
 		return true;
 	}
@@ -1977,15 +1989,18 @@ const bool Item::addAugment(std::string_view augmentName)
 
 const bool Item::removeAugment(std::shared_ptr<Augment>& augment)
 {
-    if (not isAugmented()) 
-	{
+    if (not isAugmented())
         return false;
-    }
 
 	const auto removedCount = std::erase(*augments, augment);
     const bool removed = removedCount > 0;
-	if (removed) 
+
+	if (removed)
 	{
+		attack_modifier_count -= augment->attack_mod_count();
+		defense_modifier_count -= augment->defense_mod_count();
+		conversion_modifier_count -= augment->conversion_mod_count();
+		reform_modifier_count -= augment->reform_mod_count();
 		g_events->eventItemOnRemoveAugment(std::static_pointer_cast<Item>(shared_from_this()), augment);
 	}
 	return removed;
@@ -2001,11 +2016,15 @@ const bool Item::removeAugment(std::string_view name)
 	auto originalSize = augments->size();
     
 	std::erase_if(*augments,
-    [this, &name](const std::shared_ptr<Augment>& augment) 
+    [this, &name](const std::shared_ptr<Augment>& augment)
 	{
         const auto match = augment->getName() == name;
-        if (match) 
+        if (match)
 		{
+			attack_modifier_count -= augment->attack_mod_count();
+			defense_modifier_count -= augment->defense_mod_count();
+			conversion_modifier_count -= augment->conversion_mod_count();
+			reform_modifier_count -= augment->reform_mod_count();
 	        g_events->eventItemOnRemoveAugment(std::static_pointer_cast<Item>(shared_from_this()), augment);
         }
         return match;

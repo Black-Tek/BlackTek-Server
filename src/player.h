@@ -1425,8 +1425,13 @@ class Player final : public Creature, public Cylinder
 		gtl::node_hash_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> getAttackModifiers() const;
 		gtl::node_hash_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> getDefenseModifiers() const;
 
-		gtl::node_hash_map<uint8_t, ModifierTotals> getConvertedTotals(const uint8_t modType, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName);
+		[[nodiscard]] bool hasAugments() const noexcept { return augment_count > 0; }
+		[[nodiscard]] bool hasAttackModifiers() const noexcept { return attack_modifier_count > 0; }
+		[[nodiscard]] bool hasDefenseModifiers() const noexcept { return defense_modifier_count > 0; }
+		[[nodiscard]] bool hasConversionModifiers() const noexcept { return conversion_modifier_count > 0; }
+		[[nodiscard]] bool hasReformModifiers() const noexcept { return reform_modifier_count > 0; }
 
+		gtl::node_hash_map<uint8_t, ModifierTotals> getConvertedTotals(const uint8_t modType, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName);
 		gtl::node_hash_map<uint8_t, ModifierTotals> getAttackModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const;
 		gtl::node_hash_map<uint8_t, ModifierTotals> getAttackModifierTotals(const RawModifierMap& precomputedMods, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const;
 		gtl::node_hash_map<uint8_t, ModifierTotals> getDefenseModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const;
@@ -1683,6 +1688,11 @@ class Player final : public Creature, public Cylinder
 		uint32_t editListId = 0;
 		uint32_t mana = 0;
 		uint32_t manaMax = 0;
+		uint32_t augment_count = 0;
+		uint32_t conversion_modifier_count = 0;
+		uint32_t reform_modifier_count = 0;
+		uint32_t attack_modifier_count = 0;
+		uint32_t defense_modifier_count = 0;
 		int32_t varSkills[SKILL_LAST + 1] = {};
 		int32_t varSpecialSkills[SPECIALSKILL_LAST + 1] = {};
 		int32_t varStats[STAT_LAST + 1] = {};

@@ -1260,6 +1260,11 @@ class Item : virtual public Thing, public SharedObject
 		bool hasAugment(std::string_view name) const;
 		bool hasAugment(const std::shared_ptr<Augment>& augment) const;
 
+		[[nodiscard]] uint32_t getAttackModifierCount() const noexcept { return attack_modifier_count; }
+		[[nodiscard]] uint32_t getDefenseModifierCount() const noexcept { return defense_modifier_count; }
+		[[nodiscard]] uint32_t getConversionModifierCount() const noexcept { return conversion_modifier_count; }
+		[[nodiscard]] uint32_t getReformModifierCount() const noexcept { return reform_modifier_count; }
+
 		std::unique_ptr<std::vector<std::shared_ptr<Augment>>>& getAugments()
 		{
 			if (not augments.get())
@@ -1364,6 +1369,10 @@ class Item : virtual public Thing, public SharedObject
         std::unique_ptr<ItemAttributes> attributes;
 		std::unique_ptr<std::vector<std::shared_ptr<Imbuement>>> imbuements;
 		std::unique_ptr<std::vector<std::shared_ptr<Augment>>> augments;
+		uint32_t attack_modifier_count = 0;
+		uint32_t defense_modifier_count = 0;
+		uint32_t conversion_modifier_count = 0;
+		uint32_t reform_modifier_count = 0;
 	protected:
 		uint16_t id; // the same id as in ItemType
 		ItemSubType item_subtype = ItemSubType::None;

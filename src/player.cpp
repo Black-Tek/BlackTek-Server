@@ -3907,6 +3907,14 @@ void Player::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t 
 
 			if (item and item->hasImbuements())
 				addItemImbuements(thing->getItem());
+
+			if (item and item->isAugmented())
+			{
+				attack_modifier_count += item->getAttackModifierCount();
+				defense_modifier_count += item->getDefenseModifierCount();
+				conversion_modifier_count += item->getConversionModifierCount();
+				reform_modifier_count += item->getReformModifierCount();
+			}
 		}
 	}
 
@@ -3977,6 +3985,14 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 
 			if (item and item->hasImbuements())
 				removeItemImbuements(thing->getItem());
+
+			if (item and item->isAugmented())
+			{
+				attack_modifier_count -= item->getAttackModifierCount();
+				defense_modifier_count -= item->getDefenseModifierCount();
+				conversion_modifier_count -= item->getConversionModifierCount();
+				reform_modifier_count -= item->getReformModifierCount();
+			}
 		}
 	}
 
@@ -5613,18 +5629,32 @@ size_t Player::getMaxDepotItems() const
 	return g_config.GetNumber(isPremium() ? ConfigManager::DEPOT_PREMIUM_LIMIT : ConfigManager::DEPOT_FREE_LIMIT);
 }
 
-const bool Player::addAugment(const std::shared_ptr<Augment>& augment) {
-	auto& av = getAugments();
-	if (std::ranges::find(av, augment) == av.end()) {
-		av.push_back(augment);
+const bool Player::addAugment(const std::shared_ptr<Augment>& augment)
+{
+	auto& augments = getAugments();
+	if (std::ranges::find(augments, augment) == augments.end()) 
+	{
+		augment_count += 1;
+		attack_modifier_count += augment->attack_mod_count();
+		defense_modifier_count += augment->defense_mod_count();
+		conversion_modifier_count += augment->conversion_mod_count();
+		reform_modifier_count += augment->reform_mod_count();
+		augments.push_back(augment);
 		g_events->eventPlayerOnAugment(this->getPlayer(), augment);
 		return true;
 	}
 	return false;
 }
 
-const bool Player::addAugment(const std::string_view augmentName) {
-	if (auto augment = Augments::GetAugment(augmentName)) {
+const bool Player::addAugment(const std::string_view augmentName)
+{
+	if (auto augment = Augments::GetAugment(augmentName))
+	{
+		augment_count += 1;
+		attack_modifier_count += augment->attack_mod_count();
+		defense_modifier_count += augment->defense_mod_count();
+		conversion_modifier_count += augment->conversion_mod_count();
+		reform_modifier_count += augment->reform_mod_count();
 		getAugments().emplace_back(augment);
 		g_events->eventPlayerOnAugment(this->getPlayer(), augment);
 		return true;
@@ -5632,11 +5662,18 @@ const bool Player::addAugment(const std::string_view augmentName) {
 	return false;
 }
 
-const bool Player::removeAugment(const std::shared_ptr<Augment>& augment) {
-	if (!augments) {
+const bool Player::removeAugment(const std::shared_ptr<Augment>& augment)
+{
+	if (not augments)
 		return false;
-	}
-	if (const auto it = std::ranges::find(*augments, augment); it != augments->end()) {
+	
+	if (const auto it = std::ranges::find(*augments, augment); it != augments->end())
+	{
+		augment_count -= 1;
+		attack_modifier_count -= augment->attack_mod_count();
+		defense_modifier_count -= augment->defense_mod_count();
+		conversion_modifier_count -= augment->conversion_mod_count();
+		reform_modifier_count -= augment->reform_mod_count();
 		g_events->eventPlayerOnRemoveAugment(this->getPlayer(), augment);
 		augments->erase(it);
 		return true;
@@ -5738,13 +5775,19 @@ const bool Player::removeAugment(std::string_view augmentName)
 
 	std::erase_if(*augments, [&](const std::shared_ptr<Augment>& augment)
 	{
-			if (const auto match = augment->getName() == augmentName)
-			{
-				g_events->eventPlayerOnRemoveAugment(this->getPlayer(), augment);
-			}
-	
-		return augment->getName() == augmentName;
-	 });
+		auto match = augment->getName() == augmentName;
+
+		if (match)
+		{
+			augment_count -= 1;
+			attack_modifier_count -= augment->attack_mod_count();
+			defense_modifier_count -= augment->defense_mod_count();
+			conversion_modifier_count -= augment->conversion_mod_count();
+			reform_modifier_count -= augment->reform_mod_count();
+			g_events->eventPlayerOnRemoveAugment(this->getPlayer(), augment);
+		}
+		return match;
+	});
 
 	return augments->size() < originalSize;
 }
