@@ -4,8 +4,54 @@
 #include "otpch.h"
 #include "iomap.h"
 #include "bed.h"
-#include "console.h"
 #include <fmt/format.h>
+
+namespace
+{
+
+class AllocationProbeResource final : public std::pmr::memory_resource
+{
+public:
+	size_t largestAllocation = 0;
+	size_t largestAlignment = alignof(std::max_align_t);
+
+private:
+	void* do_allocate(size_t bytes, size_t alignment) override
+	{
+		largestAllocation = std::max(largestAllocation, bytes);
+		largestAlignment = std::max(largestAlignment, alignment);
+		return ::operator new(bytes, std::align_val_t(alignment));
+	}
+
+	void do_deallocate(void* p, size_t bytes, size_t alignment) override
+	{
+		static_cast<void>(bytes);
+		::operator delete(p, std::align_val_t(alignment));
+	}
+
+	bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override
+	{
+		return this == &other;
+	}
+};
+
+size_t getTileSharedAllocationSize()
+{
+	AllocationProbeResource probe;
+	std::pmr::polymorphic_allocator<Tile> allocator(&probe);
+
+	{
+		auto tile = std::allocate_shared<Tile>(allocator, uint16_t{0}, uint16_t{0}, uint8_t{0});
+	}
+
+	{
+		auto houseTile = std::allocate_shared<Tile>(allocator, uint16_t{0}, uint16_t{0}, uint8_t{0}, static_cast<House*>(nullptr));
+	}
+
+	return probe.largestAllocation + probe.largestAlignment;
+}
+
+} // namespace
 
 /*
 	OTBM_ROOTV1
@@ -104,26 +150,27 @@ std::expected<MapLoadStats, MapErrorCode> IOMap::loadMap(Map* map, const std::fi
 		}
 
 		uint32_t tile_count = 0;
-
 		for (const auto& node_data : mapNode.children)
-        {
-            if (node_data.type == OTBM_TILE_AREA)
-                tile_count += static_cast<uint32_t>(node_data.children.size());
-        }
+		{
+			if (node_data.type == OTBM_TILE_AREA)
+				tile_count += static_cast<uint32_t>(node_data.children.size());
+		}
 
 		try
-        {
-			buffer.reserve(tile_count * sizeof(Tile));
-            block.emplace(buffer.data(), buffer.capacity());
-            tile_pool.emplace(std::pmr::pool_options(tile_count, sizeof(Tile)), &block.value());
+		{
+			const size_t tileAllocationSize = getTileSharedAllocationSize();
+			const size_t bufferBytes = static_cast<size_t>(tile_count) * tileAllocationSize;
+			buffer.reserve(bufferBytes);
+			block.emplace(buffer.data(), buffer.capacity());
+			tile_pool.reset();
 		}
-        catch (std::bad_alloc&)
+		catch (std::bad_alloc&)
 		{
 			setLastErrorString("Not enough memory to load the map.");
-			return std::unexpected(Error::InvalidFormat); // make an OOM option
+			return std::unexpected(Error::InvalidFormat);
 		}
 
-        std::pmr::polymorphic_allocator<Tile> allocator(&tile_pool.value());
+		std::pmr::polymorphic_allocator<Tile> allocator(&block.value());
 
 		for (const auto& mapDataNode : mapNode.children)
 		{
@@ -219,7 +266,7 @@ bool IOMap::parseMapDataAttributes(OTB::Loader& loader, const OTB::Node& mapNode
 	return true;
 }
 
-bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Map& map, std::pmr::polymorphic_allocator<Tile> allocator)
+bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Map& map, std::pmr::polymorphic_allocator<Tile>& allocator)
 {
 	PropStream propStream;
 
@@ -288,8 +335,6 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 				return false;
 			}
 			
-			// possibly the fact that here, house tiles.. are the only tiles which don't use the dedicated "create tile" method
-			// is the reason for the doors and beds not wanting to register properly (without some hackish code in place) at startup
 			auto houseTile = std::allocate_shared<Tile>(allocator, x, y, z, house);
 			tile = houseTile;
 			house->addTile(houseTile);
