@@ -48,114 +48,164 @@ bool Events::load()
 		if (className == "Creature") {
 			if (methodName == "onChangeOutfit") {
 				info.creatureOnChangeOutfit = event;
-			} else if (methodName == "onAreaCombat") {
+			}
+			else if (methodName == "onAreaCombat") {
 				info.creatureOnAreaCombat = event;
-			} else if (methodName == "onTargetCombat") {
+			}
+			else if (methodName == "onTargetCombat") {
 				info.creatureOnTargetCombat = event;
-			} else if (methodName == "onHear") {
+			}
+			else if (methodName == "onHear") {
 				info.creatureOnHear = event;
-			} else if (methodName == "onAttack") {
+			}
+			else if (methodName == "onAttack") {
 				info.creatureOnAttack = event;
-			} else if (methodName == "onDefend") {
+			}
+			else if (methodName == "onDefend") {
 				info.creatureOnDefend = event;
-			} else {
+			}
+			else {
 				std::cout << "[Warning - Events::load] Unknown creature method: " << methodName << std::endl;
 			}
-		} else if (className == "Party") {
+		}
+		else if (className == "Party") {
 			if (methodName == "onJoin") {
 				info.partyOnJoin = event;
-			} else if (methodName == "onLeave") {
+			}
+			else if (methodName == "onLeave") {
 				info.partyOnLeave = event;
-			} else if (methodName == "onDisband") {
+			}
+			else if (methodName == "onDisband") {
 				info.partyOnDisband = event;
-			} else if (methodName == "onShareExperience") {
+			}
+			else if (methodName == "onShareExperience") {
 				info.partyOnShareExperience = event;
-			} else if (methodName == "onInvite") {
+			}
+			else if (methodName == "onInvite") {
 				info.partyOnInvite = event;
-			} else if (methodName == "onRevokeInvitation") {
+			}
+			else if (methodName == "onRevokeInvitation") {
 				info.partyOnRevokeInvitation = event;
-			} else if (methodName == "onPassLeadership") {
+			}
+			else if (methodName == "onPassLeadership") {
 				info.partyOnPassLeadership = event;
-			} else {
+			}
+			else {
 				std::cout << "[Warning - Events::load] Unknown party method: " << methodName << std::endl;
 			}
-		} else if (className == "Player") {
+		}
+		else if (className == "Player") {
 			if (methodName == "onBrowseField") {
 				info.playerOnBrowseField = event;
-			} else if (methodName == "onLook") {
+			}
+			else if (methodName == "onLook") {
 				info.playerOnLook = event;
-			} else if (methodName == "onLookInBattleList") {
+			}
+			else if (methodName == "onLookInBattleList") {
 				info.playerOnLookInBattleList = event;
-			} else if (methodName == "onLookInTrade") {
+			}
+			else if (methodName == "onLookInTrade") {
 				info.playerOnLookInTrade = event;
-			} else if (methodName == "onLookInShop") {
+			}
+			else if (methodName == "onLookInShop") {
 				info.playerOnLookInShop = event;
-			} else if (methodName == "onTradeRequest") {
+			}
+			else if (methodName == "onTradeRequest") {
 				info.playerOnTradeRequest = event;
-			} else if (methodName == "onTradeAccept") {
+			}
+			else if (methodName == "onTradeAccept") {
 				info.playerOnTradeAccept = event;
-			} else if (methodName == "onTradeCompleted") {
+			}
+			else if (methodName == "onTradeCompleted") {
 				info.playerOnTradeCompleted = event;
-			} else if (methodName == "onMoveItem") {
+			}
+			else if (methodName == "onMoveItem") {
 				info.playerOnMoveItem = event;
-			} else if (methodName == "onItemMoved") {
+			}
+			else if (methodName == "onItemMoved") {
 				info.playerOnItemMoved = event;
-			} else if (methodName == "onMoveCreature") {
+			}
+			else if (methodName == "onMoveCreature") {
 				info.playerOnMoveCreature = event;
-			} else if (methodName == "onReportRuleViolation") {
+			}
+			else if (methodName == "onReportRuleViolation") {
 				info.playerOnReportRuleViolation = event;
-			} else if (methodName == "onReportBug") {
+			}
+			else if (methodName == "onReportBug") {
 				info.playerOnReportBug = event;
-			} else if (methodName == "onTurn") {
+			}
+			else if (methodName == "onTurn") {
 				info.playerOnTurn = event;
-			} else if (methodName == "onGainExperience") {
+			}
+			else if (methodName == "onGainExperience") {
 				info.playerOnGainExperience = event;
-			} else if (methodName == "onLoseExperience") {
+			}
+			else if (methodName == "onLoseExperience") {
 				info.playerOnLoseExperience = event;
-			} else if (methodName == "onGainSkillTries") {
+			}
+			else if (methodName == "onGainSkillTries") {
 				info.playerOnGainSkillTries = event;
-			} else if (methodName == "onWrapItem") {
+			}
+			else if (methodName == "onWrapItem") {
 				info.playerOnWrapItem = event;
-			} else if (methodName == "onInventoryUpdate") {
+			}
+			else if (methodName == "onInventoryUpdate") {
 				info.playerOnInventoryUpdate = event;
-			} else if (methodName == "onRotateItem") {
+			}
+			else if (methodName == "onRotateItem") {
 				info.playerOnRotateItem = event;
-			} else if (methodName == "onSpellTry") {
+			}
+			else if (methodName == "onSpellTry") {
 				info.playerOnSpellTry = event;
-			} else if (methodName == "onAugment") {
+			}
+			else if (methodName == "onAugment") {
 				info.playerOnAugment = event;
-			} else if (methodName == "onRemoveAugment") {
+			}
+			else if (methodName == "onRemoveAugment") {
 				info.playerOnRemoveAugment = event;
-			} else {
+			}
+			else {
 				std::cout << "[Warning - Events::load] Unknown player method: " << methodName << std::endl;
 			}
-		} else if (className == "Monster") {
+		}
+		else if (className == "Monster") {
 			if (methodName == "onDropLoot") {
 				info.monsterOnDropLoot = event;
-			} else if (methodName == "onSpawn") {
+			}
+			else if (methodName == "onSpawn") {
 				info.monsterOnSpawn = event;
-			} else {
+			}
+			else {
 				std::cout << "[Warning - Events::load] Unknown monster method: " << methodName << std::endl;
 			}
-		} else if (className == "Item") {
+		}
+		else if (className == "Item") {
 			if (methodName == "onImbue") {
 				info.itemOnImbue = event;
-			} else if (methodName == "onRemoveImbue") {
+			}
+			else if (methodName == "onRemoveImbue") {
 				info.itemOnRemoveImbue = event;
-			} else if (methodName == "onAttack") {
+			}
+			else if (methodName == "onAttack") {
 				info.itemOnAttack = event;
-			} else if (methodName == "onDefend") {
+			}
+			else if (methodName == "onDefend") {
 				info.itemOnDefend = event;
-			} else if (methodName == "onAugment") {
+			}
+			else if (methodName == "onAugment") {
 				info.itemOnAugment = event;
-			} else if (methodName == "onRemoveAugment") {
+			}
+			else if (methodName == "onRemoveAugment") {
 				info.itemOnRemoveAugment = event;
-			} else if (methodName == "onModifierAttack") {
+			}
+			else if (methodName == "onModifierAttack") {
 				info.itemOnModifierAttack = event;
-			} else if (methodName == "onModifierDefend") {
+			}
+			else if (methodName == "onModifierDefend") {
 				info.itemOnModifierDefend = event;
 			}
-		} else {
+		}
+		else {
 			std::cout << "[Warning - Events::load] Unknown class: " << className << std::endl;
 		}
 	}
@@ -238,7 +288,8 @@ ReturnValue Events::eventCreatureOnAreaCombat(const CreaturePtr& creature, const
 	if (creature) {
 		LuaScriptInterface::pushSharedPtr(L, creature);
 		LuaScriptInterface::setCreatureMetatable(L, -1, creature);
-	} else {
+	}
+	else {
 		lua_pushnil(L);
 	}
 
@@ -251,7 +302,8 @@ ReturnValue Events::eventCreatureOnAreaCombat(const CreaturePtr& creature, const
 	if (scriptInterface.protectedCall(L, 3, 1) != 0) {
 		returnValue = RETURNVALUE_NOTPOSSIBLE;
 		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
-	} else {
+	}
+	else {
 		returnValue = LuaScriptInterface::getNumber<ReturnValue>(L, -1);
 		lua_pop(L, 1);
 	}
@@ -281,7 +333,8 @@ ReturnValue Events::eventCreatureOnTargetCombat(const CreaturePtr& creature, con
 	if (creature) {
 		LuaScriptInterface::pushSharedPtr(L, creature);
 		LuaScriptInterface::setCreatureMetatable(L, -1, creature);
-	} else {
+	}
+	else {
 		lua_pushnil(L);
 	}
 
@@ -292,7 +345,8 @@ ReturnValue Events::eventCreatureOnTargetCombat(const CreaturePtr& creature, con
 	if (scriptInterface.protectedCall(L, 2, 1) != 0) {
 		returnValue = RETURNVALUE_NOTPOSSIBLE;
 		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
-	} else {
+	}
+	else {
 		returnValue = LuaScriptInterface::getNumber<ReturnValue>(L, -1);
 		lua_pop(L, 1);
 	}
@@ -349,11 +403,21 @@ void Events::eventCreatureOnAttack(const CreaturePtr& attacker, const CreaturePt
 	lua_State* L = scriptInterface.getLuaState();
 	scriptInterface.pushFunction(info.creatureOnAttack);
 
-	LuaScriptInterface::pushSharedPtr(L, attacker);
-	LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
+	if (attacker) {
+		LuaScriptInterface::pushSharedPtr(L, attacker);
+		LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
+	}
+	else {
+		lua_pushnil(L);
+	}
 
-	LuaScriptInterface::pushSharedPtr(L, target);
-	LuaScriptInterface::setCreatureMetatable(L, -1, target);
+	if (target) {
+		LuaScriptInterface::pushSharedPtr(L, target);
+		LuaScriptInterface::setCreatureMetatable(L, -1, target);
+	}
+	else {
+		lua_pushnil(L);
+	}
 
 	lua_pushinteger(L, static_cast<uint8_t>(blockType));
 	lua_pushinteger(L, static_cast<uint8_t>(combatType));
@@ -383,11 +447,21 @@ void Events::eventCreatureOnDefend(const CreaturePtr& defender, const CreaturePt
 	lua_State* L = scriptInterface.getLuaState();
 	scriptInterface.pushFunction(info.creatureOnDefend);
 
-	LuaScriptInterface::pushSharedPtr(L, defender);
-	LuaScriptInterface::setCreatureMetatable(L, -1, defender);
+	if (defender) {
+		LuaScriptInterface::pushSharedPtr(L, defender);
+		LuaScriptInterface::setCreatureMetatable(L, -1, defender);
+	}
+	else {
+		lua_pushnil(L);
+	}
 
-	LuaScriptInterface::pushSharedPtr(L, attacker);
-	LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
+	if (attacker) {
+		LuaScriptInterface::pushSharedPtr(L, attacker);
+		LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
+	}
+	else {
+		lua_pushnil(L);
+	}
 
 	lua_pushinteger(L, static_cast<uint8_t>(blockType));
 	lua_pushinteger(L, static_cast<uint8_t>(combatType));
@@ -503,7 +577,8 @@ void Events::eventPartyOnShareExperience(PartyPtr party, uint64_t& exp)
 
 	if (scriptInterface.protectedCall(L, 2, 1) != 0) {
 		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
-	} else {
+	}
+	else {
 		exp = LuaScriptInterface::getNumber<uint64_t>(L, -1);
 		lua_pop(L, 1);
 	}
@@ -643,10 +718,12 @@ void Events::eventPlayerOnLook(const PlayerPtr& player, const Position& position
 	if (auto creature = thing->getCreature()) {
 		LuaScriptInterface::pushSharedPtr(L, creature);
 		LuaScriptInterface::setCreatureMetatable(L, -1, creature);
-	} else if (auto item = thing->getItem()) {
+	}
+	else if (auto item = thing->getItem()) {
 		LuaScriptInterface::pushSharedPtr(L, item);
 		LuaScriptInterface::setItemMetatable(L, -1, item);
-	} else {
+	}
+	else {
 		lua_pushnil(L);
 	}
 
@@ -782,7 +859,8 @@ ReturnValue Events::eventPlayerOnMoveItem(const PlayerPtr& player, const ItemPtr
 	if (scriptInterface.protectedCall(L, 7, 1) != 0) {
 		returnValue = RETURNVALUE_NOTPOSSIBLE;
 		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
-	} else {
+	}
+	else {
 		returnValue = LuaScriptInterface::getNumber<ReturnValue>(L, -1);
 		lua_pop(L, 1);
 	}
@@ -1064,7 +1142,8 @@ void Events::eventPlayerOnGainExperience(const PlayerPtr& player, const Creature
 	if (source) {
 		LuaScriptInterface::pushSharedPtr(L, source);
 		LuaScriptInterface::setCreatureMetatable(L, -1, source);
-	} else {
+	}
+	else {
 		lua_pushnil(L);
 	}
 
@@ -1073,7 +1152,8 @@ void Events::eventPlayerOnGainExperience(const PlayerPtr& player, const Creature
 
 	if (scriptInterface.protectedCall(L, 4, 1) != 0) {
 		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
-	} else {
+	}
+	else {
 		exp = LuaScriptInterface::getNumber<uint64_t>(L, -1);
 		lua_pop(L, 1);
 	}
@@ -1106,7 +1186,8 @@ void Events::eventPlayerOnLoseExperience(const PlayerPtr& player, uint64_t& exp)
 
 	if (scriptInterface.protectedCall(L, 2, 1) != 0) {
 		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
-	} else {
+	}
+	else {
 		exp = LuaScriptInterface::getNumber<uint64_t>(L, -1);
 		lua_pop(L, 1);
 	}
@@ -1140,7 +1221,8 @@ void Events::eventPlayerOnGainSkillTries(const PlayerPtr& player, skills_t skill
 
 	if (scriptInterface.protectedCall(L, 3, 1) != 0) {
 		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
-	} else {
+	}
+	else {
 		tries = LuaScriptInterface::getNumber<uint64_t>(L, -1);
 		lua_pop(L, 1);
 	}
@@ -1523,7 +1605,7 @@ void Events::eventItemOnRemoveAugment(const ItemPtr& item, std::shared_ptr<Augme
 	scriptInterface.callVoidFunction(2);
 }
 
-void Events::eventItemOnModifierAttack(const ItemPtr &item, const PlayerPtr &itemHolder, const CreaturePtr &defender, const std::shared_ptr<DamageModifier> &modifier, CombatDamage &damage)
+void Events::eventItemOnModifierAttack(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& defender, const std::shared_ptr<DamageModifier>& modifier, CombatDamage& damage)
 {
 	if (info.itemOnModifierAttack == -1)
 	{
@@ -1536,9 +1618,9 @@ void Events::eventItemOnModifierAttack(const ItemPtr &item, const PlayerPtr &ite
 		return;
 	}
 
-	ScriptEnvironment *env = scriptInterface.getScriptEnv();
+	ScriptEnvironment* env = scriptInterface.getScriptEnv();
 	env->setScriptId(info.itemOnModifierAttack, &scriptInterface);
-	lua_State *L = scriptInterface.getLuaState();
+	lua_State* L = scriptInterface.getLuaState();
 	scriptInterface.pushFunction(info.itemOnModifierAttack);
 
 	LuaScriptInterface::pushSharedPtr(L, item);
@@ -1554,39 +1636,40 @@ void Events::eventItemOnModifierAttack(const ItemPtr &item, const PlayerPtr &ite
 	scriptInterface.callVoidFunction(5);
 }
 
-void Events::eventItemOnModifierDefend(const ItemPtr &item, const PlayerPtr &itemHolder, const CreaturePtr &attacker, const std::shared_ptr<DamageModifier> &modifier, CombatDamage &damage)
+void Events::eventItemOnModifierDefend(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& attacker, const std::shared_ptr<DamageModifier>& modifier, CombatDamage& damage)
 {
-    if (info.itemOnModifierDefend == -1)
-    {
-        return;
-    }
+	if (info.itemOnModifierDefend == -1)
+	{
+		return;
+	}
 
-    if (!scriptInterface.reserveScriptEnv())
-    {
-        std::cout << "[Error - Events::eventItemOnModifierDefend Call stack overflow" << std::endl;
-        return;
-    }
+	if (!scriptInterface.reserveScriptEnv())
+	{
+		std::cout << "[Error - Events::eventItemOnModifierDefend Call stack overflow" << std::endl;
+		return;
+	}
 
-    ScriptEnvironment *env = scriptInterface.getScriptEnv();
-    env->setScriptId(info.itemOnModifierDefend, &scriptInterface);
-    lua_State *L = scriptInterface.getLuaState();
-    scriptInterface.pushFunction(info.itemOnModifierDefend);
+	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+	env->setScriptId(info.itemOnModifierDefend, &scriptInterface);
+	lua_State* L = scriptInterface.getLuaState();
+	scriptInterface.pushFunction(info.itemOnModifierDefend);
 
-    LuaScriptInterface::pushSharedPtr(L, item);
-    LuaScriptInterface::setItemMetatable(L, -1, item);
-    LuaScriptInterface::pushSharedPtr(L, itemHolder);
-    LuaScriptInterface::setMetatable(L, -1, "Player");
-    
-    if (attacker) {
-        LuaScriptInterface::pushSharedPtr(L, attacker);
-        LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
-    } else {
-        lua_pushnil(L);
-    }
-    
-    LuaScriptInterface::pushDamageModifier(L, modifier);
-    LuaScriptInterface::pushUserdata(L, &damage);
-    LuaScriptInterface::setMetatable(L, -1, "CombatDamage");
+	LuaScriptInterface::pushSharedPtr(L, item);
+	LuaScriptInterface::setItemMetatable(L, -1, item);
+	LuaScriptInterface::pushSharedPtr(L, itemHolder);
+	LuaScriptInterface::setMetatable(L, -1, "Player");
 
-    scriptInterface.callVoidFunction(5);
+	if (attacker) {
+		LuaScriptInterface::pushSharedPtr(L, attacker);
+		LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
+	}
+	else {
+		lua_pushnil(L);
+	}
+
+	LuaScriptInterface::pushDamageModifier(L, modifier);
+	LuaScriptInterface::pushUserdata(L, &damage);
+	LuaScriptInterface::setMetatable(L, -1, "CombatDamage");
+
+	scriptInterface.callVoidFunction(5);
 }
