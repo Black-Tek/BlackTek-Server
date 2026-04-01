@@ -80,7 +80,7 @@ static constexpr uint32_t EquipmentDecayMaxInterval = 100;
 static constexpr uint32_t MapDecayMaxInterval = 250;
 static constexpr size_t MaxCreatureThinkSlots = 20;
 
-constexpr size_t GamePoolSize = 1024 * 1024 * 512; // 512 mb
+#include "objectpoolconfig.h"
 
 #include <coroutine>
 #include <chrono>

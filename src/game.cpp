@@ -71,15 +71,25 @@ static bool canInteractInSameInstance(const CreatureConstPtr& first, const Creat
 }
 
 
+namespace
+{
+
+std::pmr::pool_options MakePoolOptions(const ObjectPools::PoolParams& p) noexcept
+{
+    return { p.max_chunks, p.block_size };
+}
+
+} // namespace
+
 Game::Game()
-	: raw_game_block(GamePoolSize)
+	: raw_game_block(ObjectPools::Config::Get().GameBufferSize())
 	, game_block(raw_game_block.data(), raw_game_block.size())
-	, player_pool(std::pmr::pool_options(1000, sizeof(Player) + 64), &game_block)
-	, monster_pool(std::pmr::pool_options(50000, sizeof(Monster) + 64), &game_block)
-	, npc_pool(std::pmr::pool_options(200, sizeof(Npc) + 64), &game_block)
-	, creature_pointer_pool(std::pmr::pool_options{50000, 128}, &game_block)
-	, item_pointer_pool(std::pmr::pool_options{200000, 128}, &game_block)
-	, item_pool(std::pmr::pool_options{200000, 512}, &game_block)
+	, player_pool(MakePoolOptions(ObjectPools::Config::Get().PlayerPool()), &game_block)
+	, monster_pool(MakePoolOptions(ObjectPools::Config::Get().MonsterPool()), &game_block)
+	, npc_pool(MakePoolOptions(ObjectPools::Config::Get().NpcPool()), &game_block)
+	, creature_pointer_pool(MakePoolOptions(ObjectPools::Config::Get().CreatureNodePool()), &game_block)
+	, item_pointer_pool(MakePoolOptions(ObjectPools::Config::Get().ItemNodePool()), &game_block)
+	, item_pool(MakePoolOptions(ObjectPools::Config::Get().ItemPool()), &game_block)
 	, players(&creature_pointer_pool)
 	, mappedPlayerGuids(&creature_pointer_pool)
 	, monsters(&creature_pointer_pool)
