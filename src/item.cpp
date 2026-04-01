@@ -371,19 +371,29 @@ CylinderConstPtr Item::getTopParent() const {
 TilePtr Item::getTile()
 {
 	auto cylinder = getTopParent();
-	//get root cylinder
-	if (cylinder && cylinder->getParent()) {
+
+	if (not cylinder)
+		return nullptr;
+
+	if (cylinder->getParent())
 		cylinder = cylinder->getParent();
-	}
+
+	else if (cylinder == getCylinder()) // container item without parent
+		return nullptr;
+
 	return cylinder ? cylinder->getTile() : nullptr;
 }
 
 TileConstPtr Item::getTile() const
 {
 	auto cylinder = getTopParent();
-	//get root cylinder
-	if (cylinder && cylinder->getParent()) {
+	if (!cylinder) {
+		return nullptr;
+	}
+	if (cylinder->getParent()) {
 		cylinder = cylinder->getParent();
+	} else if (cylinder == getCylinder()) {
+		return nullptr;
 	}
 	return cylinder ? cylinder->getTile() : nullptr;
 }
