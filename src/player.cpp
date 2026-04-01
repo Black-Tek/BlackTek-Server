@@ -3595,7 +3595,7 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 
 		while (i < containers.size())
 		{
-			auto& tmpContainer = containers[i++];
+			auto tmpContainer = containers[i++];
 
 			if (tmpContainer)
 			{
