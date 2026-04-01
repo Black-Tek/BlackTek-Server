@@ -729,7 +729,6 @@ class Game
 		MonsterPtr MakeMonster(const std::string& name);
 		NpcPtr MakeNpc(const std::string& name);
 
-		std::optional<std::pmr::unsynchronized_pool_resource>& getTilePool() { return tile_pool; }
         std::vector<std::byte>& getRawMapBlock() { return raw_map_block; }
         std::optional<std::pmr::monotonic_buffer_resource>& getMapBlock() { return map_block; }
 
@@ -752,8 +751,6 @@ class Game
 		std::pmr::unsynchronized_pool_resource creature_pointer_pool;
 		std::pmr::unsynchronized_pool_resource item_pointer_pool;
 		std::pmr::unsynchronized_pool_resource item_pool;
-
-		std::optional<std::pmr::unsynchronized_pool_resource> tile_pool;
 
 		std::unordered_map<uint32_t, Guild_ptr> guilds;
 

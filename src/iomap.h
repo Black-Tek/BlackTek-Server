@@ -132,7 +132,7 @@ class IOMap
     static TilePtr createTile(std::pmr::polymorphic_allocator<Tile>& allocator, ItemPtr& ground, uint16_t x, uint16_t y, uint8_t z);
 
 	public:
-        std::expected<MapLoadStats, MapErrorCode> loadMap(Map* map, const std::filesystem::path& fileName, std::vector<std::byte>& buffer, std::optional<std::pmr::monotonic_buffer_resource>& block, std::optional<std::pmr::unsynchronized_pool_resource>& tile_pool);
+        std::expected<MapLoadStats, MapErrorCode> loadMap(Map* map, const std::filesystem::path& fileName, std::vector<std::byte>& buffer, std::optional<std::pmr::monotonic_buffer_resource>& block);
 
 		/* Load the spawns
 		 * \param map pointer to the Map class

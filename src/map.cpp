@@ -15,7 +15,7 @@ extern Game g_game;
 bool Map::loadMap(const std::string& identifier, bool loadHouses)
 {
 	IOMap loader;
-    if (!loader.loadMap(this, identifier, g_game.getRawMapBlock(), g_game.getMapBlock(), g_game.getTilePool()))
+    if (!loader.loadMap(this, identifier, g_game.getRawMapBlock(), g_game.getMapBlock()))
 	{
 		std::cout << "[Fatal - Map::loadMap] " << loader.getLastErrorString() << std::endl;
 		return false;

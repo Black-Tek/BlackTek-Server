@@ -43,7 +43,7 @@ TilePtr IOMap::createTile(std::pmr::polymorphic_allocator<Tile>& allocator, Item
 }
 
 
-std::expected<MapLoadStats, MapErrorCode> IOMap::loadMap(Map* map, const std::filesystem::path& fileName, std::vector<std::byte>& buffer, std::optional<std::pmr::monotonic_buffer_resource>& block, std::optional<std::pmr::unsynchronized_pool_resource>& tile_pool)
+std::expected<MapLoadStats, MapErrorCode> IOMap::loadMap(Map* map, const std::filesystem::path& fileName, std::vector<std::byte>& buffer, std::optional<std::pmr::monotonic_buffer_resource>& block)
 {
 	const auto start = OTSYS_TIME();
 	using Error = MapErrorCode;
@@ -113,9 +113,9 @@ std::expected<MapLoadStats, MapErrorCode> IOMap::loadMap(Map* map, const std::fi
 
 		try
         {
-			buffer.reserve(tile_count * sizeof(Tile));
-            block.emplace(buffer.data(), buffer.capacity());
-            tile_pool.emplace(std::pmr::pool_options(tile_count, sizeof(Tile)), &block.value());
+			constexpr size_t per_tile_bytes = sizeof(Tile) + 64;
+			buffer.resize(tile_count * per_tile_bytes);
+            block.emplace(buffer.data(), buffer.size());
 		}
         catch (std::bad_alloc&)
 		{
@@ -123,7 +123,7 @@ std::expected<MapLoadStats, MapErrorCode> IOMap::loadMap(Map* map, const std::fi
 			return std::unexpected(Error::InvalidFormat); // make an OOM option
 		}
 
-        std::pmr::polymorphic_allocator<Tile> allocator(&tile_pool.value());
+        std::pmr::polymorphic_allocator<Tile> allocator(&block.value());
 
 		for (const auto& mapDataNode : mapNode.children)
 		{
