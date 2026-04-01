@@ -48,30 +48,31 @@ ItemPtr Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
 	ItemPtr item;
 
 	bool allowAugments = false;
+	std::pmr::polymorphic_allocator<Item> allocator(&g_game.getItemPool());
 
 	if (it.isDepot()) {
-		item = std::make_shared<DepotLocker>(type);
+		item = std::allocate_shared<DepotLocker>(allocator, type);
 	} else if (it.isRewardChest()) {
-		item = std::make_shared<RewardChest>(type);
+		item = std::allocate_shared<RewardChest>(allocator, type);
 	} else if (it.isContainer()) {
-		item = std::make_shared<Container>(type);
+		item = std::allocate_shared<Container>(allocator, type);
 		if (it.slotPosition & SLOTP_BACKPACK) {
 			allowAugments = true;
 		}
 	} else if (it.isTeleport()) {
-		item = std::make_shared<Teleport>(type);
+		item = std::allocate_shared<Teleport>(allocator, type);
 	} else if (it.isMagicField()) {
-		item = std::make_shared<MagicField>(type);
+		item = std::allocate_shared<MagicField>(allocator, type);
 	} else if (it.isDoor()) {
-		item = std::make_shared<Door>(type);
+		item = std::allocate_shared<Door>(allocator, type);
 	} else if (it.isTrashHolder()) {
-		item = std::make_shared<TrashHolder>(type);
+		item = std::allocate_shared<TrashHolder>(allocator, type);
 	} else if (it.isMailbox()) {
-		item = std::make_shared<Mailbox>(type);
+		item = std::allocate_shared<Mailbox>(allocator, type);
 	} else if (it.isBed()) {
-		item = std::make_shared<BedItem>(type);
+		item = std::allocate_shared<BedItem>(allocator, type);
 	} else {
-		item = std::make_shared<Item>(type, count);
+		item = std::allocate_shared<Item>(allocator, type, count);
 		allowAugments = true;
 	}
 
@@ -93,7 +94,8 @@ ContainerPtr Item::CreateItemAsContainer(const uint16_t type, uint16_t size)
 		return nullptr;
 	}
 
-	auto newItem = std::make_shared<Container>(type, size);
+	std::pmr::polymorphic_allocator<Item> allocator(&g_game.getItemPool());
+	auto newItem = std::allocate_shared<Container>(allocator, type, size);
 	return newItem;
 }
 

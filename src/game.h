@@ -731,6 +731,7 @@ class Game
 
         std::vector<std::byte>& getRawMapBlock() { return raw_map_block; }
         std::optional<std::pmr::monotonic_buffer_resource>& getMapBlock() { return map_block; }
+        std::pmr::unsynchronized_pool_resource& getItemPool() { return item_pool; }
 
 	private:
 		bool playerSaySpell(const PlayerPtr& player, SpeakClasses type, const std::string& text);
