@@ -253,18 +253,45 @@ class Combat
 		const DamageArea getAreaPositions(const Position& casterPos, const Position& targetPos);
 		CombatDamage getCombatDamage(const CreaturePtr& creature, const CreaturePtr& target) const;
 
+		// todo: change from using int32_t to uint32_t for all damage. There is no reason to need a negative value when we can define healing by combat type
+		float mina = 0.0;
+		float minb = 0.0;
+		float maxa = 0.0;
+		float maxb = 0.0;
+
+		int32_t _damage;
+		uint16_t itemId = 0;
+		CombatType_t _type;
+		CombatOrigin _origin;
+		BlockType_t _blocktype;
+		formulaType_t formulaType = COMBAT_FORMULA_UNDEFINED;
+
+		uint8_t impactEffect = CONST_ME_NONE;
+		uint8_t distanceEffect = CONST_ANI_NONE;
+
+		bool blockedByArmor = false;
+		bool blockedByShield = false;
+		bool targetCasterOrTopMost = false;
+		bool aggressive = true;
+		bool useCharges = false;
+		bool ignoreResistances = false;
+
+		std::forward_list<std::unique_ptr<const Condition>> conditionList;
+
+		//std::unique_ptr<ValueCallback> valueCallback;
+		//std::unique_ptr<TileCallback> tileCallback;
+		//std::unique_ptr<TargetCallback> targetCallback;
+
 		//configurable
 		CombatParams params;
 
 		//formula variables
-		formulaType_t formulaType = COMBAT_FORMULA_UNDEFINED;
-		double mina = 0.0;
-		double minb = 0.0;
-		double maxa = 0.0;
-		double maxb = 0.0;
+		
+
 
 		CombatDamage damage;
 
+		// todo: switch to optional
 		std::unique_ptr<AreaCombat> area;
 };
 
