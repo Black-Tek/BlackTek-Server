@@ -459,6 +459,7 @@ void Map::getSpectators(SpectatorVec& spectators, const Position& centerPos, con
                             spectators.emplace_back(spectator);
                         }
                     }
+                    spectators.setPlayersOnlyMode();
                 }
                 foundCache = true;
             } else {
