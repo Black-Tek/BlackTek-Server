@@ -650,6 +650,11 @@ class Creature : virtual public Thing, public SharedObject
 		bool getPathTo(const Position& targetPos, std::vector<Direction>& dirList, int32_t minTargetDist, int32_t maxTargetDist, bool fullPathSearch = true, bool clearSight = true, int32_t maxSearchDist = 0);
 		CreatureEventList getCreatureEvents(CreatureEventType_t type) const;
 
+		[[nodiscard]] uint32_t get_block_count() const noexcept { return blockCount; }
+		void set_block_count(uint32_t count) const noexcept { blockCount == count; }
+
+		[[nodiscard]] bool can_use_defense() const noexcept { return canUseDefense; }
+
 	protected:
 		virtual bool useCacheMap() const {
 			return false;
