@@ -26,7 +26,7 @@ ReturnValue TrashHolder::queryRemove(const ThingPtr&, uint32_t, uint32_t, Creatu
 
 CylinderPtr TrashHolder::queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&)
 {
-	return CylinderPtr(this);
+	return getCylinder();
 }
 
 void TrashHolder::addThing(ThingPtr thing)
