@@ -648,6 +648,7 @@ class Creature : virtual public Thing, public SharedObject
 
 		bool getPathTo(const Position& targetPos, std::vector<Direction>& dirList, const FindPathParams& fpp);
 		bool getPathTo(const Position& targetPos, std::vector<Direction>& dirList, int32_t minTargetDist, int32_t maxTargetDist, bool fullPathSearch = true, bool clearSight = true, int32_t maxSearchDist = 0);
+		CreatureEventList getCreatureEvents(CreatureEventType_t type) const;
 
 	protected:
 		virtual bool useCacheMap() const {
@@ -727,8 +728,6 @@ class Creature : virtual public Thing, public SharedObject
 		bool hasEventRegistered(CreatureEventType_t event) const {
 			return (0 != (scriptEventsBitField & (static_cast<uint32_t>(1) << event)));
 		}
-	
-		CreatureEventList getCreatureEvents(CreatureEventType_t type) const;
 
 		void updateMapCache();
 		void updateTileCache(TilePtr tile, int32_t dx, int32_t dy);

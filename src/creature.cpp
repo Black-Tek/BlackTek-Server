@@ -1139,6 +1139,8 @@ void Creature::onTickCondition(ConditionType_t type, bool& bRemove)
 	}
 }
 
+// like what the hell is the point in this? Was this being set up to create events later???
+// either, do exactly that, or remove this unnecessary layer...
 void Creature::onCombatRemoveCondition(Condition* condition)
 {
 	removeCondition(condition);
@@ -1353,6 +1355,7 @@ void Creature::removeCondition(ConditionType_t type, ConditionId_t conditionId, 
 	}
 }
 
+// this is really just Creature::removeConditionsByType(type)... change later
 void Creature::removeCombatCondition(ConditionType_t type)
 {
 	std::vector<Condition*> removeConditions;

@@ -180,6 +180,7 @@ enum RaceType_t : uint8_t {
 	RACE_ENERGY,
 };
 
+// this should be "DamageType" or something more fitting than CombatType
 enum CombatType_t : uint16_t {
 	COMBAT_NONE = 0,
 
