@@ -6384,7 +6384,7 @@ gtl::node_hash_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uin
 	return playerList;
 }
 
-gtl::node_hash_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const
+gtl::node_hash_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const noexcept
 {
 	
 	gtl::node_hash_map<uint8_t, ModifierTotals> modMap;
@@ -6398,7 +6398,7 @@ gtl::node_hash_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(cons
 	return modMap;
 }
 
-gtl::node_hash_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(const RawModifierMap& precomputedMods, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const
+gtl::node_hash_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(const RawModifierMap& precomputedMods, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const noexcept
 {
 	static const std::vector<std::shared_ptr<DamageModifier>> emptyVec;
 	gtl::node_hash_map<uint8_t, ModifierTotals> modMap;
@@ -6412,7 +6412,7 @@ gtl::node_hash_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(cons
 	return modMap;
 }
 
-gtl::node_hash_map<uint8_t, ModifierTotals> Player::getDefenseModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, std::string_view creatureName) const
+gtl::node_hash_map<uint8_t, ModifierTotals> Player::getDefenseModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, std::string_view creatureName) const noexcept
 {
 	
 	gtl::node_hash_map<uint8_t, ModifierTotals> modMap;
