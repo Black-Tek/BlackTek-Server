@@ -3040,14 +3040,160 @@ static auto sendBlockEffect(const BlockType_t blockType, const CombatType_t comb
 
 bool Combat::block(const CreaturePtr& attacker, const PlayerPtr& target) const noexcept
 {
+	BlockType_t blockType = BLOCK_NONE;
+	bool checkArmor = false;
+	if (target->isImmune(params.combatType))
+	{
+		//damage.primary.value = 0;
+		blockType = BLOCK_IMMUNITY;
+	}
+	else if (params.blockedByShield or params.blockedByArmor)
+	{
+		bool hasDefense = false;
+		auto block_count = target->get_block_count();
 
+		if (block_count > 0)
+		{
+			target->set_block_count(block_count - 1);
+			hasDefense = true;
+		}
+
+		if (params.blockedByShield and hasDefense and target->can_use_defense())
+		{
+			int32_t defense = target->getDefense();
+			// damage -= uniform_random(defense / 2, defense);
+			if (damage.primary.value <= 0) {
+				//damage.primary.value = 0;
+				blockType = BLOCK_DEFENSE;
+				checkArmor = false;
+			}
+		}
+
+		if (checkArmor)
+		{
+			int32_t armor = target->getArmor();
+			if (armor > 3)
+			{
+				//damage.primary.value -= uniform_random(armor / 2, armor - (armor % 2 + 1));
+			}
+			else if (armor > 0)
+			{
+				//--damage;
+			}
+
+			if (damage.primary.value <= 0)
+			{
+				//damage = 0;
+				blockType = BLOCK_ARMOR;
+			}
+		}
+
+		if (hasDefense and blockType != BLOCK_NONE)
+		{
+			target->onBlockHit();
+		}
+	}
+
+	if (damage.primary.value <= 0)
+	{
+		// damage = 0;
+		blockType = BLOCK_ARMOR;
+	}
+
+	if (attacker and params.combatType != COMBAT_HEALING)
+	{
+		attacker->onAttackedCreature(target);
+		attacker->onAttackedCreatureBlockHit(blockType);
+
+		if (attacker->getMaster() and attacker->getMaster()->getPlayer())
+		{
+			auto masterPlayer = attacker->getMaster()->getPlayer();
+			masterPlayer->onAttackedCreature(target);
+		}
+	}
+
+	target->onAttacked();
+	//return blockType;
 
 	return true;
 }
 
 bool Combat::block(const CreaturePtr& attacker, const MonsterPtr& target) const noexcept
 {
+	BlockType_t blockType = BLOCK_NONE;
+	bool checkArmor = false;
+	if (target->isImmune(params.combatType))
+	{
+		//damage.primary.value = 0;
+		blockType = BLOCK_IMMUNITY;
+	}
+	else if (params.blockedByShield or params.blockedByArmor)
+	{
+		bool hasDefense = false;
+		auto block_count = target->get_block_count();
 
+		if (block_count > 0)
+		{
+			target->set_block_count(block_count - 1);
+			hasDefense = true;
+		}
+
+		if (params.blockedByShield and hasDefense and target->can_use_defense())
+		{
+			int32_t defense = target->getDefense();
+			// damage -= uniform_random(defense / 2, defense);
+			if (damage.primary.value <= 0) {
+				//damage.primary.value = 0;
+				blockType = BLOCK_DEFENSE;
+				checkArmor = false;
+			}
+		}
+
+		if (checkArmor)
+		{
+			int32_t armor = target->getArmor();
+			if (armor > 3)
+			{
+				//damage.primary.value -= uniform_random(armor / 2, armor - (armor % 2 + 1));
+			}
+			else if (armor > 0)
+			{
+				//--damage;
+			}
+
+			if (damage.primary.value <= 0) 
+			{
+				//damage = 0;
+				blockType = BLOCK_ARMOR;
+			}
+		}
+
+		if (hasDefense and blockType != BLOCK_NONE)
+		{
+			target->onBlockHit();
+		}
+	}
+
+	if (damage.primary.value <= 0)
+	{
+		// damage = 0;
+		blockType = BLOCK_ARMOR;
+	}
+
+	if (attacker and params.combatType != COMBAT_HEALING)
+	{
+		attacker->onAttackedCreature(target);
+		attacker->onAttackedCreatureBlockHit(blockType);
+
+		if (attacker->getMaster() and attacker->getMaster()->getPlayer())
+		{
+			auto masterPlayer = attacker->getMaster()->getPlayer();
+			masterPlayer->onAttackedCreature(target);
+		}
+	}
+
+	target->onAttacked();
+	//return blockType;
 
 	return true;
 }
