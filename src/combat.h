@@ -201,6 +201,10 @@ class Combat
 		static void applyDamageIncreaseModifier(uint8_t modifierType, CombatDamage& damage, int32_t percentValue, int32_t flatValue);
 		static void applyDamageReductionModifier(uint8_t modifierType, CombatDamage& damage, const PlayerPtr& damageTarget, const std::optional<CreaturePtr>& attacker, int32_t percentValue, int32_t flatValue, CombatOrigin paramOrigin, uint8_t areaEffect = CONST_ME_NONE, uint8_t distanceEffect = CONST_ANI_NONE);
 
+		void defense_block_effect(const Position& target_position) const noexcept;
+		void armor_block_effect(const Position& target_position) const noexcept;
+		void immunity_block_effect(const Position& target_position) const noexcept;
+
 		[[nodiscard]] bool block(const CreaturePtr& attacker, const PlayerPtr& target) const noexcept;
 		[[nodiscard]] bool block(const CreaturePtr& attacker, const MonsterPtr& target) const noexcept;
 		[[nodiscard]] uint32_t collect_notice_data(const CreaturePtr& target) const noexcept;

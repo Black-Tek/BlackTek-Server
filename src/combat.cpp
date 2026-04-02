@@ -2990,6 +2990,48 @@ static bool combatCanInteractInSameInstance(const CreatureConstPtr& first, const
 	return first and second and first->compareInstance(second->getInstanceID());
 }
 
+
+void Combat::defense_block_effect(const Position& target_position) const noexcept
+{
+
+}
+
+void Combat::armor_block_effect(const Position& target_position) const noexcept
+{
+
+}
+
+void Combat::immunity_block_effect(const Position& target_position) const noexcept
+{
+	uint8_t hitEffect = 0;
+
+	switch (params.combatType)
+	{
+		case COMBAT_UNDEFINEDDAMAGE:
+			return;
+
+		case COMBAT_ENERGYDAMAGE:
+		case COMBAT_FIREDAMAGE:
+		case COMBAT_PHYSICALDAMAGE:
+		case COMBAT_ICEDAMAGE:
+		case COMBAT_DEATHDAMAGE:
+			hitEffect = CONST_ME_BLOCKHIT;
+			break;
+
+		case COMBAT_EARTHDAMAGE:
+			hitEffect = CONST_ME_GREEN_RINGS;
+			break;
+
+		case COMBAT_HOLYDAMAGE:
+			hitEffect = CONST_ME_HOLYDAMAGE;
+			break;
+
+		default:
+			hitEffect = CONST_ME_POFF;
+			break;
+	}
+}
+
 // todo: split into multiple class member functions, for the different blocktypes
 static auto sendBlockEffect(const BlockType_t blockType, const CombatType_t combatType, const Position& targetPos, uint32_t instanceId)
 {
