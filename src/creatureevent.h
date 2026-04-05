@@ -66,8 +66,6 @@ class CreatureEvent final : public Event
 		bool executeAdvance(const PlayerPtr& player, skills_t, uint32_t, uint32_t) const;
 		void executeModalWindow(const PlayerPtr& player, uint32_t modalWindowId, uint8_t buttonId, uint8_t choiceId) const;
 		bool executeTextEdit(const PlayerPtr& player, const ItemPtr& item, const std::string& text) const;
-		void executeHealthChange(const CreaturePtr& creature, const CreaturePtr& attacker, CombatDamage& damage) const;
-		void executeManaChange(const CreaturePtr& creature, const CreaturePtr& attacker, CombatDamage& damage) const;
 		void executeExtendedOpcode(const PlayerPtr& player, uint8_t opcode, const std::string& buffer) const;
 		//
 

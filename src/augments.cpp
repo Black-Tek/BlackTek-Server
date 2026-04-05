@@ -202,24 +202,23 @@ const CombatType_t Augments::ParseDamage(std::string_view damageName) noexcept
     return COMBAT_NONE;
 }
 
-const CombatOrigin Augments::ParseOrigin(std::string_view originName) noexcept
+const uint8_t Augments::ParseOrigin(std::string_view originName) noexcept
 {   // Note : If you add values to the list you must increase the size manually
     // current size is : 14
-    const std::array<std::pair<std::string_view, CombatOrigin>, 14> static_map{ {
-        {"none",            ORIGIN_NONE},
-        {"all",             ORIGIN_NONE},
-        {"condition",       ORIGIN_CONDITION},
-        {"spell",           ORIGIN_SPELL},
-        {"melee",           ORIGIN_MELEE},
-        {"ranged",          ORIGIN_RANGED},
-        {"absorb",          ORIGIN_ABSORB},
-        {"restore",         ORIGIN_RESTORE},
-        {"reflect",         ORIGIN_REFLECT},
-        {"deflect",         ORIGIN_DEFLECT},
-        {"ricochet",        ORIGIN_RICOCHET},
-        {"piercing",        ORIGIN_PIERCING},
-        {"augment",         ORIGIN_AUGMENT},
-        {"imbuement",       ORIGIN_IMBUEMENT},
+    const std::array<std::pair<std::string_view, uint8_t>, 13> static_map{ {
+        {"none",            0},
+        {"all",             0},
+        {"condition",       1},
+        {"spell",           2},
+        {"melee",           3},
+        {"ranged",          4},
+        {"absorb",          5},
+        {"restore",         6},
+        {"reflect",         7},
+        {"deflect",         8},
+        {"ricochet",        9},
+        {"piercing",        10},
+        {"augment",         11},
     } };
 
     for (const auto& [key, value] : static_map) {
@@ -228,7 +227,7 @@ const CombatOrigin Augments::ParseOrigin(std::string_view originName) noexcept
         }
     }
 
-    return ORIGIN_NONE;
+    return 0;
 }
 
 const ModifierAttackType Augments::ParseAttackModifier(std::string_view modName) noexcept {

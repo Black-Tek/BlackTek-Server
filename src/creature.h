@@ -651,7 +651,7 @@ class Creature : virtual public Thing, public SharedObject
 		CreatureEventList getCreatureEvents(CreatureEventType_t type) const;
 
 		[[nodiscard]] uint32_t get_block_count() const noexcept { return blockCount; }
-		void set_block_count(uint32_t count) const noexcept { blockCount == count; }
+		void set_block_count(uint32_t count) noexcept { blockCount = count; }
 
 		[[nodiscard]] bool can_use_defense() const noexcept { return canUseDefense; }
 

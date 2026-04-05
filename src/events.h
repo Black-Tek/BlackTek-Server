@@ -93,8 +93,8 @@ class Events
 		ReturnValue eventCreatureOnAreaCombat(const CreaturePtr& creature, const TilePtr& tile, bool aggressive);
 		ReturnValue eventCreatureOnTargetCombat(const CreaturePtr& creature, const CreaturePtr& target);
 		void eventCreatureOnHear(const CreaturePtr& creature, const CreaturePtr& speaker, const std::string& words, SpeakClasses type);
-		void eventCreatureOnAttack(const CreaturePtr& attacker, const CreaturePtr& target, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
-		void eventCreatureOnDefend(const CreaturePtr& defender, const CreaturePtr& attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
+		//void eventCreatureOnAttack(const CreaturePtr& attacker, const CreaturePtr& target, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
+		//void eventCreatureOnDefend(const CreaturePtr& defender, const CreaturePtr& attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
 
 		// Party
 		bool eventPartyOnJoin(PartyPtr party, const PlayerPtr& player);
@@ -138,13 +138,13 @@ class Events
 		bool eventItemOnImbue(const ItemPtr& item, const std::shared_ptr<Imbuement>& imbuement, bool created = true);
 		void eventItemOnRemoveImbue(const ItemPtr& item, ImbuementType imbueType, bool decayed = false);
 
-		void eventItemOnAttack(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& defender, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
-		void eventItemOnDefend(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
-		void eventItemOnAugment(const ItemPtr& item, std::shared_ptr<Augment> augment);
+		//void eventItemOnAttack(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& defender, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
+		//void eventItemOnDefend(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
+		//void eventItemOnAugment(const ItemPtr& item, std::shared_ptr<Augment> augment);
 		void eventItemOnRemoveAugment(const ItemPtr& item, std::shared_ptr<Augment> augment);
 
-		void eventItemOnModifierAttack(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& defender, const std::shared_ptr<DamageModifier>& modifier, CombatDamage& damage);
-    	void eventItemOnModifierDefend(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& attacker, const std::shared_ptr<DamageModifier>& modifier, CombatDamage& damage);
+		//void eventItemOnModifierAttack(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& defender, const std::shared_ptr<DamageModifier>& modifier, CombatDamage& damage);
+    	//void eventItemOnModifierDefend(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& attacker, const std::shared_ptr<DamageModifier>& modifier, CombatDamage& damage);
 
 		constexpr auto getScriptId(EventInfoId eventInfoId) const {
 			switch (eventInfoId)

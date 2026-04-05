@@ -146,7 +146,7 @@ public:
 	DamageModifier(const DamageModifier&) = default;
 	DamageModifier& operator=(const DamageModifier&) = default;
 
-	DamageModifier(uint8_t stance, uint8_t modType, uint16_t amount, ModFactor factorType, uint8_t chance, CombatType_t combatType = COMBAT_NONE , CombatOrigin source = ORIGIN_NONE, CreatureType_t creatureType = CREATURETYPE_ATTACKABLE,  RaceType_t race = RACE_NONE, const std::string& creatureName = "none") :
+	DamageModifier(uint8_t stance, uint8_t modType, uint16_t amount, ModFactor factorType, uint8_t chance, CombatType_t combatType = COMBAT_NONE , uint8_t source = 0, CreatureType_t creatureType = CREATURETYPE_ATTACKABLE,  RaceType_t race = RACE_NONE, const std::string& creatureName = "none") :
 		m_mod_stance(stance),					// attack / defense
 		m_mod_type(modType),					// the enum specific type
 		m_value(amount),						// value to modify; default = percent
@@ -161,7 +161,7 @@ public:
 
 	static std::shared_ptr<DamageModifier> makeModifier() { return std::make_shared<DamageModifier>(); }
 	static std::shared_ptr<DamageModifier> makeModifier(const DamageModifier& mod) { return std::make_shared<DamageModifier>(mod); }
-	static std::shared_ptr<DamageModifier> makeModifier(uint8_t stance, uint8_t modType, uint16_t amount, ModFactor factorType, uint8_t chance, CombatType_t combatType = COMBAT_NONE, CombatOrigin source = ORIGIN_NONE, CreatureType_t creatureType = CREATURETYPE_ATTACKABLE, RaceType_t race = RACE_NONE, std::string_view creatureName = "none");
+	static std::shared_ptr<DamageModifier> makeModifier(uint8_t stance, uint8_t modType, uint16_t amount, ModFactor factorType, uint8_t chance, CombatType_t combatType = COMBAT_NONE, uint8_t source = 0, CreatureType_t creatureType = CREATURETYPE_ATTACKABLE, RaceType_t race = RACE_NONE, std::string_view creatureName = "none");
 
 	const uint8_t& getStance() const;
 	const uint8_t& getType() const;
@@ -169,14 +169,14 @@ public:
 	const uint8_t& getChance() const;
 
 	const CombatType_t& getDamageType() const;
-	const CombatOrigin& getOriginType() const;
+	const uint8_t getOriginType() const;
 	const CreatureType_t& getCreatureType() const;
 	const RaceType_t& getRaceType() const;
 
 	const bool isPercent() const;
 	const bool isFlatValue() const;
 	const bool appliesToDamage(const CombatType_t damageType) const;
-	const bool appliesToOrigin(const CombatOrigin origin) const;
+	const bool appliesToOrigin(const uint8_t origin) const;
 	const bool appliesToTarget(const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const;
 	const bool isAttackStance() const;
 	const bool isDefenseStance() const;
@@ -189,7 +189,7 @@ public:
 	void setChance(uint8_t chance);
 	void setFactor(uint8_t factor);
 	void setCombatType(CombatType_t combatType);
-	void setOriginType(CombatOrigin origin);
+	void setOriginType(uint8_t origin);
 	void setRaceType(RaceType_t race);
 	void setCreatureType(CreatureType_t c_type);
 	void increaseValue(uint16_t amount);
@@ -206,7 +206,7 @@ public:
 		propWriteStream.write<uint8_t>(m_chance);
 		propWriteStream.write<CombatType_t>(m_damage_type);
 		propWriteStream.write<CombatType_t>(m_to_damage_type);
-		propWriteStream.write<CombatOrigin>(m_origin_type);
+		propWriteStream.write<uint8_t>(m_origin_type);
 		propWriteStream.write<CreatureType_t>(m_creature_type);
 		propWriteStream.write<RaceType_t>(m_race_type);
 		propWriteStream.writeString(m_creature_name);
@@ -222,7 +222,7 @@ public:
 
 		if (!propReadStream.read<CombatType_t>(m_damage_type)) return false;
 		if (!propReadStream.read<CombatType_t>(m_to_damage_type)) return false;
-		if (!propReadStream.read<CombatOrigin>(m_origin_type)) return false;
+		if (!propReadStream.read<uint8_t>(m_origin_type)) return false;
 		if (!propReadStream.read<CreatureType_t>(m_creature_type)) return false;
 		if (!propReadStream.read<RaceType_t>(m_race_type)) return false;
 
@@ -242,7 +242,7 @@ private:
 	uint8_t m_chance = 0;
 	CombatType_t m_damage_type = COMBAT_NONE;
 	CombatType_t m_to_damage_type = COMBAT_NONE;
-	CombatOrigin m_origin_type = ORIGIN_NONE;
+	uint8_t m_origin_type = 0;
 	CreatureType_t m_creature_type = CREATURETYPE_ATTACKABLE;
 	RaceType_t m_race_type = RACE_NONE;
 	std::string m_creature_name = "none";
@@ -278,7 +278,7 @@ inline void DamageModifier::setCombatType(CombatType_t combatType) {
 	m_damage_type = combatType;
 }
 
-inline void DamageModifier::setOriginType(CombatOrigin origin) {
+inline void DamageModifier::setOriginType(uint8_t origin) {
 	m_origin_type = origin;
 }
 
@@ -308,17 +308,17 @@ inline const bool DamageModifier::appliesToDamage(const CombatType_t damageType)
 	return m_damage_type == COMBAT_NONE || m_damage_type == damageType;
 }
 
-inline const bool DamageModifier::appliesToOrigin(const CombatOrigin origin) const {
-	bool matches = (m_origin_type == ORIGIN_NONE || m_origin_type == origin);
-	bool applies = (m_origin_type == ORIGIN_AUGMENT
-		&& (origin == ORIGIN_ABSORB
-			|| origin == ORIGIN_RESTORE
-			|| origin == ORIGIN_REFLECT
-			|| origin == ORIGIN_DEFLECT
-			|| origin == ORIGIN_RICOCHET
-			|| origin == ORIGIN_PIERCING));
+inline const bool DamageModifier::appliesToOrigin(const uint8_t origin) const
+{
+	bool matches = (m_origin_type == 0 or m_origin_type == origin);
+	bool applies = (m_origin_type == 12 and (origin == 5
+			or origin == 6
+			or origin == 7
+			or origin == 8
+			or origin == 9
+			or origin == 10));
 	
-	return matches || applies;
+	return matches or applies;
 }
 
 inline const bool DamageModifier::appliesToTarget(const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const {
@@ -367,7 +367,7 @@ inline const CombatType_t& DamageModifier::getDamageType() const {
 	return m_damage_type;
 }
 
-inline const CombatOrigin& DamageModifier::getOriginType() const {
+inline const uint8_t DamageModifier::getOriginType() const {
 	return m_origin_type;
 }
 

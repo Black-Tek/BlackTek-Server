@@ -193,7 +193,7 @@ class Weapon : public Event
 		}
 
 		WeaponAction_t action = WEAPONACTION_NONE;
-		CombatParams params;
+		Combat params;
 		WeaponType_t weaponType;
 		std::map<uint16_t, bool> vocWeaponMap;
 

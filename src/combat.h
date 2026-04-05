@@ -18,33 +18,11 @@
 #include <functional>
 #include <span>
 #include <gtl/phmap.hpp>
+#include <bitset>
 
 class Condition;
 class Item;
 struct Position;
-
-//for luascript callback
-class ValueCallback final : public CallBack
-{
-	public:
-		explicit ValueCallback(formulaType_t type): type(type) {}
-		void getMinMaxValues(const PlayerPtr& player, CombatDamage& damage, const CreaturePtr& target) const;
-
-	private:
-		formulaType_t type;
-};
-
-class TileCallback final : public CallBack
-{
-	public:
-		void onTileCombat(const CreaturePtr& creature, const TilePtr& tile) const;
-};
-
-class TargetCallback final : public CallBack
-{
-	public:
-		void onTargetCombat(const CreaturePtr& creature, const CreaturePtr& target) const;
-};
 
 PlayerPtr PlayerCast(auto creature)
 {
@@ -62,20 +40,6 @@ namespace BlackTek::Constant
 	auto constexpr Player_Vs_Monster = (static_cast<uint32_t>(CreatureSubType::Player) << 16 | static_cast<uint32_t>(CreatureSubType::Monster) << 8);
 	auto constexpr Monster_Vs_Player = (static_cast<uint32_t>(CreatureSubType::Monster) << 16 | static_cast<uint32_t>(CreatureSubType::Player) << 8);
 	auto constexpr Monster_Vs_Monster = (static_cast<uint32_t>(CreatureSubType::Monster) << 16 | static_cast<uint32_t>(CreatureSubType::Monster) << 8);
-
-	enum class CombatCancelCode
-	{
-		None,
-		YouAreInProtectionZone,
-		CanNotAttackThisPlayer,
-		TargetIsInProtectionZone,
-		CanNotAttackThisMonster,
-		PlayerIsUnMarked,
-		CanNotWieldWeapon,
-		NotEnoughRoom,
-		FirstGoUpStairs,
-		FirstGoDownStairs
-	};
 }
 
 struct LeechData
@@ -96,30 +60,6 @@ struct DamageArea
 	int32_t distance;
 };
 
-struct CombatParams
-{
-	std::forward_list<std::unique_ptr<const Condition>> conditionList;
-
-	std::unique_ptr<ValueCallback> valueCallback;
-	std::unique_ptr<TileCallback> tileCallback;
-	std::unique_ptr<TargetCallback> targetCallback;
-
-	uint16_t itemId = 0;
-
-	ConditionType_t dispelType = CONDITION_NONE;
-	CombatType_t combatType = COMBAT_NONE;
-	CombatOrigin origin = ORIGIN_SPELL;
-
-	uint8_t impactEffect = CONST_ME_NONE;
-	uint8_t distanceEffect = CONST_ANI_NONE;
-
-	bool blockedByArmor = false;
-	bool blockedByShield = false;
-	bool targetCasterOrTopMost = false;
-	bool aggressive = true;
-	bool useCharges = false;
-	bool ignoreResistances = false;
-};
 
 class AreaCombat
 {
@@ -140,45 +80,81 @@ class Combat
 {
 	public:
 		Combat() = default;
-		Combat(std::optional<CreaturePtr> attacker, CombatDamage&& combatDamage, CombatParams&& combatParams);
-		Combat(const CreaturePtr& attacker, const CreaturePtr& defender, CombatDamage&& combatDamage, CombatParams&& combatParams);
 
 		// non-copyable
 		Combat(const Combat&) = delete;
 		Combat& operator=(const Combat&) = delete;
 
-		//static Combat create(CombatParams params, formulaType_t formula, CombatDamage damage, AreaCombat* area);
-		//static Combat create(const Combat& other_combat);
+		enum Origin : uint8_t
+		{
+			None,
+			Condition,
+			Spell,
+			Melee,
+			Ranged,
+			Absorb,
+			Restore,
+			Reflect,
+			Deflect,
+			Ricochet,
+			Piercing,
+			Imbuement,
+			Augment,
+			Last = Augment,
+			Count = Last,
+		};
 
-		static Combat makeCombat(std::optional<CreaturePtr> attacker, CombatDamage&& damage, CombatParams&& params);
-		static Combat makeCombat(const CreaturePtr& attacker, const CreaturePtr& defender, CombatDamage&& damage, CombatParams&& params);
+		enum TargetCode : uint8_t
+		{
+			Valid,
+			YouAreInProtectionZone,
+			CanNotAttackThisPlayer,
+			TargetIsInProtectionZone,
+			CanNotAttackThisMonster,
+			PlayerIsUnMarked,
+			CanNotWieldWeapon,
+			NotEnoughRoom,
+			FirstGoUpStairs,
+			FirstGoDownStairs
+		};
 
-		static bool isInPvpZone(const CreatureConstPtr& attacker, const CreatureConstPtr& target);
+		enum Config : uint8_t
+		{
+			BlockedByArmor,
+			BlockedByShield,
+			TopOnly,			// without this it does all creatures in a tile stack
+			SelfOnly,			// not sure about this one yet
+			FriendlyParty,		// using this enables party only combat objects for the casters party
+			EnemyParty,			// same as above but for target's party
+			FraggedOnly,		// using this targets only people with skulls
+			MultiLevel,			// this is a game changer, we will add after the main work is all done
+			Aggressive,
+			UseCharges,			// I think this one is used by weapons to reduce ammo
+			IgnoreResistances,
+			Critical,
+			Leeched,
+			Augmented,
+			IsUtility,
+			HasPvPFormula,
+			HasPvMFormula,
+			HasMvPFormula,
+			HasMvMFormula,
+		};
+
+
 		static bool isProtected(const PlayerConstPtr& attacker, const PlayerConstPtr& target);
-		static bool isPlayerCombat(const CreatureConstPtr& target);
 		static CombatType_t ConditionToDamageType(ConditionType_t type);
 		static ConditionType_t DamageToConditionType(CombatType_t type);
-		// To-do : follow this call stack and improve it.
-		// Here we have a method that is under-utilized. It should be used in combats
-		// to remove those same checks out of game::combatHealthChange
-		// with the breaking down of the smaller parts of combatHealthChange as well
-		// we can eliminate the need in it all together and provide cleaner code.
-		static ReturnValue canTargetCreature(const PlayerPtr& attacker, const CreaturePtr& target);
-		static ReturnValue canDoCombat(const CreaturePtr& caster, const TilePtr& tile, bool aggressive);
-		static ReturnValue canDoCombat(const CreaturePtr& attacker, const CreaturePtr& target);
-		static void postCombatEffects(const CreaturePtr& caster, const Position& pos, const CombatParams& params);
-
+		static void postCombatEffects(const CreaturePtr& caster, const Position& pos, const Combat& combat);
 		static void addDistanceEffect(const CreaturePtr& caster, const Position& fromPos, const Position& toPos, uint8_t effect);
 
-		void doCombat(const CreaturePtr& caster,const CreaturePtr& target) const;
-		void doCombat(const CreaturePtr& caster, const Position& position) const;
 
-		[[nodiscard]] BlackTek::Constant::CombatCancelCode target(const PlayerPtr& attacker, const PlayerPtr& victim) const noexcept;
-		[[nodiscard]] BlackTek::Constant::CombatCancelCode target(const PlayerPtr& attacker, const MonsterPtr& victim) const noexcept;
-		[[nodiscard]] BlackTek::Constant::CombatCancelCode target(const MonsterPtr& attacker, const PlayerPtr& victim) const noexcept;
-		[[nodiscard]] BlackTek::Constant::CombatCancelCode target(const MonsterPtr& attacker, const MonsterPtr& victim) const noexcept;
-		[[nodiscard]] BlackTek::Constant::CombatCancelCode target(const PlayerPtr& attacker, const Position& target_location) const noexcept;
-		[[nodiscard]] BlackTek::Constant::CombatCancelCode target(const MonsterPtr& attacker, const Position& target_location) const noexcept;
+		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const PlayerPtr& victim) const noexcept;
+		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const MonsterPtr& victim) const noexcept;
+		[[nodiscard]] TargetCode target(const MonsterPtr& attacker, const PlayerPtr& victim) const noexcept;
+		[[nodiscard]] TargetCode target(const MonsterPtr& attacker, const MonsterPtr& victim) const noexcept;
+		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const Position& target_location) const noexcept;
+		[[nodiscard]] TargetCode target(const MonsterPtr& attacker, const Position& target_location) const noexcept;
 
 		void attack_augment(const PlayerPtr caster, const CreaturePtr victim, const std::string& victim_name, gtl::node_hash_map<uint8_t, ModifierTotals> modifier_map) noexcept;
 		void defense_augment(const CreaturePtr caster, const PlayerPtr victim, gtl::node_hash_map<uint8_t, ModifierTotals> modifier_map) noexcept;
@@ -194,13 +170,6 @@ class Combat
 		void strike_target(const CreaturePtr& attacker, const CreaturePtr& defender) noexcept;
 		void strike_location(const PlayerPtr& caster, const Position& center) noexcept;
 		void strike_location(const MonsterPtr& attacker, const Position& center) noexcept;
-
-		static void doTargetCombat(const CreaturePtr& caster, const CreaturePtr& target, CombatDamage& damage, const CombatParams& params, bool sendDistanceEffect = true, const RawModifierMap* precomputedAttackMods = nullptr);
-		static void doAreaCombat(const CreaturePtr& caster, const Position& position, const AreaCombat* area, const CombatDamage& damage, const CombatParams& params);
-
-		static void applyDamageIncreaseModifier(uint8_t modifierType, CombatDamage& damage, int32_t percentValue, int32_t flatValue);
-		static void applyDamageReductionModifier(uint8_t modifierType, CombatDamage& damage, const PlayerPtr& damageTarget, const std::optional<CreaturePtr>& attacker, int32_t percentValue, int32_t flatValue, CombatOrigin paramOrigin, uint8_t areaEffect = CONST_ME_NONE, uint8_t distanceEffect = CONST_ANI_NONE);
-
 		void defense_block_effect(const Position& target_position) const noexcept;
 		void armor_block_effect(const Position& target_position) const noexcept;
 		void immunity_block_effect(const Position& target_position) const noexcept;
@@ -208,14 +177,11 @@ class Combat
 		[[nodiscard]] bool block(const CreaturePtr& attacker, const PlayerPtr& target) const noexcept;
 		[[nodiscard]] bool block(const CreaturePtr& attacker, const MonsterPtr& target) const noexcept;
 		[[nodiscard]] uint32_t collect_notice_data(const CreaturePtr& target) const noexcept;
-		static void combatGetTypeInfo(CombatType_t combatType, const CreaturePtr& target, TextColor_t& color, uint8_t& effect);
 		void notify_players();
+		void apply_mana_damage(const CreaturePtr& attacker, const PlayerPtr& target, bool manashield) noexcept;
 		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const PlayerPtr& target) noexcept;
-		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const Monster& target) noexcept;
+		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const MonsterPtr& target) noexcept;
 		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const Position& target_position) noexcept;
-
-		bool setCallback(CallBackParam_t key);
-		CallBack* getCallback(CallBackParam_t key) const;
 
 		bool setParam(CombatParam_t param, uint32_t value);
 		int32_t getParam(CombatParam_t param) const;
@@ -227,72 +193,57 @@ class Combat
 			return area != nullptr;
 		}
 	
-		void addCondition(Condition* condition) {
-			params.conditionList.emplace_front(std::move(condition));
-		}
-	
-		void clearConditions() {
-			params.conditionList.clear();
-		}
-	
-		void setPlayerCombatValues(formulaType_t formulaType, double mina, double minb, double maxa, double maxb);
-	
+
 		void postCombatEffects(CreaturePtr& caster, const Position& pos) const {
-			postCombatEffects(caster, pos, params);
+			postCombatEffects(caster, pos, *this);
 		}
 
-		void setOrigin(CombatOrigin origin) {
-			params.origin = origin;
+		void setOrigin(Origin o) {
+			origin = o;
 		}
+
+		[[nodiscard]] CombatType_t getCombatType() const noexcept { return primary.type; }
 
 	private:
-		static void combatTileEffects(const SpectatorVec& spectators,const CreaturePtr& caster, TilePtr tile, const CombatParams& params);
 		void apply_effects(const SpectatorVec& spectators, const CreaturePtr& caster, const TilePtr& tile);
 		void apply_effects(const SpectatorVec& spectators, const CreaturePtr& caster, std::span<const TilePtr> tiles);
-		static void processImbuements(const CreaturePtr& caster, const CreaturePtr& target, CombatDamage& damage);
 		const DamageArea getAreaPositions(const Position& casterPos, const Position& targetPos);
-		CombatDamage getCombatDamage(const CreaturePtr& creature, const CreaturePtr& target) const;
+
+		std::unique_ptr<AreaCombat> area;
+
+		struct { CombatType_t type = COMBAT_NONE; int32_t value = 0; } primary{};
+		struct { CombatType_t type = COMBAT_NONE; int32_t value = 0; } secondary{};
 
 		// todo: change from using int32_t to uint32_t for all damage. There is no reason to need a negative value when we can define healing by combat type
-		float mina = 0.0;
-		float minb = 0.0;
-		float maxa = 0.0;
-		float maxb = 0.0;
+		float mina = 0.0f;
+		float minb = 0.0f;
+		float maxa = 0.0f;
+		float maxb = 0.0f;
 
-		int32_t _damage;
-		uint16_t itemId = 0;
-		CombatType_t _type;
-		CombatOrigin _origin;
-		BlockType_t _blocktype;
+		std::bitset<32> config;
+
+		ConditionType_t dispelType = CONDITION_NONE;
 		formulaType_t formulaType = COMBAT_FORMULA_UNDEFINED;
 
+		// --- 2-byte members ---
+		uint16_t itemId = 0;
+
+		// --- 1-byte members ---
 		uint8_t impactEffect = CONST_ME_NONE;
 		uint8_t distanceEffect = CONST_ANI_NONE;
-
+		BlockType_t blockType = BLOCK_NONE;
+		Origin origin = Origin::None;
+		
 		bool blockedByArmor = false;
 		bool blockedByShield = false;
 		bool targetCasterOrTopMost = false;
 		bool aggressive = true;
 		bool useCharges = false;
 		bool ignoreResistances = false;
-
-		std::forward_list<std::unique_ptr<const Condition>> conditionList;
-
-		//std::unique_ptr<ValueCallback> valueCallback;
-		//std::unique_ptr<TileCallback> tileCallback;
-		//std::unique_ptr<TargetCallback> targetCallback;
-
-		//configurable
-		CombatParams params;
-
-		//formula variables
-		
-
-
-		CombatDamage damage;
-
-		// todo: switch to optional
-		std::unique_ptr<AreaCombat> area;
+		bool critical = false;
+		bool leeched = false;
+		bool augmented = false;
+		bool isUtility = false;
 };
 
 class MagicField final : public Item

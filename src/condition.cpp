@@ -882,23 +882,23 @@ bool ConditionRegeneration::executeCondition(const CreaturePtr creature, int32_t
 
 	if (internalHealthTicks >= healthTicks && healthGain != 0) {
 		internalHealthTicks = 0;
-		CombatDamage regen;
-		regen.primary.value = static_cast<int32_t>(healthGain);
-		regen.primary.type = COMBAT_HEALING;
-		const bool sendMsg = g_config.GetBoolean(ConfigManager::HEALTH_REGEN_NOTIFICATION);
-		g_game.combatChangeHealth(nullptr, creature, regen, sendMsg);
+		//CombatDamage regen;
+		//regen.primary.value = static_cast<int32_t>(healthGain);
+		//regen.primary.type = COMBAT_HEALING;
+		//const bool sendMsg = g_config.GetBoolean(ConfigManager::HEALTH_REGEN_NOTIFICATION);
+		//g_game.combatChangeHealth(nullptr, creature, regen, sendMsg);
 	}
 
 	if (internalManaTicks >= manaTicks && manaGain != 0) {
 		internalManaTicks = 0;
 
 		if (auto player = creature->getPlayer()) {
-			CombatDamage regen;
-			regen.primary.value = static_cast<int32_t>(manaGain);
-			regen.primary.type = COMBAT_HEALING;
-			regen.isUtility = isBuff;
-			const bool sendMsg = g_config.GetBoolean(ConfigManager::MANA_REGEN_NOTIFICATION);
-			g_game.combatChangeMana(nullptr, creature, regen, sendMsg);
+			//CombatDamage regen;
+			//regen.primary.value = static_cast<int32_t>(manaGain);
+			//regen.primary.type = COMBAT_HEALING;
+			//regen.isUtility = isBuff;
+			//const bool sendMsg = g_config.GetBoolean(ConfigManager::MANA_REGEN_NOTIFICATION);
+			//g_game.combatChangeMana(nullptr, creature, regen, sendMsg);
 		}
 	}
 
@@ -1312,110 +1312,7 @@ bool ConditionDamage::doDamage(CreaturePtr creature, int32_t healthChange) const
 {
 	if (creature->isSuppress(getType()) or creature->isImmune(getType()))
 		return false;
-
-	CombatDamage damage;
-	damage.origin = ORIGIN_CONDITION;
-	damage.primary.value = healthChange;
-	damage.primary.type = Combat::ConditionToDamageType(conditionType);
-	auto attacker = g_game.getCreatureByID(owner);
-
-	if (field and creature->getPlayer() and attacker and attacker->getPlayer())
-		damage.primary.value = static_cast<int32_t>(std::round(damage.primary.value / 2.));
-
-	if (not creature->isAttackable() or Combat::canDoCombat(attacker, creature) != RETURNVALUE_NOERROR)
-	{
-		if (not creature->isInGhostMode())
-		{
-			SpectatorVec spectators;
-			g_game.map.getSpectators(spectators, creature->getPosition(), true, true);
-			auto in_instance = [&creature](const auto& c) {	return c->compareInstance(creature->getInstanceID());};
-			auto to_player = [&](const auto& c)	{ return std::static_pointer_cast<Player>(c);};
-
-			for (const auto& c : spectators.players()
-				| std::views::filter(in_instance)
-				| std::views::transform(to_player))
-				static_cast<Player*>(c.get())->sendMagicEffect(creature->getPosition(), CONST_ME_POFF);
-		}
-		return false;
-	}
-
-	if (g_game.combatBlockHit(damage, attacker, creature, false, false, field))
-		return false;
-
-	if (auto player = creature->getPlayer())
-	{
-
-		if (attacker)
-		{
-			auto creatureType = CREATURETYPE_ATTACKABLE;
-
-			if (auto attackPlayer = attacker->getPlayer())
-			{
-				creatureType = CREATURETYPE_PLAYER;
-			}
-			else if (auto attackMonster = attacker->getMonster())
-			{
-				creatureType = player->getCreatureType(attackMonster);
-			}
-
-			auto reformTotals = player->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, ORIGIN_CONDITION, creatureType, attacker->getRace(), attacker->getName());
-
-			if (not reformTotals.empty())
-			{
-				std::cout << "Reform Modifier Activated on " << damage.primary.value << " damage \n";
-
-				player->reformDamage(attacker, damage, reformTotals);
-				if (damage.primary.value == 0)
-					return true;
-			}
-
-			auto defenseModData = player->getDefenseModifierTotals(damage.primary.type, ORIGIN_CONDITION, creatureType, attacker->getRace(), attacker->getName());
-
-			if (defenseModData.empty())
-			{
-				for (const auto& [modkind, modTotals] : defenseModData)
-				{
-					if (modTotals.percentTotal or modTotals.flatTotal)
-					{
-						Combat::applyDamageReductionModifier(modkind, damage, player, attacker, static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), ORIGIN_CONDITION);
-					}
-
-					if (damage.primary.value == 0)
-						return true;
-				}
-			}
-		}
-		else // if no attacker
-		{
-			auto reformTotals = player->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, ORIGIN_CONDITION, CREATURETYPE_ATTACKABLE, RACE_NONE, "none");
-
-			if (not reformTotals.empty())
-			{
-				std::cout << "Reform Modifier Activated on " << damage.primary.value << " damage \n";
-
-				player->reformDamage(std::nullopt, damage, reformTotals);
-
-				if (damage.primary.value == 0)
-					return true;
-			}
-
-			auto defenseModData = player->getDefenseModifierTotals(damage.primary.type, ORIGIN_CONDITION, CREATURETYPE_ATTACKABLE, RACE_NONE, "none");
-
-			if (not defenseModData.empty())
-			{
-				for (const auto& [modkind, modTotals] : defenseModData)
-				{
-					if (modTotals.percentTotal or modTotals.flatTotal)
-						Combat::applyDamageReductionModifier(modkind, damage, player, std::nullopt, static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), ORIGIN_CONDITION);
-
-					if (damage.primary.value == 0)
-						return true;
-				}
-			}
-		}
-	}
-
-	return g_game.combatChangeHealth(attacker, creature, damage);
+	return true;
 }
 
 void ConditionDamage::endCondition(CreaturePtr)
