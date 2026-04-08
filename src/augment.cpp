@@ -1,7 +1,7 @@
 // Credits: BlackTek Server Creator Codinablack@github.com.
 // This project is based of otland's The Forgottenserver.
 // Any and all code taken from otland's The Forgottenserver is licensed under GPL 2.0
-// Any code Authored by: Codinablack or BlackTek contributers, that is not already licensed, is hereby licesned MIT. 
+// Any code Authored by: Codinablack or BlackTek contributers, that is not already licensed, is hereby licesned MIT.
 // The GPL 2.0 License that can be found in the LICENSE file.
 // All code found in this file is licensed under MIT and can be found in the LICENSE file.
 
@@ -9,42 +9,37 @@
 #include "otpch.h"
 #include "augment.h"
 
-Augment::Augment(const std::string& name, const std::string& description) : m_name(name), m_description(description) {
-	
-}
+Augment::Augment(const std::string& name, const std::string& description) : m_name(name), m_description(description) {}
 
-Augment::Augment(std::shared_ptr<Augment>& original) : m_name(original->m_name), m_description(original->m_description) {
-
-    for (const auto& mod : original->m_attack_modifiers) {
-        auto copiedMod = std::make_shared<DamageModifier>(*mod);
-        m_attack_modifiers.push_back(copiedMod);
-    }
-
-    for (const auto& mod : original->m_defense_modifiers) {
-        auto copiedMod = std::make_shared<DamageModifier>(*mod);
-        m_defense_modifiers.push_back(copiedMod);
-    }
-}
+Augment::Augment(std::shared_ptr<Augment>& original)
+    : m_name(original->m_name),
+      m_description(original->m_description),
+      m_modifiers(original->m_modifiers),
+      m_attack_count(original->m_attack_count) {}
 
 
-std::vector<std::shared_ptr<DamageModifier>> Augment::getAttackModifiers(uint8_t modType) {
-	std::vector<std::shared_ptr<DamageModifier>> modifiers;
-	for (auto& mod : m_attack_modifiers) {
-
-		if (mod->getType() == modType) {
-			modifiers.emplace_back(mod);
+std::vector<DamageModifier> Augment::getAttackModifiers(uint8_t modType) const
+{
+	std::vector<DamageModifier> result;
+	for (const auto& mod : getAttackModifiers())
+	{
+		if (mod.getType() == modType)
+		{
+			result.push_back(mod);
 		}
 	}
-	return modifiers;
+	return result;
 }
 
-std::vector<std::shared_ptr<DamageModifier>> Augment::getDefenseModifiers(uint8_t modType) {
-	std::vector<std::shared_ptr<DamageModifier>> modifiers;
-	for (auto& mod : m_defense_modifiers) {
-		
-		if (mod->getType() == modType) {
-			modifiers.emplace_back(mod);
+std::vector<DamageModifier> Augment::getDefenseModifiers(uint8_t modType) const
+{
+	std::vector<DamageModifier> result;
+	for (const auto& mod : getDefenseModifiers())
+	{
+		if (mod.getType() == modType)
+		{
+			result.push_back(mod);
 		}
 	}
-	return modifiers;
+	return result;
 }
