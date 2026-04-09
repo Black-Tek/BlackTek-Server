@@ -927,7 +927,7 @@ ReturnValue Game::internalMoveCreature(CreaturePtr creature, TilePtr toTile, uin
 	}
 
 	map.moveCreature(creature, toTile);
-    if (creature->getParent() != toTile) {
+	if (creature->getParent() != toTile) {
 		return RETURNVALUE_NOERROR;
 	}
 
@@ -943,7 +943,7 @@ ReturnValue Game::internalMoveCreature(CreaturePtr creature, TilePtr toTile, uin
 		const auto subTile = subCylinder->getTile();
 		map.moveCreature(creature, subTile);
 
-        if (creature->getParent() != subCylinder) {
+		if (creature->getParent() != subCylinder) {
 			//could happen if a script move the creature
 			fromCylinder = nullptr;
 			break;
