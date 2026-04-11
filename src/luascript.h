@@ -39,7 +39,7 @@ class Spell;
 class LuaScriptInterface;
 class Game;
 struct LootBlock;
-class DamageModifier;
+struct DamageModifier;
 
 template<typename T>
 concept EnumType = std::is_enum_v<T> && !std::is_same_v<T, bool>;

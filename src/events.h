@@ -12,7 +12,6 @@
 class ItemType;
 class Tile;
 class Spell;
-class DamageModifier;
 
 enum class EventInfoId {
 	// Creature

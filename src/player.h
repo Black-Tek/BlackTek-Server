@@ -1434,11 +1434,6 @@ class Player final : public Creature, public Cylinder
 		[[nodiscard]] uint32_t conversion_mod_count() const noexcept { return conversion_modifier_count; }
 		[[nodiscard]] uint32_t reform_mod_count() const noexcept { return reform_modifier_count; }
 
-		[[nodiscard]] gtl::node_hash_map<uint8_t, ModifierTotals> getConvertedTotals(const uint8_t modType, const CombatType_t damageType, const uint8_t originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName);
-		[[nodiscard]] gtl::node_hash_map<uint8_t, ModifierTotals> getAttackModifierTotals(const CombatType_t damageType, const uint8_t originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const noexcept;
-		[[nodiscard]] gtl::node_hash_map<uint8_t, ModifierTotals> getAttackModifierTotals(const RawModifierMap& precomputedMods, const CombatType_t damageType, const uint8_t originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const noexcept;
-		[[nodiscard]] gtl::node_hash_map<uint8_t, ModifierTotals> getDefenseModifierTotals(const CombatType_t damageType, const uint8_t originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const noexcept;
-
 		std::vector<Position> getOpenPositionsInRadius(int radius) const;
 
 		const bool addAugment(std::string_view augmentName);

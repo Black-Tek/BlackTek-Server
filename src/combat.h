@@ -11,6 +11,7 @@
 #include "matrixarea.h"
 #include "damagemodifier.h"
 #include "creature.h"
+#include "intrusive.h"
 
 #include <utility>
 #include <optional>
@@ -26,131 +27,65 @@ class Condition;
 class Item;
 struct Position;
 
-PlayerPtr PlayerCast(auto creature)
+namespace BlackTek 
 {
-	return std::static_pointer_cast<Player>(creature);
-}
+	PlayerPtr PlayerCast(auto creature)
+	{
+		return std::static_pointer_cast<Player>(creature);
+	}
 
-MonsterPtr MonsterCast(auto creature)
-{
-	return std::static_pointer_cast<Monster>(creature);
-}
+	MonsterPtr MonsterCast(auto creature)
+	{
+		return std::static_pointer_cast<Monster>(creature);
+	}
 
-namespace BlackTek
-{
-template<typename T>
-class intrusive_ptr
-{
-    T* p_ = nullptr;
+	namespace Constant
+	{
+		auto constexpr Player_Vs_Player = (static_cast<uint32_t>(CreatureSubType::Player) << 16 | static_cast<uint32_t>(CreatureSubType::Player) << 8);
+		auto constexpr Player_Vs_Monster = (static_cast<uint32_t>(CreatureSubType::Player) << 16 | static_cast<uint32_t>(CreatureSubType::Monster) << 8);
+		auto constexpr Monster_Vs_Player = (static_cast<uint32_t>(CreatureSubType::Monster) << 16 | static_cast<uint32_t>(CreatureSubType::Player) << 8);
+		auto constexpr Monster_Vs_Monster = (static_cast<uint32_t>(CreatureSubType::Monster) << 16 | static_cast<uint32_t>(CreatureSubType::Monster) << 8);
+	}
 
-    void Add()  noexcept { if (p_) intrusive_ptr_add_ref(p_);  }
-    void Drop() noexcept { if (p_) intrusive_ptr_release(p_); }
+	struct LeechData
+	{
+		int32_t percent_health = 0;
+		int32_t percent_mana = 0;
+		int32_t percent_stamina = 0;
+		int32_t percent_soul = 0;
+		int32_t flat_health = 0;
+		int32_t flat_mana = 0;
+		int32_t flat_stamina = 0;
+		int32_t flat_soul = 0;
+	};
 
-public:
-    using element_type = T;
-
-    intrusive_ptr() noexcept = default;
-
-    explicit intrusive_ptr(T* p, bool addRef = true) noexcept
-        : p_(p)
-    {
-        if (addRef) Add();
-    }
-
-    intrusive_ptr(const intrusive_ptr& other) noexcept
-        : p_(other.p_)
-    {
-        Add();
-    }
-
-    intrusive_ptr(intrusive_ptr&& other) noexcept
-        : p_(other.p_)
-    {
-        other.p_ = nullptr;
-    }
-
-    ~intrusive_ptr() noexcept { Drop(); }
-
-    intrusive_ptr& operator=(const intrusive_ptr& other) noexcept
-    {
-        if (p_ != other.p_)
-        {
-            Drop();
-            p_ = other.p_;
-            Add();
-        }
-        return *this;
-    }
-
-    intrusive_ptr& operator=(intrusive_ptr&& other) noexcept
-    {
-        if (p_ != other.p_)
-        {
-            Drop();
-            p_ = other.p_;
-            other.p_ = nullptr;
-        }
-        return *this;
-    }
-
-    [[nodiscard]] T&    operator*()  const noexcept { return *p_;   }
-    [[nodiscard]] T*    operator->() const noexcept { return p_;    }
-    [[nodiscard]] T*    Get()        const noexcept { return p_;    }
-    explicit operator bool()         const noexcept { return p_ != nullptr; }
-
-    bool operator==(const intrusive_ptr& other) const noexcept { return p_ == other.p_; }
-    bool operator!=(const intrusive_ptr& other) const noexcept { return p_ != other.p_; }
-};
-
-}
-
-namespace BlackTek::Constant
-{
-	auto constexpr Player_Vs_Player = (static_cast<uint32_t>(CreatureSubType::Player) << 16 | static_cast<uint32_t>(CreatureSubType::Player) << 8);
-	auto constexpr Player_Vs_Monster = (static_cast<uint32_t>(CreatureSubType::Player) << 16 | static_cast<uint32_t>(CreatureSubType::Monster) << 8);
-	auto constexpr Monster_Vs_Player = (static_cast<uint32_t>(CreatureSubType::Monster) << 16 | static_cast<uint32_t>(CreatureSubType::Player) << 8);
-	auto constexpr Monster_Vs_Monster = (static_cast<uint32_t>(CreatureSubType::Monster) << 16 | static_cast<uint32_t>(CreatureSubType::Monster) << 8);
-}
-
-struct LeechData
-{
-	int32_t percent_health = 0;
-	int32_t percent_mana = 0;
-	int32_t percent_stamina = 0;
-	int32_t percent_soul = 0;
-	int32_t flat_health = 0;
-	int32_t flat_mana = 0;
-	int32_t flat_stamina = 0;
-	int32_t flat_soul = 0;
-};
-
-struct DamageArea
-{
-	std::vector<Position> positions;
-	int32_t distance;
-};
+	struct DamageArea
+	{
+		std::vector<Position> positions;
+		int32_t distance;
+	};
 
 
-class AreaCombat
-{
+	class AreaCombat
+	{
 	public:
 		void setupArea(const std::vector<uint32_t>& vec, uint32_t rows);
 		void setupArea(int32_t length, int32_t spread);
 		void setupArea(int32_t radius);
 		void setupExtArea(const std::vector<uint32_t>& vec, uint32_t rows);
-		const BlackTek::MatrixArea& getArea(const Position& centerPos, const Position& targetPos) const;
-		
+		const MatrixArea& getArea(const Position& centerPos, const Position& targetPos) const;
+
 
 	private:
-		std::vector<BlackTek::MatrixArea> areas;
+		std::vector<MatrixArea> areas;
 		bool hasExtArea = false;
-};
+	};
 
 
-// Todo: Create a struct for "CombatTable" which will be a specific defined and handled lua table able to be passed for construction of combat objects
+	// Todo: Create a struct for "CombatTable" which will be a specific defined and handled lua table able to be passed for construction of combat objects
 
-class Combat
-{
+	class Combat
+	{
 	public:
 		Combat() = default;
 
@@ -199,10 +134,10 @@ class Combat
 
 		enum Situaion : uint8_t
 		{
-			PlayerVsPlayer		 = 1 << 0,
-			PlayerVsMonster		 = 1 << 1,
-			MonsterVsPlayer		 = 1 << 2,
-			MonsterVsMonster	 = 1 << 3
+			PlayerVsPlayer = 1 << 0,
+			PlayerVsMonster = 1 << 1,
+			MonsterVsPlayer = 1 << 2,
+			MonsterVsMonster = 1 << 3
 		};
 
 		enum class BindSource : uint8_t
@@ -226,10 +161,10 @@ class Combat
 			MaxMana,
 			Soul,
 			MaxSoul,
-			Stamina,			
+			Stamina,
 		};
 
-		enum class Formula : uint8_t 
+		enum class Formula : uint8_t
 		{
 			Raw,
 			Linear,         // Tibia style: (Stat * Scaling) + Base
@@ -332,7 +267,7 @@ class Combat
 		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const MonsterPtr& target) noexcept;
 		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const Position& target_position) noexcept;
 
-		[[nodiscard]] 
+		[[nodiscard]]
 		inline bool hasArea() const noexcept {
 			//return area != nullptr;
 			return false;
@@ -340,7 +275,7 @@ class Combat
 
 		[[nodiscard]] constexpr uint32_t calculate_damage_factors(const CombatFactors& factors) const noexcept
 		{
-			float poweredStat = factors.exponent != 1.0f ?  poweredStat = std::pow(factors.power, factors.exponent) : factors.power;
+			float poweredStat = factors.exponent != 1.0f ? poweredStat = std::pow(factors.power, factors.exponent) : factors.power;
 
 			switch (factors.formula_type)
 			{
@@ -362,10 +297,10 @@ class Combat
 			// log
 			return 0;
 		}
-	
 
-		void postCombatEffects(CreaturePtr& caster, const Position& pos) const { postCombatEffects(caster, pos, *this);	}
-		void setOrigin(Origin o) {	origin = o;	}
+
+		void postCombatEffects(CreaturePtr& caster, const Position& pos) const { postCombatEffects(caster, pos, *this); }
+		void setOrigin(Origin o) { origin = o; }
 
 		[[nodiscard]] int64_t id() const noexcept { return combat_id; }
 		void set_id(int64_t new_id) { combat_id = new_id; }
@@ -387,102 +322,100 @@ class Combat
 		uint8_t impactEffect = CONST_ME_NONE;
 		uint8_t distanceEffect = CONST_ANI_NONE;
 
-		friend class BlackTek::CombatRegistry;
+		friend class CombatRegistry;
 		friend void intrusive_ptr_add_ref(const Combat* p) noexcept;
 		friend void intrusive_ptr_release(const Combat* p) noexcept;
-};
+	};
 
-inline void intrusive_ptr_add_ref(const Combat* p) noexcept
-{
-    p->ref_count.fetch_add(1, std::memory_order_relaxed);
-}
+	inline void intrusive_ptr_add_ref(const Combat * p) noexcept
+	{
+		p->ref_count.fetch_add(1, std::memory_order_relaxed);
+	}
 
-void intrusive_ptr_release(const Combat* p) noexcept;
+	void intrusive_ptr_release(const Combat * p) noexcept;
 
-using CombatHandle = BlackTek::intrusive_ptr<Combat>;
+	using CombatHandle = intrusive_ptr<Combat>;
 
-namespace BlackTek
-{
 
-class CombatRegistry
-{
-    static constexpr std::size_t k_InitialBytes = 512 * 1024;
-    static constexpr std::pmr::pool_options k_PoolOpts
-    {
-        .max_blocks_per_chunk        = 128,
-        .largest_required_pool_block = 256
-    };
+	class CombatRegistry
+	{
+		static constexpr std::size_t k_InitialBytes = 512 * 1024;
+		static constexpr std::pmr::pool_options k_PoolOpts
+		{
+			.max_blocks_per_chunk = 128,
+			.largest_required_pool_block = 256
+		};
 
-    alignas(std::max_align_t)
-    std::array<std::byte, k_InitialBytes>    buffer_;
-    std::pmr::monotonic_buffer_resource      upstream_;
-    std::pmr::unsynchronized_pool_resource   pool_;
-    std::pmr::unordered_map<int64_t, Combat> table_;
-    std::atomic<int64_t>                     next_id_{ 1 };
+		alignas(std::max_align_t)
+			std::array<std::byte, k_InitialBytes>    buffer_;
+		std::pmr::monotonic_buffer_resource      upstream_;
+		std::pmr::unsynchronized_pool_resource   pool_;
+		std::pmr::unordered_map<int64_t, Combat> table_;
+		std::atomic<int64_t>                     next_id_{ 1 };
 
-public:
-    CombatRegistry()
-        : upstream_(buffer_.data(), buffer_.size())
-        , pool_(k_PoolOpts, &upstream_)
-        , table_(&pool_)
-    {}
+	public:
+		CombatRegistry()
+			: upstream_(buffer_.data(), buffer_.size())
+			, pool_(k_PoolOpts, &upstream_)
+			, table_(&pool_)
+		{
+		}
 
-    CombatRegistry(const CombatRegistry&)            = delete;
-    CombatRegistry& operator=(const CombatRegistry&) = delete;
+		CombatRegistry(const CombatRegistry&) = delete;
+		CombatRegistry& operator=(const CombatRegistry&) = delete;
 
-    [[nodiscard]] CombatHandle Create();
+		[[nodiscard]] CombatHandle Create();
 
-    void Release(int64_t id);
+		void Release(int64_t id);
 
-    [[nodiscard]] Combat*       Get(int64_t id) noexcept;
-    [[nodiscard]] const Combat* Get(int64_t id) const noexcept;
-    [[nodiscard]] std::size_t	Size() const noexcept { return table_.size(); }
+		[[nodiscard]] Combat* Get(int64_t id) noexcept;
+		[[nodiscard]] const Combat* Get(int64_t id) const noexcept;
+		[[nodiscard]] std::size_t	Size() const noexcept { return table_.size(); }
 
-    // we need this so external PMR containers can share the same resource.
-    // e.g. std::pmr::unordered_map<int64_t, AreaCombat>{ g_combat_registry.Allocator() }
-    [[nodiscard]] std::pmr::memory_resource* Allocator() noexcept { return &pool_; }
-};
-
+		// we need this so external PMR containers can share the same resource.
+		// e.g. std::pmr::unordered_map<int64_t, AreaCombat>{ g_combat_registry.Allocator() }
+		[[nodiscard]] std::pmr::memory_resource* Allocator() noexcept { return &pool_; }
+	};
 	extern CombatRegistry g_combat_registry;
-}
 
-extern std::pmr::unordered_map<int64_t, AreaCombat> combat_area_map;
+	extern std::pmr::unordered_map<int64_t, AreaCombat> combat_area_map;
+}
 
 class MagicField final : public Item
 {
-	public:
-		explicit MagicField(uint16_t type) : Item(type), createTime(OTSYS_TIME())
-		{
-			thing_subtype = ThingSubType::MagicField;
-			item_subtype = ItemSubType::MagicField;
-		}
+public:
+	explicit MagicField(uint16_t type) : Item(type), createTime(OTSYS_TIME())
+	{
+		thing_subtype = ThingSubType::MagicField;
+		item_subtype = ItemSubType::MagicField;
+	}
 
-		MagicFieldPtr getMagicField() override {
-			return static_shared_this<MagicField>();
-		}
-	
-		MagicFieldConstPtr getMagicField() const override {
-			return static_shared_this<MagicField>();
-		}
+	MagicFieldPtr getMagicField() override {
+		return static_shared_this<MagicField>();
+	}
 
-		bool isReplaceable() const {
-			return Item::items[getID()].replaceable;
-		}
-	
-		CombatType_t getCombatType() const {
-			const ItemType& it = items[getID()];
-			return it.combatType;
-		}
-	
-		int32_t getDamage() const {
-			const ItemType& it = items[getID()];
-			if (it.conditionDamage) {
-				return it.conditionDamage->getTotalDamage();
-			}
-			return 0;
-		}
-		void onStepInField(const CreaturePtr& creature);
+	MagicFieldConstPtr getMagicField() const override {
+		return static_shared_this<MagicField>();
+	}
 
-	private:
-		int64_t createTime;
+	bool isReplaceable() const {
+		return Item::items[getID()].replaceable;
+	}
+
+	CombatType_t getCombatType() const {
+		const ItemType& it = items[getID()];
+		return it.combatType;
+	}
+
+	int32_t getDamage() const {
+		const ItemType& it = items[getID()];
+		if (it.conditionDamage) {
+			return it.conditionDamage->getTotalDamage();
+		}
+		return 0;
+	}
+	void onStepInField(const CreaturePtr& creature);
+
+private:
+	int64_t createTime;
 };
