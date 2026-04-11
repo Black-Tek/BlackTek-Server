@@ -1955,7 +1955,7 @@ const bool Item::addAugment(const std::shared_ptr<Augment>& augment)
 		conversion_modifier_count += augment->conversion_mod_count();
 		reform_modifier_count += augment->reform_mod_count();
 		augments->push_back(augment);
-		g_events->eventItemOnAugment(getItem(), augment);
+		//g_events->eventItemOnAugment(getItem(), augment);
 		return true;
 	}
 
@@ -1972,7 +1972,7 @@ const bool Item::addAugment(const std::shared_ptr<Augment>& augment)
 	conversion_modifier_count += augment->conversion_mod_count();
 	reform_modifier_count += augment->reform_mod_count();
 	augments->push_back(augment);
-    g_events->eventItemOnAugment(getItem(), augment);
+    //g_events->eventItemOnAugment(getItem(), augment);
     return true;
 }
 
@@ -1993,7 +1993,7 @@ const bool Item::addAugment(std::string_view augmentName)
 		defense_modifier_count += augment->defense_mod_count();
 		conversion_modifier_count += augment->conversion_mod_count();
 		reform_modifier_count += augment->reform_mod_count();
-		g_events->eventItemOnAugment(std::static_pointer_cast<Item>(shared_from_this()), augment);
+		//g_events->eventItemOnAugment(std::static_pointer_cast<Item>(shared_from_this()), augment);
 		return true;
 	}
 	return false;

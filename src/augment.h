@@ -1,76 +1,73 @@
 // Credits: BlackTek Server Creator Codinablack@github.com.
 // This project is based of otland's The Forgottenserver.
 // Any and all code taken from otland's The Forgottenserver is licensed under GPL 2.0
-// Any code Authored by: Codinablack or BlackTek contributers, that is not already licensed, is hereby licesned MIT. 
+// Any code Authored by: Codinablack or BlackTek contributers, that is not already licensed, is hereby licesned MIT.
 // The GPL 2.0 License that can be found in the LICENSE file.
 // All code found in this file is licensed under MIT and can be found in the LICENSE file.
 
-
-#ifndef FS_AUGMENT_H
-#define FS_AUGMENT_H
+#pragma once
 
 #include "damagemodifier.h"
+#include <span>
 
-class Augment : public std::enable_shared_from_this<Augment>
+class Augment
 {
+
 
 public:
 	Augment() = default;
 	Augment(const std::string& name, const std::string& description = "");
-	Augment(std::shared_ptr<Augment>& original);
-	
-	 bool operator==(const Augment& other) const 
-    {
-        return getName() == other.getName();
-    }
+	Augment(const Augment& original);
+
+	bool operator==(const Augment& other) const
+	{
+		return getName() == other.getName();
+	}
 
 	~Augment() = default;
 
-	// allow copying
-	explicit Augment(const Augment&) = default;
 	Augment& operator=(const Augment&) = default;
 
 	const std::string getName() const;
 	const std::string getDescription() const;
 
-	void setName(const std::string& name);
-	void setDescription(const std::string& description);
+	//void setName(const std::string& name);
+	//void setDescription(const std::string& description);
 
-	static std::shared_ptr<Augment> MakeAugment(std::string augmentName, std::string description = "");
-	static std::shared_ptr<Augment> MakeAugment(std::shared_ptr<Augment>& originalPointer);
+	static Augment MakeAugment(std::string augmentName, std::string description = "");
+	static Augment MakeAugment(const Augment& original);
 
-	void addModifier(std::shared_ptr<DamageModifier>& modifier);
-	void addAttackModifier(std::shared_ptr<DamageModifier>& modifier);
-	void addDefenseModifier(std::shared_ptr<DamageModifier>& modifier);
-	void removeModifier(std::shared_ptr<DamageModifier>& modifier);
+	void addModifier(const DamageModifier& modifier);
+	void addAttackModifier(const DamageModifier& modifier);
+	void addDefenseModifier(const DamageModifier& modifier);
+	void removeModifier(uint64_t guid);
 
 	uint32_t attack_mod_count() const noexcept;
 	uint32_t defense_mod_count() const noexcept;
-	uint32_t reform_mod_count() const noexcept;
-	uint32_t conversion_mod_count() const noexcept;
 
-	std::vector<std::shared_ptr<DamageModifier>>& getAttackModifiers();
-	std::vector<std::shared_ptr<DamageModifier>>& getDefenseModifiers();
+	std::span<DamageModifier> getAttackModifiers();
+	std::span<DamageModifier> getDefenseModifiers();
 
-	std::vector<std::shared_ptr<DamageModifier>> getAttackModifiers(uint8_t modType);
-	std::vector<std::shared_ptr<DamageModifier>> getDefenseModifiers(uint8_t modType);
+	std::span<const DamageModifier> getAttackModifiers() const;
+	std::span<const DamageModifier> getDefenseModifiers() const;
+
+	std::vector<DamageModifier> getAttackModifiers(uint8_t modType) const;
+	std::vector<DamageModifier> getDefenseModifiers(uint8_t modType) const;
 
 	void serialize(PropWriteStream& propWriteStream) const
 	{
-		propWriteStream.writeString(m_name);
-		propWriteStream.writeString(m_description);
-		propWriteStream.write<uint32_t>(m_attack_modifiers.size());
+		propWriteStream.write<uint32_t>(m_attack_count);
 
-		for (const auto& modifier : m_attack_modifiers)
+		for (const auto& modifier : getAttackModifiers())
 		{
-			modifier->serialize(propWriteStream);
+			//modifier.serialize(propWriteStream);
 		}
 
-		propWriteStream.write<uint32_t>(m_defense_modifiers.size());
+		propWriteStream.write<uint32_t>(defense_mod_count());
 
-		for (const auto& modifier : m_defense_modifiers)
+		for (const auto& modifier : getDefenseModifiers())
 		{
-			modifier->serialize(propWriteStream);
+			//modifier.serialize(propWriteStream);
 		}
 	}
 
@@ -84,7 +81,6 @@ public:
 			return false;
 		}
 
-		m_name = std::string(name);
 		auto [description, successDesc] = propReadStream.readString();
 
 		if (not successDesc)
@@ -93,7 +89,6 @@ public:
 			return false;
 		}
 
-		m_description = std::string(description);
 		uint32_t attackModifierCount;
 
 		if (not propReadStream.read<uint32_t>(attackModifierCount))
@@ -102,18 +97,19 @@ public:
 			return false;
 		}
 
-		m_attack_modifiers.clear();
+		m_modifiers.clear();
+		m_attack_count = 0;
 
 		for (uint32_t i = 0; i < attackModifierCount; ++i)
 		{
-			auto modifier = std::make_shared<DamageModifier>();
+			//DamageModifier modifier;
 
-			if (not modifier->unserialize(propReadStream))
-			{
-				std::cout << "WARNING: Failed to deserialize attack modifier " << i << std::endl;
-				return false;
-			}
-			addAttackModifier(modifier);
+			//if (not modifier.unserialize(propReadStream))
+			//{
+			//	std::cout << "WARNING: Failed to deserialize attack modifier " << i << std::endl;
+			//	return false;
+			//}
+			//addAttackModifier(modifier);
 		}
 
 		uint32_t defenseModifierCount;
@@ -124,18 +120,16 @@ public:
 			return false;
 		}
 
-		m_defense_modifiers.clear();
-
 		for (uint32_t i = 0; i < defenseModifierCount; ++i)
 		{
-			auto modifier = std::make_shared<DamageModifier>();
+			//DamageModifier modifier;
 
-			if (not modifier->unserialize(propReadStream))
-			{
-				std::cout << "WARNING: Failed to deserialize defense modifier " << i << std::endl;
-				return false;
-			}
-			addDefenseModifier(modifier);
+			//if (not modifier.unserialize(propReadStream))
+			//{
+			//	std::cout << "WARNING: Failed to deserialize defense modifier " << i << std::endl;
+			//	return false;
+			//}
+			//addDefenseModifier(modifier);
 		}
 
 		return true;
@@ -143,143 +137,135 @@ public:
 
 
 private:
-	// todo : rearrange these for better memory layout
-	std::vector<std::shared_ptr<DamageModifier>> m_attack_modifiers;
-	std::vector<std::shared_ptr<DamageModifier>> m_defense_modifiers;
-	std::string m_name;
-	std::string m_description;
-	uint32_t conversion_count = 0;
-	uint32_t reform_count = 0;
+
+	// m_modifiers is a partitioned vector: [0, m_attack_count) = attack, [m_attack_count, size()) = defense
+	std::vector<DamageModifier> m_modifiers;
+	uint32_t m_attack_count = 0;
+	ModifierFlag trigger_index = ModifierFlag::InvalidFlag;
 };
 
+//
+//inline Augment::Augment(const std::string& name, const std::string& description)
+//	: m_name(name), m_description(description) {
+//}
+//
+//inline Augment::Augment(const Augment& original)
+//	: m_name(original.m_name),
+//	m_description(original.m_description),
+//	m_modifiers(original.m_modifiers),
+//	m_attack_count(original.m_attack_count) {
+//}
 
-inline std::shared_ptr<Augment> Augment::MakeAugment(std::string augmentName, std::string description)
+inline Augment Augment::MakeAugment(std::string augmentName, std::string description)
 {
-	auto augment = std::make_shared<Augment>(augmentName, description);
-	return augment;
+	return Augment(augmentName, description);
 }
 
-inline std::shared_ptr<Augment> Augment::MakeAugment(std::shared_ptr<Augment>& originalRef)
-{			 
-	return std::make_shared<Augment>(originalRef);
+inline Augment Augment::MakeAugment(const Augment& original)
+{
+	return Augment(original);
 }
 
-inline const std::string Augment::getName() const
-{
-	return m_name;
-}
+//inline const std::string Augment::getName() const
+//{
+//	return m_name;
+//}
+//
+//inline const std::string Augment::getDescription() const
+//{
+//	return m_description;
+//}
+//
+//inline void Augment::setName(const std::string& name)
+//{
+//	m_name = name;
+//}
+//
+//inline void Augment::setDescription(const std::string& description)
+//{
+//	m_description = description;
+//}
 
-inline const std::string Augment::getDescription() const
+inline void Augment::addModifier(const DamageModifier& mod)
 {
-	return m_description;
-}
-
-inline void Augment::setName(const std::string& name)
-{
-	m_name = name;
-}
-
-inline void Augment::setDescription(const std::string& description)
-{
-	m_description = description;
-}
-
-// we have code dupe by having this function, so lets not forget to replace it's usages everywhere in the source code and eliminate it
-inline void Augment::addModifier(std::shared_ptr<DamageModifier>& mod) 
-{
-	if (mod->getStance() == ATTACK_MOD)
+	if (mod.getStance() == ATTACK_MOD)
 	{
-		m_attack_modifiers.push_back(mod);
+		addAttackModifier(mod);
 	}
-	else if (mod->getStance() == DEFENSE_MOD)
+	else if (mod.getStance() == DEFENSE_MOD)
 	{
-		m_defense_modifiers.push_back(mod);
-	}
-
-	if (mod->getType() == ATTACK_MODIFIER_CONVERSION)
-	{
-		conversion_count += 1;
-		return;
-	}
-		
-	if (mod->getType() == DEFENSE_MODIFIER_REFORM)
-	{
-		reform_count += 1;
-		return;
+		addDefenseModifier(mod);
 	}
 }
 
-inline void Augment::addAttackModifier(std::shared_ptr<DamageModifier>& modifier)
+inline void Augment::addAttackModifier(const DamageModifier& modifier)
 {
-	if (modifier->getType() == ATTACK_MODIFIER_CONVERSION)
-		conversion_count += 1;
-
-	m_attack_modifiers.push_back(modifier);
+	m_modifiers.insert(m_modifiers.begin() + m_attack_count, modifier);
+	++m_attack_count;
 }
 
-inline void Augment::addDefenseModifier(std::shared_ptr<DamageModifier>& modifier)
+inline void Augment::addDefenseModifier(const DamageModifier& modifier)
 {
-	if (modifier->getType() == DEFENSE_MODIFIER_REFORM)
-		reform_count += 1;
-
-	m_defense_modifiers.push_back(modifier);
+	m_modifiers.push_back(modifier);
 }
 
-// todo: also split this and remove it
-inline void Augment::removeModifier(std::shared_ptr<DamageModifier>& mod)
+inline void Augment::removeModifier(uint64_t guid)
 {
-	if (mod->getType() == ATTACK_MODIFIER_CONVERSION)
+	auto attackEnd = m_modifiers.begin() + m_attack_count;
+
+	auto it = std::find_if(m_modifiers.begin(), attackEnd, [guid](const DamageModifier& m) { return m.getGUID() == guid;});
+
+	if (it != attackEnd)
 	{
-		conversion_count -= 1;
-		m_attack_modifiers.erase(std::remove(m_attack_modifiers.begin(), m_attack_modifiers.end(), mod), m_attack_modifiers.end());
-		return;
-	}
-	else if (mod->getType() == DEFENSE_MODIFIER_REFORM)
-	{
-		reform_count -= 1;
-		m_defense_modifiers.erase(std::remove(m_defense_modifiers.begin(), m_defense_modifiers.end(), mod), m_defense_modifiers.end());
+		m_modifiers.erase(it);
+		--m_attack_count;
 		return;
 	}
 
-	if (mod->getStance() == ATTACK_MOD)
+	auto dit = std::find_if(attackEnd, m_modifiers.end(), [guid](const DamageModifier& m) {	return m.getGUID() == guid;	});
+
+	if (dit != m_modifiers.end())
 	{
-		m_attack_modifiers.erase(std::remove(m_attack_modifiers.begin(), m_attack_modifiers.end(), mod), m_attack_modifiers.end());
-		return;
-	}
-	else if (mod->getStance() == DEFENSE_MOD)
-	{
-		m_defense_modifiers.erase(std::remove(m_defense_modifiers.begin(), m_defense_modifiers.end(), mod),	m_defense_modifiers.end());
-		return;
+		m_modifiers.erase(dit);
 	}
 }
 
 inline uint32_t Augment::attack_mod_count() const noexcept
 {
-	return m_attack_modifiers.size();
+	return m_attack_count;
 }
 
 inline uint32_t Augment::defense_mod_count() const noexcept
 {
-	return m_defense_modifiers.size();
+	return static_cast<uint32_t>(m_modifiers.size()) - m_attack_count;
 }
 
-inline uint32_t Augment::reform_mod_count() const noexcept
+//inline uint32_t Augment::reform_mod_count() const noexcept
+//{
+//	return reform_count;
+//}
+//
+//inline uint32_t Augment::conversion_mod_count() const noexcept
+//{
+//	return conversion_count;
+//}
+
+inline std::span<DamageModifier> Augment::getAttackModifiers()
 {
-	return reform_count;
+	return std::span<DamageModifier>(m_modifiers.data(), m_attack_count);
 }
 
-inline uint32_t Augment::conversion_mod_count() const noexcept
+inline std::span<DamageModifier> Augment::getDefenseModifiers()
 {
-	return conversion_count;
+	return std::span<DamageModifier>(m_modifiers.data() + m_attack_count, m_modifiers.size() - m_attack_count);
 }
 
-inline std::vector<std::shared_ptr<DamageModifier>>& Augment::getAttackModifiers()
+inline std::span<const DamageModifier> Augment::getAttackModifiers() const
 {
-	return m_attack_modifiers;
+	return std::span<const DamageModifier>(m_modifiers.data(), m_attack_count);
 }
 
-inline std::vector<std::shared_ptr<DamageModifier>>& Augment::getDefenseModifiers()
+inline std::span<const DamageModifier> Augment::getDefenseModifiers() const
 {
-	return m_defense_modifiers;
+	return std::span<const DamageModifier>(m_modifiers.data() + m_attack_count, m_modifiers.size() - m_attack_count);
 }
-#endif

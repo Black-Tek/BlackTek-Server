@@ -408,20 +408,22 @@ bool Weapon::useFist(const PlayerPtr& player, const CreaturePtr& target)
 
 	int32_t maxDamage = Weapons::getMaxWeaponDamage(player->getLevel(), attackSkill, attackValue, attackFactor);
 
-	CombatParams params;
-	params.combatType = COMBAT_PHYSICALDAMAGE;
-	params.blockedByArmor = true;
-	params.blockedByShield = true;
+	// Todo: items/weapons should be able to have "block armor", "block shield", "party only" and other combat options configurable, with defaults built in.
 
-	CombatDamage damage;
-	damage.origin = ORIGIN_MELEE;
-	damage.primary.type = params.combatType;
-	damage.primary.value = -normal_random(0, maxDamage);
+	Combat params;
+	params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(COMBAT_PHYSICALDAMAGE));
+	params.setParam(COMBAT_PARAM_BLOCKARMOR, 1);
+	params.setParam(COMBAT_PARAM_BLOCKSHIELD, 1);
 
-	Combat::doTargetCombat(player, target, damage, params);
-	if (!player->hasFlag(PlayerFlag_NotGainSkill) && player->getAddAttackSkill()) {
-		player->addSkillAdvance(SKILL_FIST, 1);
-	}
+	//CombatDamage damage;
+	//damage.origin = ORIGIN_MELEE;
+	//damage.primary.type = params.getCombatType();
+	//damage.primary.value = -normal_random(0, maxDamage);
+
+	//Combat::doTargetCombat(player, target, damage, params);
+	//if (!player->hasFlag(PlayerFlag_NotGainSkill) && player->getAddAttackSkill()) {
+	//	player->addSkillAdvance(SKILL_FIST, 1);
+	//}
 
 	return true;
 }
@@ -433,18 +435,18 @@ void Weapon::internalUseWeapon(const PlayerPtr& player, const ItemPtr& item, con
 		var.setNumber(target->getID());
 		executeUseWeapon(player, var);
 	} else {
-		CombatDamage damage;
-		WeaponType_t weaponType = item->getWeaponType();
-		if (weaponType == WEAPON_AMMO || weaponType == WEAPON_DISTANCE) {
-			damage.origin = ORIGIN_RANGED;
-		} else {
-			damage.origin = ORIGIN_MELEE;
-		}
-		damage.primary.type = params.combatType;
-		damage.primary.value = (getWeaponDamage(player, target, item) * damageModifier) / 100;
-		damage.secondary.type = getElementType();
-		damage.secondary.value = getElementDamage(player, target, item);
-		Combat::doTargetCombat(player, target, damage, params);
+		//CombatDamage damage;
+		//WeaponType_t weaponType = item->getWeaponType();
+		//if (weaponType == WEAPON_AMMO || weaponType == WEAPON_DISTANCE) {
+		//	damage.origin = ORIGIN_RANGED;
+		//} else {
+		//	damage.origin = ORIGIN_MELEE;
+		//}
+		//damage.primary.type = params.getCombatType();
+		//damage.primary.value = (getWeaponDamage(player, target, item) * damageModifier) / 100;
+		//damage.secondary.type = getElementType();
+		//damage.secondary.value = getElementDamage(player, target, item);
+		//Combat::doTargetCombat(player, target, damage, params);
 	}
 
 	onUsedWeapon(player, item, target->getTile());
@@ -580,9 +582,9 @@ void Weapon::decrementItemCount(const ItemPtr& item)
 WeaponMelee::WeaponMelee(LuaScriptInterface* interface) :
 	Weapon(interface)
 {
-	params.blockedByArmor = true;
-	params.blockedByShield = true;
-	params.combatType = COMBAT_PHYSICALDAMAGE;
+	params.setParam(COMBAT_PARAM_BLOCKARMOR, 1);
+	params.setParam(COMBAT_PARAM_BLOCKSHIELD, 1);
+	params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(COMBAT_PHYSICALDAMAGE));
 }
 
 void WeaponMelee::configureWeapon(const ItemType& it)
@@ -590,8 +592,8 @@ void WeaponMelee::configureWeapon(const ItemType& it)
 	if (it.abilities) {
 		elementType = it.abilities->elementType;
 		elementDamage = it.abilities->elementDamage;
-		params.aggressive = true;
-		params.useCharges = true;
+		params.setParam(COMBAT_PARAM_AGGRESSIVE, 1);
+		params.setParam(COMBAT_PARAM_USECHARGES, 1);
 	} else {
 		elementType = COMBAT_NONE;
 		elementDamage = 0;
@@ -674,19 +676,19 @@ int32_t WeaponMelee::getWeaponDamage(const PlayerConstPtr& player, const Creatur
 WeaponDistance::WeaponDistance(LuaScriptInterface* interface) :
 	Weapon(interface)
 {
-	params.blockedByArmor = true;
-	params.combatType = COMBAT_PHYSICALDAMAGE;
+	params.setParam(COMBAT_PARAM_BLOCKARMOR, 1);
+	params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(COMBAT_PHYSICALDAMAGE));
 }
 
 void WeaponDistance::configureWeapon(const ItemType& it)
 {
-	params.distanceEffect = it.shootType;
+	params.setParam(COMBAT_PARAM_DISTANCEEFFECT, it.shootType);
 
 	if (it.abilities) {
 		elementType = it.abilities->elementType;
 		elementDamage = it.abilities->elementDamage;
-		params.aggressive = true;
-		params.useCharges = true;
+		params.setParam(COMBAT_PARAM_AGGRESSIVE, 1);
+		params.setParam(COMBAT_PARAM_USECHARGES, 1);
 	} else {
 		elementType = COMBAT_NONE;
 		elementDamage = 0;
@@ -893,7 +895,7 @@ bool WeaponWand::configureEvent(const pugi::xml_node& node)
 
 void WeaponWand::configureWeapon(const ItemType& it)
 {
-	params.distanceEffect = it.shootType;
+	params.setParam(COMBAT_PARAM_DISTANCEEFFECT, it.shootType);
 
 	Weapon::configureWeapon(it);
 }

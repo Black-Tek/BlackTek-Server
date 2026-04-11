@@ -29,7 +29,7 @@ public:
 	static const ModifierAttackType ParseAttackModifier(std::string_view modName) noexcept;
 	static const ModifierDefenseType ParseDefenseModifier(std::string_view modName) noexcept;
 	static const CombatType_t ParseDamage(std::string_view damageName) noexcept;
-	static const CombatOrigin ParseOrigin(std::string_view originName) noexcept;
+	static const uint8_t ParseOrigin(std::string_view originName) noexcept;
 	static const RaceType_t ParseRaceType(std::string_view raceType) noexcept;
 	static const CreatureType_t ParseCreatureType(std::string_view creatureType) noexcept;
 

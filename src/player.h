@@ -1428,10 +1428,11 @@ class Player final : public Creature, public Cylinder
 		[[nodiscard]] bool hasConversionModifiers() const noexcept { return conversion_modifier_count > 0; }
 		[[nodiscard]] bool hasReformModifiers() const noexcept { return reform_modifier_count > 0; }
 
-		gtl::node_hash_map<uint8_t, ModifierTotals> getConvertedTotals(const uint8_t modType, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName);
-		gtl::node_hash_map<uint8_t, ModifierTotals> getAttackModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const;
-		gtl::node_hash_map<uint8_t, ModifierTotals> getAttackModifierTotals(const RawModifierMap& precomputedMods, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const;
-		gtl::node_hash_map<uint8_t, ModifierTotals> getDefenseModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const;
+		[[nodiscard]] uint32_t augment_total_count() const noexcept { return augment_count; }
+		[[nodiscard]] uint32_t attack_mod_count() const noexcept { return attack_modifier_count; }
+		[[nodiscard]] uint32_t defense_mod_count() const noexcept { return defense_modifier_count; }
+		[[nodiscard]] uint32_t conversion_mod_count() const noexcept { return conversion_modifier_count; }
+		[[nodiscard]] uint32_t reform_mod_count() const noexcept { return reform_modifier_count; }
 
 		std::vector<Position> getOpenPositionsInRadius(int radius) const;
 
@@ -1445,19 +1446,6 @@ class Player final : public Creature, public Cylinder
 		const bool hasAugment(const std::string_view augmentName, const bool checkItems);
 		const bool hasAugment(const std::shared_ptr<Augment>& augmentName, const bool checkItems);
 		const std::vector<std::shared_ptr<Augment>>& getPlayerAugments() const;
-
-		// To-do : convert all these params to const and ref.
-		void absorbDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
-		void restoreManaFromDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
-		void reviveSoulFromDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
-		void replenishStaminaFromDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat);
-		void resistDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) const;
-		void reflectDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
-		void deflectDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat, CombatOrigin paramOrigin, uint8_t areaEffect, uint8_t distanceEffect);
-		void ricochetDamage(CombatDamage& originalDamage, int32_t percent, int32_t flat, uint8_t areaEffect, uint8_t distanceEffect);
-		void convertDamage(const CreaturePtr& target, CombatDamage& originalDamage, gtl::node_hash_map<uint8_t, ModifierTotals> conversionList);
-		void reformDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, gtl::node_hash_map<uint8_t, ModifierTotals> conversionList);
-		void increaseDamage(std::optional<CreaturePtr> attackerOpt, CombatDamage& originalDamage, int32_t percent, int32_t flat) const;
 
 		uint8_t getAccountManagerLastState() 
 		{
@@ -1531,7 +1519,7 @@ class Player final : public Creature, public Cylinder
 
 		std::vector<ItemPtr> getEquipment(bool validateSlot = true) const;
 
-		Position generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, CombatOrigin origin);
+		Position generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, uint8_t origin);
 
 		std::unique_ptr<AreaCombat> generateDeflectArea(std::optional<CreaturePtr> attacker, int32_t targetCount) const;
 

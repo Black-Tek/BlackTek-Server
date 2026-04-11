@@ -1434,8 +1434,11 @@ void Player::addStorageValue(const uint32_t key, const int32_t value, const bool
 			}
 		}
 	} else {
-		storageMap.erase(key);
-	}
+        auto it = storageMap.find(key);
+        if (it != storageMap.end()) {
+            storageMap.erase(it);
+        }
+    }
 }
 
 bool Player::getStorageValue(const uint32_t key, int32_t& value) const
@@ -4477,17 +4480,17 @@ void Player::onAttackedCreature(const CreaturePtr& target, bool addFightTicks /*
 				sendIcons();
 			}
 
-			if (!Combat::isInPvpZone(this->getPlayer(), targetPlayer) && !isInWar(targetPlayer)) {
-				addAttacked(targetPlayer);
+			//if (!Combat::isInPvpZone(this->getPlayer(), targetPlayer) && !isInWar(targetPlayer)) {
+			//	addAttacked(targetPlayer);
 
-				if (targetPlayer->getSkull() == SKULL_NONE && getSkull() == SKULL_NONE) {
-					setSkull(SKULL_WHITE);
-				}
+			//	if (targetPlayer->getSkull() == SKULL_NONE && getSkull() == SKULL_NONE) {
+			//		setSkull(SKULL_WHITE);
+			//	}
 
-				if (getSkull() == SKULL_NONE) {
-					targetPlayer->sendCreatureSkull(this->getPlayer());
-				}
-			}
+			//	if (getSkull() == SKULL_NONE) {
+			//		targetPlayer->sendCreatureSkull(this->getPlayer());
+			//	}
+			//}
 		}
 	}
 
@@ -4526,13 +4529,13 @@ void Player::onAttackedCreatureDrainHealth(const CreaturePtr& target, int32_t po
 	Creature::onAttackedCreatureDrainHealth(target, points);
 
 	if (target) {
-		if (party > 0 && !Combat::isPlayerCombat(target)) {
-			const auto& tmpMonster = target->getMonster();
-			if (tmpMonster && tmpMonster->isHostile()) {
-				//We have fulfilled a requirement for shared experience
-				getParty()->updatePlayerTicks(this->getPlayer(), points);
-			}
-		}
+		//if (party > 0 && !Combat::isPlayerCombat(target)) {
+		//	const auto& tmpMonster = target->getMonster();
+		//	if (tmpMonster && tmpMonster->isHostile()) {
+		//		//We have fulfilled a requirement for shared experience
+		//		getParty()->updatePlayerTicks(this->getPlayer(), points);
+		//	}
+		//}
 	}
 }
 
@@ -4574,18 +4577,18 @@ bool Player::onKilledCreature(const CreaturePtr& target, bool lastHit/* = true*/
 		targetPlayer->setDropLoot(false);
 		targetPlayer->setSkillLoss(false);
 	} else if (!hasFlag(PlayerFlag_NotGainInFight) && !isPartner(targetPlayer)) {
-		if (!Combat::isInPvpZone(this->getPlayer(), targetPlayer) && hasAttacked(targetPlayer) && !targetPlayer->hasAttacked(this->getPlayer()) && !isGuildMate(targetPlayer) && targetPlayer != this->getPlayer()) {
-			if (targetPlayer->getSkull() == SKULL_NONE && !isInWar(targetPlayer)) {
-				unjustified = true;
-				addUnjustifiedDead(targetPlayer);
-			}
+		//if (!Combat::isInPvpZone(this->getPlayer(), targetPlayer) && hasAttacked(targetPlayer) && !targetPlayer->hasAttacked(this->getPlayer()) && !isGuildMate(targetPlayer) && targetPlayer != this->getPlayer()) {
+		//	if (targetPlayer->getSkull() == SKULL_NONE && !isInWar(targetPlayer)) {
+		//		unjustified = true;
+		//		addUnjustifiedDead(targetPlayer);
+		//	}
 
-			if (lastHit && hasCondition(CONDITION_INFIGHT)) {
-				pzLocked = true;
-				Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_INFIGHT, g_config.GetNumber(ConfigManager::WHITE_SKULL_TIME) * 1000, 0);
-				addCondition(condition);
-			}
-		}
+		//	if (lastHit && hasCondition(CONDITION_INFIGHT)) {
+		//		pzLocked = true;
+		//		Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_INFIGHT, g_config.GetNumber(ConfigManager::WHITE_SKULL_TIME) * 1000, 0);
+		//		addCondition(condition);
+		//	}
+		//}
 	}
 
 	return unjustified;
@@ -5637,8 +5640,6 @@ const bool Player::addAugment(const std::shared_ptr<Augment>& augment)
 		augment_count += 1;
 		attack_modifier_count += augment->attack_mod_count();
 		defense_modifier_count += augment->defense_mod_count();
-		conversion_modifier_count += augment->conversion_mod_count();
-		reform_modifier_count += augment->reform_mod_count();
 		augments.push_back(augment);
 		g_events->eventPlayerOnAugment(this->getPlayer(), augment);
 		return true;
@@ -5653,8 +5654,6 @@ const bool Player::addAugment(const std::string_view augmentName)
 		augment_count += 1;
 		attack_modifier_count += augment->attack_mod_count();
 		defense_modifier_count += augment->defense_mod_count();
-		conversion_modifier_count += augment->conversion_mod_count();
-		reform_modifier_count += augment->reform_mod_count();
 		getAugments().emplace_back(augment);
 		g_events->eventPlayerOnAugment(this->getPlayer(), augment);
 		return true;
@@ -5672,8 +5671,6 @@ const bool Player::removeAugment(const std::shared_ptr<Augment>& augment)
 		augment_count -= 1;
 		attack_modifier_count -= augment->attack_mod_count();
 		defense_modifier_count -= augment->defense_mod_count();
-		conversion_modifier_count -= augment->conversion_mod_count();
-		reform_modifier_count -= augment->reform_mod_count();
 		g_events->eventPlayerOnRemoveAugment(this->getPlayer(), augment);
 		augments->erase(it);
 		return true;
@@ -5782,8 +5779,6 @@ const bool Player::removeAugment(std::string_view augmentName)
 			augment_count -= 1;
 			attack_modifier_count -= augment->attack_mod_count();
 			defense_modifier_count -= augment->defense_mod_count();
-			conversion_modifier_count -= augment->conversion_mod_count();
-			reform_modifier_count -= augment->reform_mod_count();
 			g_events->eventPlayerOnRemoveAugment(this->getPlayer(), augment);
 		}
 		return match;
@@ -5857,265 +5852,6 @@ void Player::updateRegeneration() const
 	}
 }
 
-void Player::addItemImbuements(const ItemPtr& item) {
-    if (item->hasImbuements()) {
-		auto& imbues = item->getImbuements();
-		for (auto& imbue : *imbues) {
-			if (imbue->isSkill()) {
-				switch (imbue->imbuetype) {
-					case ImbuementType::IMBUEMENT_TYPE_FIST_SKILL:
-						setVarSkill(SKILL_FIST, static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_CLUB_SKILL:
-						setVarSkill(SKILL_CLUB, static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_SWORD_SKILL:
-						setVarSkill(SKILL_SWORD, static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_AXE_SKILL:
-						setVarSkill(SKILL_AXE, static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_DISTANCE_SKILL:
-						setVarSkill(SKILL_DISTANCE, static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_SHIELD_SKILL:
-						setVarSkill(SKILL_SHIELD, static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_FISHING_SKILL:
-						setVarSkill(SKILL_FISHING, static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_MAGIC_LEVEL:
-						setVarSkill(SKILL_MAGLEVEL, static_cast<int32_t>(imbue->value));
-						break;
-				}
-			}
-
-			if (imbue->isSpecialSkill()) {
-				switch (imbue->imbuetype) {
-					case ImbuementType::IMBUEMENT_TYPE_MANA_LEECH:
-						setVarSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT, static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_LIFE_LEECH:
-						setVarSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT, static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_CRITICAL_CHANCE:
-						setVarSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE, static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_CRITICAL_AMOUNT:
-						setVarSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT, static_cast<int32_t>(imbue->value));
-						break;
-				}
-			}
-
-			if (imbue->isStat()) {
-				switch (imbue->imbuetype) {
-					case ImbuementType::IMBUEMENT_TYPE_CAPACITY_BOOST:
-						capacity += imbue->value;
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_SPEED_BOOST:
-						g_game.changeSpeed(this->getPlayer(), static_cast<int32_t>(imbue->value));
-						break;
-				}
-			}
-		}
-	}
-	checkForImbuedEquipment();
-	sendSkills();
-	sendStats();
-}
-
-void Player::removeItemImbuements(const ItemPtr& item) {
-    if (item->hasImbuements()) {
-        auto& imbues = item->getImbuements();
-        for (auto& imbue : *imbues) {
-			if (imbue->isSkill()) {
-				switch (imbue->imbuetype) {
-					case ImbuementType::IMBUEMENT_TYPE_FIST_SKILL:
-						setVarSkill(SKILL_FIST, -static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_CLUB_SKILL:
-						setVarSkill(SKILL_CLUB, -static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_SWORD_SKILL:
-						setVarSkill(SKILL_SWORD, -static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_AXE_SKILL:
-						setVarSkill(SKILL_AXE, -static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_DISTANCE_SKILL:
-						setVarSkill(SKILL_DISTANCE, -static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_SHIELD_SKILL:
-						setVarSkill(SKILL_SHIELD, -static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_FISHING_SKILL:
-						setVarSkill(SKILL_FISHING, -static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_MAGIC_LEVEL:
-						setVarSkill(SKILL_MAGLEVEL, -static_cast<int32_t>(imbue->value));
-						break;
-				}
-			}
-
-			if (imbue->isSpecialSkill()) {
-				switch (imbue->imbuetype) {
-					case ImbuementType::IMBUEMENT_TYPE_MANA_LEECH:
-						setVarSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT, -static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_LIFE_LEECH:
-						setVarSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT, -static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_CRITICAL_CHANCE:
-						setVarSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE, -static_cast<int32_t>(imbue->value));
-						break;
-					case ImbuementType::IMBUEMENT_TYPE_CRITICAL_AMOUNT:
-						setVarSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT, -static_cast<int32_t>(imbue->value));
-						break;
-				}
-			}
-
-			if (imbue->isStat()) {
-				switch (imbue->imbuetype) {
-				case ImbuementType::IMBUEMENT_TYPE_CAPACITY_BOOST:
-					capacity -= imbue->value;
-					break;
-				case ImbuementType::IMBUEMENT_TYPE_SPEED_BOOST:
-					g_game.changeSpeed(this->getPlayer(), -static_cast<int32_t>(imbue->value));
-					break;
-				}
-			}
-		}
-	}
-	checkForImbuedEquipment();
-	sendSkills();
-	sendStats();
-}
-
-
-void Player::removeImbuementEffect(const std::shared_ptr<Imbuement>& imbue) {
-	
-	if (imbue->isSkill()) {
-		switch (imbue->imbuetype) {
-		case ImbuementType::IMBUEMENT_TYPE_FIST_SKILL:
-			setVarSkill(SKILL_FIST, -static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_CLUB_SKILL:
-			setVarSkill(SKILL_CLUB, -static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_SWORD_SKILL:
-			setVarSkill(SKILL_SWORD, -static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_AXE_SKILL:
-			setVarSkill(SKILL_AXE, -static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_DISTANCE_SKILL:
-			setVarSkill(SKILL_DISTANCE, -static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_SHIELD_SKILL:
-			setVarSkill(SKILL_SHIELD, -static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_FISHING_SKILL:
-			setVarSkill(SKILL_FISHING, -static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_MAGIC_LEVEL:
-			setVarSkill(SKILL_MAGLEVEL, -static_cast<int32_t>(imbue->value));
-			break;
-		}
-	}
-
-	if (imbue->isSpecialSkill()) {
-		switch (imbue->imbuetype) {
-		case ImbuementType::IMBUEMENT_TYPE_MANA_LEECH:
-			setVarSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT, -static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_LIFE_LEECH:
-			setVarSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT, -static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_CRITICAL_CHANCE:
-			setVarSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE, -static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_CRITICAL_AMOUNT:
-			setVarSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT, -static_cast<int32_t>(imbue->value));
-			break;
-		}
-	}
-
-	if (imbue->isStat()) {
-		switch (imbue->imbuetype) {
-		case ImbuementType::IMBUEMENT_TYPE_CAPACITY_BOOST:
-			capacity -= imbue->value;
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_SPEED_BOOST:
-			g_game.changeSpeed(this->getPlayer(), -static_cast<int32_t>(imbue->value));
-			break;
-		}
-	}
-	sendSkills();
-	sendStats();
-}
-
-void Player::addImbuementEffect(const std::shared_ptr<Imbuement>& imbue) {
-
-	if (imbue->isSkill()) {
-		switch (imbue->imbuetype) {
-		case ImbuementType::IMBUEMENT_TYPE_FIST_SKILL:
-			setVarSkill(SKILL_FIST, static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_CLUB_SKILL:
-			setVarSkill(SKILL_CLUB, static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_SWORD_SKILL:
-			setVarSkill(SKILL_SWORD, static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_AXE_SKILL:
-			setVarSkill(SKILL_AXE, static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_DISTANCE_SKILL:
-			setVarSkill(SKILL_DISTANCE, static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_SHIELD_SKILL:
-			setVarSkill(SKILL_SHIELD, static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_FISHING_SKILL:
-			setVarSkill(SKILL_FISHING, static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_MAGIC_LEVEL:
-			setVarSkill(SKILL_MAGLEVEL, static_cast<int32_t>(imbue->value));
-			break;
-		}
-	}
-
-	if (imbue->isSpecialSkill()) {
-		switch (imbue->imbuetype) {
-		case ImbuementType::IMBUEMENT_TYPE_MANA_LEECH:
-			setVarSpecialSkill(SPECIALSKILL_MANALEECHAMOUNT, static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_LIFE_LEECH:
-			setVarSpecialSkill(SPECIALSKILL_LIFELEECHAMOUNT, static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_CRITICAL_CHANCE:
-			setVarSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE, static_cast<int32_t>(imbue->value));
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_CRITICAL_AMOUNT:
-			setVarSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT, static_cast<int32_t>(imbue->value));
-			break;
-		}
-	}
-
-	if (imbue->isStat()) {
-		switch (imbue->imbuetype) {
-		case ImbuementType::IMBUEMENT_TYPE_CAPACITY_BOOST:
-			capacity += imbue->value;
-			break;
-		case ImbuementType::IMBUEMENT_TYPE_SPEED_BOOST:
-			g_game.changeSpeed(this->getPlayer(), static_cast<int32_t>(imbue->value));
-			break;
-		}
-	}
-	sendSkills();
-	sendStats();
-}
-
 CreatureType_t Player::getCreatureType(const MonsterPtr& monster) const
 {
 	auto creatureType = CREATURETYPE_MONSTER;
@@ -6138,293 +5874,6 @@ CreatureType_t Player::getCreatureType(const MonsterPtr& monster) const
 		creatureType = CREATURETYPE_SUMMON_OWN;
 	}
 	return creatureType;
-}
-
-static ModifierTotals getValidatedTotals(const std::vector<std::shared_ptr<DamageModifier>>& modifierList, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) {
-	uint16_t percent = 0;
-	uint16_t flat = 0;
-	// to-do: const and auto&
-	for (auto& modifier : modifierList) {
-
-		if (modifier->appliesToDamage(damageType) && modifier->appliesToOrigin(originType) && modifier->appliesToTarget(creatureType, race, creatureName)) {
-			if (modifier->isFlatValue() && modifier->getChance() == 0 || modifier->isFlatValue() && modifier->getChance() == 100) {
-					flat += modifier->getValue();
-					continue;
-			} else if (modifier->isFlatValue()) {
-				if (modifier->getChance() >= uniform_random(1, 100)) {
-					flat += modifier->getValue();
-					continue;
-				}
-			}
-
-			if (modifier->isPercent() && modifier->getChance() == 0 || modifier->isPercent() && modifier->getChance() == 100) {
-				percent += modifier->getValue();
-				continue;
-			} else if (modifier->isPercent()) {
-				if (modifier->getChance() >= uniform_random(1, 100)) {
-					percent += modifier->getValue();
-					continue;
-				}
-			}
-		}
-	}
-	percent = std::clamp<uint16_t>(percent, 0, 100);
-	return ModifierTotals(flat, percent);
-}
-
-gtl::node_hash_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Player::getAttackModifiers() const
-{
-	gtl::node_hash_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> modifierMap;
-
-	if (augments and not augments->empty())
-	{
-		for (const auto& aug : *augments)
-		{
-			for (const auto& mod : aug->getAttackModifiers())
-			{
-				modifierMap[mod->getType()].emplace_back(mod);
-			}
-		}
-	}
-
-	const bool slotProtection = g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION);
-	for (uint8_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_RING; ++slot)
-	{
-		if (const auto& item = inventory[slot]; item)
-		{
-            if (item->isAugmented())
-			{
-                const auto& augs = item->getAugments();
-				for (const auto& aug : *augs)
-				{
-					if (not slotProtection or (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))))
-					{
-						for (const auto& mod : aug->getAttackModifiers())
-						{
-							modifierMap[mod->getType()].emplace_back(mod);
-						}
-					}
-					else if (slotProtection and (slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE and item->getWeaponType() != WEAPON_AMMO))
-					{
-						for (const auto& mod : aug->getAttackModifiers())
-						{
-							modifierMap[mod->getType()].emplace_back(mod);
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return modifierMap;
-}
-
-gtl::node_hash_map <uint8_t, std::vector<std::shared_ptr<DamageModifier>>> Player::getDefenseModifiers() const
-{
-	gtl::node_hash_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> modifierMap;
-
-	if (augments and not augments->empty())
-	{
-		for (const auto& aug : *augments)
-		{
-			for (const auto& mod : aug->getDefenseModifiers())
-			{
-				modifierMap[mod->getType()].emplace_back(mod);
-			}
-		}
-	}
-
-	const bool slotProtection = g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION);
-	for (uint8_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_RING; ++slot)
-	{
-		if (const auto& item = inventory[slot]; item)
-		{
-            if (item->isAugmented())
-			{
-                const auto& augs = item->getAugments();
-				for (const auto& aug : *augs)
-				{
-					if (not slotProtection or (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))))
-					{
-						for (const auto& mod : aug->getDefenseModifiers())
-						{
-							modifierMap[mod->getType()].emplace_back(mod);
-						}
-					}
-					else if (slotProtection and (slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
-					{
-						for (const auto& mod : aug->getDefenseModifiers())
-						{
-							modifierMap[mod->getType()].emplace_back(mod);
-						}
-					}
-				}
-			}
-		}
-	}
-	return modifierMap;
-}
-
-gtl::node_hash_map<uint8_t, ModifierTotals> Player::getConvertedTotals(const uint8_t modType, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName)
-{
-	gtl::node_hash_map<uint8_t, ModifierTotals> playerList;
-	playerList.reserve(COMBAT_COUNT);
-
-	gtl::node_hash_map<uint8_t, ModifierTotals> itemList;
-	itemList.reserve(COMBAT_COUNT);
-	
-	[[unlikely]]
-	if ((modType != ATTACK_MODIFIER_CONVERSION) and (modType != DEFENSE_MODIFIER_REFORM)) 
-	{
-		std::cout << "::: WARNING Player::getConvertedTotals called with invalid Mod Type! \n";
-		return playerList;
-	}
-
-	if (augments and not augments->empty())
-	{
-		for (const auto& aug : *augments)
-		{
-			const auto& modifiers = modType == ATTACK_MODIFIER_CONVERSION ? aug->getAttackModifiers(modType) : aug->getDefenseModifiers(modType);
-			for (const auto& modifier : modifiers) 
-			{
-				if (modifier->appliesToDamage(damageType) and modifier->appliesToOrigin(originType) and modifier->appliesToTarget(creatureType, race, creatureName)) 
-				{
-					uint16_t flat = 0;
-					uint16_t percent = 0;
-
-					if (modifier->isFlatValue() and modifier->getChance() == 0 or modifier->isFlatValue() and modifier->getChance() == 100) 
-					{
-						flat += modifier->getValue();
-					} 
-					else if (modifier->isFlatValue()) 
-					{
-						if (modifier->getChance() >= uniform_random(1, 100)) 
-						{
-							flat += modifier->getValue();
-						}
-					}
-
-					if (modifier->isPercent() && modifier->getChance() == 0 or modifier->isPercent() and modifier->getChance() == 100) 
-					{
-						percent += modifier->getValue();
-					} 
-					else if (modifier->isPercent()) 
-					{
-						if (modifier->getChance() >= uniform_random(1, 100)) 
-						{
-							percent += modifier->getValue();
-						}
-					}
-
-					percent = std::min<uint16_t>(percent, 100);
-					const auto& index = combatTypeToIndex(modifier->getConversionType());
-					if (auto [it, inserted] = playerList.try_emplace(index, ModifierTotals{flat, percent}); not inserted) 
-					{
-						it->second += ModifierTotals{flat, percent};
-					}
-				}
-			}
-		}
-	}
-
-	for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) 
-	{
-		if (const auto& item = inventory[slot]; item) 
-		{
-            if (item->isAugmented()) 
-			{
-                const auto& augs = item->getAugments();
-				for (const auto& aug : *augs) 
-				{
-					const auto& modifiers = modType == ATTACK_MODIFIER_CONVERSION ? aug->getAttackModifiers(modType) : aug->getDefenseModifiers(modType);
-					for (const auto& modifier : modifiers) 
-					{
-						if (modifier->appliesToDamage(damageType) and modifier->appliesToOrigin(originType) and modifier->appliesToTarget(creatureType, race, creatureName)) 
-						{
-							uint16_t flat = 0;
-							uint16_t percent = 0;
-
-							if (modifier->isFlatValue() and modifier->getChance() == 0 or modifier->isFlatValue() and modifier->getChance() == 100) 
-							{
-								flat += modifier->getValue();
-							} 
-							else if (modifier->isFlatValue()) 
-							{
-								if (modifier->getChance() >= uniform_random(1, 100)) 
-								{
-									flat += modifier->getValue();
-								}
-							}
-
-							if (modifier->isPercent() and modifier->getChance() == 0 or modifier->isPercent() and modifier->getChance() == 100) 
-							{
-								percent += modifier->getValue();
-							} 
-							else if (modifier->isPercent()) 
-							{
-								if (modifier->getChance() >= uniform_random(1, 100)) 
-								{
-									percent += modifier->getValue();
-								}
-							}
-						
-							percent = std::min<uint16_t>(percent, 100);
-							const auto index = combatTypeToIndex(modifier->getConversionType());
-							if (auto [it, inserted] = playerList.try_emplace(index, ModifierTotals{flat, percent}); not inserted) 
-							{
-								it->second += ModifierTotals{flat, percent};
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return playerList;
-}
-
-gtl::node_hash_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const
-{
-	
-	gtl::node_hash_map<uint8_t, ModifierTotals> modMap;
-	modMap.reserve(ATTACK_MODIFIER_LAST);
-	
-	auto attackMods = getAttackModifiers();
-	for (uint8_t i = ATTACK_MODIFIER_NONE; i < ATTACK_MODIFIER_LAST; ++i) {
-		auto modTotals = getValidatedTotals(attackMods[i], damageType, originType, creatureType, race, creatureName);
-		modMap.try_emplace(i, modTotals);
-	}
-	return modMap;
-}
-
-gtl::node_hash_map<uint8_t, ModifierTotals> Player::getAttackModifierTotals(const RawModifierMap& precomputedMods, const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, const std::string_view creatureName) const
-{
-	static const std::vector<std::shared_ptr<DamageModifier>> emptyVec;
-	gtl::node_hash_map<uint8_t, ModifierTotals> modMap;
-	modMap.reserve(ATTACK_MODIFIER_LAST);
-	for (uint8_t i = ATTACK_MODIFIER_NONE; i < ATTACK_MODIFIER_LAST; ++i)
-	{
-		const auto it = precomputedMods.find(i);
-		const auto& modList = (it != precomputedMods.end()) ? it->second : emptyVec;
-		modMap.try_emplace(i, getValidatedTotals(modList, damageType, originType, creatureType, race, creatureName));
-	}
-	return modMap;
-}
-
-gtl::node_hash_map<uint8_t, ModifierTotals> Player::getDefenseModifierTotals(const CombatType_t damageType, const CombatOrigin originType, const CreatureType_t creatureType, const RaceType_t race, std::string_view creatureName) const
-{
-	
-	gtl::node_hash_map<uint8_t, ModifierTotals> modMap;
-	modMap.reserve(DEFENSE_MODIFIER_LAST);
-	
-	auto defenseMods = getDefenseModifiers();
-	// todo: skip reform in this loop
-	for (uint8_t i = DEFENSE_MODIFIER_FIRST; i <= DEFENSE_MODIFIER_LAST; ++i) {
-		auto modTotals = getValidatedTotals(defenseMods[i], damageType, originType, creatureType, race, creatureName);
-		modMap.try_emplace(i, modTotals);
-	}
-	return modMap;
 }
 
 std::vector<Position> Player::getOpenPositionsInRadius(int radius) const {
@@ -6458,398 +5907,7 @@ std::vector<Position> Player::getOpenPositionsInRadius(int radius) const {
 	return openPositions;
 }
 
-void Player::absorbDamage(const std::optional<CreaturePtr> attacker,
-							CombatDamage& originalDamage,
-							int32_t percent,
-							int32_t flat) {
-	int32_t absorbDamage = 0;
-	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
-	if (percent) {
-		absorbDamage += originalDamageValue  * percent / 100;
-	}
-	if (flat) {
-		absorbDamage += flat;
-	}
 
-	if (absorbDamage != 0) {
-		absorbDamage = std::min<int32_t>(absorbDamage, originalDamageValue);
-		originalDamage.primary.value += absorbDamage;
-
-		auto absorb = CombatDamage{};
-		absorb.leeched = true;
-		absorb.origin = ORIGIN_AUGMENT;
-		absorb.primary.type = COMBAT_HEALING;
-		absorb.primary.value = absorbDamage;
-		absorb.augmented = true;
-
-		auto absorbParams = CombatParams{};
-		absorbParams.origin = ORIGIN_AUGMENT;
-		absorbParams.combatType = COMBAT_HEALING;
-		absorbParams.impactEffect = CONST_ME_MAGIC_RED;
-		absorbParams.distanceEffect = CONST_ANI_NONE;
-
-		if (!attacker.has_value()) {
-			Combat::doTargetCombat(nullptr, this->getPlayer(), absorb, absorbParams);
-			return;
-		}
-
-		Combat::doTargetCombat(attacker.value(), this->getPlayer(), absorb, absorbParams);
-	}
-}
-
-void Player::restoreManaFromDamage(std::optional<CreaturePtr> attacker,
-									CombatDamage& originalDamage,
-									int32_t percent,
-									int32_t flat) {
-	int32_t restoreDamage = 0;
-	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
-	if (percent) {
-		restoreDamage += originalDamageValue  * percent / 100;
-	}
-	if (flat) {
-		restoreDamage += flat;
-	}
-
-	if (restoreDamage != 0) {
-		restoreDamage = std::min<int32_t>(restoreDamage, originalDamageValue);
-		originalDamage.primary.value += restoreDamage;
-
-		auto restore = CombatDamage{};
-		restore.leeched = true;
-		restore.origin = ORIGIN_AUGMENT;
-		restore.primary.type = COMBAT_MANADRAIN;
-		restore.primary.value = restoreDamage;
-		restore.augmented = true;
-
-		auto restoreParams = CombatParams{};
-		restoreParams.origin = ORIGIN_AUGMENT;
-		restoreParams.combatType = COMBAT_MANADRAIN;
-		restoreParams.impactEffect = CONST_ME_ENERGYHIT;
-		restoreParams.distanceEffect = CONST_ANI_NONE;
-
-		if (!attacker.has_value()) {
-			Combat::doTargetCombat(nullptr, this->getPlayer(), restore, restoreParams);
-			return;
-		}
-
-		Combat::doTargetCombat(attacker.value(), this->getPlayer(), restore, restoreParams);
-	}
-}
-
-void Player::reviveSoulFromDamage(std::optional<CreaturePtr> attacker,
-									CombatDamage& originalDamage,
-									int32_t percent,
-									int32_t flat) {
-	int32_t reviveDamage = 0;
-	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
-	if (percent) {
-		reviveDamage += originalDamageValue  * percent / 100;
-	}
-	if (flat) {
-		reviveDamage += flat;
-	}
-
-	if (reviveDamage != 0) {
-		reviveDamage = std::min<int32_t>(reviveDamage,  originalDamageValue);
-		originalDamage.primary.value += reviveDamage;
-
-		auto message = (attacker.has_value()) ?
-			"You gained " + std::to_string(reviveDamage) + " soul from " + attacker.value()->getName() + "'s attack." :
-			"You gained " + std::to_string(reviveDamage) + " soul from revival.";
-		
-		sendTextMessage(MESSAGE_HEALED, message);
-		changeSoul(reviveDamage);
-	}
-}
-
-void Player::replenishStaminaFromDamage(std::optional<CreaturePtr> attacker,
-										CombatDamage& originalDamage,
-										int32_t percent,
-										int32_t flat) {
-	int32_t replenishDamage = 0;
-	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
-	if (percent) {
-		replenishDamage += originalDamageValue  * percent / 100;
-	}
-	if (flat) {
-		replenishDamage += flat;
-	}
-
-	if (replenishDamage != 0) {
-		replenishDamage = std::min<int32_t>(replenishDamage,  originalDamageValue);
-		originalDamage.primary.value += replenishDamage;
-
-		if (!g_config.GetBoolean(ConfigManager::AUGMENT_STAMINA_RULE)) {
-			replenishDamage = replenishDamage / 60;
-		}
-
-		auto message = (attacker.has_value()) ?
-			"You gained " + std::to_string(replenishDamage) + " stamina from " + attacker.value()->getName() + "'s attack." :
-			"You gained " + std::to_string(replenishDamage) + " stamina from replenishment.";
-
-		sendTextMessage(MESSAGE_HEALED,  message);
-		addStamina(static_cast<uint16_t>(replenishDamage));
-	}
-}
-
-void Player::resistDamage(std::optional<CreaturePtr> attacker,
-							CombatDamage& originalDamage,
-							int32_t percent,
-							int32_t flat) const
-{
-	int32_t resistDamage = 0;
-	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
-	if (percent) {
-		resistDamage += originalDamageValue  * percent / 100;
-	}
-	if (flat) {
-		resistDamage += flat;
-	}
-
-	if (resistDamage != 0) {
-		resistDamage = std::min<int32_t>(resistDamage, originalDamageValue);
-		originalDamage.primary.value += resistDamage;
-		
-		auto message = (attacker.has_value()) ?
-			"You resisted " + std::to_string(resistDamage) + " damage from " + attacker.value()->getName() + "'s attack." :
-			"You resisted " + std::to_string(resistDamage) + " damage.";
-
-		sendTextMessage(MESSAGE_HEALED, message);
-	}
-}
-
-void Player::reflectDamage(std::optional<CreaturePtr> attacker,
-							CombatDamage& originalDamage,
-							int32_t percent,
-							int32_t flat,
-							uint8_t areaEffect,
-							uint8_t distanceEffect) {
-	
-	if (!attacker.has_value()) {
-		return;
-	}
-
-	int32_t reflectDamage = 0;
-	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
-	if (percent) {
-		reflectDamage += originalDamageValue  * percent / 100;
-	}
-	if (flat) {
-		reflectDamage += flat;
-	}
-
-	if (reflectDamage != 0)	{
-		const auto& target = attacker.value();
-		reflectDamage = std::min<int32_t>(reflectDamage, originalDamageValue);
-		originalDamage.primary.value += reflectDamage;
-
-		auto reflect = CombatDamage{};
-		reflect.primary.type = originalDamage.primary.type;
-		reflect.primary.value = (0 - reflectDamage);
-		reflect.origin = ORIGIN_AUGMENT;
-		reflect.augmented = true;
-
-		auto params = CombatParams{};
-		params.distanceEffect = distanceEffect;
-		params.impactEffect = areaEffect;
-		params.origin = ORIGIN_AUGMENT;
-		params.combatType = originalDamage.primary.type;
-
-		sendTextMessage(
-		MESSAGE_DAMAGE_DEALT,
-		 "You reflected " + std::to_string(reflectDamage) + " damage from " + target->getName() + "'s attack back at them."
-		 );
-	
-		Combat::doTargetCombat(this->getPlayer(), target, reflect, params);
-	}
-}
-
-void Player::deflectDamage(std::optional<CreaturePtr> attackerOpt, 
-                          CombatDamage& originalDamage, 
-                          int32_t percent, 
-                          int32_t flat, 
-                          CombatOrigin paramOrigin, 
-                          uint8_t areaEffect, 
-                          uint8_t distanceEffect) {
-	
-    int32_t deflectDamage = 0;
-    const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
-
-	if (percent) {
-		deflectDamage += originalDamageValue  * percent / 100;
-	}
-	if (flat) {
-		deflectDamage += flat;
-	}
-    
-    if (deflectDamage > 0) {
-    	deflectDamage = std::min(deflectDamage, originalDamageValue);
-    	originalDamage.primary.value += deflectDamage;
-        constexpr int32_t DAMAGE_DIVIDER = 50.0; // Should be moved to global config
-        constexpr int32_t MAX_TARGETS = 6.0;
-        const int32_t calculatedTargets = std::min<int32_t>(
-            std::round<int32_t>((deflectDamage) / DAMAGE_DIVIDER) + 1, 
-            MAX_TARGETS
-        );
-    	
-        auto defensePos = getPosition();
-        const auto attackPos = generateAttackPosition(attackerOpt, defensePos, paramOrigin);
-        const auto damageArea = generateDeflectArea(attackerOpt, calculatedTargets);
-    	
-        auto deflect = CombatDamage{};
-        deflect.primary.type = originalDamage.primary.type;
-        deflect.origin = ORIGIN_AUGMENT;
-        deflect.primary.value = -1 * std::round<int32_t>(deflectDamage / calculatedTargets);
-		deflect.augmented = true;
-    	
-        auto params = CombatParams();
-        params.origin = ORIGIN_AUGMENT;
-        params.combatType = originalDamage.primary.type;
-        params.distanceEffect = distanceEffect;
-        params.targetCasterOrTopMost = true;
-        params.impactEffect = (areaEffect == CONST_ME_NONE) 
-            ? CombatTypeToAreaEffect(originalDamage.primary.type) 
-            : areaEffect;
-    	
-        sendTextMessage(
-            MESSAGE_EVENT_DEFAULT,
-            "You deflected " + std::to_string(deflectDamage) + " total damage."
-        );
-    	
-        Combat::doAreaCombat(this->getPlayer(), attackPos, damageArea.get(), deflect, params);
-    }
-}
-
-void Player::ricochetDamage(CombatDamage& originalDamage,
-							int32_t percent,
-							int32_t flat,
-							uint8_t areaEffect,
-							uint8_t distanceEffect) {
-
-	int32_t ricochetDamage = 0;
-	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
-
-	if (percent) {
-		ricochetDamage += originalDamageValue  * percent / 100;
-	}
-	if (flat) {
-		ricochetDamage += flat;
-	}
-
-	auto targetList = getOpenPositionsInRadius(3);
-
-	if (ricochetDamage != 0 && targetList.size() > 0) {
-		const auto& targetPos = targetList[uniform_random(0, targetList.size() - 1)];
-		ricochetDamage = std::min(ricochetDamage, originalDamageValue);
-		originalDamage.primary.value += ricochetDamage;
-
-		auto message = "An attack on you ricocheted " + std::to_string(ricochetDamage) + " damage.";
-		sendTextMessage(MESSAGE_EVENT_ADVANCE, message);
-
-		auto ricochet = CombatDamage{};
-		ricochet.primary.type = originalDamage.primary.type;
-		ricochet.primary.value = (0 - ricochetDamage);
-		ricochet.origin = ORIGIN_AUGMENT;
-		ricochet.augmented = true;
-
-		auto params = CombatParams();
-		params.origin = ORIGIN_AUGMENT;
-		params.combatType = originalDamage.primary.type;
-		params.distanceEffect = distanceEffect;
-		params.targetCasterOrTopMost = true;
-		params.impactEffect = (areaEffect == CONST_ME_NONE) ? CombatTypeToAreaEffect(originalDamage.primary.type) : areaEffect;
-
-		const auto& damageArea = std::make_unique<AreaCombat>();
-		damageArea->setupArea(Deflect1xArea, 5);
-		Combat::doAreaCombat(this->getPlayer(), targetPos, damageArea.get(), ricochet, params);
-	}
-}
-
-void Player::convertDamage(const CreaturePtr& target, CombatDamage& originalDamage, gtl::node_hash_map<uint8_t, ModifierTotals> conversionList) {
-	auto iter = conversionList.begin();
-
-	while (originalDamage.primary.value < 0 && iter != conversionList.end()) {
-
-		const CombatType_t combatType = indexToCombatType(iter->first);
-		const ModifierTotals& totals = iter->second;
-
-		int32_t convertedDamage = 0;
-		const int32_t percent = static_cast<int32_t>(totals.percentTotal);
-		const int32_t flat = static_cast<int32_t>(totals.flatTotal);
-		const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
-		if (percent) {
-			convertedDamage += originalDamageValue  * percent / 100;
-		}
-		if (flat) {
-			convertedDamage += flat;
-		}
-
-		if (convertedDamage != 0 && target) {
-			convertedDamage = std::min<int32_t>(convertedDamage, originalDamageValue);
-			originalDamage.primary.value += convertedDamage;
-			
-			auto converted = CombatDamage{};
-			converted.primary.type = combatType;
-			converted.primary.value = (0 - convertedDamage);
-			converted.origin = ORIGIN_AUGMENT;
-			converted.augmented = true;
-
-			auto params = CombatParams{};
-			params.combatType = combatType;
-			params.origin = ORIGIN_AUGMENT;
-			
-			auto message = "You converted " + std::to_string(convertedDamage) + " " + getCombatName(originalDamage.primary.type) + " damage to " + getCombatName(combatType) + " during an attack on " + target->getName() + ".";
-			sendTextMessage(MESSAGE_DAMAGE_DEALT, message);
-			Combat::doTargetCombat(this->getPlayer(), target, converted, params);
-		}
-		++iter;
-	}
-}
-
-void Player::reformDamage(std::optional<CreaturePtr> attacker, CombatDamage& originalDamage, gtl::node_hash_map<uint8_t, ModifierTotals> conversionList) {
-	auto iter = conversionList.begin();
-
-	while (originalDamage.primary.value < 0 && iter != conversionList.end()) {
-
-		CombatType_t combatType = indexToCombatType(iter->first);
-		const ModifierTotals& totals = iter->second;
-
-		int32_t reformedDamage = 0;
-		int32_t percent = static_cast<int32_t>(totals.percentTotal);
-		int32_t flat = static_cast<int32_t>(totals.flatTotal);
-		const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
-		if (percent) {
-			reformedDamage += originalDamageValue  * percent / 100;
-		}
-		if (flat) {
-			reformedDamage += flat;
-		}
-
-		if (reformedDamage) {
-			reformedDamage = std::min<int32_t>(reformedDamage, originalDamageValue);
-			originalDamage.primary.value += reformedDamage;
-
-			auto reform = CombatDamage{};
-			reform.primary.type = combatType;
-			reform.primary.value = (0 - reformedDamage);
-			reform.origin = ORIGIN_AUGMENT;
-			reform.augmented = true;
-
-			auto params = CombatParams{};
-			params.combatType = combatType;
-			params.origin = ORIGIN_AUGMENT;
-			
-			auto message = (attacker.has_value()) ?
-				"You reformed " + std::to_string(reformedDamage) + " " + getCombatName(originalDamage.primary.type) + " damage from " + getCombatName(combatType) + " during an attack on you by " + attacker.value()->getName() + "." :
-				"You reformed " + std::to_string(reformedDamage) + " " + getCombatName(originalDamage.primary.type) + " damage from " + getCombatName(combatType) + ".";
-			
-			sendTextMessage(MESSAGE_DAMAGE_DEALT, message);
-			auto target = (attacker.has_value()) ? attacker.value() : nullptr;
-			Combat::doTargetCombat(target, this->getPlayer(), reform, params);
-		}
-		++iter;
-	}
-}
 
 std::vector<ItemPtr> Player::getEquipment(bool validateSlot) const
 {
@@ -6883,7 +5941,7 @@ std::vector<ItemPtr> Player::getEquipment(bool validateSlot) const
 	return equipment;
 }
 
-Position Player::generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, CombatOrigin origin) {
+Position Player::generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, uint8_t origin) {
 
 	const Direction attackDirection = (attacker.has_value())
 		? getDirectionTo(defensePosition, attacker.value()->getPosition())
@@ -6980,29 +6038,4 @@ std::unique_ptr<AreaCombat> Player::generateDeflectArea(std::optional<CreaturePt
 	return combatArea;
 }
 
-void Player::increaseDamage(	std::optional<CreaturePtr> attacker,
-								CombatDamage& originalDamage,
-								int32_t percent,
-								int32_t flat) const
-{
-	int32_t increasedDamage = 0;
-	const int32_t originalDamageValue = std::abs(originalDamage.primary.value);
-	if (percent) {
-		increasedDamage += originalDamageValue * percent / 100;
-	}
 
-	if (flat) {
-		increasedDamage += flat;
-	}
-
-	if (increasedDamage != 0) {
-		increasedDamage = std::min<int32_t>(increasedDamage, originalDamageValue);
-		originalDamage.primary.value -= increasedDamage;
-
-		auto message = (attacker.has_value()) ?
-			"You took an additional " + std::to_string(increasedDamage) + " damage from " + attacker.value()->getName() + "'s attack." :
-			"You took an additional " + std::to_string(increasedDamage) + " damage.";
-
-		sendTextMessage(MESSAGE_DAMAGE_RECEIVED, message);
-	}
-}

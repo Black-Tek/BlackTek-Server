@@ -600,13 +600,6 @@ class Game
 		void checkCreatureAttack(uint32_t creatureId) noexcept;
 		void checkLight();
 
-		bool combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, const CreaturePtr& target, bool checkDefense, bool checkArmor, bool field, bool ignoreResistances = false);
-
-		void combatGetTypeInfo(CombatType_t combatType, const CreaturePtr& target, TextColor_t& color, uint8_t& effect);
-
-		bool combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& target, CombatDamage& damage, bool showMessages = true);
-		bool combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& target, CombatDamage& damage, bool showMessages = true);
-
 		//animation help functions
 		void addCreatureHealth(const CreatureConstPtr& target);
 		static void addCreatureHealth(const SpectatorVec& spectators, const CreatureConstPtr& target);
