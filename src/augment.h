@@ -31,8 +31,8 @@ public:
 	const std::string getName() const;
 	const std::string getDescription() const;
 
-	void setName(const std::string& name);
-	void setDescription(const std::string& description);
+	//void setName(const std::string& name);
+	//void setDescription(const std::string& description);
 
 	static Augment MakeAugment(std::string augmentName, std::string description = "");
 	static Augment MakeAugment(const Augment& original);
@@ -44,8 +44,6 @@ public:
 
 	uint32_t attack_mod_count() const noexcept;
 	uint32_t defense_mod_count() const noexcept;
-	uint32_t reform_mod_count() const noexcept;
-	uint32_t conversion_mod_count() const noexcept;
 
 	std::span<DamageModifier> getAttackModifiers();
 	std::span<DamageModifier> getDefenseModifiers();
@@ -215,9 +213,7 @@ inline void Augment::removeModifier(uint64_t guid)
 {
 	auto attackEnd = m_modifiers.begin() + m_attack_count;
 
-	auto it = std::find_if(m_modifiers.begin(), attackEnd, [guid](const DamageModifier& m) {
-		return m.getGUID() == guid;
-	});
+	auto it = std::find_if(m_modifiers.begin(), attackEnd, [guid](const DamageModifier& m) { return m.getGUID() == guid;});
 
 	if (it != attackEnd)
 	{
@@ -226,9 +222,7 @@ inline void Augment::removeModifier(uint64_t guid)
 		return;
 	}
 
-	auto dit = std::find_if(attackEnd, m_modifiers.end(), [guid](const DamageModifier& m) {
-		return m.getGUID() == guid;
-	});
+	auto dit = std::find_if(attackEnd, m_modifiers.end(), [guid](const DamageModifier& m) {	return m.getGUID() == guid;	});
 
 	if (dit != m_modifiers.end())
 	{
