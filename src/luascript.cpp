@@ -4610,7 +4610,7 @@ int LuaScriptInterface::luaRawGetMetatable(lua_State* L)
 int LuaScriptInterface::luaSystemTime(lua_State* L)
 {
 	// os.mtime()
-	lua_pushinteger(L, OTSYS_TIME());
+	lua_pushinteger(L, OTSYS_TIME_WALL());
 	return 1;
 }
 
