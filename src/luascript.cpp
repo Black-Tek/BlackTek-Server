@@ -1023,6 +1023,19 @@ void LuaScriptInterface::pushLoot(lua_State* L, const std::vector<LootBlock>& lo
         static_cast<std::underlying_type_t<decltype(value)>>(value)); \
 }
 
+#define registerEmbeddedEnumClass(value) { \
+    std::string enumName = #value; \
+    std::replace(enumName.begin(), enumName.end(), ':', '_'); \
+    std::string clean; \
+    clean.reserve(enumName.size()); \
+    for (size_t i = 0; i < enumName.size(); ++i) { \
+        if (enumName[i] == '_' && i + 1 < enumName.size() && enumName[i+1] == '_') continue; \
+        clean += enumName[i]; \
+    } \
+    registerGlobalVariable(clean, \
+        static_cast<std::underlying_type_t<decltype(value)>>(value)); \
+}
+
 void LuaScriptInterface::registerFunctions()
 {
 	//doPlayerAddItem(uid, itemid, <optional: default: 1> count/subtype)

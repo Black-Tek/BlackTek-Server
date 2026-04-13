@@ -100,14 +100,14 @@ namespace BlackTek
 			Spell,
 			Melee,
 			Ranged,
+			Augment,
 			Absorb,
 			Restore,
 			Reflect,
 			Deflect,
 			Ricochet,
 			Piercing,
-			Imbuement,
-			Augment,
+
 
 			Origins = 12
 		};

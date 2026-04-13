@@ -1521,7 +1521,7 @@ class Player final : public Creature, public Cylinder
 
 		Position generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, uint8_t origin);
 
-		std::unique_ptr<AreaCombat> generateDeflectArea(std::optional<CreaturePtr> attacker, int32_t targetCount) const;
+		std::unique_ptr<BlackTek::AreaCombat> generateDeflectArea(std::optional<CreaturePtr> attacker, int32_t targetCount) const;
 
 	private:
 		std::forward_list<Condition*> getMuteConditions() const;

@@ -6000,9 +6000,9 @@ Position Player::generateAttackPosition(std::optional<CreaturePtr> attacker, Pos
 	return vectorSize ? possibleTargets[index] : Spells::getCasterPosition(this->getPlayer(), getOppositeDirection(this->getDirection()));
 } 
 
-std::unique_ptr<AreaCombat> Player::generateDeflectArea(std::optional<CreaturePtr> attacker, int32_t targetCount) const
+std::unique_ptr<BlackTek::AreaCombat> Player::generateDeflectArea(std::optional<CreaturePtr> attacker, int32_t targetCount) const
 {
-	auto combatArea = std::make_unique<AreaCombat>();
+	auto combatArea = std::make_unique<BlackTek::AreaCombat>();
 	const auto& defendersPosition = this->getPosition();
 
 	switch (const auto direction = (attacker.has_value()) ? getDirectionTo(defendersPosition, attacker.value()->getPosition()) : getOppositeDirection(this->getDirection())) {
@@ -6013,7 +6013,7 @@ std::unique_ptr<AreaCombat> Player::generateDeflectArea(std::optional<CreaturePt
 		const auto targetAreas = _StandardDeflectionMap.find(targetCount)->second;
 			if (!targetAreas.empty()) {
 				const auto index = std::rand() % targetAreas.size();
-				const auto area = targetAreas[index];
+				const auto& area = targetAreas[index];
 				combatArea->setupArea(area, 5);
 			}
 		break;
@@ -6024,7 +6024,7 @@ std::unique_ptr<AreaCombat> Player::generateDeflectArea(std::optional<CreaturePt
 	case DIRECTION_NORTHEAST: {
 		if (const auto targetAreas = _DiagonalDeflectionMap.find(targetCount)->second; !targetAreas.empty()) {
 			const auto index = std::rand() % targetAreas.size();
-			const auto area = targetAreas[index];
+			const auto& area = targetAreas[index];
 			combatArea->setupExtArea(area, 5);
 		}
 		break;

@@ -37,7 +37,7 @@ namespace BlackTek
 		}
 	}
 
-	CombatHandle BlackTek::CombatRegistry::Create()
+	CombatHandle CombatRegistry::Create()
 	{
 		const int64_t newId = next_id_.fetch_add(1, std::memory_order_relaxed);
 		auto [it, ok] = table_.try_emplace(newId);
@@ -45,18 +45,18 @@ namespace BlackTek
 		return CombatHandle(&it->second);   // add_ref fires here so ref_count becomes 1
 	}
 
-	void BlackTek::CombatRegistry::Release(int64_t id)
+	void CombatRegistry::Release(int64_t id)
 	{
 		table_.erase(id);   // hopefully destructs Combat in-place and returns the memory block back to the pool as expected
 	}
 
-	Combat* BlackTek::CombatRegistry::Get(int64_t id) noexcept
+	Combat* CombatRegistry::Get(int64_t id) noexcept
 	{
 		auto it = table_.find(id);
 		return (it != table_.end()) ? &it->second : nullptr;
 	}
 
-	const Combat* BlackTek::CombatRegistry::Get(int64_t id) const noexcept
+	const Combat* CombatRegistry::Get(int64_t id) const noexcept
 	{
 		auto it = table_.find(id);
 		return (it != table_.end()) ? &it->second : nullptr;
@@ -89,7 +89,7 @@ namespace BlackTek
 		return std::bit_cast<uint32_t>(data);
 	}
 
-	NoticeData UnPackNotice(uint32_t packedValue) { return std::bit_cast<NoticeData>(packedValue); }
+	static NoticeData UnPackNotice(uint32_t packedValue) { return std::bit_cast<NoticeData>(packedValue); }
 
 	static const std::vector<TilePtr>& getList(const MatrixArea& area, const Position& targetPos, const Direction dir)
 	{

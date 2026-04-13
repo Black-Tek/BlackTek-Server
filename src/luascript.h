@@ -30,9 +30,9 @@
 #include "declarations.h"
 #include <gtl/phmap.hpp>
 
-class AreaCombat;
-class Combat;
-using Combat_ptr = std::shared_ptr<Combat>;
+class BlackTek::AreaCombat;
+class BlackTek::Combat;
+using Combat_ptr = std::shared_ptr<BlackTek::Combat>;
 class Condition;
 class InstantSpell;
 class Spell;

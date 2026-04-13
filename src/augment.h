@@ -141,7 +141,14 @@ private:
 	// m_modifiers is a partitioned vector: [0, m_attack_count) = attack, [m_attack_count, size()) = defense
 	std::vector<DamageModifier> m_modifiers;
 	uint32_t m_attack_count = 0;
-	ModifierFlag trigger_index = ModifierFlag::InvalidFlag;
+	DamageModifier::Flag trigger_index = DamageModifier::Flag::InvalidFlag;
+
+	uint8_t damage_count = 0;
+	uint8_t origin_count = 0;
+	uint8_t creature_count = 0;
+	uint8_t race_count = 0;
+	uint8_t reformed_count = 0;
+	uint8_t converted_count = 0;
 };
 
 //
@@ -188,11 +195,11 @@ inline Augment Augment::MakeAugment(const Augment& original)
 
 inline void Augment::addModifier(const DamageModifier& mod)
 {
-	if (mod.getStance() == ATTACK_MOD)
+	if (mod.getStance() == std::to_underlying(DamageModifier::Stance::Attack))
 	{
 		addAttackModifier(mod);
 	}
-	else if (mod.getStance() == DEFENSE_MOD)
+	else if (mod.getStance() == std::to_underlying(DamageModifier::Stance::Defense))
 	{
 		addDefenseModifier(mod);
 	}
