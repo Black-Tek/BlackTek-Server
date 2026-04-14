@@ -189,6 +189,7 @@ namespace BlackTek
 	inline const bool		DamageModifier::isAttackStance() const				{ return mod_stance == std::to_underlying(Stance::Attack); }
 	inline const bool		DamageModifier::isDefenseStance() const				{ return mod_stance == std::to_underlying(Stance::Defense); }
 	inline const uint16_t	DamageModifier::getConversionType() const			{ return to_damage_type; }
+	inline const uint16_t	DamageModifier::getFilterIndex() const noexcept		{ return filter_index;}
 	inline const uint8_t	DamageModifier::getCreatureType() const				{ return creature_type; }
 	inline const uint8_t	DamageModifier::getRaceType() const					{ return race_type; }
 }

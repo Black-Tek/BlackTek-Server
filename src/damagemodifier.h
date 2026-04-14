@@ -179,6 +179,7 @@ namespace BlackTek
 		[[nodiscard]] const bool hasCreatureName() const noexcept;
 		[[nodiscard]] const std::string& getMonsterName() const noexcept;
 		[[nodiscard]] const uint16_t getConversionType() const noexcept;
+		[[nodiscard]] const uint16_t getFilterIndex()  const noexcept;
 
 		// todo: see which of these voids can use noexcept and apply it.
 		void setType(uint8_t modType);

@@ -39,15 +39,12 @@ namespace BlackTek
 		const std::string getName() const;
 		const std::string getDescription() const;
 
-		//void setName(const std::string& name);
-		//void setDescription(const std::string& description);
-
 		static Augment MakeAugment(std::string augmentName, std::string description = "");
 		static Augment MakeAugment(const Augment& original);
 
-		void addModifier(const DamageModifier& modifier);
-		void addAttackModifier(const DamageModifier& modifier);
-		void addDefenseModifier(const DamageModifier& modifier);
+		void addModifier(const DamageModifier&& modifier);
+		void addAttackModifier(const DamageModifier&& modifier);
+		void addDefenseModifier(const DamageModifier&& modifier);
 		void removeModifier(uint64_t guid);
 
 		[[nodiscard]] uint32_t attack_mod_count() const noexcept;
@@ -56,16 +53,8 @@ namespace BlackTek
 		[[nodiscard]] std::vector<DamageModifier> getAttackModifiers(uint8_t modType) const noexcept;
 		[[nodiscard]] std::vector<DamageModifier> getDefenseModifiers(uint8_t modType) const noexcept;
 
-		void serialize(PropWriteStream& propWriteStream) const
-		{
-
-		}
-
-		bool unserialize(PropStream& propReadStream)
-		{
-			return true;
-		}
-
+		void serialize(PropWriteStream& propWriteStream) const;
+		static std::optional<Augment> deserialize(PropStream& propReadStream);
 
 	private:
 
@@ -75,10 +64,13 @@ namespace BlackTek
 		[[nodiscard]] std::span<const DamageModifier> getAttackModifiers() const noexcept;
 		[[nodiscard]] std::span<const DamageModifier> getDefenseModifiers() const noexcept;
 
+		void rebuild_triggers() noexcept;
+
 		// m_modifiers is a partitioned vector: [0, m_attack_count) = attack, [m_attack_count, size()) = defense
+		uint64_t m_guid = generateGUID();
 		std::vector<DamageModifier> m_modifiers;
 		uint32_t m_attack_count = 0;
-		DamageModifier::Flag trigger_index = DamageModifier::Flag::InvalidFlag;
+		uint16_t trigger_index = DamageModifier::Flag::InvalidFlag;
 
 		uint8_t damage_count = 0;
 		uint8_t origin_count = 0;
@@ -87,18 +79,6 @@ namespace BlackTek
 		uint8_t reformed_count = 0;
 		uint8_t converted_count = 0;
 	};
-
-	//
-	//inline Augment::Augment(const std::string& name, const std::string& description)
-	//	: m_name(name), m_description(description) {
-	//}
-	//
-	//inline Augment::Augment(const Augment& original)
-	//	: m_name(original.m_name),
-	//	m_description(original.m_description),
-	//	m_modifiers(original.m_modifiers),
-	//	m_attack_count(original.m_attack_count) {
-	//}
 
 	inline Augment Augment::MakeAugment(std::string augmentName, std::string description)
 	{
