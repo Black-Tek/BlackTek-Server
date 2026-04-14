@@ -108,7 +108,6 @@ namespace BlackTek
 			Ricochet,
 			Piercing,
 
-
 			Origins = 12
 		};
 
@@ -173,7 +172,7 @@ namespace BlackTek
 			PowerRatio      // Pokemon style: ((Stat * (Att/Def)) / Constant) + Base
 		};
 
-		struct CombatFactors
+		struct [[nodiscard]] CombatFactors
 		{
 			float scaling = 0.0f;
 			float base = 0.0f;

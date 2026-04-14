@@ -20,73 +20,7 @@
 
 namespace BlackTek
 {
-
-	struct WeildModifier 
-	{
-		uint8_t main = 0; // stat / skill 
-		uint8_t sub = 0; // health / sword
-		uint8_t value = 0;
-		// Percent & Flat can be out-of-banded into being each their own containers;
-	};
-
-	enum StatModifier : uint8_t
-	{
-		MAX_HEALTH,
-		HEALTH_REGEN,
-		MAX_MANA,
-		MANA_REGEN,
-		MAX_SOUL,
-		SOUL_REGEN,
-		MAX_STAMINA,
-		STAMINA_REGEN,
-		/// Entries below this line are to be added as future features.
-		MOVEMENT_SPEED,
-		CASTING_SPEED,
-		ATTACK_SPEED,
-	};
-
-	enum SkillModifier : uint8_t
-	{
-		MELEE_SKILL,
-		FIST_SKILL,
-		SWORD_SKILL,
-		AXE_SKILL,
-		CLUB_SKILL,
-		WAND_SKILL,
-		ROD_SKILL,
-		MAGIC_SKILL,
-		MAGIC_WEAPON_SKILL,
-		DISTANCE_SKILL,
-		SHIELD_SKILL,
-		FISHING_SKILL,
-	};
-
-	enum KillModifier : uint8_t 
-	{
-		AOE_DAMAGE,
-		BONUS_LOOT, // flat
-		BONUS_EXP,  // flat
-		LOOT_GAIN,  // percent
-		EXP_GAIN,   // percent
-	};
-
-	enum PassiveEffect : uint8_t 
-	{
-		// all these applicable to specific creature.
-		SCAVENGE, // increase chance for skinning
-		GUTTING, // increased creature products w/ chance
-		VOIDCALL, // increase mana leech if applicable
-		VAMPIRIC, // increase life leech if applicable
-		BLESS, // reduced death penalty
-		CLEANSE, // removes one random active negative status effect and temporarily makes you immune against it
-		ADDRENALINE, // chance to get temporary boosted movement speed after being attacked
-		NUMB, // chance to paralyze attacker after an attack
-		LOWBLOW, // increases crit hit chance if chance is already above 0
-		DODGE, // chance to dodge an attack
-	};
-
-
-	struct DamageModifier
+	struct [[nodiscard]] DamageModifier
 	{
 		inline static uint64_t generateGUID()
 		{
@@ -174,6 +108,41 @@ namespace BlackTek
 			creature_type(creatureType),		// defaults to all creatures if not set
 			race_type(race)						// if none, all races.
 		{
+			auto attack_mod = (mod_stance == std::to_underlying(Stance::Attack));
+
+			if (attack_mod)
+			{
+				auto conversion = (modType == std::to_underlying(AttackType::Conversion));
+
+				if (conversion)
+					filter_index |= Flag::Converted;
+
+				filter_index |= Flag::Attack;
+			}
+			else
+			{
+				auto reformed = (modType == std::to_underlying(DefenseType::Reform));
+
+				if (reformed)
+					filter_index |= Flag::Reformed;
+
+				filter_index |= Flag::Defense;
+			}
+
+			if (combatType != 0)
+				filter_index |= Flag::Damage;
+
+			if (source != 0)
+				filter_index |= Flag::Origin;
+
+			if (race != 0)
+				filter_index |= Flag::Race;
+
+			if (creatureType != CREATURETYPE_ATTACKABLE)
+				filter_index |= Flag::Creature;
+
+			if (creatureName != "none")
+				filter_index |= Flag::Named;
 		}
 
 		std::span<const std::byte> serialize() const
@@ -184,51 +153,36 @@ namespace BlackTek
 		template<typename T = DamageModifier>
 		static T deserialize(std::span<const std::byte, sizeof(T)> data) 
 		{
-			return std::bit_cast<T>(*reinterpret_cast<const T*>(data.data()));
+			const T* obj = std::start_lifetime_as<const T>(data.data());
+			return *obj;
 		}
 
-		template <typename T>
-		requires std::is_trivially_copyable_v<T>
-		const std::string_view to_blob_view(const T& obj) 
-		{
-			return { reinterpret_cast<const char*>(&obj), sizeof(T) };
-		}
-		
-		template <typename T>
-		requires std::is_trivially_copyable_v<T>
-		const T* from_blob_inplace(std::string_view data) 
-		{
-			if (data.size() < sizeof(T)) return nullptr;
-			return std::start_lifetime_as<T>(data.data());
-		}
+		[[nodiscard]] const uint64_t getGUID() const noexcept;
+		[[nodiscard]] const uint8_t getStance() const noexcept;
+		[[nodiscard]] const uint8_t getType() const noexcept;
+		[[nodiscard]] const uint16_t getValue() const noexcept;
+		[[nodiscard]] const uint8_t getChance() const noexcept;
 
+		[[nodiscard]] const uint16_t getDamageType() const noexcept;
+		[[nodiscard]] const uint8_t getOriginType() const noexcept;
+		[[nodiscard]] const uint8_t getCreatureType() const noexcept;
+		[[nodiscard]] const uint8_t getRaceType() const noexcept;
 
+		[[nodiscard]] const bool isPercent() const noexcept;
+		[[nodiscard]] const bool isFlatValue() const noexcept;
+		[[nodiscard]] const bool appliesToDamage(const uint16_t damageType) const noexcept;
+		[[nodiscard]] const bool appliesToOrigin(const uint8_t origin) const noexcept;
+		[[nodiscard]] const bool appliesToTarget(const uint8_t creatureType, const uint8_t race, const std::string_view creatureName) const noexcept;
+		[[nodiscard]] const bool applies(uint16_t damageType, uint8_t creatureType, uint8_t origin, uint8_t race, const std::string_view creatureName) const noexcept;
+		[[nodiscard]] const bool isAttackStance() const noexcept;
+		[[nodiscard]] const bool isDefenseStance() const noexcept;
+		[[nodiscard]] const bool hasCreatureName() const noexcept;
+		[[nodiscard]] const std::string& getMonsterName() const noexcept;
+		[[nodiscard]] const uint16_t getConversionType() const noexcept;
 
-		const uint64_t getGUID() const;
-		const uint8_t getStance() const;
-		const uint8_t getType() const;
-		const uint16_t getValue() const;
-		const uint8_t getChance() const;
-
-		const uint16_t getDamageType() const;
-		const uint8_t getOriginType() const;
-		const uint8_t getCreatureType() const;
-		const uint8_t getRaceType() const;
-
-		const bool isPercent() const;
-		const bool isFlatValue() const;
-		const bool appliesToDamage(const uint16_t damageType) const;
-		const bool appliesToOrigin(const uint8_t origin) const;
-		const bool appliesToTarget(const uint8_t creatureType, const uint8_t race, const std::string_view creatureName) const;
-		const bool applies(uint16_t damageType, uint8_t creatureType, uint8_t origin, uint8_t race, const std::string_view creatureName) const;
-		const bool isAttackStance() const;
-		const bool isDefenseStance() const;
-		//const bool hasCreatureName() const;
-		//const std::string& getMonsterName() const;
-		const uint16_t getConversionType() const;
-
+		// todo: see which of these voids can use noexcept and apply it.
 		void setType(uint8_t modType);
-		void setStance(uint8_t stance);
+		// void setStance(uint8_t stance); // I think we need to prevent users from changing the stance on a modifier so for now, we comment this one out..
 		void setValue(uint16_t amount);
 		void setChance(uint8_t chance);
 		void setFactor(uint8_t factor);
@@ -239,7 +193,7 @@ namespace BlackTek
 		void increaseValue(uint16_t amount);
 		void decreaseValue(uint16_t amount);
 		void setTransformDamageType(uint16_t damageType);
-		//void setCreatureName(std::string_view creatureName);
+		void setCreatureName(std::string_view creatureName) const noexcept;
 
 		bool operator==(const DamageModifier& other) const { return guid == other.guid; }
 
@@ -256,7 +210,7 @@ namespace BlackTek
 		uint8_t creature_type = CREATURETYPE_ATTACKABLE;
 		uint8_t race_type = RACE_NONE;
 	};
-
+	extern gtl::flat_hash_map<uint64_t, std::string> modifier_monster_names;
 }
 
 #endif
