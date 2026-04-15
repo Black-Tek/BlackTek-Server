@@ -12,10 +12,10 @@
 namespace BlackTek
 {
 
-	Augment::Augment(const std::string& name, const std::string& description) : m_guid(generateGUID())
+	Augment::Augment(const std::string_view name, const std::string_view description) : m_guid(generateGUID())
 	{
-		loaded_augment_names[m_guid] = name;
-		loaded_agment_descriptions[m_guid] = description;
+		loaded_augment_names[m_guid] = std::string(name);
+		loaded_agment_descriptions[m_guid] = std::string(description);
 	}
 
 	Augment::Augment(const Augment& original)
@@ -76,27 +76,63 @@ namespace BlackTek
 		return result;
 	}
 
-	inline void Augment::addModifier(const DamageModifier&& mod)
+	inline void Augment::addModifier(DamageModifier&& mod)
 	{
-		trigger_index |= mod.getFilterIndex();
+		const auto filters = mod.getFilterIndex();
+		const auto stance = mod.getStance();
 
-		if (mod.getStance() == std::to_underlying(DamageModifier::Stance::Attack))
+		trigger_index |= filters;
+
+		const auto damage	= filters & DamageModifier::Flag::Damage;
+		const auto origin	= filters & DamageModifier::Flag::Origin;
+		const auto creature	= filters & DamageModifier::Flag::Creature;
+		const auto race		= filters & DamageModifier::Flag::Race;
+		const auto convert	= filters & DamageModifier::Flag::Converted;
+		const auto reform	= filters & DamageModifier::Flag::Reformed;
+		const auto name		= filters & DamageModifier::Flag::Named;
+
+		if (damage)
+			damage_count++;
+		
+		if (origin)
+			origin_count++;
+
+		if (creature)
+			creature_count++;
+
+		if (race)
+			race_count++;
+
+		if (convert)
+			converted_count++;
+
+		if (reform)
+			reformed_count++;
+
+		if (name)
+			named_count++;
+
+		if (stance == std::to_underlying(DamageModifier::Stance::Attack))
 		{
 			addAttackModifier(std::move(mod));
 		}
-		else if (mod.getStance() == std::to_underlying(DamageModifier::Stance::Defense))
+		else if (stance == std::to_underlying(DamageModifier::Stance::Defense))
 		{
 			addDefenseModifier(std::move(mod));
 		}
+		else
+		{
+			// todo: log it
+		}
 	}
 
-	inline void Augment::addAttackModifier(const DamageModifier&& modifier)
+	inline void Augment::addAttackModifier(DamageModifier&& modifier)
 	{
 		m_modifiers.insert(m_modifiers.begin() + m_attack_count, modifier);
 		++m_attack_count;
 	}
 
-	inline void Augment::addDefenseModifier(const DamageModifier&& modifier)
+	inline void Augment::addDefenseModifier(DamageModifier&& modifier)
 	{
 		m_modifiers.push_back(modifier);
 	}
@@ -133,9 +169,45 @@ namespace BlackTek
 		return static_cast<uint32_t>(m_modifiers.size()) - m_attack_count;
 	}
 
+	uint32_t Augment::damage_triggers() const noexcept
+	{
+		return damage_count;
+	}
+
+	uint32_t Augment::origin_triggers() const noexcept
+	{
+		return origin_count;
+	}
+
+	uint32_t Augment::creature_triggers() const noexcept
+	{
+		return creature_count;
+	}
+
+	uint32_t Augment::race_triggers() const noexcept
+	{
+		return race_count;
+	}
+
+	uint32_t Augment::conversion_count() const noexcept
+	{
+		return converted_count;
+	}
+
+	uint32_t Augment::reform_count() const noexcept
+	{
+		return reformed_count;
+	}
+
+	uint32_t Augment::name_count() const noexcept
+	{
+		return named_count;
+	}
+
 	void Augment::serialize(PropWriteStream& propWriteStream) const
 	{
 		propWriteStream.writeString(getName());
+		propWriteStream.writeString(getDescription());
 		propWriteStream.write<uint32_t>(m_attack_count);
 		propWriteStream.write<uint32_t>(defense_mod_count());
 
@@ -146,11 +218,12 @@ namespace BlackTek
 	}
 
 	// Todo: in the future change this to std::expected with an error code for our debugger system
-	std::optional<Augment> Augment::deserialize(PropStream& propReadStream)
+	std::optional<std::shared_ptr<Augment>> Augment::deserialize(PropStream& propReadStream)
 	{
 		auto [name, success] = propReadStream.readString();
+		auto [desc, victory] = propReadStream.readString();
 
-		if (not success)
+		if (not success or not victory)
 			return std::nullopt;
 
 		uint32_t attackCount = 0;
@@ -163,8 +236,8 @@ namespace BlackTek
 		if (not propReadStream.read<uint32_t>(defenseCount))
 			return std::nullopt;
 
-		Augment result;
-		result.m_modifiers.reserve(attackCount + defenseCount);
+		auto augment = Augment::MakeAugment(name, desc);
+		augment->m_modifiers.reserve(attackCount + defenseCount);
 
 		for (uint32_t i = 0; i < attackCount + defenseCount; ++i)
 		{
@@ -176,12 +249,12 @@ namespace BlackTek
 			if (not propReadStream.readBytes(std::span<std::byte>(buf)))
 				return std::nullopt;
 
-			result.addModifier(DamageModifier::deserialize(std::span<const std::byte, sizeof(DamageModifier)>(buf)));
+			augment->addModifier(DamageModifier::deserialize(std::span<const std::byte, sizeof(DamageModifier)>(buf)));
 		}
 
-		result.m_attack_count = attackCount;
-		loaded_augment_names[result.m_guid] = std::string(name);
-		return result;
+		augment->m_attack_count = attackCount;
+		loaded_augment_names[augment->getGuid()] = std::string(name);
+		return augment;
 	}
 
 	inline std::span<DamageModifier> Augment::getAttackModifiers() noexcept

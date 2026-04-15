@@ -24,7 +24,7 @@ namespace BlackTek
 	public:
 
 		Augment() = default;
-		Augment(const std::string& name, const std::string& description = "");
+		Augment(const std::string_view name, const std::string_view description);
 		Augment(const Augment& original);
 
 		bool operator==(const Augment& other) const
@@ -39,22 +39,29 @@ namespace BlackTek
 		const std::string getName() const;
 		const std::string getDescription() const;
 
-		static Augment MakeAugment(std::string augmentName, std::string description = "");
-		static Augment MakeAugment(const Augment& original);
+		static std::shared_ptr<Augment> MakeAugment(std::string_view augmentName, std::string_view description);
+		static std::shared_ptr<Augment> MakeAugment(const Augment& original);
 
-		void addModifier(const DamageModifier&& modifier);
-		void addAttackModifier(const DamageModifier&& modifier);
-		void addDefenseModifier(const DamageModifier&& modifier);
+		void addModifier(DamageModifier&& modifier);
+		void addAttackModifier(DamageModifier&& modifier);
+		void addDefenseModifier(DamageModifier&& modifier);
 		void removeModifier(uint64_t guid);
 
 		[[nodiscard]] uint32_t attack_mod_count() const noexcept;
 		[[nodiscard]] uint32_t defense_mod_count() const noexcept;
+		[[nodiscard]] uint32_t damage_triggers() const noexcept;
+		[[nodiscard]] uint32_t origin_triggers() const noexcept;
+		[[nodiscard]] uint32_t creature_triggers() const noexcept;
+		[[nodiscard]] uint32_t race_triggers() const noexcept;
+		[[nodiscard]] uint32_t conversion_count() const noexcept;
+		[[nodiscard]] uint32_t reform_count() const noexcept;
+		[[nodiscard]] uint32_t name_count() const noexcept;
 
 		[[nodiscard]] std::vector<DamageModifier> getAttackModifiers(uint8_t modType) const noexcept;
 		[[nodiscard]] std::vector<DamageModifier> getDefenseModifiers(uint8_t modType) const noexcept;
 
 		void serialize(PropWriteStream& propWriteStream) const;
-		static std::optional<Augment> deserialize(PropStream& propReadStream);
+		static std::optional<std::shared_ptr<Augment>> deserialize(PropStream& propReadStream);
 
 	private:
 
@@ -65,6 +72,8 @@ namespace BlackTek
 		[[nodiscard]] std::span<const DamageModifier> getDefenseModifiers() const noexcept;
 
 		void rebuild_triggers() noexcept;
+
+		[[nodiscard]] uint64_t getGuid() const noexcept { return m_guid; }
 
 		// m_modifiers is a partitioned vector: [0, m_attack_count) = attack, [m_attack_count, size()) = defense
 		uint64_t m_guid = generateGUID();
@@ -78,16 +87,17 @@ namespace BlackTek
 		uint8_t race_count = 0;
 		uint8_t reformed_count = 0;
 		uint8_t converted_count = 0;
+		uint8_t named_count = 0;
 	};
 
-	inline Augment Augment::MakeAugment(std::string augmentName, std::string description)
+	inline std::shared_ptr<Augment> Augment::MakeAugment(std::string_view augmentName, std::string_view description)
 	{
-		return Augment(augmentName, description);
+		return std::make_shared<Augment>(augmentName, description);
 	}
 
-	inline Augment Augment::MakeAugment(const Augment& original)
+	inline std::shared_ptr<Augment> Augment::MakeAugment(const Augment& original)
 	{
-		return Augment(original);
+		return std::make_shared<Augment>(original);
 	}
 
 	extern gtl::flat_hash_map<uint64_t, Augment> loaded_augments;

@@ -1251,25 +1251,25 @@ class Item : virtual public Thing, public SharedObject
 		}
 
 		const bool addAugment(std::string_view augmentName);
-		const bool addAugment(const std::shared_ptr<Augment>& augment);
+		const bool addAugment(const std::shared_ptr<BlackTek::Augment>& augment);
 		
 		const bool removeAugment(std::string_view name);
-		const bool removeAugment(std::shared_ptr<Augment>& augment);
+		const bool removeAugment(std::shared_ptr<BlackTek::Augment>& augment);
 
 		bool isAugmented() const;
 		bool hasAugment(std::string_view name) const;
-		bool hasAugment(const std::shared_ptr<Augment>& augment) const;
+		bool hasAugment(const std::shared_ptr<BlackTek::Augment>& augment) const;
 
 		[[nodiscard]] uint32_t getAttackModifierCount() const noexcept { return attack_modifier_count; }
 		[[nodiscard]] uint32_t getDefenseModifierCount() const noexcept { return defense_modifier_count; }
 		[[nodiscard]] uint32_t getConversionModifierCount() const noexcept { return conversion_modifier_count; }
 		[[nodiscard]] uint32_t getReformModifierCount() const noexcept { return reform_modifier_count; }
 
-		std::unique_ptr<std::vector<std::shared_ptr<Augment>>>& getAugments()
+		std::unique_ptr<std::vector<std::shared_ptr<BlackTek::Augment>>>& getAugments()
 		{
 			if (not augments.get())
 			{
-				augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+				augments = std::make_unique<std::vector<std::shared_ptr<BlackTek::Augment>>>();
 			}
 
 			return augments;
@@ -1368,7 +1368,7 @@ class Item : virtual public Thing, public SharedObject
 	private:
         std::unique_ptr<ItemAttributes> attributes;
 		std::unique_ptr<std::vector<std::shared_ptr<Imbuement>>> imbuements;
-		std::unique_ptr<std::vector<std::shared_ptr<Augment>>> augments;
+		std::unique_ptr<std::vector<std::shared_ptr<BlackTek::Augment>>> augments;
 		uint32_t attack_modifier_count = 0;
 		uint32_t defense_modifier_count = 0;
 		uint32_t conversion_modifier_count = 0;

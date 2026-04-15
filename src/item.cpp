@@ -900,22 +900,21 @@ bool Item::unserializeAugments(PropStream& propStream)
     
     if (not isAugmented() and augmentCount > 0)
     {
-        augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+        augments = std::make_unique<std::vector<std::shared_ptr<BlackTek::Augment>>>();
         augments->reserve(augmentCount);
     }
     
     for (uint32_t i = 0; i < augmentCount; ++i) 
     {
-        auto augment = std::make_shared<Augment>();
-        bool result = augment->unserialize(propStream);
-        if (not result) 
+        auto augment_optional = BlackTek::Augment::deserialize(propStream);
+		if (not augment_optional or not (*augment_optional))
         {
-            return result;
+            return false;
         }
 
-        if (not hasAugment(augment))
+        if (not hasAugment(*augment_optional))
         {
-            addAugment(augment);
+            addAugment(*augment_optional);
         }
     }
 
@@ -1769,191 +1768,15 @@ const bool Item::isEquipped() {
 	return false;
 }
 
-uint16_t Item::getImbuementSlots() const
-{
-    if (not imbuements.get()) 
-	{
-        return 0;
-    }
-	// item:getImbuementSlots() -- returns how many total slots
-	return imbuementSlots;
-}
-
-uint16_t Item::getFreeImbuementSlots() const
-{
-    // item:getFreeImbuementSLots() -- returns how many slots are available for use
-    if (imbuements.get() and imbuements->size() > 0) 
-	{
-        return imbuementSlots - imbuements->size();
-    }
-    return 0;
-}
-
-bool Item::canImbue()
-{
-    if (not imbuements.get() or isStackable() or canDecay() or not canTransform() or getCharges() or not hasProperty(CONST_PROP_MOVEABLE)) 
-	{
-        return false;
-    }
-	return imbuements.get() and ((imbuementSlots > 0 and imbuementSlots > imbuements->size()) ? true : false);
-}
-
-bool Item::addImbuementSlots(const uint16_t amount)
-{
-    // item:addImbuementSlots(amount) -- tries to add imbuement slot, returns true if successful
-    if (not hasImbuements()) 
-	{
-        imbuements = std::move(std::make_unique<std::vector<std::shared_ptr<Imbuement>>>(0));
-    }
-
-	constexpr uint16_t limit = std::numeric_limits<uint16_t>::max(); // uint16_t size limit
-	const uint16_t currentSlots = static_cast<uint16_t>(imbuements->size());
-
-	if ((currentSlots + amount) >= limit)
-	{
-		std::cout << "Warning in call to Item:addImbuementSlots(). Total added would be more than supported memory limit!" << std::endl;
-		return false;
-	}
-
-	imbuementSlots += amount;
-	return true;
-}
-
-bool Item::removeImbuementSlots(const uint16_t amount, const bool destroyImbues)
-{
-	// item:removeImbuementSlots(amount, destroy) -- tries to remove imbuement slot(s), returns true if successful
-    if (not hasImbuements())
-	{
-        return false;
-	}
-	constexpr uint16_t limit = std::numeric_limits<uint16_t>::max(); // uint16_t size limit
-	const uint16_t currentSlots = static_cast<uint16_t>(imbuements->size());
-
-	if (currentSlots <= 0)
-	{
-		std::cout << "Warning in call to Item:removeImbuementSlots(). Item has no slots to remove!" << std::endl;
-		return false;
-	}
-
-	if ((amount + currentSlots) > limit)
-	{
-		std::cout << "Warning in call to Item:removeImbuementSlots(). Amount is bigger than supported memory limit!" << std::endl;
-		return false;
-	}
-
-	const uint16_t freeSlots = getFreeImbuementSlots();
-	const uint16_t difference = amount - currentSlots;
-
-	if (difference >= imbuementSlots or difference >= limit)
-	{
-		std::cout << "Warning in call to Item:removeImbuementSlots(). You are trying to remove too many slots!" << std::endl;
-		return false;
-	}
-
-	if (destroyImbues)
-	{
-		if (difference < currentSlots)
-		{
-			imbuements->erase(imbuements->begin(), imbuements->begin() + amount);
-		}
-	} 
-	else 
-	{
-		if (freeSlots < currentSlots) 
-		{
-			return false;
-		}
-	}
-
-	imbuementSlots -= amount;
-	return true;
-}
-
-bool Item::hasImbuementType(const ImbuementType imbuetype) const
-{
-	// item:hasImbuementType(type)
-    if (not hasImbuements()) 
-	{
-        return false;
-    }
-
-	return std::any_of(imbuements->begin(), imbuements->end(), [imbuetype](const std::shared_ptr<Imbuement>& elem) 
-	{
-		return elem->imbuetype == imbuetype;
-	});
-}
-
-bool Item::hasImbuement(const std::shared_ptr<Imbuement>& imbuement) const
-{
-	// item:hasImbuement(imbuement)
-    if (not hasImbuements()) 
-	{
-        return false;
-    }
-	return std::any_of(imbuements->begin(), imbuements->end(), [&imbuement](const std::shared_ptr<Imbuement>& elem) 
-	{
-		return elem == imbuement;
-	});
-}
-
-
-bool Item::hasImbuements() const
-{
-	// item:hasImbuements() -- returns true if item has any imbuements
-	return imbuements.get() and not imbuements->empty();
-}
-
-bool Item::addImbuement(std::shared_ptr<Imbuement>  imbuement, bool created)
-{
-	// item:addImbuement(imbuement) -- returns true if it successfully adds the imbuement
-	if (canImbue() and g_events->eventItemOnImbue(getItem(), imbuement, created))
-	{
-		imbuements->push_back(imbuement);
-        
-        if (auto player = getHoldingPlayer(); player and isEquipped()) 
-		{
-			player->addImbuementEffect(imbuement);
-        }
-		return true;
-	}
-	return false;
-}
-
-bool Item::removeImbuement(const std::shared_ptr<Imbuement>& imbuement, bool decayed)
-{
-	if (not hasImbuements())
-	{
-        return false;
-	}
-
-    for (auto it = imbuements->begin(); it != imbuements->end(); ++it)
-    {
-        if (*it == imbuement)
-        {
-            auto player = getHoldingPlayer();
-
-            if (player and isEquipped())
-            {
-                player->removeImbuementEffect(*it);
-            }
-
-            g_events->eventItemOnRemoveImbue(getItem(), imbuement->imbuetype, decayed);
-            imbuements->erase(it);
-            return true;
-        }
-    }
-    return false;
-}
-
-const bool Item::addAugment(const std::shared_ptr<Augment>& augment)
+const bool Item::addAugment(const std::shared_ptr<BlackTek::Augment>& augment)
 {
 	if (not isAugmented())
 	{
-        augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+        augments = std::make_unique<std::vector<std::shared_ptr<BlackTek::Augment>>>();
 		attack_modifier_count += augment->attack_mod_count();
 		defense_modifier_count += augment->defense_mod_count();
-		conversion_modifier_count += augment->conversion_mod_count();
-		reform_modifier_count += augment->reform_mod_count();
+		conversion_modifier_count += augment->conversion_count();
+		reform_modifier_count += augment->reform_count();
 		augments->push_back(augment);
 		//g_events->eventItemOnAugment(getItem(), augment);
 		return true;
@@ -1969,8 +1792,8 @@ const bool Item::addAugment(const std::shared_ptr<Augment>& augment)
 
 	attack_modifier_count += augment->attack_mod_count();
 	defense_modifier_count += augment->defense_mod_count();
-	conversion_modifier_count += augment->conversion_mod_count();
-	reform_modifier_count += augment->reform_mod_count();
+	conversion_modifier_count += augment->conversion_count();
+	reform_modifier_count += augment->reform_count();
 	augments->push_back(augment);
     //g_events->eventItemOnAugment(getItem(), augment);
     return true;
@@ -1980,7 +1803,7 @@ const bool Item::addAugment(std::string_view augmentName)
 {
 	if (not isAugmented())
 	{
-        augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+        augments = std::make_unique<std::vector<std::shared_ptr<BlackTek::Augment>>>();
 	}
 	if (auto augment = Augments::GetAugment(augmentName); augment)
 	{

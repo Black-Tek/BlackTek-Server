@@ -5,8 +5,7 @@
 // The GPL 2.0 License that can be found in the LICENSE file.
 // All code found in this file is licensed under MIT and can be found in the LICENSE file.
 
-#ifndef FS_DAMAGEMODIFIER_H
-#define FS_DAMAGEMODIFIER_H
+#pragma once
 
 #include "otpch.h"
 #include "tools.h"
@@ -213,5 +212,3 @@ namespace BlackTek
 	};
 	extern gtl::flat_hash_map<uint64_t, std::string> modifier_monster_names;
 }
-
-#endif
