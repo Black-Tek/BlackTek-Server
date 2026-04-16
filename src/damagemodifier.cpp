@@ -131,39 +131,66 @@ namespace BlackTek
 
 	inline const bool DamageModifier::appliesToDamage(const uint16_t damageType) const
 	{
-		return damage_type == std::to_underlying(Combat::DamageType::Unknown) or damage_type == damageType;
+		if (filter_index & DamageModifier::Flag::Damage)
+			return damage_type == std::to_underlying(Combat::DamageType::Unknown) or damage_type == damageType;
+		return true;
 	}
 
 	inline const bool DamageModifier::appliesToOrigin(const uint8_t origin) const
 	{
-		bool applies = origin_type == 0 or origin_type == origin;
-		applies = applies or origin_type >= std::to_underlying(Combat::Origin::Augment);
-		return applies;
+		if (filter_index & DamageModifier::Flag::Origin)
+		{
+			bool applies = origin_type == 0 or origin_type == origin;
+			applies = applies or origin_type >= std::to_underlying(Combat::Origin::Augment);
+			return applies;
+		}
+		return true;
 	}
 
-	inline const bool DamageModifier::appliesToTarget(const uint8_t creatureType, const uint8_t race, const std::string_view creatureName) const
+	inline const bool DamageModifier::appliesToTargetType(const uint8_t creatureType) const
 	{
-		// todo: Create a new embedded enum for these creature types and call it TargetType, use that for combat and here and revert back to the old
-		// standardized "creaturetype" data/values passed along to the client for tha purpose, while using the TargetType for combat 
-		bool valid_target = (creatureType == creature_type or creature_type == CREATURETYPE_ATTACKABLE);
-		valid_target = valid_target or ((creature_type == CREATURETYPE_SUMMON_ALL) and ( creatureType == CREATURETYPE_SUMMON_OWN or creatureType == CREATURETYPE_SUMMON_GUILD or creatureType == CREATURETYPE_SUMMON_HOSTILE or creatureType == CREATURETYPE_SUMMON_PARTY));
-		valid_target = valid_target and (race_type == RACE_NONE or race_type == race);
+		if (filter_index & DamageModifier::Flag::Creature)
+		{
+			auto applies = creature_type == std::to_underlying(CreatureType_t::CREATURETYPE_ATTACKABLE)
+				or creature_type == creatureType
+				or ((creature_type == CREATURETYPE_SUMMON_ALL) 
+					and (creatureType == CREATURETYPE_SUMMON_OWN or creatureType == CREATURETYPE_SUMMON_GUILD or creatureType == CREATURETYPE_SUMMON_HOSTILE or creatureType == CREATURETYPE_SUMMON_PARTY));
+			return applies;
+		}
+		return true;
+	}
 
-		if (filter_index & Flag::Named)
+	inline const bool DamageModifier::appliesToRaceType(const uint8_t race) const
+	{
+		if (filter_index & DamageModifier::Flag::Race)
+			return race_type == std::to_underlying(RACE_NONE) or race_type == race;
+		return true;
+	}
+
+	inline const bool DamageModifier::appliesByName(const std::string_view creatureName) const
+	{
+		if (filter_index & DamageModifier::Flag::Named)
 		{
 			auto it = modifier_monster_names.find(guid);
 			if (it != modifier_monster_names.end())
-				valid_target = valid_target and creatureName == it->second;
+				return creatureName == it->second;
+
+			// at this point we are marked as named but not in the list?
+			// we would definitely want to log this, but if it's not in the list we have no choice but to let it pass the test
+			return true;
 		}
-		return valid_target;
+		return true;
 	}
 
 	inline const bool DamageModifier::applies(uint16_t damageType, uint8_t creatureType, uint8_t origin, uint8_t race, const std::string_view creatureName) const
 	{
-		auto damage_counts = appliesToDamage(damageType);
-		auto origin_counts = appliesToOrigin(origin);
-		auto target_counts = appliesToTarget(creatureType, race, creatureName);
-		return damage_counts and origin_counts and target_counts;
+		const auto damage_counts	= appliesToDamage(damageType);
+		const auto origin_counts	= appliesToOrigin(origin);
+		const auto target_counts	= appliesToTargetType(creatureType);
+		const auto race_counts		= appliesToRaceType(race);
+		const auto name_counts		= appliesByName(creatureName);
+
+		return damage_counts and origin_counts and target_counts and race_counts and name_counts;
 	}
 
 	inline const bool DamageModifier::hasCreatureName() const

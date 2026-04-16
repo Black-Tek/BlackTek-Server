@@ -171,7 +171,9 @@ namespace BlackTek
 		[[nodiscard]] const bool isFlatValue() const noexcept;
 		[[nodiscard]] const bool appliesToDamage(const uint16_t damageType) const noexcept;
 		[[nodiscard]] const bool appliesToOrigin(const uint8_t origin) const noexcept;
-		[[nodiscard]] const bool appliesToTarget(const uint8_t creatureType, const uint8_t race, const std::string_view creatureName) const noexcept;
+		[[nodiscard]] const bool appliesToTargetType(const uint8_t creatureType) const;
+		[[nodiscard]] const bool appliesToRaceType(const uint8_t creatureType) const;
+		[[nodiscard]] const bool appliesByName(const std::string_view creatureName) const;
 		[[nodiscard]] const bool applies(uint16_t damageType, uint8_t creatureType, uint8_t origin, uint8_t race, const std::string_view creatureName) const noexcept;
 		[[nodiscard]] const bool isAttackStance() const noexcept;
 		[[nodiscard]] const bool isDefenseStance() const noexcept;
@@ -210,5 +212,22 @@ namespace BlackTek
 		uint8_t creature_type = CREATURETYPE_ATTACKABLE;
 		uint8_t race_type = RACE_NONE;
 	};
+
+	struct ModifierSum
+	{
+		uint32_t flat    = 0;
+		uint32_t percent = 0;
+
+		void add(const DamageModifier& mod) noexcept
+		{
+			mod.isPercent() ? percent += mod.getValue() : flat += mod.getValue();
+		}
+
+		void subtract(const DamageModifier& mod) noexcept
+		{
+			mod.isPercent() ? percent -= mod.getValue() : flat -= mod.getValue();
+		}
+	};
+
 	extern gtl::flat_hash_map<uint64_t, std::string> modifier_monster_names;
 }

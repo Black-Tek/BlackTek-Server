@@ -127,192 +127,94 @@ using MuteCountMap = gtl::btree_map<uint32_t, uint32_t>;
 
 static constexpr int32_t NOTIFY_DEPOT_BOX_RANGE = 1;
 
+namespace BlackTek 
+{
+	struct ModifierCache
+	{
+		constexpr static auto AttackMods = std::to_underlying(DamageModifier::AttackType::Last) + 1u;
+		constexpr static auto DefenseMods = std::to_underlying(DamageModifier::DefenseType::Last) + 1u;
+		std::array<ModifierSum, AttackMods>  during_main_attack{}; // todo: make the critical chance and value stored here, show in client
+		std::array<ModifierSum, AttackMods>  post_main_attack{};
+		std::array<ModifierSum, DefenseMods> main_defense{};
+		std::vector<DamageModifier> during_filtered_attack;
+		std::vector<DamageModifier> post_filtered_attack;
+		std::vector<DamageModifier> filted_defense;
+		std::vector<DamageModifier> during_named_attack;
+		std::vector<DamageModifier> post_named_attack;
+		std::vector<DamageModifier> named_defense;
+		std::vector<DamageModifier> conversion;
+		std::vector<DamageModifier> reform;
+	};
+}
+
 class Player final : public Creature, public Cylinder
 {
 	public:
 		explicit Player(ProtocolGame_ptr p);
-		
+		static MuteCountMap muteCountMap;
 		~Player() override;
 
 		// non-copyable
 		Player(const Player&) = delete;
 		Player& operator=(const Player&) = delete;
 
-		PlayerPtr getPlayer() override {
-			return static_shared_this<Player>();
-		}
+		PlayerPtr getPlayer() override { return static_shared_this<Player>(); }
+		PlayerConstPtr getPlayer() const override {	return static_shared_this<const Player>(); }
+		CylinderPtr getCylinder() override final { return static_shared_this<Player>();	}
+		CylinderConstPtr getCylinder() const override final { return static_shared_this<const Player>(); }
 
-		PlayerConstPtr getPlayer() const override {
-			return static_shared_this<const Player>();
-		}
-
-		CylinderPtr getCylinder() override final {
-			return static_shared_this<Player>();
-		}
-
-		CylinderConstPtr getCylinder() const override final {
-			return static_shared_this<const Player>();
-		}
-
-		void setID() override {
-			if (id == 0) {
-				id = playerAutoID++;
-			}
-		}
-
-		static MuteCountMap muteCountMap;
-
-		const std::string& getRegisteredName() const override {
-			return getName();
-		}
-
-		const std::string& getName() const override {
-			return name;
-		}
-	
-		void setName(const std::string_view name) {
-			this->name = name; 
-		}
-	
-		const std::string& getNameDescription() const override {
-			return name;
-		}
-	
+		// todo: come back and finish collapsing and sorting these methods, then do the tabbed formatting to clean it up
+		// really nice, probably need to move more definitions to .cpp while I'm at it, get rid of most of these inlines.
+		void setID() override {	if (id == 0) id = playerAutoID++; }
+		const std::string& getRegisteredName() const override {	return getName(); }
+		const std::string& getName() const override { return name; }
+		void setName(const std::string_view name) { this->name = name; }
+		const std::string& getNameDescription() const override { return name; }
 		std::string getDescription(int32_t lookDistance) override;
-
-		CreatureType_t getType(CreaturePtr caller = nullptr) const override {
-			// Todo : create more enums for creature types being relative to caller
-			// even for players and npc's, this basic expansion of possibilities
-			// applied on this core function would allow vast customization opportunities down the road
-			return CREATURETYPE_PLAYER;
-		}
+		CreatureType_t getType(CreaturePtr caller = nullptr) const override { return CREATURETYPE_PLAYER;}
 
 		uint8_t getCurrentMount() const;
 		void setCurrentMount(uint8_t mountId);
-	
-		bool isMounted() const {
-			return defaultOutfit.lookMount != 0;
-		}
-	
 		bool toggleMount(bool mount);
 		bool tameMount(uint8_t mountId);
 		bool untameMount(uint8_t mountId);
 		bool hasMount(const Mount* mount) const;
 		void dismount();
-		bool isAccountManager() const { return guid == 1 or name == "Account Manager"; }
-
-		void sendFYIBox(const std::string& message) const
-		{
-			if (client) {
-				client->sendFYIBox(message);
-			}
-		}
-
-		void setGUID(const uint32_t guid) {
-			this->guid = guid;
-		}
-	
-		uint32_t getGUID() const {
-			return guid;
-		}
-	
-		bool canSeeInvisibility() const override {
-			return hasFlag(PlayerFlag_CanSenseInvisibility) || group->access;
-		}
-
 		void removeList() override;
 		void addList() override;
 		void kickPlayer(bool displayEffect);
 
-		static uint64_t getExpForLevel(const uint64_t lv) {
-			return (((lv - 6ULL) * lv + 17ULL) * lv - 12ULL) / 6ULL * 100ULL;
-		}
-
-		uint16_t getStaminaMinutes() const {
-			return staminaMinutes;
-		}
-
+		bool isMounted() const { return defaultOutfit.lookMount != 0;}
+		bool isAccountManager() const { return guid == 1 or name == "Account Manager"; }
+		void sendFYIBox(const std::string& message) const {	if (client) client->sendFYIBox(message); }
+		void setGUID(const uint32_t guid) { this->guid = guid; }
+		uint32_t getGUID() const { return guid;	}
+		bool canSeeInvisibility() const override {	return hasFlag(PlayerFlag_CanSenseInvisibility) or group->access;}
+		static uint64_t getExpForLevel(const uint64_t lv) {	return (((lv - 6ULL) * lv + 17ULL) * lv - 12ULL) / 6ULL * 100ULL;}
+		uint16_t getStaminaMinutes() const {return staminaMinutes;}
 		bool addOfflineTrainingTries(skills_t skill, uint64_t tries);
-
-		void addOfflineTrainingTime(int32_t addTime) {
-			offlineTrainingTime = std::min<int32_t>(12 * 3600 * 1000, offlineTrainingTime + addTime);
-		}
-	
-		void removeOfflineTrainingTime(int32_t removeTime) {
-			offlineTrainingTime = std::max<int32_t>(0, offlineTrainingTime - removeTime);
-		}
-	
-		int32_t getOfflineTrainingTime() const {
-			return offlineTrainingTime;
-		}
-
-		int32_t getOfflineTrainingSkill() const {
-			return offlineTrainingSkill;
-		}
-	
-		void setOfflineTrainingSkill(int32_t skill) {
-			offlineTrainingSkill = skill;
-		}
-
-		uint64_t getBankBalance() const {
-			return bankBalance;
-		}
-	
-		void setBankBalance(uint64_t balance) {
-			bankBalance = balance;
-		}
-
-		Guild_ptr getGuild() const {
-			return guild;
-		}
-	
+		void addOfflineTrainingTime(int32_t addTime) { offlineTrainingTime = std::min<int32_t>(12 * 3600 * 1000, offlineTrainingTime + addTime);}
+		void removeOfflineTrainingTime(int32_t removeTime) { offlineTrainingTime = std::max<int32_t>(0, offlineTrainingTime - removeTime); }
+		int32_t getOfflineTrainingTime() const { return offlineTrainingTime; }
+		int32_t getOfflineTrainingSkill() const { return offlineTrainingSkill; }
+		void setOfflineTrainingSkill(int32_t skill) { offlineTrainingSkill = skill;	}
+		uint64_t getBankBalance() const { return bankBalance; }
+		void setBankBalance(uint64_t balance) {	bankBalance = balance; }
+		Guild_ptr getGuild() const { return guild; }
 		void setGuild(Guild_ptr guild);
-
-		GuildRank_ptr getGuildRank() const {
-			return guildRank;
-		}
-	
-		void setGuildRank(const GuildRank_ptr& newGuildRank) {
-			guildRank = newGuildRank;
-		}
-
-		const std::string& getGuildNick() const {
-			return guildNick;
-		}
-	
-		void setGuildNick(const std::string& nick) {
-			guildNick = nick;
-		}
-
-		void setLastWalkthroughAttempt(int64_t walkthroughAttempt) {
-			lastWalkthroughAttempt = walkthroughAttempt;
-		}
-	
-		void setLastWalkthroughPosition(Position walkthroughPosition) {
-			lastWalkthroughPosition = walkthroughPosition;
-		}
-
-		InboxPtr getInbox() const {
-			return inbox;
-		}
-
-		StoreInboxPtr getStoreInbox() const {
-			return storeInbox;
-		}
-
+		GuildRank_ptr getGuildRank() const { return guildRank; }
+		void setGuildRank(const GuildRank_ptr& newGuildRank) { guildRank = newGuildRank; }
+		const std::string& getGuildNick() const { return guildNick; }
+		void setGuildNick(const std::string& nick) {guildNick = nick; }
+		void setLastWalkthroughAttempt(int64_t walkthroughAttempt) { lastWalkthroughAttempt = walkthroughAttempt; }
+		void setLastWalkthroughPosition(Position walkthroughPosition) {	lastWalkthroughPosition = walkthroughPosition; }
+		InboxPtr getInbox() const {	return inbox; }
+		StoreInboxPtr getStoreInbox() const { return storeInbox; }
 		uint16_t getClientIcons() const;
-
-		Vocation* getVocation() const {
-			return vocation;
-		}
-
-		OperatingSystem_t getOperatingSystem() const {
-			return operatingSystem;
-		}
+		Vocation* getVocation() const {	return vocation; }
+		OperatingSystem_t getOperatingSystem() const { return operatingSystem; }
 	
-		void setOperatingSystem(OperatingSystem_t clientos) {
-			operatingSystem = clientos;
-		}
+		void setOperatingSystem(OperatingSystem_t clientos) { operatingSystem = clientos; }
 
 		uint16_t getProtocolVersion() const {
 			if (!client) {
@@ -1434,18 +1336,86 @@ class Player final : public Creature, public Cylinder
 		[[nodiscard]] uint32_t conversion_mod_count() const noexcept { return conversion_modifier_count; }
 		[[nodiscard]] uint32_t reform_mod_count() const noexcept { return reform_modifier_count; }
 
+		constexpr static auto AttackModArrayCount = std::to_underlying(BlackTek::DamageModifier::AttackType::Last) + 1u;
+		constexpr static auto DefenseModArrayCount = std::to_underlying(BlackTek::DamageModifier::DefenseType::Last) + 1u;
+
+		[[nodiscard]] const std::array<BlackTek::ModifierSum, AttackModArrayCount>& getMainAttackModSums() const noexcept 
+		{
+			static constexpr std::array<BlackTek::ModifierSum, AttackModArrayCount> empty{};
+			return m_modifier_cache ? m_modifier_cache->during_main_attack : empty;
+		}
+
+		[[nodiscard]] const std::array<BlackTek::ModifierSum, AttackModArrayCount>& getMainAttackModPostSums() const noexcept 
+		{
+			static constexpr std::array<BlackTek::ModifierSum, AttackModArrayCount> empty{};
+			return m_modifier_cache ? m_modifier_cache->post_main_attack : empty;
+		}
+
+		[[nodiscard]] const std::array<BlackTek::ModifierSum, DefenseModArrayCount>& getMainDefenseModSums() const noexcept 
+		{
+			static constexpr std::array<BlackTek::ModifierSum, DefenseModArrayCount> empty{};
+			return m_modifier_cache ? m_modifier_cache->main_defense : empty;
+		}
+
+		[[nodiscard]] std::span<const BlackTek::DamageModifier> getFilteredAttackMods() const noexcept 
+		{
+			return m_modifier_cache ? std::span<const BlackTek::DamageModifier>{ m_modifier_cache->during_filtered_attack } : std::span<const BlackTek::DamageModifier>{};
+		}
+
+		[[nodiscard]] std::span<const BlackTek::DamageModifier> getFilteredAttackPostMods() const noexcept
+		{
+			return m_modifier_cache ? std::span<const BlackTek::DamageModifier>{ m_modifier_cache->post_filtered_attack } : std::span<const BlackTek::DamageModifier>{};
+		}
+
+		[[nodiscard]] std::span<const BlackTek::DamageModifier> getFilteredDefenseMods() const noexcept
+		{
+			return m_modifier_cache ? std::span<const BlackTek::DamageModifier>{ m_modifier_cache->filted_defense } : std::span<const BlackTek::DamageModifier>{};
+		}
+
+		[[nodiscard]] std::span<const BlackTek::DamageModifier> getNamedAttackMods() const noexcept
+		{
+			return m_modifier_cache ? std::span<const BlackTek::DamageModifier>{ m_modifier_cache->during_named_attack } : std::span<const BlackTek::DamageModifier>{};
+		}
+
+		[[nodiscard]] std::span<const BlackTek::DamageModifier> getNamedAttackPostMods() const noexcept
+		{
+			return m_modifier_cache ? std::span<const BlackTek::DamageModifier>{ m_modifier_cache->post_named_attack } : std::span<const BlackTek::DamageModifier>{};
+		}
+
+		[[nodiscard]] std::span<const BlackTek::DamageModifier> getNamedDefenseMods() const noexcept
+		{
+			return m_modifier_cache ? std::span<const BlackTek::DamageModifier>{ m_modifier_cache->named_defense } : std::span<const BlackTek::DamageModifier>{};
+		}
+
+		[[nodiscard]] std::span<const BlackTek::DamageModifier> getConversionMods() const noexcept
+		{
+			return m_modifier_cache ? std::span<const BlackTek::DamageModifier>{ m_modifier_cache->conversion } : std::span<const BlackTek::DamageModifier>{};
+		}
+
+		[[nodiscard]] std::span<const BlackTek::DamageModifier> getReformMods() const noexcept
+		{
+			return m_modifier_cache ? std::span<const BlackTek::DamageModifier>{ m_modifier_cache->reform } : std::span<const BlackTek::DamageModifier>{};
+		}
+
+		[[nodiscard]] bool hasFilteredAttackMods()			const noexcept { return m_modifier_cache and not m_modifier_cache->during_filtered_attack.empty();	}
+		[[nodiscard]] bool hasFilteredAttackPostMods()		const noexcept { return m_modifier_cache and not m_modifier_cache->post_filtered_attack.empty();	}
+		[[nodiscard]] bool hasFilteredDefenseMods()			const noexcept { return m_modifier_cache and not m_modifier_cache->filted_defense.empty();			}
+		[[nodiscard]] bool hasNamedAttackMods()				const noexcept { return m_modifier_cache and not m_modifier_cache->during_named_attack.empty();		}
+		[[nodiscard]] bool hasNamedAttackPostMods()         const noexcept { return m_modifier_cache and not m_modifier_cache->post_named_attack.empty();		}
+		[[nodiscard]] bool hasNamedDefenseMods()            const noexcept { return m_modifier_cache and not m_modifier_cache->named_defense.empty();			}
+
 		std::vector<Position> getOpenPositionsInRadius(int radius) const;
 
 		const bool addAugment(std::string_view augmentName);
-		const bool addAugment(const std::shared_ptr<Augment>& augment);
+		const bool addAugment(const std::shared_ptr<BlackTek::Augment>& augment);
 
 		const bool removeAugment(std::string_view augmentName);
-		const bool removeAugment(const std::shared_ptr<Augment>& augment);
+		const bool removeAugment(const std::shared_ptr<BlackTek::Augment>& augment);
 
 		const bool isAugmented() const;
 		const bool hasAugment(const std::string_view augmentName, const bool checkItems);
-		const bool hasAugment(const std::shared_ptr<Augment>& augmentName, const bool checkItems);
-		const std::vector<std::shared_ptr<Augment>>& getPlayerAugments() const;
+		const bool hasAugment(const std::shared_ptr<BlackTek::Augment>& augmentName, const bool checkItems);
+		const std::vector<std::shared_ptr<BlackTek::Augment>>& getPlayerAugments() const;
 
 		uint8_t getAccountManagerLastState() 
 		{
@@ -1589,8 +1559,8 @@ class Player final : public Creature, public Cylinder
 			return *depotChests;
 		}
 
-		std::vector<std::shared_ptr<Augment>>& getAugments() {
-			if (!augments) augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+		std::vector<std::shared_ptr<BlackTek::Augment>>& getAugments() {
+			if (!augments) augments = std::make_unique<std::vector<std::shared_ptr<BlackTek::Augment>>>();
 			return *augments;
 		}
 
@@ -1614,7 +1584,7 @@ class Player final : public Creature, public Cylinder
 		std::unique_ptr<std::unordered_set<uint32_t>> VIPList;
 		std::unique_ptr<std::map<uint8_t, OpenContainer>> openContainers;
 		std::unique_ptr<std::map<uint32_t, DepotChestPtr>> depotChests;
-		std::unique_ptr<std::vector<std::shared_ptr<Augment>>> augments;
+		std::unique_ptr<std::vector<std::shared_ptr<BlackTek::Augment>>> augments;
 		std::unique_ptr<std::vector<OutfitEntry>> outfits;
 
 		ItemPtr inventory[CONST_SLOT_LAST + 1] = {};
@@ -1678,6 +1648,38 @@ class Player final : public Creature, public Cylinder
 		uint32_t reform_modifier_count = 0;
 		uint32_t attack_modifier_count = 0;
 		uint32_t defense_modifier_count = 0;
+		uint32_t named_modifiers_count = 0;
+		uint32_t damage_modifiers_count = 0;
+		uint32_t origin_modifiers_count = 0;
+		uint32_t creature_modifiers_count = 0;
+		uint32_t race_modifiers_count = 0;
+
+		static constexpr uint16_t MODIFIER_CONDITIONAL_MASK =
+			BlackTek::DamageModifier::Flag::Damage   |
+			BlackTek::DamageModifier::Flag::Origin   |
+			BlackTek::DamageModifier::Flag::Creature |
+			BlackTek::DamageModifier::Flag::Race;
+
+		[[nodiscard]] static constexpr bool isPostDamageAttack(uint8_t modType) noexcept
+		{
+			using AT = BlackTek::DamageModifier::AttackType;
+			switch (static_cast<AT>(modType))
+			{
+				case AT::Lifesteal:
+				case AT::Manasteal:
+				case AT::Staminasteal:
+				case AT::Soulsteal:
+					return true;
+				default:
+					return false;
+			}
+		}
+
+		std::unique_ptr<BlackTek::ModifierCache> m_modifier_cache;
+
+		void cacheModifier(const BlackTek::DamageModifier& mod) noexcept;
+		void uncacheModifier(const BlackTek::DamageModifier& mod) noexcept;
+
 		int32_t varSkills[SKILL_LAST + 1] = {};
 		int32_t varSpecialSkills[SPECIALSKILL_LAST + 1] = {};
 		int32_t varStats[STAT_LAST + 1] = {};
@@ -1723,8 +1725,6 @@ class Player final : public Creature, public Cylinder
 		bool addAttackSkillPoint = false;
 		bool hasImbuedItemEquipped = false;
 		bool inventoryAbilities[CONST_SLOT_LAST + 1] = {};
-
-		
 
 		void updateItemsLight(bool internal = false);
 		int32_t getStepSpeed() const override;

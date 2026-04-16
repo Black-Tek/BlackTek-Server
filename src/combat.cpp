@@ -816,12 +816,26 @@ namespace BlackTek
 
 			if (conversion_count > 0)
 			{
+				const auto& conversion_modifiers = caster->getConversionMods();
 				//const auto& conversion_modifiers = caster->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage_type, origin, CREATURETYPE_PLAYER, victim_race, victim_name);
 				//conversion_augment(caster, victim_name, conversion_modifiers);
 			}
 
 			if (moddable and caster->attack_mod_count() > conversion_count)
 			{
+				const auto& main_attack_sums = caster->getMainAttackModSums();
+				const auto& main_postattack_sums = caster->getMainAttackModPostSums();
+				
+				if (caster->hasFilteredAttackMods())
+				{
+					const auto& filtered_attack_mods = caster->getFilteredAttackMods();
+				}
+
+				if (caster->hasFilteredAttackPostMods())
+				{
+					const auto& filtered_post_attack_mods = caster->getFilteredAttackPostMods();
+				}
+
 				//auto attack_modifiers = caster->getAttackModifierTotals(damage_type, origin, CREATURETYPE_PLAYER, victim_race, victim_name);
 
 				//leech_data.percent_health		= static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_LIFESTEAL].percentTotal);

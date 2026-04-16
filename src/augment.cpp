@@ -277,6 +277,11 @@ namespace BlackTek
 		return std::span<const DamageModifier>(m_modifiers.data() + m_attack_count, m_modifiers.size() - m_attack_count);
 	}
 
+	inline std::span<const DamageModifier> Augment::getModifiers() const noexcept
+	{
+		return std::span<const DamageModifier>(m_modifiers.data(), m_modifiers.size());
+	}
+
 	void Augment::rebuild_triggers() noexcept
 	{
 		trigger_index = 0;

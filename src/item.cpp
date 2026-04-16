@@ -1777,6 +1777,11 @@ const bool Item::addAugment(const std::shared_ptr<BlackTek::Augment>& augment)
 		defense_modifier_count += augment->defense_mod_count();
 		conversion_modifier_count += augment->conversion_count();
 		reform_modifier_count += augment->reform_count();
+		damage_modifiers_count += augment->damage_triggers();
+		origin_modifiers_count += augment->origin_triggers();
+		creature_modifiers_count += augment->creature_triggers();
+		race_modifiers_count += augment->race_triggers();
+		named_modifiers_count += augment->name_count();
 		augments->push_back(augment);
 		//g_events->eventItemOnAugment(getItem(), augment);
 		return true;
@@ -1794,6 +1799,11 @@ const bool Item::addAugment(const std::shared_ptr<BlackTek::Augment>& augment)
 	defense_modifier_count += augment->defense_mod_count();
 	conversion_modifier_count += augment->conversion_count();
 	reform_modifier_count += augment->reform_count();
+	damage_modifiers_count += augment->damage_triggers();
+	origin_modifiers_count += augment->origin_triggers();
+	creature_modifiers_count += augment->creature_triggers();
+	race_modifiers_count += augment->race_triggers();
+	named_modifiers_count += augment->name_count();
 	augments->push_back(augment);
     //g_events->eventItemOnAugment(getItem(), augment);
     return true;
@@ -1805,7 +1815,7 @@ const bool Item::addAugment(std::string_view augmentName)
 	{
         augments = std::make_unique<std::vector<std::shared_ptr<BlackTek::Augment>>>();
 	}
-	if (auto augment = Augments::GetAugment(augmentName); augment)
+	if (auto augment = BlackTek::Augments::GetAugment(augmentName); augment)
 	{
         if (std::ranges::find(*augments, augment) != augments->end())
 		{
@@ -1814,15 +1824,20 @@ const bool Item::addAugment(std::string_view augmentName)
 		augments->emplace_back(augment);
 		attack_modifier_count += augment->attack_mod_count();
 		defense_modifier_count += augment->defense_mod_count();
-		conversion_modifier_count += augment->conversion_mod_count();
-		reform_modifier_count += augment->reform_mod_count();
+		conversion_modifier_count += augment->conversion_count();
+		reform_modifier_count += augment->reform_count();
+		damage_modifiers_count += augment->damage_triggers();
+		origin_modifiers_count += augment->origin_triggers();
+		creature_modifiers_count += augment->creature_triggers();
+		race_modifiers_count += augment->race_triggers();
+		named_modifiers_count += augment->name_count();
 		//g_events->eventItemOnAugment(std::static_pointer_cast<Item>(shared_from_this()), augment);
 		return true;
 	}
 	return false;
 }
 
-const bool Item::removeAugment(std::shared_ptr<Augment>& augment)
+const bool Item::removeAugment(std::shared_ptr<BlackTek::Augment>& augment)
 {
     if (not isAugmented())
         return false;
@@ -1834,8 +1849,13 @@ const bool Item::removeAugment(std::shared_ptr<Augment>& augment)
 	{
 		attack_modifier_count -= augment->attack_mod_count();
 		defense_modifier_count -= augment->defense_mod_count();
-		conversion_modifier_count -= augment->conversion_mod_count();
-		reform_modifier_count -= augment->reform_mod_count();
+		conversion_modifier_count -= augment->conversion_count();
+		reform_modifier_count -= augment->reform_count();
+		damage_modifiers_count -= augment->damage_triggers();
+		origin_modifiers_count -= augment->origin_triggers();
+		creature_modifiers_count -= augment->creature_triggers();
+		race_modifiers_count -= augment->race_triggers();
+		named_modifiers_count -= augment->name_count();
 		g_events->eventItemOnRemoveAugment(std::static_pointer_cast<Item>(shared_from_this()), augment);
 	}
 	return removed;
@@ -1851,15 +1871,20 @@ const bool Item::removeAugment(std::string_view name)
 	auto originalSize = augments->size();
     
 	std::erase_if(*augments,
-    [this, &name](const std::shared_ptr<Augment>& augment)
+    [this, &name](const std::shared_ptr<BlackTek::Augment>& augment)
 	{
         const auto match = augment->getName() == name;
         if (match)
 		{
 			attack_modifier_count -= augment->attack_mod_count();
 			defense_modifier_count -= augment->defense_mod_count();
-			conversion_modifier_count -= augment->conversion_mod_count();
-			reform_modifier_count -= augment->reform_mod_count();
+			conversion_modifier_count -= augment->conversion_count();
+			reform_modifier_count -= augment->reform_count();
+			damage_modifiers_count -= augment->damage_triggers();
+			origin_modifiers_count -= augment->origin_triggers();
+			creature_modifiers_count -= augment->creature_triggers();
+			race_modifiers_count -= augment->race_triggers();
+			named_modifiers_count -= augment->name_count();
 	        g_events->eventItemOnRemoveAugment(std::static_pointer_cast<Item>(shared_from_this()), augment);
         }
         return match;
@@ -1895,7 +1920,7 @@ bool Item::hasAugment(std::string_view name) const
 	return false;
 }
 
-bool Item::hasAugment(const std::shared_ptr<Augment>& augment) const
+bool Item::hasAugment(const std::shared_ptr<BlackTek::Augment>& augment) const
 {
     if (not isAugmented()) 
     {
@@ -1911,34 +1936,6 @@ bool Item::hasAugment(const std::shared_ptr<Augment>& augment) const
     }
     
     return false;
-}
-
-void Item::decayImbuements(bool infight) {
-    if (not hasImbuements()) 
-	{
-        return;
-    }
-
-	for (auto& imbue : *imbuements) {
-		if (imbue->isEquipDecay()) 
-		{
-			imbue->duration -= 1;
-			if (imbue->duration <= 0) 
-			{
-				removeImbuement(imbue, true);
-				return;
-			}
-		}
-		if (imbue->isInfightDecay() and infight) 
-		{
-			imbue->duration -= 1;
-			if (imbue->duration <= 0) 
-			{
-				removeImbuement(imbue, true);
-				return;
-			}
-		}
-	}
 }
 
 void handleRuneDescription(std::ostringstream& s, const ItemType& it, const ItemConstPtr& item, int32_t& subType) {

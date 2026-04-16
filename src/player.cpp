@@ -3917,6 +3917,10 @@ void Player::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t 
 				defense_modifier_count += item->getDefenseModifierCount();
 				conversion_modifier_count += item->getConversionModifierCount();
 				reform_modifier_count += item->getReformModifierCount();
+
+				for (const auto& augment : *item->getAugments())
+					for (const auto& mod : augment->getModifiers())
+						cacheModifier(mod);
 			}
 		}
 	}
@@ -3995,6 +3999,10 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 				defense_modifier_count -= item->getDefenseModifierCount();
 				conversion_modifier_count -= item->getConversionModifierCount();
 				reform_modifier_count -= item->getReformModifierCount();
+
+				for (const auto& augment : *item->getAugments())
+					for (const auto& mod : augment->getModifiers())
+						uncacheModifier(mod);
 			}
 		}
 	}
@@ -5632,7 +5640,122 @@ size_t Player::getMaxDepotItems() const
 	return g_config.GetNumber(isPremium() ? ConfigManager::DEPOT_PREMIUM_LIMIT : ConfigManager::DEPOT_FREE_LIMIT);
 }
 
-const bool Player::addAugment(const std::shared_ptr<Augment>& augment)
+void Player::cacheModifier(const BlackTek::DamageModifier& mod) noexcept
+{
+	if (not m_modifier_cache)
+		m_modifier_cache = std::make_unique<BlackTek::ModifierCache>();
+
+	auto& cache  = *m_modifier_cache;
+	const auto filter = mod.getFilterIndex();
+
+	if (filter & BlackTek::DamageModifier::Flag::Converted)
+	{
+		cache.conversion.push_back(mod);
+		return;
+	}
+
+	if (filter & BlackTek::DamageModifier::Flag::Reformed) 
+	{
+		cache.reform.push_back(mod);
+		return;
+	}
+
+	if (mod.isAttackStance()) 
+	{
+		const bool post = isPostDamageAttack(mod.getType());
+
+		if (filter & BlackTek::DamageModifier::Flag::Named) 
+		{
+			post ? cache.post_named_attack.push_back(mod)
+			     : cache.during_named_attack.push_back(mod);
+		}
+		else if (filter & MODIFIER_CONDITIONAL_MASK)
+		{
+			post ? cache.post_filtered_attack.push_back(mod)
+			     : cache.during_filtered_attack.push_back(mod);
+		}
+		else
+		{
+			post ? cache.post_main_attack[mod.getType()].add(mod)
+			     : cache.during_main_attack[mod.getType()].add(mod);
+		}
+	}
+	else
+	{
+		if (filter & BlackTek::DamageModifier::Flag::Named)
+		{
+			cache.named_defense.push_back(mod);
+		}
+		else if (filter & MODIFIER_CONDITIONAL_MASK)
+		{
+			cache.filted_defense.push_back(mod);
+		}
+		else
+		{
+			cache.main_defense[mod.getType()].add(mod);
+		}
+	}
+}
+
+void Player::uncacheModifier(const BlackTek::DamageModifier& mod) noexcept
+{
+	if (not m_modifier_cache)
+		return;
+
+	auto& cache  = *m_modifier_cache;
+	const auto filter = mod.getFilterIndex();
+	const auto guid   = mod.getGUID();
+
+	if (filter & BlackTek::DamageModifier::Flag::Converted)
+	{
+		std::erase_if(cache.conversion, [guid](const auto& m) { return m.getGUID() == guid; });
+		return;
+	}
+
+	if (filter & BlackTek::DamageModifier::Flag::Reformed)
+	{
+		std::erase_if(cache.reform, [guid](const auto& m) { return m.getGUID() == guid; });
+		return;
+	}
+
+	if (mod.isAttackStance())
+	{
+		const bool post = isPostDamageAttack(mod.getType());
+
+		if (filter & BlackTek::DamageModifier::Flag::Named)
+		{
+			auto& vec = post ? cache.post_named_attack : cache.during_named_attack;
+			std::erase_if(vec, [guid](const auto& m) { return m.getGUID() == guid; });
+		}
+		else if (filter & MODIFIER_CONDITIONAL_MASK)
+		{
+			auto& vec = post ? cache.post_filtered_attack : cache.during_filtered_attack;
+			std::erase_if(vec, [guid](const auto& m) { return m.getGUID() == guid; });
+		}
+		else
+		{
+			post ? cache.post_main_attack[mod.getType()].subtract(mod)
+			     : cache.during_main_attack[mod.getType()].subtract(mod);
+		}
+	}
+	else
+	{
+		if (filter & BlackTek::DamageModifier::Flag::Named)
+		{
+			std::erase_if(cache.named_defense, [guid](const auto& m) { return m.getGUID() == guid; });
+		}
+		else if (filter & MODIFIER_CONDITIONAL_MASK)
+		{
+			std::erase_if(cache.filted_defense, [guid](const auto& m) { return m.getGUID() == guid; });
+		}
+		else
+		{
+			cache.main_defense[mod.getType()].subtract(mod);
+		}
+	}
+}
+
+const bool Player::addAugment(const std::shared_ptr<BlackTek::Augment>& augment)
 {
 	auto& augments = getAugments();
 	if (std::ranges::find(augments, augment) == augments.end()) 
@@ -5640,6 +5763,17 @@ const bool Player::addAugment(const std::shared_ptr<Augment>& augment)
 		augment_count += 1;
 		attack_modifier_count += augment->attack_mod_count();
 		defense_modifier_count += augment->defense_mod_count();
+		conversion_modifier_count += augment->conversion_count();
+		reform_modifier_count += augment->reform_count();
+		damage_modifiers_count += augment->damage_triggers();
+		origin_modifiers_count += augment->origin_triggers();
+		creature_modifiers_count += augment->creature_triggers();
+		race_modifiers_count += augment->race_triggers();
+		named_modifiers_count += augment->name_count();
+
+		for (const auto& mod : augment->getModifiers())
+			cacheModifier(mod);
+
 		augments.push_back(augment);
 		g_events->eventPlayerOnAugment(this->getPlayer(), augment);
 		return true;
@@ -5649,19 +5783,31 @@ const bool Player::addAugment(const std::shared_ptr<Augment>& augment)
 
 const bool Player::addAugment(const std::string_view augmentName)
 {
-	if (auto augment = Augments::GetAugment(augmentName))
+	if (auto augment = BlackTek::Augments::GetAugment(augmentName))
 	{
 		augment_count += 1;
 		attack_modifier_count += augment->attack_mod_count();
 		defense_modifier_count += augment->defense_mod_count();
+		conversion_modifier_count += augment->conversion_count();
+		reform_modifier_count += augment->reform_count();
+		damage_modifiers_count += augment->damage_triggers();
+		origin_modifiers_count += augment->origin_triggers();
+		creature_modifiers_count += augment->creature_triggers();
+		race_modifiers_count += augment->race_triggers();
+		named_modifiers_count += augment->name_count();
+
+		for (const auto& mod : augment->getModifiers())
+			cacheModifier(mod);
+
 		getAugments().emplace_back(augment);
+
 		g_events->eventPlayerOnAugment(this->getPlayer(), augment);
 		return true;
 	}
 	return false;
 }
 
-const bool Player::removeAugment(const std::shared_ptr<Augment>& augment)
+const bool Player::removeAugment(const std::shared_ptr<BlackTek::Augment>& augment)
 {
 	if (not augments)
 		return false;
@@ -5671,6 +5817,17 @@ const bool Player::removeAugment(const std::shared_ptr<Augment>& augment)
 		augment_count -= 1;
 		attack_modifier_count -= augment->attack_mod_count();
 		defense_modifier_count -= augment->defense_mod_count();
+		conversion_modifier_count -= augment->conversion_count();
+		reform_modifier_count -= augment->reform_count();
+		damage_modifiers_count -= augment->damage_triggers();
+		origin_modifiers_count -= augment->origin_triggers();
+		creature_modifiers_count -= augment->creature_triggers();
+		race_modifiers_count -= augment->race_triggers();
+		named_modifiers_count -= augment->name_count();
+
+		for (const auto& mod : augment->getModifiers())
+			uncacheModifier(mod);
+
 		g_events->eventPlayerOnRemoveAugment(this->getPlayer(), augment);
 		augments->erase(it);
 		return true;
@@ -5680,7 +5837,7 @@ const bool Player::removeAugment(const std::shared_ptr<Augment>& augment)
 
 const bool Player::isAugmented() const
 {
-	return augments && !augments->empty();
+	return augments and not augments->empty();
 }
 
 const bool Player::hasAugment(const std::string_view augmentName, bool checkItems)
@@ -5719,7 +5876,7 @@ const bool Player::hasAugment(const std::string_view augmentName, bool checkItem
 	return false;
 }
 
-const bool Player::hasAugment(const std::shared_ptr<Augment>& augment, bool checkItems)
+const bool Player::hasAugment(const std::shared_ptr<BlackTek::Augment>& augment, bool checkItems)
 {
 	if (augments) {
 		for (const auto& aug : *augments) {
@@ -5753,11 +5910,11 @@ const bool Player::hasAugment(const std::shared_ptr<Augment>& augment, bool chec
 	return false;
 }
 
-const std::vector<std::shared_ptr<Augment>>& Player::getPlayerAugments() const
+const std::vector<std::shared_ptr<BlackTek::Augment>>& Player::getPlayerAugments() const
 {
 	if (not augments)
 	{
-		static const std::vector<std::shared_ptr<Augment>> empty;
+		static const std::vector<std::shared_ptr<BlackTek::Augment>> empty;
 		return empty;
 	}
 	return *augments;
@@ -5770,18 +5927,27 @@ const bool Player::removeAugment(std::string_view augmentName)
 
 	const auto originalSize = augments->size();
 
-	std::erase_if(*augments, [&](const std::shared_ptr<Augment>& augment)
+	std::erase_if(*augments, [&](const std::shared_ptr<BlackTek::Augment>& augment)
 	{
-		auto match = augment->getName() == augmentName;
+		if (augment->getName() != augmentName)
+			return false;
 
-		if (match)
-		{
-			augment_count -= 1;
-			attack_modifier_count -= augment->attack_mod_count();
-			defense_modifier_count -= augment->defense_mod_count();
-			g_events->eventPlayerOnRemoveAugment(this->getPlayer(), augment);
-		}
-		return match;
+		augment_count -= 1;
+		attack_modifier_count -= augment->attack_mod_count();
+		defense_modifier_count -= augment->defense_mod_count();
+		conversion_modifier_count -= augment->conversion_count();
+		reform_modifier_count -= augment->reform_count();
+		damage_modifiers_count -= augment->damage_triggers();
+		origin_modifiers_count -= augment->origin_triggers();
+		creature_modifiers_count -= augment->creature_triggers();
+		race_modifiers_count -= augment->race_triggers();
+		named_modifiers_count -= augment->name_count();
+
+		for (const auto& mod : augment->getModifiers())
+			uncacheModifier(mod);
+
+		g_events->eventPlayerOnRemoveAugment(this->getPlayer(), augment);
+		return true;
 	});
 
 	return augments->size() < originalSize;
@@ -5906,8 +6072,6 @@ std::vector<Position> Player::getOpenPositionsInRadius(int radius) const {
 
 	return openPositions;
 }
-
-
 
 std::vector<ItemPtr> Player::getEquipment(bool validateSlot) const
 {

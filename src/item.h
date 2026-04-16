@@ -1373,6 +1373,12 @@ class Item : virtual public Thing, public SharedObject
 		uint32_t defense_modifier_count = 0;
 		uint32_t conversion_modifier_count = 0;
 		uint32_t reform_modifier_count = 0;
+		uint32_t named_modifiers_count = 0;
+		uint32_t damage_modifiers_count = 0;
+		uint32_t origin_modifiers_count = 0;
+		uint32_t creature_modifiers_count = 0;
+		uint32_t race_modifiers_count = 0;
+
 	protected:
 		uint16_t id; // the same id as in ItemType
 		ItemSubType item_subtype = ItemSubType::None;

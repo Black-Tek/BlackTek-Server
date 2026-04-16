@@ -59,6 +59,7 @@ namespace BlackTek
 
 		[[nodiscard]] std::vector<DamageModifier> getAttackModifiers(uint8_t modType) const noexcept;
 		[[nodiscard]] std::vector<DamageModifier> getDefenseModifiers(uint8_t modType) const noexcept;
+		[[nodiscard]] std::span<const DamageModifier> getModifiers() const noexcept;
 
 		void serialize(PropWriteStream& propWriteStream) const;
 		static std::optional<std::shared_ptr<Augment>> deserialize(PropStream& propReadStream);
