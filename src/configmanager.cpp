@@ -188,6 +188,16 @@ bool ConfigManager::Load()
     integers[PROTECTION_LEVEL]           = static_cast<int32_t>(combatTbl["pvp"]["protection_level"].value_or(int64_t{1}));
     integers[EXP_FROM_PLAYERS_LEVEL_RANGE] = static_cast<int32_t>(combatTbl["pvp"]["exp_from_players_level_range"].value_or(int64_t{75}));
     integers[STAIRHOP_DELAY]             = static_cast<int32_t>(combatTbl["movement"]["stairhop_delay"].value_or(int64_t{2000}));
+    integers[PLAYER_DEFENSE_CHARGE_INTERVAL]  = static_cast<int32_t>(combatTbl["defense"]["player_charge_interval"].value_or(int64_t{1000}));
+    integers[MONSTER_DEFENSE_CHARGE_INTERVAL] = static_cast<int32_t>(combatTbl["defense"]["monster_charge_interval"].value_or(int64_t{1000}));
+    integers[PLAYER_DEFENSE_CHARGES_CAP]      = static_cast<int32_t>(combatTbl["defense"]["player_defense_charges_cap"].value_or(int64_t{2}));
+    integers[PLAYER_ARMOR_CHARGES_CAP]        = static_cast<int32_t>(combatTbl["defense"]["player_armor_charges_cap"].value_or(int64_t{2}));
+    integers[PLAYER_AUGMENT_CHARGES_CAP]      = static_cast<int32_t>(combatTbl["defense"]["player_augment_charges_cap"].value_or(int64_t{2}));
+    integers[MONSTER_DEFENSE_CHARGES_CAP]     = static_cast<int32_t>(combatTbl["defense"]["monster_defense_charges_cap"].value_or(int64_t{2}));
+    integers[MONSTER_ARMOR_CHARGES_CAP]       = static_cast<int32_t>(combatTbl["defense"]["monster_armor_charges_cap"].value_or(int64_t{2}));
+    integers[DEFAULT_DEFENSE_CHARGE_COST]     = static_cast<int32_t>(combatTbl["defense"]["default_defense_charge_cost"].value_or(int64_t{1}));
+    integers[DEFAULT_ARMOR_CHARGE_COST]       = static_cast<int32_t>(combatTbl["defense"]["default_armor_charge_cost"].value_or(int64_t{1}));
+    integers[DEFAULT_AUGMENT_CHARGE_COST]     = static_cast<int32_t>(combatTbl["defense"]["default_augment_charge_cost"].value_or(int64_t{1}));
 
     // Gameplay
     booleans[ALLOW_CHANGEOUTFIT]              = gameplayTbl["player"]["change_outfit"].value_or(true);

@@ -30,16 +30,16 @@
 #include "declarations.h"
 #include <gtl/phmap.hpp>
 
-class AreaCombat;
-class Combat;
-using Combat_ptr = std::shared_ptr<Combat>;
+class BlackTek::AreaCombat;
+class BlackTek::Combat;
+using Combat_ptr = std::shared_ptr<BlackTek::Combat>;
 class Condition;
 class InstantSpell;
 class Spell;
 class LuaScriptInterface;
 class Game;
 struct LootBlock;
-class DamageModifier;
+struct DamageModifier;
 
 template<typename T>
 concept EnumType = std::is_enum_v<T> && !std::is_same_v<T, bool>;
@@ -477,7 +477,6 @@ class LuaScriptInterface
 
 		// Push
 		static void pushBoolean(lua_State* L, bool value);
-		static void pushCombatDamage(lua_State* L, const CombatDamage& damage);
 		static void pushInstantSpell(lua_State* L, const InstantSpell& spell);
 		static void pushPosition(lua_State* L, const Position& position, int32_t stackpos = 0);
 		static void pushSpell(lua_State* L, const Spell& spell);
@@ -1639,6 +1638,11 @@ class LuaScriptInterface
 
 		static int luaMonsterTypeArmor(lua_State* L);
 		static int luaMonsterTypeDefense(lua_State* L);
+		static int luaMonsterTypeDefenseChargeInterval(lua_State* L);
+		static int luaMonsterTypeDefenseChargesCap(lua_State* L);
+		static int luaMonsterTypeArmorChargesCap(lua_State* L);
+		static int luaMonsterTypeDefenseChargeCostMultiplier(lua_State* L);
+		static int luaMonsterTypeArmorChargeCostMultiplier(lua_State* L);
 		static int luaMonsterTypeOutfit(lua_State* L);
 		static int luaMonsterTypeRace(lua_State* L);
 		static int luaMonsterTypeCorpseId(lua_State* L);

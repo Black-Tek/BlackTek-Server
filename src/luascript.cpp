@@ -907,15 +907,6 @@ void LuaScriptInterface::pushBoolean(lua_State* L, bool value)
 	lua_pushboolean(L, value ? 1 : 0);
 }
 
-void LuaScriptInterface::pushCombatDamage(lua_State* L, const CombatDamage& damage)
-{
-	lua_pushinteger(L, damage.primary.value);
-	lua_pushinteger(L, damage.primary.type);
-	lua_pushinteger(L, damage.secondary.value);
-	lua_pushinteger(L, damage.secondary.type);
-	lua_pushinteger(L, damage.origin);
-}
-
 void LuaScriptInterface::pushInstantSpell(lua_State* L, const InstantSpell& spell)
 {
 	lua_createtable(L, 0, 7);
@@ -1029,6 +1020,19 @@ void LuaScriptInterface::pushLoot(lua_State* L, const std::vector<LootBlock>& lo
         std::replace(enumName.begin(), enumName.end(), ':', '_'); \
     } \
     registerGlobalVariable(enumName, \
+        static_cast<std::underlying_type_t<decltype(value)>>(value)); \
+}
+
+#define registerEmbeddedEnumClass(value) { \
+    std::string enumName = #value; \
+    std::replace(enumName.begin(), enumName.end(), ':', '_'); \
+    std::string clean; \
+    clean.reserve(enumName.size()); \
+    for (size_t i = 0; i < enumName.size(); ++i) { \
+        if (enumName[i] == '_' && i + 1 < enumName.size() && enumName[i+1] == '_') continue; \
+        clean += enumName[i]; \
+    } \
+    registerGlobalVariable(clean, \
         static_cast<std::underlying_type_t<decltype(value)>>(value)); \
 }
 
@@ -1824,13 +1828,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(SLOTP_AMMO)
 	registerEnum(SLOTP_DEPOT)
 	registerEnum(SLOTP_TWO_HAND)
-
-	// Use with combat functions
-	registerEnum(ORIGIN_NONE)
-	registerEnum(ORIGIN_CONDITION)
-	registerEnum(ORIGIN_SPELL)
-	registerEnum(ORIGIN_MELEE)
-	registerEnum(ORIGIN_RANGED)
 
 	// Use with house:getAccessList, house:setAccessList
 	registerEnum(GUEST_LIST)
@@ -3222,6 +3219,11 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("MonsterType", "armor", luaMonsterTypeArmor);
 	registerMethod("MonsterType", "defense", luaMonsterTypeDefense);
+	registerMethod("MonsterType", "defenseChargeInterval", luaMonsterTypeDefenseChargeInterval);
+	registerMethod("MonsterType", "defenseChargesCap", luaMonsterTypeDefenseChargesCap);
+	registerMethod("MonsterType", "armorChargesCap", luaMonsterTypeArmorChargesCap);
+	registerMethod("MonsterType", "defenseChargeCostMultiplier", luaMonsterTypeDefenseChargeCostMultiplier);
+	registerMethod("MonsterType", "armorChargeCostMultiplier", luaMonsterTypeArmorChargeCostMultiplier);
 	registerMethod("MonsterType", "outfit", luaMonsterTypeOutfit);
 	registerMethod("MonsterType", "race", luaMonsterTypeRace);
 	registerMethod("MonsterType", "corpseId", luaMonsterTypeCorpseId);
@@ -3921,36 +3923,36 @@ int LuaScriptInterface::luaCreateCombatArea(lua_State* L)
 int LuaScriptInterface::luaDoAreaCombat(lua_State* L)
 {
 	//doAreaCombat(cid, type, pos, area, min, max, effect[, origin = ORIGIN_SPELL[, blockArmor = false[, blockShield = false[, ignoreResistances = false]]]])
-	auto creature = getCreature(L, 1);
-	if (!creature && (!isNumber(L, 1) || getNumber<uint32_t>(L, 1) != 0)) {
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
-		pushBoolean(L, false);
-		return 1;
-	}
+	//auto creature = getCreature(L, 1);
+	//if (!creature && (!isNumber(L, 1) || getNumber<uint32_t>(L, 1) != 0)) {
+	//	reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
+	//	pushBoolean(L, false);
+	//	return 1;
+	//}
 
-	uint32_t areaId = getNumber<uint32_t>(L, 4);
-	const AreaCombat* area = g_luaEnvironment.getAreaObject(areaId);
-	if (area || areaId == 0) {
-		CombatType_t combatType = getNumber<CombatType_t>(L, 2);
+	//uint32_t areaId = getNumber<uint32_t>(L, 4);
+	//const AreaCombat* area = g_luaEnvironment.getAreaObject(areaId);
+	//if (area || areaId == 0) {
+	//	CombatType_t combatType = getNumber<CombatType_t>(L, 2);
 
-		CombatParams params;
-		params.combatType = combatType;
-		params.impactEffect = getNumber<uint8_t>(L, 7);
-		params.blockedByArmor = getBoolean(L, 9, false);
-		params.blockedByShield = getBoolean(L, 10, false);
-		params.ignoreResistances = getBoolean(L, 11, false);
+	//	Combat params;
+	//	params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(combatType));
+	//	params.setParam(COMBAT_PARAM_EFFECT, getNumber<uint8_t>(L, 7));
+	//	params.setParam(COMBAT_PARAM_BLOCKARMOR, getBoolean(L, 9, false) ? 1 : 0);
+	//	params.setParam(COMBAT_PARAM_BLOCKSHIELD, getBoolean(L, 10, false) ? 1 : 0);
+	//	params.setParam(COMBAT_PARAM_IGNORERESISTANCES, getBoolean(L, 11, false) ? 1 : 0);
 
-		CombatDamage damage;
-		damage.origin = getNumber<CombatOrigin>(L, 8, ORIGIN_SPELL);
-		damage.primary.type = combatType;
-		damage.primary.value = normal_random(getNumber<int32_t>(L, 5), getNumber<int32_t>(L, 6));
+	//	CombatDamage damage;
+	//	damage.origin = getNumber<CombatOrigin>(L, 8, ORIGIN_SPELL);
+	//	damage.primary.type = combatType;
+	//	damage.primary.value = normal_random(getNumber<int32_t>(L, 5), getNumber<int32_t>(L, 6));
 
-		Combat::doAreaCombat(creature, getPosition(L, 3), area, damage, params);
-		pushBoolean(L, true);
-	} else {
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_AREA_NOT_FOUND));
-		pushBoolean(L, false);
-	}
+	//	Combat::doAreaCombat(creature, getPosition(L, 3), area, damage, params);
+	//	pushBoolean(L, true);
+	//} else {
+	//	reportErrorFunc(L, getErrorDesc(LUA_ERROR_AREA_NOT_FOUND));
+	//	pushBoolean(L, false);
+	//}
 	return 1;
 }
 
@@ -3973,19 +3975,19 @@ int LuaScriptInterface::luaDoTargetCombat(lua_State* L)
 
 	CombatType_t combatType = getNumber<CombatType_t>(L, 3);
 
-	CombatParams params;
-	params.combatType = combatType;
-	params.impactEffect = getNumber<uint8_t>(L, 6);
-	params.blockedByArmor = getBoolean(L, 8, false);
-	params.blockedByShield = getBoolean(L, 9, false);
-	params.ignoreResistances = getBoolean(L, 10, false);
+	Combat params;
+	params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(combatType));
+	params.setParam(COMBAT_PARAM_EFFECT, getNumber<uint8_t>(L, 6));
+	params.setParam(COMBAT_PARAM_BLOCKARMOR, getBoolean(L, 8, false) ? 1 : 0);
+	params.setParam(COMBAT_PARAM_BLOCKSHIELD, getBoolean(L, 9, false) ? 1 : 0);
+	params.setParam(COMBAT_PARAM_IGNORERESISTANCES, getBoolean(L, 10, false) ? 1 : 0);
 
-	CombatDamage damage;
-	damage.origin = getNumber<CombatOrigin>(L, 7, ORIGIN_SPELL);
-	damage.primary.type = combatType;
-	damage.primary.value = normal_random(getNumber<int32_t>(L, 4), getNumber<int32_t>(L, 5));
+	//CombatDamage damage;
+	//damage.origin = getNumber<CombatOrigin>(L, 7, ORIGIN_SPELL);
+	//damage.primary.type = combatType;
+	//damage.primary.value = normal_random(getNumber<int32_t>(L, 4), getNumber<int32_t>(L, 5));
 
-	Combat::doTargetCombat(creature, target, damage, params);
+	//Combat::doTargetCombat(creature, target, damage, params);
 	pushBoolean(L, true);
 	return 1;
 }
@@ -8642,31 +8644,31 @@ int LuaScriptInterface::luaDamageModifierCreate(lua_State* L)
 	}
 
 	// DamageModifier(stance, type, value, percent/flat, chance, combatType, originType, creatureType, race)
-	if (const auto stance = getNumber<ImbuementType>(L, 2))
-	{
-		const auto modType = getNumber<uint8_t>(L, 3);
-		const auto amount = getNumber<uint16_t>(L, 4);
-		const auto factor = getNumber<ModFactor>(L, 5);
-		const auto chance = getNumber<uint8_t>(L, 6, 100);
-		const auto combatType = getNumber<CombatType_t>(L, 7, COMBAT_NONE);
-		const auto originType = getNumber<CombatOrigin>(L, 8, ORIGIN_NONE);
-		const auto creatureType = getNumber<CreatureType_t>(L, 9, CREATURETYPE_ATTACKABLE);
-		const auto race = getNumber<RaceType_t>(L, 10, RACE_NONE);
-		const auto& creatureName = getString(L, 11, "none");
+	//if (const auto stance = getNumber<ImbuementType>(L, 2))
+	//{
+	//	const auto modType = getNumber<uint8_t>(L, 3);
+	//	const auto amount = getNumber<uint16_t>(L, 4);
+	//	const auto factor = getNumber<ModFactor>(L, 5);
+	//	const auto chance = getNumber<uint8_t>(L, 6, 100);
+	//	const auto combatType = getNumber<CombatType_t>(L, 7, COMBAT_NONE);
+	//	const auto originType = getNumber<CombatOrigin>(L, 8, ORIGIN_NONE);
+	//	const auto creatureType = getNumber<CreatureType_t>(L, 9, CREATURETYPE_ATTACKABLE);
+	//	const auto race = getNumber<RaceType_t>(L, 10, RACE_NONE);
+	//	const auto& creatureName = getString(L, 11, "none");
 
-		if (modType && amount && factor)
-		{
-			const auto& modifier = DamageModifier::makeModifier(stance, modType, amount, factor, chance, combatType, originType, creatureType, race, creatureName);
-			pushSharedPtr(L, modifier);
-			setMetatable(L, -1, "DamageModifier");
-			return 1;
-		}
-		else
-		{
-			lua_pushnil(L);
-			return 1;
-		}
-	}
+	//	if (modType && amount && factor)
+	//	{
+	//		const auto& modifier = DamageModifier::makeModifier(stance, modType, amount, factor, chance, combatType, originType, creatureType, race, creatureName);
+	//		pushSharedPtr(L, modifier);
+	//		setMetatable(L, -1, "DamageModifier");
+	//		return 1;
+	//	}
+	//	else
+	//	{
+	//		lua_pushnil(L);
+	//		return 1;
+	//	}
+	//}
 
 	// DamageModifier(damageModifier)
 	if (const auto& originalModifier = getSharedPtr<DamageModifier>(L, 2))
@@ -8780,10 +8782,10 @@ int LuaScriptInterface::luaDamageModifierSetOriginFilter(lua_State* L)
 {
 	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
 	{
-		if (const auto origin = getNumber<CombatOrigin>(L, 2)) 
-		{
-			modifier->setOriginType(origin);
-		}
+		//if (const auto origin = getNumber<CombatOrigin>(L, 2)) 
+		//{
+		//	modifier->setOriginType(origin);
+		//}
 	}
 	else 
 	{
@@ -10064,14 +10066,14 @@ int LuaScriptInterface::luaCreatureAddHealth(lua_State* L)
 		return 1;
 	}
 
-	CombatDamage damage;
-	damage.primary.value = getNumber<int32_t>(L, 2);
-	if (damage.primary.value >= 0) {
-		damage.primary.type = COMBAT_HEALING;
-	} else {
-		damage.primary.type = COMBAT_UNDEFINEDDAMAGE;
-	}
-	pushBoolean(L, g_game.combatChangeHealth(nullptr, creature, damage));
+	//CombatDamage damage;
+	//damage.primary.value = getNumber<int32_t>(L, 2);
+	//if (damage.primary.value >= 0) {
+	//	damage.primary.type = COMBAT_HEALING;
+	//} else {
+	//	damage.primary.type = COMBAT_UNDEFINEDDAMAGE;
+	//}
+	//pushBoolean(L, g_game.combatChangeHealth(nullptr, creature, damage));
 	return 1;
 }
 
@@ -11912,10 +11914,10 @@ int LuaScriptInterface::luaPlayerAddMana(lua_State* L)
 	if (!animationOnLoss && manaChange < 0) {
 		player->changeMana(manaChange);
 	} else {
-		CombatDamage damage;
-		damage.primary.value = manaChange;
-		damage.origin = ORIGIN_NONE;
-		g_game.combatChangeMana(nullptr, player, damage);
+		//CombatDamage damage;
+		//damage.primary.value = manaChange;
+		//damage.origin = ORIGIN_NONE;
+		//g_game.combatChangeMana(nullptr, player, damage);
 	}
 	pushBoolean(L, true);
 	return 1;
@@ -16233,7 +16235,7 @@ int LuaScriptInterface::luaCombatSetFormula(lua_State* L)
 	double minb = getNumber<double>(L, 4);
 	double maxa = getNumber<double>(L, 5);
 	double maxb = getNumber<double>(L, 6);
-	combat->setPlayerCombatValues(type, mina, minb, maxa, maxb);
+	//combat->setPlayerCombatValues(type, mina, minb, maxa, maxb);
 	pushBoolean(L, true);
 	return 1;
 }
@@ -16278,7 +16280,7 @@ int LuaScriptInterface::luaCombatAddCondition(lua_State* L)
 
 	Condition* condition = getUserdata<Condition>(L, 2);
 	if (condition) {
-		combat->addCondition(condition->clone());
+		//combat->addCondition(condition->clone());
 		pushBoolean(L, true);
 	} else {
 		lua_pushnil(L);
@@ -16296,7 +16298,7 @@ int LuaScriptInterface::luaCombatClearConditions(lua_State* L)
 		return 1;
 	}
 
-	combat->clearConditions();
+	//combat->clearConditions();
 	pushBoolean(L, true);
 	return 1;
 }
@@ -16304,27 +16306,27 @@ int LuaScriptInterface::luaCombatClearConditions(lua_State* L)
 int LuaScriptInterface::luaCombatSetCallback(lua_State* L)
 {
 	// combat:setCallback(key, function)
-	const Combat_ptr& combat = getSharedPtr<Combat>(L, 1);
-	if (!combat) {
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
-		lua_pushnil(L);
-		return 1;
-	}
+	//const Combat_ptr& combat = getSharedPtr<Combat>(L, 1);
+	//if (!combat) {
+	//	reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+	//	lua_pushnil(L);
+	//	return 1;
+	//}
 
-	CallBackParam_t key = getNumber<CallBackParam_t>(L, 2);
-	if (!combat->setCallback(key)) {
-		lua_pushnil(L);
-		return 1;
-	}
+	//CallBackParam_t key = getNumber<CallBackParam_t>(L, 2);
+	//if (!combat->setCallback(key)) {
+	//	lua_pushnil(L);
+	//	return 1;
+	//}
 
-	CallBack* callback = combat->getCallback(key);
-	if (!callback) {
-		lua_pushnil(L);
-		return 1;
-	}
+	//CallBack* callback = combat->getCallback(key);
+	//if (!callback) {
+	//	lua_pushnil(L);
+	//	return 1;
+	//}
 
-	const std::string& function = getString(L, 3);
-	pushBoolean(L, callback->loadCallBack(getScriptEnv()->getScriptInterface(), function));
+	//const std::string& function = getString(L, 3);
+	//pushBoolean(L, callback->loadCallBack(getScriptEnv()->getScriptInterface(), function));
 	return 1;
 }
 
@@ -16338,7 +16340,7 @@ int LuaScriptInterface::luaCombatSetOrigin(lua_State* L)
 		return 1;
 	}
 
-	combat->setOrigin(getNumber<CombatOrigin>(L, 2));
+	//combat->setOrigin(getNumber<CombatOrigin>(L, 2));
 	pushBoolean(L, true);
 	return 1;
 }
@@ -16373,21 +16375,21 @@ int LuaScriptInterface::luaCombatExecute(lua_State* L)
 			}
 
 			if (combat->hasArea()) {
-				combat->doCombat(creature, target->getPosition());
+				//combat->doCombat(creature, target->getPosition());
 			} else {
-				combat->doCombat(creature, target);
+				//combat->doCombat(creature, target);
 			}
 			break;
 		}
 
 		case VARIANT_POSITION: {
-			combat->doCombat(creature, variant.getPosition());
+			//combat->doCombat(creature, variant.getPosition());
 			break;
 		}
 
 		case VARIANT_TARGETPOSITION: {
 			if (combat->hasArea()) {
-				combat->doCombat(creature, variant.getTargetPosition());
+				//combat->doCombat(creature, variant.getTargetPosition());
 			} else {
 				combat->postCombatEffects(creature, variant.getTargetPosition());
 				g_game.addMagicEffect(variant.getTargetPosition(), CONST_ME_POFF);
@@ -16402,7 +16404,7 @@ int LuaScriptInterface::luaCombatExecute(lua_State* L)
 				return 1;
 			}
 
-			combat->doCombat(creature, target);
+			//combat->doCombat(creature, target);
 			break;
 		}
 
@@ -17540,6 +17542,91 @@ int LuaScriptInterface::luaMonsterTypeDefense(lua_State* L)
 			lua_pushinteger(L, monsterType->info.defense);
 		} else {
 			monsterType->info.defense = getNumber<int32_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeDefenseChargeInterval(lua_State* L)
+{
+	// get: monsterType:defenseChargeInterval() set: monsterType:defenseChargeInterval(ms)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushinteger(L, monsterType->info.defense_charge_interval);
+		} else {
+			monsterType->info.defense_charge_interval = getNumber<uint32_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeDefenseChargesCap(lua_State* L)
+{
+	// get: monsterType:defenseChargesCap() set: monsterType:defenseChargesCap(cap)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushinteger(L, monsterType->info.defense_charges_cap);
+		} else {
+			monsterType->info.defense_charges_cap = getNumber<uint32_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeArmorChargesCap(lua_State* L)
+{
+	// get: monsterType:armorChargesCap() set: monsterType:armorChargesCap(cap)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushinteger(L, monsterType->info.armor_charges_cap);
+		} else {
+			monsterType->info.armor_charges_cap = getNumber<uint32_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeDefenseChargeCostMultiplier(lua_State* L)
+{
+	// get: monsterType:defenseChargeCostMultiplier() set: monsterType:defenseChargeCostMultiplier(mult)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushnumber(L, monsterType->info.defense_charge_cost_multiplier);
+		} else {
+			monsterType->info.defense_charge_cost_multiplier = getNumber<float>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeArmorChargeCostMultiplier(lua_State* L)
+{
+	// get: monsterType:armorChargeCostMultiplier() set: monsterType:armorChargeCostMultiplier(mult)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushnumber(L, monsterType->info.armor_charge_cost_multiplier);
+		} else {
+			monsterType->info.armor_charge_cost_multiplier = getNumber<float>(L, 2);
 			pushBoolean(L, true);
 		}
 	} else {
@@ -20725,22 +20812,22 @@ int LuaScriptInterface::luaWeaponElement(lua_State* L)
 			std::string element = getString(L, 2);
 			std::string tmpStrValue = asLowerCaseString(element);
 			if (tmpStrValue == "earth") {
-				weapon->params.combatType = COMBAT_EARTHDAMAGE;
+				weapon->params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(COMBAT_EARTHDAMAGE));
 			} else if (tmpStrValue == "ice") {
-				weapon->params.combatType = COMBAT_ICEDAMAGE;
+				weapon->params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(COMBAT_ICEDAMAGE));
 			} else if (tmpStrValue == "energy") {
-				weapon->params.combatType = COMBAT_ENERGYDAMAGE;
+				weapon->params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(COMBAT_ENERGYDAMAGE));
 			} else if (tmpStrValue == "fire") {
-				weapon->params.combatType = COMBAT_FIREDAMAGE;
+				weapon->params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(COMBAT_FIREDAMAGE));
 			} else if (tmpStrValue == "death") {
-				weapon->params.combatType = COMBAT_DEATHDAMAGE;
+				weapon->params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(COMBAT_DEATHDAMAGE));
 			} else if (tmpStrValue == "holy") {
-				weapon->params.combatType = COMBAT_HOLYDAMAGE;
+				weapon->params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(COMBAT_HOLYDAMAGE));
 			} else {
 				std::cout << "[Warning - weapon:element] Type \"" << element << "\" does not exist." << std::endl;
 			}
 		} else {
-			weapon->params.combatType = getNumber<CombatType_t>(L, 2);
+			weapon->params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(getNumber<CombatType_t>(L, 2)));
 		}
 		pushBoolean(L, true);
 	} else {

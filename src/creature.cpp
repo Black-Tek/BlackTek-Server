@@ -156,10 +156,21 @@ void Creature::onThink(uint32_t interval)
 	}
 
 	blockTicks += interval;
-	if (blockTicks >= 1000) 
+	const uint32_t charge_interval = get_defense_charge_interval();
+	if (charge_interval > 0 and blockTicks >= charge_interval)
 	{
-		blockCount = std::min<uint32_t>(blockCount + 1, 2);
-		blockTicks = 0;
+		const uint32_t charges_gained = blockTicks / charge_interval;
+		blockTicks %= charge_interval;
+
+		const uint32_t def_cap = get_defense_charges_cap();
+		defense_charges = std::min<uint32_t>(defense_charges + charges_gained, def_cap);
+
+		const uint32_t arm_cap = get_armor_charges_cap();
+		armor_charges = std::min<uint32_t>(armor_charges + charges_gained, arm_cap);
+
+		const uint32_t aug_cap = get_augment_charges_cap();
+		if (aug_cap > 0)
+			augment_charges = std::min<uint32_t>(augment_charges + charges_gained, aug_cap);
 	}
 
 	if (isUpdatingPath) 
@@ -655,7 +666,7 @@ void Creature::onCreatureMove(const CreaturePtr& creature,
 			else {
 				if (hasExtraSwing()) {
 					//our target is moving lets see if we can get in hit
-					g_dispatcher.addTask(createTask([id = getID()]() { g_game.checkCreatureAttack(id); }));
+					g_game.checkCreatureAttack(getID());
 				}
 
 				if (newTile->getZone() != oldTile->getZone()) {
@@ -874,14 +885,16 @@ BlockType_t Creature::blockHit(const CreaturePtr& attacker, CombatType_t combatT
 		damage = 0;
 		blockType = BLOCK_IMMUNITY;
 	} else if (checkDefense || checkArmor) {
+		const auto defense_base = static_cast<float>(g_config.GetNumber(ConfigManager::DEFAULT_DEFENSE_CHARGE_COST));
+		const auto armor_base   = static_cast<float>(g_config.GetNumber(ConfigManager::DEFAULT_ARMOR_CHARGE_COST));
+		const uint32_t defense_cost = static_cast<uint32_t>(std::round(defense_base * get_defense_charge_cost_multiplier()));
+		const uint32_t armor_cost   = static_cast<uint32_t>(std::round(armor_base   * get_armor_charge_cost_multiplier()));
 		bool hasDefense = false;
 
-		if (blockCount > 0) {
-			--blockCount;
+		if (checkDefense && canUseDefense && (defense_cost == 0 || defense_charges >= defense_cost)) {
+			if (defense_cost > 0)
+				defense_charges -= defense_cost;
 			hasDefense = true;
-		}
-
-		if (checkDefense && hasDefense && canUseDefense) {
 			int32_t defense = getDefense();
 			damage -= uniform_random(defense / 2, defense);
 			if (damage <= 0) {
@@ -891,7 +904,9 @@ BlockType_t Creature::blockHit(const CreaturePtr& attacker, CombatType_t combatT
 			}
 		}
 
-		if (checkArmor) {
+		if (checkArmor && (armor_cost == 0 || armor_charges >= armor_cost)) {
+			if (armor_cost > 0)
+				armor_charges -= armor_cost;
 			int32_t armor = getArmor();
 			if (armor > 3) {
 				damage -= uniform_random(armor / 2, armor - (armor % 2 + 1));
@@ -1139,6 +1154,8 @@ void Creature::onTickCondition(ConditionType_t type, bool& bRemove)
 	}
 }
 
+// like what the hell is the point in this? Was this being set up to create events later???
+// either, do exactly that, or remove this unnecessary layer...
 void Creature::onCombatRemoveCondition(Condition* condition)
 {
 	removeCondition(condition);
@@ -1353,6 +1370,7 @@ void Creature::removeCondition(ConditionType_t type, ConditionId_t conditionId, 
 	}
 }
 
+// this is really just Creature::removeConditionsByType(type)... change later
 void Creature::removeCombatCondition(ConditionType_t type)
 {
 	std::vector<Condition*> removeConditions;
@@ -1780,4 +1798,24 @@ bool Creature::getPathTo(const Position& targetPos, std::vector<Direction>& dirL
 	fpp.minTargetDist = minTargetDist;
 	fpp.maxTargetDist = maxTargetDist;
 	return getPathTo(targetPos, dirList, fpp);
+}
+
+uint32_t Creature::get_defense_charge_interval() const noexcept
+{
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MONSTER_DEFENSE_CHARGE_INTERVAL));
+}
+
+uint32_t Creature::get_defense_charges_cap() const noexcept
+{
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MONSTER_DEFENSE_CHARGES_CAP));
+}
+
+uint32_t Creature::get_armor_charges_cap() const noexcept
+{
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MONSTER_ARMOR_CHARGES_CAP));
+}
+
+uint32_t Creature::get_augment_charges_cap() const noexcept
+{
+	return 0;
 }

@@ -6,45 +6,46 @@
 // All code found in this file is licensed under MIT and can be found in the LICENSE file.
 
 
-#ifndef FS_AUGMENTS_H
-#define FS_AUGMENTS_H
+#pragma once
 
 #include "augment.h"
 #include <gtl/phmap.hpp>
 
-class Augments {
+namespace BlackTek
+{
 
-public:
-	// No Constructors! Purely static class.
-	Augments() = delete;
-	~Augments() = delete;
-	Augments(const Augments&) = delete;
-	Augments& operator=(const Augments&) = delete;
-	Augments(Augments&&) = delete;
-	Augments& operator=(Augments&&) = delete;
+	class Augments 
+	{
 
-	static constexpr auto path = "data/augments/";
-	static const ModifierStance ParseStance(std::string_view stanceName) noexcept;
-	static const ModFactor ParseFactor(std::string_view factor) noexcept;
-	static const ModifierAttackType ParseAttackModifier(std::string_view modName) noexcept;
-	static const ModifierDefenseType ParseDefenseModifier(std::string_view modName) noexcept;
-	static const CombatType_t ParseDamage(std::string_view damageName) noexcept;
-	static const CombatOrigin ParseOrigin(std::string_view originName) noexcept;
-	static const RaceType_t ParseRaceType(std::string_view raceType) noexcept;
-	static const CreatureType_t ParseCreatureType(std::string_view creatureType) noexcept;
+	public:
+		// No Constructors! Purely static class.
+		Augments() = delete;
+		~Augments() = delete;
+		Augments(const Augments&) = delete;
+		Augments& operator=(const Augments&) = delete;
+		Augments(Augments&&) = delete;
+		Augments& operator=(Augments&&) = delete;
 
-	static std::shared_ptr<Augment> MakeAugment(std::string_view augmentName);
+		static constexpr auto path = "data/augments/";
+		static const uint8_t ParseStance(std::string_view stanceName) noexcept;
+		static const uint8_t ParseFactor(std::string_view factor) noexcept;
+		static const uint8_t ParseAttackModifier(std::string_view modName) noexcept;
+		static const uint8_t ParseDefenseModifier(std::string_view modName) noexcept;
+		static const uint16_t ParseDamage(std::string_view damageName) noexcept;
+		static const uint8_t ParseOrigin(std::string_view originName) noexcept;
+		static const uint8_t ParseRaceType(std::string_view raceType) noexcept;
+		static const uint8_t ParseCreatureType(std::string_view creatureType) noexcept;
 
-	static void loadAll();
-	static void clearAll();
-	static void reload();
-	static size_t count();
-	static void AddAugment(std::shared_ptr<Augment> augment);
-	static void RemoveAugment(const std::shared_ptr<Augment>& augment);
-	static void RemoveAugment(std::string_view augName);
-	static void RemoveAugment(const std::string& augName);
-	static std::shared_ptr<Augment> GetAugment(std::string_view augName);
-};
+		static std::shared_ptr<Augment> MakeAugment(std::string_view augmentName);
 
-
-#endif
+		static void loadAll();
+		static void clearAll();
+		static void reload();
+		static size_t count();
+		static void AddAugment(std::shared_ptr<Augment> augment);
+		static void RemoveAugment(const std::shared_ptr<Augment>& augment);
+		static void RemoveAugment(std::string_view augName);
+		static void RemoveAugment(const std::string& augName);
+		static std::shared_ptr<Augment> GetAugment(std::string_view augName);
+	};
+}

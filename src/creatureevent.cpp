@@ -188,10 +188,6 @@ bool CreatureEvent::configureEvent(const pugi::xml_node& node)
 		type = CREATURE_EVENT_MODALWINDOW;
 	} else if (tmpStr == "textedit") {
 		type = CREATURE_EVENT_TEXTEDIT;
-	} else if (tmpStr == "healthchange") {
-		type = CREATURE_EVENT_HEALTHCHANGE;
-	} else if (tmpStr == "manachange") {
-		type = CREATURE_EVENT_MANACHANGE;
 	} else if (tmpStr == "extendedopcode") {
 		type = CREATURE_EVENT_EXTENDED_OPCODE;
 	} else {
@@ -233,12 +229,6 @@ std::string_view CreatureEvent::getScriptEventName() const
 
 		case CREATURE_EVENT_TEXTEDIT:
 			return "onTextEdit";
-
-		case CREATURE_EVENT_HEALTHCHANGE:
-			return "onHealthChange";
-
-		case CREATURE_EVENT_MANACHANGE:
-			return "onManaChange";
 
 		case CREATURE_EVENT_EXTENDED_OPCODE:
 			return "onExtendedOpcode";
@@ -481,86 +471,6 @@ bool CreatureEvent::executeTextEdit(const PlayerPtr& player, const ItemPtr& item
 	LuaScriptInterface::pushString(L, text);
 
 	return scriptInterface->callFunction(3);
-}
-
-void CreatureEvent::executeHealthChange(const CreaturePtr& creature, const CreaturePtr& attacker, CombatDamage& damage) const
-{
-	//onHealthChange(creature, attacker, primaryDamage, primaryType, secondaryDamage, secondaryType, origin)
-	if (!scriptInterface->reserveScriptEnv()) {
-		std::cout << "[Error - CreatureEvent::executeHealthChange] Call stack overflow" << std::endl;
-		return;
-	}
-
-	ScriptEnvironment* env = scriptInterface->getScriptEnv();
-	env->setScriptId(scriptId, scriptInterface);
-
-	lua_State* L = scriptInterface->getLuaState();
-	scriptInterface->pushFunction(scriptId);
-
-	LuaScriptInterface::pushSharedPtr(L, creature);
-	LuaScriptInterface::setCreatureMetatable(L, -1, creature);
-	if (attacker) {
-		LuaScriptInterface::pushSharedPtr(L, attacker);
-		LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
-	} else {
-		lua_pushnil(L);
-	}
-
-	LuaScriptInterface::pushCombatDamage(L, damage);
-
-	if (scriptInterface->protectedCall(L, 7, 4) != 0) {
-		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
-	} else {
-		damage.primary.value = std::abs(LuaScriptInterface::getNumber<int32_t>(L, -4));
-		damage.primary.type = LuaScriptInterface::getNumber<CombatType_t>(L, -3);
-		damage.secondary.value = std::abs(LuaScriptInterface::getNumber<int32_t>(L, -2));
-		damage.secondary.type = LuaScriptInterface::getNumber<CombatType_t>(L, -1);
-
-		lua_pop(L, 4);
-		if (damage.primary.type != COMBAT_HEALING) {
-			damage.primary.value = -damage.primary.value;
-			damage.secondary.value = -damage.secondary.value;
-		}
-	}
-
-	scriptInterface->resetScriptEnv();
-}
-
-void CreatureEvent::executeManaChange(const CreaturePtr& creature, const CreaturePtr& attacker, CombatDamage& damage) const {
-	//onManaChange(creature, attacker, primaryDamage, primaryType, secondaryDamage, secondaryType, origin)
-	if (!scriptInterface->reserveScriptEnv()) {
-		std::cout << "[Error - CreatureEvent::executeManaChange] Call stack overflow" << std::endl;
-		return;
-	}
-
-	ScriptEnvironment* env = scriptInterface->getScriptEnv();
-	env->setScriptId(scriptId, scriptInterface);
-
-	lua_State* L = scriptInterface->getLuaState();
-	scriptInterface->pushFunction(scriptId);
-
-	LuaScriptInterface::pushSharedPtr(L, creature);
-	LuaScriptInterface::setCreatureMetatable(L, -1, creature);
-	if (attacker) {
-		LuaScriptInterface::pushSharedPtr(L, attacker);
-		LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
-	} else {
-		lua_pushnil(L);
-	}
-
-	LuaScriptInterface::pushCombatDamage(L, damage);
-
-	if (scriptInterface->protectedCall(L, 7, 4) != 0) {
-		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
-	} else {
-		damage.primary.value = LuaScriptInterface::getNumber<int32_t>(L, -4);
-		damage.primary.type = LuaScriptInterface::getNumber<CombatType_t>(L, -3);
-		damage.secondary.value = LuaScriptInterface::getNumber<int32_t>(L, -2);
-		damage.secondary.type = LuaScriptInterface::getNumber<CombatType_t>(L, -1);
-		lua_pop(L, 4);
-	}
-
-	scriptInterface->resetScriptEnv();
 }
 
 void CreatureEvent::executeExtendedOpcode(const PlayerPtr& player, uint8_t opcode, const std::string& buffer) const

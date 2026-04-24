@@ -5,6 +5,7 @@
 #define FS_FILELOADER_H
 
 #include <limits>
+#include <span>
 #include <vector>
 #include <boost/iostreams/device/mapped_file.hpp>
 
@@ -91,6 +92,15 @@ class PropStream
 			return { ret, true };
 		}
 
+		bool readBytes(std::span<std::byte> out) {
+			if (size() < out.size()) {
+				return false;
+			}
+			memcpy(out.data(), p, out.size());
+			p += out.size();
+			return true;
+		}
+
 		bool skip(size_t n) {
 			if (size() < n) {
 				return false;
@@ -126,6 +136,11 @@ class PropWriteStream
 		void write(T add) {
 			char* addr = reinterpret_cast<char*>(&add);
 			std::copy(addr, addr + sizeof(T), std::back_inserter(buffer));
+		}
+
+		void writeBytes(std::span<const std::byte> data) {
+			const char* addr = reinterpret_cast<const char*>(data.data());
+			std::copy(addr, addr + data.size(), std::back_inserter(buffer));
 		}
 
 		void writeString(const std::string& str) {

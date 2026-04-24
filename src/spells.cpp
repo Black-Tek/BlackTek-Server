@@ -285,7 +285,7 @@ bool CombatSpell::castSpell(const CreaturePtr& creature)
 		pos = creature->getPosition();
 	}
 
-	combat->doCombat(creature, pos);
+	//combat->doCombat(creature, pos);
 	return true;
 }
 
@@ -311,12 +311,12 @@ bool CombatSpell::castSpell(const CreaturePtr& creature, const CreaturePtr& targ
 
 	if (combat->hasArea()) {
 		if (needTarget) {
-			combat->doCombat(creature, target->getPosition());
+			//combat->doCombat(creature, target->getPosition());
 		} else {
 			return castSpell(creature);
 		}
 	} else {
-		combat->doCombat(creature, target);
+		//combat->doCombat(creature, target);
 	}
 	return true;
 }
@@ -522,12 +522,12 @@ bool Spell::playerRuneSpellCheck(const PlayerPtr& player, const Position& toPos)
 		return false;
 	}
 
-	ReturnValue ret = Combat::canDoCombat(player, tile, aggressive);
-	if (ret != RETURNVALUE_NOERROR) {
-		player->sendCancelMessage(ret);
-		g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF);
-		return false;
-	}
+	//ReturnValue ret = Combat::canDoCombat(player, tile, aggressive);
+	//if (ret != RETURNVALUE_NOERROR) {
+	//	player->sendCancelMessage(ret);
+	//	g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF);
+	//	return false;
+	//}
 
 	const auto& topVisibleCreature = tile->getBottomVisibleCreature(player);
 	if (blockingCreature && topVisibleCreature) {
@@ -548,11 +548,11 @@ bool Spell::playerRuneSpellCheck(const PlayerPtr& player, const Position& toPos)
 
 	if (aggressive && needTarget && topVisibleCreature && player->hasSecureMode()) {
 		const auto& targetPlayer = topVisibleCreature->getPlayer();
-		if (targetPlayer && targetPlayer != player && player->getSkullClient(targetPlayer) == SKULL_NONE && !Combat::isInPvpZone(player, targetPlayer)) {
-			player->sendCancelMessage(RETURNVALUE_TURNSECUREMODETOATTACKUNMARKEDPLAYERS);
-			g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF);
-			return false;
-		}
+		//if (targetPlayer && targetPlayer != player && player->getSkullClient(targetPlayer) == SKULL_NONE && !Combat::isInPvpZone(player, targetPlayer)) {
+		//	player->sendCancelMessage(RETURNVALUE_TURNSECUREMODETOATTACKUNMARKEDPLAYERS);
+		//	g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF);
+		//	return false;
+		//}
 	}
 
 	if (!g_events->eventPlayerOnSpellTry(player, this, SPELL_RUNE)) {

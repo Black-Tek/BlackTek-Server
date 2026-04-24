@@ -180,6 +180,7 @@ enum RaceType_t : uint8_t {
 	RACE_ENERGY,
 };
 
+// this should be "DamageType" or something more fitting than CombatType
 enum CombatType_t : uint16_t {
 	COMBAT_NONE = 0,
 
@@ -210,6 +211,7 @@ enum CombatParam_t {
 	COMBAT_PARAM_AGGRESSIVE,
 	COMBAT_PARAM_DISPEL,
 	COMBAT_PARAM_USECHARGES,
+	COMBAT_PARAM_IGNORERESISTANCES,
 };
 
 enum CallBackParam_t {
@@ -583,54 +585,6 @@ struct ModalWindow
 	uint8_t defaultEnterButton = 0xFF, defaultEscapeButton = 0xFF;
 	bool priority = false;
 	ModalWindow(uint32_t id, std::string title, std::string message): title(std::move(title)), message(std::move(message)), id(id) {}
-};
-
-enum CombatOrigin
-{
-	ORIGIN_NONE,
-	ORIGIN_CONDITION,
-	ORIGIN_SPELL,
-	ORIGIN_MELEE,
-	ORIGIN_RANGED,
-	ORIGIN_ABSORB,
-	ORIGIN_RESTORE,
-	ORIGIN_REFLECT,
-	ORIGIN_DEFLECT,
-	ORIGIN_RICOCHET,
-	ORIGIN_PIERCING,
-	ORIGIN_IMBUEMENT,
-	ORIGIN_AUGMENT,
-};
-
-struct CombatDamage
-{
-	struct {
-		CombatType_t type = COMBAT_NONE;
-		int32_t value = 0;
-	} primary = {}, secondary = {};
-
-	CombatOrigin origin = ORIGIN_NONE;
-	BlockType_t blockType = BLOCK_NONE;
-	bool critical = false;
-	bool leeched = false;
-	bool augmented = false; // we can use this to help with refactoring combat logic later, by giving more config options to end users for how augmented damage interacts with augments
-	bool isUtility = false;
-	CombatDamage(
-		CombatType_t type = COMBAT_NONE,
-		CombatOrigin origin = ORIGIN_NONE,
-		BlockType_t blockType = BLOCK_NONE,
-		int32_t value = 0,
-		bool crit = false,
-		bool leech = false,
-		bool augment = false,
-		bool isUtility = false ) :
-		origin(origin),
-		primary{ type, value },
-		critical(crit),
-		leeched(leech),
-		augmented(augment),
-		blockType(blockType) {
-	}
 };
 
 using MarketOfferList = std::list<MarketOffer>;

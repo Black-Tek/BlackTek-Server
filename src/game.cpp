@@ -806,7 +806,7 @@ void Game::playerMoveCreature(PlayerPtr& player, CreaturePtr& movingCreature, co
 		//need to walk to the creature first before moving it
 		std::vector<Direction> listDir;
 		if (player->getPathTo(movingCreatureOrigPos, listDir, 0, 1, true, true)) {
-			g_dispatcher.addTask(createTask([=, this, playerID = player->getID(), listDir = std::move(listDir)]() { playerAutoWalk(playerID, listDir); }));
+			playerAutoWalk(player->getID(), listDir);
 			SchedulerTask* task = createSchedulerTask(RANGE_MOVE_CREATURE_INTERVAL,
 				[=, this, playerID = player->getID(), movingCreatureID = movingCreature->getID(), toPos = toTile->getPosition()] {
 					playerMoveCreatureByID(playerID, movingCreatureID, movingCreatureOrigPos, toPos);
@@ -1075,7 +1075,7 @@ void Game::playerMoveItem(const PlayerPtr& player,
 		//need to walk to the item first before using it
 		std::vector<Direction> listDir;
 		if (player->getPathTo(item->getPosition(), listDir, 0, 1, true, true)) {
-			g_dispatcher.addTask(createTask([=, this, playerID = player->getID(), listDir = std::move(listDir)]() { playerAutoWalk(playerID, listDir); })); // suspect lamba
+			playerAutoWalk(player->getID(), listDir);
 			SchedulerTask* task = createSchedulerTask(RANGE_MOVE_ITEM_INTERVAL, [=, this, playerID = player->getID()]() {
 				playerMoveItemByPlayerID(playerID, fromPos, spriteId, fromStackPos, toPos, count);
 				});
@@ -1133,7 +1133,7 @@ void Game::playerMoveItem(const PlayerPtr& player,
 
 			std::vector<Direction> listDir;
 			if (player->getPathTo(walkPos, listDir, 0, 0, true, true)) {
-				g_dispatcher.addTask(createTask([=, this, playerID = player->getID(), listDir = std::move(listDir)]() { playerAutoWalk(playerID, listDir); }));
+				playerAutoWalk(player->getID(), listDir);
 				SchedulerTask* task = createSchedulerTask(RANGE_MOVE_ITEM_INTERVAL,
 					[this, playerID = player->getID(), itemPos, spriteId, itemStackPos, toPos, count]() {
 						playerMoveItemByPlayerID(playerID, itemPos, spriteId, itemStackPos, toPos, count);
@@ -2302,7 +2302,7 @@ void Game::playerUseItemEx(const uint32_t playerId, const Position& fromPos, con
 
 			std::vector<Direction> listDir;
 			if (player->getPathTo(walkToPos, listDir, 0, 1, true, true)) {
-				g_dispatcher.addTask(createTask([=, this, playerID = player->getID(), listDir = std::move(listDir)]() { playerAutoWalk(playerID, listDir); }));
+				playerAutoWalk(player->getID(), listDir);
 				SchedulerTask* task = createSchedulerTask(RANGE_USE_ITEM_EX_INTERVAL, [=, this]() {
 					playerUseItemEx(playerId, itemPos, itemStackPos, fromSpriteId, toPos, toStackPos, toSpriteId);
 					});
@@ -2360,7 +2360,7 @@ void Game::playerUseItem(const uint32_t playerId, const Position& pos, const uin
 	if (ReturnValue ret = g_actions->canUse(player, pos); ret != RETURNVALUE_NOERROR) {
 		if (ret == RETURNVALUE_TOOFARAWAY) {
 			if (std::vector<Direction> listDir; player->getPathTo(pos, listDir, 0, 1, true, true)) {
-				g_dispatcher.addTask(createTask([this, playerID = player->getID(), listDir = std::move(listDir)]() { playerAutoWalk(playerID, listDir); }));
+				playerAutoWalk(player->getID(), listDir);
 				SchedulerTask* task = createSchedulerTask(RANGE_USE_ITEM_INTERVAL, [=, this]() { playerUseItem(playerId, pos, stackPos, index, spriteId); });
 				player->setNextWalkActionTask(task);
 				return;
@@ -2458,7 +2458,7 @@ void Game::playerUseWithCreature(const uint32_t playerId, const Position& fromPo
 			}
 
 			if (std::vector<Direction> listDir; player->getPathTo(walkToPos, listDir, 0, 1, true, true)) {
-				g_dispatcher.addTask(createTask([this, playerID = player->getID(), listDir = std::move(listDir)]() { playerAutoWalk(playerID, listDir); }));
+				playerAutoWalk(player->getID(), listDir);
 				SchedulerTask* task = createSchedulerTask(RANGE_USE_WITH_CREATURE_INTERVAL, [=, this]() {
 					playerUseWithCreature(playerId, itemPos, itemStackPos, creatureId, spriteId);
 					});
@@ -2568,7 +2568,7 @@ void Game::playerRotateItem(const uint32_t playerId, const Position& pos, const 
 
 	if (pos.x != 0xFFFF && !Position::areInRange<1, 1, 0>(pos, player->getPosition())) {
 		if (std::vector<Direction> listDir; player->getPathTo(pos, listDir, 0, 1, true, true)) {
-			g_dispatcher.addTask(createTask([this, playerID = player->getID(), listDir = std::move(listDir)]() { playerAutoWalk(playerID, listDir); }));
+			playerAutoWalk(player->getID(), listDir);
 			SchedulerTask* task = createSchedulerTask(RANGE_ROTATE_ITEM_INTERVAL, [=, this]() { playerRotateItem(playerId, pos, stackPos, spriteId); });
 			player->setNextWalkActionTask(task);
 		} else {
@@ -2658,7 +2658,7 @@ void Game::playerBrowseField(const uint32_t playerId, const Position& pos)
 
 	if (!Position::areInRange<1, 1>(playerPos, pos)) {
 		if (std::vector<Direction> listDir; player->getPathTo(pos, listDir, 0, 1, true, true)) {
-			g_dispatcher.addTask(createTask([this, playerID = player->getID(), listDir = std::move(listDir)]() { playerAutoWalk(playerID, listDir); }));
+			playerAutoWalk(player->getID(), listDir);
 			SchedulerTask* task = createSchedulerTask(RANGE_BROWSE_FIELD_INTERVAL, [=, this]() { playerBrowseField(playerId, pos); });
 			player->setNextWalkActionTask(task);
 		} else {
@@ -2754,7 +2754,7 @@ void Game::playerWrapItem(const uint32_t playerId, const Position& position, con
 
 	if (position.x != 0xFFFF && !Position::areInRange<1, 1, 0>(position, player->getPosition())) {
 		if (std::vector<Direction> listDir; player->getPathTo(position, listDir, 0, 1, true, true)) {
-			g_dispatcher.addTask(createTask([this, playerID = player->getID(), listDir = std::move(listDir)]() { playerAutoWalk(playerID, listDir); }));
+			playerAutoWalk(player->getID(), listDir);
 			const auto task = createSchedulerTask(RANGE_WRAP_ITEM_INTERVAL, [=, this]() { playerWrapItem(playerId, position, stackPos, spriteId); });
 			player->setNextWalkActionTask(task);
 		} else {
@@ -2825,7 +2825,7 @@ void Game::playerRequestTrade(const uint32_t playerId, const Position& pos, uint
 
 	if (!Position::areInRange<1, 1>(tradeItemPosition, playerPosition)) {
 		if (std::vector<Direction> listDir; player->getPathTo(pos, listDir, 0, 1, true, true)) {
-			g_dispatcher.addTask(createTask([this, playerID = player->getID(), listDir = std::move(listDir)]() { playerAutoWalk(playerID, listDir); }));
+			playerAutoWalk(player->getID(), listDir);
 			const auto task = createSchedulerTask(RANGE_REQUEST_TRADE_INTERVAL, [=, this]() {
 				playerRequestTrade(playerId, pos, stackPos, tradePlayerId, spriteId);
 				});
@@ -3386,16 +3386,16 @@ void Game::playerSetAttackedCreature(const uint32_t playerId, const uint32_t cre
 		return;
 	}
 
-	const ReturnValue ret = Combat::canTargetCreature(player, attackCreature);
-	if (ret != RETURNVALUE_NOERROR) {
-		player->sendCancelMessage(ret);
-		player->sendCancelTarget();
-		player->setAttackedCreature(nullptr);
-		return;
-	}
+	//const ReturnValue ret = Combat::canTargetCreature(player, attackCreature);
+	//if (ret != RETURNVALUE_NOERROR) {
+	//	player->sendCancelMessage(ret);
+	//	player->sendCancelTarget();
+	//	player->setAttackedCreature(nullptr);
+	//	return;
+	//}
 
 	player->setAttackedCreature(attackCreature);
-	g_dispatcher.addTask(createTask([this, id = player->getID()]() { updateCreatureWalk(id); }));
+	updateCreatureWalk(player->getID());
 }
 
 void Game::playerFollowCreature(const uint32_t playerId, const uint32_t creatureId)
@@ -3413,8 +3413,8 @@ void Game::playerFollowCreature(const uint32_t playerId, const uint32_t creature
 	}
 
 	player->setAttackedCreature(nullptr);
-	g_dispatcher.addTask(createTask([this, id = player->getID()]() { updateCreatureWalk(id); }));
 	player->setFollowCreature(followCreature);
+	updateCreatureWalk(player->getID());
 }
 
 void Game::playerSetFightModes(const uint32_t playerId, const fightMode_t fightMode, const bool chaseMode, const bool secureMode)
@@ -5177,819 +5177,6 @@ void Game::changeLight(const CreatureConstPtr& creature)
 
 	for (const auto& spectator : spectators.players())
 		std::static_pointer_cast<Player>(spectator)->sendCreatureLight(creature);
-}
-
-bool Game::combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, const CreaturePtr& target, const bool checkDefense, const bool checkArmor, const bool field, const bool ignoreResistances /*= false */)
-{
-	if (not target or (damage.primary.type == COMBAT_NONE and damage.secondary.type == COMBAT_NONE))
-		return true;
-
-	if (attacker and not canInteractInSameInstance(attacker, target))
-		return true;
-
-	if (target->getPlayer() and target->isInGhostMode())
-		return true;
-
-	if (damage.primary.value > 0)
-		return false;
-
-	static const auto sendBlockEffect = [this](const BlockType_t blockType, const CombatType_t combatType, const Position& targetPos, uint32_t instanceId)	
-	{
-		SpectatorVec localSpectators;
-		map.getSpectators(localSpectators, targetPos, true, true);
-
-		if (blockType == BLOCK_DEFENSE)
-		{
-			Game::addMagicEffect(localSpectators, targetPos, CONST_ME_POFF, instanceId);
-		}
-		else if (blockType == BLOCK_ARMOR)
-		{
-			Game::addMagicEffect(localSpectators, targetPos, CONST_ME_BLOCKHIT, instanceId);
-		}
-		else if (blockType == BLOCK_IMMUNITY)
-		{
-			uint8_t hitEffect = 0;
-
-			switch (combatType)
-			{
-				case COMBAT_UNDEFINEDDAMAGE:
-					return;
-
-				case COMBAT_ENERGYDAMAGE:
-				case COMBAT_FIREDAMAGE:
-				case COMBAT_PHYSICALDAMAGE:
-				case COMBAT_ICEDAMAGE:
-				case COMBAT_DEATHDAMAGE:
-					hitEffect = CONST_ME_BLOCKHIT;
-					break;
-
-				case COMBAT_EARTHDAMAGE:
-					hitEffect = CONST_ME_GREEN_RINGS;
-					break;
-
-				case COMBAT_HOLYDAMAGE:
-					hitEffect = CONST_ME_HOLYDAMAGE;
-					break;
-
-				default:
-					hitEffect = CONST_ME_POFF;
-					break;
-			}
-
-			Game::addMagicEffect(localSpectators, targetPos, hitEffect, instanceId);
-		}
-	};
-
-	BlockType_t primaryBlockType, secondaryBlockType;
-	if (damage.primary.type != COMBAT_NONE) {
-		damage.primary.value = -damage.primary.value;
-		primaryBlockType = target->blockHit(attacker, damage.primary.type, damage.primary.value, checkDefense, checkArmor, field, ignoreResistances);
-		if (damage.primary.type != COMBAT_HEALING) {
-			if (attacker) {
-				g_events->eventCreatureOnAttack(attacker, target, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
-			}
-			g_events->eventCreatureOnDefend(target, attacker, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
-
-			if (const auto& aggressor = attacker ? attacker->getPlayer() : nullptr) {
-				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-					const auto& item = aggressor->getInventoryItem(static_cast<slots_t>(slot));
-					if (not item or item->getAttack() <= 0) {
-						continue;
-					}
-					g_events->eventItemOnAttack(item, aggressor, target, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
-				}
-			}
-
-			if (const auto& victim = target->getPlayer()) {
-				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-					const auto& item = victim->getInventoryItem(static_cast<slots_t>(slot));
-					if (not item or (item->getDefense() <= 0 and item->getArmor() <= 0)) {
-						continue;
-					}
-					g_events->eventItemOnDefend(item, victim, attacker, primaryBlockType, damage.primary.type, damage.origin, damage.critical, damage.leeched);
-				}
-			}
-		}
-		damage.primary.value = -damage.primary.value;
-		// BlackTek Instance System
-		sendBlockEffect(primaryBlockType, damage.primary.type, target->getPosition(), target->getInstanceID());
-	} else {
-		primaryBlockType = BLOCK_NONE;
-	}
-
-	if (damage.secondary.type != COMBAT_NONE) {
-		damage.secondary.value = -damage.secondary.value;
-		secondaryBlockType = target->blockHit(attacker, damage.secondary.type, damage.secondary.value, false, false, field, ignoreResistances);
-		if (damage.primary.type != COMBAT_HEALING) {
-			if (attacker) {
-				g_events->eventCreatureOnAttack(attacker, target, secondaryBlockType, damage.secondary.type, damage.origin, damage.critical, damage.leeched);
-			}
-			g_events->eventCreatureOnDefend(target, attacker, secondaryBlockType, damage.secondary.type, damage.origin, damage.critical, damage.leeched);
-
-			if (const auto aggressor = attacker ? attacker->getPlayer() : nullptr) {
-				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-					const auto item = aggressor->getInventoryItem(static_cast<slots_t>(slot));
-					if (not item) {
-						continue;
-					}
-					if (item->getAttack() > 0) {
-						g_events->eventItemOnAttack(item, aggressor, target, secondaryBlockType, damage.secondary.type, damage.origin, damage.critical, damage.leeched);
-					}
-				}
-			}
-
-			if (const auto victim = target->getPlayer()) {
-				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-					const auto item = victim->getInventoryItem(static_cast<slots_t>(slot));
-					if (not item) {
-						continue;
-					}
-
-					if (item->getDefense() > 0 or item->getArmor() > 0) {
-						g_events->eventItemOnDefend(item, victim, attacker, secondaryBlockType, damage.secondary.type, damage.origin, damage.critical, damage.leeched);
-					}
-				}
-			}
-		}
-		damage.secondary.value = -damage.secondary.value;
-		// BlackTek Instance System
-		sendBlockEffect(secondaryBlockType, damage.secondary.type, target->getPosition(), target->getInstanceID());
-	} else {
-		secondaryBlockType = BLOCK_NONE;
-	}
-
-	if (const auto& aggressor = attacker ? attacker->getPlayer() : nullptr) {
-		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-			const auto& item = aggressor->getInventoryItem(static_cast<slots_t>(slot));
-			if (not item or not item->isAugmented()) {
-				continue;
-			}
-			
-			if (
-				!g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || 
-				(item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))) ||
-				(g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
-			) {
-				for (const auto& augment : *item->getAugments()) {
-					for (const auto& modifier : augment->getAttackModifiers()) {
-						if ((damage.primary.type != COMBAT_NONE and modifier->getDamageType() == damage.primary.type and modifier->getOriginType() == damage.origin) or 
-							(damage.secondary.type != COMBAT_NONE and modifier->getDamageType() == damage.secondary.type and modifier->getOriginType() == damage.origin)) {
-							g_events->eventItemOnModifierAttack(item, aggressor, target, modifier, damage);
-						}
-					}
-				}
-			}
-		}
-	}
-
-	if (const auto& victim = target->getPlayer()) {
-		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-			const auto& item = victim->getInventoryItem(static_cast<slots_t>(slot));
-			if (not item or not item->isAugmented()) {
-				continue;
-			}
-			
-			if (
-				!g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) || 
-				(item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot))) ||
-				(g_config.GetBoolean(ConfigManager::AUGMENT_SLOT_PROTECTION) && (slot == CONST_SLOT_RIGHT || slot == CONST_SLOT_LEFT) && (item->getWeaponType() != WEAPON_NONE && item->getWeaponType() != WEAPON_AMMO))
-			) {
-				for (const auto& augment : *item->getAugments()) {
-					for (const auto& modifier : augment->getDefenseModifiers()) {
-						if ((damage.primary.type != COMBAT_NONE and modifier->getDamageType() == damage.primary.type) or
-							(damage.secondary.type != COMBAT_NONE and modifier->getDamageType() == damage.secondary.type)) {
-							g_events->eventItemOnModifierDefend(item, victim, attacker, modifier, damage);
-						}
-					}
-				}
-			}
-		}
-	}
-
-	damage.blockType = primaryBlockType;
-	return (primaryBlockType != BLOCK_NONE) and (secondaryBlockType != BLOCK_NONE);
-}
-
-void Game::combatGetTypeInfo(const CombatType_t combatType, const CreaturePtr& target, TextColor_t& color, uint8_t& effect)
-{
-	switch (combatType) {
-		case COMBAT_PHYSICALDAMAGE: {
-			ItemPtr splash = nullptr;
-			switch (target->getRace()) {
-				case RACE_VENOM:
-					color = TEXTCOLOR_LIGHTGREEN;
-					effect = CONST_ME_HITBYPOISON;
-					splash = Item::CreateItem(ITEM_SMALLSPLASH, FLUID_SLIME);
-					break;
-				case RACE_BLOOD:
-					color = TEXTCOLOR_RED;
-					effect = CONST_ME_DRAWBLOOD;
-					if (const auto tile = target->getTile()) {
-						if (!tile->hasFlag(TILESTATE_PROTECTIONZONE)) {
-							splash = Item::CreateItem(ITEM_SMALLSPLASH, FLUID_BLOOD);
-						}
-					}
-					break;
-				case RACE_UNDEAD:
-					color = TEXTCOLOR_LIGHTGREY;
-					effect = CONST_ME_HITAREA;
-					break;
-				case RACE_FIRE:
-					color = TEXTCOLOR_ORANGE;
-					effect = CONST_ME_DRAWBLOOD;
-					break;
-				case RACE_ENERGY:
-					color = TEXTCOLOR_ELECTRICPURPLE;
-					effect = CONST_ME_ENERGYHIT;
-					break;
-				default:
-					color = TEXTCOLOR_NONE;
-					effect = CONST_ME_NONE;
-					break;
-			}
-
-			if (splash) {
-				CylinderPtr t_tile = target->getTile();
-				internalAddItem(t_tile, splash, INDEX_WHEREEVER, FLAG_NOLIMIT);
-				startDecay(splash);
-			}
-
-			break;
-		}
-
-		case COMBAT_ENERGYDAMAGE: {
-			color = TEXTCOLOR_ELECTRICPURPLE;
-			effect = CONST_ME_ENERGYHIT;
-			break;
-		}
-
-		case COMBAT_EARTHDAMAGE: {
-			color = TEXTCOLOR_LIGHTGREEN;
-			effect = CONST_ME_GREEN_RINGS;
-			break;
-		}
-
-		case COMBAT_DROWNDAMAGE: {
-			color = TEXTCOLOR_LIGHTBLUE;
-			effect = CONST_ME_LOSEENERGY;
-			break;
-		}
-		
-		case COMBAT_FIREDAMAGE: {
-			color = TEXTCOLOR_ORANGE;
-			effect = CONST_ME_HITBYFIRE;
-			break;
-		}
-		
-		case COMBAT_ICEDAMAGE: {
-			color = TEXTCOLOR_SKYBLUE;
-			effect = CONST_ME_ICEATTACK;
-			break;
-		}
-		
-		case COMBAT_HOLYDAMAGE: {
-			color = TEXTCOLOR_YELLOW;
-			effect = CONST_ME_HOLYDAMAGE;
-			break;
-		}
-		
-		case COMBAT_DEATHDAMAGE: {
-			color = TEXTCOLOR_DARKRED;
-			effect = CONST_ME_SMALLCLOUDS;
-			break;
-		}
-		
-		case COMBAT_LIFEDRAIN: {
-			color = TEXTCOLOR_RED;
-			effect = CONST_ME_MAGIC_RED;
-			break;
-		}
-		
-		default: {
-			color = TEXTCOLOR_NONE;
-			effect = CONST_ME_NONE;
-			break;
-		}
-	}
-}
-
-bool Game::combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& target, CombatDamage& damage, bool showMessages)
-{
-	if (damage.primary.value == 0 && damage.secondary.value == 0) {
-		return true;
-	}
-
-	const auto& attackerPlayer = attacker && attacker->getPlayer() ? attacker->getPlayer() : nullptr;
-	auto targetPlayer = target && target->getPlayer() ? target->getPlayer() : nullptr;
-
-	// BlackTek Instance System
-	if (attacker and not canInteractInSameInstance(attacker, target)) {
-		return false;
-	}
-
-	if (attackerPlayer && targetPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
-		return false;
-	}
-
-	// Early exit if the target is already dead
-	if (target->getHealth() <= 0) {
-		return false;
-	}
-
-	// Handle Lua events immediately
-	if (const auto& events = target->getCreatureEvents(CREATURE_EVENT_HEALTHCHANGE); !events.empty()) {
-		for (const auto& creatureEvent : events) {
-			creatureEvent->executeHealthChange(target, attacker, damage);
-		}
-	}
-
-	const Position& targetPos = target->getPosition();
-
-	// Healing
-	if (damage.primary.value > 0) {
-		int32_t realHealthChange = target->getHealth();
-		target->gainHealth(attacker, damage.primary.value);
-		realHealthChange = target->getHealth() - realHealthChange;
-
-		// Reward boss healing contribution
-		if (targetPlayer) {
-			for (const auto& monsterId : g_game.rewardBossTracking | std::views::keys) {
-				if (const auto& monster = getMonsterByID(monsterId); monster && monster->isRewardBoss()) {
-					const Position& monsterPos = monster->getPosition();
-					if (monsterPos.z == targetPos.z) {
-						int32_t dx = targetPos.x - monsterPos.x;
-						int32_t dy = targetPos.y - monsterPos.y;
-						if (dx * dx + dy * dy < 49) { // 7^2 = 49
-							uint32_t playerGuid = targetPlayer->getGUID();
-							rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realHealthChange * g_config.GetFloat(ConfigManager::REWARD_RATE_HEALING_DONE);
-						}
-					}
-				}
-			}
-		}
-
-		if (showMessages && realHealthChange > 0 && !target->isInGhostMode()) {
-			const auto& damageString = std::to_string(realHealthChange) + " hitpoint" + ((realHealthChange != 1) ? "s" : "");
-			const auto& targetNameDesc = target->getNameDescription();
-			const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
-			std::string spectatorMessage;
-
-			if (!attacker) {
-				spectatorMessage = targetNameDesc + " is healed for " + damageString;
-			}
-			else if (attacker == target) {
-				spectatorMessage = attackerNameDesc + " heals " + (targetPlayer ? (targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "him") : "it") + "self for " + damageString + ".";
-			}
-			else {
-				spectatorMessage = attackerNameDesc + " heals " + targetNameDesc + " for " + damageString + ".";
-			}
-			spectatorMessage[0] = std::toupper(spectatorMessage[0]);
-
-			TextMessage message;
-			message.position = targetPos;
-			message.primary.value = realHealthChange;
-			message.primary.color = TEXTCOLOR_PASTELRED;
-
-			SpectatorVec spectators;
-			map.getSpectators(spectators, targetPos, false, true);
-
-			auto in_target_instance = [&](const auto& c) { return std::static_pointer_cast<Player>(c)->compareInstance(target->getInstanceID()); };
-			auto to_player = [](const auto& c) { return std::static_pointer_cast<Player>(c); };
-
-			for (const auto& spectatorPlayer : spectators.players()
-				| std::views::filter(in_target_instance)
-				| std::views::transform(to_player))
-			{
-				if (spectatorPlayer == attackerPlayer && attackerPlayer != targetPlayer)
-				{
-					message.type = MESSAGE_HEALED;
-					message.text = "You heal " + targetNameDesc + " for " + damageString + ".";
-				}
-				else if (spectatorPlayer == targetPlayer)
-				{
-					message.type = MESSAGE_HEALED;
-					message.text = !attacker ? "You are healed for " + damageString + "." :
-						(targetPlayer == attackerPlayer ? "You heal yourself for " + damageString + "." :
-							"You are healed by " + attackerNameDesc + " for " + damageString + ".");
-				}
-				else
-				{
-					message.type = MESSAGE_HEALED_OTHERS;
-					message.text = spectatorMessage;
-				}
-
-				spectatorPlayer->sendTextMessage(message);
-			}
-		}
-	}
-	else {
-		if (!target->isAttackable()) {
-			if (!target->isInGhostMode()) {
-				SpectatorVec localSpectators;
-				map.getSpectators(localSpectators, targetPos, true, true);
-				Game::addMagicEffect(localSpectators, targetPos, CONST_ME_POFF, target->getInstanceID());
-			}
-			return true;
-		}
-
-		damage.primary.value = std::abs(damage.primary.value);
-		damage.secondary.value = std::abs(damage.secondary.value);
-
-		int32_t healthChange = damage.primary.value + damage.secondary.value;
-		if (healthChange == 0) {
-			return true;
-		}
-
-		TextMessage message;
-		message.position = targetPos;
-
-		SpectatorVec spectators;
-		map.getSpectators(spectators, targetPos, true, true);
-
-		if (targetPlayer && targetPlayer->hasCondition(CONDITION_MANASHIELD) && damage.primary.type != COMBAT_UNDEFINEDDAMAGE) {
-			if (int32_t manaDamage = std::min<int32_t>(targetPlayer->getMana(), healthChange); manaDamage != 0) {
-				if (const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE); !events.empty()) {
-					for (const auto& creatureEvent : events) {
-						creatureEvent->executeManaChange(target, attacker, damage);
-					}
-					healthChange = damage.primary.value + damage.secondary.value;
-					if (healthChange == 0) {
-						return true;
-					}
-					manaDamage = std::min<int32_t>(targetPlayer->getMana(), healthChange);
-				}
-
-				// Drain mana and add visual effect
-				targetPlayer->drainMana(attacker, manaDamage);
-				Game::addMagicEffect(spectators, targetPos, CONST_ME_LOSEENERGY, target->getInstanceID());
-
-				if (showMessages) {
-					const auto& targetNameDesc = target->getNameDescription();
-					const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
-					std::string spectatorMessage;
-
-					if (!attacker) {
-						spectatorMessage = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana.";
-					}
-					else if (attacker == target) {
-						spectatorMessage = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana due to " +
-							(targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his") + " own attack.";
-					}
-					else {
-						spectatorMessage = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana due to an attack by " +	attackerNameDesc + ".";
-					}
-					spectatorMessage[0] = std::toupper(spectatorMessage[0]);
-
-					message.primary.value = manaDamage;
-					message.primary.color = TEXTCOLOR_BLUE;
-
-
-					auto can_see_mana_loss = [&](const auto& c)
-					{
-						auto p = std::static_pointer_cast<Player>(c);
-						return p->compareInstance(target->getInstanceID()) and p->getPosition().z == targetPos.z;
-					};
-
-					auto to_player = [](const auto& c) { return std::static_pointer_cast<Player>(c); };
-
-					for (const auto& spectatorPlayer : spectators.players()
-						| std::views::filter(can_see_mana_loss)
-						| std::views::transform(to_player))
-					{
-						if (spectatorPlayer == attackerPlayer and attackerPlayer != targetPlayer)
-						{
-							message.type = MESSAGE_DAMAGE_DEALT;
-							message.text = targetNameDesc + " loses " + std::to_string(manaDamage) + " mana due to your attack.";
-							message.text[0] = std::toupper(static_cast<unsigned char>(message.text[0]));
-						}
-						else if (spectatorPlayer == targetPlayer)
-						{
-							message.type = MESSAGE_DAMAGE_RECEIVED;
-							message.text = !attacker ? "You lose " + std::to_string(manaDamage) + " mana." :
-								(targetPlayer == attackerPlayer ? "You lose " + std::to_string(manaDamage) + " mana due to your own attack." :
-									"You lose " + std::to_string(manaDamage) + " mana due to an attack by " + attackerNameDesc + ".");
-						}
-						else
-						{
-							message.type = MESSAGE_DAMAGE_OTHERS;
-							message.text = spectatorMessage;
-						}
-
-						spectatorPlayer->sendTextMessage(message);
-					}
-				}
-
-				damage.primary.value -= manaDamage;
-				if (damage.primary.value < 0) {
-					damage.secondary.value = std::max<int32_t>(0, damage.secondary.value + damage.primary.value);
-					damage.primary.value = 0;
-				}
-			}
-		}
-
-		// Calculate total remaining damage
-		int32_t realDamage = damage.primary.value + damage.secondary.value;
-		if (realDamage == 0) {
-			return true;
-		}
-
-		// Cap damage at target's health
-		int32_t targetHealth = target->getHealth();
-		if (damage.primary.value >= targetHealth) {
-			damage.primary.value = targetHealth;
-			damage.secondary.value = 0;
-		}
-		else if (damage.secondary.value) {
-			damage.secondary.value = std::min<int32_t>(damage.secondary.value, targetHealth - damage.primary.value);
-		}
-
-		realDamage = damage.primary.value + damage.secondary.value;
-		if (realDamage == 0) {
-			return true;
-		}
-
-		message.primary.value = damage.primary.value;
-		message.secondary.value = damage.secondary.value;
-
-		uint8_t hitEffect;
-		if (message.primary.value)
-		{
-			combatGetTypeInfo(damage.primary.type, target, message.primary.color, hitEffect);
-
-			if (hitEffect != CONST_ME_NONE)
-				Game::addMagicEffect(spectators, targetPos, hitEffect, target->getInstanceID());
-		}
-
-		if (message.secondary.value)
-		{
-			combatGetTypeInfo(damage.secondary.type, target, message.secondary.color, hitEffect);
-
-			if (hitEffect != CONST_ME_NONE)
-				Game::addMagicEffect(spectators, targetPos, hitEffect, target->getInstanceID());
-		}
-
-		if (message.primary.color != TEXTCOLOR_NONE || message.secondary.color != TEXTCOLOR_NONE) {
-			const auto& damageString = std::to_string(realDamage) + " hitpoint" + (realDamage && realDamage != 1 ? "s" : "");
-			const auto& targetNameDesc = target->getNameDescription();
-			const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
-			std::string spectatorMessage;
-
-			if (!attacker) {
-				spectatorMessage = targetNameDesc + " loses " + damageString + ".";
-			}
-			else if (attacker == target) {
-				spectatorMessage = targetNameDesc + " loses " + damageString + " due to " +
-					(targetPlayer ? (targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his") : "its") +	" own attack.";
-			}
-			else {
-				spectatorMessage = targetNameDesc + " loses " + damageString + " due to an attack by " + attackerNameDesc + ".";
-			}
-			spectatorMessage[0] = std::toupper(spectatorMessage[0]);
-
-
-			auto is_eligible = [&](const auto& c)
-			{
-				auto p = std::static_pointer_cast<Player>(c);
-				return p->compareInstance(target->getInstanceID()) and p->getPosition().z == targetPos.z;
-			};
-
-			auto to_player = [&](const auto& c) { return std::static_pointer_cast<Player>(c); };
-
-			for (const auto& tmpPlayer : spectators.players()
-				| std::views::filter(is_eligible)
-				| std::views::transform(to_player))
-			{
-				if (tmpPlayer == attackerPlayer && attackerPlayer != targetPlayer)
-				{
-					message.type = MESSAGE_DAMAGE_DEALT;
-					message.text = targetNameDesc + " loses " + damageString + " due to your attack.";
-					message.text[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(message.text[0])));
-				}
-				else if (tmpPlayer == targetPlayer)
-				{
-					message.type = MESSAGE_DAMAGE_RECEIVED;
-					message.text = !attacker ? "You lose " + damageString + "." :
-						(targetPlayer == attackerPlayer ? "You lose " + damageString + " due to your own attack." :
-							"You lose " + damageString + " due to an attack by " + attackerNameDesc + ".");
-				}
-				else
-				{
-					message.type = MESSAGE_DAMAGE_OTHERS;
-					message.text = spectatorMessage;
-				}
-
-				tmpPlayer->sendTextMessage(message);
-			}
-		}
-
-		// Reward boss tracking: player attacking boss
-		if (target && target->getMonster() && target->getMonster()->isRewardBoss()) {
-			uint32_t monsterId = target->getMonster()->getID();
-			if (!rewardBossTracking.contains(monsterId)) {
-				rewardBossTracking[monsterId] = RewardBossContributionInfo();
-			}
-			if (attackerPlayer) {
-				uint32_t playerGuid = attackerPlayer->getGUID();
-				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageDone += realDamage * g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE);
-			}
-		}
-
-		// Reward boss tracking: boss attacking player
-		if (attacker && attacker->getMonster() && attacker->getMonster()->isRewardBoss()) {
-			uint32_t monsterId = attacker->getMonster()->getID();
-			if (!rewardBossTracking.contains(monsterId)) {
-				rewardBossTracking[monsterId] = RewardBossContributionInfo();
-			}
-			if (target && target->getPlayer()) {
-				uint32_t playerGuid = target->getPlayer()->getGUID();
-				rewardBossTracking[monsterId].playerScoreTable[playerGuid].damageTaken += realDamage * g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN);
-			}
-		}
-
-		// Check for death and execute prepare-death events
-		if (realDamage >= targetHealth) {
-			for (const auto& creatureEvent : target->getCreatureEvents(CREATURE_EVENT_PREPAREDEATH)) {
-				if (!creatureEvent->executeOnPrepareDeath(target, attacker)) {
-					return false;
-				}
-			}
-		}
-
-		// Apply damage and update spectators
-		target->drainHealth(attacker, realDamage);
-		addCreatureHealth(spectators, target);
-	}
-
-	return true;
-}
-
-
-bool Game::combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& target, CombatDamage& damage, bool showMessages)
-{
-	const auto targetPlayer = target->getPlayer();
-	if (!targetPlayer) {
-		return true;
-	}
-
-	// BlackTek Instance System
-	if (attacker and not canInteractInSameInstance(attacker, target)) {
-		return false;
-	}
-
-	const Position& targetPos = target->getPosition();
-
-	int32_t manaChange = damage.primary.value + damage.secondary.value;
-	if (manaChange > 0) {
-		if (attacker) {
-			const auto& attackerPlayer = attacker->getPlayer();
-			if (attackerPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(target) == SKULL_NONE) {
-				return false;
-			}
-		}
-
-		const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
-		if (!events.empty()) {
-			for (const auto& creatureEvent : events) {
-				creatureEvent->executeManaChange(target, attacker, damage);
-			}
-		}
-
-		int32_t realManaChange = targetPlayer->getMana();
-		targetPlayer->changeMana(manaChange);
-		realManaChange = targetPlayer->getMana() - realManaChange;
-
-		if (showMessages && realManaChange > 0 && !targetPlayer->isInGhostMode()) {
-			TextMessage message(MESSAGE_HEALED, "You gain " + std::to_string(realManaChange) + " mana.");
-			message.position = target->getPosition();
-			message.primary.value = realManaChange;
-			message.primary.color = TEXTCOLOR_MAYABLUE;
-			targetPlayer->sendTextMessage(message);
-		}
-	}
-	else {
-		PlayerPtr attackerPlayer;
-		if (attacker) {
-			attackerPlayer = attacker->getPlayer();
-		}
-		else {
-			attackerPlayer = nullptr;
-		}
-
-		int32_t manaLoss = std::min<int32_t>(targetPlayer->getMana(), -manaChange);
-
-		if (damage.isUtility) {
-			if (!target->isAttackable()) {
-				return false;
-			}
-			targetPlayer->changeMana(-manaLoss);
-		}
-		else {
-			if (!target->isAttackable()) {
-				if (!target->isInGhostMode()) {
-					SpectatorVec localSpectators;
-					map.getSpectators(localSpectators, targetPos, true, true);
-					Game::addMagicEffect(localSpectators, targetPos, CONST_ME_POFF, target->getInstanceID());
-				}
-				return false;
-			}
-			if (attackerPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
-				return false;
-			}
-			BlockType_t blockType = target->blockHit(attacker, COMBAT_MANADRAIN, manaLoss);
-			if (blockType != BLOCK_NONE) {
-				SpectatorVec localSpectators;
-				map.getSpectators(localSpectators, targetPos, true, true);
-				Game::addMagicEffect(localSpectators, targetPos, CONST_ME_POFF, target->getInstanceID());
-				return false;
-			}
-			if (manaLoss <= 0) {
-				return true;
-			}
-			targetPlayer->drainMana(attacker, manaLoss);
-		}
-
-		const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
-		if (!events.empty()) {
-			for (const auto& creatureEvent : events) {
-				creatureEvent->executeManaChange(target, attacker, damage);
-			}
-		}
-
-		const auto& targetNameDesc = target->getNameDescription();
-		const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
-		std::string spectatorMessage;
-
-		targetPlayer->drainMana(attacker, manaLoss);
-
-		if (showMessages) {
-			const auto& targetNameDesc = target->getNameDescription();
-			const auto& attackerNameDesc = attacker ? attacker->getNameDescription() : "";
-			std::string spectatorMessage;
-
-			if (!attacker) {
-				spectatorMessage = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana.";
-			}
-			else if (attacker == target) {
-				spectatorMessage = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana due to " +
-					(targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his") + " own attack.";
-			}
-			else {
-				spectatorMessage = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana due to an attack by " +
-					attackerNameDesc + ".";
-			}
-			spectatorMessage[0] = std::toupper(spectatorMessage[0]);
-
-			TextMessage message;
-			message.position = targetPos;
-			message.primary.value = manaLoss;
-			message.primary.color = TEXTCOLOR_BLUE;
-
-			SpectatorVec spectators;
-			map.getSpectators(spectators, targetPos, false, true);
-
-			auto is_in_target_instance = [&](const auto& c)
-			{
-				return std::static_pointer_cast<Player>(c)->compareInstance(target->getInstanceID());
-			};
-
-			for (const auto& spectatorPlayer : spectators.players()
-				| std::views::filter(is_in_target_instance)
-				| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
-			{
-				if (spectatorPlayer == attackerPlayer and attackerPlayer != targetPlayer)
-				{
-					message.type = MESSAGE_DAMAGE_DEALT;
-					message.text = targetNameDesc + " loses " + std::to_string(manaLoss) + " mana due to your attack.";
-					message.text[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(message.text[0])));
-				}
-				else if (spectatorPlayer == targetPlayer)
-				{
-					message.type = MESSAGE_DAMAGE_RECEIVED;
-					if (not attacker)
-					{
-						message.text = "You lose " + std::to_string(manaLoss) + " mana.";
-					}
-					else if (targetPlayer == attackerPlayer)
-					{
-						message.text = "You lose " + std::to_string(manaLoss) + " mana due to your own attack.";
-					}
-					else
-					{
-						message.text = "You lose " + std::to_string(manaLoss) + " mana due to an attack by " + attackerNameDesc + ".";
-					}
-				}
-				else
-				{
-					message.type = MESSAGE_DAMAGE_OTHERS;
-					message.text = spectatorMessage;
-				}
-
-				spectatorPlayer->sendTextMessage(message);
-			}
-		}
-	}
-
-	return true;
 }
 
 void Game::addCreatureHealth(const CreatureConstPtr& target)
