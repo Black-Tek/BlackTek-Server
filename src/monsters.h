@@ -4,6 +4,8 @@
 #ifndef FS_MONSTERS_H
 #define FS_MONSTERS_H
 
+#include <toml++/toml.hpp>
+
 #include "creature.h"
 
 const uint32_t MAX_LOOTCHANCE = 100000;
@@ -122,6 +124,12 @@ class MonsterType
 		uint32_t conditionImmunities = 0;
 		uint32_t damageImmunities = 0;
 		uint32_t baseSpeed = 200;
+		uint32_t defense_charge_interval = 0;
+		uint32_t defense_charges_cap = 0;
+		uint32_t armor_charges_cap = 0;
+
+		float defense_charge_cost_multiplier = 1.0f;
+		float armor_charge_cost_multiplier = 1.0f;
 
 		int32_t creatureAppearEvent = -1;
 		int32_t creatureDisappearEvent = -1;
@@ -171,7 +179,7 @@ class MonsterType
 
 		MonsterInfo info;
 
-		void loadLoot(MonsterType* monsterType, LootBlock lootBlock);
+		void loadLoot(LootBlock lootBlock);
 };
 
 class MonsterSpell
@@ -233,7 +241,7 @@ class Monsters
 
 		SkillRegistry getRegisteredSkills(std::string monster_name);
 
-		bool loadFromXml(bool reloading = false);
+		bool loadFromToml(bool reloading = false);
 		bool isLoaded() const {
 			return loaded;
 		}
@@ -253,14 +261,10 @@ class Monsters
 	private:
 		ConditionDamage* getDamageCondition(ConditionType_t conditionType,
 		                                    int32_t maxDamage, int32_t minDamage, int32_t startDamage, uint32_t tickInterval);
-		bool deserializeSpell(const pugi::xml_node& node, spellBlock_t& sb, const std::string& description = "");
 
-		MonsterType* loadMonster(const std::string& file, const std::string& monsterName, bool reloading = false);
+		MonsterType* loadMonsterFromToml(const toml::table& data, const std::string& monsterKey, bool reloading);
 
-		void loadLootContainer(const pugi::xml_node& node, LootBlock&);
-		bool loadLootItem(const pugi::xml_node& node, LootBlock&);
-
-		std::map<std::string, std::string> unloadedMonsters;
+		LootBlock parseLootItem(const toml::table& lootTable);
 
 		bool loaded = false;
 };

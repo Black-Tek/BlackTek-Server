@@ -33,3 +33,29 @@ stairhop_delay = 2000
 # WARNING: May cause high CPU usage with many players.
 equipment_slots = false
 attack_speed    = false
+
+[defense]
+# Interval in milliseconds at which players regenerate one charge per pool.
+# Vocations can override this per-vocation in their TOML files.
+player_charge_interval  = 1000
+# Interval in milliseconds at which monsters regenerate one charge per pool.
+# Individual monster types can override this via the Lua monsterType API.
+monster_charge_interval = 1000
+
+# Default cap for each charge pool for players (0 = unlimited).
+# Vocations can override per-vocation under defense_charges.
+player_defense_charges_cap = 2
+player_armor_charges_cap   = 0
+player_augment_charges_cap = 0
+
+# Default cap for each charge pool for monsters (0 = unlimited).
+# Individual monster types can override via the Lua monsterType API.
+monster_defense_charges_cap = 2
+monster_armor_charges_cap   = 0
+
+# Base charges consumed per combat execution, before creature multipliers are applied.
+# Combat objects use these as their default; overrides can be set per-combat-instance.
+# A value of 0 makes that pool free (calculation always fires regardless of charges).
+default_defense_charge_cost = 1
+default_armor_charge_cost   = 0
+default_augment_charge_cost = 0

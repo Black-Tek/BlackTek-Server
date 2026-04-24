@@ -620,7 +620,7 @@ bool Monster::selectTarget(const CreaturePtr& creature)
 
 	if (isHostile() || isSummon()) {
 		if (setAttackedCreature(creature) && !isSummon()) {
-			g_dispatcher.addTask(createTask([id = getID()]() { g_game.checkCreatureAttack(id); }));
+			g_game.checkCreatureAttack(getID());
 		}
 	}
 
@@ -1978,4 +1978,35 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
     // Todo : part of the above, here we need to handle different scenarios for monster's
     // we could do friendly monsters, prey, non-threat, ect... will help with our "temperaments" we create later on.
     return CREATURETYPE_MONSTER;
+}
+
+uint32_t Monster::get_defense_charge_interval() const noexcept
+{
+	if (mType->info.defense_charge_interval > 0)
+		return mType->info.defense_charge_interval;
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MONSTER_DEFENSE_CHARGE_INTERVAL));
+}
+
+uint32_t Monster::get_defense_charges_cap() const noexcept
+{
+	if (mType->info.defense_charges_cap > 0)
+		return mType->info.defense_charges_cap;
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MONSTER_DEFENSE_CHARGES_CAP));
+}
+
+uint32_t Monster::get_armor_charges_cap() const noexcept
+{
+	if (mType->info.armor_charges_cap > 0)
+		return mType->info.armor_charges_cap;
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MONSTER_ARMOR_CHARGES_CAP));
+}
+
+float Monster::get_defense_charge_cost_multiplier() const noexcept
+{
+	return mType->info.defense_charge_cost_multiplier;
+}
+
+float Monster::get_armor_charge_cost_multiplier() const noexcept
+{
+	return mType->info.armor_charge_cost_multiplier;
 }

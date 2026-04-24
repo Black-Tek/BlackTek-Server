@@ -474,7 +474,7 @@ void mainLoader(int, char*[], ServiceManager* services)
 	Console::printProgress("Guilds", true, std::to_string(g_game.getGuilds().size()));
 
 	// Load monsters
-	if (not g_monsters.loadFromXml())
+	if (not g_monsters.loadFromToml())
 	{
 		startupErrorMessage("Unable to load monsters!");
 		return;

@@ -1638,6 +1638,11 @@ class LuaScriptInterface
 
 		static int luaMonsterTypeArmor(lua_State* L);
 		static int luaMonsterTypeDefense(lua_State* L);
+		static int luaMonsterTypeDefenseChargeInterval(lua_State* L);
+		static int luaMonsterTypeDefenseChargesCap(lua_State* L);
+		static int luaMonsterTypeArmorChargesCap(lua_State* L);
+		static int luaMonsterTypeDefenseChargeCostMultiplier(lua_State* L);
+		static int luaMonsterTypeArmorChargeCostMultiplier(lua_State* L);
 		static int luaMonsterTypeOutfit(lua_State* L);
 		static int luaMonsterTypeRace(lua_State* L);
 		static int luaMonsterTypeCorpseId(lua_State* L);

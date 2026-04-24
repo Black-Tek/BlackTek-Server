@@ -65,6 +65,23 @@ namespace BlackTek
 		int32_t distance;
 	};
 
+	// Pre-rotated offset from a target position.  After baking direction into the
+	// stored values: spread = dx (east positive), forward = dy (south positive).
+	// Apply directly: world = { target.x + spread, target.y + forward }.
+	struct DamageLocation
+	{
+		int16_t spread;  // dx — east positive, west negative
+		int16_t forward; // dy — south positive, north negative
+	};
+
+	// Holds four pre-rotated DamageLocation sets, one per cardinal direction.
+	// Indexed by Direction enum: NORTH=0, EAST=1, SOUTH=2, WEST=3.
+	// Built once at area-setup time; execution just picks the slot and iterates.
+	struct CombatArea
+	{
+		std::array<std::vector<DamageLocation>, 4> directions;
+	};
+
 
 	class AreaCombat
 	{
@@ -75,6 +92,8 @@ namespace BlackTek
 		void setupExtArea(const std::vector<uint32_t>& vec, uint32_t rows);
 		const MatrixArea& getArea(const Position& centerPos, const Position& targetPos) const;
 
+		[[nodiscard]] CombatArea GetCombatArea() const;
+		[[nodiscard]] CombatArea GetExtCombatArea() const;
 
 	private:
 		std::vector<MatrixArea> areas;
@@ -83,6 +102,9 @@ namespace BlackTek
 
 
 	// Todo: Create a struct for "CombatTable" which will be a specific defined and handled lua table able to be passed for construction of combat objects
+
+	class Combat;
+	using CombatHandle = intrusive_ptr<Combat>;
 
 	class Combat
 	{
@@ -129,6 +151,15 @@ namespace BlackTek
 			Death = 1 << 11,
 
 			DamageTypes = 12
+		};
+
+		enum BlockType : uint8_t 
+		{
+			NoBlock,
+			Defensive,
+			Armor,
+			Immunity,
+			Dodge
 		};
 
 		enum Situaion : uint8_t
@@ -200,9 +231,9 @@ namespace BlackTek
 		enum Config : uint8_t
 		{
 			PlaceHolder,		// equal to None
-			IgnoreAllDefenses,	// piercing should be this by default
+			TrueDamage,			// piercing is this by default, but combat can have it assigned
 			BlockedByArmor,
-			BlockedByShield,
+			BlockedByDefense,
 			TopTargetOnly,		// without this it does all creatures in a tile stack
 			SelfOnly,			// a combat which only affects the user
 			FriendlyParty,		// using this enables party only combat objects for the casters party
@@ -214,7 +245,8 @@ namespace BlackTek
 			UseCharges,			// I think this one is used by weapons to reduce ammo
 			Critical,
 			Leech,
-			Augmented,
+			AttackModified,
+			DefenseModified,	// don't think we need this one, but just in case..
 			IsUtility,
 			HasCondition,
 			HasPvPFormula,
@@ -231,21 +263,18 @@ namespace BlackTek
 		static void postCombatEffects(const CreaturePtr& caster, const Position& pos, const Combat& combat);
 		static void addDistanceEffect(const CreaturePtr& caster, const Position& fromPos, const Position& toPos, uint8_t effect);
 
-
 		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const PlayerPtr& victim) const noexcept;
 		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const MonsterPtr& victim) const noexcept;
 		[[nodiscard]] TargetCode target(const MonsterPtr& attacker, const PlayerPtr& victim) const noexcept;
 		[[nodiscard]] TargetCode target(const MonsterPtr& attacker, const MonsterPtr& victim) const noexcept;
 		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const Position& target_location) const noexcept;
 		[[nodiscard]] TargetCode target(const MonsterPtr& attacker, const Position& target_location) const noexcept;
+		[[nodiscard]] CombatHandle transformDamage(const uint16_t damage_type, const uint32_t amount) noexcept;
+		[[nodiscard]] uint32_t handle_conversion(std::ranges::input_range auto&& modifiers, auto attacker, auto victim);
+		[[nodiscard]] CombatHandle penetrateDamage(const uint32_t percent, const uint32_t flat) noexcept;
 
-		void attack_augment(const PlayerPtr caster, const CreaturePtr victim, const std::string& victim_name, gtl::node_hash_map<uint8_t, ModifierTotals> modifier_map) noexcept;
-		void defense_augment(const CreaturePtr caster, const PlayerPtr victim, gtl::node_hash_map<uint8_t, ModifierTotals> modifier_map) noexcept;
-		void conversion_augment(const PlayerPtr caster, const std::string& victim_name, gtl::node_hash_map<uint8_t, ModifierTotals> modifier_map) noexcept;
-		void reform_augment(const PlayerPtr victim, gtl::node_hash_map<uint8_t, ModifierTotals> modifier_map) noexcept;
-
+		void applyCrit(const uint32_t percent, const uint32_t flat);
 		void post_damage(const PlayerPtr& caster, const CreaturePtr& victim, LeechData&& leech_data) noexcept;
-
 		void strike_target(const PlayerPtr& caster, const PlayerPtr& victim) noexcept;
 		void strike_target(const PlayerPtr& caster, const MonsterPtr& victim) noexcept;
 		void strike_target(const MonsterPtr& attacker, const PlayerPtr& victim) noexcept;
@@ -256,12 +285,12 @@ namespace BlackTek
 		void defense_block_effect(const Position& target_position) const noexcept;
 		void armor_block_effect(const Position& target_position) const noexcept;
 		void immunity_block_effect(const Position& target_position) const noexcept;
-
-		[[nodiscard]] bool block(const CreaturePtr& attacker, const PlayerPtr& target) const noexcept;
-		[[nodiscard]] bool block(const CreaturePtr& attacker, const MonsterPtr& target) const noexcept;
-		[[nodiscard]] uint32_t collect_notice_data(const CreaturePtr& target) const noexcept;
 		void notify_players();
 		void apply_mana_damage(const CreaturePtr& attacker, const PlayerPtr& target, bool manashield) noexcept;
+
+		[[nodiscard]] BlockType block(const CreaturePtr& attacker, const PlayerPtr& target) noexcept;
+		[[nodiscard]] BlockType block(const CreaturePtr& attacker, const MonsterPtr& target) noexcept;
+		[[nodiscard]] uint32_t collect_notice_data(const CreaturePtr& target) const noexcept;
 		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const PlayerPtr& target) noexcept;
 		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const MonsterPtr& target) noexcept;
 		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const Position& target_position) noexcept;
@@ -272,6 +301,10 @@ namespace BlackTek
 			return false;
 		}
 
+
+		///  This is going to be our main way of doing "pre_damage" calculations by use the results of this method
+		///  as the number to reduce the raw damage based on users settings and formula choice
+		///  we will have a standardized default in config as well as the option to set custom combat factors during combat creation.
 		[[nodiscard]] constexpr uint32_t calculate_damage_factors(const CombatFactors& factors) const noexcept
 		{
 			float poweredStat = factors.exponent != 1.0f ? poweredStat = std::pow(factors.power, factors.exponent) : factors.power;
@@ -314,10 +347,13 @@ namespace BlackTek
 
 		uint32_t damage = 0;
 		std::bitset<32> config;
+		uint32_t defense_charge_cost = 0;
+		uint32_t armor_charge_cost = 0;
+		uint32_t augment_charge_cost = 0;
 		uint16_t itemId = 0;
-		DamageType damage_type = DamageType::Unknown;
-		BlockType_t blockType = BLOCK_NONE;
-		Origin origin = Origin::None;
+		uint16_t damage_type = DamageType::Unknown;
+		uint8_t blockType = BlockType::NoBlock;
+		uint8_t origin = Origin::None;
 		uint8_t impactEffect = CONST_ME_NONE;
 		uint8_t distanceEffect = CONST_ANI_NONE;
 
@@ -333,8 +369,6 @@ namespace BlackTek
 
 	void intrusive_ptr_release(const Combat * p) noexcept;
 
-	using CombatHandle = intrusive_ptr<Combat>;
-
 
 	class CombatRegistry
 	{
@@ -346,7 +380,7 @@ namespace BlackTek
 		};
 
 		alignas(std::max_align_t)
-			std::array<std::byte, k_InitialBytes>    buffer_;
+		std::array<std::byte, k_InitialBytes>    buffer_;
 		std::pmr::monotonic_buffer_resource      upstream_;
 		std::pmr::unsynchronized_pool_resource   pool_;
 		std::pmr::unordered_map<int64_t, Combat> table_;
@@ -364,6 +398,7 @@ namespace BlackTek
 		CombatRegistry& operator=(const CombatRegistry&) = delete;
 
 		[[nodiscard]] CombatHandle Create();
+		[[nodiscard]] CombatHandle Create(uint16_t type, uint32_t dmg);
 
 		void Release(int64_t id);
 
@@ -377,7 +412,8 @@ namespace BlackTek
 	};
 	extern CombatRegistry g_combat_registry;
 
-	extern std::pmr::unordered_map<int64_t, AreaCombat> combat_area_map;
+	extern std::pmr::unordered_map<int64_t, CombatArea> combat_area_map;
+	extern std::pmr::unordered_map<int64_t, CombatArea> combat_ext_area_map;
 }
 
 class MagicField final : public Item

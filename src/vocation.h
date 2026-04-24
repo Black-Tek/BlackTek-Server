@@ -77,9 +77,37 @@ class Vocation
 		uint32_t getAttackSpeed() const {
 			return attackSpeed;
 		}
-	
+
 		uint32_t getBaseSpeed() const {
 			return baseSpeed;
+		}
+
+		uint32_t getDefenseChargeInterval() const {
+			return defenseChargeInterval;
+		}
+
+		uint32_t getDefenseChargesCap() const {
+			return defenseChargesCap;
+		}
+
+		uint32_t getArmorChargesCap() const {
+			return armorChargesCap;
+		}
+
+		uint32_t getAugmentChargesCap() const {
+			return augmentChargesCap;
+		}
+
+		float getDefenseChargeCostMultiplier() const {
+			return defenseChargeCostMultiplier;
+		}
+
+		float getArmorChargeCostMultiplier() const {
+			return armorChargeCostMultiplier;
+		}
+
+		float getAugmentChargeCostMultiplier() const {
+			return augmentChargeCostMultiplier;
 		}
 
 		uint32_t getFromVocation() const {
@@ -120,6 +148,14 @@ class Vocation
 		uint32_t attackSpeed = 1500;
 		uint32_t baseSpeed = 220;
 		uint32_t noPongKickTime = 60000;
+		uint32_t defenseChargeInterval = 0;
+		uint32_t defenseChargesCap = 0;
+		uint32_t armorChargesCap = 0;
+		uint32_t augmentChargesCap = 0;
+
+		float defenseChargeCostMultiplier = 1.0f;
+		float armorChargeCostMultiplier = 1.0f;
+		float augmentChargeCostMultiplier = 1.0f;
 
 		uint16_t id;
 		uint16_t gainSoulTicks = 120;

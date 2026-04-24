@@ -213,7 +213,17 @@ class Player final : public Creature, public Cylinder
 		uint16_t getClientIcons() const;
 		Vocation* getVocation() const {	return vocation; }
 		OperatingSystem_t getOperatingSystem() const { return operatingSystem; }
-	
+
+		uint32_t get_defense_charge_interval() const noexcept override;
+
+		uint32_t get_defense_charges_cap() const noexcept override;
+		uint32_t get_armor_charges_cap() const noexcept override;
+		uint32_t get_augment_charges_cap() const noexcept override;
+
+		float get_defense_charge_cost_multiplier() const noexcept override;
+		float get_armor_charge_cost_multiplier() const noexcept override;
+		float get_augment_charge_cost_multiplier() const noexcept override;
+
 		void setOperatingSystem(OperatingSystem_t clientos) { operatingSystem = clientos; }
 
 		uint16_t getProtocolVersion() const {

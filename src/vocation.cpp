@@ -171,10 +171,23 @@ bool Vocations::loadFromToml() {
 										vocation.gainManaAmount = mana->at("amount").value_or(1);
 										vocation.gainManaTicks = mana->at("interval").value_or(6);
 									}
-									if (auto soul = r["soul"].as_table()) 
+									if (auto soul = r["soul"].as_table())
 									{
 										vocation.gainSoulAmount = soul->at("amount").value_or(1);
 										vocation.gainSoulTicks = soul->at("interval").value_or(120);
+									}
+									if (auto defense = r["defense"].as_table())
+									{
+										vocation.defenseChargeInterval = defense->at("charge_interval").value_or(0);
+									}
+									if (auto dc = r["defense_charges"].as_table())
+									{
+										vocation.defenseChargesCap = dc->at("defense_cap").value_or(0);
+										vocation.armorChargesCap   = dc->at("armor_cap").value_or(0);
+										vocation.augmentChargesCap = dc->at("augment_cap").value_or(0);
+										vocation.defenseChargeCostMultiplier = dc->at("defense_cost_multiplier").value_or(1.0f);
+										vocation.armorChargeCostMultiplier   = dc->at("armor_cost_multiplier").value_or(1.0f);
+										vocation.augmentChargeCostMultiplier = dc->at("augment_cost_multiplier").value_or(1.0f);
 									}
 								}
 							}

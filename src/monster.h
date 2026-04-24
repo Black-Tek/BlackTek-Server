@@ -94,7 +94,15 @@ class Monster final : public Creature
 		int32_t getDefense() const override {
 			return mType->info.defense;
 		}
-	
+
+		uint32_t get_defense_charge_interval() const noexcept override;
+
+		uint32_t get_defense_charges_cap() const noexcept override;
+		uint32_t get_armor_charges_cap() const noexcept override;
+
+		float get_defense_charge_cost_multiplier() const noexcept override;
+		float get_armor_charge_cost_multiplier() const noexcept override;
+
 		bool isPushable() const override {
 			return mType->info.pushable && baseSpeed != 0;
 		}

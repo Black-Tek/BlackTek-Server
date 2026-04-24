@@ -650,8 +650,24 @@ class Creature : virtual public Thing, public SharedObject
 		bool getPathTo(const Position& targetPos, std::vector<Direction>& dirList, int32_t minTargetDist, int32_t maxTargetDist, bool fullPathSearch = true, bool clearSight = true, int32_t maxSearchDist = 0);
 		CreatureEventList getCreatureEvents(CreatureEventType_t type) const;
 
-		[[nodiscard]] uint32_t get_block_count() const noexcept { return blockCount; }
-		void set_block_count(uint32_t count) noexcept { blockCount = count; }
+		[[nodiscard]] uint32_t get_defense_charges() const noexcept { return defense_charges; }
+		void set_defense_charges(uint32_t count) noexcept { defense_charges = count; }
+
+		[[nodiscard]] uint32_t get_armor_charges() const noexcept { return armor_charges; }
+		void set_armor_charges(uint32_t count) noexcept { armor_charges = count; }
+
+		[[nodiscard]] uint32_t get_augment_charges() const noexcept { return augment_charges; }
+		void set_augment_charges(uint32_t count) noexcept { augment_charges = count; }
+
+		[[nodiscard]] virtual uint32_t get_defense_charge_interval() const noexcept;
+
+		[[nodiscard]] virtual uint32_t get_defense_charges_cap() const noexcept;
+		[[nodiscard]] virtual uint32_t get_armor_charges_cap() const noexcept;
+		[[nodiscard]] virtual uint32_t get_augment_charges_cap() const noexcept;
+
+		[[nodiscard]] virtual float get_defense_charge_cost_multiplier() const noexcept { return 1.0f; }
+		[[nodiscard]] virtual float get_armor_charge_cost_multiplier() const noexcept { return 1.0f; }
+		[[nodiscard]] virtual float get_augment_charge_cost_multiplier() const noexcept { return 1.0f; }
 
 		[[nodiscard]] bool can_use_defense() const noexcept { return canUseDefense; }
 
@@ -694,7 +710,9 @@ class Creature : virtual public Thing, public SharedObject
 		uint32_t eventWalk = 0;
 		uint32_t walkUpdateTicks = 0;
 		uint32_t lastHitCreatureId = 0;
-		uint32_t blockCount = 0;
+		uint32_t defense_charges = 0;
+		uint32_t armor_charges = 0;
+		uint32_t augment_charges = 0;
 		uint32_t blockTicks = 0;
 		uint32_t lastStepCost = 1;
 		uint32_t baseSpeed = 220;

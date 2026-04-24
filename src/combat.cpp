@@ -26,8 +26,8 @@ namespace BlackTek
 {
     CombatRegistry g_combat_registry;
 
-	// combat_area_map is defined here (after g_combat_registry) to avoid SIOF.
-	std::pmr::unordered_map<int64_t, AreaCombat> combat_area_map{ BlackTek::g_combat_registry.Allocator() };
+	std::pmr::unordered_map<int64_t, CombatArea> combat_area_map{ BlackTek::g_combat_registry.Allocator() };
+	std::pmr::unordered_map<int64_t, CombatArea> combat_ext_area_map{ BlackTek::g_combat_registry.Allocator() };
 
 	void intrusive_ptr_release(const Combat* p) noexcept
 	{
@@ -43,6 +43,14 @@ namespace BlackTek
 		auto [it, ok] = table_.try_emplace(newId);
 		it->second.set_id(newId);
 		return CombatHandle(&it->second);   // add_ref fires here so ref_count becomes 1
+	}
+
+	CombatHandle CombatRegistry::Create(uint16_t type, uint32_t dmg)
+	{
+		auto handle = Create();
+		handle->damage_type = type;
+		handle->damage = dmg;
+		return handle;
 	}
 
 	void CombatRegistry::Release(int64_t id)
@@ -143,26 +151,90 @@ namespace BlackTek
 		return area_tile_buffer;
 	}
 
-	// Todo: Change the matrix area and combat area so that it stores instead a flat array of structs which contain the math needed
-	// to be applied on the center location, in order to get the other positions, then this method can return those positions by applying
-	// that struct's math to the center position to create all the new positions... which should be far more effecient. Since we currently
-	// do not support "multi-level" combats, this can exclude the z for now... but we definitely need to implement multi-level combat as a thing.
-
-	struct damage_spot
+	// Extracts DamageLocations from an already-rotated MatrixArea.
+	// After rotation, each active cell's offsets from the center ARE the world dx/dy:
+	//   spread  = col - cx  →  dx (east positive)
+	//   forward = row - cy  →  dy (south positive)
+	// With this new way of handling it, the caller is now responsible for passing the correctly-rotated matrix for each direction,
+	// but we have the absolute minimal data required as integer math applicable to target location, which should drastically reduce
+	// the actual workload taking place during combat execution... the future improvements to this design will be to retrieve it as a
+	// constant read only view (std::span) of the contiguous data for use during execution
+	static std::vector<DamageLocation> CreateDamageLocations(const MatrixArea& area)
 	{
-		int16_t forward;
-		int16_t spread;
-	};
+		if (area.GetRows() == 0 or area.GetCols() == 0)
+			return {};
+
+		const auto [cx, cy] = area.GetCenter();
+
+		std::vector<DamageLocation> locations;
+
+		for (uint32_t row = 0; row < area.GetRows(); ++row)
+		{
+			for (uint32_t col = 0; col < area.GetCols(); ++col)
+			{
+				if (area(row, col))
+				{
+					locations.push_back({
+						.spread  = static_cast<int16_t>(static_cast<int32_t>(col) - static_cast<int32_t>(cx)),
+						.forward = static_cast<int16_t>(static_cast<int32_t>(row) - static_cast<int32_t>(cy))
+					});
+				}
+			}
+		}
+
+		return locations;
+	}
 
 	const DamageArea Combat::getAreaPositions(const Position& casterPos, const Position& targetPos)
 	{
 		area_position_buffer.clear();
 
-		auto distance = 0;
+		const int32_t dx = Position::getOffsetX(targetPos, casterPos);
+		const int32_t dy = Position::getOffsetY(targetPos, casterPos);
+		const std::vector<DamageLocation>* locations = nullptr;
 
+		if ((dx != 0) and (dy != 0))
+		{
+			auto extIt = combat_ext_area_map.find(combat_id);
+			if (extIt != combat_ext_area_map.end())
+			{
+				// Diagonal direction → strip the diagonal mask bit to get a 0-3 slot index.
+				// SW=4→0, SE=5→1, NW=6→2, NE=7→3 (matches how GetExtCombatArea stores them).
+				Direction diagDir;
+				if      (dx < 0 and dy < 0) diagDir = DIRECTION_NORTHWEST;
+				else if (dx > 0 and dy < 0) diagDir = DIRECTION_NORTHEAST;
+				else if (dx < 0)            diagDir = DIRECTION_SOUTHWEST;
+				else                        diagDir = DIRECTION_SOUTHEAST;
 
+				const uint8_t slot = static_cast<uint8_t>(diagDir) ^ DIRECTION_DIAGONAL_MASK;
+				locations = &extIt->second.directions[slot];
+			}
+		}
 
+		if (not locations)
+		{
+			auto it = combat_area_map.find(combat_id);
+			if (it == combat_area_map.end())
+				return { area_position_buffer, 0 };
 
+			Direction cardDir;
+			if      (dx < 0) cardDir = DIRECTION_WEST;
+			else if (dx > 0) cardDir = DIRECTION_EAST;
+			else if (dy < 0) cardDir = DIRECTION_NORTH;
+			else             cardDir = DIRECTION_SOUTH;
+
+			locations = &it->second.directions[cardDir];
+		}
+
+		if (locations->empty())
+			return { area_position_buffer, 0 };
+
+		area_position_buffer.reserve(locations->size());
+
+		for (const auto& loc : *locations)
+			area_position_buffer.emplace_back(static_cast<uint16_t>(targetPos.x + loc.spread), static_cast<uint16_t>(targetPos.y + loc.forward), targetPos.z);
+
+		const int32_t distance = std::max(std::abs(dx), std::abs(dy));
 		return { area_position_buffer, distance };
 	}
 
@@ -449,7 +521,7 @@ namespace BlackTek
 		if (damage_type == DamageType::Healing)
 			return Combat::TargetCode::Valid;
 
-		const bool attack_blocked = caster->hasFlag(PlayerFlag_CannotAttackPlayer) | isProtected(caster, victim);
+		const bool attack_blocked = caster->hasFlag(PlayerFlag_CannotAttackPlayer) | isProtected(caster, victim) | victim->hasFlag(PlayerFlag_CannotBeAttacked);
 
 		if (attack_blocked)
 			return Combat::TargetCode::CanNotAttackThisPlayer;
@@ -492,7 +564,7 @@ namespace BlackTek
 
 		if (commander)
 		{
-			const bool attack_blocked = commander->hasFlag(PlayerFlag_CannotAttackPlayer) | isProtected(commander, victim);
+			const bool attack_blocked = commander->hasFlag(PlayerFlag_CannotAttackPlayer) | isProtected(commander, victim) | victim->hasFlag(PlayerFlag_CannotBeAttacked);
 
 			if (attack_blocked)
 				return Combat::TargetCode::CanNotAttackThisPlayer;
@@ -506,14 +578,14 @@ namespace BlackTek
 
 	Combat::TargetCode Combat::target(const MonsterPtr& attacker, const MonsterPtr& victim) const noexcept
 	{
-		if (damage_type == DamageType::Healing)
+		if (damage_type == DamageType::Healing) // probably instances a monster shouldn't be able to heal a monster?
 			return Combat::TargetCode::Valid;
 
 		const bool commander = attacker->getMaster() and attacker->getMaster()->is_player();
 		const bool ward = victim->getMaster() and victim->getMaster()->is_player();
 
 		if (not commander and not ward)
-			return Combat::TargetCode::CanNotAttackThisMonster;
+			return Combat::TargetCode::CanNotAttackThisMonster; // this is tibia style rules, monsters don't harm other monsters in general, we will want this to be the users decision
 
 		return Combat::TargetCode::Valid;
 	}
@@ -569,125 +641,39 @@ namespace BlackTek
 		return Combat::TargetCode::Valid;
 	}
 
-	void Combat::attack_augment(const PlayerPtr caster, const CreaturePtr victim, const std::string& victim_name, gtl::node_hash_map<uint8_t, ModifierTotals> modifier_map) noexcept
+	CombatHandle Combat::transformDamage(const uint16_t damage_type, const uint32_t amount)
 	{
-		const auto [piercingFlatTotal, piercingPercentTotal] = modifier_map[ATTACK_MODIFIER_PIERCING];
-		int32_t piercingDamage = 0;
-		const auto originalDamage = damage;
-
-		if (piercingPercentTotal)
-		{
-			const auto piercePercent = static_cast<int32_t>(piercingPercentTotal);
-			piercingDamage = (piercingPercentTotal <= 100) ? (originalDamage * piercePercent / 100) : damage;
-		}
-
-		if (piercingFlatTotal)
-			piercingDamage += static_cast<int32_t>(piercingFlatTotal);
-
-		if (piercingDamage)
-		{
-			piercingDamage = std::min<int32_t>(piercingDamage, originalDamage);
-			damage += piercingDamage;
-			// auto piercing = CombatDamage(COMBAT_UNDEFINEDDAMAGE, ORIGIN_PIERCING, BLOCK_NONE, (0 - piercingDamage), false, true, true);
-			return; /*combat->execute(caster, victim);*/
-		}
-
-		if (not config.test(Config::Critical)) // because we don't want to add crit to already crit'd damage
-		{
-			auto percentTotal = static_cast<int32_t>(modifier_map[ATTACK_MODIFIER_CRITICAL].percentTotal);
-			auto flatTotal = static_cast<int32_t>(modifier_map[ATTACK_MODIFIER_CRITICAL].flatTotal);
-
-			bool crit = false;
-			bool augd = false;
-
-			// we do percent based crits first, so that the flat damage doesn't add to the percent increase.
-			if (percentTotal)
-			{
-				const auto damageIncrease = damage * percentTotal / 100;
-				damage -= damageIncrease;
-				crit = true;
-				augd = true;
-			}
-
-			if (flatTotal)
-			{
-				damage -= flatTotal;
-				crit = true;
-				augd = true;
-			}
-		}
+		return g_combat_registry.Create(damage_type, amount);
 	}
 
-	// Todo: we no longer need the caster for doing defense augments I don't think... at most, only their position for the deflect and reflect, which we could just split..
-	// investigate this situation and get it cleared up.
-	void Combat::defense_augment(const CreaturePtr caster, const PlayerPtr victim, gtl::node_hash_map<uint8_t, ModifierTotals> modifier_map) noexcept
+	inline void Combat::applyCrit(const uint32_t percent, const uint32_t flat)
 	{
-		for (const auto& [modkind, modTotals] : modifier_map)
-		{
-			if (modTotals.percentTotal or modTotals.flatTotal)
-			{
-				//applyDamageReductionModifier(modkind, damage, victim, caster, static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), origin, impactEffect, distanceEffect);
+		if (percent > 0)
+			damage += damage * percent / 100u;
 
-				//if (damage.primary.value == 0)
-				//	return;
-			}
-		}
+		if (flat > 0)
+			damage += flat;
+
+		if (percent or flat)
+			config.set(Combat::Config::Critical);
 	}
 
-	void Combat::conversion_augment(const PlayerPtr caster, const std::string& victim_name, gtl::node_hash_map<uint8_t, ModifierTotals> modifier_map) noexcept
+	CombatHandle Combat::penetrateDamage(const uint32_t percent, const uint32_t flat)
 	{
-		auto iter = modifier_map.begin();
+		uint32_t penetration_damage = 0;
 
-		while (damage < 0 and iter != modifier_map.end())
-		{
-			const auto combatType = indexToCombatType(iter->first);
-			const auto& totals = iter->second;
-			auto convertedDamage = 0; // todo : hoist this up and whatever else I can out of this loop in the end
-			const auto percent = static_cast<int32_t>(totals.percentTotal);
-			const auto flat = static_cast<int32_t>(totals.flatTotal);
-			const auto originalDamageValue = damage;
+		if (percent > 0)
+			penetration_damage += damage * percent / 100u;
 
-			if (percent)
-				convertedDamage += originalDamageValue * percent / 100;
+		if (flat > 0)
+			penetration_damage += flat;
 
-			if (flat)
-				convertedDamage += flat;
+		penetration_damage = (penetration_damage > damage) ? damage : penetration_damage;
+		damage -= penetration_damage;
 
-			if (convertedDamage != 0)
-			{
-
-			}
-			++iter;
-		}
-	}
-
-	void Combat::reform_augment(const PlayerPtr victim, gtl::node_hash_map<uint8_t, ModifierTotals> modifier_map) noexcept
-	{
-		auto iter = modifier_map.begin();
-
-		while (damage < 0 and iter != modifier_map.end())
-		{
-			auto combatType = indexToCombatType(iter->first);
-			const auto& totals = iter->second;
-			auto reformedDamage = 0; // todo : hoist this up and whatever else I can out of this loop in the end
-			auto percent = static_cast<int32_t>(totals.percentTotal);
-			auto flat = static_cast<int32_t>(totals.flatTotal);
-			const auto originalDamageValue = damage;
-
-			if (percent)
-				reformedDamage += originalDamageValue * percent / 100;
-
-			if (flat)
-				reformedDamage += flat;
-
-			if (reformedDamage)
-			{
-
-			}
-
-			++iter;
-		}
-
+		auto handle = g_combat_registry.Create(std::to_underlying(Combat::DamageType::Undefined), penetration_damage);
+		handle->config.set(Config::TrueDamage);
+		return handle;
 	}
 
 	void Combat::post_damage(const PlayerPtr& caster, const CreaturePtr& victim, LeechData&& leech) noexcept
@@ -697,7 +683,7 @@ namespace BlackTek
 
 		if (config.test(Config::Critical))
 		{
-			if ((config.test(Config::Augmented) and g_config.GetBoolean(ConfigManager::AUGMENT_CRITICAL_ANIMATION)) or not config.test(Config::Augmented))
+			if ((config.test(Config::AttackModified) and g_config.GetBoolean(ConfigManager::AUGMENT_CRITICAL_ANIMATION)) or not config.test(Config::AttackModified))
 				g_game.addMagicEffect(victim->getPosition(), CONST_ME_CRITICAL_DAMAGE);
 		}
 
@@ -780,24 +766,86 @@ namespace BlackTek
 		}
 	}
 
+
+// ATTENTION 
+// ----------
+// This method does not care about conversion output damage being more than 
+// it's input damage. IT WILL PRODUCE MORE DAMAGE if you do not manage the usage
+// of convesion in either value or quantaties (ways to get it, or eq it's on, ect)
+// writing a version which caps this would actually be extreme congestive for this
+// particular call stack and I prefer to keep it streamlined while allowing
+// end users like yourself the ability to abuse this as a feature if desired
+uint32_t Combat::handle_conversion(std::ranges::input_range auto&& modifiers, auto attacker, auto victim)
+{
+    uint32_t physical = 0, energy = 0, earth = 0, fire = 0;
+	uint32_t undefined = 0, lifedrain = 0, manadrain = 0;
+	uint32_t healing = 0, water = 0, ice = 0;
+	uint32_t holy = 0, death = 0, total = 0;
+
+    for (const auto& modifier : modifiers)
+    {
+        const uint32_t idx = std::countr_zero(modifier.to_damage_type);
+        const uint32_t value = modifier.isFlatValue() ? modifier.value : (damage * modifier.value * 1374389535ULL) >> 37;
+		total += value;
+
+        switch (idx)
+        {
+            case 0:  physical   += value; break;
+            case 1:  energy     += value; break;
+            case 2:  earth      += value; break;
+            case 3:  fire       += value; break;
+            case 4:  undefined  += value; break;
+            case 5:  lifedrain  += value; break;
+            case 6:  manadrain  += value; break;
+            case 7:  healing    += value; break;
+            case 8:  water      += value; break;
+            case 9:  ice        += value; break;
+            case 10: holy       += value; break;
+            case 11: death      += value; break;
+            default: [[unlikely]] break;
+        }
+
+    }
+
+    if (physical)	Combat::transformDamage(Combat::DamageType::Physical,  physical)	->strike_target(attacker, victim);
+    if (energy)		Combat::transformDamage(Combat::DamageType::Energy,    energy)		->strike_target(attacker, victim);
+    if (earth)		Combat::transformDamage(Combat::DamageType::Earth,     earth)		->strike_target(attacker, victim);
+    if (fire)		Combat::transformDamage(Combat::DamageType::Fire,      fire)		->strike_target(attacker, victim);
+    if (undefined)	Combat::transformDamage(Combat::DamageType::Undefined, undefined)	->strike_target(attacker, victim);
+    if (lifedrain)	Combat::transformDamage(Combat::DamageType::LifeDrain, lifedrain)	->strike_target(attacker, victim);
+    if (manadrain)	Combat::transformDamage(Combat::DamageType::ManaDrain, manadrain)	->strike_target(attacker, victim);
+    if (healing)	Combat::transformDamage(Combat::DamageType::Healing,   healing)		->strike_target(attacker, victim);
+    if (water)		Combat::transformDamage(Combat::DamageType::Water,     water)		->strike_target(attacker, victim);
+    if (ice)		Combat::transformDamage(Combat::DamageType::Ice,       ice)			->strike_target(attacker, victim);
+    if (holy)		Combat::transformDamage(Combat::DamageType::Holy,      holy)		->strike_target(attacker, victim);
+    if (death)		Combat::transformDamage(Combat::DamageType::Death,     death)		->strike_target(attacker, victim);
+
+    return total;
+}
+
 	void Combat::strike_target(const PlayerPtr& caster, const PlayerPtr& victim) noexcept
 	{
-		// todo: need to add the "augment" validation to stop a chain of infinite augmentation from happening.
-
 		if (damage_type == DamageType::Unknown)
 		{
 			// log this
 			return;
 		}
 
-		// if (not non_aggressive()) return heal_target(caster, victim);
-
-		// if (not target(caster, victim)) { handle error code and send player a message }
+		 if (not target(caster, victim))
+		 { 
+			 // handle error code and send player a message
+			 return;
+		 }
+		
+		// if (not non_aggressive())
+		//		if (healing) doHealing()
+		//      else
+		//		postConditions or w/e reason this combat would exist as non-aggressive but isn't healing damage type
 
 		if (distanceEffect != CONST_ANI_NONE)
 			addDistanceEffect(caster, caster->getPosition(), victim->getPosition(), distanceEffect);
 
-		if (origin != Origin::Piercing)
+		if (not config.test(Config::TrueDamage))
 		{
 			const auto blocked = block(caster, victim);
 
@@ -807,47 +855,113 @@ namespace BlackTek
 
 		LeechData leech_data {};
 
-		if (caster->hasAttackModifiers())
+		if (caster->hasAttackModifiers() and not config.test(Config::AttackModified))
 		{
 			const auto conversion_count = caster->conversion_mod_count();
 			const auto victim_race = victim->getRace();
 			const auto& victim_name = victim->getName();
 			const auto moddable = damage_type != DamageType::ManaDrain and damage_type != DamageType::Healing;
 
+			auto applied = [&](const auto& modifier) 
+			{
+				return modifier.applies( damage_type, CreatureType_t::CREATURETYPE_PLAYER, origin, victim_race, victim_name);
+			};
+
 			if (conversion_count > 0)
 			{
 				const auto& conversion_modifiers = caster->getConversionMods();
-				//const auto& conversion_modifiers = caster->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage_type, origin, CREATURETYPE_PLAYER, victim_race, victim_name);
-				//conversion_augment(caster, victim_name, conversion_modifiers);
+				auto converted_damage = handle_conversion(conversion_modifiers | std::views::filter(applied), caster, victim);
+
+				if (converted_damage)
+				{
+					damage = converted_damage >= damage ? 0 : damage - converted_damage;
+					if (damage == 0) return; // instead of doing animations or w/e here, we send the text message to players at the end of the converted damage calculation.
+				}
 			}
 
 			if (moddable and caster->attack_mod_count() > conversion_count)
 			{
 				const auto& main_attack_sums = caster->getMainAttackModSums();
 				const auto& main_postattack_sums = caster->getMainAttackModPostSums();
+
+				auto percent_crit		= main_attack_sums[std::to_underlying(DamageModifier::AttackType::Critical)].percent;
+				auto flat_crit			= main_attack_sums[std::to_underlying(DamageModifier::AttackType::Critical)].flat;
+				auto percent_pierce		= main_attack_sums[std::to_underlying(DamageModifier::AttackType::Piercing)].percent;
+				auto flat_pierce		= main_attack_sums[std::to_underlying(DamageModifier::AttackType::Piercing)].flat;
 				
 				if (caster->hasFilteredAttackMods())
 				{
 					const auto& filtered_attack_mods = caster->getFilteredAttackMods();
+
+					for (const auto& modifier : filtered_attack_mods | std::views::filter(applied))
+					{
+						const auto mod_type = static_cast<DamageModifier::AttackType>(modifier.mod_type);
+
+						if (mod_type == DamageModifier::AttackType::Critical)
+						{
+							percent_crit	+= modifier.isFlatValue() ? 0 : modifier.getValue();
+							flat_crit		+= modifier.isFlatValue() ? modifier.getValue() : 0;
+						}
+						else if (mod_type == DamageModifier::AttackType::Piercing)
+						{
+							percent_pierce	+= modifier.isFlatValue() ? 0 : modifier.getValue();
+							flat_pierce		+= modifier.isFlatValue() ? modifier.getValue() : 0;
+						}
+					}
 				}
 
 				if (caster->hasFilteredAttackPostMods())
 				{
 					const auto& filtered_post_attack_mods = caster->getFilteredAttackPostMods();
+
+					for (const auto& modifier : filtered_post_attack_mods | std::views::filter(applied))
+					{
+						const auto mod_type = static_cast<DamageModifier::AttackType>(modifier.mod_type);
+
+						switch (mod_type)
+						{
+							case DamageModifier::AttackType::Lifesteal:
+							{
+								leech_data.percent_health	+= modifier.isFlatValue() ? 0 : modifier.getValue();
+								leech_data.flat_health		+= modifier.isFlatValue() ? modifier.getValue() : 0;
+								break;
+							}
+							case DamageModifier::AttackType::Manasteal:
+							{
+								leech_data.percent_mana		+= modifier.isFlatValue() ? 0 : modifier.getValue();
+								leech_data.flat_mana		+= modifier.isFlatValue() ? modifier.getValue() : 0;
+								break;
+							}
+							case DamageModifier::AttackType::Staminasteal:
+							{
+								leech_data.percent_stamina	+= modifier.isFlatValue() ? 0 : modifier.getValue();
+								leech_data.flat_stamina		+= modifier.isFlatValue() ? modifier.getValue() : 0;
+								break;
+							}
+							case DamageModifier::AttackType::Soulsteal:
+							{
+								leech_data.percent_soul		+= modifier.isFlatValue() ? 0 : modifier.getValue();
+								leech_data.flat_soul		+= modifier.isFlatValue() ? modifier.getValue() : 0;
+								break;
+							}
+							default: [[unlikely]]
+							{
+								// log it
+								break;
+							}
+						}
+					}
 				}
 
-				//auto attack_modifiers = caster->getAttackModifierTotals(damage_type, origin, CREATURETYPE_PLAYER, victim_race, victim_name);
+				if (percent_pierce or flat_pierce)
+				{
+					penetrateDamage(percent_pierce, flat_pierce);
+				}
 
-				//leech_data.percent_health		= static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_LIFESTEAL].percentTotal);
-				//leech_data.percent_mana			= static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_MANASTEAL].percentTotal);
-				//leech_data.percent_stamina		= static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_STAMINASTEAL].percentTotal);
-				//leech_data.percent_soul			= static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_SOULSTEAL].percentTotal);
-				//leech_data.flat_health			= static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_LIFESTEAL].flatTotal);
-				//leech_data.flat_mana			= static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_MANASTEAL].flatTotal);
-				//leech_data.flat_stamina			= static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_STAMINASTEAL].flatTotal);
-				//leech_data.flat_soul			= static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_SOULSTEAL].flatTotal);
-		
-				//attack_augment(caster, victim, victim_name, std::move(attack_modifiers));
+				if (percent_crit or flat_crit)
+				{
+					applyCrit(percent_crit, flat_crit);
+				}
 			}
 		}
 
@@ -878,22 +992,26 @@ namespace BlackTek
 
 	void Combat::strike_target(const PlayerPtr& caster, const MonsterPtr& victim) noexcept
 	{
-		// todo: need to add the "augment" validation to stop a chain of infinite augmentation from happening.
-
 		if (damage_type == DamageType::Unknown)
 		{
 			// log this
 			return;
 		}
 
-		// if (not aggressive()) return heal_target(caster, victim);
+		if (not target(caster, victim))
+		{
+			// handle error code and send player a message
+			return;
+		}
 
-		// if (not target(caster, victim)) { handle error code and send player a message }
+		// if (not non_aggressive())
+		//		if (healing) doHealing()
+		//      else
+		//		postConditions or w/e reason this combat would exist as non-aggressive but isn't healing damage type
 
 		if (distanceEffect != CONST_ANI_NONE)
 			addDistanceEffect(caster, caster->getPosition(), victim->getPosition(), distanceEffect);
 
-		// todo: Wrap this in combat::block_hit() (and later refine into seperate, defense reduction, and predamage calculation, methods
 		if (origin != Origin::Piercing)
 		{
 			const auto blocked = block(caster, victim);
@@ -904,34 +1022,114 @@ namespace BlackTek
 
 		LeechData leech_data{};
 
-		if (caster->hasAttackModifiers())
+		if (caster->hasAttackModifiers() and not config.test(Config::AttackModified))
 		{
 			const auto conversion_count = caster->conversion_mod_count();
 			const auto victim_race = victim->getRace();
 			const auto& victim_name = victim->getName();
-			const auto moddable = damage_type != COMBAT_MANADRAIN and damage_type != COMBAT_HEALING;
-			const auto victim_type = (victim->isBoss() or victim->isRewardBoss()) ? CREATURETYPE_BOSS : CREATURETYPE_MONSTER;
+			const auto moddable = damage_type != DamageType::ManaDrain and damage_type != DamageType::Healing;
+
+			auto applied = [&](const auto& modifier)
+				{
+					return modifier.applies(damage_type, CreatureType_t::CREATURETYPE_PLAYER, origin, victim_race, victim_name);
+				};
 
 			if (conversion_count > 0)
 			{
-				//const auto& conversion_modifiers = caster->getConvertedTotals(ATTACK_MODIFIER_CONVERSION, damage_type, origin, victim_type, victim_race, victim_name);
-				//conversion_augment(caster, victim_name, conversion_modifiers);
+				const auto& conversion_modifiers = caster->getConversionMods();
+				auto converted_damage = handle_conversion(conversion_modifiers | std::views::filter(applied), caster, victim);
+
+				if (converted_damage)
+				{
+					damage = converted_damage >= damage ? 0 : damage - converted_damage;
+					// pretty sure we are good to return now so that's what we will do for now
+					if (damage == 0) return;
+				}
 			}
 
 			if (moddable and caster->attack_mod_count() > conversion_count)
 			{
-				//auto attack_modifiers = caster->getAttackModifierTotals(damage_type, origin, CREATURETYPE_PLAYER, victim_race, victim_name);
+				const auto& main_attack_sums = caster->getMainAttackModSums();
+				const auto& main_postattack_sums = caster->getMainAttackModPostSums();
 
-				//leech_data.percent_health = static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_LIFESTEAL].percentTotal);
-				//leech_data.percent_mana = static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_MANASTEAL].percentTotal);
-				//leech_data.percent_stamina = static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_STAMINASTEAL].percentTotal);
-				//leech_data.percent_soul = static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_SOULSTEAL].percentTotal);
-				//leech_data.flat_health = static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_LIFESTEAL].flatTotal);
-				//leech_data.flat_mana = static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_MANASTEAL].flatTotal);
-				//leech_data.flat_stamina = static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_STAMINASTEAL].flatTotal);
-				//leech_data.flat_soul = static_cast<int32_t>(attack_modifiers[ATTACK_MODIFIER_SOULSTEAL].flatTotal);
+				auto percent_crit = main_attack_sums[std::to_underlying(DamageModifier::AttackType::Critical)].percent;
+				auto flat_crit = main_attack_sums[std::to_underlying(DamageModifier::AttackType::Critical)].flat;
+				auto percent_pierce = main_attack_sums[std::to_underlying(DamageModifier::AttackType::Piercing)].percent;
+				auto flat_pierce = main_attack_sums[std::to_underlying(DamageModifier::AttackType::Piercing)].flat;
 
-				//attack_augment(caster, victim, victim_name, std::move(attack_modifiers));
+				if (caster->hasFilteredAttackMods())
+				{
+					const auto& filtered_attack_mods = caster->getFilteredAttackMods();
+
+					for (const auto& modifier : filtered_attack_mods | std::views::filter(applied))
+					{
+						const auto mod_type = static_cast<DamageModifier::AttackType>(modifier.mod_type);
+
+						if (mod_type == DamageModifier::AttackType::Critical)
+						{
+							percent_crit += modifier.isFlatValue() ? 0 : modifier.getValue();
+							flat_crit += modifier.isFlatValue() ? modifier.getValue() : 0;
+						}
+						else if (mod_type == DamageModifier::AttackType::Piercing)
+						{
+							percent_pierce += modifier.isFlatValue() ? 0 : modifier.getValue();
+							flat_pierce += modifier.isFlatValue() ? modifier.getValue() : 0;
+						}
+					}
+				}
+
+				if (caster->hasFilteredAttackPostMods())
+				{
+					const auto& filtered_post_attack_mods = caster->getFilteredAttackPostMods();
+
+					for (const auto& modifier : filtered_post_attack_mods | std::views::filter(applied))
+					{
+						const auto mod_type = static_cast<DamageModifier::AttackType>(modifier.mod_type);
+
+						switch (mod_type)
+						{
+						case DamageModifier::AttackType::Lifesteal:
+						{
+							leech_data.percent_health += modifier.isFlatValue() ? 0 : modifier.getValue();
+							leech_data.flat_health += modifier.isFlatValue() ? modifier.getValue() : 0;
+							break;
+						}
+						case DamageModifier::AttackType::Manasteal:
+						{
+							leech_data.percent_mana += modifier.isFlatValue() ? 0 : modifier.getValue();
+							leech_data.flat_mana += modifier.isFlatValue() ? modifier.getValue() : 0;
+							break;
+						}
+						case DamageModifier::AttackType::Staminasteal:
+						{
+							leech_data.percent_stamina += modifier.isFlatValue() ? 0 : modifier.getValue();
+							leech_data.flat_stamina += modifier.isFlatValue() ? modifier.getValue() : 0;
+							break;
+						}
+						case DamageModifier::AttackType::Soulsteal:
+						{
+							leech_data.percent_soul += modifier.isFlatValue() ? 0 : modifier.getValue();
+							leech_data.flat_soul += modifier.isFlatValue() ? modifier.getValue() : 0;
+							break;
+						}
+						default: [[unlikely]]
+						{
+							// log it
+							break;
+						}
+						}
+					}
+				}
+
+				if (percent_pierce or flat_pierce)
+				{
+					penetrateDamage(percent_pierce, flat_pierce);
+				}
+
+				if (percent_crit or flat_crit)
+				{
+					applyCrit(percent_crit, flat_crit);
+				}
 			}
 		}
 
@@ -943,7 +1141,22 @@ namespace BlackTek
 
 	void Combat::strike_target(const MonsterPtr& attacker, const PlayerPtr& victim) noexcept
 	{
-		// if (not can_target(caster, victim)) return;
+		if (damage_type == DamageType::Unknown)
+		{
+			// log this
+			return;
+		}
+
+		if (not target(attacker, victim))
+		{
+			// handle error code and send player a message
+			return;
+		}
+
+		// if (not non_aggressive())
+		//		if (healing) doHealing()
+		//      else
+		//		postConditions or w/e reason this combat would exist as non-aggressive but isn't healing damage type
 
 		if (distanceEffect != CONST_ANI_NONE)
 			addDistanceEffect(attacker, attacker->getPosition(), victim->getPosition(), distanceEffect);
@@ -1093,6 +1306,9 @@ namespace BlackTek
 
 		// Todo: biggest limiting factor on the SIMD is that hasProperty(CONST_PROP_BLOCKPROJECTILE) requires item traversal
 		// and so we need to create a mask on loading the map for this and apply it to tile, updating as needed for things like magic wall.
+		// Also, it shouldn't be blockprojectile we are checking here, as this occurs after line of sight which should be what considers that
+		// so we could likely get away with a dedicated toggle for tiles with acces via "tile->isBlocking()" and passing it to the branchless
+		// tile validation above
 		std::vector<CreaturePtr> toDamageCreatures;
 		toDamageCreatures.reserve(n * 2);
 
@@ -1408,6 +1624,34 @@ namespace BlackTek
 		areas[DIRECTION_NORTHWEST] = std::move(area);
 	}
 
+	CombatArea AreaCombat::GetCombatArea() const
+	{
+		if (areas.size() < 4)
+			return {};
+
+		CombatArea result;
+		result.directions[DIRECTION_NORTH] = CreateDamageLocations(areas[DIRECTION_NORTH]);
+		result.directions[DIRECTION_EAST]  = CreateDamageLocations(areas[DIRECTION_EAST]);
+		result.directions[DIRECTION_SOUTH] = CreateDamageLocations(areas[DIRECTION_SOUTH]);
+		result.directions[DIRECTION_WEST]  = CreateDamageLocations(areas[DIRECTION_WEST]);
+		return result;
+	}
+
+	CombatArea AreaCombat::GetExtCombatArea() const
+	{
+		if (not hasExtArea or areas.size() < 8)
+			return {};
+
+		// Slot layout mirrors the diagonal-mask-strip used in getAreaPositions:
+		// direction ^ DIRECTION_DIAGONAL_MASK → SW=4^4=0, SE=5^4=1, NW=6^4=2, NE=7^4=3
+		CombatArea result;
+		result.directions[DIRECTION_SOUTHWEST ^ DIRECTION_DIAGONAL_MASK] = CreateDamageLocations(areas[DIRECTION_SOUTHWEST]);
+		result.directions[DIRECTION_SOUTHEAST ^ DIRECTION_DIAGONAL_MASK] = CreateDamageLocations(areas[DIRECTION_SOUTHEAST]);
+		result.directions[DIRECTION_NORTHWEST ^ DIRECTION_DIAGONAL_MASK] = CreateDamageLocations(areas[DIRECTION_NORTHWEST]);
+		result.directions[DIRECTION_NORTHEAST ^ DIRECTION_DIAGONAL_MASK] = CreateDamageLocations(areas[DIRECTION_NORTHEAST]);
+		return result;
+	}
+
 	static bool combatCanInteractInSameInstance(const CreatureConstPtr& first, const CreatureConstPtr& second)
 	{
 		return first and second and first->compareInstance(second->getInstanceID());
@@ -1416,12 +1660,12 @@ namespace BlackTek
 
 	void Combat::defense_block_effect(const Position& target_position) const noexcept
 	{
-
+		//Game::addMagicEffect(localSpectators, targetPos, CONST_ME_POFF, instanceId);
 	}
 
 	void Combat::armor_block_effect(const Position& target_position) const noexcept
 	{
-
+		//Game::addMagicEffect(localSpectators, targetPos, CONST_ME_BLOCKHIT, instanceId);
 	}
 
 	void Combat::immunity_block_effect(const Position& target_position) const noexcept
@@ -1455,222 +1699,161 @@ namespace BlackTek
 		}
 	}
 
-	// todo: split into multiple class member functions, for the different blocktypes
-	static auto sendBlockEffect(const BlockType_t blockType, const CombatType_t combatType, const Position& targetPos, uint32_t instanceId)
+	Combat::BlockType Combat::block(const CreaturePtr& attacker, const PlayerPtr& target) noexcept
 	{
-		SpectatorVec localSpectators;
-		g_game.map.getSpectators(localSpectators, targetPos, true, true);
+		BlockType blockType = BlockType::NoBlock;
 
-		if (blockType == BLOCK_DEFENSE)
-		{
-			Game::addMagicEffect(localSpectators, targetPos, CONST_ME_POFF, instanceId);
-		}
-		else if (blockType == BLOCK_ARMOR)
-		{
-			Game::addMagicEffect(localSpectators, targetPos, CONST_ME_BLOCKHIT, instanceId);
-		}
-		else if (blockType == BLOCK_IMMUNITY)
-		{
-			uint8_t hitEffect = 0;
+		bool apply_armor_reduction = config.test(BlockedByArmor);
+		bool apply_defense_reduction = config.test(Config::BlockedByDefense);
 
-			switch (combatType)
+		const float def_mult = target->get_defense_charge_cost_multiplier();
+		const float arm_mult = target->get_armor_charge_cost_multiplier();
+		const float def_base = static_cast<float>(apply_defense_reduction ? defense_charge_cost : g_config.GetNumber(ConfigManager::DEFAULT_DEFENSE_CHARGE_COST));
+		const float arm_base = static_cast<float>(apply_armor_reduction ? armor_charge_cost   : g_config.GetNumber(ConfigManager::DEFAULT_ARMOR_CHARGE_COST));
+
+		const uint32_t defense_cost = static_cast<uint32_t>(std::round(def_base * def_mult));
+		const uint32_t armor_cost   = static_cast<uint32_t>(std::round(arm_base * arm_mult));
+
+		if (config.test(Config::BlockedByDefense) and target->can_use_defense()
+		    and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
+		{
+			if (defense_cost > 0)
+				target->set_defense_charges(target->get_defense_charges() - defense_cost);
+
+			int32_t defense = target->getDefense(); // we need to hook here
+			damage -= uniform_random(defense / 2, defense); // and this should be a predefined option
+
+			if (damage <= 0)
 			{
-			case COMBAT_UNDEFINEDDAMAGE:
-				return;
-
-			case COMBAT_ENERGYDAMAGE:
-			case COMBAT_FIREDAMAGE:
-			case COMBAT_PHYSICALDAMAGE:
-			case COMBAT_ICEDAMAGE:
-			case COMBAT_DEATHDAMAGE:
-				hitEffect = CONST_ME_BLOCKHIT;
-				break;
-
-			case COMBAT_EARTHDAMAGE:
-				hitEffect = CONST_ME_GREEN_RINGS;
-				break;
-
-			case COMBAT_HOLYDAMAGE:
-				hitEffect = CONST_ME_HOLYDAMAGE;
-				break;
-
-			default:
-				hitEffect = CONST_ME_POFF;
-				break;
+				damage = 0;
+				blockType = BlockType::Defensive;
+				apply_armor_reduction = false;
 			}
 
-			Game::addMagicEffect(localSpectators, targetPos, hitEffect, instanceId);
-		}
-	}
-
-	bool Combat::block(const CreaturePtr& attacker, const PlayerPtr& target) const noexcept
-	{
-		BlockType_t blockType = BLOCK_NONE;
-		bool checkArmor = false;
-		if (false) //(target->isImmune(damage_type))
-		{
-			//damage.primary.value = 0;
-			blockType = BLOCK_IMMUNITY;
-		}
-		else if (config.test(Config::BlockedByShield) or config.test(Config::BlockedByArmor))
-		{
-			bool hasDefense = false;
-			auto block_count = target->get_block_count();
-
-			if (block_count > 0)
-			{
-				target->set_block_count(block_count - 1);
-				hasDefense = true;
-			}
-
-			if (config.test(Config::BlockedByShield) and hasDefense and target->can_use_defense())
-			{
-				int32_t defense = target->getDefense();
-				// damage -= uniform_random(defense / 2, defense);
-				if (damage <= 0) {
-					//damage.primary.value = 0;
-					blockType = BLOCK_DEFENSE;
-					checkArmor = false;
-				}
-			}
-
-			if (checkArmor)
-			{
-				int32_t armor = target->getArmor();
-				if (armor > 3)
-				{
-					//damage.primary.value -= uniform_random(armor / 2, armor - (armor % 2 + 1));
-				}
-				else if (armor > 0)
-				{
-					//--damage;
-				}
-
-				if (damage <= 0)
-				{
-					//damage = 0;
-					blockType = BLOCK_ARMOR;
-				}
-			}
-
-			if (hasDefense and blockType != BLOCK_NONE)
-			{
-				target->onBlockHit();
-			}
+			// This is a wasteful function as it's just a virtual function with player having the
+			// one and only overload, which does nothing more than reduce shield block count of the player
+			// and increase the skill points for shielding if player has shield equipped (which needs adjusted too)
+			target->onBlockHit(); 
 		}
 
-		if (damage <= 0)
+		if (apply_armor_reduction and (armor_cost == 0 or target->get_armor_charges() >= armor_cost))
 		{
-			// damage = 0;
-			blockType = BLOCK_ARMOR;
+			if (armor_cost > 0)
+				target->set_armor_charges(target->get_armor_charges() - armor_cost);
+
+			int32_t armor = target->getArmor(); // this method is ineffective like others in combat, as it iterates over every possible slot rather than only the ones active
+
+			// here, this "threshold" should be configurable (the > 3), and the deduction should be one of our plug in predefines for calculation
+			if (armor > 3)
+			{
+				damage -= uniform_random(armor / 2, armor - (armor % 2 + 1));
+			}
+			else if (armor > 0)
+			{
+				--damage;
+			}
+
+			if (damage <= 0)
+			{
+				damage = 0;
+				blockType = BlockType::Armor;
+			}
 		}
 
 		if (attacker and damage_type != DamageType::Healing)
 		{
 			attacker->onAttackedCreature(target);
-			attacker->onAttackedCreatureBlockHit(blockType);
+			// Warning! We are using old blocktype here with a static cast to get rid of any errors, if we eliminate old blocktype this needs updated!
+			attacker->onAttackedCreatureBlockHit(static_cast<BlockType_t>(blockType));
 
 			if (attacker->getMaster() and attacker->getMaster()->getPlayer())
-			{
-				auto masterPlayer = attacker->getMaster()->getPlayer();
-				masterPlayer->onAttackedCreature(target);
-			}
+				attacker->getMaster()->getPlayer()->onAttackedCreature(target);
 		}
 
 		target->onAttacked();
-		//return blockType;
 
-		return true;
+		if (attacker and damage_type != DamageType::Healing)
+			target->sendCreatureSquare(attacker, SQ_COLOR_BLACK);
+
+		return blockType;
 	}
 
-	bool Combat::block(const CreaturePtr& attacker, const MonsterPtr& target) const noexcept
+	Combat::BlockType Combat::block(const CreaturePtr& attacker, const MonsterPtr& target) noexcept
 	{
-		BlockType_t blockType = BLOCK_NONE;
-		bool checkArmor = false;
-		if (false) //(target->isImmune(damage_type))
+		BlockType blockType = BlockType::NoBlock;
+
+		bool apply_armor_reduction = config.test(BlockedByArmor);
+		bool apply_defense_reduction = config.test(Config::BlockedByDefense);
+
+		const float def_mult = target->get_defense_charge_cost_multiplier();
+		const float arm_mult = target->get_armor_charge_cost_multiplier();
+		const float def_base = static_cast<float>(apply_defense_reduction ? defense_charge_cost : g_config.GetNumber(ConfigManager::DEFAULT_DEFENSE_CHARGE_COST));
+		const float arm_base = static_cast<float>(apply_armor_reduction ? armor_charge_cost : g_config.GetNumber(ConfigManager::DEFAULT_ARMOR_CHARGE_COST));
+
+		const uint32_t defense_cost = static_cast<uint32_t>(std::round(def_base * def_mult));
+		const uint32_t armor_cost = static_cast<uint32_t>(std::round(arm_base * arm_mult));
+
+		if (config.test(Config::BlockedByDefense) and target->can_use_defense()
+			and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
 		{
-			//damage.primary.value = 0;
-			blockType = BLOCK_IMMUNITY;
-		}
-		else if (config.test(Config::BlockedByShield) or config.test(Config::BlockedByArmor))
-		{
-			bool hasDefense = false;
-			auto block_count = target->get_block_count();
+			if (defense_cost > 0)
+				target->set_defense_charges(target->get_defense_charges() - defense_cost);
 
-			if (block_count > 0)
+			int32_t defense = target->getDefense(); // we need to hook here
+			damage -= uniform_random(defense / 2, defense); // and this should be a predefined option
+
+			if (damage <= 0)
 			{
-				target->set_block_count(block_count - 1);
-				hasDefense = true;
-			}
-
-			if (config.test(Config::BlockedByShield) and hasDefense and target->can_use_defense())
-			{
-				int32_t defense = target->getDefense();
-				// damage -= uniform_random(defense / 2, defense);
-				if (damage <= 0)
-				{
-					//damage.primary.value = 0;
-					blockType = BLOCK_DEFENSE;
-					checkArmor = false;
-				}
-			}
-
-			if (checkArmor)
-			{
-				int32_t armor = target->getArmor();
-
-				if (armor > 3)
-				{
-					//damage.primary.value -= uniform_random(armor / 2, armor - (armor % 2 + 1));
-				}
-				else if (armor > 0)
-				{
-					//--damage;
-				}
-
-				if (damage <= 0) 
-				{
-					//damage = 0;
-					blockType = BLOCK_ARMOR;
-				}
-			}
-
-			if (hasDefense and blockType != BLOCK_NONE)
-			{
-				target->onBlockHit();
+				damage = 0;
+				blockType = BlockType::Defensive;
+				apply_armor_reduction = false;
 			}
 		}
 
-		if (damage <= 0)
+		if (apply_armor_reduction and (armor_cost == 0 or target->get_armor_charges() >= armor_cost))
 		{
-			// damage = 0;
-			blockType = BLOCK_ARMOR;
+			if (armor_cost > 0)
+				target->set_armor_charges(target->get_armor_charges() - armor_cost);
+
+			int32_t armor = target->getArmor();
+
+			// here, this "threshold" should be configurable (the > 3), and the deduction should be one of our plug in predefines for calculation
+			if (armor > 3)
+			{
+				damage -= uniform_random(armor / 2, armor - (armor % 2 + 1));
+			}
+			else if (armor > 0)
+			{
+				--damage;
+			}
+
+			if (damage <= 0)
+			{
+				damage = 0;
+				blockType = BlockType::Armor;
+			}
 		}
 
-		if (attacker and damage_type != Combat::Healing)
+		if (attacker and damage_type != DamageType::Healing)
 		{
 			attacker->onAttackedCreature(target);
-			attacker->onAttackedCreatureBlockHit(blockType);
+			// Warning! We are using old blocktype here with a static cast to get rid of any errors, if we eliminate old blocktype this needs updated!
+			attacker->onAttackedCreatureBlockHit(static_cast<BlockType_t>(blockType));
 
-			if (attacker->getMaster() and attacker->getMaster()->getPlayer())
-			{
-				auto masterPlayer = attacker->getMaster()->getPlayer();
-				masterPlayer->onAttackedCreature(target);
-			}
+			if (attacker->isSummon() and attacker->getMaster()->getPlayer())
+				attacker->getMaster()->getPlayer()->onAttackedCreature(target);
 		}
 
 		target->onAttacked();
-		//return blockType;
 
-		return true;
+		return blockType;
 	}
 
-	// todo:: this is not enough to collect all the notice data, like piercing, crit, ect.
-	// we make this into "collect_hit_notice", and do others for "collect_augment_notice" and even "collect_healing_notice" 
 	uint32_t Combat::collect_notice_data(const CreaturePtr& target) const noexcept
 	{
 		const uint16_t combat_key = (static_cast<uint16_t>(damage_type) << 8) | (damage_type == DamageType::Physical ? static_cast<uint8_t>(target->getRace()) : 0);
 
+		// Todo: all of these should be configurable by end user
 		switch (combat_key)
 		{
 			case (DamageType::Physical << 8) | RACE_VENOM:		return PackNotice(TEXTCOLOR_LIGHTGREEN, CONST_ME_HITBYPOISON, FLUID_SLIME);
@@ -1682,10 +1865,12 @@ namespace BlackTek
 			case (DamageType::Earth << 8):						return PackNotice(TEXTCOLOR_LIGHTGREEN, CONST_ME_GREEN_RINGS);
 			case (DamageType::Water << 8):						return PackNotice(TEXTCOLOR_LIGHTBLUE, CONST_ME_LOSEENERGY);
 			case (DamageType::Fire << 8):						return PackNotice(TEXTCOLOR_ORANGE, CONST_ME_HITBYFIRE);
+			case (DamageType::Undefined << 8):					return PackNotice(TEXTCOLOR_PASTELRED, CONST_ME_PURPLESMOKE);
 			case (DamageType::Ice << 8):						return PackNotice(TEXTCOLOR_SKYBLUE, CONST_ME_ICEATTACK);
 			case (DamageType::Holy << 8):						return PackNotice(TEXTCOLOR_YELLOW, CONST_ME_HOLYDAMAGE);
 			case (DamageType::Death << 8):						return PackNotice(TEXTCOLOR_DARKRED, CONST_ME_SMALLCLOUDS);
 			case (DamageType::LifeDrain << 8):					return PackNotice(TEXTCOLOR_RED, CONST_ME_MAGIC_RED);
+			default: [[unlikely]] /* should never happen, log here */ return 0;
 		}
 		// should never happen, log here..
 		return 0;
@@ -1712,8 +1897,6 @@ namespace BlackTek
 
 	bool Combat::apply_damage(const CreaturePtr& attacker, const PlayerPtr& target) noexcept
 	{
-		// if (not doTargetCombat(combat, attacker, target)) return false;
-
 		// check for mana shield and mana drain
 
 		TextMessage attacker_message;
@@ -1728,22 +1911,15 @@ namespace BlackTek
 	bool Combat::apply_damage(const CreaturePtr& attacker, const MonsterPtr& target) noexcept
 	{
 
-		// if (not doTargetCombat(combat, attacker, target)) return false;
-
 
 		return true;
 	}
 
 	bool Combat::apply_damage(const CreaturePtr& attacker, const Position& target_position) noexcept
 	{
-		// if (not doPositionCombat(combat, attacker, position)) return false;
-
 
 		return true;
 	}
-
-	
-
 
 	//void Combat::absorbDamage(const std::optional<CreaturePtr> attacker, int32_t percent, int32_t flat)
 	//{

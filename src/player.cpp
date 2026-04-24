@@ -2103,7 +2103,7 @@ void Player::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile,
 
 	if (hasFollowPath && (creature == getFollowCreature() || (creature == this->getPlayer() && getFollowCreature()))) {
 		isUpdatingPath = false;
-		g_dispatcher.addTask(createTask([id = getID()]() { g_game.updateCreatureWalk(id); }));
+		g_game.updateCreatureWalk(getID());
 	}
 
 	if (creature != this->getPlayer()) {
@@ -2325,20 +2325,6 @@ void Player::onThink(const uint32_t interval)
 			client->sendTextMessage(TextMessage(MESSAGE_STATUS_WARNING, fmt::format("There was no variation in your behaviour for {:d} minutes. You will be disconnected in one minute if there is no change in your actions until then.", kickAfterMinutes)));
 	}
 
-	// if (isImbued()) { // TODO: Reimplement a check like this to first see if player has any items, then items with imbuements before decaying.
-		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot)
-		{
-			const auto& item = inventory[slot];
-
-			if (item and item->hasImbuements())
-			{
-				item->decayImbuements(hasCondition(CONDITION_INFIGHT));
-				sendSkills();
-				sendStats();
-			}
-		}
-	// } // part of the above TODO:
-
 	if (g_game.getWorldType() != WORLD_TYPE_PVP_ENFORCED)
 		checkSkullTicks(interval / 1000);
 
@@ -2346,6 +2332,55 @@ void Player::onThink(const uint32_t interval)
 
 	if (lastStatsTrainingTime != getOfflineTrainingTime() / 60 / 1000)
 		sendStats();
+}
+
+uint32_t Player::get_defense_charge_interval() const noexcept
+{
+	if (vocation && vocation->getDefenseChargeInterval() > 0)
+		return vocation->getDefenseChargeInterval();
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PLAYER_DEFENSE_CHARGE_INTERVAL));
+}
+
+uint32_t Player::get_defense_charges_cap() const noexcept
+{
+	if (vocation && vocation->getDefenseChargesCap() > 0)
+		return vocation->getDefenseChargesCap();
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PLAYER_DEFENSE_CHARGES_CAP));
+}
+
+uint32_t Player::get_armor_charges_cap() const noexcept
+{
+	if (vocation && vocation->getArmorChargesCap() > 0)
+		return vocation->getArmorChargesCap();
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PLAYER_ARMOR_CHARGES_CAP));
+}
+
+uint32_t Player::get_augment_charges_cap() const noexcept
+{
+	if (vocation && vocation->getAugmentChargesCap() > 0)
+		return vocation->getAugmentChargesCap();
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PLAYER_AUGMENT_CHARGES_CAP));
+}
+
+float Player::get_defense_charge_cost_multiplier() const noexcept
+{
+	if (vocation)
+		return vocation->getDefenseChargeCostMultiplier();
+	return 1.0f;
+}
+
+float Player::get_armor_charge_cost_multiplier() const noexcept
+{
+	if (vocation)
+		return vocation->getArmorChargeCostMultiplier();
+	return 1.0f;
+}
+
+float Player::get_augment_charge_cost_multiplier() const noexcept
+{
+	if (vocation)
+		return vocation->getAugmentChargeCostMultiplier();
+	return 1.0f;
 }
 
 uint32_t Player::isMuted() const
@@ -4199,7 +4234,7 @@ bool Player::setAttackedCreature(const CreaturePtr& creature)
 	}
 
 	if (creature) {
-		g_dispatcher.addTask(createTask([id = getID()]() { g_game.checkCreatureAttack(id); }));
+		g_game.checkCreatureAttack(getID());
 	}
 	return true;
 }

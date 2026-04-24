@@ -177,6 +177,8 @@ monster.attacks = {
 monster.defenses = {
 	defense = 45,
 	armor = 40,
+	-- defense_charge_interval: ms between gaining one defense charge (0 = use config/combat.toml default)
+	-- Set via: mType:defenseChargeInterval(ms)  e.g. mType:defenseChargeInterval(800)
 	{
 		name = "combat",
 		type = COMBAT_HEALING,

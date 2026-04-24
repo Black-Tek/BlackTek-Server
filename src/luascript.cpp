@@ -3219,6 +3219,11 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("MonsterType", "armor", luaMonsterTypeArmor);
 	registerMethod("MonsterType", "defense", luaMonsterTypeDefense);
+	registerMethod("MonsterType", "defenseChargeInterval", luaMonsterTypeDefenseChargeInterval);
+	registerMethod("MonsterType", "defenseChargesCap", luaMonsterTypeDefenseChargesCap);
+	registerMethod("MonsterType", "armorChargesCap", luaMonsterTypeArmorChargesCap);
+	registerMethod("MonsterType", "defenseChargeCostMultiplier", luaMonsterTypeDefenseChargeCostMultiplier);
+	registerMethod("MonsterType", "armorChargeCostMultiplier", luaMonsterTypeArmorChargeCostMultiplier);
 	registerMethod("MonsterType", "outfit", luaMonsterTypeOutfit);
 	registerMethod("MonsterType", "race", luaMonsterTypeRace);
 	registerMethod("MonsterType", "corpseId", luaMonsterTypeCorpseId);
@@ -17537,6 +17542,91 @@ int LuaScriptInterface::luaMonsterTypeDefense(lua_State* L)
 			lua_pushinteger(L, monsterType->info.defense);
 		} else {
 			monsterType->info.defense = getNumber<int32_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeDefenseChargeInterval(lua_State* L)
+{
+	// get: monsterType:defenseChargeInterval() set: monsterType:defenseChargeInterval(ms)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushinteger(L, monsterType->info.defense_charge_interval);
+		} else {
+			monsterType->info.defense_charge_interval = getNumber<uint32_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeDefenseChargesCap(lua_State* L)
+{
+	// get: monsterType:defenseChargesCap() set: monsterType:defenseChargesCap(cap)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushinteger(L, monsterType->info.defense_charges_cap);
+		} else {
+			monsterType->info.defense_charges_cap = getNumber<uint32_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeArmorChargesCap(lua_State* L)
+{
+	// get: monsterType:armorChargesCap() set: monsterType:armorChargesCap(cap)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushinteger(L, monsterType->info.armor_charges_cap);
+		} else {
+			monsterType->info.armor_charges_cap = getNumber<uint32_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeDefenseChargeCostMultiplier(lua_State* L)
+{
+	// get: monsterType:defenseChargeCostMultiplier() set: monsterType:defenseChargeCostMultiplier(mult)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushnumber(L, monsterType->info.defense_charge_cost_multiplier);
+		} else {
+			monsterType->info.defense_charge_cost_multiplier = getNumber<float>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeArmorChargeCostMultiplier(lua_State* L)
+{
+	// get: monsterType:armorChargeCostMultiplier() set: monsterType:armorChargeCostMultiplier(mult)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushnumber(L, monsterType->info.armor_charge_cost_multiplier);
+		} else {
+			monsterType->info.armor_charge_cost_multiplier = getNumber<float>(L, 2);
 			pushBoolean(L, true);
 		}
 	} else {
