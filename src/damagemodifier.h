@@ -211,6 +211,7 @@ namespace BlackTek
 		uint8_t origin_type = 0;
 		uint8_t creature_type = CREATURETYPE_ATTACKABLE;
 		uint8_t race_type = RACE_NONE;
+		bool true_leech;
 	};
 
 	struct ModifierSum

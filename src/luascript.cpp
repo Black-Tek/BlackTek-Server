@@ -3124,6 +3124,18 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("Combat", "execute", luaCombatExecute);
 
+	// Formula override API
+	registerMethod("Combat", "setSituationFormulas",  luaCombatSetSituationFormulas);
+	registerMethod("Combat", "setDefenseCallback",    luaCombatSetDefenseCallback);
+	registerMethod("Combat", "setArmorCallback",      luaCombatSetArmorCallback);
+	registerMethod("Combat", "setResolutionCallback", luaCombatSetResolutionCallback);
+
+	// Combat situation index constants — pass to setSituationFormulas / set*Callback
+	registerVariable("Combat", "SITUATION_PVP", 0);
+	registerVariable("Combat", "SITUATION_PVM", 1);
+	registerVariable("Combat", "SITUATION_MVP", 2);
+	registerVariable("Combat", "SITUATION_MVM", 3);
+
 	// Condition
 	registerClass("Condition", "", luaConditionCreate);
 	registerMetaMethod("Condition", "__eq", luaUserdataCompare);
@@ -3893,7 +3905,7 @@ int LuaScriptInterface::luaCreateCombatArea(lua_State* L)
 	}
 
 	uint32_t areaId = g_luaEnvironment.createAreaObject(env->getScriptInterface());
-	AreaCombat* area = g_luaEnvironment.getAreaObject(areaId);
+	BlackTek::AreaCombat* area = g_luaEnvironment.getAreaObject(areaId);
 
 	int parameters = lua_gettop(L);
 	if (parameters >= 2) {
@@ -3975,12 +3987,12 @@ int LuaScriptInterface::luaDoTargetCombat(lua_State* L)
 
 	CombatType_t combatType = getNumber<CombatType_t>(L, 3);
 
-	Combat params;
-	params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(combatType));
-	params.setParam(COMBAT_PARAM_EFFECT, getNumber<uint8_t>(L, 6));
-	params.setParam(COMBAT_PARAM_BLOCKARMOR, getBoolean(L, 8, false) ? 1 : 0);
-	params.setParam(COMBAT_PARAM_BLOCKSHIELD, getBoolean(L, 9, false) ? 1 : 0);
-	params.setParam(COMBAT_PARAM_IGNORERESISTANCES, getBoolean(L, 10, false) ? 1 : 0);
+	BlackTek::Combat combat;
+	//params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(combatType));
+	//params.setParam(COMBAT_PARAM_EFFECT, getNumber<uint8_t>(L, 6));
+	//params.setParam(COMBAT_PARAM_BLOCKARMOR, getBoolean(L, 8, false) ? 1 : 0);
+	//params.setParam(COMBAT_PARAM_BLOCKSHIELD, getBoolean(L, 9, false) ? 1 : 0);
+	//params.setParam(COMBAT_PARAM_IGNORERESISTANCES, getBoolean(L, 10, false) ? 1 : 0);
 
 	//CombatDamage damage;
 	//damage.origin = getNumber<CombatOrigin>(L, 7, ORIGIN_SPELL);
@@ -7596,170 +7608,6 @@ int LuaScriptInterface::luaItemIsStoreItem(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaItemGetImbuementSlots(lua_State* L)
-{
-	// item:getImbuementSlots() -- returns how many total slots
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		lua_pushinteger(L, item->getImbuementSlots());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemGetFreeImbuementSlots(lua_State* L)
-{
-	// item:getFreeImbuementSlots() -- returns how many slots are available for use
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		if (item->hasImbuements()) 
-		{
-			lua_pushinteger(L, item->getFreeImbuementSlots());
-			return 1;
-        }
-		lua_pushinteger(L, 0);
-        return 1;
-	}
-    lua_pushnil(L);
-	return 1;
-}
-
-int LuaScriptInterface::luaItemCanImbue(lua_State* L)
-{
-	// item:canImbue(amount) -- returns true if item has slots that are free
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		pushBoolean(L, item->canImbue());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemAddImbuementSlots(lua_State* L)
-{
-	// item:addImbuementSlots(amount) -- tries to add imbuement slot(s), returns true if successful
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		pushBoolean(L, item->addImbuementSlots(getNumber<uint32_t>(L, 2)));
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemRemoveImbuementSlots(lua_State* L)
-{
-	// item:removeImbuementSlots(amount, destroy) -- tries to remove imbuement slot(s), returns true if successful
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		pushBoolean(L, item->removeImbuementSlots(getNumber<uint32_t>(L, 2), getBoolean(L, 5, false)));
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemHasImbuementType(lua_State* L)
-{
-	// item:hasImbuementType(type)
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-        if (item->hasImbuements()) 
-		{
-			pushBoolean(L, item->hasImbuementType(getNumber<ImbuementType>(L, 2, ImbuementType::IMBUEMENT_TYPE_NONE)));
-            return 1;
-		}
-        pushBoolean(L, false);
-        return 1;
-	}
-    lua_pushnil(L);
-	return 1;
-}
-
-int LuaScriptInterface::luaItemHasImbuement(lua_State* L)
-{
-	// item:hasImbuement(imbueType, amount, duration, realtime)
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		if (const std::shared_ptr<Imbuement> imbue = getSharedPtr<Imbuement>(L, 2)) {
-			pushBoolean(L, item->hasImbuement(imbue));
-		} else {
-			// should be nil, or at least send a message about the failure
-			pushBoolean(L, false);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemHasImbuements(lua_State* L)
-{
-	// item:hasImbuements() -- returns true if item has any imbuements
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		pushBoolean(L, item->hasImbuements());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemAddImbuement(lua_State* L)
-{
-	// item:addImbuement(imbuement) -- returns true if it successfully adds the imbuement
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		if (const std::shared_ptr<Imbuement> imbue = getSharedPtr<Imbuement>(L, 2)) {
-			pushBoolean(L, item->addImbuement(imbue, true));
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemRemoveImbuement(lua_State* L)
-{
-	// item:removeImbuement(imbuement)
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		if (const std::shared_ptr<Imbuement> imbue = getSharedPtr<Imbuement>(L, 2)) {
-			pushBoolean(L, item->removeImbuement(imbue, false));
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-
-int LuaScriptInterface::luaItemGetImbuements(lua_State* L)
-{
-	// item:getImbuements() -- returns a table that contains values that are imbuement userdata?
-	const auto& item = getSharedPtr<Item>(L, 1);
-	if (not item) {
-		lua_pushnil(L);
-		return 1;
-	}
-    if (item->hasImbuements()) {
-		auto& imbues = item->getImbuements();
-        lua_createtable(L, imbues->size(), 0);
-
-        int index = 0;
-        for (const auto& imbuement : *imbues) {
-            pushSharedPtr(L, imbuement);
-            setMetatable(L, -1, "Imbuement");
-            lua_rawseti(L, -2, ++index);
-        }
-        return 1;
-    }
-    lua_createtable(L, 0, 0);
-    return 1;
-}
-
 int LuaScriptInterface::luaItemAddAugment(lua_State* L)
 {
 	const auto item = getSharedPtr<Item>(L, 1);
@@ -7775,14 +7623,14 @@ int LuaScriptInterface::luaItemAddAugment(lua_State* L)
 
 	if (isString(L, 2)) {
 		std::cout << getString(L, 2) << " \n";
-		if (auto augment = Augments::GetAugment(getString(L, 2))) {
+		if (auto augment = BlackTek::Augments::GetAugment(getString(L, 2))) {
 			lua_pushboolean(L, item->addAugment(augment));
 		} else {
 			lua_pushnil(L);
 			reportError(__FUNCTION__, "Item::addAugment() argument not found as any name in augments loaded on startup! \n");
 		}
 	} else if (isUserdata(L, 2)) {
-		if (auto augment = getSharedPtr<Augment>(L, 2)) {
+		if (auto augment = getSharedPtr<BlackTek::Augment>(L, 2)) {
 			lua_pushboolean(L, item->addAugment(augment));
 		} else {
 			lua_pushnil(L);
@@ -7807,7 +7655,7 @@ int LuaScriptInterface::luaItemRemoveAugment(lua_State* L)
 		const auto name = getString(L, 2);
 		lua_pushboolean(L, item->removeAugment(name));
 	} else if (isUserdata(L, 2)) {
-		if (auto augment = getSharedPtr<Augment>(L, 2)) {
+		if (auto augment = getSharedPtr<BlackTek::Augment>(L, 2)) {
 			lua_pushboolean(L, item->removeAugment(augment));
 		} else {
 			reportError(__FUNCTION__, "Item::removeAugment() invalid userdata type passed as argument! \n");
@@ -7843,7 +7691,7 @@ int LuaScriptInterface::luaItemHasAugment(lua_State* L)
 		const auto name = getString(L, 2);
 		lua_pushboolean(L, item->hasAugment(name));
 	} else if (isUserdata(L, 2)) {
-		if (std::shared_ptr<Augment> augment = getSharedPtr<Augment>(L, 2)) {
+		if (std::shared_ptr<BlackTek::Augment> augment = getSharedPtr<BlackTek::Augment>(L, 2)) {
 			lua_pushboolean(L, item->hasAugment(augment));
 		} else {
 			reportError(__FUNCTION__, "Item::hasAugment() invalid userdata type passed as argument! \n");
@@ -8460,517 +8308,6 @@ int LuaScriptInterface::luaItemGetStats(lua_State* L)
 	return 0;
 }
 
-// Imbuement
-
-int LuaScriptInterface::luaImbuementCreate(lua_State* L)
-{
-	// Imbuement(type, amount, duration, decayType = IMBUE_DECAY_EQUIPPED)
-	ImbuementType imbueType = getNumber<ImbuementType>(L, 2, ImbuementType::IMBUEMENT_TYPE_NONE);
-	uint32_t amount = getNumber<uint32_t>(L, 3);
-	uint32_t duration = getNumber<uint32_t>(L, 4);
-	ImbuementDecayType decayType = getNumber<ImbuementDecayType>(L, 5, ImbuementDecayType::IMBUEMENT_DECAY_EQUIPPED);
-	pushSharedPtr(L, std::make_shared<Imbuement>(Imbuement(imbueType, amount, duration, decayType)));
-	setMetatable(L, -1, "Imbuement");
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementGetType(lua_State* L)
-{
-	// imbuement:getType()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->imbuetype);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementGetValue(lua_State* L)
-{
-	// imbuement:getValue()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->value);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-
-int LuaScriptInterface::luaImbuementGetDuration(lua_State* L)
-{
-	// imbuement:getDuration()
-    if (const auto &imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->duration);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementIsSkill(lua_State* L)
-{
-	// imbuement:isSkill()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->isSkill());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementIsSpecialSkill(lua_State* L)
-{
-	// imbuement:isSpecialSkill()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->isSpecialSkill());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementIsDamage(lua_State* L)
-{
-	// imbuement:isDamage()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->isDamage());
-	}
-	else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementIsResist(lua_State* L)
-{
-	// imbuement:isResist()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->isResist());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementIsStat(lua_State* L)
-{
-	// imbuement:isStat()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->isStat());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementSetValue(lua_State* L)
-{
-	// imbuement:setAmount(amount)
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		imbue->value = getNumber<uint32_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementSetDuration(lua_State* L)
-{
-	// imbuement:setDuration(duration)
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		imbue->duration = getNumber<uint32_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementSetEquipDecay(lua_State* L)
-{
-	// imbuement:makeEquipDecayed()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		imbue->decaytype = ImbuementDecayType::IMBUEMENT_DECAY_EQUIPPED;
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementSetInfightDecay(lua_State* L)
-{
-	// imbuement:makeInfightDecayed()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		imbue->decaytype = ImbuementDecayType::IMBUEMENT_DECAY_INFIGHT;
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementIsEquipDecay(lua_State* L)
-{
-	// imbuement:isEquipDecayed()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		pushBoolean(L, imbue->decaytype == ImbuementDecayType::IMBUEMENT_DECAY_EQUIPPED);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementIsInfightDecay(lua_State* L)
-{
-	// imbuement:isInfightDecayed()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		pushBoolean(L, imbue->decaytype == ImbuementDecayType::IMBUEMENT_DECAY_INFIGHT);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierCreate(lua_State* L)
-{
-	// DamageModifier()
-	if (lua_gettop(L) < 2) {
-		pushSharedPtr(L, DamageModifier::makeModifier());
-		setMetatable(L, -1, "DamageModifier");
-		return 1;
-	}
-
-	// DamageModifier(stance, type, value, percent/flat, chance, combatType, originType, creatureType, race)
-	//if (const auto stance = getNumber<ImbuementType>(L, 2))
-	//{
-	//	const auto modType = getNumber<uint8_t>(L, 3);
-	//	const auto amount = getNumber<uint16_t>(L, 4);
-	//	const auto factor = getNumber<ModFactor>(L, 5);
-	//	const auto chance = getNumber<uint8_t>(L, 6, 100);
-	//	const auto combatType = getNumber<CombatType_t>(L, 7, COMBAT_NONE);
-	//	const auto originType = getNumber<CombatOrigin>(L, 8, ORIGIN_NONE);
-	//	const auto creatureType = getNumber<CreatureType_t>(L, 9, CREATURETYPE_ATTACKABLE);
-	//	const auto race = getNumber<RaceType_t>(L, 10, RACE_NONE);
-	//	const auto& creatureName = getString(L, 11, "none");
-
-	//	if (modType && amount && factor)
-	//	{
-	//		const auto& modifier = DamageModifier::makeModifier(stance, modType, amount, factor, chance, combatType, originType, creatureType, race, creatureName);
-	//		pushSharedPtr(L, modifier);
-	//		setMetatable(L, -1, "DamageModifier");
-	//		return 1;
-	//	}
-	//	else
-	//	{
-	//		lua_pushnil(L);
-	//		return 1;
-	//	}
-	//}
-
-	// DamageModifier(damageModifier)
-	if (const auto& originalModifier = getSharedPtr<DamageModifier>(L, 2))
-	{
-		pushSharedPtr(L, DamageModifier::makeModifier(*originalModifier.get()));
-		setMetatable(L, -1, "DamageModifier");
-		return 1;
-	}
-
-	lua_pushnil(L);
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetType(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
-	{
-		if (const auto modType = getNumber<uint8_t>(L, 2)) 
-		{
-			modifier->setType(modType);
-		}
-	}
-	else 
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetStance(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
-	{
-		if (const auto stance = getNumber<uint8_t>(L, 2))
-		{
-			modifier->setStance(stance);
-		}
-	}
-	else
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetChance(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
-	{
-		if (const auto chance = getNumber<uint8_t>(L, 2))
-		{
-			modifier->setChance(chance);
-		}
-	}
-	else
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetValue(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
-	{
-		if (const auto amount = getNumber<uint8_t>(L, 2)) 
-		{
-			modifier->setValue(amount);
-		}
-	} 
-	else 
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetRateFactor(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
-	{
-		if (const auto factor = getNumber<uint8_t>(L, 2)) 
-		{
-			modifier->setFactor(factor);
-		}
-	} 
-	else 
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetCombatFilter(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
-	{
-		if (auto combatType = getNumber<CombatType_t>(L, 2); combatType >= 0)
-		{
-			modifier->setCombatType(combatType);
-		}
-	} 
-	else 
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetOriginFilter(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
-	{
-		//if (const auto origin = getNumber<CombatOrigin>(L, 2)) 
-		//{
-		//	modifier->setOriginType(origin);
-		//}
-	}
-	else 
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetRaceFilter(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
-	{
-		if (const auto race = getNumber<RaceType_t>(L, 2))
-		{
-			modifier->setRaceType(race);
-		}
-	}
-	else
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetCreatureTypeFilter(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
-	{
-		if (const auto c_type = getNumber<CreatureType_t>(L, 2))
-		{
-			modifier->setCreatureType(c_type);
-		}
-	}
-	else
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetCreatureName(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
-	{
-			modifier->setCreatureName(getString(L, 2, "none"));
-	}
-	else
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetType(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getType());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetStance(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getStance());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetChance(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getChance());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetValue(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getValue());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetFactor(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->isPercent() ? PERCENT_MODIFIER : FLAT_MODIFIER);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetCombatType(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getDamageType());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetOriginType(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getOriginType());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetRaceType(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getRaceType());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetCreatureType(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getCreatureType());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetCreatureName(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		pushString(L, modifier->getMonsterName());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetConversionType(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getConversionType());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierIsPercent(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushboolean(L, modifier->isPercent());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
 int LuaScriptInterface::luaAugmentRegister(lua_State* L)
 {
 	if (lua_gettop(L) < 2) {
@@ -8978,26 +8315,27 @@ int LuaScriptInterface::luaAugmentRegister(lua_State* L)
 		return 1;
 	}
 
-	const auto& augment = getSharedPtr<Augment>(L, 1);
-	if (Augments::GetAugment(augment->getName())) 
+	const auto& augment = getSharedPtr<BlackTek::Augment>(L, 1);
+	if (BlackTek::Augments::GetAugment(augment->getName())) 
 	{
 		// already registered
 		lua_pushboolean(L, 0);
 		return 1;
 	}
-	Augments::AddAugment(augment);
+	BlackTek::Augments::AddAugment(augment);
 	lua_pushboolean(L, 1);
 	return 1;
 }
 
 int LuaScriptInterface::luaAugmentCreate(lua_State* L)
-{	// To-do : Augment(augment) and Augment(name) <-- where name is looked up from global collection.
+{
+	// Todo: change this to use tables for modifiers
 	// Augment(name, description, modifier or table_of_modifiers)
 
 	if (isString(L, 2)) {
 		const auto name = getString(L, 2);
 
-		if (const auto augment = Augments::GetAugment(name)) {
+		if (const auto augment = BlackTek::Augments::GetAugment(name)) {
 			pushSharedPtr(L, augment);
 			setMetatable(L, -1, "Augment");
 			return 1; // return early here because we found a global augment with this name
@@ -9005,9 +8343,9 @@ int LuaScriptInterface::luaAugmentCreate(lua_State* L)
 
 		auto description = getString(L, 3);
 		if (isUserdata(L, 4)) {
-			if (auto modifier = getSharedPtr<DamageModifier>(L, 4)) {
-				auto augment = Augment::MakeAugment(name, description);
-				augment->addModifier(modifier);
+			if (auto modifier = getUserdata<DamageModifier>(L, 4)) {
+				auto augment = BlackTek::Augment::MakeAugment(name, description);
+				//augment->addModifier(modifier);
 				pushSharedPtr(L, augment);
 				setMetatable(L, -1, "Augment");
 			} else {
@@ -9037,9 +8375,9 @@ int LuaScriptInterface::luaAugmentCreate(lua_State* L)
 
 			// Create augment with all modifiers
 			// To-do : Add augments created this particular way to global table
-			const auto augment = Augment::MakeAugment(name, description);
+			const auto augment = BlackTek::Augment::MakeAugment(name, description);
 			for (auto& modifier : list) {
-				augment->addModifier(modifier);
+				//augment->addModifier(modifier);
 			}
 			pushSharedPtr(L, augment);
 			setMetatable(L, -1, "Augment");
@@ -9057,34 +8395,34 @@ int LuaScriptInterface::luaAugmentCreate(lua_State* L)
 int LuaScriptInterface::luaAugmentSetName(lua_State* L)
 {
 	// Augment:setName(newName)
-	const auto augment = getSharedPtr<Augment>(L, 1);
+	const auto augment = getSharedPtr<BlackTek::Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		return 0;
 	}
 
 	auto newName = getString(L, 2);
-	augment->setName(newName);
+	//augment->setName(newName);
 	return 0;
 }
 
 int LuaScriptInterface::luaAugmentSetDescription(lua_State* L)
 {
 	// Augment:getDescription(newDescription)
-	const auto augment = getSharedPtr<Augment>(L, 1);
+	const auto augment = getSharedPtr<BlackTek::Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		return 0;
 	}
 
 	const auto newDescription = getString(L, 2);
-	augment->setDescription(newDescription);
+	//augment->setDescription(newDescription);
 	return 0;
 }
 
 int LuaScriptInterface::luaAugmentGetName(lua_State* L) {
 	// Augment:getName()
-	const auto augment = getSharedPtr<Augment>(L, 1); // Get augment object
+	const auto augment = getSharedPtr<BlackTek::Augment>(L, 1); // Get augment object
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		lua_pushnil(L);
@@ -9098,7 +8436,7 @@ int LuaScriptInterface::luaAugmentGetName(lua_State* L) {
 
 int LuaScriptInterface::luaAugmentGetDescription(lua_State* L) {
 	// Augment:getDescription()
-	const auto& augment = getSharedPtr<Augment>(L, 1);
+	const auto& augment = getSharedPtr<BlackTek::Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		lua_pushnil(L);
@@ -9114,7 +8452,7 @@ int LuaScriptInterface::luaAugmentGetDescription(lua_State* L) {
 int LuaScriptInterface::luaAugmentAddDamageModifier(lua_State* L)
 {
 	// Augment:addDamageModifier(modifier)
-	const auto augment = getSharedPtr<Augment>(L, 1);
+	const auto augment = getSharedPtr<BlackTek::Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		return 0;
@@ -9126,14 +8464,14 @@ int LuaScriptInterface::luaAugmentAddDamageModifier(lua_State* L)
 		return 0;
 	}
 
-	augment->addModifier(modifier);
+	//augment->addModifier(modifier);
 	return 0;
 }
 
 int LuaScriptInterface::luaAugmentRemoveDamageModifier(lua_State* L)
 {
 	// Augment:RemoveDamageModifier(modifier)
-	const auto augment = getSharedPtr<Augment>(L, 1);
+	const auto augment = getSharedPtr<BlackTek::Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		return 0;
@@ -9145,13 +8483,13 @@ int LuaScriptInterface::luaAugmentRemoveDamageModifier(lua_State* L)
 		return 0;
 	}
 
-	augment->removeModifier(modifier);
+	//augment->removeModifier(modifier);
 	return 0;
 }
 
 int LuaScriptInterface::luaAugmentGetAttackModifiers(lua_State* L) {
 	// Augment:GetAttackModifiers([modType])
-	const auto augment = getSharedPtr<Augment>(L, 1);
+	const auto augment = getSharedPtr<BlackTek::Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		lua_pushnil(L);
@@ -9160,12 +8498,12 @@ int LuaScriptInterface::luaAugmentGetAttackModifiers(lua_State* L) {
 
 	std::vector<std::shared_ptr<DamageModifier>> modifiers;
 
-	if (lua_gettop(L) > 1 && lua_isinteger(L, 2)) {
-		const uint8_t modType = static_cast<uint8_t>(lua_tointeger(L, 2));
-		modifiers = augment->getAttackModifiers(modType);
-	} else {
-		modifiers = augment->getAttackModifiers();
-	}
+	//if (lua_gettop(L) > 1 && lua_isinteger(L, 2)) {
+	//	const uint8_t modType = static_cast<uint8_t>(lua_tointeger(L, 2));
+	//	modifiers = augment->getAttackModifiers(modType);
+	//} else {
+	//	modifiers = augment->getAttackModifiers();
+	//}
 
 	lua_newtable(L);
 	int index = 1;
@@ -9180,7 +8518,7 @@ int LuaScriptInterface::luaAugmentGetAttackModifiers(lua_State* L) {
 
 int LuaScriptInterface::luaAugmentGetDefenseModifiers(lua_State* L) {
 	// Augment:GetDefenseModifiers([modType])
-	const auto augment = getSharedPtr<Augment>(L, 1);
+	const auto augment = getSharedPtr<BlackTek::Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		lua_pushnil(L);
@@ -9189,12 +8527,12 @@ int LuaScriptInterface::luaAugmentGetDefenseModifiers(lua_State* L) {
 
 	std::vector<std::shared_ptr<DamageModifier>> modifiers;
 
-	if (lua_gettop(L) > 1 && lua_isinteger(L, 2)) {
-		uint8_t modType = static_cast<uint8_t>(lua_tointeger(L, 2));
-		modifiers = augment->getDefenseModifiers(modType);
-	} else {
-		modifiers = augment->getDefenseModifiers();
-	}
+	//if (lua_gettop(L) > 1 && lua_isinteger(L, 2)) {
+	//	uint8_t modType = static_cast<uint8_t>(lua_tointeger(L, 2));
+	//	modifiers = augment->getDefenseModifiers(modType);
+	//} else {
+	//	modifiers = augment->getDefenseModifiers();
+	//}
 
 	lua_newtable(L);
 	int index = 1;
@@ -13765,14 +13103,14 @@ int LuaScriptInterface::luaPlayerAddAugment(lua_State* L)
 	}
 
 	if (isString(L, 2)) {
-		if (auto augment = Augments::GetAugment(getString(L, 2))) {
+		if (auto augment = BlackTek::Augments::GetAugment(getString(L, 2))) {
 			lua_pushboolean(L, player->addAugment(augment));
 		} else {
 			lua_pushnil(L);
 			reportError(__FUNCTION__, "Player::addAugment() argument not found as any name in augments loaded on startup! \n");
 		}
 	} else if (isUserdata(L, 2)) {
-		if (std::shared_ptr augment = getSharedPtr<Augment>(L, 2)) {
+		if (std::shared_ptr augment = getSharedPtr<BlackTek::Augment>(L, 2)) {
 			lua_pushboolean(L, player->addAugment(augment));
 		} else {
 			lua_pushnil(L);
@@ -13797,7 +13135,7 @@ int LuaScriptInterface::luaPlayerRemoveAugment(lua_State* L)
 		const auto name = getString(L, 2);
 		lua_pushboolean(L, player->removeAugment(name));
 	} else if (isUserdata(L, 2)) {
-		if (std::shared_ptr<Augment> augment = getSharedPtr<Augment>(L, 2)) {
+		if (std::shared_ptr<BlackTek::Augment> augment = getSharedPtr<BlackTek::Augment>(L, 2)) {
 			lua_pushboolean(L, player->removeAugment(augment));
 		} else {
 			reportError(__FUNCTION__, "Player::removeAugment() invalid userdata type passed as argument! \n");
@@ -13834,7 +13172,7 @@ int LuaScriptInterface::luaPlayerHasAugment(lua_State* L)
 		const auto checkItems = getBoolean(L, 3);
 		lua_pushboolean(L, player->hasAugment(name, checkItems));
 	} else if (isUserdata(L, 2)) {
-		if (std::shared_ptr<Augment>& augment = getSharedPtr<Augment>(L, 2)) {
+		if (std::shared_ptr<BlackTek::Augment>& augment = getSharedPtr<BlackTek::Augment>(L, 2)) {
 			if (isBoolean(L, 3)) {
 				const auto checkItems = getBoolean(L, 3);
 				lua_pushboolean(L, player->hasAugment(augment, checkItems));
@@ -16172,7 +15510,7 @@ int LuaScriptInterface::luaCombatCreate(lua_State* L)
 
 int LuaScriptInterface::luaCombatDelete(lua_State* L)
 {
-	if (Combat_ptr& combat = getSharedPtr<Combat>(L, 1)) {
+	if (Combat_ptr& combat = getSharedPtr<BlackTek::Combat>(L, 1)) {
 		combat.reset();
 	}
 	return 0;
@@ -16181,7 +15519,7 @@ int LuaScriptInterface::luaCombatDelete(lua_State* L)
 int LuaScriptInterface::luaCombatSetParameter(lua_State* L)
 {
 	// combat:setParameter(key, value)
-	const Combat_ptr& combat = getSharedPtr<Combat>(L, 1);
+	const Combat_ptr& combat = getSharedPtr<BlackTek::Combat>(L, 1);
 	if (!combat) {
 		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
 		lua_pushnil(L);
@@ -16203,7 +15541,7 @@ int LuaScriptInterface::luaCombatSetParameter(lua_State* L)
 int LuaScriptInterface::luaCombatGetParameter(lua_State* L)
 {
 	// combat:getParameter(key)
-	const Combat_ptr& combat = getSharedPtr<Combat>(L, 1);
+	const Combat_ptr& combat = getSharedPtr<BlackTek::Combat>(L, 1);
 	if (!combat) {
 		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
 		lua_pushnil(L);
@@ -16419,6 +15757,159 @@ int LuaScriptInterface::luaCombatExecute(lua_State* L)
 		}
 	}
 
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatSetSituationFormulas(lua_State* L)
+{
+	// combat:setSituationFormulas(sit_idx, { output="Preset", defense="Preset", armor="Preset", resolution="Preset" })
+	// sit_idx: 0=PvP, 1=PvM, 2=MvP, 3=MvM
+	const Combat_ptr& combat = getSharedPtr<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const uint8_t sit_idx = getNumber<uint8_t>(L, 2);
+	if (sit_idx > 3)
+	{
+		reportErrorFunc(L, "Situation index out of range — use 0 (PvP), 1 (PvM), 2 (MvP) or 3 (MvM).");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (not isTable(L, 3))
+	{
+		reportErrorFunc(L, "Table expected as third argument.");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	BlackTek::SituationFormulas sf = BlackTek::g_default_situation_formulas[sit_idx];
+
+	lua_getfield(L, 3, "output");
+	if (isString(L, -1))
+		BlackTek::ApplyOutputPreset(sf.output, getString(L, -1));
+	lua_pop(L, 1);
+
+	lua_getfield(L, 3, "defense");
+	if (isString(L, -1))
+		BlackTek::ApplyDefensePreset(sf.defense, getString(L, -1));
+	lua_pop(L, 1);
+
+	lua_getfield(L, 3, "armor");
+	if (isString(L, -1))
+		BlackTek::ApplyArmorPreset(sf.armor, getString(L, -1));
+	lua_pop(L, 1);
+
+	lua_getfield(L, 3, "resolution");
+	if (isString(L, -1))
+		BlackTek::ApplyResolutionPreset(sf.resolution, getString(L, -1));
+	lua_pop(L, 1);
+
+	combat->SetSituationFormulas(sit_idx, std::move(sf));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatSetDefenseCallback(lua_State* L)
+{
+	// combat:setDefenseCallback(sit_idx, function(stat) return resistance_roll end)
+	const Combat_ptr& combat = getSharedPtr<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const uint8_t sit_idx = getNumber<uint8_t>(L, 2);
+	if (sit_idx > 3)
+	{
+		reportErrorFunc(L, "Situation index out of range — use 0 (PvP), 1 (PvM), 2 (MvP) or 3 (MvM).");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (not lua_isfunction(L, 3))
+	{
+		reportErrorFunc(L, "Function expected as third argument.");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushvalue(L, 3);
+	const int32_t lua_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	combat->SetFormulaCallback(sit_idx, BlackTek::FormulaStage::Defense, lua_ref);
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatSetArmorCallback(lua_State* L)
+{
+	// combat:setArmorCallback(sit_idx, function(stat) return resistance_roll end)
+	const Combat_ptr& combat = getSharedPtr<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const uint8_t sit_idx = getNumber<uint8_t>(L, 2);
+	if (sit_idx > 3)
+	{
+		reportErrorFunc(L, "Situation index out of range — use 0 (PvP), 1 (PvM), 2 (MvP) or 3 (MvM).");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (not lua_isfunction(L, 3))
+	{
+		reportErrorFunc(L, "Function expected as third argument.");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushvalue(L, 3);
+	const int32_t lua_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	combat->SetFormulaCallback(sit_idx, BlackTek::FormulaStage::Armor, lua_ref);
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatSetResolutionCallback(lua_State* L)
+{
+	// combat:setResolutionCallback(sit_idx, function(output, resistance) return final_damage end)
+	const Combat_ptr& combat = getSharedPtr<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const uint8_t sit_idx = getNumber<uint8_t>(L, 2);
+	if (sit_idx > 3)
+	{
+		reportErrorFunc(L, "Situation index out of range — use 0 (PvP), 1 (PvM), 2 (MvP) or 3 (MvM).");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (not lua_isfunction(L, 3))
+	{
+		reportErrorFunc(L, "Function expected as third argument.");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushvalue(L, 3);
+	const int32_t lua_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	combat->SetFormulaCallback(sit_idx, BlackTek::FormulaStage::Resolution, lua_ref);
 	pushBoolean(L, true);
 	return 1;
 }
@@ -21753,7 +21244,7 @@ Combat_ptr LuaEnvironment::getCombatObject(uint32_t id) const
 
 Combat_ptr LuaEnvironment::createCombatObject(LuaScriptInterface* interface)
 {
-	Combat_ptr combat = std::make_shared<Combat>();
+	Combat_ptr combat = std::make_shared<BlackTek::Combat>();
 	combatMap[++lastCombatId] = combat;
 	combatIdMap[interface].push_back(lastCombatId);
 	return combat;

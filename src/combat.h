@@ -103,6 +103,11 @@ namespace BlackTek
 
 	// Todo: Create a struct for "CombatTable" which will be a specific defined and handled lua table able to be passed for construction of combat objects
 
+	// Forward declarations — full definitions appear after CombatRegistry.
+	struct SituationFormulas;
+	enum class FormulaStage : uint8_t;
+	struct FormulaCallbacks;
+
 	class Combat;
 	using CombatHandle = intrusive_ptr<Combat>;
 
@@ -110,6 +115,7 @@ namespace BlackTek
 	{
 	public:
 		Combat() = default;
+		~Combat();
 
 		// non-copyable
 		Combat(const Combat&) = delete;
@@ -194,24 +200,77 @@ namespace BlackTek
 			Stamina,
 		};
 
-		enum class Formula : uint8_t
+		// ── Damage Output ────────────────────────────────────────────────────────
+		// How an attacker's stat translates into raw damage before any mitigation.
+		// Plug in the relevant stat (e.g. level*2 + magLevel*3 for Tibia) at call time.
+
+		enum class OutputFormula : uint8_t
 		{
-			Raw,
-			Linear,         // Tibia style: (Stat * Scaling) + Base
-			Subtractive,    // Fire Emblem style: (Stat + Base) - (Def * Weight)
-			Multiplicative, // MOBA style: Base * (Constant / (Constant + Def * Weight))
-			PowerRatio      // Pokemon style: ((Stat * (Att/Def)) / Constant) + Base
+			Flat,          // normal_random(min_value, max_value) — Diablo / classic ARPG
+			Linear,        // stat * scaling + base — deterministic, e.g. LoL AD/AP
+			LinearRange,   // normal_random(stat*min_scale+min_base, stat*max_scale+max_base) — Tibia
+			Power,         // stat^exponent * scaling + base — super-linear RPG scaling
 		};
 
-		struct [[nodiscard]] CombatFactors
+		struct [[nodiscard]] OutputFactors
 		{
-			float scaling = 0.0f;
-			float base = 0.0f;
-			float ratioConstant = 1.0f;
-			float exponent = 1.0f;
-			float power = 0.0f;
-			float resistance = 0.0f;
-			Formula formula_type = Formula::Linear;
+			float scaling   = 1.0f;    // Linear / Power: multiplier on stat
+			float base      = 0.0f;    // Linear / Power: flat addition
+			float min_scale = 0.0f;    // LinearRange: lower-bound stat multiplier
+			float min_base  = 0.0f;    // LinearRange: lower-bound flat
+			float max_scale = 1.0f;    // LinearRange: upper-bound stat multiplier
+			float max_base  = 0.0f;    // LinearRange: upper-bound flat
+			float min_value = 0.0f;    // Flat: lower bound
+			float max_value = 1.0f;    // Flat: upper bound
+			float exponent  = 1.0f;    // Power: exponent applied to stat before scaling
+			OutputFormula formula_type = OutputFormula::Linear;
+		};
+
+		// ── Damage Resistance ─────────────────────────────────────────────────────
+		// How a defender's stat translates into a resistance value.
+		// The meaning of the returned int depends on the paired ResolutionFormula.
+
+		enum class ResistanceFormula : uint8_t
+		{
+			Identity,      // returns stat unchanged — resolution formula handles mitigation
+			LinearRandom,  // uniform_random(stat*min_scale+min_base, stat*max_scale+max_base) — Tibia defense
+			Parity,        // Tibia armor: stat>threshold → range; else flat
+			Percent,       // (stat*100)/(stat+constant) → integer [0–100] for Layered resolution
+		};
+
+		struct [[nodiscard]] ResistanceFactors
+		{
+			float min_scale      = 0.5f;   // LinearRandom / Parity: lower-bound stat multiplier
+			float max_scale      = 1.0f;   // LinearRandom: upper-bound stat multiplier
+			float min_base       = 0.0f;   // LinearRandom: lower-bound flat
+			float max_base       = 0.0f;   // LinearRandom: upper-bound flat
+			float threshold      = 0.0f;   // Parity: stat must exceed this for range formula
+			float flat_amount    = 1.0f;   // Parity / fallback: flat resistance when below threshold
+			float constant       = 100.0f; // Percent: denominator addend — percent = stat*100/(stat+constant)
+			uint8_t parity_offset = 0;     // Parity: hi = stat - (stat%2 + parity_offset)
+			ResistanceFormula formula_type = ResistanceFormula::Identity;
+		};
+
+		// ── Damage Resolution ─────────────────────────────────────────────────────
+		// How raw output and resistance combine into final damage.
+		// output = calculate_output result; resistance = calculate_resistance result.
+
+		enum class ResolutionFormula : uint8_t
+		{
+			Subtractive,      // max(floor, output - resistance) — Tibia / Fire Emblem
+			RatioMitigation,  // output * constant / (constant + resistance) — LoL / WoW
+			ScaledDivision,   // (output * multiplier / resistance) + addend — Pokémon
+			Layered,          // max(floor, output*(1 - resistance/100) - flat_reduction) — Dark Souls
+		};
+
+		struct [[nodiscard]] ResolutionFactors
+		{
+			float constant       = 100.0f; // RatioMitigation: K in output*K/(K+resistance)
+			float multiplier     = 1.0f;   // ScaledDivision: scales output before dividing by resistance
+			float addend         = 0.0f;   // ScaledDivision: bonus added after division
+			float flat_reduction = 0.0f;   // Layered: subtracted after percent mitigation
+			float floor          = 0.0f;   // Subtractive / Layered: minimum final damage
+			ResolutionFormula formula_type = ResolutionFormula::Subtractive;
 		};
 
 		enum TargetCode : uint8_t
@@ -243,6 +302,7 @@ namespace BlackTek
 			Aggressive,
 			IgnoreBarriers,		// ignores walls for line of sight and such on the combat
 			UseCharges,			// I think this one is used by weapons to reduce ammo
+			HasArea,
 			Critical,
 			Leech,
 			AttackModified,
@@ -257,9 +317,151 @@ namespace BlackTek
 		};
 
 
+		// ── Tibia ────────────────────────────────────────────────────────────────
+		// stat = level * 2 + magicLevel * 3; output rolls from 0 to stat
+		static constexpr OutputFactors TibiaOutput
+		{
+			.min_scale = 0.0f,
+			.max_scale = 1.0f,
+			.formula_type = OutputFormula::LinearRange
+		};
+
+		// uniform_random(defense / 2, defense)
+		static constexpr ResistanceFactors TibiaDefense
+		{
+			.min_scale = 0.5f,
+			.max_scale = 1.0f,
+			.formula_type = ResistanceFormula::LinearRandom
+		};
+
+		// stat > 3: uniform_random(stat / 2, stat - (stat % 2 + 1)); stat in [1, 3]: flat 1
+		static constexpr ResistanceFactors TibiaArmor
+		{
+			.min_scale    = 0.5f,
+			.threshold    = 3.0f,
+			.flat_amount  = 1.0f,
+			.parity_offset = 1,
+			.formula_type = ResistanceFormula::Parity
+		};
+
+		// max(0, output - resistance_roll)
+		static constexpr ResolutionFactors TibiaResolution
+		{
+			.floor = 0.0f,
+			.formula_type = ResolutionFormula::Subtractive
+		};
+
+		// ── League of Legends ─────────────────────────────────────────────────
+		// stat = AD or AP value; output = base + stat * scaling
+		static constexpr OutputFactors LoLOutput
+		{
+			.scaling = 1.0f,
+			.formula_type = OutputFormula::Linear
+		};
+
+		// armor / defense passed through unchanged; ratio applied in resolution
+		static constexpr ResistanceFactors LoLResistance
+		{
+			.formula_type = ResistanceFormula::Identity
+		};
+
+		// output * 100 / (100 + armor)
+		static constexpr ResolutionFactors LoLResolution
+		{
+			.constant = 100.0f,
+			.formula_type = ResolutionFormula::RatioMitigation
+		};
+
+		// ── Pokémon ───────────────────────────────────────────────────────────
+		// stat = pre-computed attack component (level, power, attack folded in by caller)
+		static constexpr OutputFactors PokemonOutput
+		{
+			.scaling = 1.0f,
+			.formula_type = OutputFormula::Linear
+		};
+
+		// defense stat passed through; ScaledDivision divides output by it
+		static constexpr ResistanceFactors PokemonResistance
+		{
+			.formula_type = ResistanceFormula::Identity
+		};
+
+		// (output / defense) + 2
+		static constexpr ResolutionFactors PokemonResolution
+		{
+			.multiplier = 1.0f,
+			.addend     = 2.0f,
+			.formula_type = ResolutionFormula::ScaledDivision
+		};
+
+		// ── Dark Souls ────────────────────────────────────────────────────────
+		// weapon AR rolled flat; set min_value / max_value per weapon at call time
+		static constexpr OutputFactors DarkSoulsOutput
+		{
+			.min_value = 0.0f,
+			.max_value = 1.0f,
+			.formula_type = OutputFormula::Flat
+		};
+
+		// absorption % = stat * 100 / (stat + 100)
+		static constexpr ResistanceFactors DarkSoulsResistance
+		{
+			.constant = 100.0f,
+			.formula_type = ResistanceFormula::Percent
+		};
+
+		// max(1, output * (1 - absorption / 100))
+		static constexpr ResolutionFactors DarkSoulsResolution
+		{
+			.floor = 1.0f,
+			.formula_type = ResolutionFormula::Layered
+		};
+
+		// ── D&D / Classic Tabletop ────────────────────────────────────────────
+		// stat = ability modifier; normal_random(stat + 1, stat + die_max)
+		// Both bounds shift with the modifier — unlike Tibia where stat IS the ceiling.
+		// Override max_base per weapon (8 = d8, 12 = d12, 6 = d6, etc.)
+		static constexpr OutputFactors DnDOutput
+		{
+			.min_scale = 1.0f,
+			.min_base  = 1.0f,
+			.max_scale = 1.0f,
+			.max_base  = 8.0f,
+			.formula_type = OutputFormula::LinearRange
+		};
+
+		// ── Exponential / Endgame RPG ─────────────────────────────────────────
+		// stat^2 * scaling — quadratic growth rewards heavy stat investment.
+		// Useful for high-end spells or ability-tree systems.
+		static constexpr OutputFactors ExponentialOutput
+		{
+			.scaling  = 1.0f,
+			.exponent = 2.0f,
+			.formula_type = OutputFormula::Power
+		};
+
+		// ── Monster Hunter ────────────────────────────────────────────────────
+		// stat = pre-computed (effective_attack * motion_value); resistance = effective_defense
+		// Pure division with no addend, unlike Pokémon which adds 2 after dividing.
+		static constexpr ResolutionFactors MonsterHunterResolution
+		{
+			.multiplier = 1.0f,
+			.addend     = 0.0f,
+			.formula_type = ResolutionFormula::ScaledDivision
+		};
+
+		// ── Genshin Impact ────────────────────────────────────────────────────
+		// output * 950 / (950 + DEF) 
+		// Same shape as LoL but the 10x larger constant means mitigation grows
+		// much more slowly; a character needs ~950 DEF to reach 50% reduction.
+		static constexpr ResolutionFactors GenshinResolution
+		{
+			.constant = 950.0f,
+			.formula_type = ResolutionFormula::RatioMitigation
+		};
+
+
 		static bool isProtected(const PlayerConstPtr& attacker, const PlayerConstPtr& target);
-		static CombatType_t ConditionToDamageType(ConditionType_t type);
-		static ConditionType_t DamageToConditionType(CombatType_t type);
 		static void postCombatEffects(const CreaturePtr& caster, const Position& pos, const Combat& combat);
 		static void addDistanceEffect(const CreaturePtr& caster, const Position& fromPos, const Position& toPos, uint8_t effect);
 
@@ -267,11 +469,13 @@ namespace BlackTek
 		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const MonsterPtr& victim) const noexcept;
 		[[nodiscard]] TargetCode target(const MonsterPtr& attacker, const PlayerPtr& victim) const noexcept;
 		[[nodiscard]] TargetCode target(const MonsterPtr& attacker, const MonsterPtr& victim) const noexcept;
+		[[nodiscard]] TargetCode target(const CreaturePtr& attacker, const CreaturePtr& defender) const noexcept;
 		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const Position& target_location) const noexcept;
 		[[nodiscard]] TargetCode target(const MonsterPtr& attacker, const Position& target_location) const noexcept;
 		[[nodiscard]] CombatHandle transformDamage(const uint16_t damage_type, const uint32_t amount) noexcept;
 		[[nodiscard]] uint32_t handle_conversion(std::ranges::input_range auto&& modifiers, auto attacker, auto victim);
 		[[nodiscard]] CombatHandle penetrateDamage(const uint32_t percent, const uint32_t flat) noexcept;
+		[[nodiscard]] CombatHandle clone() const noexcept;
 
 		void applyCrit(const uint32_t percent, const uint32_t flat);
 		void post_damage(const PlayerPtr& caster, const CreaturePtr& victim, LeechData&& leech_data) noexcept;
@@ -280,59 +484,131 @@ namespace BlackTek
 		void strike_target(const MonsterPtr& attacker, const PlayerPtr& victim) noexcept;
 		void strike_target(const MonsterPtr& attacker, const MonsterPtr& victim) noexcept;
 		void strike_target(const CreaturePtr& attacker, const CreaturePtr& defender) noexcept;
-		void strike_location(const PlayerPtr& caster, const Position& center) noexcept;
-		void strike_location(const MonsterPtr& attacker, const Position& center) noexcept;
+		void execute(const CreaturePtr& caster, const Position& center) noexcept;
+		[[nodiscard]] static bool sameInstance(const CreatureConstPtr& first, const CreatureConstPtr& second);
 		void defense_block_effect(const Position& target_position) const noexcept;
 		void armor_block_effect(const Position& target_position) const noexcept;
-		void immunity_block_effect(const Position& target_position) const noexcept;
 		void notify_players();
 		void apply_mana_damage(const CreaturePtr& attacker, const PlayerPtr& target, bool manashield) noexcept;
 
+		[[nodiscard]] uint32_t collect_notice_data(const CreaturePtr& target) const noexcept;
+		[[nodiscard]] uint8_t immunity_block_effect() const noexcept;
 		[[nodiscard]] BlockType block(const CreaturePtr& attacker, const PlayerPtr& target) noexcept;
 		[[nodiscard]] BlockType block(const CreaturePtr& attacker, const MonsterPtr& target) noexcept;
-		[[nodiscard]] uint32_t collect_notice_data(const CreaturePtr& target) const noexcept;
 		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const PlayerPtr& target) noexcept;
 		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const MonsterPtr& target) noexcept;
 		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const Position& target_position) noexcept;
 
 		[[nodiscard]]
-		inline bool hasArea() const noexcept {
-			//return area != nullptr;
+		inline bool hasArea() const noexcept 
+		{
+			auto extIt = combat_ext_area_map.find(combat_id);
+			if (extIt != combat_ext_area_map.end())
+				return true;
 			return false;
 		}
 
-
-		///  This is going to be our main way of doing "pre_damage" calculations by use the results of this method
-		///  as the number to reduce the raw damage based on users settings and formula choice
-		///  we will have a standardized default in config as well as the option to set custom combat factors during combat creation.
-		[[nodiscard]] constexpr uint32_t calculate_damage_factors(const CombatFactors& factors) const noexcept
+		[[nodiscard]] static constexpr int32_t calculate_output(const OutputFactors& factors, int32_t stat) noexcept
 		{
-			float poweredStat = factors.exponent != 1.0f ? poweredStat = std::pow(factors.power, factors.exponent) : factors.power;
+			switch (factors.formula_type)
+			{
+				case OutputFormula::Flat:
+					return normal_random(static_cast<int32_t>(factors.min_value), static_cast<int32_t>(factors.max_value));
+
+				case OutputFormula::Linear:
+					return static_cast<int32_t>(std::max(0.0f, static_cast<float>(stat) * factors.scaling + factors.base));
+
+				case OutputFormula::LinearRange:
+				{
+					int32_t lo = static_cast<int32_t>(static_cast<float>(stat) * factors.min_scale + factors.min_base);
+					int32_t hi = static_cast<int32_t>(static_cast<float>(stat) * factors.max_scale + factors.max_base);
+					return normal_random(lo, hi);
+				}
+
+				case OutputFormula::Power:
+				{
+					float powered = factors.exponent != 1.0f
+						? std::pow(static_cast<float>(stat), factors.exponent)
+						: static_cast<float>(stat);
+					return static_cast<int32_t>(std::max(0.0f, powered * factors.scaling + factors.base));
+				}
+
+				default: [[unlikely]]
+					return 0;
+			}
+		}
+
+		[[nodiscard]] static constexpr int32_t calculate_resistance(const ResistanceFactors& factors, int32_t stat) noexcept
+		{
+			if (stat <= 0)
+				return 0;
 
 			switch (factors.formula_type)
 			{
-				case Formula::Raw:				return normal_random(static_cast<uint32_t>(factors.base), static_cast<uint32_t>(factors.power));
-				case Formula::Linear:			return static_cast<uint32_t>(std::max(0.0f, (poweredStat * factors.scaling) + factors.base));
-				case Formula::Subtractive:		return static_cast<uint32_t>(std::max(0.0f, (poweredStat + factors.base) - (factors.resistance * factors.scaling)));
-				case Formula::Multiplicative:	return static_cast<uint32_t>(std::max(0.0f, factors.base * (factors.ratioConstant / (factors.ratioConstant + (factors.resistance * factors.scaling)))));
+				case ResistanceFormula::Identity:
+					return stat;
 
-				case Formula::PowerRatio:
-					if (factors.resistance == 0) [[unlikely]]
-						return static_cast<uint32_t>(std::max(0.0f, poweredStat + factors.base));
-					else
-						return static_cast<uint32_t>(std::max(0.0f, ((poweredStat * (factors.power / factors.resistance)) / factors.ratioConstant) + factors.base));
-					break;
+				case ResistanceFormula::LinearRandom:
+				{
+					int32_t lo = static_cast<int32_t>(static_cast<float>(stat) * factors.min_scale + factors.min_base);
+					int32_t hi = static_cast<int32_t>(static_cast<float>(stat) * factors.max_scale + factors.max_base);
+					return uniform_random(lo, hi);
+				}
 
-				default: [[unlikely]] // log
+				case ResistanceFormula::Parity:
+				{
+					if (stat > static_cast<int32_t>(factors.threshold))
+					{
+						int32_t lo = static_cast<int32_t>(static_cast<float>(stat) * factors.min_scale);
+						int32_t hi = stat - (stat % 2 + static_cast<int32_t>(factors.parity_offset));
+						return uniform_random(lo, hi);
+					}
+					return static_cast<int32_t>(factors.flat_amount);
+				}
+
+				case ResistanceFormula::Percent:
+					return (stat * 100) / (stat + static_cast<int32_t>(factors.constant));
+
+				default: [[unlikely]]
 					return 0;
 			}
-			// log
-			return 0;
+		}
+
+		[[nodiscard]] static constexpr int32_t calculate_resolution(const ResolutionFactors& factors, int32_t output, int32_t resistance) noexcept
+		{
+			switch (factors.formula_type)
+			{
+				case ResolutionFormula::Subtractive:
+					return static_cast<int32_t>(std::max(factors.floor, static_cast<float>(output - resistance)));
+
+				case ResolutionFormula::RatioMitigation:
+				{
+					float r = resistance < 0 ? 0.0f : static_cast<float>(resistance);
+					return static_cast<int32_t>(std::max(factors.floor, static_cast<float>(output) * factors.constant / (factors.constant + r)));
+				}
+
+				case ResolutionFormula::ScaledDivision:
+					if (resistance <= 0) [[unlikely]]
+						return static_cast<int32_t>(std::max(factors.floor, static_cast<float>(output) * factors.multiplier + factors.addend));
+					return static_cast<int32_t>(std::max(factors.floor, static_cast<float>(output) * factors.multiplier / static_cast<float>(resistance) + factors.addend));
+
+				case ResolutionFormula::Layered:
+				{
+					float mitigated = static_cast<float>(output) * (1.0f - static_cast<float>(resistance) / 100.0f);
+					return static_cast<int32_t>(std::max(factors.floor, mitigated - factors.flat_reduction));
+				}
+
+				default: [[unlikely]]
+					return 0;
+			}
 		}
 
 
 		void postCombatEffects(CreaturePtr& caster, const Position& pos) const { postCombatEffects(caster, pos, *this); }
 		void setOrigin(Origin o) { origin = o; }
+
+		void SetSituationFormulas(uint8_t index, SituationFormulas&& formulas) noexcept;
+		void SetFormulaCallback(uint8_t index, FormulaStage stage, int32_t lua_ref) noexcept;
 
 		[[nodiscard]] int64_t id() const noexcept { return combat_id; }
 		void set_id(int64_t new_id) { combat_id = new_id; }
@@ -342,14 +618,27 @@ namespace BlackTek
 		void apply_effects(const SpectatorVec& spectators, const CreaturePtr& caster, std::span<const TilePtr> tiles);
 		const DamageArea getAreaPositions(const Position& casterPos, const Position& targetPos);
 
+		// Ensures this combat has a unique ID usable as a formula/callback map key.
+		// Lua-managed combats start with combat_id == -1; this assigns a negative ID.
+		int64_t EnsureFormulaId() noexcept;
+
+		// Returns the ID to use when looking up formula/callback maps.
+		// Clones set formula_source_id to the parent's ID so they share its entries
+		// without taking ownership — the parent remains responsible for cleanup.
+		[[nodiscard]] int64_t formula_key() const noexcept
+		{
+			return formula_source_id != -1 ? formula_source_id : combat_id;
+		}
+
 		int64_t combat_id = -1;
+		int64_t formula_source_id = -1;
 		mutable std::atomic<int32_t> ref_count{ 0 };
 
 		uint32_t damage = 0;
 		std::bitset<32> config;
-		uint32_t defense_charge_cost = 0;
-		uint32_t armor_charge_cost = 0;
-		uint32_t augment_charge_cost = 0;
+		uint16_t defense_charge_cost = 0;
+		uint16_t armor_charge_cost = 0;
+		uint16_t augment_charge_cost = 0;
 		uint16_t itemId = 0;
 		uint16_t damage_type = DamageType::Unknown;
 		uint8_t blockType = BlockType::NoBlock;
@@ -399,6 +688,7 @@ namespace BlackTek
 
 		[[nodiscard]] CombatHandle Create();
 		[[nodiscard]] CombatHandle Create(uint16_t type, uint32_t dmg);
+		[[nodiscard]] CombatHandle Clone(const Combat& src) noexcept;
 
 		void Release(int64_t id);
 
@@ -414,6 +704,70 @@ namespace BlackTek
 
 	extern std::pmr::unordered_map<int64_t, CombatArea> combat_area_map;
 	extern std::pmr::unordered_map<int64_t, CombatArea> combat_ext_area_map;
+
+	// ── Formula Override System ───────────────────────────────────────────────
+	// Three-tier resolution per damage-block step:
+	//   Level 0 — no config:      Tibia defaults (zero overhead)
+	//   Level 1 — TOML / Lua:     C++ factor params from formula map
+	//   Level 2 — Lua callback:   full Lua function (registered per sit/stage)
+	//
+	// Situation indices: 0=PvP, 1=PvM, 2=MvP, 3=MvM
+
+	struct SituationFormulas
+	{
+		Combat::OutputFactors     output     = Combat::TibiaOutput;
+		Combat::ResistanceFactors defense    = Combat::TibiaDefense;
+		Combat::ResistanceFactors armor      = Combat::TibiaArmor;
+		Combat::ResolutionFactors resolution = Combat::TibiaResolution;
+	};
+
+	enum class FormulaStage : uint8_t
+	{
+		Output     = 0,
+		Defense    = 1,
+		Armor      = 2,
+		Resolution = 3
+	};
+
+	struct FormulaCallbacks
+	{
+		static constexpr int32_t NoRef = -1;
+		int32_t refs[4][4];
+
+		FormulaCallbacks()
+		{
+			for (auto& row : refs)
+				for (auto& r : row)
+					r = NoRef;
+		}
+	};
+
+	// Global per-situation defaults — populated from [formulas] in config/combat.toml.
+	// Initialises to Tibia presets; absent TOML keys leave the Tibia value in place.
+	extern std::array<SituationFormulas, 4> g_default_situation_formulas;
+
+	// Per-combat Level 1 overrides.  Only combats that call SetSituationFormulas appear here.
+	extern std::pmr::unordered_map<int64_t, std::array<SituationFormulas, 4>> combat_formula_map;
+
+	// Per-combat Level 2 Lua callbacks.  Only combats that call SetFormulaCallback appear here.
+	extern std::pmr::unordered_map<int64_t, FormulaCallbacks> combat_callback_map;
+
+	// Apply a named formula preset string to a factor struct.
+	// Unrecognised names are silently ignored (existing value unchanged).
+	void ApplyOutputPreset(Combat::OutputFactors& out, std::string_view preset) noexcept;
+	void ApplyDefensePreset(Combat::ResistanceFactors& out, std::string_view preset) noexcept;
+	void ApplyArmorPreset(Combat::ResistanceFactors& out, std::string_view preset) noexcept;
+	void ApplyResolutionPreset(Combat::ResolutionFactors& out, std::string_view preset) noexcept;
+
+	// Called from ConfigManager::Load() for each of the four situations.
+	// Absent / unrecognised preset strings leave that stage at the Tibia default.
+	void LoadFormulaDefaults(
+		uint8_t          sit_idx,
+		std::string_view out_preset,
+		std::string_view def_preset,
+		std::string_view arm_preset,
+		std::string_view res_preset
+	) noexcept;
 }
 
 class MagicField final : public Item

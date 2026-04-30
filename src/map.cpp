@@ -500,6 +500,16 @@ void Map::getSpectators(SpectatorVec& spectators, const Position& centerPos, con
     }
 }
 
+// Todo: Handroll this implementation out, building custom constructors for the spectators if we must, which will allow us to utilize the 
+// reserve for which the underlying vector has, in a way that we can keep our work at bare minimal during creation while also passing
+// all the criteria for building the vector with the data already in it at creation, rather than create then pass and build like getspectators currently does
+SpectatorVec Map::fetchSpectators(const Position& centerPos, const bool multifloor, const bool onlyPlayers, int32_t minRangeX, int32_t maxRangeX, int32_t minRangeY, int32_t maxRangeY)
+{
+    SpectatorVec spectators;
+    getSpectators(spectators, centerPos, multifloor, onlyPlayers, minRangeX, maxRangeX, minRangeY, maxRangeY);
+    return spectators;
+}
+
 void Map::clearSpectatorCache()
 {
 	spectatorCache.clear();

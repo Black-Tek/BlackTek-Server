@@ -38,39 +38,26 @@ bool canSeeItemInInstance(uint32_t viewerInstanceId, const ItemConstPtr& item)
 	return itemInstanceId == 0 and item->isLoadedFromMap();
 }
 
-bool Tile::hasProperty(ITEMPROPERTY prop) const
+void Tile::applyItemProperties(const ItemConstPtr& item)
 {
-	if (ground && ground->hasProperty(prop)) {
-		return true;
-	}
-
-	if (const auto items = getItemList()) {
-		for (const auto item : *items) {
-			if (item->hasProperty(prop)) {
-				return true;
-			}
+	for (uint32_t p = 0; p <= static_cast<uint32_t>(CONST_PROP_SUPPORTHANGABLE); ++p) {
+		if (item->hasProperty(static_cast<ITEMPROPERTY>(p))) {
+			itemProperties |= (1u << p);
 		}
 	}
-	return false;
 }
 
-bool Tile::hasProperty(const ItemPtr& exclude, ITEMPROPERTY prop) const
+void Tile::recalculateItemProperties()
 {
-	assert(exclude);
-
-	if (ground && exclude != ground && ground->hasProperty(prop)) {
-		return true;
+	itemProperties = 0;
+	if (ground) {
+		applyItemProperties(ground);
 	}
-
-	if (const auto items = getItemList()) {
-		for (const auto item : *items) {
-			if (item != exclude && item->hasProperty(prop)) {
-				return true;
-			}
+	if (const auto itemList = getItemList()) {
+		for (const auto& item : *itemList) {
+			applyItemProperties(item);
 		}
 	}
-
-	return false;
 }
 
 bool Tile::hasHeight(const uint32_t n) const
@@ -1597,6 +1584,8 @@ void Tile::internalAddThing(uint32_t, ThingPtr thing)
 
 void Tile::setTileFlags(const ItemConstPtr& item)
 {
+	applyItemProperties(item);
+
 	if (!hasFlag(TILESTATE_FLOORCHANGE)) {
 		if (const ItemType& it = Item::items[item->getID()]; it.floorChange != 0) {
 			setFlag(it.floorChange);
@@ -1655,31 +1644,33 @@ void Tile::setTileFlags(const ItemConstPtr& item)
 
 void Tile::resetTileFlags(const ItemPtr& item)
 {
+	recalculateItemProperties();
+
 	if (const ItemType& it = Item::items[item->getID()]; it.floorChange != 0) {
 		resetFlag(TILESTATE_FLOORCHANGE);
 	}
 
-	if (item->hasProperty(CONST_PROP_BLOCKSOLID) && !hasProperty(item, CONST_PROP_BLOCKSOLID)) {
+	if (!hasProperty(CONST_PROP_BLOCKSOLID)) {
 		resetFlag(TILESTATE_BLOCKSOLID);
 	}
 
-	if (item->hasProperty(CONST_PROP_IMMOVABLEBLOCKSOLID) && !hasProperty(item, CONST_PROP_IMMOVABLEBLOCKSOLID)) {
+	if (!hasProperty(CONST_PROP_IMMOVABLEBLOCKSOLID)) {
 		resetFlag(TILESTATE_IMMOVABLEBLOCKSOLID);
 	}
 
-	if (item->hasProperty(CONST_PROP_BLOCKPATH) && !hasProperty(item, CONST_PROP_BLOCKPATH)) {
+	if (!hasProperty(CONST_PROP_BLOCKPATH)) {
 		resetFlag(TILESTATE_BLOCKPATH);
 	}
 
-	if (item->hasProperty(CONST_PROP_NOFIELDBLOCKPATH) && !hasProperty(item, CONST_PROP_NOFIELDBLOCKPATH)) {
+	if (!hasProperty(CONST_PROP_NOFIELDBLOCKPATH)) {
 		resetFlag(TILESTATE_NOFIELDBLOCKPATH);
 	}
 
-	if (item->hasProperty(CONST_PROP_IMMOVABLEBLOCKPATH) && !hasProperty(item, CONST_PROP_IMMOVABLEBLOCKPATH)) {
+	if (!hasProperty(CONST_PROP_IMMOVABLEBLOCKPATH)) {
 		resetFlag(TILESTATE_IMMOVABLEBLOCKPATH);
 	}
 
-	if (item->hasProperty(CONST_PROP_IMMOVABLENOFIELDBLOCKPATH) && !hasProperty(item, CONST_PROP_IMMOVABLENOFIELDBLOCKPATH)) {
+	if (!hasProperty(CONST_PROP_IMMOVABLENOFIELDBLOCKPATH)) {
 		resetFlag(TILESTATE_IMMOVABLENOFIELDBLOCKPATH);
 	}
 
@@ -1707,7 +1698,7 @@ void Tile::resetTileFlags(const ItemPtr& item)
 		resetFlag(TILESTATE_DEPOT);
 	}
 
-	if (item->hasProperty(CONST_PROP_SUPPORTHANGABLE)) {
+	if (!hasProperty(CONST_PROP_SUPPORTHANGABLE)) {
 		resetFlag(TILESTATE_SUPPORTS_HANGABLE);
 	}
 }

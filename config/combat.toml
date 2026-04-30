@@ -59,3 +59,40 @@ monster_armor_charges_cap   = 0
 default_defense_charge_cost = 1
 default_armor_charge_cost   = 0
 default_augment_charge_cost = 0
+
+# ── Damage formula presets ────────────────────────────────────────────────────
+# Select which named formula preset to use for each situation and stage.
+# Absent keys default to "Tibia" (original server mechanics).
+#
+# Valid output    presets: Tibia, LoL, Pokemon, DarkSouls, DnD, Exponential
+# Valid defense   presets: Tibia, LoL, Pokemon, DarkSouls
+# Valid armor     presets: Tibia, DarkSouls
+# Valid resolution presets: Tibia, LoL, Pokemon, DarkSouls, MonsterHunter, Genshin
+#
+# Per-combat overrides set in Lua via combat:setSituationFormulas() take priority
+# over these global defaults.  Lua callbacks (combat:setDefenseCallback() etc.)
+# take priority over everything.
+
+[formulas.pvp]
+output     = "Tibia"
+defense    = "Tibia"
+armor      = "Tibia"
+resolution = "Tibia"
+
+[formulas.pvm]
+output     = "Tibia"
+defense    = "Tibia"
+armor      = "Tibia"
+resolution = "Tibia"
+
+[formulas.mvp]
+output     = "Tibia"
+defense    = "Tibia"
+armor      = "Tibia"
+resolution = "Tibia"
+
+[formulas.mvm]
+output     = "Tibia"
+defense    = "Tibia"
+armor      = "Tibia"
+resolution = "Tibia"

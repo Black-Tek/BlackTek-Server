@@ -4,6 +4,7 @@
 #include "otpch.h"
 
 #include "configmanager.h"
+#include "combat.h"
 #include "game.h"
 #include "monster.h"
 #include "tools.h"
@@ -198,6 +199,21 @@ bool ConfigManager::Load()
     integers[DEFAULT_DEFENSE_CHARGE_COST]     = static_cast<int32_t>(combatTbl["defense"]["default_defense_charge_cost"].value_or(int64_t{1}));
     integers[DEFAULT_ARMOR_CHARGE_COST]       = static_cast<int32_t>(combatTbl["defense"]["default_armor_charge_cost"].value_or(int64_t{1}));
     integers[DEFAULT_AUGMENT_CHARGE_COST]     = static_cast<int32_t>(combatTbl["defense"]["default_augment_charge_cost"].value_or(int64_t{1}));
+
+    // Damage formula global defaults — one call per situation, absent keys stay as "Tibia".
+    static constexpr std::pair<uint8_t, std::string_view> formula_sit_keys[4] = {
+        { 0, "pvp" }, { 1, "pvm" }, { 2, "mvp" }, { 3, "mvm" }
+    };
+    for (auto [idx, key] : formula_sit_keys)
+    {
+        BlackTek::LoadFormulaDefaults(
+            idx,
+            combatTbl["formulas"][key]["output"].value_or<std::string>("Tibia"),
+            combatTbl["formulas"][key]["defense"].value_or<std::string>("Tibia"),
+            combatTbl["formulas"][key]["armor"].value_or<std::string>("Tibia"),
+            combatTbl["formulas"][key]["resolution"].value_or<std::string>("Tibia")
+        );
+    }
 
     // Gameplay
     booleans[ALLOW_CHANGEOUTFIT]              = gameplayTbl["player"]["change_outfit"].value_or(true);

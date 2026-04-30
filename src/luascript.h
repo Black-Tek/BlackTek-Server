@@ -1549,6 +1549,12 @@ class LuaScriptInterface
 
 		static int luaCombatExecute(lua_State* L);
 
+		// Formula override API
+		static int luaCombatSetSituationFormulas(lua_State* L);
+		static int luaCombatSetDefenseCallback(lua_State* L);
+		static int luaCombatSetArmorCallback(lua_State* L);
+		static int luaCombatSetResolutionCallback(lua_State* L);
+
 		// Condition
 		static int luaConditionCreate(lua_State* L);
 		static int luaConditionDelete(lua_State* L);
@@ -1935,7 +1941,7 @@ class LuaEnvironment : public LuaScriptInterface
 		Combat_ptr createCombatObject(LuaScriptInterface* interface);
 		void clearCombatObjects(LuaScriptInterface* interface);
 
-		AreaCombat* getAreaObject(uint32_t id) const;
+		BlackTek::AreaCombat* getAreaObject(uint32_t id) const;
 		uint32_t createAreaObject(LuaScriptInterface* interface);
 		void clearAreaObjects(LuaScriptInterface* interface);
 
@@ -1944,7 +1950,7 @@ class LuaEnvironment : public LuaScriptInterface
 
 		gtl::node_hash_map<uint32_t, LuaTimerEventDesc> timerEvents;
 		gtl::node_hash_map<uint32_t, Combat_ptr> combatMap;
-		gtl::node_hash_map<uint32_t, AreaCombat*> areaMap;
+		gtl::node_hash_map<uint32_t, BlackTek::AreaCombat*> areaMap;
 
 		gtl::node_hash_map<LuaScriptInterface*, std::vector<uint32_t>> combatIdMap;
 		gtl::node_hash_map<LuaScriptInterface*, std::vector<uint32_t>> areaIdMap;
