@@ -23,21 +23,6 @@ extern ConfigManager g_config;
 
 Tile real_nullptr_tile(0xFFFF, 0xFFFF, 0xFF);
 
-// BlackTek Instance System
-bool canSeeItemInInstance(uint32_t viewerInstanceId, const ItemConstPtr& item)
-{
-	if (not item)
-		return false;
-
-	const uint32_t itemInstanceId = item->getInstanceID();
-	if (itemInstanceId == viewerInstanceId)
-		return true;
-
-	// Keep static map decorations/tiles shared across instances,
-	// but isolate runtime-spawned items and fields.
-	return itemInstanceId == 0 and item->isLoadedFromMap();
-}
-
 void Tile::applyItemProperties(const ItemConstPtr& item)
 {
 	for (uint32_t p = 0; p <= static_cast<uint32_t>(CONST_PROP_SUPPORTHANGABLE); ++p) {
@@ -247,10 +232,6 @@ CreaturePtr Tile::getTopVisibleCreature(const CreaturePtr creature) const
 	{
 		for (const auto& tile_creature : *creatures) 
 		{
-			// BlackTek Instance System
-			if (creature and not creature->compareInstance(tile_creature->getInstanceID()))
-				continue;
-
 			const bool creature_has_sight = (creature and creature->canSeeCreature(tile_creature));
 			const bool invisible_creature = (tile_creature->isInvisible() ? true : false) or (tile_creature->getPlayer() and tile_creature->getPlayer()->isInGhostMode());
 
@@ -268,9 +249,6 @@ CreatureConstPtr Tile::getBottomVisibleCreature(const CreatureConstPtr& creature
 	if (const auto creatures = getCreatures()) {
 		if (creature) {
 			for (auto it = creatures->rbegin(), end = creatures->rend(); it != end; ++it) {
-				// BlackTek Instance System
-				if (not creature->compareInstance((*it)->getInstanceID()))
-					continue;
 				if (creature->canSeeCreature(*it)) {
 					return *it;
 				}
@@ -360,14 +338,7 @@ void Tile::onAddTileItem(ItemPtr& item)
 	TilePtr self = getTile();
 
 	// send to client and event callback
-	auto can_see_item = [&item](const auto& c)
-	{
-		auto spectator = std::static_pointer_cast<Player>(c);
-		return canSeeItemInInstance(spectator->getInstanceID(), item);
-	};
-
 	for (const auto& spectatorPlayer : spectators.players()
-		| std::views::filter(can_see_item)
 		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
 	{
 		spectatorPlayer->sendAddTileItem(getTile(), cylinderMapPos, item);
@@ -404,14 +375,7 @@ void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, con
 	const auto& self = getTile();
 
 	//send to client and event callback
-	auto can_see_new_item = [&newItem](const auto& c)
-	{
-		auto player = std::static_pointer_cast<Player>(c);
-		return canSeeItemInInstance(player->getInstanceID(), newItem);
-	};
-
 	for (const auto& spectatorPlayer : spectators.players()
-		| std::views::filter(can_see_new_item)
 		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
 	{
 		spectatorPlayer->sendUpdateTileItem(self, cylinderMapPos, newItem);
@@ -435,14 +399,7 @@ void Tile::onRemoveTileItem(const SpectatorVec& spectators, const std::vector<in
 	//send to client and event callback
 	size_t i = 0;
 
-	auto can_see_item = [&item](const auto& c)
-	{
-			auto spectator = std::static_pointer_cast<Player>(c);
-			return canSeeItemInInstance(spectator->getInstanceID(), item);
-	};
-
 	for (const auto& spectatorPlayer : spectators.players()
-		| std::views::filter(can_see_item)
 		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
 	{
 		spectatorPlayer->sendRemoveTileThing(cylinderMapPos, oldStackPosVector[i++]);
@@ -1191,9 +1148,7 @@ void Tile::removeThing(ThingPtr thing, uint32_t count)
 
 		for (const auto& c : spectators.players()) {
 			const auto spectatorPlayer = std::static_pointer_cast<Player>(c);
-			if (canSeeItemInInstance(spectatorPlayer->getInstanceID(), item)) {
-				oldStackPosVector.push_back(getStackposOfItem(spectatorPlayer, item));
-			}
+			oldStackPosVector.push_back(getStackposOfItem(spectatorPlayer, item));
 		}
 
 		item->clearParent();
@@ -1216,9 +1171,7 @@ void Tile::removeThing(ThingPtr thing, uint32_t count)
 			g_game.map.getSpectators(spectators, getPosition(), true);
 			for (const auto& c : spectators.players()) {
 				const auto spectatorPlayer = std::static_pointer_cast<Player>(c);
-				if (canSeeItemInInstance(spectatorPlayer->getInstanceID(), item)) {
-					oldStackPosVector.push_back(getStackposOfItem(spectatorPlayer, item));
-				}
+				oldStackPosVector.push_back(getStackposOfItem(spectatorPlayer, item));
 			}
 
 			item->clearParent();
@@ -1303,15 +1256,8 @@ int32_t Tile::getClientIndexOfCreature(const PlayerConstPtr& player, const Creat
 		n = 0;
 	}
 
-	// BlackTek Instance System
-	const auto& sameInstance = [&](const auto& tileItem)
-	{
-		return canSeeItemInInstance(player->getInstanceID(), tileItem);
-	};
-
 	if (const auto& items = getItemList()) {
-		auto visibleTopItems = std::ranges::subrange(items->getBeginTopItem(), items->getEndTopItem()) | std::views::filter(sameInstance);
-		for (const auto& visibleTopItem : visibleTopItems)
+		for (auto it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it)
 		{
 			++n;
 		}
@@ -1331,10 +1277,6 @@ int32_t Tile::getClientIndexOfCreature(const PlayerConstPtr& player, const Creat
 
 int32_t Tile::getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr& item) const
 {
-	// BlackTek Instance System
-	if (not canSeeItemInInstance(player->getInstanceID(), item))
-		return -1;
-
 	int32_t n = 0;
 	if (ground) {
 		if (ground == item) {
@@ -1343,27 +1285,19 @@ int32_t Tile::getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr
 		++n;
 	}
 
-	// BlackTek Instance System
-	const auto& sameInstance = [&](const auto& tileItem)
-	{
-		return canSeeItemInInstance(player->getInstanceID(), tileItem);
-	};
-
 	const auto& items = getItemList();
 	if (items) {
 		if (item->isAlwaysOnTop()) {
-			auto visibleTopItems = std::ranges::subrange(items->getBeginTopItem(), items->getEndTopItem()) | std::views::filter(sameInstance);
-			for (const auto& visibleTopItem : visibleTopItems)
+			for (auto it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it)
 			{
-				if (visibleTopItem == item) {
+				if (*it == item) {
 					return n;
 				} else if (++n == 10) {
 					return -1;
 				}
 			}
 		} else {
-			auto visibleTopItems = std::ranges::subrange(items->getBeginTopItem(), items->getEndTopItem()) | std::views::filter(sameInstance);
-			for (const auto& visibleTopItem : visibleTopItems)
+			for (auto it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it)
 			{
 				if (++n >= 10) {
 					return -1;
@@ -1383,10 +1317,9 @@ int32_t Tile::getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr
 	}
 
 	if (items && !item->isAlwaysOnTop()) {
-		auto visibleDownItems = std::ranges::subrange(items->getBeginDownItem(), items->getEndDownItem()) | std::views::filter(sameInstance);
-		for (const auto& visibleDownItem : visibleDownItems)
+		for (auto it = items->getBeginDownItem(), end = items->getEndDownItem(); it != end; ++it)
 		{
-			if (visibleDownItem == item) {
+			if (*it == item) {
 				return n;
 			} else if (++n >= 10) {
 				return -1;

@@ -64,13 +64,6 @@ static bool operator<(const CreatureRoster& a, const CreatureRoster& b)
     return a.time_point < b.time_point;
 }
 
-// BlackTek Instance System
-static bool canInteractInSameInstance(const CreatureConstPtr& first, const CreatureConstPtr& second)
-{
-	return first and second and first->compareInstance(second->getInstanceID());
-}
-
-
 namespace
 {
 
@@ -1349,9 +1342,6 @@ ReturnValue Game::internalMoveItem(CylinderPtr fromCylinder,
 
 	//add item
 	if (moveItem /*m - n > 0*/) {
-		// BlackTek Instance System
-		if (actorPlayer and toCylinder->getTile())
-			moveItem->setInstanceID(actorPlayer->getInstanceID());
 		toCylinder->addThing(index, moveItem);
 	}
 
@@ -2397,12 +2387,6 @@ void Game::playerUseWithCreature(const uint32_t playerId, const Position& fromPo
 	if (!creature) {
 		return;
 	}
-	// BlackTek Instance System
-	if (not canInteractInSameInstance(player, creature)) {
-		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
-		return;
-	}
-
 	if (!Position::areInRange<7, 5, 0>(creature->getPosition(), player->getPosition())) {
 		return;
 	}
@@ -2779,12 +2763,6 @@ void Game::playerRequestTrade(const uint32_t playerId, const Position& pos, uint
 		player->sendCancelMessage("Select a player to trade with.");
 		return;
 	}
-	// BlackTek Instance System
-	if (not canInteractInSameInstance(player, tradePartner)) {
-		player->sendCancelMessage("Select a player to trade with.");
-		return;
-	}
-
 	if (!Position::areInRange<2, 2, 0>(tradePartner->getPosition(), player->getPosition())) {
 		player->sendCancelMessage(RETURNVALUE_DESTINATIONOUTOFREACH);
 		return;
@@ -2883,12 +2861,6 @@ void Game::playerRequestTrade(const uint32_t playerId, const Position& pos, uint
 
 bool Game::internalStartTrade(const PlayerPtr& player, const PlayerPtr& tradePartner, const ItemPtr& tradeItem)
 {
-	// BlackTek Instance System
-	if (not canInteractInSameInstance(player, tradePartner)) {
-		player->sendCancelMessage("Select a player to trade with.");
-		return false;
-	}
-
 	if (player->tradeState != TRADE_NONE && !(player->tradeState == TRADE_ACKNOWLEDGE && player->tradePartner == tradePartner)) {
 		player->sendCancelMessage(RETURNVALUE_YOUAREALREADYTRADING);
 		return false;
@@ -2932,12 +2904,6 @@ void Game::playerAcceptTrade(const uint32_t playerId)
 	if (!tradePartner) {
 		return;
 	}
-	// BlackTek Instance System
-	if (not canInteractInSameInstance(player, tradePartner)) {
-		internalCloseTrade(player, false);
-		return;
-	}
-
 	player->setTradeState(TRADE_ACCEPT);
 
 	if (tradePartner->getTradeState() == TRADE_ACCEPT) {
@@ -3379,13 +3345,6 @@ void Game::playerSetAttackedCreature(const uint32_t playerId, const uint32_t cre
 		player->sendCancelTarget();
 		return;
 	}
-	// BlackTek Instance System
-	if (not canInteractInSameInstance(player, attackCreature)) {
-		player->sendCancelTarget();
-		player->setAttackedCreature(nullptr);
-		return;
-	}
-
 	//const ReturnValue ret = Combat::canTargetCreature(player, attackCreature);
 	//if (ret != RETURNVALUE_NOERROR) {
 	//	player->sendCancelMessage(ret);
@@ -3406,12 +3365,6 @@ void Game::playerFollowCreature(const uint32_t playerId, const uint32_t creature
 	}
 
 	const auto followCreature = getCreatureByID(creatureId);
-	// BlackTek Instance System
-	if (followCreature and not canInteractInSameInstance(player, followCreature)) {
-		player->setFollowCreature(nullptr);
-		return;
-	}
-
 	player->setAttackedCreature(nullptr);
 	player->setFollowCreature(followCreature);
 	updateCreatureWalk(player->getID());
@@ -4841,9 +4794,6 @@ void Game::playerWhisper(const PlayerPtr& player, const std::string& text)
 
 	//send to client + trigger event callback
 	for (const auto& c : spectators.players()) {
-		if (not canInteractInSameInstance(player, c)) {
-			continue;
-		}
 		const auto spectatorPlayer = std::static_pointer_cast<Player>(c);
 		if (!Position::areInRange<1, 1>(player->getPosition(), spectatorPlayer->getPosition())) {
 			spectatorPlayer->sendCreatureSay(player, TALKTYPE_WHISPER, "pspsps");
@@ -4852,9 +4802,6 @@ void Game::playerWhisper(const PlayerPtr& player, const std::string& text)
 		}
 	}
 	for (const auto& spectator : spectators) {
-		if (not canInteractInSameInstance(player, spectator)) {
-			continue;
-		}
 		spectator->onCreatureSay(player, TALKTYPE_WHISPER, text);
 	}
 }
@@ -4941,8 +4888,7 @@ void Game::playerSpeakToNpc(const PlayerPtr& player, const std::string& text)
 	SpectatorVec spectators;
 	map.getSpectators(spectators, player->getPosition());
 	for (const auto spectator : spectators) {
-		// BlackTek Instance System
-		if (spectator->getNpc() and canInteractInSameInstance(player, spectator)) {
+		if (spectator->getNpc()) {
 			spectator->onCreatureSay(player, TALKTYPE_PRIVATE_PN, text);
 		}
 	}
@@ -5010,8 +4956,6 @@ bool Game::internalCreatureSay(const CreaturePtr& creature, const SpeakClasses t
 
 	auto can_see_interaction = [&](const auto& c)
 	{
-		if (not canInteractInSameInstance(creature, c)) return false;
-
 		auto player = std::static_pointer_cast<Player>(c);
 		return not ghostMode or player->canSeeCreature(creature);
 	};
@@ -5024,9 +4968,7 @@ bool Game::internalCreatureSay(const CreaturePtr& creature, const SpeakClasses t
 	}
 	if (not echo)
 	{
-		auto is_interactable = [&](const auto& s) {	return canInteractInSameInstance(creature, s);};
-
-		for (const auto& spectator : spectators | std::views::filter(is_interactable))
+		for (const auto& spectator : spectators)
 		{
 			spectator->onCreatureSay(creature, type, text);
 
@@ -5188,14 +5130,19 @@ void Game::addCreatureHealth(const CreatureConstPtr& target)
 
 void Game::addCreatureHealth(const SpectatorVec& spectators, const CreatureConstPtr& target)
 {
-	const uint32_t instanceId = target->getInstanceID();
-
 	for (const auto& c : spectators.players())
 	{
 		auto* player = static_cast<Player*>(c.get());
+		player->sendCreatureHealth(target);
+	}
+}
 
-		if (player->compareInstance(instanceId))
-			player->sendCreatureHealth(target);
+void Game::addMagicEffect(const Position& pos, const uint8_t effect, std::span<const CreaturePtr> spectators)
+{
+	for (const auto& c : spectators)
+	{
+		auto* player = static_cast<Player*>(c.get());
+		player->sendMagicEffect(pos, effect);
 	}
 }
 
@@ -5206,14 +5153,12 @@ void Game::addMagicEffect(const Position& pos, const uint8_t effect)
 	addMagicEffect(spectators, pos, effect);
 }
 
-void Game::addMagicEffect(const SpectatorVec& spectators, const Position& pos, const uint8_t effect, const uint32_t instanceId /*= 0*/)
+void Game::addMagicEffect(const SpectatorVec& spectators, const Position& pos, const uint8_t effect)
 {
 	for (const auto& c : spectators.players())
 	{
 		auto* player = static_cast<Player*>(c.get());
-
-		if (instanceId == 0 or player->compareInstance(instanceId))
-			player->sendMagicEffect(pos, effect);
+		player->sendMagicEffect(pos, effect);
 	}
 }
 
@@ -5227,14 +5172,12 @@ void Game::addDistanceEffect(const Position& fromPos, const Position& toPos, con
 	addDistanceEffect(spectators, fromPos, toPos, effect);
 }
 
-void Game::addDistanceEffect(const SpectatorVec& spectators, const Position& fromPos, const Position& toPos, uint8_t effect, const uint32_t instanceId /*= 0*/)
+void Game::addDistanceEffect(const SpectatorVec& spectators, const Position& fromPos, const Position& toPos, uint8_t effect)
 {
 	for (const auto& c : spectators.players())
 	{
 		auto* player = static_cast<Player*>(c.get());
-
-		if (instanceId == 0 or player->compareInstance(instanceId))
-			player->sendDistanceShoot(fromPos, toPos, effect);
+		player->sendDistanceShoot(fromPos, toPos, effect);
 	}
 }
 

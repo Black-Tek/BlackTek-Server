@@ -1901,13 +1901,6 @@ class LuaScriptInterface
 		static int luaZoneItemCount(lua_State* L);
 		static int luaZoneTileCount(lua_State* L);
 
-		// BlackTek Instance System
-		static int luaCreatureGetInstanceId(lua_State* L);
-		static int luaCreatureSetInstanceId(lua_State* L);
-		static int luaItemGetInstanceId(lua_State* L);
-		static int luaItemSetInstanceId(lua_State* L);
-		
-
 		//
 		std::string lastLuaError;
 

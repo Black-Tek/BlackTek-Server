@@ -237,10 +237,6 @@ bool Item::equals(const ItemConstPtr& otherItem) const
 	if (!otherItem || id != otherItem->id) {
 		return false;
 	}
-	// BlackTek Instance System
-	if (not compareInstance(otherItem->getInstanceID()))
-		return false;
-
 	const auto& otherAttributes = otherItem->attributes;
 	if (!attributes) {
 		return !otherAttributes || (otherAttributes->attributeBits == 0);

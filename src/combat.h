@@ -275,6 +275,7 @@ namespace BlackTek
 
 		enum TargetCode : uint8_t
 		{
+			UnknownFailure,
 			Valid,
 			YouAreInProtectionZone,
 			CanNotAttackThisPlayer,
@@ -284,7 +285,7 @@ namespace BlackTek
 			CanNotWieldWeapon,
 			NotEnoughRoom,
 			FirstGoUpStairs,
-			FirstGoDownStairs
+			FirstGoDownStairs,
 		};
 
 		enum Config : uint8_t
@@ -479,25 +480,22 @@ namespace BlackTek
 
 		void applyCrit(const uint32_t percent, const uint32_t flat);
 		void post_damage(const PlayerPtr& caster, const CreaturePtr& victim, LeechData&& leech_data) noexcept;
-		void strike_target(const PlayerPtr& caster, const PlayerPtr& victim) noexcept;
-		void strike_target(const PlayerPtr& caster, const MonsterPtr& victim) noexcept;
-		void strike_target(const MonsterPtr& attacker, const PlayerPtr& victim) noexcept;
-		void strike_target(const MonsterPtr& attacker, const MonsterPtr& victim) noexcept;
-		void strike_target(const CreaturePtr& attacker, const CreaturePtr& defender) noexcept;
+		void strike_target(const PlayerPtr& caster, const PlayerPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
+		void strike_target(const PlayerPtr& caster, const MonsterPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
+		void strike_target(const MonsterPtr& attacker, const PlayerPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
+		void strike_target(const MonsterPtr& attacker, const MonsterPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
+		void strike_target(const CreaturePtr& attacker, const CreaturePtr& defender, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void execute(const CreaturePtr& caster, const Position& center) noexcept;
-		[[nodiscard]] static bool sameInstance(const CreatureConstPtr& first, const CreatureConstPtr& second);
 		void defense_block_effect(const Position& target_position) const noexcept;
 		void armor_block_effect(const Position& target_position) const noexcept;
 		void notify_players();
-		void apply_mana_damage(const CreaturePtr& attacker, const PlayerPtr& target, bool manashield) noexcept;
 
 		[[nodiscard]] uint32_t collect_notice_data(const CreaturePtr& target) const noexcept;
 		[[nodiscard]] uint8_t immunity_block_effect() const noexcept;
 		[[nodiscard]] BlockType block(const CreaturePtr& attacker, const PlayerPtr& target) noexcept;
 		[[nodiscard]] BlockType block(const CreaturePtr& attacker, const MonsterPtr& target) noexcept;
-		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const PlayerPtr& target) noexcept;
-		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const MonsterPtr& target) noexcept;
-		[[nodiscard]] bool apply_damage(const CreaturePtr& attacker, const Position& target_position) noexcept;
+		[[nodiscard]] uint32_t apply_damage(const CreaturePtr& attacker, const PlayerPtr& target, std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
+		[[nodiscard]] uint32_t apply_damage(const CreaturePtr& attacker, const MonsterPtr& target, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 
 		[[nodiscard]]
 		inline bool hasArea() const noexcept 
@@ -607,20 +605,19 @@ namespace BlackTek
 		void postCombatEffects(CreaturePtr& caster, const Position& pos) const { postCombatEffects(caster, pos, *this); }
 		void setOrigin(Origin o) { origin = o; }
 
-		void SetSituationFormulas(uint8_t index, SituationFormulas&& formulas) noexcept;
-		void SetFormulaCallback(uint8_t index, FormulaStage stage, int32_t lua_ref) noexcept;
+		void setSituationFormulas(uint8_t index, SituationFormulas&& formulas) noexcept;
+		void setFormulaCallback(uint8_t index, FormulaStage stage, int32_t lua_ref) noexcept;
 
 		[[nodiscard]] int64_t id() const noexcept { return combat_id; }
 		void set_id(int64_t new_id) { combat_id = new_id; }
 
 	private:
-		void apply_effects(const SpectatorVec& spectators, const CreaturePtr& caster, const TilePtr& tile);
 		void apply_effects(const SpectatorVec& spectators, const CreaturePtr& caster, std::span<const TilePtr> tiles);
 		const DamageArea getAreaPositions(const Position& casterPos, const Position& targetPos);
 
 		// Ensures this combat has a unique ID usable as a formula/callback map key.
 		// Lua-managed combats start with combat_id == -1; this assigns a negative ID.
-		int64_t EnsureFormulaId() noexcept;
+		int64_t ensureFormulaId() noexcept;
 
 		// Returns the ID to use when looking up formula/callback maps.
 		// Clones set formula_source_id to the parent's ID so they share its entries
@@ -651,13 +648,12 @@ namespace BlackTek
 		friend void intrusive_ptr_release(const Combat* p) noexcept;
 	};
 
-	inline void intrusive_ptr_add_ref(const Combat * p) noexcept
+	inline void intrusive_ptr_add_ref(const Combat* p) noexcept
 	{
 		p->ref_count.fetch_add(1, std::memory_order_relaxed);
 	}
 
-	void intrusive_ptr_release(const Combat * p) noexcept;
-
+	void intrusive_ptr_release(const Combat* p) noexcept;
 
 	class CombatRegistry
 	{
@@ -719,6 +715,8 @@ namespace BlackTek
 		Combat::ResistanceFactors defense    = Combat::TibiaDefense;
 		Combat::ResistanceFactors armor      = Combat::TibiaArmor;
 		Combat::ResolutionFactors resolution = Combat::TibiaResolution;
+
+		static constexpr auto Total = 4;
 	};
 
 	enum class FormulaStage : uint8_t
@@ -742,32 +740,15 @@ namespace BlackTek
 		}
 	};
 
-	// Global per-situation defaults — populated from [formulas] in config/combat.toml.
-	// Initialises to Tibia presets; absent TOML keys leave the Tibia value in place.
 	extern std::array<SituationFormulas, 4> g_default_situation_formulas;
-
-	// Per-combat Level 1 overrides.  Only combats that call SetSituationFormulas appear here.
 	extern std::pmr::unordered_map<int64_t, std::array<SituationFormulas, 4>> combat_formula_map;
-
-	// Per-combat Level 2 Lua callbacks.  Only combats that call SetFormulaCallback appear here.
 	extern std::pmr::unordered_map<int64_t, FormulaCallbacks> combat_callback_map;
 
-	// Apply a named formula preset string to a factor struct.
-	// Unrecognised names are silently ignored (existing value unchanged).
 	void ApplyOutputPreset(Combat::OutputFactors& out, std::string_view preset) noexcept;
 	void ApplyDefensePreset(Combat::ResistanceFactors& out, std::string_view preset) noexcept;
 	void ApplyArmorPreset(Combat::ResistanceFactors& out, std::string_view preset) noexcept;
 	void ApplyResolutionPreset(Combat::ResolutionFactors& out, std::string_view preset) noexcept;
-
-	// Called from ConfigManager::Load() for each of the four situations.
-	// Absent / unrecognised preset strings leave that stage at the Tibia default.
-	void LoadFormulaDefaults(
-		uint8_t          sit_idx,
-		std::string_view out_preset,
-		std::string_view def_preset,
-		std::string_view arm_preset,
-		std::string_view res_preset
-	) noexcept;
+	void LoadFormulaDefaults(uint8_t sit_idx, std::string_view out_preset, std::string_view def_preset, std::string_view arm_preset, std::string_view res_preset) noexcept;
 }
 
 class MagicField final : public Item
