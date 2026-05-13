@@ -46,6 +46,7 @@ namespace BlackTek
 			Named = 1 << 6,
 			Reformed = 1 << 7,
 			Converted = 1 << 8,
+			HealBoost = 1 << 9,
 		};
 
 		enum class AttackType : uint8_t
@@ -58,10 +59,11 @@ namespace BlackTek
 			Critical,			// damage can critcally hit
 			Piercing,			// damage ignores defenses
 			Conversion,			// damage is converted to different type
+			HealingBoost,		// increases healing output
 			// attack_modifier_cripple,			// new modifier for paralyzing target
 
 			First = Lifesteal,
-			Last = Conversion,
+			Last = HealingBoost,
 		};
 
 		enum class DefenseType : uint8_t
@@ -115,6 +117,11 @@ namespace BlackTek
 
 				if (conversion)
 					filter_index |= Flag::Converted;
+
+				auto healing_boost = (modType == std::to_underlying(AttackType::HealingBoost));
+
+				if (healing_boost)
+					filter_index |= Flag::HealBoost;
 
 				filter_index |= Flag::Attack;
 			}

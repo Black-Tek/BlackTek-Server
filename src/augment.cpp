@@ -28,7 +28,9 @@ namespace BlackTek
 		creature_count(original.creature_count),
 		race_count(original.race_count),
 		reformed_count(original.reformed_count),
-		converted_count(original.converted_count)
+		converted_count(original.converted_count),
+		named_count(original.named_count),
+		healing_count(original.healing_count)
 	{
 		loaded_augment_names[m_guid] = original.getName();
 		loaded_agment_descriptions[m_guid] = original.getDescription();
@@ -83,17 +85,18 @@ namespace BlackTek
 
 		trigger_index |= filters;
 
-		const auto damage	= filters & DamageModifier::Flag::Damage;
-		const auto origin	= filters & DamageModifier::Flag::Origin;
-		const auto creature	= filters & DamageModifier::Flag::Creature;
-		const auto race		= filters & DamageModifier::Flag::Race;
-		const auto convert	= filters & DamageModifier::Flag::Converted;
-		const auto reform	= filters & DamageModifier::Flag::Reformed;
-		const auto name		= filters & DamageModifier::Flag::Named;
+		const auto damage		= filters & DamageModifier::Flag::Damage;
+		const auto origin		= filters & DamageModifier::Flag::Origin;
+		const auto creature		= filters & DamageModifier::Flag::Creature;
+		const auto race			= filters & DamageModifier::Flag::Race;
+		const auto convert		= filters & DamageModifier::Flag::Converted;
+		const auto reform		= filters & DamageModifier::Flag::Reformed;
+		const auto name			= filters & DamageModifier::Flag::Named;
+		const auto heal_boost	= filters & DamageModifier::Flag::HealBoost;
 
 		if (damage)
 			damage_count++;
-		
+
 		if (origin)
 			origin_count++;
 
@@ -111,6 +114,9 @@ namespace BlackTek
 
 		if (name)
 			named_count++;
+
+		if (heal_boost)
+			healing_count++;
 
 		if (stance == std::to_underlying(DamageModifier::Stance::Attack))
 		{
@@ -202,6 +208,11 @@ namespace BlackTek
 	uint32_t Augment::name_count() const noexcept
 	{
 		return named_count;
+	}
+
+	uint32_t Augment::healing_mod_count() const noexcept
+	{
+		return healing_count;
 	}
 
 	void Augment::serialize(PropWriteStream& propWriteStream) const

@@ -1664,6 +1664,7 @@ void ProtocolGame::sendBasicData()
 	writeToOutputBuffer(msg);
 }
 
+// to reduce the size of text message, we can and should make a separate method for handling "channel messages"
 void ProtocolGame::sendTextMessage(const TextMessage& message)
 {
 	NetworkMessage msg;
@@ -1678,8 +1679,6 @@ void ProtocolGame::sendTextMessage(const TextMessage& message)
 			msg.addPosition(message.position);
 			msg.add<uint32_t>(message.primary.value);
 			msg.addByte(message.primary.color);
-			msg.add<uint32_t>(message.secondary.value);
-			msg.addByte(message.secondary.color);
 			break;
 		}
 		case MESSAGE_HEALED:
@@ -3688,9 +3687,27 @@ void ProtocolGame::AddPlayerSkills(NetworkMessage& msg) const
 		msg.addByte(player->getSkillPercent(i));
 	}
 
+	using AT = BlackTek::DamageModifier::AttackType;
+	const auto& during = player->getMainAttackModSums();
+	const auto& post   = player->getMainAttackModPostSums();
+
+	const auto critIdx = std::to_underlying(AT::Critical);
+	const auto lifeIdx = std::to_underlying(AT::Lifesteal);
+	const auto manaIdx = std::to_underlying(AT::Manasteal);
+
+	const std::array<uint32_t, SPECIALSKILL_LAST + 1> cache_bonus = {
+		during[critIdx].percent,  // SPECIALSKILL_CRITICALHITCHANCE
+		during[critIdx].flat,     // SPECIALSKILL_CRITICALHITAMOUNT
+		post[lifeIdx].percent,    // SPECIALSKILL_LIFELEECHCHANCE
+		post[lifeIdx].flat,       // SPECIALSKILL_LIFELEECHAMOUNT
+		post[manaIdx].percent,    // SPECIALSKILL_MANALEECHCHANCE
+		post[manaIdx].flat,       // SPECIALSKILL_MANALEECHAMOUNT
+	};
+
 	for (uint8_t i = SPECIALSKILL_FIRST; i <= SPECIALSKILL_LAST; ++i)
 	{
-		msg.add<uint16_t>(std::min<uint16_t>(player->varSpecialSkills[i], 100));
+		const uint32_t total = static_cast<uint32_t>(std::max<int32_t>(0, player->varSpecialSkills[i])) + cache_bonus[i];
+		msg.add<uint16_t>(static_cast<uint16_t>(std::min<uint32_t>(total, 100u)));
 		msg.add<SpecialCode>(SpecialCode::Zero);
 	}
 }

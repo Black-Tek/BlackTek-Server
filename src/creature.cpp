@@ -846,9 +846,7 @@ void Creature::changeHealth(int32_t healthChange, bool sendHealthChange/* = true
 		g_game.addCreatureHealth(c_creature); // this is broken or something idk.
 	}
 
-	if (health <= 0) {
-		g_dispatcher.addTask(createTask([id = getID()]() { g_game.executeDeath(id); }));
-	}
+	if (health <= 0) g_game.executeDeath(id);
 }
 
 void Creature::gainHealth(const CreaturePtr& healer, int32_t healthGain)

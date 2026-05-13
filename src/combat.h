@@ -103,7 +103,6 @@ namespace BlackTek
 
 	// Todo: Create a struct for "CombatTable" which will be a specific defined and handled lua table able to be passed for construction of combat objects
 
-	// Forward declarations — full definitions appear after CombatRegistry.
 	struct SituationFormulas;
 	enum class FormulaStage : uint8_t;
 	struct FormulaCallbacks;
@@ -309,6 +308,10 @@ namespace BlackTek
 			AttackModified,
 			DefenseModified,	// don't think we need this one, but just in case..
 			IsUtility,
+			HealthTarget,		// we use these stat based targets along with "healing" type, to determine which stat to heal, this one is hp
+			ManaTarget,			// and this one is mana
+			SoulTarget,			// soul is healed by this one
+			StaminaTarget,		// and yes we even heal stamina if you want
 			HasCondition,
 			HasPvPFormula,
 			HasPvMFormula,
@@ -479,13 +482,20 @@ namespace BlackTek
 		[[nodiscard]] CombatHandle clone() const noexcept;
 
 		void applyCrit(const uint32_t percent, const uint32_t flat);
+		void process_steal(const PlayerPtr& caster, const CreaturePtr& victim, const LeechData& steal) noexcept;
 		void post_damage(const PlayerPtr& caster, const CreaturePtr& victim, LeechData&& leech_data) noexcept;
 		void strike_target(const PlayerPtr& caster, const PlayerPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const PlayerPtr& caster, const MonsterPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const MonsterPtr& attacker, const PlayerPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const MonsterPtr& attacker, const MonsterPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const CreaturePtr& attacker, const CreaturePtr& defender, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
+		void heal_health(const int32_t value, const auto& caster, const auto& target, std::span<const CreaturePtr> spectators) const noexcept;
+		void heal_mana(const int32_t value, const auto& caster, const auto& target, std::span<const CreaturePtr> spectators) const noexcept;
+		void heal_stamina(const int32_t value, const auto& caster, const auto& target, std::span<const CreaturePtr> spectators) const noexcept;
+		void heal_soul(const int32_t value, const auto& caster, const auto& target, std::span<const CreaturePtr> spectators) const noexcept;
+		void heal_target(const auto& caster, const auto& target, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 		void execute(const CreaturePtr& caster, const Position& center) noexcept;
+		void setArea(AreaCombat* area);
 		void defense_block_effect(const Position& target_position) const noexcept;
 		void armor_block_effect(const Position& target_position) const noexcept;
 		void notify_players();

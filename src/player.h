@@ -144,6 +144,9 @@ namespace BlackTek
 		std::vector<DamageModifier> named_defense;
 		std::vector<DamageModifier> conversion;
 		std::vector<DamageModifier> reform;
+		ModifierSum                 main_healing_boost{};
+		std::vector<DamageModifier> filtered_healing;
+		std::vector<DamageModifier> named_healing;
 	};
 }
 
@@ -1339,12 +1342,14 @@ class Player final : public Creature, public Cylinder
 		[[nodiscard]] bool hasDefenseModifiers() const noexcept { return defense_modifier_count > 0; }
 		[[nodiscard]] bool hasConversionModifiers() const noexcept { return conversion_modifier_count > 0; }
 		[[nodiscard]] bool hasReformModifiers() const noexcept { return reform_modifier_count > 0; }
+		[[nodiscard]] bool hasHealingModifiers() const noexcept { return healing_modifier_count > 0; }
 
 		[[nodiscard]] uint32_t augment_total_count() const noexcept { return augment_count; }
 		[[nodiscard]] uint32_t attack_mod_count() const noexcept { return attack_modifier_count; }
 		[[nodiscard]] uint32_t defense_mod_count() const noexcept { return defense_modifier_count; }
 		[[nodiscard]] uint32_t conversion_mod_count() const noexcept { return conversion_modifier_count; }
 		[[nodiscard]] uint32_t reform_mod_count() const noexcept { return reform_modifier_count; }
+		[[nodiscard]] uint32_t healing_mod_count() const noexcept { return healing_modifier_count; }
 
 		constexpr static auto AttackModArrayCount = std::to_underlying(BlackTek::DamageModifier::AttackType::Last) + 1u;
 		constexpr static auto DefenseModArrayCount = std::to_underlying(BlackTek::DamageModifier::DefenseType::Last) + 1u;
@@ -1413,6 +1418,24 @@ class Player final : public Creature, public Cylinder
 		[[nodiscard]] bool hasNamedAttackMods()				const noexcept { return m_modifier_cache and not m_modifier_cache->during_named_attack.empty();		}
 		[[nodiscard]] bool hasNamedAttackPostMods()         const noexcept { return m_modifier_cache and not m_modifier_cache->post_named_attack.empty();		}
 		[[nodiscard]] bool hasNamedDefenseMods()            const noexcept { return m_modifier_cache and not m_modifier_cache->named_defense.empty();			}
+		[[nodiscard]] bool hasFilteredHealingMods()         const noexcept { return m_modifier_cache and not m_modifier_cache->filtered_healing.empty();			}
+		[[nodiscard]] bool hasNamedHealingMods()            const noexcept { return m_modifier_cache and not m_modifier_cache->named_healing.empty();			}
+
+		[[nodiscard]] const BlackTek::ModifierSum& getMainHealingModSum() const noexcept
+		{
+			static constexpr BlackTek::ModifierSum empty{};
+			return m_modifier_cache ? m_modifier_cache->main_healing_boost : empty;
+		}
+
+		[[nodiscard]] std::span<const BlackTek::DamageModifier> getFilteredHealingMods() const noexcept
+		{
+			return m_modifier_cache ? std::span<const BlackTek::DamageModifier>{ m_modifier_cache->filtered_healing } : std::span<const BlackTek::DamageModifier>{};
+		}
+
+		[[nodiscard]] std::span<const BlackTek::DamageModifier> getNamedHealingMods() const noexcept
+		{
+			return m_modifier_cache ? std::span<const BlackTek::DamageModifier>{ m_modifier_cache->named_healing } : std::span<const BlackTek::DamageModifier>{};
+		}
 
 		std::vector<Position> getOpenPositionsInRadius(int radius) const;
 
@@ -1663,6 +1686,7 @@ class Player final : public Creature, public Cylinder
 		uint32_t origin_modifiers_count = 0;
 		uint32_t creature_modifiers_count = 0;
 		uint32_t race_modifiers_count = 0;
+		uint32_t healing_modifier_count = 0;
 
 		static constexpr uint16_t MODIFIER_CONDITIONAL_MASK =
 			BlackTek::DamageModifier::Flag::Damage   |

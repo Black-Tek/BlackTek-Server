@@ -56,6 +56,7 @@ namespace BlackTek
 		[[nodiscard]] uint32_t conversion_count() const noexcept;
 		[[nodiscard]] uint32_t reform_count() const noexcept;
 		[[nodiscard]] uint32_t name_count() const noexcept;
+		[[nodiscard]] uint32_t healing_mod_count() const noexcept;
 
 		[[nodiscard]] std::vector<DamageModifier> getAttackModifiers(uint8_t modType) const noexcept;
 		[[nodiscard]] std::vector<DamageModifier> getDefenseModifiers(uint8_t modType) const noexcept;
@@ -89,6 +90,7 @@ namespace BlackTek
 		uint8_t reformed_count = 0;
 		uint8_t converted_count = 0;
 		uint8_t named_count = 0;
+		uint8_t healing_count = 0;
 	};
 
 	inline std::shared_ptr<Augment> Augment::MakeAugment(std::string_view augmentName, std::string_view description)

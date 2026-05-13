@@ -296,58 +296,6 @@ namespace BlackTek
 
 	static NoticeData UnPackNotice(uint32_t packedValue) { return std::bit_cast<NoticeData>(packedValue); }
 
-	static const std::vector<TilePtr>& getList(const MatrixArea& area, const Position& targetPos, const Direction dir)
-	{
-		const Position casterPos = getNextPosition(dir, targetPos);
-
-		const uint32_t rows = area.GetRows();
-		const uint32_t cols = area.GetCols();
-		const auto& center = area.GetCenter();
-
-		const int32_t startX = targetPos.x - static_cast<int32_t>(center.first);
-		const int32_t startY = targetPos.y - static_cast<int32_t>(center.second);
-		const uint32_t z = targetPos.z;
-
-		area_tile_buffer.clear();
-		area_tile_buffer.reserve(rows * cols);
-
-		Position pos(0, 0, z);
-
-		for (uint32_t row = 0; row < rows; ++row) 
-		{
-			pos.y = startY + static_cast<int32_t>(row);
-
-			for (uint32_t col = 0; col < cols; ++col) 
-			{
-				[[unlikely]]
-				if (not area(row, col))  
-				{
-					continue;
-				}
-
-				pos.x = startX + static_cast<int32_t>(col);
-
-				[[unlikely]]
-				if (not g_game.isSightClear(casterPos, pos, true))
-				{
-					continue;
-				}
-
-				auto tile = g_game.map.getTile(pos);
-				[[unlikely]]
-				if (not tile)
-				{
-					tile = std::make_shared<Tile>(pos.x, pos.y, z);
-					g_game.map.setTile(pos, tile);
-				}
-
-				area_tile_buffer.push_back(tile);
-			}
-		}
-
-		return area_tile_buffer;
-	}
-
 	// Extracts DamageLocations from an already-rotated MatrixArea.
 	// After rotation, each active cell's offsets from the center ARE the world dx/dy:
 	//   spread  = col - cx  →  dx (east positive)
@@ -380,6 +328,24 @@ namespace BlackTek
 		}
 
 		return locations;
+	}
+
+	void Combat::setArea(AreaCombat* area)
+	{
+		if (!area)
+			return;
+
+		CombatArea cardinal = area->GetCombatArea();
+		const bool hasCard = std::ranges::any_of(cardinal.directions, [](const auto& d) { return !d.empty(); });
+		if (hasCard)
+			combat_area_map[combat_id] = std::move(cardinal);
+
+		CombatArea ext = area->GetExtCombatArea();
+		const bool hasExt = std::ranges::any_of(ext.directions, [](const auto& d) { return !d.empty(); });
+		if (hasExt)
+			combat_ext_area_map[combat_id] = std::move(ext);
+
+		delete area;
 	}
 
 	const DamageArea Combat::getAreaPositions(const Position& casterPos, const Position& targetPos)
@@ -760,6 +726,118 @@ namespace BlackTek
 		return handle;
 	}
 
+	// Todo: Currently the way all the damage modifiers work in the augment and combat systems, is that it's percent is based on
+	// the damage value, and that is actually not the most common, or at least not the only top common path... People will often
+	// choose to target percent based on victim's stats.. example, 10 percent lifesteal would steal 10 percent of the victims overall health
+	// rather than just 10 percent of the damage output. I don't know how I have never really realized this huge fallacy before now.
+	// The 'Todo' here is to build another cache system strictly bound by "damage output" or "victim stat"
+
+	void Combat::process_steal(const PlayerPtr& caster, const CreaturePtr& victim, const LeechData& steal) noexcept
+	{
+		const auto totalDamage = damage;
+
+		if (steal.percent_health > 0 or steal.flat_health > 0)
+		{
+			uint32_t life = 0;
+
+			if (steal.percent_health)
+				life += totalDamage * steal.percent_health / 100;
+
+			if (steal.flat_health)
+				life += steal.flat_health;
+
+			if (life)
+			{
+				const uint32_t stolen = std::min(life, damage);
+				damage -= stolen;
+
+				auto lifesteal = g_combat_registry.Create(DamageType::LifeDrain, stolen);
+				lifesteal->origin = Origin::Augment;
+				lifesteal->config.set(Config::Leech);
+				lifesteal->config.set(Config::TopTargetOnly);
+
+				lifesteal->config.set(Config::TrueDamage);		// This is our new path for setting damage values directly
+				lifesteal->damage = stolen;						// by setting it as true damage it skips the "block" call which does the callbacks for damage calculation
+				lifesteal->strike_target(caster, victim, true);	// and calling the strike_target directly if we are not executing an area combat, execute if it is an area combat
+			}
+		}
+
+		if (steal.percent_mana > 0 or steal.flat_mana > 0)
+		{
+			uint32_t mana = 0;
+
+			if (steal.percent_mana)
+				mana += totalDamage * steal.percent_mana / 100;
+
+			if (steal.flat_mana)
+				mana += steal.flat_mana;
+
+			if (mana)
+			{
+				const uint32_t stolen = std::min(mana, damage);
+				damage -= stolen;
+
+				auto manasteal = g_combat_registry.Create(DamageType::ManaDrain, mana);
+				manasteal->origin = Origin::Augment;
+				manasteal->config.set(Config::Leech);
+				manasteal->config.set(Config::TopTargetOnly);
+				manasteal->config.set(Config::TrueDamage);
+				manasteal->damage = stolen;
+				manasteal->strike_target(caster, victim, true);
+			}
+		}
+
+		if (steal.percent_stamina > 0 or steal.flat_stamina > 0)
+		{
+			uint32_t stamina = 0;
+
+			if (steal.percent_stamina)
+				stamina += totalDamage * steal.percent_stamina / 100;
+
+			if (steal.flat_stamina)
+				stamina += steal.flat_stamina;
+
+			if (stamina)
+			{
+				const uint32_t stolen = std::min(stamina, damage);
+				damage -= stolen;
+				
+				auto staminasteal = g_combat_registry.Create(DamageType::Undefined, stamina);
+				staminasteal->origin = Origin::Augment;
+				staminasteal->config.set(Config::Leech);
+				staminasteal->config.set(Config::TopTargetOnly);
+				staminasteal->config.set(Config::TrueDamage);
+				staminasteal->damage = stolen;
+				staminasteal->strike_target(caster, victim, true);
+			}
+		}
+
+		if (steal.percent_soul > 0 or steal.flat_soul > 0)
+		{
+			uint32_t soul = 0;
+
+			if (steal.percent_soul)
+				soul += totalDamage * steal.percent_soul / 100;
+
+			if (steal.flat_soul)
+				soul += steal.flat_soul;
+
+			if (soul)
+			{
+				const uint32_t stolen = std::min(soul, damage);
+				damage -= stolen;
+
+				auto soulsteal = g_combat_registry.Create(DamageType::Undefined, soul);
+				soulsteal->origin = Origin::Augment;
+				soulsteal->config.set(Config::Leech);
+				soulsteal->config.set(Config::TopTargetOnly);
+				soulsteal->config.set(Config::TrueDamage);
+				soulsteal->damage = stolen;
+				soulsteal->strike_target(caster, victim, true);
+			}
+		}
+	}
+
 	void Combat::post_damage(const PlayerPtr& caster, const CreaturePtr& victim, LeechData&& leech) noexcept
 	{
 		if (impactEffect != CONST_ME_NONE)
@@ -775,12 +853,11 @@ namespace BlackTek
 
 		if (primary_conditions)
 		{
-			const auto& casterPlayer = caster->getPlayer();
 			const auto totalDamage = damage;
 
 			if (leech.percent_health > 0 or leech.flat_health > 0)
 			{
-				int32_t life = 0;
+				uint32_t life = 0;
 
 				if (leech.percent_health)
 					life += totalDamage * leech.percent_health / 100;
@@ -790,13 +867,18 @@ namespace BlackTek
 
 				if (life)
 				{
-					// auto local_damage = CombatDamage(COMBAT_LIFEDRAIN, ORIGIN_AUGMENT, BLOCK_NONE, life, critical, true, true);
+					auto hp_gain = g_combat_registry.Create(DamageType::Healing, life);
+					hp_gain->origin = Origin::Augment;
+					hp_gain->config.set(Config::Leech);
+					hp_gain->config.set(Config::TopTargetOnly);
+					hp_gain->config.set(Config::TrueDamage);
+					hp_gain->heal_target(caster, caster, true);
 				}
 			}
-		
+
 			if (leech.percent_mana > 0 or leech.flat_mana > 0)
 			{
-				int32_t mana = 0;
+				uint32_t mana = 0;
 
 				if (leech.percent_mana)
 					mana += totalDamage * leech.percent_mana / 100;
@@ -806,14 +888,19 @@ namespace BlackTek
 
 				if (mana)
 				{
-					// auto local_damage = CombatDamage(COMBAT_MANADRAIN, ORIGIN_AUGMENT, BLOCK_NONE, mana, critical, true, true);
+					auto mana_gain = g_combat_registry.Create(DamageType::Healing, mana);
+					mana_gain->origin = Origin::Augment;
+					mana_gain->config.set(Config::Leech);
+					mana_gain->config.set(Config::TopTargetOnly);
+					mana_gain->config.set(Config::TrueDamage);
+					mana_gain->heal_target(caster, caster, true);
 				}
 			}
 
 			if (leech.percent_stamina > 0 or leech.flat_stamina > 0)
 			{
-				int32_t stamina = 0;
-			
+				uint32_t stamina = 0;
+
 				if (leech.percent_stamina)
 					stamina += totalDamage * leech.percent_stamina / 100;
 
@@ -822,16 +909,18 @@ namespace BlackTek
 
 				if (stamina)
 				{
-					stamina = (stamina > std::numeric_limits<uint16_t>::max()) ? std::numeric_limits<uint16_t>::max() : stamina;
-					auto stamina_gained = g_config.GetBoolean(ConfigManager::AUGMENT_STAMINA_RULE) ? static_cast<uint16_t>(stamina) : static_cast<uint16_t>(stamina / 60);
-					auto max_gain = MaximumStamina - caster->getStaminaMinutes();
-					stamina_gained = (stamina_gained > max_gain) ? max_gain : stamina_gained;
+					auto stamina_gain = g_combat_registry.Create(DamageType::Healing, stamina);
+					stamina_gain->origin = Origin::Augment;
+					stamina_gain->config.set(Config::Leech);
+					stamina_gain->config.set(Config::TopTargetOnly);
+					stamina_gain->config.set(Config::TrueDamage);
+					stamina_gain->heal_target(caster, caster, true);
 				}
 			}
 
 			if (leech.percent_soul > 0 or leech.flat_soul > 0)
 			{
-				int32_t soul = 0;
+				uint32_t soul = 0;
 
 				if (leech.percent_soul)
 					soul += totalDamage * leech.percent_soul / 100;
@@ -841,10 +930,12 @@ namespace BlackTek
 
 				if (soul)
 				{
-					soul = (soul > std::numeric_limits<uint8_t>::max()) ? std::numeric_limits<uint8_t>::max() : soul;
-					auto soul_gained = static_cast<uint8_t>(soul);
-					uint8_t max_gain = caster->getVocation()->getSoulMax() - caster->getSoul();
-					soul_gained = (soul_gained > max_gain) ? max_gain : soul_gained;
+					auto soul_gain = g_combat_registry.Create(DamageType::Healing, soul);
+					soul_gain->origin = Origin::Augment;
+					soul_gain->config.set(Config::Leech);
+					soul_gain->config.set(Config::TopTargetOnly);
+					soul_gain->config.set(Config::TrueDamage);
+					soul_gain->heal_target(caster, caster, true);
 				}
 			}
 		}
@@ -897,7 +988,7 @@ namespace BlackTek
 		if (undefined)	Combat::transformDamage(Combat::DamageType::Undefined, undefined)	->strike_target(attacker, victim);
 		if (lifedrain)	Combat::transformDamage(Combat::DamageType::LifeDrain, lifedrain)	->strike_target(attacker, victim);
 		if (manadrain)	Combat::transformDamage(Combat::DamageType::ManaDrain, manadrain)	->strike_target(attacker, victim);
-		if (healing)	Combat::transformDamage(Combat::DamageType::Healing,   healing)		->strike_target(attacker, victim);
+		if (healing)	Combat::transformDamage(Combat::DamageType::Healing,   healing)		->heal_target(attacker, victim);
 		if (water)		Combat::transformDamage(Combat::DamageType::Water,     water)		->strike_target(attacker, victim);
 		if (ice)		Combat::transformDamage(Combat::DamageType::Ice,       ice)			->strike_target(attacker, victim);
 		if (holy)		Combat::transformDamage(Combat::DamageType::Holy,      holy)		->strike_target(attacker, victim);
@@ -914,6 +1005,12 @@ namespace BlackTek
 			return;
 		}
 
+		if (damage_type == DamageType::Healing)
+		{
+			heal_target(caster, victim, skip_validation, spectators);
+			return;
+		}
+
 		const auto target_code = target(caster, victim);
 
 		if (not skip_validation and target_code != TargetCode::Valid)
@@ -922,11 +1019,6 @@ namespace BlackTek
 			caster->sendTextMessage(MessageClasses::MESSAGE_INFO_DESCR, message);
 			return;
 		}
-		
-		// if (not non_aggressive())
-		//		if (healing) doHealing()
-		//      else
-		//		postConditions or w/e reason this combat would exist as non-aggressive but isn't healing damage type
 
 		if (distanceEffect != CONST_ANI_NONE)
 			addDistanceEffect(caster, caster->getPosition(), victim->getPosition(), distanceEffect); // we have an overload which uses spectators we need to pass our already existing spectators
@@ -944,6 +1036,7 @@ namespace BlackTek
 		}
 
 		LeechData leech_data {};
+		LeechData steal_data {};
 
 		if (caster->hasAttackModifiers() and not config.test(Config::AttackModified))
 		{
@@ -952,7 +1045,7 @@ namespace BlackTek
 			const auto& victim_name = victim->getName();
 			const auto moddable = damage_type != DamageType::ManaDrain and damage_type != DamageType::Healing;
 
-			auto applied = [&](const auto& modifier) 
+			auto applied = [&](const auto& modifier)
 			{
 				return modifier.applies( damage_type, CreatureType_t::CREATURETYPE_PLAYER, origin, victim_race, victim_name);
 			};
@@ -978,7 +1071,7 @@ namespace BlackTek
 				auto flat_crit			= main_attack_sums[std::to_underlying(DamageModifier::AttackType::Critical)].flat;
 				auto percent_pierce		= main_attack_sums[std::to_underlying(DamageModifier::AttackType::Piercing)].percent;
 				auto flat_pierce		= main_attack_sums[std::to_underlying(DamageModifier::AttackType::Piercing)].flat;
-				
+
 				if (caster->hasFilteredAttackMods())
 				{
 					const auto& filtered_attack_mods = caster->getFilteredAttackMods();
@@ -1007,31 +1100,32 @@ namespace BlackTek
 					for (const auto& modifier : filtered_post_attack_mods | std::views::filter(applied))
 					{
 						const auto mod_type = static_cast<DamageModifier::AttackType>(modifier.mod_type);
+						auto& target = modifier.true_leech ? steal_data : leech_data;
 
 						switch (mod_type)
 						{
 							case DamageModifier::AttackType::Lifesteal:
 							{
-								leech_data.percent_health	+= modifier.isFlatValue() ? 0 : modifier.getValue();
-								leech_data.flat_health		+= modifier.isFlatValue() ? modifier.getValue() : 0;
+								target.percent_health	+= modifier.isFlatValue() ? 0 : modifier.getValue();
+								target.flat_health		+= modifier.isFlatValue() ? modifier.getValue() : 0;
 								break;
 							}
 							case DamageModifier::AttackType::Manasteal:
 							{
-								leech_data.percent_mana		+= modifier.isFlatValue() ? 0 : modifier.getValue();
-								leech_data.flat_mana		+= modifier.isFlatValue() ? modifier.getValue() : 0;
+								target.percent_mana		+= modifier.isFlatValue() ? 0 : modifier.getValue();
+								target.flat_mana		+= modifier.isFlatValue() ? modifier.getValue() : 0;
 								break;
 							}
 							case DamageModifier::AttackType::Staminasteal:
 							{
-								leech_data.percent_stamina	+= modifier.isFlatValue() ? 0 : modifier.getValue();
-								leech_data.flat_stamina		+= modifier.isFlatValue() ? modifier.getValue() : 0;
+								target.percent_stamina	+= modifier.isFlatValue() ? 0 : modifier.getValue();
+								target.flat_stamina		+= modifier.isFlatValue() ? modifier.getValue() : 0;
 								break;
 							}
 							case DamageModifier::AttackType::Soulsteal:
 							{
-								leech_data.percent_soul		+= modifier.isFlatValue() ? 0 : modifier.getValue();
-								leech_data.flat_soul		+= modifier.isFlatValue() ? modifier.getValue() : 0;
+								target.percent_soul		+= modifier.isFlatValue() ? 0 : modifier.getValue();
+								target.flat_soul		+= modifier.isFlatValue() ? modifier.getValue() : 0;
 								break;
 							}
 							default: [[unlikely]]
@@ -1072,10 +1166,16 @@ namespace BlackTek
 			}
 		}
 
-		const auto& success = apply_damage(caster, victim);
+		process_steal(caster, victim, steal_data);
 
-		if (success)
+		if (apply_damage(caster, victim, spectators) == 0)
+		{
+			// some kind of log here ?
+		}
+		else
+		{
 			post_damage(caster, victim, std::move(leech_data));
+		}
 	}
 
 	void Combat::strike_target(const PlayerPtr& caster, const MonsterPtr& victim, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
@@ -1083,6 +1183,12 @@ namespace BlackTek
 		if (damage_type == DamageType::Unknown)
 		{
 			// log this
+			return;
+		}
+
+		if (damage_type == DamageType::Healing)
+		{
+			heal_target(caster, victim, skip_validation, spectators);
 			return;
 		}
 
@@ -1094,11 +1200,6 @@ namespace BlackTek
 			caster->sendTextMessage(MessageClasses::MESSAGE_INFO_DESCR, message);
 			return;
 		}
-
-		// if (not non_aggressive())
-		//		if (healing) doHealing()
-		//      else
-		//		postConditions or w/e reason this combat would exist as non-aggressive but isn't healing damage type
 
 		if (distanceEffect != CONST_ANI_NONE)
 			addDistanceEffect(caster, caster->getPosition(), victim->getPosition(), distanceEffect);
@@ -1116,6 +1217,7 @@ namespace BlackTek
 		}
 
 		LeechData leech_data {};
+		LeechData steal_data {};
 
 		if (caster->hasAttackModifiers() and not config.test(Config::AttackModified))
 		{
@@ -1180,31 +1282,32 @@ namespace BlackTek
 					for (const auto& modifier : filtered_post_attack_mods | std::views::filter(applied))
 					{
 						const auto mod_type = static_cast<DamageModifier::AttackType>(modifier.mod_type);
+						auto& target = modifier.true_leech ? steal_data : leech_data;
 
 						switch (mod_type)
 						{
 							case DamageModifier::AttackType::Lifesteal:
 							{
-								leech_data.percent_health += modifier.isFlatValue() ? 0 : modifier.getValue();
-								leech_data.flat_health	 += modifier.isFlatValue() ? modifier.getValue() : 0;
+								target.percent_health	+= modifier.isFlatValue() ? 0 : modifier.getValue();
+								target.flat_health		+= modifier.isFlatValue() ? modifier.getValue() : 0;
 								break;
 							}
 							case DamageModifier::AttackType::Manasteal:
 							{
-								leech_data.percent_mana	 += modifier.isFlatValue() ? 0 : modifier.getValue();
-								leech_data.flat_mana	 += modifier.isFlatValue() ? modifier.getValue() : 0;
+								target.percent_mana		+= modifier.isFlatValue() ? 0 : modifier.getValue();
+								target.flat_mana		+= modifier.isFlatValue() ? modifier.getValue() : 0;
 								break;
 							}
 							case DamageModifier::AttackType::Staminasteal:
 							{
-								leech_data.percent_stamina += modifier.isFlatValue() ? 0 : modifier.getValue();
-								leech_data.flat_stamina	 += modifier.isFlatValue() ? modifier.getValue() : 0;
+								target.percent_stamina	+= modifier.isFlatValue() ? 0 : modifier.getValue();
+								target.flat_stamina		+= modifier.isFlatValue() ? modifier.getValue() : 0;
 								break;
 							}
 							case DamageModifier::AttackType::Soulsteal:
 							{
-								leech_data.percent_soul	 += modifier.isFlatValue() ? 0 : modifier.getValue();
-								leech_data.flat_soul	 += modifier.isFlatValue() ? modifier.getValue() : 0;
+								target.percent_soul		+= modifier.isFlatValue() ? 0 : modifier.getValue();
+								target.flat_soul		+= modifier.isFlatValue() ? modifier.getValue() : 0;
 								break;
 							}
 							default: [[unlikely]]
@@ -1226,10 +1329,17 @@ namespace BlackTek
 			}
 		}
 
-		const auto& success = (damage_type == COMBAT_MANADRAIN) ? apply_damage(caster, victim) : apply_damage(caster, victim);
+		process_steal(caster, victim, steal_data);
 
-		if (success)
+		if (apply_damage(caster, victim, spectators) == 0)
+		{
+			// some kind of log here ?
+		}
+		else
+		{
 			post_damage(caster, victim, std::move(leech_data));
+		}
+
 	}
 
 	void Combat::strike_target(const MonsterPtr& attacker, const PlayerPtr& victim, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
@@ -1240,15 +1350,16 @@ namespace BlackTek
 			return;
 		}
 
+		if (damage_type == DamageType::Healing)
+		{
+			heal_target(attacker, victim, skip_validation, spectators);
+			return;
+		}
+
 		const auto target_code = target(attacker, victim);
 
 		if (not skip_validation and target_code != TargetCode::Valid)
 			return;
-
-		// if (not non_aggressive())
-		//		if (healing) doHealing()
-		//      else
-		//		postConditions or w/e reason this combat would exist as non-aggressive but isn't healing damage type
 
 		if (distanceEffect != CONST_ANI_NONE)
 			addDistanceEffect(attacker, attacker->getPosition(), victim->getPosition(), distanceEffect);
@@ -1278,9 +1389,7 @@ namespace BlackTek
 			}
 		}
 
-		const auto& success = (damage_type == DamageType::ManaDrain) ? apply_damage(attacker, victim) : apply_damage(attacker, victim);
-
-		if (not success)
+		if (apply_damage(attacker, victim, spectators) == 0)
 		{
 			// some kind of log here ?
 		}
@@ -1294,15 +1403,16 @@ namespace BlackTek
 			return;
 		}
 
+		if (damage_type == DamageType::Healing)
+		{
+			heal_target(attacker, victim, skip_validation, spectators);
+			return;
+		}
+
 		const auto target_code = target(attacker, victim);
 
 		if (not skip_validation and target_code != TargetCode::Valid)
 			return;
-
-		// if (not non_aggressive())
-		//		if (healing) doHealing()
-		//      else
-		//		postConditions or w/e reason this combat would exist as non-aggressive but isn't healing damage type
 
 		if (distanceEffect != CONST_ANI_NONE)
 			addDistanceEffect(attacker, attacker->getPosition(), victim->getPosition(), distanceEffect);
@@ -1319,9 +1429,7 @@ namespace BlackTek
 
 		// about the above comment, I think perhaps we can allow multiple formula's for different target creature types, monster, npc, boss or player.
 
-		const auto& success = (damage_type == DamageType::ManaDrain) ? apply_damage(attacker, victim) : apply_damage(attacker, victim);
-
-		if (not success)
+		if (apply_damage(attacker, victim, spectators) == 0)
 		{
 			// some kind of log here ?
 		}
@@ -1329,25 +1437,348 @@ namespace BlackTek
 
 	void Combat::strike_target(const CreaturePtr& attacker, const CreaturePtr& defender, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
 	{
+		if (damage_type == DamageType::Healing)
+		{
+			heal_target(attacker, defender, skip_validation, spectators);
+			return;
+		}
+
 		using namespace BlackTek;
 		auto switch_mask = (static_cast<uint32_t>(attacker->getCreatureSubType()) << 16 | static_cast<uint32_t>(defender->getCreatureSubType()) << 8);
 
 		switch (switch_mask)
 		{
-			case Constant::Player_Vs_Player:	strike_target(PlayerCast(attacker), PlayerCast(defender));		break;
-			case Constant::Player_Vs_Monster:	strike_target(PlayerCast(attacker), MonsterCast(defender));		break;
-			case Constant::Monster_Vs_Player:	strike_target(MonsterCast(attacker), PlayerCast(defender));		break;
-			case Constant::Monster_Vs_Monster:	strike_target(MonsterCast(attacker), MonsterCast(defender));	break;
+			case Constant::Player_Vs_Player:	strike_target(PlayerCast(attacker), PlayerCast(defender), skip_validation);		break;
+			case Constant::Player_Vs_Monster:	strike_target(PlayerCast(attacker), MonsterCast(defender), skip_validation);	break;
+			case Constant::Monster_Vs_Player:	strike_target(MonsterCast(attacker), PlayerCast(defender), skip_validation);	break;
+			case Constant::Monster_Vs_Monster:	strike_target(MonsterCast(attacker), MonsterCast(defender), skip_validation);	break;
 			default: [[unlikely]]
 				break;
 		}
+	}
+
+	// Todo: These "heal" methods need a lot of work. First, the text message it's self is sub-optimal and needs rewritten, especially in the way of constructors
+	// and/or factory methods. It needs to be reduced to a much smaller size of memory by re-arranging the layout and eliminating two variables holding an embedded struct,
+	// and just hoist the structs fields up, and we only need one now, we don't ever send a secondary value and color the player anymore anyways. Second, I need to organize
+	// all this data for "effects", colors, words, ect.. into a constexpr function returning either a packed int or struct... lastly, all that data should be configurable,
+	// on a global level, ie, "Heal Mana text color, and Heal Stamina Effect, ect", as part of the combat config system loaded by toml.
+
+	void Combat::heal_health(const int32_t amount, const auto& caster, const auto& target, std::span<const CreaturePtr> spectators) const
+	{
+		target->changeHealth(amount);
+
+		const auto& targetPos = target->getPosition();
+
+		if (impactEffect != CONST_ME_NONE)
+			g_game.addMagicEffect(targetPos, impactEffect);
+
+		const auto& targetName = target->getName();
+		const bool selfHeal = (caster->getID() == target->getID());
+
+		auto isObserver = [&](const auto& spectator) { return spectator != target and spectator != caster; };
+
+		if (const auto targetPlayer = target->getPlayer())
+		{
+			TextMessage targetMessage = {};
+			targetMessage.position = targetPos;
+			targetMessage.primary.color = TEXTCOLOR_LIGHTGREEN;
+			targetMessage.primary.value = static_cast<uint32_t>(amount);
+			targetMessage.type = MESSAGE_HEALED;
+			targetMessage.text = selfHeal
+				? "You heal yourself for " + std::to_string(amount) + " hit point" + (amount != 1 ? "s." : ".")
+				: "You are healed for " + std::to_string(amount) + " hit point" + (amount != 1 ? "s." : ".");
+			targetPlayer->sendTextMessage(targetMessage);
+		}
+
+		if (not selfHeal and caster->is_player())
+		{
+			const auto casterPlayer = caster->getPlayer();
+			TextMessage casterMessage = {};
+			casterMessage.position = targetPos;
+			casterMessage.primary.color = TEXTCOLOR_LIGHTGREEN;
+			casterMessage.primary.value = static_cast<uint32_t>(amount);
+			casterMessage.type = MESSAGE_HEALED;
+			casterMessage.text = "You heal " + targetName + " for " + std::to_string(amount) + " hit point" + (amount != 1 ? "s." : ".");
+			casterPlayer->sendTextMessage(casterMessage);
+			casterPlayer->sendCreatureHealth(target);
+		}
+
+		TextMessage observerMessage = {};
+		observerMessage.position = targetPos;
+		observerMessage.primary.color = TEXTCOLOR_LIGHTGREEN;
+		observerMessage.primary.value = static_cast<uint32_t>(amount);
+		observerMessage.type = MESSAGE_HEALED_OTHERS;
+		observerMessage.text = selfHeal
+			? targetName + " heals itself for " + std::to_string(amount) + " hit point" + (amount != 1 ? "s." : ".")
+			: targetName + " is healed for " + std::to_string(amount) + " hit point" + (amount != 1 ? "s." : ".");
+
+		for (const auto& spectator : spectators | std::views::filter(isObserver))
+		{
+			auto* player = static_cast<Player*>(spectator.get());
+			player->sendTextMessage(observerMessage);
+			player->sendCreatureHealth(target);
+		}
+	}
+
+	void Combat::heal_mana(const int32_t value, const auto& caster, const auto& target, std::span<const CreaturePtr> spectators) const
+	{
+		target->changeMana(amount);
+
+		const auto& targetPos = target->getPosition();
+
+		if (impactEffect != CONST_ME_NONE)
+			g_game.addMagicEffect(targetPos, impactEffect);
+
+		const auto& targetName = target->getName();
+		const bool selfHeal = (caster->getID() == target->getID());
+
+		auto isObserver = [&](const auto& spectator) { return spectator != target and spectator != caster; };
+
+		if (const auto targetPlayer = target->getPlayer())
+		{
+			TextMessage targetMessage = {};
+			targetMessage.position = targetPos;
+			targetMessage.primary.color = TEXTCOLOR_LIGHTGREEN;
+			targetMessage.primary.value = static_cast<uint32_t>(amount);
+			targetMessage.type = MESSAGE_HEALED;
+			targetMessage.text = selfHeal
+				? "You heal yourself for " + std::to_string(amount) + " mana point" + (amount != 1 ? "s." : ".")
+				: "You are healed for " + std::to_string(amount) + " mana point" + (amount != 1 ? "s." : ".");
+			targetPlayer->sendTextMessage(targetMessage);
+		}
+
+		if (not selfHeal and caster->is_player())
+		{
+			const auto casterPlayer = caster->getPlayer();
+			TextMessage casterMessage = {};
+			casterMessage.position = targetPos;
+			casterMessage.primary.color = TEXTCOLOR_LIGHTGREEN;
+			casterMessage.primary.value = static_cast<uint32_t>(amount);
+			casterMessage.type = MESSAGE_HEALED;
+			casterMessage.text = "You heal " + targetName + " for " + std::to_string(amount) + " mana point" + (amount != 1 ? "s." : ".");
+			casterPlayer->sendTextMessage(casterMessage);
+			casterPlayer->sendCreatureHealth(target);
+		}
+
+		TextMessage observerMessage = {};
+		observerMessage.position = targetPos;
+		observerMessage.primary.color = TEXTCOLOR_LIGHTGREEN;
+		observerMessage.primary.value = static_cast<uint32_t>(amount);
+		observerMessage.type = MESSAGE_HEALED_OTHERS;
+		observerMessage.text = selfHeal
+			? targetName + " heals itself for " + std::to_string(amount) + " mana point" + (amount != 1 ? "s." : ".")
+			: targetName + " is healed for " + std::to_string(amount) + " mana point" + (amount != 1 ? "s." : ".");
+
+		for (const auto& spectator : spectators | std::views::filter(isObserver))
+		{
+			auto* player = static_cast<Player*>(spectator.get());
+			player->sendTextMessage(observerMessage);
+		}
+	}
+
+	void Combat::heal_stamina(const int32_t value, const auto& caster, const auto& target, std::span<const CreaturePtr> spectators) const
+	{
+		// Todo : use the globals here for converting the value incase they wanted to do minutes over seconds
+		target->changeStamina(amount);
+
+		const auto& targetPos = target->getPosition();
+
+		if (impactEffect != CONST_ME_NONE)
+			g_game.addMagicEffect(targetPos, impactEffect);
+
+		const auto& targetName = target->getName();
+		const bool selfHeal = (caster->getID() == target->getID());
+
+		auto isObserver = [&](const auto& spectator) { return spectator != target and spectator != caster; };
+
+		if (const auto targetPlayer = target->getPlayer())
+		{
+			TextMessage targetMessage = {};
+			targetMessage.position = targetPos;
+			targetMessage.primary.color = TEXTCOLOR_LIGHTGREEN;
+			targetMessage.primary.value = static_cast<uint32_t>(amount);
+			targetMessage.type = MESSAGE_HEALED;
+			targetMessage.text = selfHeal
+				? "You heal yourself for " + std::to_string(amount) + " stamina point" + (amount != 1 ? "s." : ".")
+				: "You are healed for " + std::to_string(amount) + " stamina point" + (amount != 1 ? "s." : ".");
+			targetPlayer->sendTextMessage(targetMessage);
+		}
+
+		if (not selfHeal and caster->is_player())
+		{
+			const auto casterPlayer = caster->getPlayer();
+			TextMessage casterMessage = {};
+			casterMessage.position = targetPos;
+			casterMessage.primary.color = TEXTCOLOR_LIGHTGREEN;
+			casterMessage.primary.value = static_cast<uint32_t>(amount);
+			casterMessage.type = MESSAGE_HEALED;
+			casterMessage.text = "You heal " + targetName + " for " + std::to_string(amount) + " stamina point" + (amount != 1 ? "s." : ".");
+			casterPlayer->sendTextMessage(casterMessage);
+			casterPlayer->sendCreatureHealth(target);
+		}
+
+		// Todo: we could and likely should, gate the stamina point notification being sent to observers as a global combat config option
+		TextMessage observerMessage = {};
+		observerMessage.position = targetPos;
+		observerMessage.primary.color = TEXTCOLOR_LIGHTGREEN;
+		observerMessage.primary.value = static_cast<uint32_t>(amount);
+		observerMessage.type = MESSAGE_HEALED_OTHERS;
+		observerMessage.text = selfHeal
+			? targetName + " heals itself for " + std::to_string(amount) + " stamina point" + (amount != 1 ? "s." : ".")
+			: targetName + " is healed for " + std::to_string(amount) + " stamina point" + (amount != 1 ? "s." : ".");
+
+		for (const auto& spectator : spectators | std::views::filter(isObserver))
+		{
+			auto* player = static_cast<Player*>(spectator.get());
+			player->sendTextMessage(observerMessage);
+		}
+	}
+
+	void Combat::heal_soul(const int32_t value, const auto& caster, const auto& target, std::span<const CreaturePtr> spectators) const
+	{
+		target->changeSoul(amount);
+
+		const auto& targetPos = target->getPosition();
+
+		if (impactEffect != CONST_ME_NONE)
+			g_game.addMagicEffect(targetPos, impactEffect);
+
+		const auto& targetName = target->getName();
+		const bool selfHeal = (caster->getID() == target->getID());
+
+		auto isObserver = [&](const auto& spectator) { return spectator != target and spectator != caster; };
+
+		if (const auto targetPlayer = target->getPlayer())
+		{
+			TextMessage targetMessage = {};
+			targetMessage.position = targetPos;
+			targetMessage.primary.color = TEXTCOLOR_LIGHTGREEN;
+			targetMessage.primary.value = static_cast<uint32_t>(amount);
+			targetMessage.type = MESSAGE_HEALED;
+			targetMessage.text = selfHeal
+				? "You heal yourself for " + std::to_string(amount) + " soul point" + (amount != 1 ? "s." : ".")
+				: "You are healed for " + std::to_string(amount) + " soul point" + (amount != 1 ? "s." : ".");
+			targetPlayer->sendTextMessage(targetMessage);
+		}
+
+		if (not selfHeal and caster->is_player())
+		{
+			const auto casterPlayer = caster->getPlayer();
+			TextMessage casterMessage = {};
+			casterMessage.position = targetPos;
+			casterMessage.primary.color = TEXTCOLOR_LIGHTGREEN;
+			casterMessage.primary.value = static_cast<uint32_t>(amount);
+			casterMessage.type = MESSAGE_HEALED;
+			casterMessage.text = "You heal " + targetName + " for " + std::to_string(amount) + " soul point" + (amount != 1 ? "s." : ".");
+			casterPlayer->sendTextMessage(casterMessage);
+			casterPlayer->sendCreatureHealth(target);
+		}
+
+		// Todo: we could and likely should, gate the soul point notification being sent to observers as a global combat config option
+		TextMessage observerMessage = {};
+		observerMessage.position = targetPos;
+		observerMessage.primary.color = TEXTCOLOR_LIGHTGREEN;
+		observerMessage.primary.value = static_cast<uint32_t>(amount);
+		observerMessage.type = MESSAGE_HEALED_OTHERS;
+		observerMessage.text = selfHeal
+			? targetName + " heals itself for " + std::to_string(amount) + " soul point" + (amount != 1 ? "s." : ".")
+			: targetName + " is healed for " + std::to_string(amount) + " soul point" + (amount != 1 ? "s." : ".");
+
+		for (const auto& spectator : spectators | std::views::filter(isObserver))
+		{
+			auto* player = static_cast<Player*>(spectator.get());
+			player->sendTextMessage(observerMessage);
+		}
+	}
+
+	void Combat::heal_target(const auto& caster, const auto& target, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) const
+	{
+		if (damage_type != DamageType::Healing or damage == 0)
+			return;
+
+		const auto HealthBased = config.test(Config::HealthTarget);
+		const auto ManaBased = config.test(Config::ManaTarget);
+		const auto StaminaBased = config.test(Config::StaminaTarget);
+		const auto SoulBased = config.test(Config::SoulTarget);
+
+		const int32_t MaxHealth = target->getMaxHealth() - target->getHealth();
+		if (HealthBased and MaxHealth <= 0)
+			return;
+
+		const int32_t MaxMana = target->getMaxMana() - target->getMana();
+		if (ManaBased and MaxMana <= 0)
+			return;
+
+		const int32_t MaxStamina = target->is_player() ? static_cast<int32_t>(MaximumStamina) : 0;
+		if (StaminaBased and MaxStamina <= 0)
+			return;
+
+		const int32_t MaxSoul = target->is_player() ? target->getMaxSoul() - target->getSoul() : 0;
+		if (SoulBased and MaxSoul <= 0)
+			return;
+
+		// Currently any healing modifier increases any sub-type of healing, as I didn't expect to make healing a whole sub-type of system
+		// in the future when we drop the damage type restrictions built into our current client, we can move healing into a whole completely
+		// isolated sub-system and it would reduce MUCH of the work and data touched on from having it mixed in with all the aggressive combat
+		// I'm thinking, healing not even being part of combat at all, and therefore have it's own class in lua, and sub systems and interfaces for creation, conditions, ect.
+		if (const auto& casterPlayer = caster->getPlayer(); casterPlayer and casterPlayer->hasHealingModifiers())
+		{
+			const auto& main_sum    = casterPlayer->getMainHealingModSum();
+			const auto target_type  = target->getType();
+			const auto target_race  = target->getRace();
+			const auto& target_name = target->getName();
+
+			auto applied = [&](const auto& modifier)
+			{
+				return modifier.applies(damage_type, target_type, origin, target_race, target_name);
+			};
+
+			auto percent_boost = main_sum.percent;
+			auto flat_boost    = main_sum.flat;
+
+			if (casterPlayer->hasFilteredHealingMods())
+			{
+				for (const auto& modifier : casterPlayer->getFilteredHealingMods() | std::views::filter(applied))
+				{
+					percent_boost += modifier.isFlatValue() ? 0 : modifier.getValue();
+					flat_boost    += modifier.isFlatValue() ? modifier.getValue() : 0;
+				}
+			}
+
+			if (casterPlayer->hasNamedHealingMods())
+			{
+				for (const auto& modifier : casterPlayer->getNamedHealingMods() | std::views::filter(applied))
+				{
+					percent_boost += modifier.isFlatValue() ? 0 : modifier.getValue();
+					flat_boost    += modifier.isFlatValue() ? modifier.getValue() : 0;
+				}
+			}
+
+			if (percent_boost)
+				damage += damage * percent_boost / 100;
+
+			if (flat_boost)
+				damage += flat_boost;
+		}
+
+		if (HealthBased)
+			return heal_health(std::min(MaxHealth, damage), caster, target, *spectators);
+
+		if (ManaBased)
+			return heal_mana(std::min(MaxMana, damage), caster, target, *spectators);
+
+		if (StaminaBased)
+			return heal_stamina(std::min(MaxStamina, damage), caster, target, *spectators);
+
+		if (SoulBased)
+			return heal_soul(std::min(MaxSoul, damage), caster, target, *spectators);
 	}
 
 	void Combat::execute(const CreaturePtr& caster, const Position& center) noexcept
 	{
 		// todo: I have forgotten to ensure absolute value in all the comparisions which were used for
 		// calculating the distance, I need to go back and change that, in order to be sure it's positive for it's usage here
-		const auto& [positions, distance ] = getAreaPositions(caster->getPosition(), center);
+		const auto& [positions, distance] = getAreaPositions(caster->getPosition(), center);
 		const size_t n = std::min(static_cast<size_t>(distance), static_cast<size_t>(Map::maxViewportX + Map::maxClientViewportX));
 
 		if (distance == 0)

@@ -5685,13 +5685,24 @@ void Player::cacheModifier(const BlackTek::DamageModifier& mod) noexcept
 		return;
 	}
 
-	if (filter & BlackTek::DamageModifier::Flag::Reformed) 
+	if (filter & BlackTek::DamageModifier::Flag::Reformed)
 	{
 		cache.reform.push_back(mod);
 		return;
 	}
 
-	if (mod.isAttackStance()) 
+	if (filter & BlackTek::DamageModifier::Flag::HealBoost)
+	{
+		if (filter & BlackTek::DamageModifier::Flag::Named)
+			cache.named_healing.push_back(mod);
+		else if (filter & MODIFIER_CONDITIONAL_MASK)
+			cache.filtered_healing.push_back(mod);
+		else
+			cache.main_healing_boost.add(mod);
+		return;
+	}
+
+	if (mod.isAttackStance())
 	{
 		const bool post = isPostDamageAttack(mod.getType());
 
@@ -5749,6 +5760,17 @@ void Player::uncacheModifier(const BlackTek::DamageModifier& mod) noexcept
 		return;
 	}
 
+	if (filter & BlackTek::DamageModifier::Flag::HealBoost)
+	{
+		if (filter & BlackTek::DamageModifier::Flag::Named)
+			std::erase_if(cache.named_healing, [guid](const auto& m) { return m.getGUID() == guid; });
+		else if (filter & MODIFIER_CONDITIONAL_MASK)
+			std::erase_if(cache.filtered_healing, [guid](const auto& m) { return m.getGUID() == guid; });
+		else
+			cache.main_healing_boost.subtract(mod);
+		return;
+	}
+
 	if (mod.isAttackStance())
 	{
 		const bool post = isPostDamageAttack(mod.getType());
@@ -5789,13 +5811,14 @@ void Player::uncacheModifier(const BlackTek::DamageModifier& mod) noexcept
 const bool Player::addAugment(const std::shared_ptr<BlackTek::Augment>& augment)
 {
 	auto& augments = getAugments();
-	if (std::ranges::find(augments, augment) == augments.end()) 
+	if (std::ranges::find(augments, augment) == augments.end())
 	{
 		augment_count += 1;
 		attack_modifier_count += augment->attack_mod_count();
 		defense_modifier_count += augment->defense_mod_count();
 		conversion_modifier_count += augment->conversion_count();
 		reform_modifier_count += augment->reform_count();
+		healing_modifier_count += augment->healing_mod_count();
 		damage_modifiers_count += augment->damage_triggers();
 		origin_modifiers_count += augment->origin_triggers();
 		creature_modifiers_count += augment->creature_triggers();
@@ -5821,6 +5844,7 @@ const bool Player::addAugment(const std::string_view augmentName)
 		defense_modifier_count += augment->defense_mod_count();
 		conversion_modifier_count += augment->conversion_count();
 		reform_modifier_count += augment->reform_count();
+		healing_modifier_count += augment->healing_mod_count();
 		damage_modifiers_count += augment->damage_triggers();
 		origin_modifiers_count += augment->origin_triggers();
 		creature_modifiers_count += augment->creature_triggers();
@@ -5850,6 +5874,7 @@ const bool Player::removeAugment(const std::shared_ptr<BlackTek::Augment>& augme
 		defense_modifier_count -= augment->defense_mod_count();
 		conversion_modifier_count -= augment->conversion_count();
 		reform_modifier_count -= augment->reform_count();
+		healing_modifier_count -= augment->healing_mod_count();
 		damage_modifiers_count -= augment->damage_triggers();
 		origin_modifiers_count -= augment->origin_triggers();
 		creature_modifiers_count -= augment->creature_triggers();
@@ -5968,6 +5993,7 @@ const bool Player::removeAugment(std::string_view augmentName)
 		defense_modifier_count -= augment->defense_mod_count();
 		conversion_modifier_count -= augment->conversion_count();
 		reform_modifier_count -= augment->reform_count();
+		healing_modifier_count -= augment->healing_mod_count();
 		damage_modifiers_count -= augment->damage_triggers();
 		origin_modifiers_count -= augment->origin_triggers();
 		creature_modifiers_count -= augment->creature_triggers();
