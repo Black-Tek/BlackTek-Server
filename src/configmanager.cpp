@@ -178,8 +178,16 @@ bool ConfigManager::Load()
     booleans[REMOVE_WEAPON_CHARGES]   = combatTbl["items"]["remove_weapon_charges"].value_or(true);
     booleans[REMOVE_POTION_CHARGES]   = combatTbl["items"]["remove_potion_charges"].value_or(true);
     booleans[EXPERIENCE_FROM_PLAYERS] = combatTbl["pvp"]["experience_from_players"].value_or(false);
-    booleans[CLASSIC_ATTACK_SPEED]    = combatTbl["classic"]["attack_speed"].value_or(false);
-    booleans[CLASSIC_EQUIPMENT_SLOTS] = combatTbl["classic"]["equipment_slots"].value_or(false);
+    booleans[CLASSIC_ATTACK_SPEED]      = combatTbl["classic"]["attack_speed"].value_or(false);
+    booleans[CLASSIC_EQUIPMENT_SLOTS]   = combatTbl["classic"]["equipment_slots"].value_or(false);
+    booleans[ABSORB_NOTIFICATION]       = combatTbl["notifications"]["absorb"].value_or(false);
+    booleans[RESTORE_NOTIFICATION]      = combatTbl["notifications"]["restore"].value_or(false);
+    booleans[REPLENISH_NOTIFICATION]    = combatTbl["notifications"]["replenish"].value_or(false);
+    booleans[REVIVE_NOTIFICATION]       = combatTbl["notifications"]["revive"].value_or(false);
+    integers[HEAL_EFFECT]              = static_cast<int32_t>(combatTbl["notifications"]["heal_effect"].value_or(int64_t{0}));
+    integers[RESTORE_EFFECT]           = static_cast<int32_t>(combatTbl["notifications"]["restore_effect"].value_or(int64_t{0}));
+    integers[REPLENISH_EFFECT]         = static_cast<int32_t>(combatTbl["notifications"]["replenish_effect"].value_or(int64_t{0}));
+    integers[REVIVE_EFFECT]            = static_cast<int32_t>(combatTbl["notifications"]["revive_effect"].value_or(int64_t{0}));
 
     integers[PZ_LOCKED]                  = static_cast<int32_t>(combatTbl["skull"]["pz_locked"].value_or(int64_t{60000}));
     integers[KILLS_TO_RED]               = static_cast<int32_t>(combatTbl["skull"]["kills_to_red"].value_or(int64_t{3}));

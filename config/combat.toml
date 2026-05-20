@@ -60,6 +60,18 @@ default_defense_charge_cost = 1
 default_armor_charge_cost   = 0
 default_augment_charge_cost = 0
 
+[notifications]
+absorb    = false
+restore   = false
+replenish = false
+revive    = false
+
+# MagicEffectClasses (CONST_ME_*) values from const.h. 0 = no effect.
+heal_effect      = 0
+restore_effect   = 0
+replenish_effect = 0
+revive_effect    = 0
+
 # ── Damage formula presets ────────────────────────────────────────────────────
 # Select which named formula preset to use for each situation and stage.
 # Absent keys default to "Tibia" (original server mechanics).

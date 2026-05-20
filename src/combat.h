@@ -87,10 +87,7 @@ namespace BlackTek
 	{
 	public:
 		void setupArea(const std::vector<uint32_t>& vec, uint32_t rows);
-		void setupArea(int32_t length, int32_t spread);
-		void setupArea(int32_t radius);
 		void setupExtArea(const std::vector<uint32_t>& vec, uint32_t rows);
-		const MatrixArea& getArea(const Position& centerPos, const Position& targetPos) const;
 
 		[[nodiscard]] CombatArea GetCombatArea() const;
 		[[nodiscard]] CombatArea GetExtCombatArea() const;
@@ -100,6 +97,658 @@ namespace BlackTek
 		bool hasExtArea = false;
 	};
 
+
+	using RawArea = std::vector<uint32_t>;
+	using RawAreaVec = std::vector<RawArea>;
+	using DeflectionEffectMap = gtl::flat_hash_map<int, RawAreaVec>;
+	using DeflectAreaMap = gtl::flat_hash_map<Direction, const DeflectionEffectMap>;
+
+	static const DeflectionEffectMap _StandardDeflectionMap = DeflectionEffectMap
+	{
+			{1, {{0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 3, 0, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0}}},
+
+			{2, {{0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0,
+				  0, 1, 3, 0, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0},
+				 {0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 3, 1, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0},
+				 {0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0,
+				  0, 1, 2, 1, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0}}},
+
+			{3, {{0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0,
+				  0, 1, 3, 1, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0}}},
+
+			{4, {{0, 0, 0, 0, 0,
+				  0, 0, 1, 0, 0,
+				  0, 1, 3, 1, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0},
+				 {0, 0, 0, 0, 0,
+				  0, 1, 1, 1, 0,
+				  0, 0, 3, 0, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0}}},
+
+			{5, {{0, 0, 0, 0, 0,
+				  1, 0, 0, 0, 1,
+				  0, 1, 3, 1, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0},
+				 {0, 0, 1, 0, 0,
+				  0, 0, 1, 0, 0,
+				  0, 1, 3, 1, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0},
+				 {0, 0, 1, 0, 0,
+				  0, 1, 1, 1, 0,
+				  0, 0, 3, 0, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0}}},
+
+			{6, {{0, 0, 0, 0, 0,
+				  1, 0, 1, 0, 1,
+				  0, 1, 3, 1, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0},
+				 {0, 1, 0, 1, 0,
+				  0, 0, 1, 0, 0,
+				  0, 1, 3, 1, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0},
+				 {0, 0, 0, 0, 0,
+				  0, 0, 1, 0, 0,
+				  0, 1, 3, 1, 0,
+				  1, 0, 0, 0, 1,
+				  0, 0, 0, 0, 0},
+				 {0, 0, 0, 0, 0,
+				  0, 1, 1, 1, 0,
+				  0, 1, 3, 1, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0}}}
+	};
+
+
+	static const DeflectionEffectMap _DiagonalDeflectionMap = DeflectionEffectMap
+	{
+			{1,  {{0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 3, 0, 0,
+				  0, 0, 0, 0, 0,
+				  0, 0, 0, 0, 0}}},
+			{2, { // Double Diagonal
+				{0, 0, 0, 0, 0,
+				 0, 0, 1, 0, 0,
+				 0, 0, 3, 0, 0,
+				 0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0,
+				 0, 0, 3, 0, 0,
+				 0, 0, 1, 0, 0,
+				 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0,
+				 0, 1, 0, 0, 0,
+				 0, 0, 3, 0, 0,
+				 0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0,
+				 0, 0, 2, 1, 0,
+				 0, 0, 1, 0, 0,
+				 0, 0, 0, 0, 0}
+			}},
+			{3, { // Triple Diagonal
+				{0, 0, 0, 0, 0,
+				 0, 0, 1, 0, 0,
+				 0, 1, 3, 0, 0,
+				 0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0,
+				 0, 0, 0, 1, 0,
+				 0, 0, 3, 0, 0,
+				 0, 1, 0, 0, 0,
+				 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0,
+				 0, 0, 3, 1, 0,
+				 0, 0, 1, 0, 0,
+				 0, 0, 0, 0, 0}
+			}},
+			{4, { // Quad Diagonal
+				{0, 0, 0, 0, 0,
+				 0, 1, 1, 0, 0,
+				 0, 1, 3, 0, 0,
+				 0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0,
+				 0, 1, 0, 1, 0,
+				 0, 0, 3, 0, 0,
+				 0, 1, 0, 0, 0,
+				 0, 0, 0, 0, 0},
+				{1, 0, 0, 0, 0,
+				 0, 1, 1, 0, 0,
+				 0, 1, 2, 0, 0,
+				 0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0}
+			}},
+			{5, { // Quint Diagonal
+				{0, 0, 1, 0, 0,
+				 0, 0, 1, 0, 0,
+				 1, 1, 3, 0, 0,
+				 0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0,
+				 0, 0, 1, 1, 0,
+				 0, 1, 3, 0, 0,
+				 0, 1, 0, 0, 0,
+				 0, 0, 0, 0, 0},
+				{0, 0, 1, 0, 0,
+				 0, 1, 1, 0, 0,
+				 1, 1, 2, 0, 0,
+				 0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0}
+			}},
+			{6, { // Sext Diagonal
+				{0, 0, 1, 0, 0,
+				 0, 1, 1, 0, 0,
+				 1, 1, 3, 0, 0,
+				 0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0,
+				 0, 1, 1, 1, 0,
+				 0, 1, 3, 0, 0,
+				 0, 1, 0, 0, 0,
+				 0, 0, 0, 0, 0},
+				{1, 0, 0, 0, 0,
+				 0, 1, 1, 1, 0,
+				 0, 1, 2, 0, 0,
+				 0, 1, 0, 0, 0,
+				 0, 0, 0, 0, 0}
+			}}
+	};
+
+	static const DeflectAreaMap DeflectAreas = DeflectAreaMap
+	{
+		{DIRECTION_NORTH, _StandardDeflectionMap},
+		{DIRECTION_SOUTH, _StandardDeflectionMap},
+		{DIRECTION_WEST, _StandardDeflectionMap},
+		{DIRECTION_EAST, _StandardDeflectionMap},
+		{DIRECTION_NORTHWEST, _DiagonalDeflectionMap},
+		{DIRECTION_NORTHEAST, _DiagonalDeflectionMap},
+		{DIRECTION_SOUTHWEST, _DiagonalDeflectionMap},
+		{DIRECTION_SOUTHEAST, _DiagonalDeflectionMap},
+	};
+
+	gtl::flat_hash_map<int, RawAreaVec> deflectionAreas = 
+	{
+		{1, {{0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 3, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0}}},
+
+		{2, {{0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 1, 3, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 1, 2, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0}}},
+
+		{3, {{0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 1, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0}}},
+
+		{4, {{0, 0, 0, 0, 0,
+			  0, 0, 1, 0, 0,
+			  0, 1, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 0, 0, 0, 0,
+			  0, 1, 1, 1, 0,
+			  0, 0, 3, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0}}},
+
+		{5, {{0, 0, 0, 0, 0,
+			  1, 0, 0, 0, 1,
+			  0, 1, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 0, 1, 0, 0,
+			  0, 0, 1, 0, 0,
+			  0, 1, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 0, 1, 0, 0,
+			  0, 1, 1, 1, 0,
+			  0, 0, 3, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0}}},
+
+		{6, {{0, 0, 0, 0, 0,
+			  1, 0, 1, 0, 1,
+			  0, 1, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 1, 0, 1, 0,
+			  0, 0, 1, 0, 0,
+			  0, 1, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 0, 0, 0, 0,
+			  0, 0, 1, 0, 0,
+			  0, 1, 3, 1, 0,
+			  0, 1, 0, 1, 0,
+			  0, 0, 0, 0, 0},
+			 {0, 0, 0, 0, 0,
+			  0, 1, 1, 1, 0,
+			  0, 1, 3, 1, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0}}}
+	};
+
+	gtl::flat_hash_map<int, RawAreaVec> deflectionDiagonalAreas =
+	{
+		{1,  {{0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 3, 0, 0,
+			  0, 0, 0, 0, 0,
+			  0, 0, 0, 0, 0}}},
+		{2, { // Double Diagonal
+			{0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 3, 0, 0,
+			 0, 0, 1, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 0, 1, 0, 0,
+			 0, 0, 3, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 2, 1, 0,
+			 0, 0, 1, 0, 0,
+			 0, 0, 0, 0, 0}
+		}},
+		{3, { // Triple Diagonal
+			{0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 3, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 3, 1, 0,
+			 0, 0, 1, 1, 0,
+			 0, 0, 0, 0, 0}
+		}},
+		{4, { // Quad Diagonal
+			{0, 0, 0, 0, 0,
+			 0, 1, 1, 0, 0,
+			 0, 1, 3, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 1, 0, 0, 0,
+			 0, 0, 3, 1, 0,
+			 0, 0, 1, 0, 0,
+			 0, 0, 0, 0, 0}
+		}},
+		{5, { // Quint Diagonal
+			{0, 0, 1, 0, 0,
+			 0, 0, 1, 0, 0,
+			 1, 1, 3, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 0, 1, 1, 0,
+			 0, 1, 3, 0, 0,
+			 0, 1, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 0, 0, 1, 0,
+			 0, 0, 3, 1, 0,
+			 0, 1, 1, 0, 0,
+			 0, 0, 0, 0, 0}
+		}},
+		{6, { // Sext Diagonal
+			{0, 0, 1, 0, 0,
+			 0, 1, 1, 0, 0,
+			 1, 1, 3, 0, 0,
+			 0, 0, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 0, 1, 1, 0,
+			 0, 1, 3, 0, 0,
+			 0, 1, 0, 0, 0,
+			 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0,
+			 0, 0, 0, 1, 0,
+			 0, 0, 3, 1, 0,
+			 0, 1, 1, 0, 0,
+			 0, 0, 0, 0, 0}
+		}}
+	};
+
+
+
+	// double Diagonal
+	RawAreaVec DeflectDiagonal2xAreas =
+	{
+		{
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 3, 0, 0,
+			0, 0, 1, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 0, 0, 0,
+			0, 0, 1, 0, 0,
+			0, 0, 3, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 2, 1, 0,
+			0, 0, 1, 0, 0,
+			0, 0, 0, 0, 0
+		},
+	};
+
+	// triple Diagonal
+	RawAreaVec DeflectDiagonal3xAreas =
+	{
+		{
+			0, 0, 0, 0, 0,
+			0, 0, 1, 0, 0,
+			0, 1, 3, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 3, 1, 0,
+			0, 0, 1, 0, 0,
+			0, 0, 0, 0, 0
+		}
+	};
+
+	// quad Diagonal
+	RawAreaVec DeflectDiagonal4xAreas =
+	{
+		{
+			0, 0, 0, 0, 0,
+			0, 1, 1, 0, 0,
+			0, 1, 3, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 0, 0, 0,
+			0, 1, 0, 0, 0,
+			0, 0, 3, 1, 0,
+			0, 0, 1, 0, 0,
+			0, 0, 0, 0, 0
+		}
+	};
+
+	// quint Diagonal
+	RawAreaVec DeflectDiagonal5xAreas =
+	{
+		{
+			0, 0, 1, 0, 0,
+			0, 0, 1, 0, 0,
+			1, 1, 3, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 0, 0, 0,
+			0, 0, 1, 1, 0,
+			0, 1, 3, 0, 0,
+			0, 1, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 0, 0, 0,
+			0, 0, 0, 1, 0,
+			0, 0, 3, 1, 0,
+			0, 1, 1, 0, 0,
+			0, 0, 0, 0, 0
+		}
+	};
+
+	// sext Diagonal
+	RawAreaVec DeflectDiagonal6xAreas =
+	{
+		{
+			0, 0, 1, 0, 0,
+			0, 1, 1, 0, 0,
+			1, 1, 3, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 0, 0, 0,
+			0, 0, 1, 1, 0,
+			0, 1, 3, 0, 0,
+			0, 1, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 0, 0, 0,
+			0, 0, 0, 1, 0,
+			0, 0, 3, 1, 0,
+			0, 1, 1, 0, 0,
+			0, 0, 0, 0, 0
+		}
+	};
+
+
+	// single
+	RawArea Deflect1xArea = 
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 3, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	};
+
+	// doubles
+	RawAreaVec Deflect2xAreas =
+	{
+		{
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 1, 3, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 3, 1, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 1, 2, 1, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+	};
+
+
+	// triple
+	RawArea Deflect3xArea =
+	{
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 1, 3, 1, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0
+	};
+
+
+
+	// quad
+	RawAreaVec Deflect4xAreas =
+	{
+		{
+			0, 0, 0, 0, 0,
+			0, 0, 1, 0, 0,
+			0, 1, 3, 1, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 0, 0, 0,
+			0, 1, 1, 1, 0,
+			0, 0, 3, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		}
+	};
+
+
+
+	// quint (5's)
+	RawAreaVec Deflect5xAreas =
+	{
+		{
+			0, 0, 0, 0, 0,
+			1, 0, 0, 0, 1,
+			0, 1, 3, 1, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 1, 0, 0,
+			0, 0, 1, 0, 0,
+			0, 1, 3, 1, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 1, 0, 0,
+			0, 1, 1, 1, 0,
+			0, 0, 3, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		}
+	};
+
+
+	// sext (6's)
+	RawAreaVec Deflect6xAreas =
+	{
+		{
+			0, 0, 0, 0, 0,
+			1, 0, 1, 0, 1,
+			0, 1, 3, 1, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 1, 0, 1, 0,
+			0, 0, 1, 0, 0,
+			0, 1, 3, 1, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 0, 0, 0,
+			0, 0, 1, 0, 0,
+			0, 1, 3, 1, 0,
+			0, 1, 0, 1, 0,
+			0, 0, 0, 0, 0
+		},
+
+		{
+			0, 0, 0, 0, 0,
+			0, 1, 1, 1, 0,
+			0, 1, 3, 1, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		}
+	};
+
+
+
+	static std::vector<uint32_t> GetDeflectArea(uint32_t targets)
+	{
+		switch (targets) 
+		{
+			case 1:		return Deflect1xArea;
+			case 2:		return Deflect2xAreas[uniform_random(0, Deflect2xAreas.size() - 1)];
+			case 3:		return Deflect3xArea;
+			case 4:		return Deflect4xAreas[uniform_random(0, Deflect4xAreas.size() - 1)];
+			case 5:		return Deflect5xAreas[uniform_random(0, Deflect5xAreas.size() - 1)];
+			default:	return Deflect6xAreas[uniform_random(0, Deflect6xAreas.size() - 1)];
+		}
+	}
+
+	static std::vector<uint32_t> GetDiaganolDeflectArea(uint32_t targets) 
+	{
+		switch (targets) 
+		{
+			case 1:		return Deflect1xArea;
+			case 2:		return DeflectDiagonal2xAreas[uniform_random(0, DeflectDiagonal2xAreas.size() - 1)];
+			case 3:		return DeflectDiagonal3xAreas[uniform_random(0, DeflectDiagonal3xAreas.size() - 1)];
+			case 4:		return DeflectDiagonal4xAreas[uniform_random(0, DeflectDiagonal4xAreas.size() - 1)];
+			case 5:		return DeflectDiagonal5xAreas[uniform_random(0, DeflectDiagonal5xAreas.size() - 1)];
+			default:	return DeflectDiagonal6xAreas[uniform_random(0, DeflectDiagonal6xAreas.size() - 1)];
+		}
+	}
 
 	// Todo: Create a struct for "CombatTable" which will be a specific defined and handled lua table able to be passed for construction of combat objects
 
@@ -130,12 +779,18 @@ namespace BlackTek
 			Augment,
 			Absorb,
 			Restore,
+			Replenish,
+			Revive,
 			Reflect,
 			Deflect,
 			Ricochet,
 			Piercing,
+			LifeSteal,
+			ManaSteal,
+			StaminaSteal,
+			SoulSteal,
 
-			Origins = 12
+			Origins = 18
 		};
 
 		enum DamageType : uint16_t
@@ -489,16 +1144,14 @@ namespace BlackTek
 		void strike_target(const MonsterPtr& attacker, const PlayerPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const MonsterPtr& attacker, const MonsterPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const CreaturePtr& attacker, const CreaturePtr& defender, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
-		void heal_health(const int32_t value, const auto& caster, const auto& target, std::span<const CreaturePtr> spectators) const noexcept;
-		void heal_mana(const int32_t value, const auto& caster, const auto& target, std::span<const CreaturePtr> spectators) const noexcept;
-		void heal_stamina(const int32_t value, const auto& caster, const auto& target, std::span<const CreaturePtr> spectators) const noexcept;
-		void heal_soul(const int32_t value, const auto& caster, const auto& target, std::span<const CreaturePtr> spectators) const noexcept;
+		void apply_healing_modifiers(const PlayerPtr& caster, const auto& target);
 		void heal_target(const auto& caster, const auto& target, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 		void execute(const CreaturePtr& caster, const Position& center) noexcept;
 		void setArea(AreaCombat* area);
+		void setArea(std::unique_ptr<AreaCombat> area);
 		void defense_block_effect(const Position& target_position) const noexcept;
 		void armor_block_effect(const Position& target_position) const noexcept;
-		void notify_players();
+		void notify_players(const std::optional<std::span<const CreaturePtr>> spectators);
 
 		[[nodiscard]] uint32_t collect_notice_data(const CreaturePtr& target) const noexcept;
 		[[nodiscard]] uint8_t immunity_block_effect() const noexcept;
@@ -618,6 +1271,14 @@ namespace BlackTek
 		void setSituationFormulas(uint8_t index, SituationFormulas&& formulas) noexcept;
 		void setFormulaCallback(uint8_t index, FormulaStage stage, int32_t lua_ref) noexcept;
 
+		[[nodiscard]] static Position generateAttackPosition(const CreaturePtr& attacker, const PlayerPtr& defender) noexcept;
+		[[nodiscard]] static std::unique_ptr<AreaCombat> generateDeflectArea(const CreaturePtr& attacker, const PlayerPtr& defender, int32_t targetCount) noexcept;
+		[[nodiscard]] static std::vector<Position> getOpenPositionsInRadius(const PlayerPtr& defender, int radius) noexcept;
+
+		static void deflect_damage(const CreaturePtr& attacker, const PlayerPtr& defender, uint32_t amount, uint16_t damageType, uint8_t distanceEffect, uint8_t impactEffect) noexcept;
+
+		static void ricochetDamage(const PlayerPtr& defender, uint32_t amount, uint16_t damageType, uint8_t distanceEffect, uint8_t impactEffect) noexcept;
+
 		[[nodiscard]] int64_t id() const noexcept { return combat_id; }
 		void set_id(int64_t new_id) { combat_id = new_id; }
 
@@ -636,6 +1297,9 @@ namespace BlackTek
 		{
 			return formula_source_id != -1 ? formula_source_id : combat_id;
 		}
+
+		void reform_augment(const CreaturePtr& attacker, const PlayerPtr& victim) noexcept;
+		void defense_augment(const CreaturePtr& attacker, const PlayerPtr& victim, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 
 		int64_t combat_id = -1;
 		int64_t formula_source_id = -1;
