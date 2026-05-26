@@ -298,6 +298,45 @@ namespace BlackTek
 
 	static NoticeData UnPackNotice(uint32_t packedValue) { return std::bit_cast<NoticeData>(packedValue); }
 
+	struct HealNoticeData
+	{
+		TextColor_t        color   = TEXTCOLOR_NONE;
+		MagicEffectClasses effect  = CONST_ME_NONE;
+		Combat::Config     stat    = Combat::Config::PlaceHolder;
+		uint8_t            padding = 0;
+	};
+
+	struct HealNotice
+	{
+		TextColor_t        color;
+		MagicEffectClasses effect;
+		std::string_view   stat_name;
+	};
+
+	template<ByteLike T1, ByteLike T2, ByteLike T3>
+	[[nodiscard]] constexpr uint32_t PackHealNotice(T1 color, T2 effect, T3 stat)
+	{
+		HealNoticeData data
+		{
+			.color   = static_cast<TextColor_t>(color),
+			.effect  = static_cast<MagicEffectClasses>(effect),
+			.stat    = static_cast<Combat::Config>(stat),
+			.padding = 0
+		};
+		return std::bit_cast<uint32_t>(data);
+	}
+
+	static HealNotice UnPackHealNotice(uint32_t packed)
+	{
+		const auto data = std::bit_cast<HealNoticeData>(packed);
+		const std::string_view stat_name =
+		    data.stat == Combat::Config::HealthTarget  ? "health"  :
+		    data.stat == Combat::Config::ManaTarget    ? "mana"    :
+		    data.stat == Combat::Config::StaminaTarget ? "stamina" :
+		    data.stat == Combat::Config::SoulTarget    ? "soul"    : "";
+		return { data.color, data.effect, stat_name };
+	}
+
 	Position Combat::generateAttackPosition(const CreaturePtr& attacker, const PlayerPtr& defender)
 	{
 		const auto defense_position = defender->getPosition();
@@ -400,9 +439,8 @@ namespace BlackTek
 		return combatArea;
 	}
 
-	std::vector<Position> Combat::getOpenPositionsInRadius(const PlayerPtr& defender, int radius)
+	void Combat::getOpenPositionsInRadius(const PlayerPtr& defender, int radius, std::vector<Position>& out)
 	{
-		std::vector<Position> openPositions;
 		const auto& center = defender->getPosition();
 		for (int x = -radius; x <= radius; ++x)
 		{
@@ -429,12 +467,10 @@ namespace BlackTek
 
 				if (isValid)
 				{
-					openPositions.push_back(pos);
+					out.push_back(pos);
 				}
 			}
 		}
-
-		return openPositions;
 	}
 	
 	// Note: We chose not to reduce the damage on the combat object calling this method, inside this method,
@@ -463,7 +499,8 @@ namespace BlackTek
 
 	void Combat::ricochetDamage(const PlayerPtr& defender, uint32_t amount, uint16_t damageType, uint8_t distanceEffect, uint8_t impactEffect)
 	{
-		auto targetList = getOpenPositionsInRadius(defender, 3);
+		std::vector<Position> targetList;
+		getOpenPositionsInRadius(defender, 3, targetList);
 
 		if (targetList.size() > 0)
 		{
@@ -478,7 +515,7 @@ namespace BlackTek
 			ricochet->config.set(Config::TrueDamage);
 			ricochet->config.set(Config::HasArea);
 			ricochet->distanceEffect = distanceEffect;
-			ricochet->origin = Origin::Deflect;
+			ricochet->origin = Origin::Ricochet;
 			ricochet->impactEffect = (impactEffect == CONST_ME_NONE) ? CombatTypeToAreaEffect(static_cast<CombatType_t>(damageType)) : impactEffect;
 			ricochet->setArea(std::move(damageArea));
 			ricochet->execute(defender, targetPos);
@@ -930,6 +967,7 @@ namespace BlackTek
 		damage -= penetration_damage;
 
 		auto handle = g_combat_registry.Create(std::to_underlying(DamageType::Undefined), penetration_damage);
+		handle->origin = Origin::Piercing;
 		handle->config.set(Config::TrueDamage);
 		return handle;
 	}
@@ -960,7 +998,7 @@ namespace BlackTek
 				damage -= stolen;
 
 				auto lifesteal = g_combat_registry.Create(DamageType::LifeDrain, stolen);
-				lifesteal->origin = Origin::Augment;
+				lifesteal->origin = Origin::LifeSteal;
 				lifesteal->config.set(Config::Leech);
 				lifesteal->config.set(Config::TopTargetOnly);
 
@@ -986,7 +1024,7 @@ namespace BlackTek
 				damage -= stolen;
 
 				auto manasteal = g_combat_registry.Create(DamageType::ManaDrain, mana);
-				manasteal->origin = Origin::Augment;
+				manasteal->origin = Origin::ManaSteal;
 				manasteal->config.set(Config::Leech);
 				manasteal->config.set(Config::TopTargetOnly);
 				manasteal->config.set(Config::TrueDamage);
@@ -1011,7 +1049,7 @@ namespace BlackTek
 				damage -= stolen;
 				
 				auto staminasteal = g_combat_registry.Create(DamageType::Undefined, stamina);
-				staminasteal->origin = Origin::Augment;
+				staminasteal->origin = Origin::StaminaSteal;
 				staminasteal->config.set(Config::Leech);
 				staminasteal->config.set(Config::TopTargetOnly);
 				staminasteal->config.set(Config::TrueDamage);
@@ -1036,7 +1074,7 @@ namespace BlackTek
 				damage -= stolen;
 
 				auto soulsteal = g_combat_registry.Create(DamageType::Undefined, soul);
-				soulsteal->origin = Origin::Augment;
+				soulsteal->origin = Origin::SoulSteal;
 				soulsteal->config.set(Config::Leech);
 				soulsteal->config.set(Config::TopTargetOnly);
 				soulsteal->config.set(Config::TrueDamage);
@@ -1076,7 +1114,8 @@ namespace BlackTek
 				if (life)
 				{
 					auto hp_gain = g_combat_registry.Create(DamageType::Healing, life);
-					hp_gain->origin = Origin::Augment;
+					hp_gain->origin = Origin::LifeSteal;
+					hp_gain->config.set(Config::HealthTarget);
 					hp_gain->config.set(Config::Leech);
 					hp_gain->config.set(Config::TopTargetOnly);
 					hp_gain->config.set(Config::TrueDamage);
@@ -1097,7 +1136,8 @@ namespace BlackTek
 				if (mana)
 				{
 					auto mana_gain = g_combat_registry.Create(DamageType::Healing, mana);
-					mana_gain->origin = Origin::Augment;
+					mana_gain->origin = Origin::ManaSteal;
+					mana_gain->config.set(Config::ManaTarget);
 					mana_gain->config.set(Config::Leech);
 					mana_gain->config.set(Config::TopTargetOnly);
 					mana_gain->config.set(Config::TrueDamage);
@@ -1118,7 +1158,8 @@ namespace BlackTek
 				if (stamina)
 				{
 					auto stamina_gain = g_combat_registry.Create(DamageType::Healing, stamina);
-					stamina_gain->origin = Origin::Augment;
+					stamina_gain->origin = Origin::StaminaSteal;
+					stamina_gain->config.set(Config::StaminaTarget);
 					stamina_gain->config.set(Config::Leech);
 					stamina_gain->config.set(Config::TopTargetOnly);
 					stamina_gain->config.set(Config::TrueDamage);
@@ -1139,7 +1180,8 @@ namespace BlackTek
 				if (soul)
 				{
 					auto soul_gain = g_combat_registry.Create(DamageType::Healing, soul);
-					soul_gain->origin = Origin::Augment;
+					soul_gain->origin = Origin::SoulSteal;
+					soul_gain->config.set(Config::SoulTarget);
 					soul_gain->config.set(Config::Leech);
 					soul_gain->config.set(Config::TopTargetOnly);
 					soul_gain->config.set(Config::TrueDamage);
@@ -1760,6 +1802,7 @@ namespace BlackTek
 				if (percent_pierce or flat_pierce)
 				{
 					auto true_damage = penetrateDamage(percent_pierce, flat_pierce);
+					true_damage->strike_target(caster, victim, true, spectators);
 				}
 
 				if (percent_crit or flat_crit)
@@ -1889,38 +1932,53 @@ namespace BlackTek
 
 	void Combat::apply_healing_modifiers(const PlayerPtr& caster, const auto& target)
 	{
-		if (caster->hasHealingModifiers())
+		if (not caster->hasHealingModifiers())
+			return;
+
+		const auto heal_type =
+			config.test(Config::HealthTarget)   ? DamageModifier::AttackType::Regeneration  :
+			config.test(Config::ManaTarget)     ? DamageModifier::AttackType::Attunement    :
+			config.test(Config::StaminaTarget)  ? DamageModifier::AttackType::Vigor         :
+			config.test(Config::SoulTarget)     ? DamageModifier::AttackType::Transcendence :
+			                                      DamageModifier::AttackType::None;
+
+		if (heal_type == DamageModifier::AttackType::None)
+			return;
+
+		const auto& main_sum    = caster->getMainHealingModSum(heal_type);
+		const auto target_type  = target->getType();
+		const auto target_race  = target->getRace();
+		const auto& target_name = target->getName();
+		const auto type_val     = std::to_underlying(heal_type);
+
+		auto applied = [&](const auto& modifier)
 		{
-			const auto& main_sum = caster->getMainHealingModSum();
-			const auto target_type = target->getType();
-			const auto target_race = target->getRace();
-			const auto& target_name = target->getName();
+			return modifier.getType() == type_val
+				and modifier.applies(damage_type, target_type, origin, target_race, target_name);
+		};
 
-			auto applied = [&](const auto& modifier) { return modifier.applies(damage_type, target_type, origin, target_race, target_name);	};
+		auto percent_boost = main_sum.percent;
+		auto flat_boost    = main_sum.flat;
 
-			auto percent_boost = main_sum.percent;
-			auto flat_boost = main_sum.flat;
-
-			if (caster->hasFilteredHealingMods())
+		if (caster->hasFilteredHealingMods())
+		{
+			for (const auto& modifier : caster->getFilteredHealingMods() | std::views::filter(applied))
 			{
-				for (const auto& modifier : caster->getFilteredHealingMods() | std::views::filter(applied))
-				{
-					percent_boost += modifier.isFlatValue() ? 0 : modifier.getValue();
-					flat_boost += modifier.isFlatValue() ? modifier.getValue() : 0;
-				}
+				percent_boost += modifier.isFlatValue() ? 0 : modifier.getValue();
+				flat_boost    += modifier.isFlatValue() ? modifier.getValue() : 0;
 			}
-
-			if (caster->hasNamedHealingMods())
-			{
-				for (const auto& modifier : caster->getNamedHealingMods() | std::views::filter(applied))
-				{
-					percent_boost += modifier.isFlatValue() ? 0 : modifier.getValue();
-					flat_boost += modifier.isFlatValue() ? modifier.getValue() : 0;
-				}
-			}
-
-			damage = (percent_boost ? damage * percent_boost / 100 : 0) + flat_boost;
 		}
+
+		if (caster->hasNamedHealingMods())
+		{
+			for (const auto& modifier : caster->getNamedHealingMods() | std::views::filter(applied))
+			{
+				percent_boost += modifier.isFlatValue() ? 0 : modifier.getValue();
+				flat_boost    += modifier.isFlatValue() ? modifier.getValue() : 0;
+			}
+		}
+
+		damage = (percent_boost ? damage * percent_boost / 100 : 0) + flat_boost;
 	}
 
 	void Combat::heal_target(const auto& caster, const auto& target, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) const
@@ -1928,63 +1986,49 @@ namespace BlackTek
 		if (damage_type != DamageType::Healing or damage == 0)
 			return;
 
-		auto heal_type = static_cast<Config>(std::countr_zero(config.to_ulong()));
-
-		switch (heal_type)
+		if (config.test(Config::HealthTarget))
 		{
-			case Config::HealthTarget:
-			{
-				const int32_t MaxHealth = target->getMaxHealth() - target->getHealth();
+			const int32_t MaxHealth = target->getMaxHealth() - target->getHealth();
 
-				if (MaxHealth <= 0)
-					return;
-				
-				apply_healing_modifiers(caster, target);
-				target->changeHealth(damage);
-				notify_players(spectators);
-				break;
-			}
-			case Config::ManaTarget:
-			{
-				const int32_t MaxMana = target->getMaxMana() - target->getMana();
+			if (MaxHealth <= 0)
+				return;
 
-				if (MaxMana <= 0)
-					return;
+			apply_healing_modifiers(caster, target);
+			target->changeHealth(damage);
+			heal_notification(caster, target, damage, spectators);
+		}
+		else if (config.test(Config::ManaTarget))
+		{
+			const int32_t MaxMana = target->getMaxMana() - target->getMana();
 
-				apply_healing_modifiers(caster, target);
-				target->changeMana(damage);
-				notify_players(spectators);
-				break;
-			}
-			case Config::StaminaTarget:
-			{
-				const int32_t MaxStamina = target->getMaxStamina() - target->getStamina();
+			if (MaxMana <= 0)
+				return;
 
-				if (MaxStamina <= 0)
-					return;
+			apply_healing_modifiers(caster, target);
+			target->changeMana(damage);
+			heal_notification(caster, target, damage, spectators);
+		}
+		else if (config.test(Config::StaminaTarget))
+		{
+			const int32_t MaxStamina = target->getMaxStamina() - target->getStamina();
 
-				apply_healing_modifiers(caster, target);
-				target->changeStamina(damage);
-				notify_players(spectators);
-				break;
-			}
-			case Config::SoulTarget:
-			{
-				const int32_t MaxSoul = target->getMaxSoul() - target->getSoul();
+			if (MaxStamina <= 0)
+				return;
 
-				if (MaxSoul <= 0)
-					return;
+			apply_healing_modifiers(caster, target);
+			target->changeStamina(damage);
+			heal_notification(caster, target, damage, spectators);
+		}
+		else if (config.test(Config::SoulTarget))
+		{
+			const int32_t MaxSoul = target->getMaxSoul() - target->getSoul();
 
-				apply_healing_modifiers(caster, target);
-				target->changeSoul(damage);
-				notify_players(spectators);
-				break;
-			}
-			default: [[unlikely]]
-			{
-				// log this
-				break;
-			}
+			if (MaxSoul <= 0)
+				return;
+
+			apply_healing_modifiers(caster, target);
+			target->changeSoul(damage);
+			heal_notification(caster, target, damage, spectators);
 		}
 	}
 
@@ -2406,147 +2450,384 @@ namespace BlackTek
 		return 0;
 	}
 
-	void Combat::notify_players()
+	uint32_t Combat::collect_heal_notice_data() const noexcept
 	{
-		// we need the three types of notifications
-		// ourself, our target/attacker, and the observers
-		// we should probably be able to apply intinsics here too
+		if (config.test(Config::HealthTarget))  return PackHealNotice(TEXTCOLOR_LIGHTGREEN, CONST_ME_MAGIC_GREEN, Config::HealthTarget);
+		if (config.test(Config::ManaTarget))    return PackHealNotice(TEXTCOLOR_BLUE,       CONST_ME_MAGIC_BLUE,  Config::ManaTarget);
+		if (config.test(Config::StaminaTarget)) return PackHealNotice(TEXTCOLOR_ORANGE,     CONST_ME_MAGIC_GREEN, Config::StaminaTarget);
+		if (config.test(Config::SoulTarget))    return PackHealNotice(TEXTCOLOR_PURPLE,       CONST_ME_MAGIC_GREEN, Config::SoulTarget);
+		return 0;
+	}
+
+	constexpr Combat::OriginNotice Combat::collect_origin_notice(Origin o) noexcept
+	{
+		switch (o)
+		{
+			case Origin::Condition:    return { CONST_ME_NONE,         "a condition"             };
+			case Origin::Spell:        return { CONST_ME_NONE,         "a spell"                 };
+			case Origin::Melee:        return { CONST_ME_NONE,         "a melee attack"          };
+			case Origin::Ranged:       return { CONST_ME_NONE,         "a ranged attack"         };
+			case Origin::Fist:         return { CONST_ME_NONE,         "a fist strike"           };
+			case Origin::Sword:        return { CONST_ME_NONE,         "a sword strike"          };
+			case Origin::Axe:          return { CONST_ME_NONE,         "an axe blow"             };
+			case Origin::Club:         return { CONST_ME_NONE,         "a club blow"             };
+			case Origin::Wand:         return { CONST_ME_NONE,         "a wand attack"           };
+			case Origin::Rod:          return { CONST_ME_NONE,         "a rod attack"            };
+			case Origin::Bow:          return { CONST_ME_NONE,         "a bow shot"              };
+			case Origin::Crossbow:     return { CONST_ME_NONE,         "a crossbow bolt"         };
+			case Origin::Throwable:    return { CONST_ME_NONE,         "a thrown weapon"         };
+			case Origin::Augment:      return { CONST_ME_NONE,         "an augmented attack"     };
+			case Origin::Reflect:      return { CONST_ME_MAGIC_RED,    "a reflected attack"      };
+			case Origin::Deflect:      return { CONST_ME_MAGIC_BLUE,   "a deflected attack"      };
+			case Origin::Ricochet:     return { CONST_ME_MAGIC_BLUE,   "a ricocheting attack"    };
+			case Origin::Piercing:     return { CONST_ME_PURPLESMOKE,  "a piercing blow"         };
+			case Origin::LifeSteal:    return { CONST_ME_MAGIC_RED,    "a life drain"            };
+			case Origin::ManaSteal:    return { CONST_ME_MAGIC_BLUE,   "a mana drain"            };
+			case Origin::StaminaSteal: return { CONST_ME_MAGIC_GREEN,  "a stamina drain"         };
+			case Origin::SoulSteal:    return { CONST_ME_MAGIC_GREEN,  "a soul drain"            };
+			case Origin::Absorb:       return { CONST_ME_MAGIC_GREEN,  "absorption"              };
+			case Origin::Restore:      return { CONST_ME_MAGIC_BLUE,   "mana restoration"        };
+			case Origin::Replenish:    return { CONST_ME_MAGIC_GREEN,  "stamina replenishment"   };
+			case Origin::Revive:       return { CONST_ME_MAGIC_GREEN,  "soul revival"            };
+			default:                   return {};
+		}
+	}
+
+	void Combat::heal_notification(const auto& caster, const auto& target, uint32_t amount, std::optional<std::span<const CreaturePtr>> spectators) const noexcept
+	{
+		if (amount == 0)
+			return;
+
+		const auto notice = UnPackHealNotice(collect_heal_notice_data());
+		if (notice.stat_name.empty()) [[unlikely]]
+			return;
+
+		const bool self_target       = (caster == target);
+		const auto target_position   = target->getPosition();
+		const auto& target_name      = target->getName();
+		const auto& caster_name      = caster->getNameDescription();
+		const auto origin_notice      = collect_origin_notice(static_cast<Origin>(origin));
+		const std::string amount_str  = std::to_string(amount);
+		const std::string stat_str    = std::string(notice.stat_name);
+		const std::string origin_verb = std::string(origin_notice.verb);
+
+		if (not spectators)
+			spectators = std::make_optional<std::span<const CreaturePtr>>(g_game.map.fetchSpectators(target_position, true, true));
+
+		auto is_observer = [&](const auto& spectator) { return spectator != target and spectator != caster; };
+
+		const bool is_defense_conversion = (origin == Origin::Absorb   or origin == Origin::Restore
+		                                 or origin == Origin::Replenish or origin == Origin::Revive);
+		const bool is_drain_gain         = (origin == Origin::LifeSteal   or origin == Origin::ManaSteal
+		                                 or origin == Origin::StaminaSteal or origin == Origin::SoulSteal);
+
+		const std::string target_text =
+		    is_defense_conversion ? "Your " + origin_verb + " restored " + amount_str + " " + stat_str + "."
+		  : is_drain_gain         ? "You drained " + amount_str + " " + stat_str + " from your target."
+		  : self_target           ? "You heal yourself for " + amount_str + " " + stat_str + "."
+		                          : "You are healed for " + amount_str + " " + stat_str + " by " + origin_verb + ".";
+
+		const std::string caster_text =
+		    is_defense_conversion ? target_name + "'s " + origin_verb + " restored " + amount_str + " " + stat_str + " from your attack."
+		  : is_drain_gain         ? "You drained " + amount_str + " " + stat_str + " from " + target_name + "."
+		                          : target_name + " is healed for " + amount_str + " " + stat_str + " by your " + origin_verb + ".";
+
+		const std::string observer_text =
+		    is_defense_conversion ? target_name + "'s " + origin_verb + " restored " + amount_str + " " + stat_str + "."
+		  : is_drain_gain         ? caster_name + " drained " + amount_str + " " + stat_str + "."
+		                          : target_name + " is healed for " + amount_str + " " + stat_str + " by " + origin_verb + ".";
+
+		TextMessage observer_message = {};
+		observer_message.position      = target_position;
+		observer_message.primary.color = notice.color;
+		observer_message.primary.value = amount;
+		observer_message.type          = MESSAGE_HEALED_OTHERS;
+		observer_message.text          = observer_text;
+
+		if (target->is_player())
+		{
+			TextMessage target_message = {};
+			target_message.position      = target_position;
+			target_message.primary.color = notice.color;
+			target_message.primary.value = amount;
+			target_message.type          = MESSAGE_HEALED;
+			target_message.text          = target_text;
+
+			auto* player = static_cast<Player*>(target.get());
+			player->sendTextMessage(target_message);
+			player->sendMagicEffect(target_position, notice.effect);
+			if (origin_notice.effect != CONST_ME_NONE)
+				player->sendMagicEffect(target_position, origin_notice.effect);
+			player->sendStats();
+		}
+
+		if (not self_target and caster->is_player())
+		{
+			TextMessage caster_message = {};
+			caster_message.position      = target_position;
+			caster_message.primary.color = notice.color;
+			caster_message.primary.value = amount;
+			caster_message.type          = MESSAGE_HEALED_OTHERS;
+			caster_message.text          = caster_text;
+
+			auto* player = static_cast<Player*>(caster.get());
+			player->sendTextMessage(caster_message);
+			player->sendMagicEffect(target_position, notice.effect);
+			if (origin_notice.effect != CONST_ME_NONE)
+				player->sendMagicEffect(target_position, origin_notice.effect);
+		}
+
+		for (const auto& spectator : *spectators | std::views::filter(is_observer))
+		{
+			auto* player = static_cast<Player*>(spectator.get());
+			player->sendTextMessage(observer_message);
+			player->sendMagicEffect(target_position, notice.effect);
+			if (origin_notice.effect != CONST_ME_NONE)
+				player->sendMagicEffect(target_position, origin_notice.effect);
+		}
+	}
+
+	void Combat::manadamage_notification(const auto& attacker, const auto& defender, uint32_t amount, std::optional<std::span<const CreaturePtr>> spectators) const noexcept
+	{
+		if (amount == 0)
+			return;
+
+		const bool self_target        = (attacker == defender);
+		const auto defender_position  = defender->getPosition();
+		const auto& defender_name     = defender->getName();
+		const auto& attacker_name     = attacker->getNameDescription();
+		const auto origin_notice       = collect_origin_notice(static_cast<Origin>(origin));
+		const std::string amount_str   = std::to_string(amount);
+		const std::string origin_verb  = std::string(origin_notice.verb);
+
+		if (not spectators)
+			spectators = std::make_optional<std::span<const CreaturePtr>>(g_game.map.fetchSpectators(defender_position, true, true));
+
+		auto is_observer = [&](const auto& spectator) { return spectator != defender and spectator != attacker; };
+
+		const bool is_drain = (origin == Origin::ManaSteal);
+
+		const std::string defender_text =
+		    is_drain    ? attacker_name + " drained " + amount_str + " mana from you."
+		  : self_target ? "You lose " + amount_str + " mana due to your own " + origin_verb + "."
+		                : "You lose " + amount_str + " mana due to " + origin_verb + " by " + attacker_name + ".";
+
+		const std::string attacker_text =
+		    is_drain ? "You drained " + amount_str + " mana from " + defender_name + "."
+		             : defender_name + " loses " + amount_str + " mana due to your " + origin_verb + ".";
+
+		const std::string observer_text =
+		    is_drain ? attacker_name + " drained " + amount_str + " mana from " + defender_name + "."
+		             : defender_name + " loses " + amount_str + " mana due to " + origin_verb + " by " + attacker_name + ".";
+
+		TextMessage observer_message = {};
+		observer_message.position      = defender_position;
+		observer_message.primary.color = TEXTCOLOR_BLUE;
+		observer_message.primary.value = amount;
+		observer_message.type          = MESSAGE_DAMAGE_OTHERS;
+		observer_message.text          = observer_text;
+
+		if (defender->is_player())
+		{
+			TextMessage defender_message = {};
+			defender_message.position      = defender_position;
+			defender_message.primary.color = TEXTCOLOR_BLUE;
+			defender_message.primary.value = amount;
+			defender_message.type          = MESSAGE_DAMAGE_RECEIVED;
+			defender_message.text          = defender_text;
+
+			auto* player = static_cast<Player*>(defender.get());
+			player->sendTextMessage(defender_message);
+			player->sendMagicEffect(defender_position, CONST_ME_LOSEENERGY);
+			if (origin_notice.effect != CONST_ME_NONE)
+				player->sendMagicEffect(defender_position, origin_notice.effect);
+		}
+
+		if (not self_target and attacker->is_player())
+		{
+			TextMessage attacker_message = {};
+			attacker_message.position      = defender_position;
+			attacker_message.primary.color = TEXTCOLOR_BLUE;
+			attacker_message.primary.value = amount;
+			attacker_message.type          = MESSAGE_DAMAGE_DEALT;
+			attacker_message.text          = attacker_text;
+
+			auto* player = static_cast<Player*>(attacker.get());
+			player->sendTextMessage(attacker_message);
+			player->sendMagicEffect(defender_position, CONST_ME_LOSEENERGY);
+			if (origin_notice.effect != CONST_ME_NONE)
+				player->sendMagicEffect(defender_position, origin_notice.effect);
+		}
+
+		for (const auto& spectator : *spectators | std::views::filter(is_observer))
+		{
+			auto* player = static_cast<Player*>(spectator.get());
+			player->sendTextMessage(observer_message);
+			player->sendMagicEffect(defender_position, CONST_ME_LOSEENERGY);
+			if (origin_notice.effect != CONST_ME_NONE)
+				player->sendMagicEffect(defender_position, origin_notice.effect);
+		}
+	}
+
+	void Combat::damage_notification(const auto& attacker, const auto& defender, uint32_t amount, std::optional<std::span<const CreaturePtr>> spectators) const noexcept
+	{
+		if (amount == 0)
+			return;
+
+		const bool self_target        = (attacker == defender);
+		const auto defender_position  = defender->getPosition();
+		const auto& defender_name     = defender->getName();
+		const auto& attacker_name     = attacker->getNameDescription();
+		const auto notice              = UnPackNotice(collect_notice_data(defender));
+		const auto origin_notice       = collect_origin_notice(static_cast<Origin>(origin));
+		const std::string amount_str   = std::to_string(amount);
+		const std::string origin_verb  = std::string(origin_notice.verb);
+
+		if (not spectators)
+			spectators = std::make_optional<std::span<const CreaturePtr>>(g_game.map.fetchSpectators(defender_position, true, true));
+
+		auto is_observer = [&](const auto& spectator) { return spectator != defender and spectator != attacker; };
+
+		const bool is_reflect  = (origin == Origin::Reflect);
+		const bool is_deflect  = (origin == Origin::Deflect);
+		const bool is_ricochet = (origin == Origin::Ricochet);
+		const bool is_piercing = (origin == Origin::Piercing);
+		const bool is_drain    = (origin == Origin::LifeSteal   or origin == Origin::ManaSteal
+		                       or origin == Origin::StaminaSteal or origin == Origin::SoulSteal);
+
+		// attacker = source of the resistance for reflect/deflect; defender = recipient of secondary damage
+		const std::string defender_text =
+		    is_reflect  ? (self_target
+		                    ? "You reflected " + amount_str + " damage from your own attack."
+		                    : "You are struck by " + amount_str + " reflected damage from " + attacker_name + "'s resistance.")
+		  : is_deflect  ? "You are hit by " + amount_str + " deflected damage from " + attacker_name + "'s resistance."
+		  : is_ricochet ? "You are hit by " + amount_str + " ricocheting damage."
+		  : is_piercing ? "You are struck by " + amount_str + " piercing damage from " + attacker_name + ", bypassing your defenses."
+		  : is_drain    ? attacker_name + " drained " + amount_str + " health from you via " + origin_verb + "."
+		  : self_target ? "You lose " + amount_str + " health due to your own " + origin_verb + "."
+		                : "You lose " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
+
+		const std::string attacker_text =
+		    is_reflect  ? "Your resistance reflected " + amount_str + " damage to " + defender_name + "."
+		  : is_deflect  ? "Your resistance deflected " + amount_str + " damage to " + defender_name + "."
+		  : is_ricochet ? "Your attack ricocheted for " + amount_str + " damage."
+		  : is_piercing ? "Your attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
+		  : is_drain    ? "You drained " + amount_str + " health from " + defender_name + " via " + origin_verb + "."
+		                : defender_name + " loses " + amount_str + " health due to your " + origin_verb + ".";
+
+		const std::string observer_text =
+		    is_reflect  ? attacker_name + "'s resistance reflected " + amount_str + " damage to " + defender_name + "."
+		  : is_deflect  ? attacker_name + "'s resistance deflected " + amount_str + " damage to " + defender_name + "."
+		  : is_ricochet ? "A ricocheting attack struck " + defender_name + " for " + amount_str + " damage."
+		  : is_piercing ? attacker_name + "'s attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
+		  : is_drain    ? attacker_name + " drained " + amount_str + " health from " + defender_name + "."
+		                : defender_name + " loses " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
+
+		TextMessage observer_message = {};
+		observer_message.position      = defender_position;
+		observer_message.primary.color = notice.color;
+		observer_message.primary.value = amount;
+		observer_message.type          = MESSAGE_DAMAGE_OTHERS;
+		observer_message.text          = observer_text;
+
+		if (defender->is_player())
+		{
+			TextMessage defender_message = {};
+			defender_message.position      = defender_position;
+			defender_message.primary.color = notice.color;
+			defender_message.primary.value = amount;
+			defender_message.type          = MESSAGE_DAMAGE_RECEIVED;
+			defender_message.text          = defender_text;
+
+			auto* player = static_cast<Player*>(defender.get());
+			player->sendTextMessage(defender_message);
+			player->sendMagicEffect(defender_position, notice.effect);
+			if (origin_notice.effect != CONST_ME_NONE)
+				player->sendMagicEffect(defender_position, origin_notice.effect);
+			player->sendStats();
+		}
+
+		if (not self_target and attacker->is_player())
+		{
+			TextMessage attacker_message = {};
+			attacker_message.position      = defender_position;
+			attacker_message.primary.color = notice.color;
+			attacker_message.primary.value = amount;
+			attacker_message.type          = MESSAGE_DAMAGE_DEALT;
+			attacker_message.text          = attacker_text;
+
+			auto* player = static_cast<Player*>(attacker.get());
+			player->sendTextMessage(attacker_message);
+			player->sendMagicEffect(defender_position, notice.effect);
+			if (origin_notice.effect != CONST_ME_NONE)
+				player->sendMagicEffect(defender_position, origin_notice.effect);
+			player->sendCreatureHealth(defender);
+		}
+
+		for (const auto& spectator : *spectators | std::views::filter(is_observer))
+		{
+			auto* player = static_cast<Player*>(spectator.get());
+			player->sendTextMessage(observer_message);
+			player->sendMagicEffect(defender_position, notice.effect);
+			if (origin_notice.effect != CONST_ME_NONE)
+				player->sendMagicEffect(defender_position, origin_notice.effect);
+			player->sendCreatureHealth(defender);
+		}
+
+		if (notice.fluid != FLUID_NONE)
+		{
+			TilePtr tile       = g_game.map.getTile(defender_position);
+			CylinderPtr c_tile = tile;
+			auto fluid = Item::CreateItem(ITEM_SMALLSPLASH, notice.fluid);
+			if (fluid) [[likely]]
+			{
+				g_game.internalAddItem(c_tile, fluid, INDEX_WHEREEVER, FLAG_NOLIMIT);
+				g_game.startDecay(fluid);
+			}
+		}
 	}
 
 	uint32_t Combat::apply_damage(const CreaturePtr& attacker, const PlayerPtr& target, std::optional<std::span<const CreaturePtr>> pre_cache) const noexcept
 	{
-		const auto target_mana = target->getMana();
+		const auto target_mana   = target->getMana();
 		const auto target_health = static_cast<uint32_t>(target->getHealth());
-		const auto target_position = target->getPosition();
-		const auto& target_name = target->getName();
-		const auto& attacker_name = attacker->getNameDescription(); // we use name description here (for now) as it could be a monster
-		const auto manashield = target->hasCondition(CONDITION_MANASHIELD);
-		const auto manadrain = damage_type == Combat::DamageType::ManaDrain;
-		const auto self_harm = attacker == target;
-		auto damage_limit = (manashield or manadrain) ? (manadrain ? target_mana : target_mana + target_health) : target_health;
-		const auto notice = UnPackNotice(collect_notice_data(target));
-		uint32_t damage_dealt = 0;
+		const auto manashield    = target->hasCondition(CONDITION_MANASHIELD);
+		const auto manadrain     = damage_type == Combat::DamageType::ManaDrain;
+		auto damage_limit        = (manashield or manadrain) ? (manadrain ? target_mana : target_mana + target_health) : target_health;
+		uint32_t damage_dealt    = 0;
 
 		if (manadrain or manashield)
 		{
 			damage_dealt = std::min(damage, target_mana);
 			target->drainMana(attacker, damage_dealt);
 
-			TextMessage defender_message,	observer_message				= {};
-			defender_message.position,		observer_message.position		= target_position;
-			defender_message.primary.color, observer_message.primary.color	= TEXTCOLOR_BLUE;
-			defender_message.primary.value, observer_message.primary.value	= damage_dealt;
-
-			defender_message.type = MESSAGE_DAMAGE_RECEIVED;
-			observer_message.type = MESSAGE_DAMAGE_OTHERS;
-
-			defender_message.text = self_harm	? "You lose " + std::to_string(damage_dealt) + " mana due to your own attack." : "You lose " + std::to_string(damage_dealt) + " mana due to an attack by " + attacker_name + ".";
-			observer_message.text = target_name + " loses " + std::to_string(damage_dealt) + " mana due to an attack by " + attacker_name + ".";
-
 			if (not pre_cache)
 				pre_cache = std::make_optional<std::span<const CreaturePtr>>(g_game.map.fetchSpectators(target->getPosition(), true, true));
 
-			auto observer = [&](const auto& spectator) {return spectator != target and spectator != attacker;};
+			manadamage_notification(attacker, target, damage_dealt, pre_cache);
 
-			target->sendTextMessage(defender_message);
-			target->sendMagicEffect(target_position, CONST_ME_LOSEENERGY);
-
-			if (not self_harm and attacker->is_player())
-			{
-				TextMessage attacker_message { MESSAGE_DAMAGE_DEALT , target_name + " loses " + std::to_string(damage_dealt) + " mana due to your attack." };
-				attacker_message.primary.color	= TEXTCOLOR_BLUE;
-				attacker_message.primary.value	= damage_dealt;
-				attacker_message.position		= target_position;
-
-				auto* caster = static_cast<Player*>(attacker.get());
-				caster->sendTextMessage(attacker_message);
-				caster->sendMagicEffect(target_position, CONST_ME_LOSEENERGY);
-			}
-
-			for (const auto& spectator : *pre_cache | std::views::filter(observer))
-			{
-				auto* player = static_cast<Player*>(spectator.get());
-				player->sendTextMessage(observer_message);
-				player->sendMagicEffect(target_position, CONST_ME_LOSEENERGY);
-			}
-
-			if (manadrain or damage_dealt == damage) return damage_dealt;
+			if (manadrain or damage_dealt == damage)
+				return damage_dealt;
 		}
 
 		damage_limit -= damage_dealt;
 
 		if (damage > damage_dealt)
 		{
-			auto health_changed = std::min(damage_limit, target_health);
+			const auto health_changed = std::min(damage_limit, target_health);
 			damage_dealt += health_changed;
 			target->drainHealth(attacker, health_changed);
-
-			TextMessage defender_message,		observer_message				= {};
-			defender_message.position,			observer_message.position		= target_position;
-			defender_message.primary.color,		observer_message.primary.color	= notice.color;
-			defender_message.primary.value,		observer_message.primary.value	= health_changed;
-
-			defender_message.type = MESSAGE_DAMAGE_RECEIVED;
-			observer_message.type = MESSAGE_DAMAGE_OTHERS;
-
-			defender_message.text = self_harm	? "You lose " + std::to_string(health_changed) + " health due to your own attack." : "You lose " + std::to_string(health_changed) + " health due to an attack by " + attacker_name + ".";
-			observer_message.text = target_name + " loses " + std::to_string(health_changed) + " health due to an attack by " + attacker_name + ".";
 
 			if (not pre_cache)
 				pre_cache = std::make_optional<std::span<const CreaturePtr>>(g_game.map.fetchSpectators(target->getPosition(), true, true));
 
-			auto observer = [&](const auto& spectator) {return spectator != target and spectator != attacker;};
-
-			target->sendTextMessage(defender_message);
-			target->sendMagicEffect(target_position, notice.effect);
-			target->sendStats();
-
-			if (not self_harm and attacker->is_player())
-			{
-				TextMessage attacker_message{ MESSAGE_DAMAGE_DEALT , target_name + " loses " + std::to_string(damage_dealt) + " mana due to your attack." };
-				attacker_message.primary.color = notice.color;
-				attacker_message.primary.value = health_changed;
-				attacker_message.position = target_position;
-
-				auto* caster = static_cast<Player*>(attacker.get());
-				caster->sendTextMessage(attacker_message);
-				caster->sendMagicEffect(target_position, notice.effect);
-				caster->sendCreatureHealth(target);
-			}
-
-			for (const auto& spectator : *pre_cache | std::views::filter(observer))
-			{
-				auto* player = static_cast<Player*>(spectator.get());
-				player->sendTextMessage(observer_message);
-				player->sendMagicEffect(target_position, notice.effect);
-				player->sendCreatureHealth(target);
-			}
-
-			if (notice.fluid != 0)
-			{
-				TilePtr tile = g_game.map.getTile(target_position);
-				CylinderPtr c_tile = tile;
-
-				auto fluid = Item::CreateItem(ITEM_SMALLSPLASH, notice.fluid);
-				if (fluid) [[likely]]
-				{
-					// we could, and probably should, assign the owner of the blood to either the attacker or defender
-					// this is something not done in OT servers, that could be quite cool in-game I think, lets make it happen
-					// it should be a configuration option in toml somewhere
-					g_game.internalAddItem(c_tile, fluid, INDEX_WHEREEVER, FLAG_NOLIMIT);
-					g_game.startDecay(fluid);
-				}
-				// could do an "else" and log it, incase of failure
-			}
+			damage_notification(attacker, target, health_changed, pre_cache);
 
 			if (health_changed == target_health)
 			{
 				for (const auto& creatureEvent : target->getCreatureEvents(CREATURE_EVENT_PREPAREDEATH))
 					if (not creatureEvent->executeOnPrepareDeath(target, attacker))
 					{
-						// in this situation, as is, the victim simply loses whatever mana was lost from manashield damage
-						// I'm thinking we need to probably have better options for user on what happens specifically during
-						// a return false for a preparedeath event, like for returning mana or health, how much, ect. 
 						target->changeHealth(target_health, true);
 						return 0;
 					}
@@ -2561,12 +2842,9 @@ namespace BlackTek
 		if (damage_type == Combat::DamageType::ManaDrain)
 			return 0;
 
-		const auto target_health = static_cast<uint32_t>(target->getHealth());
+		const auto target_health  = static_cast<uint32_t>(target->getHealth());
 		const auto target_position = target->getPosition();
-		const auto& target_name = target->getName();
-		const auto& attacker_name = attacker->getNameDescription();
-		const auto notice = UnPackNotice(collect_notice_data(target));
-		const auto health_changed = std::min(damage, target_health);
+		const auto health_changed  = std::min(damage, target_health);
 
 		if (health_changed == 0)
 			return 0;
@@ -2577,49 +2855,7 @@ namespace BlackTek
 		if (not pre_cache)
 			pre_cache = std::make_optional<std::span<const CreaturePtr>>(g_game.map.fetchSpectators(target_position, true, true));
 
-		auto is_observer = [&](const auto& spectator) { return spectator != attacker; };
-
-		if (attacker->is_player())
-		{
-			auto* caster = static_cast<Player*>(attacker.get());
-			TextMessage attacker_message = {};
-			attacker_message.position = target_position;
-			attacker_message.primary.color = notice.color;
-			attacker_message.primary.value = health_changed;
-			attacker_message.type = MESSAGE_DAMAGE_DEALT;
-			attacker_message.text = target_name + " loses " + std::to_string(health_changed) + " health due to your attack.";
-			caster->sendTextMessage(attacker_message);
-			caster->sendMagicEffect(target_position, notice.effect);
-			caster->sendCreatureHealth(target);
-		}
-
-		TextMessage observer_message = {};
-		observer_message.position = target_position;
-		observer_message.primary.color = notice.color;
-		observer_message.primary.value = health_changed;
-		observer_message.type = MESSAGE_DAMAGE_OTHERS;
-		observer_message.text = target_name + " loses " + std::to_string(health_changed) + " health due to an attack by " + attacker_name + ".";
-
-		for (const auto& spectator : *pre_cache | std::views::filter(is_observer))
-		{
-			auto* player = static_cast<Player*>(spectator.get());
-
-			player->sendTextMessage(observer_message);
-			player->sendMagicEffect(target_position, notice.effect);
-			player->sendCreatureHealth(target);
-		}
-
-		if (notice.fluid != 0)
-		{
-			TilePtr tile = g_game.map.getTile(target_position);
-			CylinderPtr c_tile = tile;
-			auto fluid = Item::CreateItem(ITEM_SMALLSPLASH, notice.fluid);
-			if (fluid) [[likely]]
-			{
-				g_game.internalAddItem(c_tile, fluid, INDEX_WHEREEVER, FLAG_NOLIMIT);
-				g_game.startDecay(fluid);
-			}
-		}
+		damage_notification(attacker, target, health_changed, pre_cache);
 
 		if (health_changed == target_health)
 		{

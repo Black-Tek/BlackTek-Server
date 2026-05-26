@@ -2015,31 +2015,64 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(DiscordMessageType::MESSAGE_INFO);
 
 	// Attack Modifiers
-	registerEnum(ATTACK_MODIFIER_FIRST)
-	registerEnum(ATTACK_MODIFIER_NONE)
-	registerEnum(ATTACK_MODIFIER_LIFESTEAL)
-	registerEnum(ATTACK_MODIFIER_MANASTEAL)
-	registerEnum(ATTACK_MODIFIER_STAMINASTEAL)
-	registerEnum(ATTACK_MODIFIER_SOULSTEAL)
-	registerEnum(ATTACK_MODIFIER_CRITICAL)
-	registerEnum(ATTACK_MODIFIER_PIERCING)
-	registerEnum(ATTACK_MODIFIER_CONVERSION)
-	registerEnum(ATTACK_MODIFIER_LAST)
+	registerGlobalVariable("ATTACK_MODIFIER_NONE",         std::to_underlying(BlackTek::DamageModifier::AttackType::None));
+	registerGlobalVariable("ATTACK_MODIFIER_FIRST",        std::to_underlying(BlackTek::DamageModifier::AttackType::First));
+	registerGlobalVariable("ATTACK_MODIFIER_LIFESTEAL",    std::to_underlying(BlackTek::DamageModifier::AttackType::Lifesteal));
+	registerGlobalVariable("ATTACK_MODIFIER_MANASTEAL",    std::to_underlying(BlackTek::DamageModifier::AttackType::Manasteal));
+	registerGlobalVariable("ATTACK_MODIFIER_STAMINASTEAL", std::to_underlying(BlackTek::DamageModifier::AttackType::Staminasteal));
+	registerGlobalVariable("ATTACK_MODIFIER_SOULSTEAL",    std::to_underlying(BlackTek::DamageModifier::AttackType::Soulsteal));
+	registerGlobalVariable("ATTACK_MODIFIER_CRITICAL",     std::to_underlying(BlackTek::DamageModifier::AttackType::Critical));
+	registerGlobalVariable("ATTACK_MODIFIER_PIERCING",     std::to_underlying(BlackTek::DamageModifier::AttackType::Piercing));
+	registerGlobalVariable("ATTACK_MODIFIER_CONVERSION",   std::to_underlying(BlackTek::DamageModifier::AttackType::Conversion));
+	registerGlobalVariable("ATTACK_MODIFIER_REGENERATION",  std::to_underlying(BlackTek::DamageModifier::AttackType::Regeneration));
+	registerGlobalVariable("ATTACK_MODIFIER_ATTUNEMENT",    std::to_underlying(BlackTek::DamageModifier::AttackType::Attunement));
+	registerGlobalVariable("ATTACK_MODIFIER_VIGOR",         std::to_underlying(BlackTek::DamageModifier::AttackType::Vigor));
+	registerGlobalVariable("ATTACK_MODIFIER_TRANSCENDENCE", std::to_underlying(BlackTek::DamageModifier::AttackType::Transcendence));
+	registerGlobalVariable("ATTACK_MODIFIER_LAST",         std::to_underlying(BlackTek::DamageModifier::AttackType::Last));
 
 	// Defense Modifiers
-	registerEnum(DEFENSE_MODIFIER_FIRST)
-	registerEnum(DEFENSE_MODIFIER_NONE)
-	registerEnum(DEFENSE_MODIFIER_ABSORB)
-	registerEnum(DEFENSE_MODIFIER_RESTORE)
-	registerEnum(DEFENSE_MODIFIER_REPLENISH)
-	registerEnum(DEFENSE_MODIFIER_REVIVE)
-	registerEnum(DEFENSE_MODIFIER_REFLECT)
-	registerEnum(DEFENSE_MODIFIER_DEFLECT)
-	registerEnum(DEFENSE_MODIFIER_RICOCHET)
-	registerEnum(DEFENSE_MODIFIER_RESIST)
-	registerEnum(DEFENSE_MODIFIER_REFORM)
-	registerEnum(DEFENSE_MODIFIER_WEAKNESS)
-	registerEnum(DEFENSE_MODIFIER_LAST)
+	registerGlobalVariable("DEFENSE_MODIFIER_NONE",      std::to_underlying(BlackTek::DamageModifier::DefenseType::None));
+	registerGlobalVariable("DEFENSE_MODIFIER_FIRST",     std::to_underlying(BlackTek::DamageModifier::DefenseType::First));
+	registerGlobalVariable("DEFENSE_MODIFIER_ABSORB",    std::to_underlying(BlackTek::DamageModifier::DefenseType::Absorb));
+	registerGlobalVariable("DEFENSE_MODIFIER_RESTORE",   std::to_underlying(BlackTek::DamageModifier::DefenseType::Restore));
+	registerGlobalVariable("DEFENSE_MODIFIER_REPLENISH", std::to_underlying(BlackTek::DamageModifier::DefenseType::Replenish));
+	registerGlobalVariable("DEFENSE_MODIFIER_REVIVE",    std::to_underlying(BlackTek::DamageModifier::DefenseType::Revive));
+	registerGlobalVariable("DEFENSE_MODIFIER_REFLECT",   std::to_underlying(BlackTek::DamageModifier::DefenseType::Reflect));
+	registerGlobalVariable("DEFENSE_MODIFIER_DEFLECT",   std::to_underlying(BlackTek::DamageModifier::DefenseType::Deflect));
+	registerGlobalVariable("DEFENSE_MODIFIER_RICOCHET",  std::to_underlying(BlackTek::DamageModifier::DefenseType::Ricochet));
+	registerGlobalVariable("DEFENSE_MODIFIER_RESIST",    std::to_underlying(BlackTek::DamageModifier::DefenseType::Resist));
+	registerGlobalVariable("DEFENSE_MODIFIER_REFORM",    std::to_underlying(BlackTek::DamageModifier::DefenseType::Reform));
+	registerGlobalVariable("DEFENSE_MODIFIER_WEAKNESS",  std::to_underlying(BlackTek::DamageModifier::DefenseType::Weakness));
+	registerGlobalVariable("DEFENSE_MODIFIER_LAST",      std::to_underlying(BlackTek::DamageModifier::DefenseType::Last));
+
+	// Combat Origins
+	registerGlobalVariable("ORIGIN_NONE",         std::to_underlying(BlackTek::Combat::Origin::None));
+	registerGlobalVariable("ORIGIN_CONDITION",    std::to_underlying(BlackTek::Combat::Origin::Condition));
+	registerGlobalVariable("ORIGIN_SPELL",        std::to_underlying(BlackTek::Combat::Origin::Spell));
+	registerGlobalVariable("ORIGIN_MELEE",        std::to_underlying(BlackTek::Combat::Origin::Melee));
+	registerGlobalVariable("ORIGIN_RANGED",       std::to_underlying(BlackTek::Combat::Origin::Ranged));
+	registerGlobalVariable("ORIGIN_FIST",         std::to_underlying(BlackTek::Combat::Origin::Fist));
+	registerGlobalVariable("ORIGIN_SWORD",        std::to_underlying(BlackTek::Combat::Origin::Sword));
+	registerGlobalVariable("ORIGIN_AXE",          std::to_underlying(BlackTek::Combat::Origin::Axe));
+	registerGlobalVariable("ORIGIN_CLUB",         std::to_underlying(BlackTek::Combat::Origin::Club));
+	registerGlobalVariable("ORIGIN_WAND",         std::to_underlying(BlackTek::Combat::Origin::Wand));
+	registerGlobalVariable("ORIGIN_ROD",          std::to_underlying(BlackTek::Combat::Origin::Rod));
+	registerGlobalVariable("ORIGIN_BOW",          std::to_underlying(BlackTek::Combat::Origin::Bow));
+	registerGlobalVariable("ORIGIN_CROSSBOW",     std::to_underlying(BlackTek::Combat::Origin::Crossbow));
+	registerGlobalVariable("ORIGIN_THROWABLE",    std::to_underlying(BlackTek::Combat::Origin::Throwable));
+	registerGlobalVariable("ORIGIN_AUGMENT",      std::to_underlying(BlackTek::Combat::Origin::Augment));
+	registerGlobalVariable("ORIGIN_ABSORB",       std::to_underlying(BlackTek::Combat::Origin::Absorb));
+	registerGlobalVariable("ORIGIN_RESTORE",      std::to_underlying(BlackTek::Combat::Origin::Restore));
+	registerGlobalVariable("ORIGIN_REPLENISH",    std::to_underlying(BlackTek::Combat::Origin::Replenish));
+	registerGlobalVariable("ORIGIN_REVIVE",       std::to_underlying(BlackTek::Combat::Origin::Revive));
+	registerGlobalVariable("ORIGIN_REFLECT",      std::to_underlying(BlackTek::Combat::Origin::Reflect));
+	registerGlobalVariable("ORIGIN_DEFLECT",      std::to_underlying(BlackTek::Combat::Origin::Deflect));
+	registerGlobalVariable("ORIGIN_RICOCHET",     std::to_underlying(BlackTek::Combat::Origin::Ricochet));
+	registerGlobalVariable("ORIGIN_PIERCING",     std::to_underlying(BlackTek::Combat::Origin::Piercing));
+	registerGlobalVariable("ORIGIN_LIFESTEAL",    std::to_underlying(BlackTek::Combat::Origin::LifeSteal));
+	registerGlobalVariable("ORIGIN_MANASTEAL",    std::to_underlying(BlackTek::Combat::Origin::ManaSteal));
+	registerGlobalVariable("ORIGIN_STAMINASTEAL", std::to_underlying(BlackTek::Combat::Origin::StaminaSteal));
+	registerGlobalVariable("ORIGIN_SOULSTEAL",    std::to_underlying(BlackTek::Combat::Origin::SoulSteal));
 	registerEnumClass(Components::Stats::StatModifierType::None)
 	registerEnumClass(Components::Stats::StatModifierType::Add)
 	registerEnumClass(Components::Stats::StatModifierType::Subtract)
@@ -8760,15 +8793,24 @@ int LuaScriptInterface::luaContainerGetItems(lua_State* L)
 	}
 
 	bool recursive = getBoolean(L, 2, false);
-	const auto items = container->getItems(recursive);
-
-	lua_createtable(L, items.size(), 0);
 
 	int index = 0;
-	for (const auto item : items) {
-		pushSharedPtr(L, item);
-		setItemMetatable(L, -1, item);
-		lua_rawseti(L, -2, ++index);
+	if (recursive) {
+		lua_newtable(L);
+		for (ContainerIterator it = container->iterator(); it.hasNext(); it.advance()) {
+			const auto item = *it;
+			pushSharedPtr(L, item);
+			setItemMetatable(L, -1, item);
+			lua_rawseti(L, -2, ++index);
+		}
+	} else {
+		const auto& itemList = container->getItemList();
+		lua_createtable(L, static_cast<int>(itemList.size()), 0);
+		for (const auto& item : itemList) {
+			pushSharedPtr(L, item);
+			setItemMetatable(L, -1, item);
+			lua_rawseti(L, -2, ++index);
+		}
 	}
 	return 1;
 }
@@ -13008,7 +13050,8 @@ int LuaScriptInterface::luaPlayerGetEquipment(lua_State* L)
 	}
 
 	auto validate = (isBoolean(L, 2)) ? getBoolean(L, 2) : true;
-	auto equipment = player->getEquipment(validate);
+	std::vector<ItemPtr> equipment;
+	player->getEquipment(equipment, validate);
 
 	lua_newtable(L);
 	int index = 1;

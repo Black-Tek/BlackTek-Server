@@ -42,6 +42,14 @@ namespace BlackTek
 
 			if (conversion)
 				filter_index |= Flag::Converted;
+
+			const auto is_healing = (modType == std::to_underlying(AttackType::Regeneration)
+				or modType == std::to_underlying(AttackType::Attunement)
+				or modType == std::to_underlying(AttackType::Vigor)
+				or modType == std::to_underlying(AttackType::Transcendence));
+
+			if (is_healing)
+				filter_index |= Flag::HealBoost;
 		}
 		else
 		{
@@ -139,11 +147,7 @@ namespace BlackTek
 	inline const bool DamageModifier::appliesToOrigin(const uint8_t origin) const
 	{
 		if (filter_index & DamageModifier::Flag::Origin)
-		{
-			bool applies = origin_type == 0 or origin_type == origin;
-			applies = applies or origin_type >= std::to_underlying(Combat::Origin::Augment);
-			return applies;
-		}
+			return origin_type == 0 or origin_type == origin;
 		return true;
 	}
 

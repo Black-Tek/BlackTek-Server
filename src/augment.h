@@ -36,8 +36,8 @@ namespace BlackTek
 
 		Augment& operator=(const Augment&) = default;
 
-		const std::string getName() const;
-		const std::string getDescription() const;
+		const std::string& getName() const;
+		const std::string& getDescription() const;
 
 		static std::shared_ptr<Augment> MakeAugment(std::string_view augmentName, std::string_view description);
 		static std::shared_ptr<Augment> MakeAugment(const Augment& original);
@@ -58,8 +58,8 @@ namespace BlackTek
 		[[nodiscard]] uint32_t name_count() const noexcept;
 		[[nodiscard]] uint32_t healing_mod_count() const noexcept;
 
-		[[nodiscard]] std::vector<DamageModifier> getAttackModifiers(uint8_t modType) const noexcept;
-		[[nodiscard]] std::vector<DamageModifier> getDefenseModifiers(uint8_t modType) const noexcept;
+		[[nodiscard]] std::span<const DamageModifier> getAttackModifiers() const noexcept;
+		[[nodiscard]] std::span<const DamageModifier> getDefenseModifiers() const noexcept;
 		[[nodiscard]] std::span<const DamageModifier> getModifiers() const noexcept;
 
 		void serialize(PropWriteStream& propWriteStream) const;
@@ -69,9 +69,6 @@ namespace BlackTek
 
 		[[nodiscard]] std::span<DamageModifier> getAttackModifiers() noexcept;
 		[[nodiscard]] std::span<DamageModifier> getDefenseModifiers() noexcept;
-
-		[[nodiscard]] std::span<const DamageModifier> getAttackModifiers() const noexcept;
-		[[nodiscard]] std::span<const DamageModifier> getDefenseModifiers() const noexcept;
 
 		void rebuild_triggers() noexcept;
 

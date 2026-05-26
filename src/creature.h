@@ -431,6 +431,7 @@ class Creature : virtual public Thing, public SharedObject
 		}
 
 		CreatureVector getKillers() const;
+		size_t getKillerCount() const;
 		void onDeath();
 		virtual uint64_t getGainedExperience(const CreaturePtr& attacker) const;
 		void addDamagePoints(const CreaturePtr& attacker, int32_t damagePoints);

@@ -687,6 +687,20 @@ CreatureVector Creature::getKillers() const
 	return killers;
 }
 
+size_t Creature::getKillerCount() const
+{
+	const int64_t timeNow = OTSYS_TIME();
+	const uint32_t inFightTicks = g_config.GetNumber(ConfigManager::PZ_LOCKED);
+	size_t count = 0;
+	for (const auto& it : damageMap) {
+		auto attacker = g_game.getCreatureByID(it.first);
+		if (attacker && attacker != shared_from_this() && timeNow - it.second.ticks <= inFightTicks) {
+			++count;
+		}
+	}
+	return count;
+}
+
 void Creature::onDeath()
 {
 	bool lastHitUnjustified = false;

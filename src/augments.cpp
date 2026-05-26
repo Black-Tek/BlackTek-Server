@@ -189,7 +189,7 @@ namespace BlackTek
     const uint16_t Augments::ParseDamage(std::string_view damageName) noexcept
     {   // Note : If you add values to the list you must increase the size manually
         // current size is : 21
-        const std::array<std::pair<std::string_view, Combat::DamageType>, 21> static_map { 
+        constexpr std::array<std::pair<std::string_view, Combat::DamageType>, 21> static_map { 
         {
             {"none",            Combat::DamageType::Unknown},
             {"all",             Combat::DamageType::Unknown},
@@ -225,48 +225,65 @@ namespace BlackTek
 
     const uint8_t Augments::ParseOrigin(std::string_view originName) noexcept
     {   // Note : If you add values to the list you must increase the size manually
-        // current size is : 14
-        const std::array<std::pair<std::string_view, uint8_t>, 13> static_map { 
-        {
-            {"none",            0},
-            {"all",             0},
-            {"condition",       1},
-            {"spell",           2},
-            {"melee",           3},
-            {"ranged",          4},
-            {"absorb",          5},
-            {"restore",         6},
-            {"reflect",         7},
-            {"deflect",         8},
-            {"ricochet",        9},
-            {"piercing",        10},
-            {"augment",         11},
-        } };
+        // current size is : 28
+        constexpr std::array<std::pair<std::string_view, Combat::Origin>, 28> static_map {{
+            {"none",         Combat::Origin::None},
+            {"all",          Combat::Origin::None},
+            {"condition",    Combat::Origin::Condition},
+            {"spell",        Combat::Origin::Spell},
+            {"melee",        Combat::Origin::Melee},
+            {"ranged",       Combat::Origin::Ranged},
+            {"fist",         Combat::Origin::Fist},
+            {"sword",        Combat::Origin::Sword},
+            {"axe",          Combat::Origin::Axe},
+            {"club",         Combat::Origin::Club},
+            {"wand",         Combat::Origin::Wand},
+            {"rod",          Combat::Origin::Rod},
+            {"bow",          Combat::Origin::Bow},
+            {"crossbow",     Combat::Origin::Crossbow},
+            {"throwable",    Combat::Origin::Throwable},
+            {"augment",      Combat::Origin::Augment},
+            {"absorb",       Combat::Origin::Absorb},
+            {"restore",      Combat::Origin::Restore},
+            {"replenish",    Combat::Origin::Replenish},
+            {"revive",       Combat::Origin::Revive},
+            {"reflect",      Combat::Origin::Reflect},
+            {"deflect",      Combat::Origin::Deflect},
+            {"ricochet",     Combat::Origin::Ricochet},
+            {"piercing",     Combat::Origin::Piercing},
+            {"lifesteal",    Combat::Origin::LifeSteal},
+            {"manasteal",    Combat::Origin::ManaSteal},
+            {"staminasteal", Combat::Origin::StaminaSteal},
+            {"soulsteal",    Combat::Origin::SoulSteal},
+        }};
 
-        for (const auto& [key, value] : static_map) 
+        for (const auto& [key, value] : static_map)
         {
             if (key == originName)
-                return value;
+                return std::to_underlying(value);
         }
 
-        return 0;
+        return std::to_underlying(Combat::Origin::None);
     }
 
     const uint8_t Augments::ParseAttackModifier(std::string_view modName) noexcept
     {
         // Note : If you add values to the list you must increase the size manually
-        // current size is : 8
-        const std::array<std::pair<std::string_view, DamageModifier::AttackType>, 8> static_map { 
-        {
-            {"none",            DamageModifier::AttackType::None},
-            {"lifesteal",       DamageModifier::AttackType::Lifesteal},
-            {"manasteal",       DamageModifier::AttackType::Manasteal},
-            {"staminasteal",    DamageModifier::AttackType::Staminasteal},
-            {"soulsteal",       DamageModifier::AttackType::Soulsteal},
-            {"critical",        DamageModifier::AttackType::Critical},
-            {"piercing",        DamageModifier::AttackType::Piercing},
-            {"conversion",      DamageModifier::AttackType::Conversion},
-        } };
+        // current size is : 12
+        constexpr std::array<std::pair<std::string_view, DamageModifier::AttackType>, 12> static_map {{
+            {"none",          DamageModifier::AttackType::None},
+            {"lifesteal",     DamageModifier::AttackType::Lifesteal},
+            {"manasteal",     DamageModifier::AttackType::Manasteal},
+            {"staminasteal",  DamageModifier::AttackType::Staminasteal},
+            {"soulsteal",     DamageModifier::AttackType::Soulsteal},
+            {"critical",      DamageModifier::AttackType::Critical},
+            {"piercing",      DamageModifier::AttackType::Piercing},
+            {"conversion",    DamageModifier::AttackType::Conversion},
+            {"regeneration",  DamageModifier::AttackType::Regeneration},
+            {"attunement",    DamageModifier::AttackType::Attunement},
+            {"vigor",         DamageModifier::AttackType::Vigor},
+            {"transcendence", DamageModifier::AttackType::Transcendence},
+        }};
 
         for (const auto& [key, value] : static_map) 
         {
@@ -280,7 +297,7 @@ namespace BlackTek
     const uint8_t Augments::ParseDefenseModifier(std::string_view modName) noexcept
     {   // Note : If you add values to the list you must increase the size manually
         // current size is : 11
-        const std::array<std::pair<std::string_view, DamageModifier::DefenseType>, 11> static_map { 
+        constexpr std::array<std::pair<std::string_view, DamageModifier::DefenseType>, 11> static_map { 
         {
             {"none",            DamageModifier::DefenseType::None},
             {"absorb",          DamageModifier::DefenseType::Absorb},
@@ -309,7 +326,7 @@ namespace BlackTek
     {
         // Note : If you add values to the list you must increase the size manually
         // current size is : 6
-        const std::array<std::pair<std::string_view, RaceType_t>, 6> static_map { 
+        constexpr std::array<std::pair<std::string_view, RaceType_t>, 6> static_map { 
         {
             {"none",            RACE_NONE},
             {"venom",           RACE_VENOM},
@@ -332,7 +349,7 @@ namespace BlackTek
     {
         // Note : If you add values to the list you must increase the size manually
         // current size is : 14
-        const std::array<std::pair<std::string_view, CreatureType_t>, 14> static_map { 
+        constexpr std::array<std::pair<std::string_view, CreatureType_t>, 14> static_map { 
         {
             {"player",                      CREATURETYPE_PLAYER},
             {"monster",                     CREATURETYPE_MONSTER},

@@ -131,8 +131,10 @@ namespace BlackTek
 {
 	struct ModifierCache
 	{
-		constexpr static auto AttackMods = std::to_underlying(DamageModifier::AttackType::Last) + 1u;
+		constexpr static auto AttackMods  = std::to_underlying(DamageModifier::AttackType::Last) + 1u;
 		constexpr static auto DefenseMods = std::to_underlying(DamageModifier::DefenseType::Last) + 1u;
+		constexpr static auto HealFirst   = std::to_underlying(DamageModifier::AttackType::Regeneration);
+		constexpr static auto HealTypes   = 4u;
 		std::array<ModifierSum, AttackMods>  during_main_attack{}; // todo: make the critical chance and value stored here, show in client
 		std::array<ModifierSum, AttackMods>  post_main_attack{};
 		std::array<ModifierSum, DefenseMods> main_defense{};
@@ -144,7 +146,7 @@ namespace BlackTek
 		std::vector<DamageModifier> named_defense;
 		std::vector<DamageModifier> conversion;
 		std::vector<DamageModifier> reform;
-		ModifierSum                 main_healing_boost{};
+		std::array<ModifierSum, HealTypes> main_healing{};
 		std::vector<DamageModifier> filtered_healing;
 		std::vector<DamageModifier> named_healing;
 	};
@@ -1333,10 +1335,6 @@ class Player final : public Creature, public Cylinder
 
 		CreatureType_t getCreatureType(const MonsterPtr& monster) const;
 
-		// To-do : Make all these methods into const
-		gtl::node_hash_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> getAttackModifiers() const;
-		gtl::node_hash_map<uint8_t, std::vector<std::shared_ptr<DamageModifier>>> getDefenseModifiers() const;
-
 		[[nodiscard]] bool hasAugments() const noexcept { return augment_count > 0; }
 		[[nodiscard]] bool hasAttackModifiers() const noexcept { return attack_modifier_count > 0; }
 		[[nodiscard]] bool hasDefenseModifiers() const noexcept { return defense_modifier_count > 0; }
@@ -1421,10 +1419,15 @@ class Player final : public Creature, public Cylinder
 		[[nodiscard]] bool hasFilteredHealingMods()         const noexcept { return m_modifier_cache and not m_modifier_cache->filtered_healing.empty();			}
 		[[nodiscard]] bool hasNamedHealingMods()            const noexcept { return m_modifier_cache and not m_modifier_cache->named_healing.empty();			}
 
-		[[nodiscard]] const BlackTek::ModifierSum& getMainHealingModSum() const noexcept
+		[[nodiscard]] const BlackTek::ModifierSum& getMainHealingModSum(BlackTek::DamageModifier::AttackType healType) const noexcept
 		{
 			static constexpr BlackTek::ModifierSum empty{};
-			return m_modifier_cache ? m_modifier_cache->main_healing_boost : empty;
+			if (not m_modifier_cache)
+				return empty;
+			const auto idx = std::to_underlying(healType) - BlackTek::ModifierCache::HealFirst;
+			if (idx >= BlackTek::ModifierCache::HealTypes)
+				return empty;
+			return m_modifier_cache->main_healing[idx];
 		}
 
 		[[nodiscard]] std::span<const BlackTek::DamageModifier> getFilteredHealingMods() const noexcept
@@ -1437,7 +1440,7 @@ class Player final : public Creature, public Cylinder
 			return m_modifier_cache ? std::span<const BlackTek::DamageModifier>{ m_modifier_cache->named_healing } : std::span<const BlackTek::DamageModifier>{};
 		}
 
-		std::vector<Position> getOpenPositionsInRadius(int radius) const;
+		void getOpenPositionsInRadius(int radius, std::vector<Position>& out) const;
 
 		const bool addAugment(std::string_view augmentName);
 		const bool addAugment(const std::shared_ptr<BlackTek::Augment>& augment);
@@ -1520,7 +1523,7 @@ class Player final : public Creature, public Cylinder
 			return client->getTempTownId();
 		}
 
-		std::vector<ItemPtr> getEquipment(bool validateSlot = true) const;
+		void getEquipment(std::vector<ItemPtr>& out, bool validateSlot = true) const;
 
 		Position generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, uint8_t origin);
 

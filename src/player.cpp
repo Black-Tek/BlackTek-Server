@@ -1606,11 +1606,11 @@ uint32_t Player::getDepotItemCount()
 {
 	uint32_t counter = 0;
 
-	for (const auto item : getDepotLocker()->getItems(true)) {
-		
+	for (ContainerIterator it = getDepotLocker()->iterator(); it.hasNext(); it.advance()) {
+		const auto item = *it;
 		++counter;
 
-		std::string itemName = item->getName();
+		const auto& itemName = item->getName();
 
 		if (itemName.find("depot") != std::string::npos) {
 			--counter;
@@ -2953,7 +2953,7 @@ ItemPtr Player::getCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr&
 {
 	const auto& corpse = Creature::getCorpse(lastHitCreature, mostDamageCreature);
 	if (corpse && corpse->getContainer()) {
-		size_t killersSize = getKillers().size();
+		size_t killersSize = getKillerCount();
 
 		if (lastHitCreature) {
 			if (!mostDamageCreature) {
@@ -5698,7 +5698,11 @@ void Player::cacheModifier(const BlackTek::DamageModifier& mod) noexcept
 		else if (filter & MODIFIER_CONDITIONAL_MASK)
 			cache.filtered_healing.push_back(mod);
 		else
-			cache.main_healing_boost.add(mod);
+		{
+			const auto idx = mod.getType() - BlackTek::ModifierCache::HealFirst;
+			if (idx < BlackTek::ModifierCache::HealTypes)
+				cache.main_healing[idx].add(mod);
+		}
 		return;
 	}
 
@@ -5767,7 +5771,11 @@ void Player::uncacheModifier(const BlackTek::DamageModifier& mod) noexcept
 		else if (filter & MODIFIER_CONDITIONAL_MASK)
 			std::erase_if(cache.filtered_healing, [guid](const auto& m) { return m.getGUID() == guid; });
 		else
-			cache.main_healing_boost.subtract(mod);
+		{
+			const auto idx = mod.getType() - BlackTek::ModifierCache::HealFirst;
+			if (idx < BlackTek::ModifierCache::HealTypes)
+				cache.main_healing[idx].subtract(mod);
+		}
 		return;
 	}
 
@@ -6099,8 +6107,7 @@ CreatureType_t Player::getCreatureType(const MonsterPtr& monster) const
 	return creatureType;
 }
 
-std::vector<Position> Player::getOpenPositionsInRadius(int radius) const {
-	std::vector<Position> openPositions;
+void Player::getOpenPositionsInRadius(int radius, std::vector<Position>& out) const {
 	const auto& center = getPosition();
 	for (int x = -radius; x <= radius; ++x) {
 		for (int y = -radius; y <= radius; ++y) {
@@ -6122,22 +6129,19 @@ std::vector<Position> Player::getOpenPositionsInRadius(int radius) const {
 				| TILESTATE_IMMOVABLENOFIELDBLOCKPATH);
 
 			if (isValid) {
-				openPositions.push_back(pos);
+				out.push_back(pos);
 			}
 		}
 	}
-
-	return openPositions;
 }
 
-std::vector<ItemPtr> Player::getEquipment(bool validateSlot) const
+void Player::getEquipment(std::vector<ItemPtr>& out, bool validateSlot) const
 {
-	std::vector<ItemPtr> equipment;
 	for (uint8_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot)
 	{
 		if (const auto& item = inventory[slot])
 		{
-			if (validateSlot) 
+			if (validateSlot)
 			{
 				if (item->getEquipSlot() == getPositionForSlot(static_cast<slots_t>(slot)))
 				{
@@ -6145,21 +6149,20 @@ std::vector<ItemPtr> Player::getEquipment(bool validateSlot) const
 						and ((slot == CONST_SLOT_RIGHT or slot == CONST_SLOT_LEFT) and (item->getWeaponType() != WEAPON_NONE and item->getWeaponType() != WEAPON_AMMO))
 						or (slot == CONST_SLOT_AMMO) and (item->getWeaponType() == WEAPON_AMMO or item->getLightInfo().level > 0))
 					{
-						equipment.push_back(item);
+						out.push_back(item);
 					}
 					else if (!g_config.GetBoolean(ConfigManager::CLASSIC_EQUIPMENT_SLOTS))
 					{
-						equipment.push_back(item);
+						out.push_back(item);
 					}
 				}
 			}
 			else
 			{
-				equipment.push_back(item);
+				out.push_back(item);
 			}
 		}
 	}
-	return equipment;
 }
 
 Position Player::generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, uint8_t origin) {

@@ -776,6 +776,15 @@ namespace BlackTek
 			Spell,
 			Melee,
 			Ranged,
+			Fist,
+			Sword,
+			Axe,
+			Club,
+			Wand,
+			Rod,
+			Bow,
+			Crossbow,
+			Throwable, // stars, knives, stones, spears, ect.
 			Augment,
 			Absorb,
 			Restore,
@@ -790,7 +799,7 @@ namespace BlackTek
 			StaminaSteal,
 			SoulSteal,
 
-			Origins = 18
+			Origins = 27
 		};
 
 		enum DamageType : uint16_t
@@ -1151,9 +1160,19 @@ namespace BlackTek
 		void setArea(std::unique_ptr<AreaCombat> area);
 		void defense_block_effect(const Position& target_position) const noexcept;
 		void armor_block_effect(const Position& target_position) const noexcept;
-		void notify_players(const std::optional<std::span<const CreaturePtr>> spectators);
+		void heal_notification(const auto& caster, const auto& target, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
+		void damage_notification(const auto& attacker, const auto& defender, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
+		void manadamage_notification(const auto& attacker, const auto& defender, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
+
+		struct OriginNotice
+		{
+			MagicEffectClasses effect = CONST_ME_NONE;
+			std::string_view verb     = "an attack";
+		};
 
 		[[nodiscard]] uint32_t collect_notice_data(const CreaturePtr& target) const noexcept;
+		[[nodiscard]] uint32_t collect_heal_notice_data() const noexcept;
+		[[nodiscard]] static constexpr OriginNotice collect_origin_notice(Origin o) noexcept;
 		[[nodiscard]] uint8_t immunity_block_effect() const noexcept;
 		[[nodiscard]] BlockType block(const CreaturePtr& attacker, const PlayerPtr& target) noexcept;
 		[[nodiscard]] BlockType block(const CreaturePtr& attacker, const MonsterPtr& target) noexcept;
@@ -1273,7 +1292,7 @@ namespace BlackTek
 
 		[[nodiscard]] static Position generateAttackPosition(const CreaturePtr& attacker, const PlayerPtr& defender) noexcept;
 		[[nodiscard]] static std::unique_ptr<AreaCombat> generateDeflectArea(const CreaturePtr& attacker, const PlayerPtr& defender, int32_t targetCount) noexcept;
-		[[nodiscard]] static std::vector<Position> getOpenPositionsInRadius(const PlayerPtr& defender, int radius) noexcept;
+		static void getOpenPositionsInRadius(const PlayerPtr& defender, int radius, std::vector<Position>& out) noexcept;
 
 		static void deflect_damage(const CreaturePtr& attacker, const PlayerPtr& defender, uint32_t amount, uint16_t damageType, uint8_t distanceEffect, uint8_t impactEffect) noexcept;
 

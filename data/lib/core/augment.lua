@@ -2,14 +2,18 @@ local ATTACK_MOD = 1
 local DEFENSE_MOD = 2
 
 local attackModifierNames = {
-	[ATTACK_MODIFIER_NONE] = "none",
-	[ATTACK_MODIFIER_LIFESTEAL] = "lifesteal",
-	[ATTACK_MODIFIER_MANASTEAL] = "manasteal",
+	[ATTACK_MODIFIER_NONE]         = "none",
+	[ATTACK_MODIFIER_LIFESTEAL]    = "lifesteal",
+	[ATTACK_MODIFIER_MANASTEAL]    = "manasteal",
 	[ATTACK_MODIFIER_STAMINASTEAL] = "staminasteal",
-	[ATTACK_MODIFIER_SOULSTEAL] = "soulsteal",
-	[ATTACK_MODIFIER_CRITICAL] = "critical hit",
-	[ATTACK_MODIFIER_PIERCING] = "piercing",
-	[ATTACK_MODIFIER_CONVERSION] = "damage conversion"
+	[ATTACK_MODIFIER_SOULSTEAL]    = "soulsteal",
+	[ATTACK_MODIFIER_CRITICAL]     = "critical hit",
+	[ATTACK_MODIFIER_PIERCING]     = "piercing",
+	[ATTACK_MODIFIER_CONVERSION]   = "damage conversion",
+	[ATTACK_MODIFIER_REGENERATION]  = "regeneration",
+	[ATTACK_MODIFIER_ATTUNEMENT]    = "attunement",
+	[ATTACK_MODIFIER_VIGOR]         = "vigor",
+	[ATTACK_MODIFIER_TRANSCENDENCE] = "transcendence"
 }
 
 local defenseModifierNames = {
@@ -43,11 +47,33 @@ local combatTypeNames = {
 }
 
 local originTypeNames = {
-	[ORIGIN_NONE] = "all",
-	[ORIGIN_CONDITION] = "conditions",
-	[ORIGIN_SPELL] = "spells",
-	[ORIGIN_MELEE] = "melee",
-	[ORIGIN_RANGED] = "ranged"
+	[ORIGIN_NONE]         = "all",
+	[ORIGIN_CONDITION]    = "conditions",
+	[ORIGIN_SPELL]        = "spells",
+	[ORIGIN_MELEE]        = "melee",
+	[ORIGIN_RANGED]       = "ranged",
+	[ORIGIN_FIST]         = "fist",
+	[ORIGIN_SWORD]        = "sword",
+	[ORIGIN_AXE]          = "axe",
+	[ORIGIN_CLUB]         = "club",
+	[ORIGIN_WAND]         = "wand",
+	[ORIGIN_ROD]          = "rod",
+	[ORIGIN_BOW]          = "bow",
+	[ORIGIN_CROSSBOW]     = "crossbow",
+	[ORIGIN_THROWABLE]    = "throwable",
+	[ORIGIN_AUGMENT]      = "augment",
+	[ORIGIN_ABSORB]       = "absorb",
+	[ORIGIN_RESTORE]      = "restore",
+	[ORIGIN_REPLENISH]    = "replenish",
+	[ORIGIN_REVIVE]       = "revive",
+	[ORIGIN_REFLECT]      = "reflect",
+	[ORIGIN_DEFLECT]      = "deflect",
+	[ORIGIN_RICOCHET]     = "ricochet",
+	[ORIGIN_PIERCING]     = "piercing",
+	[ORIGIN_LIFESTEAL]    = "lifesteal",
+	[ORIGIN_MANASTEAL]    = "manasteal",
+	[ORIGIN_STAMINASTEAL] = "staminasteal",
+	[ORIGIN_SOULSTEAL]    = "soulsteal"
 }
 
 local function getModifierGroupKey(modifier)

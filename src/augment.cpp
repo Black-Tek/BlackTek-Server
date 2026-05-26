@@ -36,46 +36,18 @@ namespace BlackTek
 		loaded_agment_descriptions[m_guid] = original.getDescription();
 	}
 
-	const std::string Augment::getName() const
+	const std::string& Augment::getName() const
 	{
+		static const std::string empty;
 		auto it = loaded_augment_names.find(m_guid);
-		if (it != loaded_augment_names.end())
-			return it->second;
-		return {};
+		return (it != loaded_augment_names.end()) ? it->second : empty;
 	}
 
-	const std::string Augment::getDescription() const
+	const std::string& Augment::getDescription() const
 	{
+		static const std::string empty;
 		auto it = loaded_agment_descriptions.find(m_guid);
-		if (it != loaded_agment_descriptions.end())
-			return it->second;
-		return {};
-	}
-
-	std::vector<DamageModifier> Augment::getAttackModifiers(uint8_t modType) const
-	{
-		std::vector<DamageModifier> result;
-		for (const auto& mod : getAttackModifiers())
-		{
-			if (mod.getType() == modType)
-			{
-				result.push_back(mod);
-			}
-		}
-		return result;
-	}
-
-	std::vector<DamageModifier> Augment::getDefenseModifiers(uint8_t modType) const
-	{
-		std::vector<DamageModifier> result;
-		for (const auto& mod : getDefenseModifiers())
-		{
-			if (mod.getType() == modType)
-			{
-				result.push_back(mod);
-			}
-		}
-		return result;
+		return (it != loaded_agment_descriptions.end()) ? it->second : empty;
 	}
 
 	inline void Augment::addModifier(DamageModifier&& mod)
@@ -278,12 +250,12 @@ namespace BlackTek
 		return std::span<DamageModifier>(m_modifiers.data() + m_attack_count, m_modifiers.size() - m_attack_count);
 	}
 
-	inline std::span<const DamageModifier> Augment::getAttackModifiers() const noexcept
+	std::span<const DamageModifier> Augment::getAttackModifiers() const noexcept
 	{
 		return std::span<const DamageModifier>(m_modifiers.data(), m_attack_count);
 	}
 
-	inline std::span<const DamageModifier> Augment::getDefenseModifiers() const noexcept
+	std::span<const DamageModifier> Augment::getDefenseModifiers() const noexcept
 	{
 		return std::span<const DamageModifier>(m_modifiers.data() + m_attack_count, m_modifiers.size() - m_attack_count);
 	}

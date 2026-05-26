@@ -59,11 +59,14 @@ namespace BlackTek
 			Critical,			// damage can critcally hit
 			Piercing,			// damage ignores defenses
 			Conversion,			// damage is converted to different type
-			HealingBoost,		// increases healing output
+			Regeneration,		// increases health healing output
+			Attunement,			// increases mana healing output
+			Vigor,				// increases stamina healing output
+			Transcendence,		// increases soul healing output
 			// attack_modifier_cripple,			// new modifier for paralyzing target
 
 			First = Lifesteal,
-			Last = HealingBoost,
+			Last = Transcendence,
 		};
 
 		enum class DefenseType : uint8_t
@@ -118,9 +121,12 @@ namespace BlackTek
 				if (conversion)
 					filter_index |= Flag::Converted;
 
-				auto healing_boost = (modType == std::to_underlying(AttackType::HealingBoost));
+				const auto is_healing = (modType == std::to_underlying(AttackType::Regeneration)
+					or modType == std::to_underlying(AttackType::Attunement)
+					or modType == std::to_underlying(AttackType::Vigor)
+					or modType == std::to_underlying(AttackType::Transcendence));
 
-				if (healing_boost)
+				if (is_healing)
 					filter_index |= Flag::HealBoost;
 
 				filter_index |= Flag::Attack;
