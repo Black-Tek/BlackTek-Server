@@ -19,9 +19,9 @@ condition:setParameter(CONDITION_PARAM_DELAYED, 1)
 condition:addDamage(50, 9000, -10)
 
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_FIREDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_FIREAREA)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_FIRE)
+combat:setDamageType(Combat.DamageType.Fire)
+combat:setImpactEffect(CONST_ME_FIREAREA)
+combat:setDistanceEffect(CONST_ANI_FIRE)
 combat:setArea(createCombatArea(area))
 combat:addCondition(condition)
 

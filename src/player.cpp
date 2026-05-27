@@ -2141,8 +2141,8 @@ void Player::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile,
 	if (teleport || oldPos.z != newPos.z) {
 		int32_t ticks = g_config.GetNumber(ConfigManager::STAIRHOP_DELAY);
 		if (ticks > 0) {
-			if (const auto& condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_PACIFIED, ticks, 0)) {
-				addCondition(condition);
+			if (auto condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_PACIFIED, ticks, 0)) {
+				addCondition(std::move(condition));
 			}
 		}
 	}
@@ -2416,8 +2416,8 @@ void Player::removeMessageBuffer()
 
 			uint32_t muteTime = 5 * muteCount * muteCount;
 			muteCountMap[guid] = muteCount + 1;
-			const auto& condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_MUTED, muteTime * 1000, 0);
-			addCondition(condition);
+			auto condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_MUTED, muteTime * 1000, 0);
+			addCondition(std::move(condition));
 
 			sendTextMessage(MESSAGE_STATUS_SMALL, fmt::format("You are muted for {:d} seconds.", muteTime));
 		}
@@ -2902,13 +2902,11 @@ void Player::death(const CreaturePtr& lastHitCreature)
 
 		auto it = conditions.begin(), end = conditions.end();
 		while (it != end) {
-			Condition* condition = *it;
-			if (condition->isPersistent()) {
+			if ((*it)->isPersistent()) {
+				ConditionHandle cond = std::move(*it);
 				it = conditions.erase(it);
-
-				condition->endCondition(this->getPlayer());
-				onEndCondition(condition->getType());
-				delete condition;
+				cond->endCondition(this->getPlayer());
+				onEndCondition(cond->getType());
 			} else {
 				++it;
 			}
@@ -2918,13 +2916,11 @@ void Player::death(const CreaturePtr& lastHitCreature)
 
 		auto it = conditions.begin(), end = conditions.end();
 		while (it != end) {
-			Condition* condition = *it;
-			if (condition->isPersistent()) {
+			if ((*it)->isPersistent()) {
+				ConditionHandle cond = std::move(*it);
 				it = conditions.erase(it);
-
-				condition->endCondition(this->getPlayer());
-				onEndCondition(condition->getType());
-				delete condition;
+				cond->endCondition(this->getPlayer());
+				onEndCondition(cond->getType());
 			} else {
 				++it;
 			}
@@ -2986,8 +2982,8 @@ void Player::addInFightTicks(const bool pzlock /*= false*/)
 		pzLocked = true;
 	}
 
-	const auto& condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_INFIGHT, g_config.GetNumber(ConfigManager::PZ_LOCKED), 0);
-	addCondition(condition);
+	auto condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_INFIGHT, g_config.GetNumber(ConfigManager::PZ_LOCKED), 0);
+	addCondition(std::move(condition));
 }
 
 void Player::removeList()
@@ -3939,9 +3935,6 @@ void Player::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t 
 		{
 			const auto& item = thing->getItem();
 
-			if (item and item->hasImbuements())
-				addItemImbuements(thing->getItem());
-
 			if (item and item->isAugmented())
 			{
 				attack_modifier_count += item->getAttackModifierCount();
@@ -4020,9 +4013,6 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 		if (isInventorySlot(static_cast<slots_t>(index)))
 		{
 			auto item = thing->getItem();
-
-			if (item and item->hasImbuements())
-				removeItemImbuements(thing->getItem());
 
 			if (item and item->isAugmented())
 			{
@@ -4256,6 +4246,76 @@ void Player::getPathSearchParams(const CreatureConstPtr& creature, FindPathParam
 	fpp.fullPathSearch = true;
 }
 
+bool Player::canDualWield() const noexcept
+{
+	const auto* voc = getVocation();
+	return voc and voc->dualWield.enabled
+		and getWeapon(CONST_SLOT_RIGHT, true) != nullptr
+		and getWeapon(CONST_SLOT_LEFT, true)  != nullptr;
+}
+
+void Player::doSecondaryAttack(const CreaturePtr& target)
+{
+	if (hasCondition(CONDITION_PACIFIED))
+		return;
+
+	const auto* voc = getVocation();
+	if (not voc or not voc->dualWield.enabled)
+		return;
+
+	const auto& secondaryTool = getWeapon(CONST_SLOT_LEFT, true);
+	if (not secondaryTool)
+		return;
+
+	m_is_secondary_attack = true;
+	setDualWieldMultiplier(voc->dualWield.secondaryMultiplier);
+
+	if (const auto& weapon = g_weapons->getWeapon(secondaryTool)) {
+		// Item is registered in the Lua weapons system — use the full weapon handler.
+		weapon->useWeapon(getPlayer(), secondaryTool, target);
+	} else {
+		// Item has its own attack data but is not registered as a Lua weapon.
+		// Perform a basic melee attack derived entirely from the item's stats.
+		const WeaponType_t wt = secondaryTool->getWeaponType();
+		if (wt == WEAPON_SWORD || wt == WEAPON_CLUB || wt == WEAPON_AXE) {
+			if (Position::areInRange<1, 1>(getPosition(), target->getPosition())) {
+				const int32_t attackSkill = getWeaponSkill(secondaryTool);
+				const int32_t attackValue = std::max<int32_t>(0, secondaryTool->getAttack());
+				const float attackFactor = getAttackFactor();
+				const int32_t maxDmg = static_cast<int32_t>(
+					Weapons::getMaxWeaponDamage(getLevel(), attackSkill, attackValue, attackFactor)
+					* voc->meleeDamageMultiplier
+					* getDualWieldMultiplier()
+				);
+				if (maxDmg > 0) {
+					auto strike = BlackTek::g_combat_registry.Create(
+						static_cast<uint16_t>(BlackTek::Combat::DamageType::Physical),
+						static_cast<uint32_t>(normal_random(0, maxDmg))
+					);
+					strike->SetConfig(BlackTek::Combat::Config::BlockedByArmor);
+					strike->SetConfig(BlackTek::Combat::Config::BlockedByDefense);
+					strike->SetConfig(BlackTek::Combat::Config::Aggressive);
+					strike->setOrigin(BlackTek::Combat::Origin::Melee);
+					strike->strike_target(getPlayer(), target);
+
+					if (!hasFlag(PlayerFlag_NotGainSkill) && getAddAttackSkill()) {
+						const skills_t skill = wt == WEAPON_SWORD ? SKILL_SWORD
+						                     : wt == WEAPON_AXE   ? SKILL_AXE
+						                                           : SKILL_CLUB;
+						addSkillAdvance(skill, 1);
+					}
+				}
+			}
+		} else {
+			// Non-melee item or unknown type — fall back to fist attack.
+			Weapon::useFist(getPlayer(), target);
+		}
+	}
+
+	setDualWieldMultiplier(1.0f);
+	m_is_secondary_attack = false;
+}
+
 void Player::doAttacking(uint32_t)
 {
 	if (lastAttack == 0) {
@@ -4269,10 +4329,14 @@ void Player::doAttacking(uint32_t)
 	if ((OTSYS_TIME() - lastAttack) >= getAttackSpeed()) {
 		bool result = false;
 
-		const auto& tool = getWeapon();
+		const bool dualWielding = canDualWield();
+		const auto& tool = dualWielding ? getWeapon(CONST_SLOT_RIGHT) : getWeapon();
 		const auto& weapon = g_weapons->getWeapon(tool);
 		uint32_t delay = getAttackSpeed();
 		bool classicSpeed = g_config.GetBoolean(ConfigManager::CLASSIC_ATTACK_SPEED);
+
+		if (dualWielding)
+			setDualWieldMultiplier(getVocation()->dualWield.primaryMultiplier);
 
 		if (weapon) {
 			if (!weapon->interruptSwing()) {
@@ -4286,6 +4350,8 @@ void Player::doAttacking(uint32_t)
 			result = Weapon::useFist(this->getPlayer(), getAttackedCreature());
 		}
 
+		setDualWieldMultiplier(1.0f);
+
 		SchedulerTask* task = createSchedulerTask(std::max<uint32_t>(SCHEDULER_MINTICKS, delay), [id = getID()]() { g_game.checkCreatureAttack(id); });
 		if (!classicSpeed) {
 			setNextActionTask(task, false);
@@ -4296,6 +4362,18 @@ void Player::doAttacking(uint32_t)
 
 		if (result) {
 			lastAttack = OTSYS_TIME();
+
+			if (dualWielding) {
+				const auto target = getAttackedCreature();
+				if (target) {
+					const auto secondaryDelay = std::max<uint32_t>(SCHEDULER_MINTICKS, getVocation()->dualWield.delay);
+					g_scheduler.addEvent(createSchedulerTask(secondaryDelay,
+						[playerId = getID(), targetId = target->getID()]() {
+							g_game.playerSecondaryAttack(playerId, targetId);
+						}
+					));
+				}
+			}
 		}
 	}
 }
@@ -6023,18 +6101,18 @@ std::forward_list<Condition*> Player::getMuteConditions() const
 {
 	std::forward_list<Condition*> muteConditions;
 
-	for (Condition* condition : conditions)
+	for (const auto& cond : conditions)
 	{
 		// todo: turn both continue checks into predicated filters for views
-		if (condition->getTicks() <= 0)
+		if (cond->getTicks() <= 0)
 			continue;
 
-		ConditionType_t type = condition->getType();
+		const ConditionType_t type = cond->getType();
 
 		if (type != CONDITION_MUTED and type != CONDITION_CHANNELMUTEDTICKS and type != CONDITION_YELLTICKS)
 			continue;
 
-		muteConditions.push_front(condition);
+		muteConditions.push_front(cond.get());
 	}
 	return muteConditions;
 }

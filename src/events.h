@@ -12,6 +12,7 @@
 class ItemType;
 class Tile;
 class Spell;
+namespace BlackTek { class Augment; }
 
 enum class EventInfoId {
 	// Creature
@@ -71,8 +72,6 @@ class Events
 		int32_t monsterOnSpawn = -1;
 
 		// Item
-		int32_t itemOnImbue = -1;
-		int32_t itemOnRemoveImbue = -1;
 		int32_t itemOnAttack = -1;
 		int32_t itemOnDefend = -1;
 		int32_t itemOnAugment = -1;
@@ -126,21 +125,18 @@ class Events
 		void eventPlayerOnInventoryUpdate(const PlayerPtr& player, const ItemPtr& item, slots_t slot, bool equip);
 		void eventPlayerOnRotateItem(const PlayerPtr& player, const ItemPtr& item);
 		bool eventPlayerOnSpellTry(const PlayerPtr& player, const Spell* spell, SpellType_t spellType);
-		void eventPlayerOnAugment(const PlayerPtr& player, std::shared_ptr<Augment> augment);
-		void eventPlayerOnRemoveAugment(const PlayerPtr& player, std::shared_ptr<Augment> augment);
+		void eventPlayerOnAugment(const PlayerPtr& player, std::shared_ptr<BlackTek::Augment> augment);
+		void eventPlayerOnRemoveAugment(const PlayerPtr& player, std::shared_ptr<BlackTek::Augment> augment);
 
 		// Monster
 		void eventMonsterOnDropLoot(const MonsterPtr& monster, const ContainerPtr& corpse);
 		bool eventMonsterOnSpawn(const MonsterPtr& monster, const Position& position, bool startup, bool artificial);
 
 		// Item
-		bool eventItemOnImbue(const ItemPtr& item, const std::shared_ptr<Imbuement>& imbuement, bool created = true);
-		void eventItemOnRemoveImbue(const ItemPtr& item, ImbuementType imbueType, bool decayed = false);
-
 		//void eventItemOnAttack(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& defender, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
 		//void eventItemOnDefend(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
-		//void eventItemOnAugment(const ItemPtr& item, std::shared_ptr<Augment> augment);
-		void eventItemOnRemoveAugment(const ItemPtr& item, std::shared_ptr<Augment> augment);
+		//void eventItemOnAugment(const ItemPtr& item, std::shared_ptr<BlackTek::Augment> augment);
+		void eventItemOnRemoveAugment(const ItemPtr& item, std::shared_ptr<BlackTek::Augment> augment);
 
 		//void eventItemOnModifierAttack(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& defender, const std::shared_ptr<DamageModifier>& modifier, CombatDamage& damage);
     	//void eventItemOnModifierDefend(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& attacker, const std::shared_ptr<DamageModifier>& modifier, CombatDamage& damage);

@@ -6,7 +6,6 @@
 #include "thing.h"
 #include "condition.h"
 #include "map.h"
-#include "baseevents.h"
 #include "tools.h"
 #include "matrixarea.h"
 #include "damagemodifier.h"
@@ -22,6 +21,7 @@
 #include <memory_resource>
 #include <atomic>
 #include <array>
+#include <forward_list>
 
 class Condition;
 class Item;
@@ -103,652 +103,24 @@ namespace BlackTek
 	using DeflectionEffectMap = gtl::flat_hash_map<int, RawAreaVec>;
 	using DeflectAreaMap = gtl::flat_hash_map<Direction, const DeflectionEffectMap>;
 
-	static const DeflectionEffectMap _StandardDeflectionMap = DeflectionEffectMap
-	{
-			{1, {{0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 3, 0, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0}}},
-
-			{2, {{0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0,
-				  0, 1, 3, 0, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0},
-				 {0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 3, 1, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0},
-				 {0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0,
-				  0, 1, 2, 1, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0}}},
-
-			{3, {{0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0,
-				  0, 1, 3, 1, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0}}},
-
-			{4, {{0, 0, 0, 0, 0,
-				  0, 0, 1, 0, 0,
-				  0, 1, 3, 1, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0},
-				 {0, 0, 0, 0, 0,
-				  0, 1, 1, 1, 0,
-				  0, 0, 3, 0, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0}}},
-
-			{5, {{0, 0, 0, 0, 0,
-				  1, 0, 0, 0, 1,
-				  0, 1, 3, 1, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0},
-				 {0, 0, 1, 0, 0,
-				  0, 0, 1, 0, 0,
-				  0, 1, 3, 1, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0},
-				 {0, 0, 1, 0, 0,
-				  0, 1, 1, 1, 0,
-				  0, 0, 3, 0, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0}}},
-
-			{6, {{0, 0, 0, 0, 0,
-				  1, 0, 1, 0, 1,
-				  0, 1, 3, 1, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0},
-				 {0, 1, 0, 1, 0,
-				  0, 0, 1, 0, 0,
-				  0, 1, 3, 1, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0},
-				 {0, 0, 0, 0, 0,
-				  0, 0, 1, 0, 0,
-				  0, 1, 3, 1, 0,
-				  1, 0, 0, 0, 1,
-				  0, 0, 0, 0, 0},
-				 {0, 0, 0, 0, 0,
-				  0, 1, 1, 1, 0,
-				  0, 1, 3, 1, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0}}}
-	};
-
-
-	static const DeflectionEffectMap _DiagonalDeflectionMap = DeflectionEffectMap
-	{
-			{1,  {{0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 3, 0, 0,
-				  0, 0, 0, 0, 0,
-				  0, 0, 0, 0, 0}}},
-			{2, { // Double Diagonal
-				{0, 0, 0, 0, 0,
-				 0, 0, 1, 0, 0,
-				 0, 0, 3, 0, 0,
-				 0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0},
-				{0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0,
-				 0, 0, 3, 0, 0,
-				 0, 0, 1, 0, 0,
-				 0, 0, 0, 0, 0},
-				{0, 0, 0, 0, 0,
-				 0, 1, 0, 0, 0,
-				 0, 0, 3, 0, 0,
-				 0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0},
-				{0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0,
-				 0, 0, 2, 1, 0,
-				 0, 0, 1, 0, 0,
-				 0, 0, 0, 0, 0}
-			}},
-			{3, { // Triple Diagonal
-				{0, 0, 0, 0, 0,
-				 0, 0, 1, 0, 0,
-				 0, 1, 3, 0, 0,
-				 0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0},
-				{0, 0, 0, 0, 0,
-				 0, 0, 0, 1, 0,
-				 0, 0, 3, 0, 0,
-				 0, 1, 0, 0, 0,
-				 0, 0, 0, 0, 0},
-				{0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0,
-				 0, 0, 3, 1, 0,
-				 0, 0, 1, 0, 0,
-				 0, 0, 0, 0, 0}
-			}},
-			{4, { // Quad Diagonal
-				{0, 0, 0, 0, 0,
-				 0, 1, 1, 0, 0,
-				 0, 1, 3, 0, 0,
-				 0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0},
-				{0, 0, 0, 0, 0,
-				 0, 1, 0, 1, 0,
-				 0, 0, 3, 0, 0,
-				 0, 1, 0, 0, 0,
-				 0, 0, 0, 0, 0},
-				{1, 0, 0, 0, 0,
-				 0, 1, 1, 0, 0,
-				 0, 1, 2, 0, 0,
-				 0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0}
-			}},
-			{5, { // Quint Diagonal
-				{0, 0, 1, 0, 0,
-				 0, 0, 1, 0, 0,
-				 1, 1, 3, 0, 0,
-				 0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0},
-				{0, 0, 0, 0, 0,
-				 0, 0, 1, 1, 0,
-				 0, 1, 3, 0, 0,
-				 0, 1, 0, 0, 0,
-				 0, 0, 0, 0, 0},
-				{0, 0, 1, 0, 0,
-				 0, 1, 1, 0, 0,
-				 1, 1, 2, 0, 0,
-				 0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0}
-			}},
-			{6, { // Sext Diagonal
-				{0, 0, 1, 0, 0,
-				 0, 1, 1, 0, 0,
-				 1, 1, 3, 0, 0,
-				 0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0},
-				{0, 0, 0, 0, 0,
-				 0, 1, 1, 1, 0,
-				 0, 1, 3, 0, 0,
-				 0, 1, 0, 0, 0,
-				 0, 0, 0, 0, 0},
-				{1, 0, 0, 0, 0,
-				 0, 1, 1, 1, 0,
-				 0, 1, 2, 0, 0,
-				 0, 1, 0, 0, 0,
-				 0, 0, 0, 0, 0}
-			}}
-	};
-
-	static const DeflectAreaMap DeflectAreas = DeflectAreaMap
-	{
-		{DIRECTION_NORTH, _StandardDeflectionMap},
-		{DIRECTION_SOUTH, _StandardDeflectionMap},
-		{DIRECTION_WEST, _StandardDeflectionMap},
-		{DIRECTION_EAST, _StandardDeflectionMap},
-		{DIRECTION_NORTHWEST, _DiagonalDeflectionMap},
-		{DIRECTION_NORTHEAST, _DiagonalDeflectionMap},
-		{DIRECTION_SOUTHWEST, _DiagonalDeflectionMap},
-		{DIRECTION_SOUTHEAST, _DiagonalDeflectionMap},
-	};
-
-	gtl::flat_hash_map<int, RawAreaVec> deflectionAreas = 
-	{
-		{1, {{0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 3, 0, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0}}},
-
-		{2, {{0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0,
-			  0, 1, 3, 0, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0},
-			 {0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 3, 1, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0},
-			 {0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0,
-			  0, 1, 2, 1, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0}}},
-
-		{3, {{0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0,
-			  0, 1, 3, 1, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0}}},
-
-		{4, {{0, 0, 0, 0, 0,
-			  0, 0, 1, 0, 0,
-			  0, 1, 3, 1, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0},
-			 {0, 0, 0, 0, 0,
-			  0, 1, 1, 1, 0,
-			  0, 0, 3, 0, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0}}},
-
-		{5, {{0, 0, 0, 0, 0,
-			  1, 0, 0, 0, 1,
-			  0, 1, 3, 1, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0},
-			 {0, 0, 1, 0, 0,
-			  0, 0, 1, 0, 0,
-			  0, 1, 3, 1, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0},
-			 {0, 0, 1, 0, 0,
-			  0, 1, 1, 1, 0,
-			  0, 0, 3, 0, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0}}},
-
-		{6, {{0, 0, 0, 0, 0,
-			  1, 0, 1, 0, 1,
-			  0, 1, 3, 1, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0},
-			 {0, 1, 0, 1, 0,
-			  0, 0, 1, 0, 0,
-			  0, 1, 3, 1, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0},
-			 {0, 0, 0, 0, 0,
-			  0, 0, 1, 0, 0,
-			  0, 1, 3, 1, 0,
-			  0, 1, 0, 1, 0,
-			  0, 0, 0, 0, 0},
-			 {0, 0, 0, 0, 0,
-			  0, 1, 1, 1, 0,
-			  0, 1, 3, 1, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0}}}
-	};
-
-	gtl::flat_hash_map<int, RawAreaVec> deflectionDiagonalAreas =
-	{
-		{1,  {{0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 3, 0, 0,
-			  0, 0, 0, 0, 0,
-			  0, 0, 0, 0, 0}}},
-		{2, { // Double Diagonal
-			{0, 0, 0, 0, 0,
-			 0, 0, 0, 0, 0,
-			 0, 0, 3, 0, 0,
-			 0, 0, 1, 0, 0,
-			 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0,
-			 0, 0, 1, 0, 0,
-			 0, 0, 3, 0, 0,
-			 0, 0, 0, 0, 0,
-			 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0,
-			 0, 0, 0, 0, 0,
-			 0, 0, 2, 1, 0,
-			 0, 0, 1, 0, 0,
-			 0, 0, 0, 0, 0}
-		}},
-		{3, { // Triple Diagonal
-			{0, 0, 0, 0, 0,
-			 0, 0, 0, 0, 0,
-			 0, 0, 3, 0, 0,
-			 0, 0, 0, 0, 0,
-			 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0,
-			 0, 0, 0, 0, 0,
-			 0, 0, 3, 1, 0,
-			 0, 0, 1, 1, 0,
-			 0, 0, 0, 0, 0}
-		}},
-		{4, { // Quad Diagonal
-			{0, 0, 0, 0, 0,
-			 0, 1, 1, 0, 0,
-			 0, 1, 3, 0, 0,
-			 0, 0, 0, 0, 0,
-			 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0,
-			 0, 1, 0, 0, 0,
-			 0, 0, 3, 1, 0,
-			 0, 0, 1, 0, 0,
-			 0, 0, 0, 0, 0}
-		}},
-		{5, { // Quint Diagonal
-			{0, 0, 1, 0, 0,
-			 0, 0, 1, 0, 0,
-			 1, 1, 3, 0, 0,
-			 0, 0, 0, 0, 0,
-			 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0,
-			 0, 0, 1, 1, 0,
-			 0, 1, 3, 0, 0,
-			 0, 1, 0, 0, 0,
-			 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0,
-			 0, 0, 0, 1, 0,
-			 0, 0, 3, 1, 0,
-			 0, 1, 1, 0, 0,
-			 0, 0, 0, 0, 0}
-		}},
-		{6, { // Sext Diagonal
-			{0, 0, 1, 0, 0,
-			 0, 1, 1, 0, 0,
-			 1, 1, 3, 0, 0,
-			 0, 0, 0, 0, 0,
-			 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0,
-			 0, 0, 1, 1, 0,
-			 0, 1, 3, 0, 0,
-			 0, 1, 0, 0, 0,
-			 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0,
-			 0, 0, 0, 1, 0,
-			 0, 0, 3, 1, 0,
-			 0, 1, 1, 0, 0,
-			 0, 0, 0, 0, 0}
-		}}
-	};
 
 
 
-	// double Diagonal
-	RawAreaVec DeflectDiagonal2xAreas =
-	{
-		{
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 3, 0, 0,
-			0, 0, 1, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 0, 0, 0,
-			0, 0, 1, 0, 0,
-			0, 0, 3, 0, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 2, 1, 0,
-			0, 0, 1, 0, 0,
-			0, 0, 0, 0, 0
-		},
-	};
-
-	// triple Diagonal
-	RawAreaVec DeflectDiagonal3xAreas =
-	{
-		{
-			0, 0, 0, 0, 0,
-			0, 0, 1, 0, 0,
-			0, 1, 3, 0, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 3, 1, 0,
-			0, 0, 1, 0, 0,
-			0, 0, 0, 0, 0
-		}
-	};
-
-	// quad Diagonal
-	RawAreaVec DeflectDiagonal4xAreas =
-	{
-		{
-			0, 0, 0, 0, 0,
-			0, 1, 1, 0, 0,
-			0, 1, 3, 0, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 0, 0, 0,
-			0, 1, 0, 0, 0,
-			0, 0, 3, 1, 0,
-			0, 0, 1, 0, 0,
-			0, 0, 0, 0, 0
-		}
-	};
-
-	// quint Diagonal
-	RawAreaVec DeflectDiagonal5xAreas =
-	{
-		{
-			0, 0, 1, 0, 0,
-			0, 0, 1, 0, 0,
-			1, 1, 3, 0, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 0, 0, 0,
-			0, 0, 1, 1, 0,
-			0, 1, 3, 0, 0,
-			0, 1, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 0, 0, 0,
-			0, 0, 0, 1, 0,
-			0, 0, 3, 1, 0,
-			0, 1, 1, 0, 0,
-			0, 0, 0, 0, 0
-		}
-	};
-
-	// sext Diagonal
-	RawAreaVec DeflectDiagonal6xAreas =
-	{
-		{
-			0, 0, 1, 0, 0,
-			0, 1, 1, 0, 0,
-			1, 1, 3, 0, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 0, 0, 0,
-			0, 0, 1, 1, 0,
-			0, 1, 3, 0, 0,
-			0, 1, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 0, 0, 0,
-			0, 0, 0, 1, 0,
-			0, 0, 3, 1, 0,
-			0, 1, 1, 0, 0,
-			0, 0, 0, 0, 0
-		}
-	};
-
-
-	// single
-	RawArea Deflect1xArea = 
-	{
-		0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0,
-		0, 0, 3, 0, 0,
-		0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0
-	};
-
-	// doubles
-	RawAreaVec Deflect2xAreas =
-	{
-		{
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0,
-			0, 1, 3, 0, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 3, 1, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0,
-			0, 1, 2, 1, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-	};
-
-
-	// triple
-	RawArea Deflect3xArea =
-	{
-		0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0,
-		0, 1, 3, 1, 0,
-		0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0
-	};
 
 
 
-	// quad
-	RawAreaVec Deflect4xAreas =
-	{
-		{
-			0, 0, 0, 0, 0,
-			0, 0, 1, 0, 0,
-			0, 1, 3, 1, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 0, 0, 0,
-			0, 1, 1, 1, 0,
-			0, 0, 3, 0, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		}
-	};
 
 
 
-	// quint (5's)
-	RawAreaVec Deflect5xAreas =
-	{
-		{
-			0, 0, 0, 0, 0,
-			1, 0, 0, 0, 1,
-			0, 1, 3, 1, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 1, 0, 0,
-			0, 0, 1, 0, 0,
-			0, 1, 3, 1, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 1, 0, 0,
-			0, 1, 1, 1, 0,
-			0, 0, 3, 0, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		}
-	};
-
-
-	// sext (6's)
-	RawAreaVec Deflect6xAreas =
-	{
-		{
-			0, 0, 0, 0, 0,
-			1, 0, 1, 0, 1,
-			0, 1, 3, 1, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 1, 0, 1, 0,
-			0, 0, 1, 0, 0,
-			0, 1, 3, 1, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 0, 0, 0,
-			0, 0, 1, 0, 0,
-			0, 1, 3, 1, 0,
-			0, 1, 0, 1, 0,
-			0, 0, 0, 0, 0
-		},
-
-		{
-			0, 0, 0, 0, 0,
-			0, 1, 1, 1, 0,
-			0, 1, 3, 1, 0,
-			0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0
-		}
-	};
 
 
 
-	static std::vector<uint32_t> GetDeflectArea(uint32_t targets)
-	{
-		switch (targets) 
-		{
-			case 1:		return Deflect1xArea;
-			case 2:		return Deflect2xAreas[uniform_random(0, Deflect2xAreas.size() - 1)];
-			case 3:		return Deflect3xArea;
-			case 4:		return Deflect4xAreas[uniform_random(0, Deflect4xAreas.size() - 1)];
-			case 5:		return Deflect5xAreas[uniform_random(0, Deflect5xAreas.size() - 1)];
-			default:	return Deflect6xAreas[uniform_random(0, Deflect6xAreas.size() - 1)];
-		}
-	}
 
-	static std::vector<uint32_t> GetDiaganolDeflectArea(uint32_t targets) 
-	{
-		switch (targets) 
-		{
-			case 1:		return Deflect1xArea;
-			case 2:		return DeflectDiagonal2xAreas[uniform_random(0, DeflectDiagonal2xAreas.size() - 1)];
-			case 3:		return DeflectDiagonal3xAreas[uniform_random(0, DeflectDiagonal3xAreas.size() - 1)];
-			case 4:		return DeflectDiagonal4xAreas[uniform_random(0, DeflectDiagonal4xAreas.size() - 1)];
-			case 5:		return DeflectDiagonal5xAreas[uniform_random(0, DeflectDiagonal5xAreas.size() - 1)];
-			default:	return DeflectDiagonal6xAreas[uniform_random(0, DeflectDiagonal6xAreas.size() - 1)];
-		}
-	}
+
+
+
+
+
 
 	// Todo: Create a struct for "CombatTable" which will be a specific defined and handled lua table able to be passed for construction of combat objects
 
@@ -758,6 +130,9 @@ namespace BlackTek
 
 	class Combat;
 	using CombatHandle = intrusive_ptr<Combat>;
+
+	extern std::pmr::unordered_map<int64_t, CombatArea> combat_area_map;
+	extern std::pmr::unordered_map<int64_t, CombatArea> combat_ext_area_map;
 
 	class Combat
 	{
@@ -831,7 +206,7 @@ namespace BlackTek
 			Dodge
 		};
 
-		enum Situaion : uint8_t
+		enum Situation : uint8_t
 		{
 			PlayerVsPlayer = 1 << 0,
 			PlayerVsMonster = 1 << 1,
@@ -982,6 +357,7 @@ namespace BlackTek
 			HasMvPFormula,
 			HasMvMFormula,
 			HasStages,			// this can come later, but the idea is to reduce the need of creating 10 combats per spell just to get it to do cool things..
+			SecondaryAttack,	// set when this combat originates from the off-hand weapon in a dual wield attack
 		};
 
 
@@ -1141,7 +517,7 @@ namespace BlackTek
 		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const Position& target_location) const noexcept;
 		[[nodiscard]] TargetCode target(const MonsterPtr& attacker, const Position& target_location) const noexcept;
 		[[nodiscard]] CombatHandle transformDamage(const uint16_t damage_type, const uint32_t amount) noexcept;
-		[[nodiscard]] uint32_t handle_conversion(std::ranges::input_range auto&& modifiers, auto attacker, auto victim);
+		[[nodiscard]] uint32_t handle_conversion(std::span<const DamageModifier> modifiers, const CreaturePtr& attacker, const CreaturePtr& victim);
 		[[nodiscard]] CombatHandle penetrateDamage(const uint32_t percent, const uint32_t flat) noexcept;
 		[[nodiscard]] CombatHandle clone() const noexcept;
 
@@ -1154,15 +530,15 @@ namespace BlackTek
 		void strike_target(const MonsterPtr& attacker, const MonsterPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const CreaturePtr& attacker, const CreaturePtr& defender, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void apply_healing_modifiers(const PlayerPtr& caster, const auto& target);
-		void heal_target(const auto& caster, const auto& target, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
+		void heal_target(const CreaturePtr& caster, const CreaturePtr& target, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void execute(const CreaturePtr& caster, const Position& center) noexcept;
 		void setArea(AreaCombat* area);
 		void setArea(std::unique_ptr<AreaCombat> area);
 		void defense_block_effect(const Position& target_position) const noexcept;
 		void armor_block_effect(const Position& target_position) const noexcept;
-		void heal_notification(const auto& caster, const auto& target, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
-		void damage_notification(const auto& attacker, const auto& defender, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
-		void manadamage_notification(const auto& attacker, const auto& defender, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
+		void heal_notification(const CreaturePtr& caster, const CreaturePtr& target, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
+		void damage_notification(const CreaturePtr& attacker, const CreaturePtr& defender, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
+		void manadamage_notification(const CreaturePtr& attacker, const CreaturePtr& defender, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 
 		struct OriginNotice
 		{
@@ -1180,15 +556,16 @@ namespace BlackTek
 		[[nodiscard]] uint32_t apply_damage(const CreaturePtr& attacker, const MonsterPtr& target, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 
 		[[nodiscard]]
-		inline bool hasArea() const noexcept 
+		inline bool hasArea() const noexcept
 		{
-			auto extIt = combat_ext_area_map.find(combat_id);
-			if (extIt != combat_ext_area_map.end())
+			if (combat_area_map.find(combat_id) != combat_area_map.end())
+				return true;
+			if (combat_ext_area_map.find(combat_id) != combat_ext_area_map.end())
 				return true;
 			return false;
 		}
 
-		[[nodiscard]] static constexpr int32_t calculate_output(const OutputFactors& factors, int32_t stat) noexcept
+		[[nodiscard]] static int32_t calculate_output(const OutputFactors& factors, int32_t stat) noexcept
 		{
 			switch (factors.formula_type)
 			{
@@ -1218,7 +595,7 @@ namespace BlackTek
 			}
 		}
 
-		[[nodiscard]] static constexpr int32_t calculate_resistance(const ResistanceFactors& factors, int32_t stat) noexcept
+		[[nodiscard]] static int32_t calculate_resistance(const ResistanceFactors& factors, int32_t stat) noexcept
 		{
 			if (stat <= 0)
 				return 0;
@@ -1287,8 +664,53 @@ namespace BlackTek
 		void postCombatEffects(CreaturePtr& caster, const Position& pos) const { postCombatEffects(caster, pos, *this); }
 		void setOrigin(Origin o) { origin = o; }
 
-		void setSituationFormulas(uint8_t index, SituationFormulas&& formulas) noexcept;
-		void setFormulaCallback(uint8_t index, FormulaStage stage, int32_t lua_ref) noexcept;
+		void SetDamageType(uint16_t type) noexcept { damage_type = type; }
+		void SetDamage(uint32_t dmg) noexcept { damage = dmg; }
+		void SetImpactEffect(uint8_t effect) noexcept { impactEffect = effect; }
+		void SetDistanceEffect(uint8_t effect) noexcept { distanceEffect = effect; }
+		void SetBlockType(uint8_t btype) noexcept { blockType = btype; }
+		void SetItemId(uint16_t item) noexcept { itemId = item; }
+		void SetConfig(Config flag, bool value = true) noexcept { config.set(flag, value); }
+		[[nodiscard]] bool GetConfig(Config flag) const noexcept { return config.test(flag); }
+		[[nodiscard]] uint16_t GetDamageType() const noexcept { return damage_type; }
+		[[nodiscard]] uint32_t GetDamage() const noexcept { return damage; }
+		[[nodiscard]] uint8_t GetImpactEffect() const noexcept { return impactEffect; }
+		[[nodiscard]] uint8_t GetDistanceEffect() const noexcept { return distanceEffect; }
+		[[nodiscard]] uint8_t GetBlockType() const noexcept { return blockType; }
+		[[nodiscard]] uint16_t GetItemId() const noexcept { return itemId; }
+
+		// ── Semantic Config flag wrappers ─────────────────────────────────────────
+		// Setters
+		void setTrueDamage(bool v)      noexcept { SetConfig(Config::TrueDamage, v);       }
+		void setBlockedByArmor(bool v)  noexcept { SetConfig(Config::BlockedByArmor, v);   }
+		void setBlockedByShield(bool v) noexcept { SetConfig(Config::BlockedByDefense, v); }
+		void setTopTargetOnly(bool v)   noexcept { SetConfig(Config::TopTargetOnly, v);    }
+		void setSelfOnly(bool v)        noexcept { SetConfig(Config::SelfOnly, v);         }
+		void setFriendlyParty(bool v)   noexcept { SetConfig(Config::FriendlyParty, v);    }
+		void setEnemyParty(bool v)      noexcept { SetConfig(Config::EnemyParty, v);       }
+		void setFraggedOnly(bool v)     noexcept { SetConfig(Config::FraggedOnly, v);      }
+		void setAggressive(bool v)      noexcept { SetConfig(Config::Aggressive, v);       }
+		void setIgnoreBarriers(bool v)  noexcept { SetConfig(Config::IgnoreBarriers, v);   }
+		void setUseCharges(bool v)      noexcept { SetConfig(Config::UseCharges, v);       }
+
+		// Getters
+		[[nodiscard]] bool isTrueDamage()      const noexcept { return GetConfig(Config::TrueDamage);       }
+		[[nodiscard]] bool isBlockedByArmor()  const noexcept { return GetConfig(Config::BlockedByArmor);   }
+		[[nodiscard]] bool isBlockedByShield() const noexcept { return GetConfig(Config::BlockedByDefense); }
+		[[nodiscard]] bool isTopTargetOnly()   const noexcept { return GetConfig(Config::TopTargetOnly);    }
+		[[nodiscard]] bool isSelfOnly()        const noexcept { return GetConfig(Config::SelfOnly);         }
+		[[nodiscard]] bool isFriendlyParty()   const noexcept { return GetConfig(Config::FriendlyParty);    }
+		[[nodiscard]] bool isEnemyParty()      const noexcept { return GetConfig(Config::EnemyParty);       }
+		[[nodiscard]] bool isFraggedOnly()     const noexcept { return GetConfig(Config::FraggedOnly);      }
+		[[nodiscard]] bool isAggressive()      const noexcept { return GetConfig(Config::Aggressive);       }
+		[[nodiscard]] bool isIgnoreBarriers()  const noexcept { return GetConfig(Config::IgnoreBarriers);   }
+		[[nodiscard]] bool usesCharges()       const noexcept { return GetConfig(Config::UseCharges);       }
+
+		void AddCondition(ConditionHandle cond);
+		void ClearConditions() noexcept;
+
+		void SetSituationFormulas(uint8_t index, SituationFormulas&& formulas) noexcept;
+		void SetFormulaCallback(uint8_t index, FormulaStage stage, int32_t lua_ref) noexcept;
 
 		[[nodiscard]] static Position generateAttackPosition(const CreaturePtr& attacker, const PlayerPtr& defender) noexcept;
 		[[nodiscard]] static std::unique_ptr<AreaCombat> generateDeflectArea(const CreaturePtr& attacker, const PlayerPtr& defender, int32_t targetCount) noexcept;
@@ -1300,6 +722,22 @@ namespace BlackTek
 
 		[[nodiscard]] int64_t id() const noexcept { return combat_id; }
 		void set_id(int64_t new_id) { combat_id = new_id; }
+
+		[[nodiscard]] static constexpr ConditionType_t DamageToConditionType(CombatType_t type) noexcept
+		{
+			switch (type)
+			{
+				case COMBAT_FIREDAMAGE:     return CONDITION_FIRE;
+				case COMBAT_ENERGYDAMAGE:   return CONDITION_ENERGY;
+				case COMBAT_EARTHDAMAGE:    return CONDITION_POISON;
+				case COMBAT_DROWNDAMAGE:    return CONDITION_DROWN;
+				case COMBAT_ICEDAMAGE:      return CONDITION_FREEZING;
+				case COMBAT_HOLYDAMAGE:     return CONDITION_DAZZLED;
+				case COMBAT_DEATHDAMAGE:    return CONDITION_CURSED;
+				case COMBAT_PHYSICALDAMAGE: return CONDITION_BLEEDING;
+				default:                    return CONDITION_NONE;
+			}
+		}
 
 	private:
 		void apply_effects(const SpectatorVec& spectators, const CreaturePtr& caster, std::span<const TilePtr> tiles);
@@ -1335,6 +773,7 @@ namespace BlackTek
 		uint8_t origin = Origin::None;
 		uint8_t impactEffect = CONST_ME_NONE;
 		uint8_t distanceEffect = CONST_ANI_NONE;
+		std::forward_list<ConditionHandle> condition_list;
 
 		friend class CombatRegistry;
 		friend void intrusive_ptr_add_ref(const Combat* p) noexcept;
@@ -1391,9 +830,6 @@ namespace BlackTek
 	};
 	extern CombatRegistry g_combat_registry;
 
-	extern std::pmr::unordered_map<int64_t, CombatArea> combat_area_map;
-	extern std::pmr::unordered_map<int64_t, CombatArea> combat_ext_area_map;
-
 	// ── Formula Override System ───────────────────────────────────────────────
 	// Three-tier resolution per damage-block step:
 	//   Level 0 — no config:      Tibia defaults (zero overhead)
@@ -1442,9 +878,8 @@ namespace BlackTek
 	void ApplyArmorPreset(Combat::ResistanceFactors& out, std::string_view preset) noexcept;
 	void ApplyResolutionPreset(Combat::ResolutionFactors& out, std::string_view preset) noexcept;
 	void LoadFormulaDefaults(uint8_t sit_idx, std::string_view out_preset, std::string_view def_preset, std::string_view arm_preset, std::string_view res_preset) noexcept;
-}
 
-class MagicField final : public Item
+	class MagicField final : public Item
 {
 public:
 	explicit MagicField(uint16_t type) : Item(type), createTime(OTSYS_TIME())
@@ -1482,3 +917,4 @@ public:
 private:
 	int64_t createTime;
 };
+}

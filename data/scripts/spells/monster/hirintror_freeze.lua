@@ -19,7 +19,7 @@ condition:setParameter(CONDITION_PARAM_DELAYED, 1)
 condition:addDamage(25, 8000, -8)
 
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_ICETORNADO)
+combat:setImpactEffect(CONST_ME_ICETORNADO)
 combat:addCondition(condition)
 combat:setArea(createCombatArea(area))
 

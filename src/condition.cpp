@@ -11,6 +11,38 @@
 extern Game g_game;
 extern ConfigManager g_config;
 
+namespace BlackTek
+{
+	// Global PMR pool for all Condition allocations.
+	// unsynchronized_pool_resource is used because condition management happens
+	// on the main game thread. All sizes of Condition subclasses are served by
+	// the pool's internal size-segregated free lists.
+	std::pmr::unsynchronized_pool_resource g_condition_pool{ std::pmr::new_delete_resource() };
+}
+
+// ── Condition pool operator new/delete ───────────────────────────────────────
+void* Condition::operator new(std::size_t size)
+{
+	return BlackTek::g_condition_pool.allocate(size, alignof(std::max_align_t));
+}
+
+void Condition::operator delete(void* ptr, std::size_t size) noexcept
+{
+	BlackTek::g_condition_pool.deallocate(ptr, size, alignof(std::max_align_t));
+}
+
+// ── Intrusive pointer helpers ─────────────────────────────────────────────────
+void intrusive_ptr_add_ref(const Condition* p) noexcept
+{
+	p->m_ref_count.fetch_add(1, std::memory_order_relaxed);
+}
+
+void intrusive_ptr_release(const Condition* p) noexcept
+{
+	if (p->m_ref_count.fetch_sub(1, std::memory_order_acq_rel) == 1)
+		delete const_cast<Condition*>(p);
+}
+
 bool Condition::setParam(ConditionParam_t param, int32_t value)
 {
 	switch (param) {
@@ -165,7 +197,7 @@ bool Condition::executeCondition(CreaturePtr, int32_t interval)
 	return getEndTime() >= OTSYS_TIME();
 }
 
-Condition* Condition::createCondition(ConditionId_t id, ConditionType_t type, int32_t ticks, int32_t param/* = 0*/, bool buff/* = false*/, uint32_t subId/* = 0*/, bool aggressive/* = false */)
+ConditionHandle Condition::createCondition(ConditionId_t id, ConditionType_t type, int32_t ticks, int32_t param/* = 0*/, bool buff/* = false*/, uint32_t subId/* = 0*/, bool aggressive/* = false */)
 {
 	switch (type) {
 		case CONDITION_POISON:
@@ -176,38 +208,38 @@ Condition* Condition::createCondition(ConditionId_t id, ConditionType_t type, in
 		case CONDITION_DAZZLED:
 		case CONDITION_CURSED:
 		case CONDITION_BLEEDING:
-			return new ConditionDamage(id, type, buff, subId, aggressive);
+			return ConditionHandle(new ConditionDamage(id, type, buff, subId, aggressive));
 
 		case CONDITION_HASTE:
 		case CONDITION_PARALYZE:
-			return new ConditionSpeed(id, type, ticks, buff, subId, param, aggressive);
+			return ConditionHandle(new ConditionSpeed(id, type, ticks, buff, subId, param, aggressive));
 
 		case CONDITION_INVISIBLE:
-			return new ConditionInvisible(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionInvisible(id, type, ticks, buff, subId, aggressive));
 
 		case CONDITION_OUTFIT:
-			return new ConditionOutfit(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionOutfit(id, type, ticks, buff, subId, aggressive));
 
 		case CONDITION_LIGHT:
-			return new ConditionLight(id, type, ticks, buff, subId, param & 0xFF, (param & 0xFF00) >> 8, aggressive);
+			return ConditionHandle(new ConditionLight(id, type, ticks, buff, subId, param & 0xFF, (param & 0xFF00) >> 8, aggressive));
 
 		case CONDITION_REGENERATION:
-			return new ConditionRegeneration(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionRegeneration(id, type, ticks, buff, subId, aggressive));
 
 		case CONDITION_SOUL:
-			return new ConditionSoul(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionSoul(id, type, ticks, buff, subId, aggressive));
 
 		case CONDITION_ATTRIBUTES:
-			return new ConditionAttributes(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionAttributes(id, type, ticks, buff, subId, aggressive));
 
 		case CONDITION_SPELLCOOLDOWN:
-			return new ConditionSpellCooldown(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionSpellCooldown(id, type, ticks, buff, subId, aggressive));
 
 		case CONDITION_SPELLGROUPCOOLDOWN:
-			return new ConditionSpellGroupCooldown(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionSpellGroupCooldown(id, type, ticks, buff, subId, aggressive));
 
 		case CONDITION_DRUNK:
-			return new ConditionDrunk(id, type, ticks, buff, subId, param, aggressive);
+			return ConditionHandle(new ConditionDrunk(id, type, ticks, buff, subId, param, aggressive));
 
 		case CONDITION_INFIGHT:
 		case CONDITION_EXHAUST_WEAPON:
@@ -218,68 +250,68 @@ Condition* Condition::createCondition(ConditionId_t id, ConditionType_t type, in
 		case CONDITION_YELLTICKS:
 		case CONDITION_PACIFIED:
 		case CONDITION_MANASHIELD:
-			return new ConditionGeneric(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionGeneric(id, type, ticks, buff, subId, aggressive));
 
 		default:
-			return nullptr;
+			return {};
 	}
 }
 
-Condition* Condition::createCondition(PropStream& propStream)
+ConditionHandle Condition::createCondition(PropStream& propStream)
 {
 	uint8_t attr;
 	if (!propStream.read<uint8_t>(attr) || attr != CONDITIONATTR_TYPE) {
-		return nullptr;
+		return {};
 	}
 
 	uint32_t type;
 	if (!propStream.read<uint32_t>(type)) {
-		return nullptr;
+		return {};
 	}
 
 	if (!propStream.read<uint8_t>(attr) || attr != CONDITIONATTR_ID) {
-		return nullptr;
+		return {};
 	}
 
 	uint32_t id;
 	if (!propStream.read<uint32_t>(id)) {
-		return nullptr;
+		return {};
 	}
 
 	if (!propStream.read<uint8_t>(attr) || attr != CONDITIONATTR_TICKS) {
-		return nullptr;
+		return {};
 	}
 
 	uint32_t ticks;
 	if (!propStream.read<uint32_t>(ticks)) {
-		return nullptr;
+		return {};
 	}
 
 	if (!propStream.read<uint8_t>(attr) || attr != CONDITIONATTR_ISBUFF) {
-		return nullptr;
+		return {};
 	}
 
 	uint8_t buff;
 	if (!propStream.read<uint8_t>(buff)) {
-		return nullptr;
+		return {};
 	}
 
 	if (!propStream.read<uint8_t>(attr) || attr != CONDITIONATTR_SUBID) {
-		return nullptr;
+		return {};
 	}
 
 	uint32_t subId;
 	if (!propStream.read<uint32_t>(subId)) {
-		return nullptr;
+		return {};
 	}
 
 	if (!propStream.read<uint8_t>(attr) || attr != CONDITIONATTR_ISAGGRESSIVE) {
-		return nullptr;
+		return {};
 	}
 
 	uint8_t aggressive;
 	if (!propStream.read<uint8_t>(aggressive)) {
-		return nullptr;
+		return {};
 	}
 
 	return createCondition(static_cast<ConditionId_t>(id), static_cast<ConditionType_t>(type), ticks, 0, buff != 0, subId, aggressive);
@@ -882,23 +914,24 @@ bool ConditionRegeneration::executeCondition(const CreaturePtr creature, int32_t
 
 	if (internalHealthTicks >= healthTicks && healthGain != 0) {
 		internalHealthTicks = 0;
-		//CombatDamage regen;
-		//regen.primary.value = static_cast<int32_t>(healthGain);
-		//regen.primary.type = COMBAT_HEALING;
-		//const bool sendMsg = g_config.GetBoolean(ConfigManager::HEALTH_REGEN_NOTIFICATION);
-		//g_game.combatChangeHealth(nullptr, creature, regen, sendMsg);
+		auto hpRegen = BlackTek::g_combat_registry.Create(
+		    static_cast<uint16_t>(BlackTek::Combat::DamageType::Healing),
+		    static_cast<uint32_t>(healthGain));
+		hpRegen->SetConfig(BlackTek::Combat::Config::HealthTarget);
+		hpRegen->SetConfig(BlackTek::Combat::Config::TrueDamage);
+		hpRegen->heal_target(creature, creature, true);
 	}
 
 	if (internalManaTicks >= manaTicks && manaGain != 0) {
 		internalManaTicks = 0;
 
 		if (auto player = creature->getPlayer()) {
-			//CombatDamage regen;
-			//regen.primary.value = static_cast<int32_t>(manaGain);
-			//regen.primary.type = COMBAT_HEALING;
-			//regen.isUtility = isBuff;
-			//const bool sendMsg = g_config.GetBoolean(ConfigManager::MANA_REGEN_NOTIFICATION);
-			//g_game.combatChangeMana(nullptr, creature, regen, sendMsg);
+			auto manaRegen = BlackTek::g_combat_registry.Create(
+			    static_cast<uint16_t>(BlackTek::Combat::DamageType::Healing),
+			    static_cast<uint32_t>(manaGain));
+			manaRegen->SetConfig(BlackTek::Combat::Config::ManaTarget);
+			manaRegen->SetConfig(BlackTek::Combat::Config::TrueDamage);
+			manaRegen->heal_target(creature, player, true);
 		}
 	}
 

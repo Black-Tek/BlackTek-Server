@@ -1,6 +1,6 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_STUN)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_EXPLOSION)
+combat:setImpactEffect(CONST_ME_STUN)
+combat:setDistanceEffect(CONST_ANI_EXPLOSION)
 combat:setArea(createCombatArea(AREA_BEAM1))
 
 local parameters = {

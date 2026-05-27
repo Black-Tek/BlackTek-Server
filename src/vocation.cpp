@@ -216,6 +216,14 @@ bool Vocations::loadFromToml() {
 
 
 
+					if (auto dw = vocation_data["dual_wield"].as_table())
+					{
+						vocation.dualWield.enabled             = dw->at_path("enabled").value_or(false);
+						vocation.dualWield.primaryMultiplier   = static_cast<float>(dw->at_path("primary_multiplier").value_or(1.0));
+						vocation.dualWield.secondaryMultiplier = static_cast<float>(dw->at_path("secondary_multiplier").value_or(1.0));
+						vocation.dualWield.delay               = dw->at_path("delay").value_or(300u);
+					}
+
 					if (auto extra_skills = vocation_data["extraskills"].as_array()) 
 					{
 						extra_skills->for_each([vocId, &vocation](auto&& prop) 

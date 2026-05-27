@@ -78,7 +78,7 @@ ItemPtr Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
 
 	if (allowAugments and item) {
 		for (const auto& augName : it.augments) {
-			auto augment = Augments::GetAugment(augName);
+			auto augment = BlackTek::Augments::GetAugment(augName);
 			if (augment) {
 				item->addAugment(augment);
 			}
@@ -190,9 +190,6 @@ Item::Item(const uint16_t type, uint16_t count /*= 0*/) :
 		}
 	}
 
-	if (it.imbuementslots != 0) {
-		addImbuementSlots(it.imbuementslots);
-	}
 	setDefaultDuration();
 }
 
@@ -808,37 +805,30 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		}
 
 		case ATTR_IMBUESLOTS: {
+			// Legacy imbuement slot count — discard for backward compat.
 			uint16_t slots;
 			if (!propStream.read<uint16_t>(slots)) {
-				std::cout << "Failed to read : Imbuement Slots \n";
 				return ATTR_READ_ERROR;
 			}
-
-			imbuementSlots = slots;
 			break;
 		}
 
 		case ATTR_IMBUEMENTS: {
+			// Legacy imbuement data — skip all bytes for backward compat.
+			// Each serialized imbuement is: type(u8) + value(u32) + duration(u32) + decaytype(u8) = 10 bytes.
 			uint32_t size;
 			if (!propStream.read<uint32_t>(size)) {
-				std::cout << "Failed to read : Imbuement's Size \n";
 				return ATTR_READ_ERROR;
 			}
-
-			if (not imbuements.get()) 
-			{
-				imbuements = std::move(std::make_unique<std::vector<std::shared_ptr<Imbuement>>>(size));
-            }
-
 			for (uint32_t i = 0; i < size; ++i) {
-				std::shared_ptr<Imbuement> imb = std::make_shared<Imbuement>();
-				if (not imb->unserialize(propStream)) 
-				{
-					std::cout << "Failed to read : Imbuement Data \n";
+				uint8_t dummy8;
+				uint32_t dummy32;
+				if (!propStream.read<uint8_t>(dummy8)  ||
+				    !propStream.read<uint32_t>(dummy32) ||
+				    !propStream.read<uint32_t>(dummy32) ||
+				    !propStream.read<uint8_t>(dummy8)) {
 					return ATTR_READ_ERROR;
 				}
-
-				addImbuement(imb, false);
 			}
 			break;
 		}
@@ -1067,21 +1057,6 @@ void Item::serializeAttr(PropWriteStream& propWriteStream) const
 	if (hasAttribute(ITEM_ATTRIBUTE_TIER)) {
 		propWriteStream.write<uint8_t>(ATTR_TIER);
 		propWriteStream.writeString(getStrAttr(ITEM_ATTRIBUTE_TIER));
-	}
-
-	if (getImbuementSlots() > 0) {
-		propWriteStream.write<uint8_t>(ATTR_IMBUESLOTS);
-		propWriteStream.write<uint16_t>(imbuementSlots);
-	}
-
-	if (hasImbuements()) 
-	{
-		propWriteStream.write<uint8_t>(ATTR_IMBUEMENTS);
-		propWriteStream.write<uint32_t>(imbuements->size());
-		for (const auto& entry : *imbuements) 
-		{
-			entry->serialize(propWriteStream);
-		}
 	}
 
 	if (hasAttribute(ITEM_ATTRIBUTE_REWARDID)) {

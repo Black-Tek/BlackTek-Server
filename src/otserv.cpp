@@ -474,11 +474,11 @@ void mainLoader(int, char*[], ServiceManager* services)
 	Console::printProgress("Guilds", true, std::to_string(g_game.getGuilds().size()));
 
 	// Load monsters
-	if (not g_monsters.loadFromToml())
-	{
-		startupErrorMessage("Unable to load monsters!");
-		return;
-	}
+	//if (not g_monsters.loadFromToml())
+	//{
+	//	startupErrorMessage("Unable to load monsters!");
+	//	return;
+	//}
 
 	// Load lua monsters
 	if (not g_scripts->loadScripts("monster", false, false))
@@ -493,8 +493,8 @@ void mainLoader(int, char*[], ServiceManager* services)
 	Console::printProgress("Zones", true, std::to_string(Zones::count()));
 
 	// Load augments
-	Augments::loadAll();
-	Console::printProgress("Augments", true, std::to_string(Augments::count()));
+	BlackTek::Augments::loadAll();
+	Console::printProgress("Augments", true, std::to_string(BlackTek::Augments::count()));
 
 
 	// Load map

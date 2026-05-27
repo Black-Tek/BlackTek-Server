@@ -1194,7 +1194,7 @@ int_fast32_t AStarNodes::GetTileWalkCost(const CreaturePtr creature, const TileC
         const CombatType_t combatType = field->getCombatType();
         if (const auto& monster = creature->getMonster();
             not creature->isImmune(combatType)
-            and not creature->hasCondition(Combat::DamageToConditionType(combatType))
+            and not creature->hasCondition(BlackTek::Combat::DamageToConditionType(combatType))
             and (monster and not monster->canWalkOnFieldType(combatType)))
         {
             cost += MAP_NORMALWALKCOST * 18;

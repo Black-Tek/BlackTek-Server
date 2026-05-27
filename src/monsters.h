@@ -259,8 +259,8 @@ class Monsters
 		}
 
 	private:
-		ConditionDamage* getDamageCondition(ConditionType_t conditionType,
-		                                    int32_t maxDamage, int32_t minDamage, int32_t startDamage, uint32_t tickInterval);
+		ConditionHandle getDamageCondition(ConditionType_t conditionType,
+		                                   int32_t maxDamage, int32_t minDamage, int32_t startDamage, uint32_t tickInterval);
 
 		MonsterType* loadMonsterFromToml(const toml::table& data, const std::string& monsterKey, bool reloading);
 

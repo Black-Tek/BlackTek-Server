@@ -11,6 +11,8 @@
 
 namespace BlackTek
 {
+	gtl::flat_hash_map<uint64_t, std::string> loaded_augment_names;
+	gtl::flat_hash_map<uint64_t, std::string> loaded_agment_descriptions;
 
 	Augment::Augment(const std::string_view name, const std::string_view description) : m_guid(generateGUID())
 	{
@@ -106,13 +108,13 @@ namespace BlackTek
 
 	inline void Augment::addAttackModifier(DamageModifier&& modifier)
 	{
-		m_modifiers.insert(m_modifiers.begin() + m_attack_count, modifier);
+		m_modifiers.insert(m_modifiers.begin() + m_attack_count, std::move(modifier));
 		++m_attack_count;
 	}
 
 	inline void Augment::addDefenseModifier(DamageModifier&& modifier)
 	{
-		m_modifiers.push_back(modifier);
+		m_modifiers.push_back(std::move(modifier));
 	}
 
 	inline void Augment::removeModifier(uint64_t guid)
@@ -125,6 +127,7 @@ namespace BlackTek
 		{
 			m_modifiers.erase(it);
 			--m_attack_count;
+			rebuild_triggers();
 			return;
 		}
 
@@ -137,12 +140,12 @@ namespace BlackTek
 		rebuild_triggers();
 	}
 
-	inline uint32_t Augment::attack_mod_count() const noexcept
+	uint32_t Augment::attack_mod_count() const noexcept
 	{
 		return m_attack_count;
 	}
 
-	inline uint32_t Augment::defense_mod_count() const noexcept
+	uint32_t Augment::defense_mod_count() const noexcept
 	{
 		return static_cast<uint32_t>(m_modifiers.size()) - m_attack_count;
 	}
@@ -232,7 +235,11 @@ namespace BlackTek
 			if (not propReadStream.readBytes(std::span<std::byte>(buf)))
 				return std::nullopt;
 
-			augment->addModifier(DamageModifier::deserialize(std::span<const std::byte, sizeof(DamageModifier)>(buf)));
+			auto mod = DamageModifier::deserialize(std::span<const std::byte, sizeof(DamageModifier)>(buf));
+			mod.guid = DamageModifier::generateGUID();
+			if ((mod.filter_index & DamageModifier::Flag::Named) and mod.name_buf[0] != '\0')
+				mod.setCreatureName(std::string_view(mod.name_buf));
+			augment->addModifier(std::move(mod));
 		}
 
 		augment->m_attack_count = attackCount;
@@ -260,7 +267,7 @@ namespace BlackTek
 		return std::span<const DamageModifier>(m_modifiers.data() + m_attack_count, m_modifiers.size() - m_attack_count);
 	}
 
-	inline std::span<const DamageModifier> Augment::getModifiers() const noexcept
+	std::span<const DamageModifier> Augment::getModifiers() const noexcept
 	{
 		return std::span<const DamageModifier>(m_modifiers.data(), m_modifiers.size());
 	}
@@ -268,9 +275,29 @@ namespace BlackTek
 	void Augment::rebuild_triggers() noexcept
 	{
 		trigger_index = 0;
+		damage_count = 0;
+		origin_count = 0;
+		creature_count = 0;
+		race_count = 0;
+		reformed_count = 0;
+		converted_count = 0;
+		named_count = 0;
+		healing_count = 0;
 
 		for (const auto& modifier : m_modifiers)
-			trigger_index |= modifier.getFilterIndex();
+		{
+			const auto f = modifier.getFilterIndex();
+			trigger_index |= f;
+
+			if (f & DamageModifier::Flag::Damage)    damage_count++;
+			if (f & DamageModifier::Flag::Origin)    origin_count++;
+			if (f & DamageModifier::Flag::Creature)  creature_count++;
+			if (f & DamageModifier::Flag::Race)      race_count++;
+			if (f & DamageModifier::Flag::Reformed)  reformed_count++;
+			if (f & DamageModifier::Flag::Converted) converted_count++;
+			if (f & DamageModifier::Flag::Named)     named_count++;
+			if (f & DamageModifier::Flag::HealBoost) healing_count++;
+		}
 	}
 
 }

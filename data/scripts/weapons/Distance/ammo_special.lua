@@ -6,12 +6,12 @@ local area = createCombatArea({
 })
 
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_PHYSICALDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_EXPLOSIONAREA)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_BURSTARROW)
-combat:setParameter(COMBAT_PARAM_BLOCKARMOR, true)
+combat:setDamageType(Combat.DamageType.Physical)
+combat:setImpactEffect(CONST_ME_EXPLOSIONAREA)
+combat:setDistanceEffect(CONST_ANI_BURSTARROW)
+combat:setBlockedByArmor(true)
 combat:setFormula(COMBAT_FORMULA_SKILL, 0, 0, 1, 0)
-combat:setOrigin(ORIGIN_RANGED)
+combat:setOrigin(Combat.Origin.Ranged)
 combat:setArea(area)
 
 local burstArrow = Weapon(WEAPON_AMMO)
@@ -30,11 +30,11 @@ burstArrow:register()
 
 -- Poison arrow
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_PHYSICALDAMAGE)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_POISONARROW)
-combat:setParameter(COMBAT_PARAM_BLOCKARMOR, true)
+combat:setDamageType(Combat.DamageType.Physical)
+combat:setDistanceEffect(CONST_ANI_POISONARROW)
+combat:setBlockedByArmor(true)
 combat:setFormula(COMBAT_FORMULA_SKILL, 0, 0, 1, 0)
-combat:setOrigin(ORIGIN_RANGED)
+combat:setOrigin(Combat.Origin.Ranged)
 
 local poisonArrow = Weapon(WEAPON_AMMO)
 

@@ -222,6 +222,8 @@ class Tile : public Cylinder, public SharedObject
 			return (itemProperties >> static_cast<uint32_t>(prop)) & 1u;
 		}
 
+		bool hasProperty(const ItemPtr& exclude, ITEMPROPERTY prop) const;
+
 		bool hasFlag(uint32_t flag) const {
 			return hasBitSet(flag, flags);
 		}

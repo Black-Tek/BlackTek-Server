@@ -1,5 +1,5 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_HITAREA)
+combat:setImpactEffect(CONST_ME_HITAREA)
 combat:setArea(createCombatArea(AREA_SQUARE1X1))
 
 local parameters = {

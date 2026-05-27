@@ -1,8 +1,8 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_PHYSICALDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_EXPLOSIONAREA)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_EXPLOSION)
-combat:setParameter(COMBAT_PARAM_BLOCKARMOR, true)
+combat:setDamageType(Combat.DamageType.Physical)
+combat:setImpactEffect(CONST_ME_EXPLOSIONAREA)
+combat:setDistanceEffect(CONST_ANI_EXPLOSION)
+combat:setBlockedByArmor(true)
 
 function onGetFormulaValues(player, level, magicLevel)
 	local min = (level / 5) + (magicLevel * 1.6) + 9

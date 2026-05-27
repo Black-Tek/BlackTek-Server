@@ -1,6 +1,6 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_ICEDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_GREEN_RINGS)
+combat:setDamageType(Combat.DamageType.Ice)
+combat:setImpactEffect(CONST_ME_GREEN_RINGS)
 combat:setArea(createCombatArea(AREA_SQUARE1X1))
 
 local spell = Spell(SPELL_INSTANT)

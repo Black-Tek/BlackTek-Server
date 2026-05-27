@@ -1,5 +1,5 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_AGGRESSIVE, false)
+combat:setAggressive(false)
 combat:setArea(createCombatArea(AREA_CIRCLE3X3))
 
 local condition = Condition(CONDITION_REGENERATION)

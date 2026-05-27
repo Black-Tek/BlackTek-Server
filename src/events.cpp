@@ -138,11 +138,7 @@ bool Events::load()
 				std::cout << "[Warning - Events::load] Unknown monster method: " << methodName << std::endl;
 			}
 		} else if (className == "Item") {
-			if (methodName == "onImbue") {
-				info.itemOnImbue = event;
-			} else if (methodName == "onRemoveImbue") {
-				info.itemOnRemoveImbue = event;
-			} else if (methodName == "onAttack") {
+			if (methodName == "onAttack") {
 				info.itemOnAttack = event;
 			} else if (methodName == "onDefend") {
 				info.itemOnDefend = event;
@@ -1258,7 +1254,7 @@ bool Events::eventPlayerOnSpellTry(const PlayerPtr& player, const Spell* spell, 
 	return scriptInterface.callFunction(3);
 }
 
-void Events::eventPlayerOnAugment(const PlayerPtr& player, std::shared_ptr<Augment> augment)
+void Events::eventPlayerOnAugment(const PlayerPtr& player, std::shared_ptr<BlackTek::Augment> augment)
 {
 	// Player:onAugment(augment)
 	if (info.playerOnAugment == -1) {
@@ -1285,7 +1281,7 @@ void Events::eventPlayerOnAugment(const PlayerPtr& player, std::shared_ptr<Augme
 	scriptInterface.callVoidFunction(2);
 }
 
-void Events::eventPlayerOnRemoveAugment(const PlayerPtr& player, std::shared_ptr<Augment> augment)
+void Events::eventPlayerOnRemoveAugment(const PlayerPtr& player, std::shared_ptr<BlackTek::Augment> augment)
 {
 	// Player:onRemoveAugment(augment)
 	if (info.playerOnRemoveAugment == -1) {
@@ -1337,62 +1333,6 @@ void Events::eventMonsterOnDropLoot(const MonsterPtr& monster, const ContainerPt
 	LuaScriptInterface::setMetatable(L, -1, "Container");
 
 	scriptInterface.callVoidFunction(2);
-}
-
-bool Events::eventItemOnImbue(const ItemPtr& item, const std::shared_ptr<Imbuement>& imbuement, bool created)
-{
-	// Item:onImbue(imbuement, created)
-	if (info.itemOnImbue == -1) {
-		return true;
-	}
-
-	if (!scriptInterface.reserveScriptEnv()) {
-		std::cout << "[Error - Events::eventItemOnImbue] Call stack overflow" << std::endl;
-		return false;
-	}
-
-	ScriptEnvironment* env = scriptInterface.getScriptEnv();
-	env->setScriptId(info.itemOnImbue, &scriptInterface);
-
-	lua_State* L = scriptInterface.getLuaState();
-	scriptInterface.pushFunction(info.itemOnImbue);
-
-	LuaScriptInterface::pushSharedPtr(L, item);
-	LuaScriptInterface::setItemMetatable(L, -1, item);
-
-	LuaScriptInterface::pushSharedPtr(L, imbuement);
-	LuaScriptInterface::setMetatable(L, -1, "Imbuement");
-
-	LuaScriptInterface::pushBoolean(L, created);
-
-	return scriptInterface.callFunction(3);
-}
-
-void Events::eventItemOnRemoveImbue(const ItemPtr& item, ImbuementType imbueType, bool decayed)
-{
-	// Item:onRemoveImbue(imbueType, decayed)
-	if (info.itemOnRemoveImbue == -1) {
-		return;
-	}
-
-	if (!scriptInterface.reserveScriptEnv()) {
-		std::cout << "[Error - Events::eventItemOnRemoveImbue] Call stack overflow" << std::endl;
-		return;
-	}
-
-	ScriptEnvironment* env = scriptInterface.getScriptEnv();
-	env->setScriptId(info.itemOnRemoveImbue, &scriptInterface);
-
-	lua_State* L = scriptInterface.getLuaState();
-	scriptInterface.pushFunction(info.itemOnRemoveImbue);
-
-	LuaScriptInterface::pushSharedPtr(L, item);
-	LuaScriptInterface::setItemMetatable(L, -1, item);
-
-	lua_pushinteger(L, static_cast<uint8_t>(imbueType));
-	LuaScriptInterface::pushBoolean(L, decayed);
-
-	scriptInterface.callVoidFunction(3);
 }
 
 //void Events::eventItemOnAttack(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& defender, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage, bool leechedDamage)
@@ -1469,7 +1409,7 @@ void Events::eventItemOnRemoveImbue(const ItemPtr& item, ImbuementType imbueType
 //	scriptInterface.callVoidFunction(8);
 //}
 //
-//void Events::eventItemOnAugment(const ItemPtr& item, std::shared_ptr<Augment> augment)
+//void Events::eventItemOnAugment(const ItemPtr& item, std::shared_ptr<BlackTek::Augment> augment)
 //{
 //	// Item:onAugment(augment)
 //	if (info.itemOnAugment == -1) {
@@ -1496,7 +1436,7 @@ void Events::eventItemOnRemoveImbue(const ItemPtr& item, ImbuementType imbueType
 //	scriptInterface.callVoidFunction(2);
 //}
 
-void Events::eventItemOnRemoveAugment(const ItemPtr& item, std::shared_ptr<Augment> augment)
+void Events::eventItemOnRemoveAugment(const ItemPtr& item, std::shared_ptr<BlackTek::Augment> augment)
 {
 	// Item:onRemoveAugment(augment)
 	if (info.itemOnRemoveAugment == -1) {

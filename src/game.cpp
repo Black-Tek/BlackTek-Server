@@ -31,7 +31,6 @@
 
 extern ConfigManager g_config;
 extern Actions* g_actions;
-extern Augments* g_augments;
 extern Chat* g_chat;
 extern TalkActions* g_talkActions;
 extern Spells* g_spells;
@@ -1740,8 +1739,8 @@ ItemPtr Game::transformItem(const ItemPtr& item, const uint16_t newId, const int
 		return item;
 	}
 
-	if (item->isAugmented() || item->hasImbuements()) {
-		BlackTek::Console::Warn("Attempted to transform imbued or augmented item : {}", item->getName());
+	if (item->isAugmented()) {
+		BlackTek::Console::Warn("Attempted to transform augmented item : {}", item->getName());
 		return item;
 	}
 
@@ -4828,8 +4827,8 @@ bool Game::playerYell(const PlayerPtr& player, const std::string& text)
 	}
 
 	if (player->getAccountType() < ACCOUNT_TYPE_GAMEMASTER) {
-		Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_YELLTICKS, 30000, 0);
-		player->addCondition(condition);
+		auto condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_YELLTICKS, 30000, 0);
+		player->addCondition(std::move(condition));
 	}
 
 	internalCreatureSay(player, TALKTYPE_YELL, asUpperCaseString(text), false);
@@ -5001,10 +5000,26 @@ void Game::updateCreatureWalk(const uint32_t creatureId) noexcept
 void Game::checkCreatureAttack(const uint32_t creatureId) noexcept
 {
 	const auto& creature = getCreatureByID(creatureId);
-	if (creature and creature->getHealth() > 0) 
+	if (creature and creature->getHealth() > 0)
 	{
 		creature->onAttacking(0);
 	}
+}
+
+void Game::playerSecondaryAttack(const uint32_t playerId, const uint32_t targetId) noexcept
+{
+	const auto& player = getPlayerByID(playerId);
+	if (not player or player->getHealth() <= 0)
+		return;
+
+	const auto& target = getCreatureByID(targetId);
+	if (not target or target->getHealth() <= 0)
+		return;
+
+	if (player->getAttackedCreature() != target)
+		return;
+
+	player->doSecondaryAttack(target);
 }
 
 
@@ -6315,15 +6330,13 @@ std::vector<ItemPtr> Game::getMarketItemList(const uint16_t wareId, const uint16
 	return {};
 }
 
-void Game::forceAddCondition(const uint32_t creatureId, Condition* condition)
+void Game::forceAddCondition(const uint32_t creatureId, ConditionHandle condition)
 {
 	const auto creature = getCreatureByID(creatureId);
-	if (!creature) {
-		delete condition;
-		return;
-	}
+	if (!creature)
+		return; // ConditionHandle auto-releases
 
-	creature->addCondition(condition, true);
+	creature->addCondition(std::move(condition), true);
 }
 
 void Game::forceRemoveCondition(const uint32_t creatureId, ConditionType_t type)
@@ -6499,10 +6512,6 @@ bool Game::reload(const ReloadTypes_t reloadType)
 {
 	switch (reloadType) {
 		case RELOAD_TYPE_ACTIONS: return g_actions->reload();
-		case RELOAD_TYPE_AUGMENTS: {
-			g_augments->reload();
-			return true;
-	   }
 		case RELOAD_TYPE_CHAT: return g_chat->load();
 		case RELOAD_TYPE_CONFIG: return g_config.Reload();
 		case RELOAD_TYPE_CREATURESCRIPTS: {
@@ -6555,7 +6564,6 @@ bool Game::reload(const ReloadTypes_t reloadType)
 			g_spells->clear(true);
 			g_scripts->loadScripts("scripts", false, true);
 			g_creatureEvents->removeInvalidEvents();
-			g_augments->reload();
 			/*
 			Npcs::reload();
 			raids.reload() && raids.startup();

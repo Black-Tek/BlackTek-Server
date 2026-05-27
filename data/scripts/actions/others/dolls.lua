@@ -122,7 +122,7 @@ function dolls.onUse(player, item, fromPosition, target, toPosition, isHotkey)
 		elseif chance == 4 then
 			fromPosition:sendMagicEffect(CONST_ME_FIREAREA)
 		elseif chance == 5 then
-			doTargetCombat(0, player, COMBAT_PHYSICALDAMAGE, -1, -1, CONST_ME_EXPLOSIONHIT)
+			doTargetCombat(0, player, Combat.DamageType.Physical, -1, -1, CONST_ME_EXPLOSIONHIT)
 		end
 	elseif item.itemid == 5669 then
 		player:addAchievementProgress("Superstitious", 100)

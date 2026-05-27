@@ -107,7 +107,7 @@ monster.attacks = {
 	},
 	{
 		name = "combat",
-		type = COMBAT_FIREDAMAGE,
+		type = Combat.DamageType.Fire,
 		chance = 20,           			-- Chance per interval to attack
 		interval = 2000,
 		minDamage = -150,      			-- Damage must be negative
@@ -120,7 +120,7 @@ monster.attacks = {
 	},
 	{
 		name = "combat",
-		type = COMBAT_ENERGYDAMAGE,
+		type = Combat.DamageType.Energy,
 		chance = 15,
 		interval = 2000,
 		minDamage = -200,
@@ -131,7 +131,7 @@ monster.attacks = {
 	},
 	{
 		name = "combat",
-		type = COMBAT_FIREDAMAGE,
+		type = Combat.DamageType.Fire,
 		chance = 10,
 		interval = 2000,
 		minDamage = -100, -- Initial damage
@@ -181,7 +181,7 @@ monster.defenses = {
 	-- Set via: mType:defenseChargeInterval(ms)  e.g. mType:defenseChargeInterval(800)
 	{
 		name = "combat",
-		type = COMBAT_HEALING,
+		type = Combat.DamageType.Healing,
 		chance = 15,
 		interval = 2000,
 		minDamage = 100, -- Positive damage = healing
@@ -207,16 +207,16 @@ monster.defenses = {
 
 monster.elements = {
 	-- 100% resistance is NOT immunity. Monsters and spell/damage effects behave differently when immune vs 100% resistant
-	{ type = COMBAT_PHYSICALDAMAGE, percent = 10 },
-	{ type = COMBAT_ENERGYDAMAGE,   percent = 50 },
-	{ type = COMBAT_EARTHDAMAGE,    percent = 0 },
-	{ type = COMBAT_FIREDAMAGE,     percent = -25 }, -- 25% fire weakness
-	{ type = COMBAT_ICEDAMAGE,      percent = 100 }, -- 100% ice resistance
-	{ type = COMBAT_HOLYDAMAGE,     percent = 0 },
-	{ type = COMBAT_DEATHDAMAGE,    percent = 0 },
-	{ type = COMBAT_DROWNDAMAGE,    percent = 0 },
-	{ type = COMBAT_LIFEDRAIN,      percent = 0 },
-	{ type = COMBAT_MANADRAIN,      percent = 0 }
+	{ type = Combat.DamageType.Physical, percent = 10 },
+	{ type = Combat.DamageType.Energy,   percent = 50 },
+	{ type = Combat.DamageType.Earth,    percent = 0 },
+	{ type = Combat.DamageType.Fire,     percent = -25 }, -- 25% fire weakness
+	{ type = Combat.DamageType.Ice,      percent = 100 }, -- 100% ice resistance
+	{ type = Combat.DamageType.Holy,     percent = 0 },
+	{ type = Combat.DamageType.Death,    percent = 0 },
+	{ type = Combat.DamageType.Drown,    percent = 0 },
+	{ type = Combat.DamageType.LifeDrain,      percent = 0 },
+	{ type = Combat.DamageType.ManaDrain,      percent = 0 }
 }
 
 monster.immunities = {

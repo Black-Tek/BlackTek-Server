@@ -600,21 +600,6 @@ class Player final : public Creature, public Cylinder
 		bool updateSaleShopList(const ItemConstPtr& item);
 		bool hasShopItemForSale(uint32_t itemId, uint8_t subType) const;
 
-		bool isWearingImbuedItem() const {
-			return hasImbuedItemEquipped;
-		}
-
-		void checkForImbuedEquipment() {
-			bool found = false;
-			for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-				ItemPtr item = getInventoryItem(static_cast<slots_t>(slot));
-				if (item && item->hasImbuements()) {
-					found = true;
-				}
-			}
-			hasImbuedItemEquipped = found;
-		}
-
 		void setChaseMode(bool mode);
 	
 		void setFightMode(fightMode_t mode) {
@@ -648,6 +633,12 @@ class Player final : public Creature, public Cylinder
 		                             bool checkDefense = false, bool checkArmor = false, bool field = false, bool ignoreResistances = false) override;
 	
 		void doAttacking(uint32_t interval) override;
+		void doSecondaryAttack(const CreaturePtr& target);
+
+		[[nodiscard]] bool  canDualWield()                    const noexcept;
+		[[nodiscard]] float getDualWieldMultiplier()          const noexcept { return m_dual_wield_multiplier; }
+		void                setDualWieldMultiplier(float v)         noexcept { m_dual_wield_multiplier = v; }
+		[[nodiscard]] bool  isSecondaryAttack()               const noexcept { return m_is_secondary_attack; }
 	
 		bool hasExtraSwing() override {
 			return lastAttack > 0 && ((OTSYS_TIME() - lastAttack) >= getAttackSpeed());
@@ -1328,11 +1319,6 @@ class Player final : public Creature, public Cylinder
 
 		void updateRegeneration() const;
 
-		void addItemImbuements(const ItemPtr& item);
-		void removeItemImbuements(const ItemPtr& item);
-		void addImbuementEffect(const std::shared_ptr<Imbuement>& imbue);
-		void removeImbuementEffect(const std::shared_ptr<Imbuement>& imbue);
-
 		CreatureType_t getCreatureType(const MonsterPtr& monster) const;
 
 		[[nodiscard]] bool hasAugments() const noexcept { return augment_count > 0; }
@@ -1690,6 +1676,8 @@ class Player final : public Creature, public Cylinder
 		uint32_t creature_modifiers_count = 0;
 		uint32_t race_modifiers_count = 0;
 		uint32_t healing_modifier_count = 0;
+		float    m_dual_wield_multiplier  = 1.0f;
+		bool     m_is_secondary_attack    = false;
 
 		static constexpr uint16_t MODIFIER_CONDITIONAL_MASK =
 			BlackTek::DamageModifier::Flag::Damage   |
@@ -1760,7 +1748,6 @@ class Player final : public Creature, public Cylinder
 		bool pzLocked = false;
 		bool isConnecting = false;
 		bool addAttackSkillPoint = false;
-		bool hasImbuedItemEquipped = false;
 		bool inventoryAbilities[CONST_SLOT_LAST + 1] = {};
 
 		void updateItemsLight(bool internal = false);

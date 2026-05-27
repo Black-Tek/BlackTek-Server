@@ -1,7 +1,7 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_ICEDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_ICEAREA)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_ICE)
+combat:setDamageType(Combat.DamageType.Ice)
+combat:setImpactEffect(CONST_ME_ICEAREA)
+combat:setDistanceEffect(CONST_ANI_ICE)
 combat:setArea(createCombatArea(AREA_CIRCLE3X3))
 
 function onGetFormulaValues(player, level, magicLevel)

@@ -1,6 +1,6 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_EARTHDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_SMALLPLANTS)
+combat:setDamageType(Combat.DamageType.Earth)
+combat:setImpactEffect(CONST_ME_SMALLPLANTS)
 combat:setArea(createCombatArea(AREA_SQUAREWAVE5, AREADIAGONAL_SQUAREWAVE5))
 
 function onGetFormulaValues(player, level, magicLevel)

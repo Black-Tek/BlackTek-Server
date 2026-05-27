@@ -1,7 +1,7 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_FIREDAMAGE)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_FIRE)
-combat:setParameter(COMBAT_PARAM_CREATEITEM, ITEM_FIREFIELD_PVP_FULL)
+combat:setDamageType(Combat.DamageType.Fire)
+combat:setDistanceEffect(CONST_ANI_FIRE)
+combat:setCreatedItem(ITEM_FIREFIELD_PVP_FULL)
 combat:setArea(createCombatArea(AREA_WALLFIELD, AREADIAGONAL_WALLFIELD))
 
 local spell = Spell(SPELL_RUNE)

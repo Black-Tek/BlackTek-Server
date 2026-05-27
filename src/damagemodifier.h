@@ -14,6 +14,7 @@
 #include <string_view>
 #include <memory>
 #include <type_traits>
+#include <cstring>
 #include <gtl/phmap.hpp>
 #include <atomic>
 
@@ -224,7 +225,8 @@ namespace BlackTek
 		uint8_t origin_type = 0;
 		uint8_t creature_type = CREATURETYPE_ATTACKABLE;
 		uint8_t race_type = RACE_NONE;
-		bool true_leech;
+		bool true_leech = false;
+		mutable char name_buf[32] = {};
 	};
 
 	struct ModifierSum

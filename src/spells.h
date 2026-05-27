@@ -74,7 +74,7 @@ class BaseSpell
 class CombatSpell final : public Event, public BaseSpell
 {
 	public:
-		CombatSpell(const Combat_ptr& combat, bool needTarget, bool needDirection);
+		CombatSpell(const BlackTek::CombatHandle& combat, bool needTarget, bool needDirection);
 
 		// non-copyable
 		CombatSpell(const CombatSpell&) = delete;
@@ -90,14 +90,14 @@ class CombatSpell final : public Event, public BaseSpell
 		bool executeCastSpell(const CreaturePtr& creature, const LuaVariant& var);
 
 		bool loadScriptCombat();
-		Combat_ptr getCombat() {
+		BlackTek::CombatHandle getCombat() {
 			return combat;
 		}
 
 	private:
 		std::string_view getScriptEventName() const override { return "onCastSpell"; }
 
-		Combat_ptr combat;
+		BlackTek::CombatHandle combat;
 
 		bool needDirection;
 		bool needTarget;

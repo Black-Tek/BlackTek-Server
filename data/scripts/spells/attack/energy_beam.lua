@@ -1,6 +1,6 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_ENERGYDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_ENERGYHIT)
+combat:setDamageType(Combat.DamageType.Energy)
+combat:setImpactEffect(CONST_ME_ENERGYHIT)
 combat:setArea(createCombatArea(AREA_BEAM5, AREADIAGONAL_BEAM5))
 
 function onGetFormulaValues(player, level, magicLevel)

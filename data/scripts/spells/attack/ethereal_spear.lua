@@ -1,8 +1,8 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_PHYSICALDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_HITAREA)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_ETHEREALSPEAR)
-combat:setParameter(COMBAT_PARAM_BLOCKARMOR, true)
+combat:setDamageType(Combat.DamageType.Physical)
+combat:setImpactEffect(CONST_ME_HITAREA)
+combat:setDistanceEffect(CONST_ANI_ETHEREALSPEAR)
+combat:setBlockedByArmor(true)
 
 function onGetFormulaValues(player, skill, attack, factor)
 	local distanceSkill = player:getEffectiveSkillLevel(SKILL_DISTANCE)

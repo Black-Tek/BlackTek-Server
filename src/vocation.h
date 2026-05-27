@@ -10,6 +10,14 @@
 
 extern gtl::flat_hash_map<uint16_t, SkillRegistry> vocation_skills;
 
+struct DualWieldConfig
+{
+	bool     enabled             = false;
+	float    primaryMultiplier   = 1.0f;
+	float    secondaryMultiplier = 1.0f;
+	uint32_t delay               = 300;
+};
+
 class Vocation
 {
 	public:
@@ -126,6 +134,7 @@ class Vocation
 		float distDamageMultiplier = 1.0f;
 		float defenseMultiplier = 1.0f;
 		float armorMultiplier = 1.0f;
+		DualWieldConfig dualWield{};
 
 	private:
 		friend class Vocations;

@@ -231,11 +231,11 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			return;
 		}
 
-		std::vector<Condition*> initialConditions;
+		std::vector<ConditionHandle> initialConditions;
 
 		if (not IOLoginData::loadPlayerById(player, player->getGUID(), &initialConditions))
 		{
-			for (auto* c : initialConditions) { delete c; }
+			// initialConditions auto-releases via ConditionHandle destructors
 			disconnectClient("Your character could not be loaded.");
 			return;
 		}
@@ -245,7 +245,7 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 		// Todo : add back position spawn determined by config.lua
 		if (isAccountManager)
 		{
-			for (auto* c : initialConditions) { delete c; }
+			// initialConditions auto-releases; account managers don't restore conditions
 
 			player->accountNumber = accountId;
 			// sync premium time from player account
@@ -270,14 +270,14 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			{
 				if (not g_game.placeCreature(player, player->getTemplePosition(), false, true))
 				{
-					for (auto* c : initialConditions) { delete c; }
+					// initialConditions auto-releases
 					disconnectClient("Temple position is wrong. Contact the administrator.");
 					return;
 				}
 			}
 
-			for (auto* c : initialConditions)
-				player->addCondition(c);
+			for (auto& c : initialConditions)
+				player->addCondition(std::move(c));
 		}
 
 		if (operatingSystem >= CLIENTOS_OTCLIENT_LINUX)
@@ -1679,6 +1679,8 @@ void ProtocolGame::sendTextMessage(const TextMessage& message)
 			msg.addPosition(message.position);
 			msg.add<uint32_t>(message.primary.value);
 			msg.addByte(message.primary.color);
+			msg.add<uint32_t>(message.secondary.value);
+			msg.addByte(message.secondary.color);
 			break;
 		}
 		case MESSAGE_HEALED:
@@ -1689,6 +1691,8 @@ void ProtocolGame::sendTextMessage(const TextMessage& message)
 			msg.addPosition(message.position);
 			msg.add<uint32_t>(message.primary.value);
 			msg.addByte(message.primary.color);
+			msg.add<uint32_t>(message.secondary.value);
+			msg.addByte(message.secondary.color);
 			break;
 		}
 		case MESSAGE_GUILD:

@@ -32,9 +32,9 @@ Creature::~Creature()
 		summon->removeMaster();
 	}
 
-	for (auto& condition : conditions) {
-		delete condition;
-	}
+	// ConditionHandle automatically releases the condition back to the pool
+	// when destroyed; no explicit deletion required.
+	conditions.clear();
 }
 
 bool Creature::canSee(const Position& myPos, const Position& pos, int32_t viewRangeX, int32_t viewRangeY)
@@ -1237,86 +1237,52 @@ bool Creature::setMaster(const CreaturePtr& newMaster) {
 	return true;
 }
 
-bool Creature::addCondition(Condition* condition, bool force/* = false*/)
+bool Creature::addCondition(ConditionHandle condition, bool force/* = false*/)
 {
-	if (condition == nullptr) {
+	if (!condition)
 		return false;
-	}
 
 	if (!force && condition->getType() == CONDITION_HASTE && hasCondition(CONDITION_PARALYZE)) {
 		int64_t walkDelay = getWalkDelay();
 		if (walkDelay > 0) {
-			g_scheduler.addEvent(createSchedulerTask(walkDelay, [=, id = getID()]() { g_game.forceAddCondition(id, condition); }));
+			// Clone for the delayed addition so the handle stays valid here.
+			auto delayed = condition->clone();
+			g_scheduler.addEvent(createSchedulerTask(walkDelay, [id = getID(), cond = std::move(delayed)]() mutable {
+				if (auto creature = g_game.getCreatureByID(id))
+					creature->addCondition(std::move(cond));
+			}));
 			return false;
 		}
 	}
 
-	auto casterId = condition->getParam(CONDITION_PARAM_OWNER);
-	if (condition->getType() == CONDITION_PARALYZE && this->getPlayer() && this->getPlayer()->isWearingImbuedItem() && this->getID() != casterId) {
-		int32_t chance = 0;
-		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
-			auto item = this->getPlayer()->getInventoryItem(slot);
+	const auto self = std::static_pointer_cast<Creature>(shared_from_this());
 
-			if (not item) 
-			{
-				continue;
-			}
-
-            if (item->hasImbuements()) {
-                if (auto& imbues = item->getImbuements(); imbues and item and item->hasImbuementType(IMBUEMENT_TYPE_PARALYSIS_DEFLECTION)) {
-                    for (auto &imbuement : *imbues) {
-                        if (imbuement->imbuetype ==
-                            IMBUEMENT_TYPE_PARALYSIS_DEFLECTION) {
-                            chance += imbuement->value;
-                            break;
-                        }
-                    }
-                }
-            }
-		}
-
-		if (chance > 0) {
-			
-			const auto caster = g_game.getCreatureByID(casterId);
-			if (const auto player = caster->getPlayer()) {
-				player->addCondition(condition);
-				return true;
-			}
-			if (const auto monster = caster->getMonster()) {
-				int32_t roll = uniform_random(1, 100);
-				if (roll <= chance) {
-					monster->addCondition(condition);
-					return true;
-				}
-			}
-		}
-	}
-
-	Condition* prevCond = getCondition(condition->getType(), condition->getId(), condition->getSubId());
-	if (prevCond) {
-		prevCond->addCondition(std::static_pointer_cast<Creature>(shared_from_this()), condition);
-		delete condition;
+	if (Condition* prevCond = getCondition(condition->getType(), condition->getId(), condition->getSubId()))
+	{
+		// Stack into the existing condition — the incoming handle releases here.
+		prevCond->addCondition(self, condition.Get());
 		return true;
 	}
 
-	if (condition->startCondition(std::static_pointer_cast<Creature>(shared_from_this()))) {
-		conditions.push_back(condition);
-		onAddCondition(condition->getType());
+	const auto condType = condition->getType();
+	if (condition->startCondition(self))
+	{
+		conditions.push_back(std::move(condition));
+		onAddCondition(condType);
 		return true;
 	}
 
-	delete condition;
+	// startCondition rejected it — ConditionHandle destructs and returns to pool.
 	return false;
 }
 
-bool Creature::addCombatCondition(Condition* condition)
+bool Creature::addCombatCondition(ConditionHandle condition)
 {
-	//Caution: condition variable could be deleted after the call to addCondition
-	ConditionType_t type = condition->getType();
+	// Save type before potential move.
+	const ConditionType_t type = condition ? condition->getType() : CONDITION_NONE;
 
-	if (!addCondition(condition)) {
+	if (!addCondition(std::move(condition)))
 		return false;
-	}
 
 	onAddCombatCondition(type);
 	return true;
@@ -1324,10 +1290,10 @@ bool Creature::addCombatCondition(Condition* condition)
 
 void Creature::removeCondition(ConditionType_t type, bool force/* = false*/)
 {
+	const auto self = std::static_pointer_cast<Creature>(shared_from_this());
 	auto it = conditions.begin(), end = conditions.end();
 	while (it != end) {
-		Condition* condition = *it;
-		if (condition->getType() != type) {
+		if ((*it)->getType() != type) {
 			++it;
 			continue;
 		}
@@ -1340,21 +1306,21 @@ void Creature::removeCondition(ConditionType_t type, bool force/* = false*/)
 			}
 		}
 
+		// Capture handle before erasing so endCondition can be called safely.
+		ConditionHandle cond = std::move(*it);
 		it = conditions.erase(it);
-
-		condition->endCondition(std::static_pointer_cast<Creature>(shared_from_this()));
-		delete condition;
-
+		cond->endCondition(self);
+		// cond destructs here, releasing back to pool.
 		onEndCondition(type);
 	}
 }
 
 void Creature::removeCondition(ConditionType_t type, ConditionId_t conditionId, bool force/* = false*/)
 {
+	const auto self = std::static_pointer_cast<Creature>(shared_from_this());
 	auto it = conditions.begin(), end = conditions.end();
 	while (it != end) {
-		Condition* condition = *it;
-		if (condition->getType() != type || condition->getId() != conditionId) {
+		if ((*it)->getType() != type || (*it)->getId() != conditionId) {
 			++it;
 			continue;
 		}
@@ -1367,11 +1333,9 @@ void Creature::removeCondition(ConditionType_t type, ConditionId_t conditionId, 
 			}
 		}
 
+		ConditionHandle cond = std::move(*it);
 		it = conditions.erase(it);
-
-		condition->endCondition(std::static_pointer_cast<Creature>(shared_from_this()));
-		delete condition;
-
+		cond->endCondition(self);
 		onEndCondition(type);
 	}
 }
@@ -1380,10 +1344,9 @@ void Creature::removeCondition(ConditionType_t type, ConditionId_t conditionId, 
 void Creature::removeCombatCondition(ConditionType_t type)
 {
 	std::vector<Condition*> removeConditions;
-	for (Condition* condition : conditions) {
-		if (condition->getType() == type) {
-			removeConditions.push_back(condition);
-		}
+	for (const auto& cond : conditions) {
+		if (cond->getType() == type)
+			removeConditions.push_back(cond.Get());
 	}
 
 	for (Condition* condition : removeConditions) {
@@ -1391,12 +1354,11 @@ void Creature::removeCombatCondition(ConditionType_t type)
 	}
 }
 
-void Creature::removeCondition(Condition* condition, bool force/* = false*/)
+void Creature::removeCondition(const Condition* condition, bool force/* = false*/)
 {
-	auto it = std::ranges::find(conditions, condition);
-	if (it == conditions.end()) {
+	auto it = std::ranges::find_if(conditions, [condition](const ConditionHandle& h) { return h.Get() == condition; });
+	if (it == conditions.end())
 		return;
-	}
 
 	if (!force && condition->getType() == CONDITION_PARALYZE) {
 		int64_t walkDelay = getWalkDelay();
@@ -1406,49 +1368,55 @@ void Creature::removeCondition(Condition* condition, bool force/* = false*/)
 		}
 	}
 
+	const auto self = std::static_pointer_cast<Creature>(shared_from_this());
+	const auto condType = condition->getType();
+	ConditionHandle cond = std::move(*it);
 	conditions.erase(it);
-
-	condition->endCondition(std::static_pointer_cast<Creature>(shared_from_this()));
-	onEndCondition(condition->getType());
-	delete condition;
+	cond->endCondition(self);
+	onEndCondition(condType);
 }
 
 Condition* Creature::getCondition(ConditionType_t type) const
 {
-	for (Condition* condition : conditions) {
-		if (condition->getType() == type) {
-			return condition;
-		}
+	for (const auto& cond : conditions) {
+		if (cond->getType() == type)
+			return cond.Get();
 	}
 	return nullptr;
 }
 
 Condition* Creature::getCondition(ConditionType_t type, ConditionId_t conditionId, uint32_t subId/* = 0*/) const
 {
-	for (Condition* condition : conditions) {
-		if (condition->getType() == type && condition->getId() == conditionId && condition->getSubId() == subId) {
-			return condition;
-		}
+	for (const auto& cond : conditions) {
+		if (cond->getType() == type && cond->getId() == conditionId && cond->getSubId() == subId)
+			return cond.Get();
 	}
 	return nullptr;
 }
 
 void Creature::executeConditions(uint32_t interval)
 {
-	ConditionList tempConditions{ conditions };
-	for (Condition* condition : tempConditions) {
-		auto it = std::ranges::find(conditions, condition);
-		if (it == conditions.end()) {
-			continue;
-		}
+	const auto self = std::static_pointer_cast<Creature>(shared_from_this());
+	// Collect raw ptrs for iteration; handles stay alive in conditions list.
+	std::vector<Condition*> snapshot;
+	snapshot.reserve(conditions.size());
+	for (const auto& h : conditions)
+		snapshot.push_back(h.Get());
 
-		if (!condition->executeCondition(std::static_pointer_cast<Creature>(shared_from_this()), interval)) {
-			it = std::ranges::find(conditions, condition);
+	for (Condition* condition : snapshot) {
+		// Re-confirm the condition is still in the list before acting.
+		auto it = std::ranges::find_if(conditions, [condition](const ConditionHandle& h) { return h.Get() == condition; });
+		if (it == conditions.end())
+			continue;
+
+		if (!condition->executeCondition(self, interval)) {
+			it = std::ranges::find_if(conditions, [condition](const ConditionHandle& h) { return h.Get() == condition; });
 			if (it != conditions.end()) {
+				const auto condType = condition->getType();
+				ConditionHandle cond = std::move(*it);
 				conditions.erase(it);
-				condition->endCondition(std::static_pointer_cast<Creature>(shared_from_this()));
-				onEndCondition(condition->getType());
-				delete condition;
+				cond->endCondition(self);
+				onEndCondition(condType);
 			}
 		}
 	}
@@ -1456,19 +1424,15 @@ void Creature::executeConditions(uint32_t interval)
 
 bool Creature::hasCondition(ConditionType_t type, uint32_t subId/* = 0*/) const
 {
-	if (isSuppress(type)) {
+	if (isSuppress(type))
 		return false;
-	}
 
 	int64_t timeNow = OTSYS_TIME();
-	for (Condition* condition : conditions) {
-		if (condition->getType() != type || condition->getSubId() != subId) {
+	for (const auto& cond : conditions) {
+		if (cond->getType() != type || cond->getSubId() != subId)
 			continue;
-		}
-
-		if (condition->getEndTime() >= timeNow || condition->getTicks() == -1) {
+		if (cond->getEndTime() >= timeNow || cond->getTicks() == -1)
 			return true;
-		}
 	}
 	return false;
 }
@@ -1784,7 +1748,7 @@ bool FrozenPathingConditionCall::operator()(const Position& startPos, const Posi
 
 bool Creature::isInvisible() const
 {
-	return std::ranges::find_if(conditions, [] (const Condition* condition) {
+	return std::ranges::find_if(conditions, [] (const ConditionHandle& condition) {
 		return condition->getType() == CONDITION_INVISIBLE;
 	}) != conditions.end();
 }

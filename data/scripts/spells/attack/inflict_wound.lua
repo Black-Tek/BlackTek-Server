@@ -1,7 +1,7 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_PHYSICALDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_DRAWBLOOD)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_WEAPONTYPE)
+combat:setDamageType(Combat.DamageType.Physical)
+combat:setImpactEffect(CONST_ME_DRAWBLOOD)
+combat:setDistanceEffect(CONST_ANI_WEAPONTYPE)
 
 local function getHighestSkillLevel(creature)
 	local skillLevel = -1

@@ -1,6 +1,6 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_ENERGY)
-combat:setParameter(COMBAT_PARAM_CREATEITEM, ITEM_WILDGROWTH)
+combat:setDistanceEffect(CONST_ANI_ENERGY)
+combat:setCreatedItem(ITEM_WILDGROWTH)
 
 local spell = Spell(SPELL_RUNE)
 

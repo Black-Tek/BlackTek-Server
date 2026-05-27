@@ -200,7 +200,7 @@ class Game
 
 		void start(ServiceManager* manager);
 
-		void forceAddCondition(uint32_t creatureId, Condition* condition);
+		void forceAddCondition(uint32_t creatureId, ConditionHandle condition);
 		void forceRemoveCondition(uint32_t creatureId, ConditionType_t type);
 
 		bool loadMainMap(const std::string& filename);
@@ -598,6 +598,7 @@ class Game
 		void checkCreatureWalk(uint32_t creatureId) noexcept;
 		void updateCreatureWalk(uint32_t creatureId) noexcept;
 		void checkCreatureAttack(uint32_t creatureId) noexcept;
+		void playerSecondaryAttack(uint32_t playerId, uint32_t targetId) noexcept;
 		void checkLight();
 
 		//animation help functions

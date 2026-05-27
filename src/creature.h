@@ -16,7 +16,7 @@
 #include "pointbasedstat.h"
 
 class Map;
-using ConditionList = std::list<Condition*>;
+using ConditionList = std::list<ConditionHandle>;
 using CreatureEventList = std::list<CreatureEvent*>;
 using namespace Components::Skills;
 using namespace Components::Stats;
@@ -391,11 +391,11 @@ class Creature : virtual public Thing, public SharedObject
 			return SPEECHBUBBLE_NONE;
 		}
 
-		bool addCondition(Condition* condition, bool force = false);
-		bool addCombatCondition(Condition* condition);
+		bool addCondition(ConditionHandle condition, bool force = false);
+		bool addCombatCondition(ConditionHandle condition);
 		void removeCondition(ConditionType_t type, ConditionId_t conditionId, bool force = false);
 		void removeCondition(ConditionType_t type, bool force = false);
-		void removeCondition(Condition* condition, bool force = false);
+		void removeCondition(const Condition* condition, bool force = false);
 		void removeCombatCondition(ConditionType_t type);
 		Condition* getCondition(ConditionType_t type) const;
 		Condition* getCondition(ConditionType_t type, ConditionId_t conditionId, uint32_t subId = 0) const;

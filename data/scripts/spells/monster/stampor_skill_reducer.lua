@@ -1,6 +1,6 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_SMALLPLANTS)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_SMALLEARTH)
+combat:setImpactEffect(CONST_ME_SMALLPLANTS)
+combat:setDistanceEffect(CONST_ANI_SMALLEARTH)
 combat:setArea(createCombatArea(AREA_BEAM1))
 
 local parameters = {

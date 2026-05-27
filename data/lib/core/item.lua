@@ -148,7 +148,7 @@ do
 				begin = false
 				ss:append(' (Atk:%d', attack)
 
-				if abilities.elementType ~= COMBAT_NONE and abilities.elementDamage ~= 0 then
+				if abilities.elementType ~= Combat.DamageType.None and abilities.elementDamage ~= 0 then
 					ss:append(' physical + %d %s', abilities.elementDamage, getCombatName(abilities.elementType))
 				end
 			end

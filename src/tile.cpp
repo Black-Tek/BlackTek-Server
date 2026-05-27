@@ -45,6 +45,21 @@ void Tile::recalculateItemProperties()
 	}
 }
 
+bool Tile::hasProperty(const ItemPtr& exclude, ITEMPROPERTY prop) const
+{
+	if (ground and ground != exclude and ground->hasProperty(prop)) {
+		return true;
+	}
+	if (const auto itemList = getItemList()) {
+		for (const auto& item : *itemList) {
+			if (item != exclude and item->hasProperty(prop)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 bool Tile::hasHeight(const uint32_t n) const
 {
 	uint32_t height = 0;

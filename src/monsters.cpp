@@ -171,10 +171,10 @@ static ConditionType_t parseConditionType(std::string_view str)
 	return CONDITION_NONE;
 }
 
-ConditionDamage* Monsters::getDamageCondition(ConditionType_t conditionType,
+ConditionHandle Monsters::getDamageCondition(ConditionType_t conditionType,
     int32_t maxDamage, int32_t minDamage, int32_t startDamage, uint32_t tickInterval)
 {
-	auto condition = new ConditionDamage(CONDITIONID_COMBAT, conditionType);
+	ConditionHandle condition{ new ConditionDamage(CONDITIONID_COMBAT, conditionType) };
 	condition->setParam(CONDITION_PARAM_TICKS, -1);
 	condition->setParam(CONDITION_PARAM_MINVALUE, minDamage);
 	condition->setParam(CONDITION_PARAM_MAXVALUE, maxDamage);
@@ -204,7 +204,7 @@ bool Monsters::deserializeSpell(MonsterSpell* spell, spellBlock_t& sb, const std
 		}
 
 		sb.combatSpell = true;
-		auto combat = std::make_shared<BlackTek::Combat>();
+		auto combat = BlackTek::g_combat_registry.Create();
 		auto combatSpell = new CombatSpell(combat, spell->needTarget, spell->needDirection);
 		if (not combatSpell->loadScriptCombat())
 		{
@@ -229,30 +229,33 @@ bool Monsters::deserializeSpell(MonsterSpell* spell, spellBlock_t& sb, const std
 	}
 
 	sb.combatSpell = true;
-	auto combat = std::make_shared<BlackTek::Combat>();
+	auto combat = BlackTek::g_combat_registry.Create();
 	auto combatSpell = new CombatSpell(combat, spell->needTarget, spell->needDirection);
 
 	if (spell->name == "melee")
 	{
 		sb.isMelee = true;
+		combat->SetConfig(BlackTek::Combat::Config::Aggressive);
+		combat->SetConfig(BlackTek::Combat::Config::BlockedByArmor);
+		combat->SetConfig(BlackTek::Combat::Config::BlockedByDefense);
+		combat->SetDamageType(static_cast<uint16_t>(BlackTek::Combat::DamageType::Physical));
 		if (spell->conditionType != CONDITION_NONE)
 		{
 			uint32_t tickInterval = 2000;
 			if (spell->tickInterval != 0)
-			{
 				tickInterval = static_cast<uint32_t>(spell->tickInterval);
-			}
-			ConditionDamage* condition = getDamageCondition(spell->conditionType,
+
+			if (auto condition = getDamageCondition(spell->conditionType,
 				spell->conditionMaxDamage, spell->conditionMinDamage,
-				spell->conditionStartDamage, tickInterval);
-			/// combatSpell->getCombat()->addCondition(condition);
-			delete condition;
+				spell->conditionStartDamage, tickInterval))
+			{
+				combatSpell->getCombat()->AddCondition(std::move(condition));
+			}
 		}
 	}
 	else if (spell->name == "speed" or spell->name == "paralyze" or spell->name == "haste")
 	{
-		// Speed-change spell → condition_paralyze or condition_haste
-		/// Speed condition setup deferred — combat API not yet finalised
+		// Speed-change spell — condition setup deferred
 	}
 	else if (spell->name == "outfit" or spell->name == "invisible" or spell->name == "drunk"
 	         or spell->name == "firefield" or spell->name == "poisonfield"
@@ -262,13 +265,12 @@ bool Monsters::deserializeSpell(MonsterSpell* spell, spellBlock_t& sb, const std
 	}
 	else
 	{
-		// Damage spell — type determined by spell name or spell->combatType
 		CombatType_t combatType = spell->combatType;
 		if (combatType == COMBAT_UNDEFINEDDAMAGE)
-		{
 			combatType = parseCombatType(spell->name);
-		}
-		/// combat->setType(combatType);  // deferred until combat API stabilises
+
+		combat->SetDamageType(static_cast<uint16_t>(combatType));
+		combat->SetConfig(BlackTek::Combat::Config::Aggressive);
 	}
 
 	sb.spell = combatSpell;

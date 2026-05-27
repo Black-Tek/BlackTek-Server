@@ -1,5 +1,5 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_SOUND_YELLOW)
+combat:setImpactEffect(CONST_ME_SOUND_YELLOW)
 combat:setArea(createCombatArea(AREA_CIRCLE3X3))
 
 local parameters = {

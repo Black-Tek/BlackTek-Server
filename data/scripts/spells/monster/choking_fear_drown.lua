@@ -1,6 +1,6 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_DROWNDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_BUBBLES)
+combat:setDamageType(Combat.DamageType.Drown)
+combat:setImpactEffect(CONST_ME_BUBBLES)
 combat:setArea(createCombatArea(AREA_CIRCLE6X6))
 
 local spell = Spell(SPELL_INSTANT)

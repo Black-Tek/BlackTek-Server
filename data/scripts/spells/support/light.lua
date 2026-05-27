@@ -1,6 +1,6 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_MAGIC_BLUE)
-combat:setParameter(COMBAT_PARAM_AGGRESSIVE, false)
+combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
+combat:setAggressive(false)
 
 local condition = Condition(CONDITION_LIGHT)
 condition:setParameter(CONDITION_PARAM_LIGHT_LEVEL, 6)

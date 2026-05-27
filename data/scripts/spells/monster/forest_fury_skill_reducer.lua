@@ -1,6 +1,6 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_MAGIC_BLUE)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_LARGEROCK)
+combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
+combat:setDistanceEffect(CONST_ANI_LARGEROCK)
 combat:setArea(createCombatArea(AREA_CIRCLE2X2))
 
 local parameters = {

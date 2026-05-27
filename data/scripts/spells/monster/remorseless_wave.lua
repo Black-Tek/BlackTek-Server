@@ -1,6 +1,6 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_DEATHDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_BLACKSMOKE)
+combat:setDamageType(Combat.DamageType.Death)
+combat:setImpactEffect(CONST_ME_BLACKSMOKE)
 
 combat:setArea(createCombatArea({
 	{0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0},

@@ -125,7 +125,6 @@ const gtl::flat_hash_map<std::string, ItemParseAttributes_t> ItemParseAttributes
 	{"blocking", ITEM_PARSE_BLOCKING},
 	{"allowdistread", ITEM_PARSE_ALLOWDISTREAD},
 	{"storeitem", ITEM_PARSE_STOREITEM},
-	{"imbuementslots", 	ITEM_PARSE_IMBUEMENT_SLOT},
 	{"worth", ITEM_PARSE_WORTH},
 	{"augment", ITEM_PARSE_AUGMENT},
     {"resumable", ITEM_PARSE_RESUMABLE},
@@ -551,10 +550,6 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
 
         case ITEM_PARSE_TIER:
             if (value.is_string()) it.tier = value.as_string()->get();
-            break;
-
-        case ITEM_PARSE_IMBUEMENT_SLOT:
-            if (value.is_integer()) it.imbuementslots = static_cast<int16_t>(value.as_integer()->get());
             break;
 
         case ITEM_PARSE_ROTATETO:

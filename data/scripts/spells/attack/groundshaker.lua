@@ -1,8 +1,8 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_PHYSICALDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_GROUNDSHAKER)
-combat:setParameter(COMBAT_PARAM_BLOCKARMOR, true)
-combat:setParameter(COMBAT_PARAM_USECHARGES, true)
+combat:setDamageType(Combat.DamageType.Physical)
+combat:setImpactEffect(CONST_ME_GROUNDSHAKER)
+combat:setBlockedByArmor(true)
+combat:setUseCharges(true)
 combat:setArea(createCombatArea(AREA_CIRCLE3X3))
 
 function onGetFormulaValues(player, skill, attack, factor)

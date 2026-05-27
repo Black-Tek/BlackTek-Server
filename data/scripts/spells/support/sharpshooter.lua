@@ -1,6 +1,6 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_MAGIC_GREEN)
-combat:setParameter(COMBAT_PARAM_AGGRESSIVE, false)
+combat:setImpactEffect(CONST_ME_MAGIC_GREEN)
+combat:setAggressive(false)
 
 local skill = Condition(CONDITION_ATTRIBUTES)
 skill:setParameter(CONDITION_PARAM_TICKS, 10000)

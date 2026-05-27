@@ -651,7 +651,7 @@ void Monster::updateIdleStatus()
 	bool idle = false;
 	if (!isSummon() && targetList.empty()) {
 		// check if there are aggressive conditions
-		idle = std::ranges::find_if(conditions, [](const Condition* condition) {
+		idle = std::ranges::find_if(conditions, [](const ConditionHandle& condition) {
 			return condition->isAggressive();
 		}) == conditions.end();
 	}

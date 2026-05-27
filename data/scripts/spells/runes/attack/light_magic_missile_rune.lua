@@ -1,7 +1,7 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_ENERGYDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_ENERGYHIT)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_ENERGY)
+combat:setDamageType(Combat.DamageType.Energy)
+combat:setImpactEffect(CONST_ME_ENERGYHIT)
+combat:setDistanceEffect(CONST_ANI_ENERGY)
 
 function onGetFormulaValues(player, level, magicLevel)
 	local min = (level / 5) + (magicLevel * 0.4) + 3

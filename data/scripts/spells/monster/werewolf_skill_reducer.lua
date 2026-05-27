@@ -1,5 +1,5 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_DRAWBLOOD)
+combat:setImpactEffect(CONST_ME_DRAWBLOOD)
 combat:setArea(createCombatArea(AREA_BEAM1))
 
 local parameters = {

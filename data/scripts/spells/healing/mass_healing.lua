@@ -1,7 +1,6 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_MAGIC_BLUE)
-combat:setParameter(COMBAT_PARAM_DISPEL, CONDITION_PARALYZE)
-combat:setParameter(COMBAT_PARAM_AGGRESSIVE, false)
+combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
+combat:setAggressive(false)
 combat:setArea(createCombatArea(AREA_CIRCLE3X3))
 
 local spell = Spell(SPELL_INSTANT)
@@ -12,7 +11,7 @@ function spell.onCastSpell(creature, variant)
 	for _, target in ipairs(combat:getTargets(creature, variant)) do
 		local master = target:getMaster()
 		if target:isPlayer() or master and master:isPlayer() then
-			doTargetCombat(creature, target, COMBAT_HEALING, min, max)
+			doTargetCombat(creature, target, Combat.DamageType.Healing, min, max)
 		end
 	end
 	return true

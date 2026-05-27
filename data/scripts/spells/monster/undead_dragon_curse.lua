@@ -1,7 +1,7 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_DEATHDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_SMALLCLOUDS)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_DEATH)
+combat:setDamageType(Combat.DamageType.Death)
+combat:setImpactEffect(CONST_ME_SMALLCLOUDS)
+combat:setDistanceEffect(CONST_ANI_DEATH)
 combat:setArea(createCombatArea(AREA_SQUAREWAVE7))
 
 local spell = Spell(SPELL_INSTANT)

@@ -1,5 +1,5 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_MAGIC_BLUE)
+combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
 combat:setArea(createCombatArea(AREA_CIRCLE2X2))
 
 function onTargetCreature(creature, target)

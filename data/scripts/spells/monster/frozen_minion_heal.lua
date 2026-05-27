@@ -1,6 +1,6 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_MAGIC_BLUE)
-combat:setParameter(COMBAT_PARAM_AGGRESSIVE, 0)
+combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
+combat:setAggressive(0)
 combat:setArea(createCombatArea(AREA_CIRCLE2X2))
 
 function onTargetCreature(creature, target)
@@ -11,7 +11,7 @@ function onTargetCreature(creature, target)
 		return true
 	end
 
-	doTargetCombat(0, target, COMBAT_HEALING, min, max, CONST_ME_NONE)
+	doTargetCombat(0, target, Combat.DamageType.Healing, min, max, CONST_ME_NONE)
 	return true
 end
 

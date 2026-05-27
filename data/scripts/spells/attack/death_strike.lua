@@ -1,7 +1,7 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_DEATHDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_MORTAREA)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_DEATH)
+combat:setDamageType(Combat.DamageType.Death)
+combat:setImpactEffect(CONST_ME_MORTAREA)
+combat:setDistanceEffect(CONST_ANI_DEATH)
 
 function onGetFormulaValues(player, level, magicLevel)
 	local min = (level / 5) + (magicLevel * 1.4) + 8

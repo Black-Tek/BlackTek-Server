@@ -1,10 +1,10 @@
-local condition = Condition(COMBAT_PHYSICALDAMAGE)
+local condition = Condition(Combat.DamageType.Physical)
 condition:setParameter(CONDITION_PARAM_DELAYED, 1)
 condition:addDamage(3, 10000, -25)
 
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_PHYSICALDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, 6)
+combat:setDamageType(Combat.DamageType.Physical)
+combat:setImpactEffect(6)
 combat:setArea(createCombatArea(AREA_SQUARE1X1))
 combat:addCondition(condition)
 
