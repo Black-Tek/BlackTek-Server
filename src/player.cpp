@@ -2428,6 +2428,16 @@ void Player::drainHealth(const CreaturePtr& attacker, const int32_t damage)
 {
 	Creature::drainHealth(attacker, damage);
 	sendStats();
+
+	if (not attacker)
+		return;
+
+	const auto& monster = attacker->getMonster();
+
+	if (not monster or not monster->isRewardBoss())
+		return;
+
+	g_game.rewardBossTracking[monster->getID()].playerScoreTable[getGUID()].damageTaken += damage;
 }
 
 void Player::drainMana(const CreaturePtr& attacker, const int32_t manaLoss)
@@ -4645,33 +4655,46 @@ void Player::onAttackedCreatureDrainHealth(const CreaturePtr& target, int32_t po
 {
 	Creature::onAttackedCreatureDrainHealth(target, points);
 
-	if (target) {
-		//if (party > 0 && !Combat::isPlayerCombat(target)) {
-		//	const auto& tmpMonster = target->getMonster();
-		//	if (tmpMonster && tmpMonster->isHostile()) {
-		//		//We have fulfilled a requirement for shared experience
-		//		getParty()->updatePlayerTicks(this->getPlayer(), points);
-		//	}
-		//}
-	}
+	if (not target)
+		return;
+
+	const auto& monster = target->getMonster();
+
+	if (not monster or not monster->isRewardBoss())
+		return;
+
+	g_game.rewardBossTracking[monster->getID()].playerScoreTable[getGUID()].damageDone += points;
 }
 
 void Player::onTargetCreatureGainHealth(const CreaturePtr& target, int32_t points)
 {
-	if (target && party > 0) {
-		PlayerPtr tmpPlayer = nullptr;
+	if (not target)
+		return;
 
-		if (target->getPlayer()) {
-			tmpPlayer = target->getPlayer();
-		} else if (const auto& targetMaster = target->getMaster()) {
-			if (const auto& targetMasterPlayer = targetMaster->getPlayer()) {
-				tmpPlayer = targetMasterPlayer;
-			}
-		}
+	PlayerPtr tmpPlayer = nullptr;
 
-		if (isPartner(tmpPlayer)) {
-			getParty()->updatePlayerTicks(this->getPlayer(), points);
-		}
+	if (target->getPlayer())
+	{
+		tmpPlayer = target->getPlayer();
+	}
+	else if (const auto& targetMaster = target->getMaster())
+	{
+		if (const auto& targetMasterPlayer = targetMaster->getPlayer())
+			tmpPlayer = targetMasterPlayer;
+	}
+
+	if (tmpPlayer && party > 0 && isPartner(tmpPlayer)) {
+		getParty()->updatePlayerTicks(this->getPlayer(), points);
+	}
+
+	if (not tmpPlayer or tmpPlayer == this->getPlayer())
+		return;
+
+	const uint32_t healedGuid = tmpPlayer->getGUID();
+	for (auto& [bossId, bossInfo] : g_game.rewardBossTracking)
+	{
+		if (bossInfo.playerScoreTable.count(healedGuid))
+			bossInfo.playerScoreTable[getGUID()].healingDone += points;
 	}
 }
 
