@@ -102,8 +102,12 @@ class Vocation
 			return armorChargesCap;
 		}
 
-		uint32_t getAugmentChargesCap() const {
-			return augmentChargesCap;
+		uint32_t getDefModifierChargesCap() const {
+			return defModifierChargesCap;
+		}
+
+		uint32_t getAtkModifierChargesCap() const {
+			return atkModifierChargesCap;
 		}
 
 		float getDefenseChargeCostMultiplier() const {
@@ -114,8 +118,12 @@ class Vocation
 			return armorChargeCostMultiplier;
 		}
 
-		float getAugmentChargeCostMultiplier() const {
-			return augmentChargeCostMultiplier;
+		float getDefModifierChargeCostMultiplier() const {
+			return defModifierChargeCostMultiplier;
+		}
+
+		float getAtkModifierChargeCostMultiplier() const {
+			return atkModifierChargeCostMultiplier;
 		}
 
 		uint32_t getFromVocation() const {
@@ -160,11 +168,13 @@ class Vocation
 		uint32_t defenseChargeInterval = 0;
 		uint32_t defenseChargesCap = 0;
 		uint32_t armorChargesCap = 0;
-		uint32_t augmentChargesCap = 0;
+		uint32_t defModifierChargesCap = 0;
+		uint32_t atkModifierChargesCap = 0;
 
 		float defenseChargeCostMultiplier = 1.0f;
 		float armorChargeCostMultiplier = 1.0f;
-		float augmentChargeCostMultiplier = 1.0f;
+		float defModifierChargeCostMultiplier = 1.0f;
+		float atkModifierChargeCostMultiplier = 1.0f;
 
 		uint16_t id;
 		uint16_t gainSoulTicks = 120;

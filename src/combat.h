@@ -14,14 +14,14 @@
 
 #include <utility>
 #include <optional>
+#include <expected>
 #include <functional>
+#include <memory>
 #include <span>
 #include <gtl/phmap.hpp>
 #include <bitset>
 #include <memory_resource>
-#include <atomic>
 #include <array>
-#include <forward_list>
 
 class Condition;
 class Item;
@@ -63,6 +63,7 @@ namespace BlackTek
 	{
 		std::vector<Position> positions;
 		int32_t distance;
+		int32_t max_extent = 0;
 	};
 
 	// Pre-rotated offset from a target position.  After baking direction into the
@@ -80,6 +81,7 @@ namespace BlackTek
 	struct CombatArea
 	{
 		std::array<std::vector<DamageLocation>, 4> directions;
+		int32_t max_extent = 0; // max(abs(spread), abs(forward)) across all directions — pre-computed for spectator radius
 	};
 
 
@@ -104,32 +106,16 @@ namespace BlackTek
 	using DeflectAreaMap = gtl::flat_hash_map<Direction, const DeflectionEffectMap>;
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	// Todo: Create a struct for "CombatTable" which will be a specific defined and handled lua table able to be passed for construction of combat objects
 
 	struct SituationFormulas;
 	enum class FormulaStage : uint8_t;
-	struct FormulaCallbacks;
+	struct FormulaContext;
+	struct CompiledFormulaSlots;
 
 	class Combat;
 	using CombatHandle = intrusive_ptr<Combat>;
+	using CompiledFormula = std::function<double(const FormulaContext&)>;
 
 	extern std::pmr::unordered_map<int64_t, CombatArea> combat_area_map;
 	extern std::pmr::unordered_map<int64_t, CombatArea> combat_ext_area_map;
@@ -358,6 +344,9 @@ namespace BlackTek
 			HasMvMFormula,
 			HasStages,			// this can come later, but the idea is to reduce the need of creating 10 combats per spell just to get it to do cool things..
 			SecondaryAttack,	// set when this combat originates from the off-hand weapon in a dual wield attack
+			IsReflect,			// combat was spawned by a reflect modifier — suppresses further bounce triggers
+			IsDeflect,			// combat was spawned by a deflect modifier — suppresses further bounce triggers
+			IsRicochet,			// combat was spawned by a ricochet modifier — suppresses further bounce triggers
 		};
 
 
@@ -517,13 +506,15 @@ namespace BlackTek
 		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const Position& target_location) const noexcept;
 		[[nodiscard]] TargetCode target(const MonsterPtr& attacker, const Position& target_location) const noexcept;
 		[[nodiscard]] CombatHandle transformDamage(const uint16_t damage_type, const uint32_t amount) noexcept;
-		[[nodiscard]] uint32_t handle_conversion(std::span<const DamageModifier> modifiers, const CreaturePtr& attacker, const CreaturePtr& victim);
-		[[nodiscard]] CombatHandle penetrateDamage(const uint32_t percent, const uint32_t flat) noexcept;
+		template <std::ranges::input_range R>
+			requires std::same_as<std::ranges::range_value_t<R>, DamageModifier>
+		[[nodiscard]] uint32_t handle_conversion(R&& modifiers, const CreaturePtr& attacker, const CreaturePtr& victim, uint32_t currentDamage, std::optional<std::span<const CreaturePtr>> spectators = std::nullopt);
+		[[nodiscard]] std::pair<CombatHandle, uint32_t> penetrateDamage(uint32_t currentDamage, uint32_t percent, uint32_t flat) noexcept;
 		[[nodiscard]] CombatHandle clone() const noexcept;
 
-		void applyCrit(const uint32_t percent, const uint32_t flat);
-		void process_steal(const PlayerPtr& caster, const CreaturePtr& victim, const LeechData& steal) noexcept;
-		void post_damage(const PlayerPtr& caster, const CreaturePtr& victim, LeechData&& leech_data) noexcept;
+		[[nodiscard]] uint32_t applyCrit(uint32_t currentDamage, uint32_t percent, uint32_t flat) noexcept;
+		[[nodiscard]] uint32_t process_steal(const PlayerPtr& caster, const CreaturePtr& victim, const LeechData& steal, uint32_t currentDamage) noexcept;
+		void post_damage(const PlayerPtr& caster, const CreaturePtr& victim, uint32_t currentDamage, LeechData&& leech_data) noexcept;
 		void strike_target(const PlayerPtr& caster, const PlayerPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const PlayerPtr& caster, const MonsterPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const MonsterPtr& attacker, const PlayerPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
@@ -550,19 +541,15 @@ namespace BlackTek
 		[[nodiscard]] uint32_t collect_heal_notice_data() const noexcept;
 		[[nodiscard]] static constexpr OriginNotice collect_origin_notice(Origin o) noexcept;
 		[[nodiscard]] uint8_t immunity_block_effect() const noexcept;
-		[[nodiscard]] BlockType block(const CreaturePtr& attacker, const PlayerPtr& target) noexcept;
-		[[nodiscard]] BlockType block(const CreaturePtr& attacker, const MonsterPtr& target) noexcept;
-		[[nodiscard]] uint32_t apply_damage(const CreaturePtr& attacker, const PlayerPtr& target, std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
-		[[nodiscard]] uint32_t apply_damage(const CreaturePtr& attacker, const MonsterPtr& target, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
+		[[nodiscard]] std::expected<uint32_t, BlockType> block(const CreaturePtr& attacker, const PlayerPtr& target) noexcept;
+		[[nodiscard]] std::expected<uint32_t, BlockType> block(const CreaturePtr& attacker, const MonsterPtr& target) noexcept;
+		[[nodiscard]] uint32_t apply_damage(const CreaturePtr& attacker, const PlayerPtr& target, uint32_t currentDamage, std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
+		[[nodiscard]] uint32_t apply_damage(const CreaturePtr& attacker, const MonsterPtr& target, uint32_t currentDamage, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 
 		[[nodiscard]]
 		inline bool hasArea() const noexcept
 		{
-			if (combat_area_map.find(combat_id) != combat_area_map.end())
-				return true;
-			if (combat_ext_area_map.find(combat_id) != combat_ext_area_map.end())
-				return true;
-			return false;
+			return combat_area_map.contains(combat_id) or combat_ext_area_map.contains(combat_id);
 		}
 
 		[[nodiscard]] static int32_t calculate_output(const OutputFactors& factors, int32_t stat) noexcept
@@ -710,7 +697,7 @@ namespace BlackTek
 		void ClearConditions() noexcept;
 
 		void SetSituationFormulas(uint8_t index, SituationFormulas&& formulas) noexcept;
-		void SetFormulaCallback(uint8_t index, FormulaStage stage, int32_t lua_ref) noexcept;
+		void RegisterCompiledFormula(uint8_t sit_idx, FormulaStage stage, CompiledFormula fn) noexcept;
 
 		[[nodiscard]] static Position generateAttackPosition(const CreaturePtr& attacker, const PlayerPtr& defender) noexcept;
 		[[nodiscard]] static std::unique_ptr<AreaCombat> generateDeflectArea(const CreaturePtr& attacker, const PlayerPtr& defender, int32_t targetCount) noexcept;
@@ -743,37 +730,39 @@ namespace BlackTek
 		void apply_effects(const SpectatorVec& spectators, const CreaturePtr& caster, std::span<const TilePtr> tiles);
 		const DamageArea getAreaPositions(const Position& casterPos, const Position& targetPos);
 
-		// Ensures this combat has a unique ID usable as a formula/callback map key.
+		// Ensures this combat has a unique ID usable as a formula map key.
 		// Lua-managed combats start with combat_id == -1; this assigns a negative ID.
 		int64_t ensureFormulaId() noexcept;
 
-		// Returns the ID to use when looking up formula/callback maps.
-		// Clones set formula_source_id to the parent's ID so they share its entries
-		// without taking ownership — the parent remains responsible for cleanup.
-		[[nodiscard]] int64_t formula_key() const noexcept
-		{
-			return formula_source_id != -1 ? formula_source_id : combat_id;
-		}
+		[[nodiscard]] uint32_t reform_augment(const CreaturePtr& attacker, const PlayerPtr& victim, uint32_t currentDamage) noexcept;
+		[[nodiscard]] uint32_t defense_augment(const CreaturePtr& attacker, const PlayerPtr& victim, uint32_t currentDamage, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 
-		void reform_augment(const CreaturePtr& attacker, const PlayerPtr& victim) noexcept;
-		void defense_augment(const CreaturePtr& attacker, const PlayerPtr& victim, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
+		template <typename VictimT>
+		void accumulate_attack_mods(const PlayerPtr& caster, const VictimT& victim,
+		                             uint32_t& currentDamage, LeechData& leech_data, LeechData& steal_data,
+		                             const std::optional<std::span<const CreaturePtr>>& spectators) noexcept;
+
+		static constexpr Config k_formula_flags[4] = { Config::HasPvPFormula, Config::HasPvMFormula, Config::HasMvPFormula, Config::HasMvMFormula };
 
 		int64_t combat_id = -1;
-		int64_t formula_source_id = -1;
-		mutable std::atomic<int32_t> ref_count{ 0 };
+		std::bitset<64> config;
+		CompiledFormulaSlots* compiled_formula_ptr   = nullptr; // raw pointer into combat_compiled_map; not owned
+		const SituationFormulas* situation_formula_ptr = nullptr; // raw pointer into combat_formula_map; not owned
 
+		mutable int32_t ref_count{ 0 };
 		uint32_t damage = 0;
-		std::bitset<32> config;
+
 		uint16_t defense_charge_cost = 0;
 		uint16_t armor_charge_cost = 0;
-		uint16_t augment_charge_cost = 0;
+		uint16_t def_modifier_charge_cost = 0;
+		uint16_t atk_modifier_charge_cost = 0;
 		uint16_t itemId = 0;
 		uint16_t damage_type = DamageType::Unknown;
 		uint8_t blockType = BlockType::NoBlock;
 		uint8_t origin = Origin::None;
 		uint8_t impactEffect = CONST_ME_NONE;
 		uint8_t distanceEffect = CONST_ANI_NONE;
-		std::forward_list<ConditionHandle> condition_list;
+		std::unique_ptr<std::vector<ConditionHandle>> condition_list;
 
 		friend class CombatRegistry;
 		friend void intrusive_ptr_add_ref(const Combat* p) noexcept;
@@ -782,7 +771,7 @@ namespace BlackTek
 
 	inline void intrusive_ptr_add_ref(const Combat* p) noexcept
 	{
-		p->ref_count.fetch_add(1, std::memory_order_relaxed);
+		++p->ref_count;
 	}
 
 	void intrusive_ptr_release(const Combat* p) noexcept;
@@ -801,7 +790,7 @@ namespace BlackTek
 		std::pmr::monotonic_buffer_resource      upstream_;
 		std::pmr::unsynchronized_pool_resource   pool_;
 		std::pmr::unordered_map<int64_t, Combat> table_;
-		std::atomic<int64_t>                     next_id_{ 1 };
+		int64_t                                  next_id_{ 1 };
 
 	public:
 		CombatRegistry()
@@ -856,22 +845,49 @@ namespace BlackTek
 		Resolution = 3
 	};
 
-	struct FormulaCallbacks
-	{
-		static constexpr int32_t NoRef = -1;
-		int32_t refs[4][4];
+	extern std::array<SituationFormulas, 4> g_default_situation_formulas;
+	extern std::pmr::unordered_map<int64_t, std::array<SituationFormulas, 4>> combat_formula_map;
 
-		FormulaCallbacks()
+	// ── Compiled Formula System ───────────────────────────────────────────────
+	// Context passed to every compiled formula at execution time.
+	// Stages that only need one or two values (reduction, resolution) read the
+	// fields relevant to them; unused fields are left at their zero defaults.
+	struct FormulaContext
+	{
+		CreaturePtr caster;
+		CreaturePtr target;
+		int32_t     pipeline_a = 0;  // output damage (resolution stage)
+		int32_t     pipeline_b = 0;  // resistance value (resolution stage)
+	};
+
+	// Slot table: [situation_index 0-3][stage_index 0-3]
+	struct CompiledFormulaSlots
+	{
+		CompiledFormula slots[4][4];
+		std::bitset<16> active;
+
+		[[nodiscard]] bool has(uint8_t sit, uint8_t stage) const noexcept
 		{
-			for (auto& row : refs)
-				for (auto& r : row)
-					r = NoRef;
+			return active.test(static_cast<size_t>(sit) * 4 + stage);
+		}
+
+		void set(uint8_t sit, uint8_t stage, CompiledFormula fn) noexcept
+		{
+			slots[sit][stage] = std::move(fn);
+			active.set(static_cast<size_t>(sit) * 4 + stage);
+		}
+
+		[[nodiscard]] const CompiledFormula* get(uint8_t sit, uint8_t stage) const noexcept
+		{
+			if (!has(sit, stage))
+				return nullptr;
+			return &slots[sit][stage];
 		}
 	};
 
-	extern std::array<SituationFormulas, 4> g_default_situation_formulas;
-	extern std::pmr::unordered_map<int64_t, std::array<SituationFormulas, 4>> combat_formula_map;
-	extern std::pmr::unordered_map<int64_t, FormulaCallbacks> combat_callback_map;
+	// Stores compiled formula slots outside the Combat object so Combat stays lean.
+	// unique_ptr entries are heap-stable — the raw pointer cached on Combat never moves.
+	extern std::unordered_map<int64_t, std::unique_ptr<CompiledFormulaSlots>> combat_compiled_map;
 
 	void ApplyOutputPreset(Combat::OutputFactors& out, std::string_view preset) noexcept;
 	void ApplyDefensePreset(Combat::ResistanceFactors& out, std::string_view preset) noexcept;
@@ -879,42 +895,51 @@ namespace BlackTek
 	void ApplyResolutionPreset(Combat::ResolutionFactors& out, std::string_view preset) noexcept;
 	void LoadFormulaDefaults(uint8_t sit_idx, std::string_view out_preset, std::string_view def_preset, std::string_view arm_preset, std::string_view res_preset) noexcept;
 
+	// Used by FormulaNode closures built in Lua to read creature stats at combat time.
+	int32_t resolve_bind_key(Combat::BindKey key, const CreaturePtr& creature) noexcept;
+
 	class MagicField final : public Item
-{
-public:
-	explicit MagicField(uint16_t type) : Item(type), createTime(OTSYS_TIME())
 	{
-		thing_subtype = ThingSubType::MagicField;
-		item_subtype = ItemSubType::MagicField;
-	}
-
-	MagicFieldPtr getMagicField() override {
-		return static_shared_this<MagicField>();
-	}
-
-	MagicFieldConstPtr getMagicField() const override {
-		return static_shared_this<MagicField>();
-	}
-
-	bool isReplaceable() const {
-		return Item::items[getID()].replaceable;
-	}
-
-	CombatType_t getCombatType() const {
-		const ItemType& it = items[getID()];
-		return it.combatType;
-	}
-
-	int32_t getDamage() const {
-		const ItemType& it = items[getID()];
-		if (it.conditionDamage) {
-			return it.conditionDamage->getTotalDamage();
+	public:
+		explicit MagicField(uint16_t type) : Item(type), createTime(OTSYS_TIME())
+		{
+			thing_subtype = ThingSubType::MagicField;
+			item_subtype = ItemSubType::MagicField;
 		}
-		return 0;
-	}
-	void onStepInField(const CreaturePtr& creature);
 
-private:
-	int64_t createTime;
-};
+		MagicFieldPtr getMagicField() override
+		{
+			return static_shared_this<MagicField>();
+		}
+
+		MagicFieldConstPtr getMagicField() const override
+		{
+			return static_shared_this<MagicField>();
+		}
+
+		bool isReplaceable() const
+		{
+			return Item::items[getID()].replaceable;
+		}
+
+		CombatType_t getCombatType() const
+		{
+			const ItemType& it = items[getID()];
+			return it.combatType;
+		}
+
+		int32_t getDamage() const
+		{
+			const ItemType& it = items[getID()];
+			if (it.conditionDamage)
+			{
+				return it.conditionDamage->getTotalDamage();
+			}
+			return 0;
+		}
+		void onStepInField(const CreaturePtr& creature);
+
+	private:
+		int64_t createTime;
+	};
 }

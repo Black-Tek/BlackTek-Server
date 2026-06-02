@@ -163,10 +163,6 @@ void Creature::onThink(uint32_t interval)
 
 		const uint32_t arm_cap = get_armor_charges_cap();
 		armor_charges = std::min<uint32_t>(armor_charges + charges_gained, arm_cap);
-
-		const uint32_t aug_cap = get_augment_charges_cap();
-		if (aug_cap > 0)
-			augment_charges = std::min<uint32_t>(augment_charges + charges_gained, aug_cap);
 	}
 
 	if (isUpdatingPath) 
@@ -1785,7 +1781,3 @@ uint32_t Creature::get_armor_charges_cap() const noexcept
 	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MONSTER_ARMOR_CHARGES_CAP));
 }
 
-uint32_t Creature::get_augment_charges_cap() const noexcept
-{
-	return 0;
-}

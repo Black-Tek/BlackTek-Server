@@ -450,7 +450,7 @@ class Creature : virtual public Thing, public SharedObject
 		virtual bool onKilledCreature(const CreaturePtr& target, bool lastHit = true);
 		virtual void onGainExperience(uint64_t gainExp, const CreaturePtr& target);
 		virtual void onAttackedCreatureBlockHit(BlockType_t) {}
-		virtual void onBlockHit() {}
+		void onBlockHit() {}
 		virtual void onChangeZone(ZoneType_t zone);
 		virtual void onAttackedCreatureChangeZone(ZoneType_t zone);
 		virtual void onIdleStatus();
@@ -657,18 +657,13 @@ class Creature : virtual public Thing, public SharedObject
 		[[nodiscard]] uint32_t get_armor_charges() const noexcept { return armor_charges; }
 		void set_armor_charges(uint32_t count) noexcept { armor_charges = count; }
 
-		[[nodiscard]] uint32_t get_augment_charges() const noexcept { return augment_charges; }
-		void set_augment_charges(uint32_t count) noexcept { augment_charges = count; }
-
 		[[nodiscard]] virtual uint32_t get_defense_charge_interval() const noexcept;
 
 		[[nodiscard]] virtual uint32_t get_defense_charges_cap() const noexcept;
 		[[nodiscard]] virtual uint32_t get_armor_charges_cap() const noexcept;
-		[[nodiscard]] virtual uint32_t get_augment_charges_cap() const noexcept;
 
 		[[nodiscard]] virtual float get_defense_charge_cost_multiplier() const noexcept { return 1.0f; }
 		[[nodiscard]] virtual float get_armor_charge_cost_multiplier() const noexcept { return 1.0f; }
-		[[nodiscard]] virtual float get_augment_charge_cost_multiplier() const noexcept { return 1.0f; }
 
 		[[nodiscard]] bool can_use_defense() const noexcept { return canUseDefense; }
 
@@ -713,7 +708,6 @@ class Creature : virtual public Thing, public SharedObject
 		uint32_t lastHitCreatureId = 0;
 		uint32_t defense_charges = 0;
 		uint32_t armor_charges = 0;
-		uint32_t augment_charges = 0;
 		uint32_t blockTicks = 0;
 		uint32_t lastStepCost = 1;
 		uint32_t baseSpeed = 220;

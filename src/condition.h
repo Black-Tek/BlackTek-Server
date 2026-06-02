@@ -9,8 +9,8 @@
 #include "declarations.h"
 #include "intrusive.h"
 
-#include <atomic>
 #include <memory_resource>
+#include <vector>
 
 class PropStream;
 
@@ -78,8 +78,7 @@ class Condition
 			subId(subId), ticks(ticks), conditionType(type), isBuff(buff), aggressive(aggressive), id(id) {}
 		virtual ~Condition() = default;
 
-		// std::atomic is not copyable, so the compiler deletes the copy constructor.
-		// Define it explicitly: copy all data, but start the clone with zero references.
+		// Define explicitly: copy all data, but start the clone with zero references.
 		Condition(const Condition& o) :
 			endTime(o.endTime),
 			subId(o.subId),
@@ -160,7 +159,7 @@ class Condition
 		ConditionId_t id;
 		CreaturePtr source = nullptr;
 
-		mutable std::atomic<int32_t> m_ref_count{ 0 };
+		mutable int32_t m_ref_count{ 0 };
 
 		friend void intrusive_ptr_add_ref(const Condition* p) noexcept;
 		friend void intrusive_ptr_release(const Condition* p) noexcept;
@@ -300,7 +299,7 @@ class ConditionDamage final : public Condition
 		ConditionDamage(ConditionId_t id, ConditionType_t type, bool buff = false, uint32_t subId = 0, bool aggressive = true) :
 			Condition(id, type, 0, buff, subId, aggressive) {}
 
-		static void generateDamageList(int32_t amount, int32_t start, std::list<int32_t>& list);
+		static void generateDamageList(int32_t amount, int32_t start, std::vector<int32_t>& list);
 
 		bool startCondition(CreaturePtr creature) override;
 		bool executeCondition(CreaturePtr creature, int32_t interval) override;
@@ -347,7 +346,8 @@ class ConditionDamage final : public Condition
 
 		bool init();
 
-		std::list<IntervalInfo> damageList;
+		std::vector<IntervalInfo> damageList;
+		uint32_t damage_front = 0;
 
 		bool getNextDamage(int32_t& damage);
 		bool doDamage(CreaturePtr creature, int32_t healthChange) const;

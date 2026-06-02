@@ -223,11 +223,19 @@ class Player final : public Creature, public Cylinder
 
 		uint32_t get_defense_charges_cap() const noexcept override;
 		uint32_t get_armor_charges_cap() const noexcept override;
-		uint32_t get_augment_charges_cap() const noexcept override;
+		uint32_t get_def_modifier_charges_cap() const noexcept;
+		uint32_t get_atk_modifier_charges_cap() const noexcept;
 
 		float get_defense_charge_cost_multiplier() const noexcept override;
 		float get_armor_charge_cost_multiplier() const noexcept override;
-		float get_augment_charge_cost_multiplier() const noexcept override;
+		float get_def_modifier_charge_cost_multiplier() const noexcept;
+		float get_atk_modifier_charge_cost_multiplier() const noexcept;
+
+		[[nodiscard]] uint32_t get_def_modifier_charges() const noexcept { return def_modifier_charges; }
+		void set_def_modifier_charges(uint32_t count) noexcept { def_modifier_charges = count; }
+
+		[[nodiscard]] uint32_t get_atk_modifier_charges() const noexcept { return atk_modifier_charges; }
+		void set_atk_modifier_charges(uint32_t count) noexcept { atk_modifier_charges = count; }
 
 		void setOperatingSystem(OperatingSystem_t clientos) { operatingSystem = clientos; }
 
@@ -702,7 +710,7 @@ class Player final : public Creature, public Cylinder
 		void onGainExperience(uint64_t gainExp, const CreaturePtr& target) override;
 		void onGainSharedExperience(uint64_t gainExp, const CreaturePtr& source);
 		void onAttackedCreatureBlockHit(BlockType_t blockType) override;
-		void onBlockHit() override;
+		void onBlockHit();
 		void onChangeZone(ZoneType_t zone) override;
 		void onAttackedCreatureChangeZone(ZoneType_t zone) override;
 		void onIdleStatus() override;
@@ -1667,6 +1675,9 @@ class Player final : public Creature, public Cylinder
 		uint32_t manaMax = 0;
 		uint32_t augment_count = 0;
 		uint32_t conversion_modifier_count = 0;
+		uint32_t def_modifier_charges = 0;
+		uint32_t atk_modifier_charges = 0;
+		uint32_t modifier_charge_ticks = 0;
 		uint32_t reform_modifier_count = 0;
 		uint32_t attack_modifier_count = 0;
 		uint32_t defense_modifier_count = 0;

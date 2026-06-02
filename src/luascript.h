@@ -1544,17 +1544,33 @@ class LuaScriptInterface
 		static int luaCombatSetArea(lua_State* L);
 		static int luaCombatAddCondition(lua_State* L);
 		static int luaCombatClearConditions(lua_State* L);
-		static int luaCombatSetCallback(lua_State* L);
 		static int luaCombatSetOrigin(lua_State* L);
 
 		static int luaCombatExecute(lua_State* L);
 
 		// Formula override API
 		static int luaCombatSetSituationFormulas(lua_State* L);
-		static int luaCombatSetDefenseCallback(lua_State* L);
-		static int luaCombatSetArmorCallback(lua_State* L);
-		static int luaCombatSetResolutionCallback(lua_State* L);
 		static int luaCombatSetDamage(lua_State* L);
+		static int luaCombatRegisterFormula(lua_State* L);
+
+		// FormulaNode — Lua userdata wrapping a compiled C++ formula expression
+		// pushFormulaNode / getFormulaNode are file-scope statics in luascript.cpp
+		static int luaFormulaNodeBind(lua_State* L);
+		static int luaFormulaNodeBindSkill(lua_State* L);
+		static int luaFormulaNodeOutput(lua_State* L);
+		static int luaFormulaNodeResistance(lua_State* L);
+		static int luaFormulaNodeConst(lua_State* L);
+		static int luaFormulaNodeRandom(lua_State* L);
+		static int luaFormulaNodeMin(lua_State* L);
+		static int luaFormulaNodeMax(lua_State* L);
+		static int luaFormulaNodeFloor(lua_State* L);
+		static int luaFormulaNodeCeil(lua_State* L);
+		static int luaFormulaNodeAdd(lua_State* L);
+		static int luaFormulaNodeSub(lua_State* L);
+		static int luaFormulaNodeMul(lua_State* L);
+		static int luaFormulaNodeDiv(lua_State* L);
+		static int luaFormulaNodeUnm(lua_State* L);
+		static int luaFormulaNodeGC(lua_State* L);
 
 		// Condition
 		static int luaConditionCreate(lua_State* L);

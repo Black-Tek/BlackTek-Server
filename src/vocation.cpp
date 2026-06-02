@@ -182,12 +182,14 @@ bool Vocations::loadFromToml() {
 									}
 									if (auto dc = r["defense_charges"].as_table())
 									{
-										vocation.defenseChargesCap = dc->at("defense_cap").value_or(0);
-										vocation.armorChargesCap   = dc->at("armor_cap").value_or(0);
-										vocation.augmentChargesCap = dc->at("augment_cap").value_or(0);
-										vocation.defenseChargeCostMultiplier = dc->at("defense_cost_multiplier").value_or(1.0f);
-										vocation.armorChargeCostMultiplier   = dc->at("armor_cost_multiplier").value_or(1.0f);
-										vocation.augmentChargeCostMultiplier = dc->at("augment_cost_multiplier").value_or(1.0f);
+										vocation.defenseChargesCap            = dc->at("defense_cap").value_or(0);
+										vocation.armorChargesCap              = dc->at("armor_cap").value_or(0);
+										vocation.defModifierChargesCap        = dc->at("def_modifier_cap").value_or(0);
+										vocation.atkModifierChargesCap        = dc->at("atk_modifier_cap").value_or(0);
+										vocation.defenseChargeCostMultiplier  = dc->at("defense_cost_multiplier").value_or(1.0f);
+										vocation.armorChargeCostMultiplier    = dc->at("armor_cost_multiplier").value_or(1.0f);
+										vocation.defModifierChargeCostMultiplier = dc->at("def_modifier_cost_multiplier").value_or(1.0f);
+										vocation.atkModifierChargeCostMultiplier = dc->at("atk_modifier_cost_multiplier").value_or(1.0f);
 									}
 								}
 							}

@@ -2301,6 +2301,23 @@ uint32_t Player::getNextActionTime() const
 void Player::onThink(const uint32_t interval)
 {
 	Creature::onThink(interval);
+
+	modifier_charge_ticks += interval;
+	const uint32_t mod_interval = get_defense_charge_interval();
+	if (mod_interval > 0 and modifier_charge_ticks >= mod_interval)
+	{
+		const uint32_t gained = modifier_charge_ticks / mod_interval;
+		modifier_charge_ticks %= mod_interval;
+
+		const uint32_t def_mod_cap = get_def_modifier_charges_cap();
+		if (def_mod_cap > 0)
+			def_modifier_charges = std::min<uint32_t>(def_modifier_charges + gained, def_mod_cap);
+
+		const uint32_t atk_mod_cap = get_atk_modifier_charges_cap();
+		if (atk_mod_cap > 0)
+			atk_modifier_charges = std::min<uint32_t>(atk_modifier_charges + gained, atk_mod_cap);
+	}
+
 	sendPing();
 	MessageBufferTicks += interval;
 
@@ -2351,11 +2368,18 @@ uint32_t Player::get_armor_charges_cap() const noexcept
 	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PLAYER_ARMOR_CHARGES_CAP));
 }
 
-uint32_t Player::get_augment_charges_cap() const noexcept
+uint32_t Player::get_def_modifier_charges_cap() const noexcept
 {
-	if (vocation && vocation->getAugmentChargesCap() > 0)
-		return vocation->getAugmentChargesCap();
-	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PLAYER_AUGMENT_CHARGES_CAP));
+	if (vocation && vocation->getDefModifierChargesCap() > 0)
+		return vocation->getDefModifierChargesCap();
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PLAYER_DEF_MODIFIER_CHARGES_CAP));
+}
+
+uint32_t Player::get_atk_modifier_charges_cap() const noexcept
+{
+	if (vocation && vocation->getAtkModifierChargesCap() > 0)
+		return vocation->getAtkModifierChargesCap();
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PLAYER_ATK_MODIFIER_CHARGES_CAP));
 }
 
 float Player::get_defense_charge_cost_multiplier() const noexcept
@@ -2372,10 +2396,17 @@ float Player::get_armor_charge_cost_multiplier() const noexcept
 	return 1.0f;
 }
 
-float Player::get_augment_charge_cost_multiplier() const noexcept
+float Player::get_def_modifier_charge_cost_multiplier() const noexcept
 {
 	if (vocation)
-		return vocation->getAugmentChargeCostMultiplier();
+		return vocation->getDefModifierChargeCostMultiplier();
+	return 1.0f;
+}
+
+float Player::get_atk_modifier_charge_cost_multiplier() const noexcept
+{
+	if (vocation)
+		return vocation->getAtkModifierChargeCostMultiplier();
 	return 1.0f;
 }
 
@@ -4280,15 +4311,20 @@ void Player::doSecondaryAttack(const CreaturePtr& target)
 	m_is_secondary_attack = true;
 	setDualWieldMultiplier(voc->dualWield.secondaryMultiplier);
 
-	if (const auto& weapon = g_weapons->getWeapon(secondaryTool)) {
+	if (const auto& weapon = g_weapons->getWeapon(secondaryTool))
+	{
 		// Item is registered in the Lua weapons system — use the full weapon handler.
 		weapon->useWeapon(getPlayer(), secondaryTool, target);
-	} else {
+	}
+	else
+	{
 		// Item has its own attack data but is not registered as a Lua weapon.
 		// Perform a basic melee attack derived entirely from the item's stats.
 		const WeaponType_t wt = secondaryTool->getWeaponType();
-		if (wt == WEAPON_SWORD || wt == WEAPON_CLUB || wt == WEAPON_AXE) {
-			if (Position::areInRange<1, 1>(getPosition(), target->getPosition())) {
+		if (wt == WEAPON_SWORD or wt == WEAPON_CLUB or wt == WEAPON_AXE)
+		{
+			if (Position::areInRange<1, 1>(getPosition(), target->getPosition()))
+			{
 				const int32_t attackSkill = getWeaponSkill(secondaryTool);
 				const int32_t attackValue = std::max<int32_t>(0, secondaryTool->getAttack());
 				const float attackFactor = getAttackFactor();
@@ -4297,7 +4333,8 @@ void Player::doSecondaryAttack(const CreaturePtr& target)
 					* voc->meleeDamageMultiplier
 					* getDualWieldMultiplier()
 				);
-				if (maxDmg > 0) {
+				if (maxDmg > 0)
+				{
 					auto strike = BlackTek::g_combat_registry.Create(
 						static_cast<uint16_t>(BlackTek::Combat::DamageType::Physical),
 						static_cast<uint32_t>(normal_random(0, maxDmg))
@@ -4308,7 +4345,8 @@ void Player::doSecondaryAttack(const CreaturePtr& target)
 					strike->setOrigin(BlackTek::Combat::Origin::Melee);
 					strike->strike_target(getPlayer(), target);
 
-					if (!hasFlag(PlayerFlag_NotGainSkill) && getAddAttackSkill()) {
+					if (not hasFlag(PlayerFlag_NotGainSkill) and getAddAttackSkill())
+					{
 						const skills_t skill = wt == WEAPON_SWORD ? SKILL_SWORD
 						                     : wt == WEAPON_AXE   ? SKILL_AXE
 						                                           : SKILL_CLUB;
@@ -4316,7 +4354,9 @@ void Player::doSecondaryAttack(const CreaturePtr& target)
 					}
 				}
 			}
-		} else {
+		}
+		else
+		{
 			// Non-melee item or unknown type — fall back to fist attack.
 			Weapon::useFist(getPlayer(), target);
 		}
@@ -4370,12 +4410,15 @@ void Player::doAttacking(uint32_t)
 			classicAttackEvent = g_scheduler.addEvent(task);
 		}
 
-		if (result) {
+		if (result)
+		{
 			lastAttack = OTSYS_TIME();
 
-			if (dualWielding) {
+			if (dualWielding)
+			{
 				const auto target = getAttackedCreature();
-				if (target) {
+				if (target)
+				{
 					const auto secondaryDelay = std::max<uint32_t>(SCHEDULER_MINTICKS, getVocation()->dualWield.delay);
 					g_scheduler.addEvent(createSchedulerTask(secondaryDelay,
 						[playerId = getID(), targetId = target->getID()]() {
@@ -4683,7 +4726,8 @@ void Player::onTargetCreatureGainHealth(const CreaturePtr& target, int32_t point
 			tmpPlayer = targetMasterPlayer;
 	}
 
-	if (tmpPlayer && party > 0 && isPartner(tmpPlayer)) {
+	if (tmpPlayer and party > 0 and isPartner(tmpPlayer))
+	{
 		getParty()->updatePlayerTicks(this->getPlayer(), points);
 	}
 

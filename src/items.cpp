@@ -892,7 +892,7 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
 
                     if (damage != 0) {
                         if (start > 0) {
-                            std::list<int32_t> damageList;
+                            std::vector<int32_t> damageList;
                             ConditionDamage::generateDamageList(damage, start, damageList);
                             for (int32_t damageValue : damageList) {
                                 it.conditionDamage->addDamage(1, ticks, -damageValue);

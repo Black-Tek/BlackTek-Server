@@ -34,12 +34,12 @@ void Condition::operator delete(void* ptr, std::size_t size) noexcept
 // ── Intrusive pointer helpers ─────────────────────────────────────────────────
 void intrusive_ptr_add_ref(const Condition* p) noexcept
 {
-	p->m_ref_count.fetch_add(1, std::memory_order_relaxed);
+	++p->m_ref_count;
 }
 
 void intrusive_ptr_release(const Condition* p) noexcept
 {
-	if (p->m_ref_count.fetch_sub(1, std::memory_order_acq_rel) == 1)
+	if (--p->m_ref_count == 0)
 		delete const_cast<Condition*>(p);
 }
 
@@ -1186,9 +1186,9 @@ void ConditionDamage::serialize(PropWriteStream& propWriteStream)
 	propWriteStream.write<uint8_t>(CONDITIONATTR_PERIODDAMAGE);
 	propWriteStream.write<int32_t>(periodDamage);
 
-	for (const IntervalInfo& intervalInfo : damageList) {
+	for (size_t i = damage_front; i < damageList.size(); ++i) {
 		propWriteStream.write<uint8_t>(CONDITIONATTR_INTERVALDATA);
-		propWriteStream.write<IntervalInfo>(intervalInfo);
+		propWriteStream.write<IntervalInfo>(damageList[i]);
 	}
 }
 
@@ -1244,7 +1244,7 @@ bool ConditionDamage::init()
 		return true;
 	}
 
-	if (!damageList.empty()) {
+	if (damage_front < damageList.size()) {
 		return true;
 	}
 
@@ -1257,13 +1257,13 @@ bool ConditionDamage::init()
 			startDamage = std::max<int32_t>(1, std::ceil(amount / 20.0));
 		}
 
-		std::list<int32_t> list;
+		std::vector<int32_t> list;
 		ConditionDamage::generateDamageList(amount, startDamage, list);
 		for (int32_t value : list) {
 			addDamage(1, tickInterval, -value);
 		}
 	}
-	return !damageList.empty();
+	return damage_front < damageList.size();
 }
 
 bool ConditionDamage::startCondition(const CreaturePtr creature)
@@ -1294,8 +1294,8 @@ bool ConditionDamage::executeCondition(const CreaturePtr creature, int32_t inter
 			periodDamageTick = 0;
 			doDamage(creature, periodDamage);
 		}
-	} else if (!damageList.empty()) {
-		IntervalInfo& damageInfo = damageList.front();
+	} else if (damage_front < damageList.size()) {
+		IntervalInfo& damageInfo = damageList[damage_front];
 
 		bool bRemove = (ticks != -1);
 		creature->onTickCondition(getType(), bRemove);
@@ -1305,7 +1305,7 @@ bool ConditionDamage::executeCondition(const CreaturePtr creature, int32_t inter
 			int32_t damage = damageInfo.value;
 
 			if (bRemove) {
-				damageList.pop_front();
+				++damage_front;
 			} else {
 				damageInfo.timeLeft = damageInfo.interval;
 			}
@@ -1330,11 +1330,10 @@ bool ConditionDamage::getNextDamage(int32_t& damage)
 	if (periodDamage != 0) {
 		damage = periodDamage;
 		return true;
-	} else if (!damageList.empty()) {
-		const IntervalInfo& damageInfo = damageList.front();
-		damage = damageInfo.value;
+	} else if (damage_front < damageList.size()) {
+		damage = damageList[damage_front].value;
 		if (ticks != -1) {
-			damageList.pop_front();
+			++damage_front;
 		}
 		return true;
 	}
@@ -1374,20 +1373,20 @@ void ConditionDamage::addCondition(const CreaturePtr creature, const Condition* 
 	periodDamage = conditionDamage.periodDamage;
 	int32_t nextTimeLeft = tickInterval;
 
-	if (!damageList.empty()) {
+	if (damage_front < damageList.size()) {
 		//save previous timeLeft
-		IntervalInfo& damageInfo = damageList.front();
-		nextTimeLeft = damageInfo.timeLeft;
+		nextTimeLeft = damageList[damage_front].timeLeft;
 		damageList.clear();
+		damage_front = 0;
 	}
 
-	damageList = conditionDamage.damageList;
+	damageList  = conditionDamage.damageList;
+	damage_front = conditionDamage.damage_front;
 
 	if (init()) {
-		if (!damageList.empty()) {
+		if (damage_front < damageList.size()) {
 			//restore last timeLeft
-			IntervalInfo& damageInfo = damageList.front();
-			damageInfo.timeLeft = nextTimeLeft;
+			damageList[damage_front].timeLeft = nextTimeLeft;
 		}
 
 		if (!delayed) {
@@ -1402,10 +1401,10 @@ void ConditionDamage::addCondition(const CreaturePtr creature, const Condition* 
 int32_t ConditionDamage::getTotalDamage() const
 {
 	int32_t result;
-	if (!damageList.empty()) {
+	if (damage_front < damageList.size()) {
 		result = 0;
-		for (const IntervalInfo& intervalInfo : damageList) {
-			result += intervalInfo.value;
+		for (size_t i = damage_front; i < damageList.size(); ++i) {
+			result += damageList[i].value;
 		}
 	} else {
 		result = minDamage + (maxDamage - minDamage) / 2;
@@ -1455,7 +1454,7 @@ uint32_t ConditionDamage::getIcons() const
 	return icons;
 }
 
-void ConditionDamage::generateDamageList(int32_t amount, int32_t start, std::list<int32_t>& list)
+void ConditionDamage::generateDamageList(int32_t amount, int32_t start, std::vector<int32_t>& list)
 {
 	amount = std::abs(amount);
 	int32_t sum = 0;
@@ -1753,7 +1752,7 @@ void ConditionLight::addCondition(const CreaturePtr creature, const Condition* c
 bool ConditionLight::setParam(const ConditionParam_t param, const int32_t value)
 {
 	if (const bool ret = Condition::setParam(param, value)) {
-		return false;
+		return ret;
 	}
 
 	switch (param) {

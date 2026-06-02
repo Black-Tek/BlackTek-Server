@@ -3067,23 +3067,98 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Combat", "setArea", luaCombatSetArea);
 	registerMethod("Combat", "addCondition", luaCombatAddCondition);
 	registerMethod("Combat", "clearConditions", luaCombatClearConditions);
-	registerMethod("Combat", "setCallback", luaCombatSetCallback);
 	registerMethod("Combat", "setOrigin", luaCombatSetOrigin);
 
 	registerMethod("Combat", "execute", luaCombatExecute);
 
 	// Formula override API
-	registerMethod("Combat", "setSituationFormulas",  luaCombatSetSituationFormulas);
-	registerMethod("Combat", "setDefenseCallback",    luaCombatSetDefenseCallback);
-	registerMethod("Combat", "setArmorCallback",      luaCombatSetArmorCallback);
-	registerMethod("Combat", "setResolutionCallback", luaCombatSetResolutionCallback);
-	registerMethod("Combat", "setDamage", luaCombatSetDamage);
+	registerMethod("Combat", "setSituationFormulas", luaCombatSetSituationFormulas);
+	registerMethod("Combat", "setDamage",            luaCombatSetDamage);
+	registerMethod("Combat", "registerFormula",      luaCombatRegisterFormula);
 
 	// Combat situation index constants — pass to setSituationFormulas / set*Callback
 	registerVariable("Combat", "SITUATION_PVP", 0);
 	registerVariable("Combat", "SITUATION_PVM", 1);
 	registerVariable("Combat", "SITUATION_MVP", 2);
 	registerVariable("Combat", "SITUATION_MVM", 3);
+
+	// Combat formula stage constants
+	registerVariable("Combat", "STAGE_OUTPUT",     static_cast<int>(BlackTek::FormulaStage::Output));
+	registerVariable("Combat", "STAGE_DEFENSE",    static_cast<int>(BlackTek::FormulaStage::Defense));
+	registerVariable("Combat", "STAGE_ARMOR",      static_cast<int>(BlackTek::FormulaStage::Armor));
+	registerVariable("Combat", "STAGE_RESOLUTION", static_cast<int>(BlackTek::FormulaStage::Resolution));
+
+	// Combat.BindSource and Combat.BindKey sub-tables
+	{
+		lua_getglobal(luaState, "Combat");
+
+		lua_newtable(luaState);
+		lua_pushinteger(luaState, std::to_underlying(BlackTek::Combat::BindSource::Caster)); lua_setfield(luaState, -2, "Caster");
+		lua_pushinteger(luaState, std::to_underlying(BlackTek::Combat::BindSource::Target)); lua_setfield(luaState, -2, "Target");
+		lua_setfield(luaState, -2, "BindSource");
+
+		lua_newtable(luaState);
+		using BK = BlackTek::Combat::BindKey;
+		auto setBKField = [this](const char* name, BK val) {
+			lua_pushinteger(luaState, std::to_underlying(val));
+			lua_setfield(luaState, -2, name);
+		};
+		setBKField("Level",        BK::Level);
+		setBKField("MagicLevel",   BK::MagicLevel);
+		setBKField("SkillLevel",   BK::SkillLevel);
+		setBKField("Attack",       BK::Attack);
+		setBKField("Defense",      BK::Defense);
+		setBKField("WeaponAttack", BK::WeaponAttack);
+		setBKField("WeaponDefense",BK::WeaponDefense);
+		setBKField("Health",       BK::Health);
+		setBKField("MaxHealth",    BK::MaxHealth);
+		setBKField("Mana",         BK::Mana);
+		setBKField("MaxMana",      BK::MaxMana);
+		setBKField("Soul",         BK::Soul);
+		setBKField("MaxSoul",      BK::MaxSoul);
+		setBKField("Stamina",      BK::Stamina);
+		lua_setfield(luaState, -2, "BindKey");
+
+		lua_pop(luaState, 1); // pop Combat table
+	}
+
+	// FormulaNode metatable — holds a compiled C++ formula lambda (no Lua VM at runtime)
+	luaL_newmetatable(luaState, "FormulaNode");
+	lua_newtable(luaState);
+	// Class-level factory functions on the FormulaNode table
+	lua_pushcfunction(luaState, luaFormulaNodeBind);      lua_setfield(luaState, -2, "bind");
+	lua_pushcfunction(luaState, luaFormulaNodeBindSkill); lua_setfield(luaState, -2, "bindSkill");
+	lua_pushcfunction(luaState, luaFormulaNodeOutput);    lua_setfield(luaState, -2, "output");
+	lua_pushcfunction(luaState, luaFormulaNodeResistance);lua_setfield(luaState, -2, "resistance");
+	lua_pushcfunction(luaState, luaFormulaNodeConst);     lua_setfield(luaState, -2, "const");
+	lua_pushcfunction(luaState, luaFormulaNodeRandom);    lua_setfield(luaState, -2, "random");
+	lua_pushcfunction(luaState, luaFormulaNodeMin);       lua_setfield(luaState, -2, "min");
+	lua_pushcfunction(luaState, luaFormulaNodeMax);       lua_setfield(luaState, -2, "max");
+	lua_pushcfunction(luaState, luaFormulaNodeFloor);     lua_setfield(luaState, -2, "floor");
+	lua_pushcfunction(luaState, luaFormulaNodeCeil);      lua_setfield(luaState, -2, "ceil");
+	lua_setfield(luaState, -2, "__index");
+	// Arithmetic metamethods — build new lambda closures, no Lua VM at combat time
+	lua_pushcfunction(luaState, luaFormulaNodeAdd); lua_setfield(luaState, -2, "__add");
+	lua_pushcfunction(luaState, luaFormulaNodeSub); lua_setfield(luaState, -2, "__sub");
+	lua_pushcfunction(luaState, luaFormulaNodeMul); lua_setfield(luaState, -2, "__mul");
+	lua_pushcfunction(luaState, luaFormulaNodeDiv); lua_setfield(luaState, -2, "__div");
+	lua_pushcfunction(luaState, luaFormulaNodeUnm); lua_setfield(luaState, -2, "__unm");
+	lua_pushcfunction(luaState, luaFormulaNodeGC);  lua_setfield(luaState, -2, "__gc");
+	lua_pop(luaState, 1); // pop metatable
+
+	// Expose FormulaNode as a global so scripts can call FormulaNode.bind(...)
+	lua_newtable(luaState);
+	lua_pushcfunction(luaState, luaFormulaNodeBind);      lua_setfield(luaState, -2, "bind");
+	lua_pushcfunction(luaState, luaFormulaNodeBindSkill); lua_setfield(luaState, -2, "bindSkill");
+	lua_pushcfunction(luaState, luaFormulaNodeOutput);    lua_setfield(luaState, -2, "output");
+	lua_pushcfunction(luaState, luaFormulaNodeResistance);lua_setfield(luaState, -2, "resistance");
+	lua_pushcfunction(luaState, luaFormulaNodeConst);     lua_setfield(luaState, -2, "const");
+	lua_pushcfunction(luaState, luaFormulaNodeRandom);    lua_setfield(luaState, -2, "random");
+	lua_pushcfunction(luaState, luaFormulaNodeMin);       lua_setfield(luaState, -2, "min");
+	lua_pushcfunction(luaState, luaFormulaNodeMax);       lua_setfield(luaState, -2, "max");
+	lua_pushcfunction(luaState, luaFormulaNodeFloor);     lua_setfield(luaState, -2, "floor");
+	lua_pushcfunction(luaState, luaFormulaNodeCeil);      lua_setfield(luaState, -2, "ceil");
+	lua_setglobal(luaState, "FormulaNode");
 
 	// Combat.Origin sub-table — nested PascalCase enum; access as Combat.Origin.Ranged etc.
 	{
@@ -15982,36 +16057,6 @@ int LuaScriptInterface::luaCombatClearConditions(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaCombatSetCallback(lua_State* L)
-{
-	// combat:setCallback(key, function)
-	// Maps old CallBackParam_t to the new formula callback system.
-	// Only CALLBACK_PARAM_LEVELMAGICVALUE and CALLBACK_PARAM_SKILLVALUE are mapped;
-	// tile/target callbacks are handled via execute() itself.
-	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
-	if (not combat)
-	{
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
-		lua_pushnil(L);
-		return 1;
-	}
-
-	if (not lua_isfunction(L, 3))
-	{
-		lua_pushnil(L);
-		return 1;
-	}
-
-	lua_pushvalue(L, 3);
-	const int32_t lua_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-
-	for (uint8_t sit = 0; sit < 4; ++sit)
-		combat->SetFormulaCallback(sit, BlackTek::FormulaStage::Output, lua_ref);
-
-	pushBoolean(L, true);
-	return 1;
-}
-
 int LuaScriptInterface::luaCombatSetOrigin(lua_State* L)
 {
 	// combat:setOrigin(origin)
@@ -16169,105 +16214,6 @@ int LuaScriptInterface::luaCombatSetSituationFormulas(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaCombatSetDefenseCallback(lua_State* L)
-{
-	// combat:setDefenseCallback(sit_idx, function(stat) return resistance_roll end)
-	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
-	if (not combat)
-	{
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
-		lua_pushnil(L);
-		return 1;
-	}
-
-	const uint8_t sit_idx = getNumber<uint8_t>(L, 2);
-	if (sit_idx > 3)
-	{
-		reportErrorFunc(L, "Situation index out of range — use 0 (PvP), 1 (PvM), 2 (MvP) or 3 (MvM).");
-		lua_pushnil(L);
-		return 1;
-	}
-
-	if (not lua_isfunction(L, 3))
-	{
-		reportErrorFunc(L, "Function expected as third argument.");
-		lua_pushnil(L);
-		return 1;
-	}
-
-	lua_pushvalue(L, 3);
-	const int32_t lua_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	combat->SetFormulaCallback(sit_idx, BlackTek::FormulaStage::Defense, lua_ref);
-	pushBoolean(L, true);
-	return 1;
-}
-
-int LuaScriptInterface::luaCombatSetArmorCallback(lua_State* L)
-{
-	// combat:setArmorCallback(sit_idx, function(stat) return resistance_roll end)
-	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
-	if (not combat)
-	{
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
-		lua_pushnil(L);
-		return 1;
-	}
-
-	const uint8_t sit_idx = getNumber<uint8_t>(L, 2);
-	if (sit_idx > 3)
-	{
-		reportErrorFunc(L, "Situation index out of range — use 0 (PvP), 1 (PvM), 2 (MvP) or 3 (MvM).");
-		lua_pushnil(L);
-		return 1;
-	}
-
-	if (not lua_isfunction(L, 3))
-	{
-		reportErrorFunc(L, "Function expected as third argument.");
-		lua_pushnil(L);
-		return 1;
-	}
-
-	lua_pushvalue(L, 3);
-	const int32_t lua_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	combat->SetFormulaCallback(sit_idx, BlackTek::FormulaStage::Armor, lua_ref);
-	pushBoolean(L, true);
-	return 1;
-}
-
-int LuaScriptInterface::luaCombatSetResolutionCallback(lua_State* L)
-{
-	// combat:setResolutionCallback(sit_idx, function(output, resistance) return final_damage end)
-	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
-	if (not combat)
-	{
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
-		lua_pushnil(L);
-		return 1;
-	}
-
-	const uint8_t sit_idx = getNumber<uint8_t>(L, 2);
-	if (sit_idx > 3)
-	{
-		reportErrorFunc(L, "Situation index out of range — use 0 (PvP), 1 (PvM), 2 (MvP) or 3 (MvM).");
-		lua_pushnil(L);
-		return 1;
-	}
-
-	if (not lua_isfunction(L, 3))
-	{
-		reportErrorFunc(L, "Function expected as third argument.");
-		lua_pushnil(L);
-		return 1;
-	}
-
-	lua_pushvalue(L, 3);
-	const int32_t lua_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	combat->SetFormulaCallback(sit_idx, BlackTek::FormulaStage::Resolution, lua_ref);
-	pushBoolean(L, true);
-	return 1;
-}
-
 int LuaScriptInterface::luaCombatSetDamage(lua_State* L)
 {
 	// combat:setDamage(amount)
@@ -16280,6 +16226,253 @@ int LuaScriptInterface::luaCombatSetDamage(lua_State* L)
 	}
 
 	combat->SetDamage(static_cast<uint32_t>(std::abs(getNumber<int32_t>(L, 2))));
+	pushBoolean(L, true);
+	return 1;
+}
+
+// ── FormulaNode ──────────────────────────────────────────────────────────────
+// A Lua userdata wrapping a CompiledFormula (std::function<double(FormulaContext)>).
+// All arithmetic on FormulaNode values builds new C++ lambdas — no Lua VM is entered
+// when the formula executes during combat.
+
+static void pushFormulaNode(lua_State* L, BlackTek::CompiledFormula fn)
+{
+	void* ud = lua_newuserdatauv(L, sizeof(BlackTek::CompiledFormula), 0);
+	new (ud) BlackTek::CompiledFormula(std::move(fn));
+	luaL_setmetatable(L, "FormulaNode");
+}
+
+static BlackTek::CompiledFormula* getFormulaNode(lua_State* L, int32_t arg)
+{
+	return static_cast<BlackTek::CompiledFormula*>(luaL_checkudata(L, arg, "FormulaNode"));
+}
+
+// Helper: read one argument as either a FormulaNode or a literal number
+static BlackTek::CompiledFormula nodeOrNumber(lua_State* L, int32_t arg)
+{
+	if (lua_isnumber(L, arg))
+	{
+		const double k = lua_tonumber(L, arg);
+		return [k](const BlackTek::FormulaContext&) -> double { return k; };
+	}
+	if (lua_isuserdata(L, arg))
+	{
+		BlackTek::CompiledFormula fn = *getFormulaNode(L, arg);
+		return fn;
+	}
+	return [](const BlackTek::FormulaContext&) -> double { return 0.0; };
+}
+
+int LuaScriptInterface::luaFormulaNodeBind(lua_State* L)
+{
+	// FormulaNode.bind(BindSource, BindKey) — creates a node that reads a creature stat
+	const auto source = getNumber<BlackTek::Combat::BindSource>(L, 1);
+	const auto key    = getNumber<BlackTek::Combat::BindKey>(L, 2);
+
+	pushFormulaNode(L, [source, key](const BlackTek::FormulaContext& ctx) -> double
+	{
+		const CreaturePtr& creature = (source == BlackTek::Combat::BindSource::Caster) ? ctx.caster : ctx.target;
+		if (!creature)
+			return 0.0;
+		return static_cast<double>(BlackTek::resolve_bind_key(key, creature));
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeBindSkill(lua_State* L)
+{
+	// FormulaNode.bindSkill(BindSource, skillId) — creates a node reading a specific skill level
+	const auto source  = getNumber<BlackTek::Combat::BindSource>(L, 1);
+	const auto skillId = getNumber<uint8_t>(L, 2);
+
+	pushFormulaNode(L, [source, skillId](const BlackTek::FormulaContext& ctx) -> double
+	{
+		const CreaturePtr& creature = (source == BlackTek::Combat::BindSource::Caster) ? ctx.caster : ctx.target;
+		if (!creature or !creature->is_player())
+			return 0.0;
+		return static_cast<double>(creature->getPlayer()->getSkillLevel(skillId));
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeOutput(lua_State* L)
+{
+	// FormulaNode.output() — reads pipeline_a (output damage, used in resolution formulas)
+	pushFormulaNode(L, [](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return static_cast<double>(ctx.pipeline_a);
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeResistance(lua_State* L)
+{
+	// FormulaNode.resistance() — reads pipeline_b (resistance value, used in resolution formulas)
+	pushFormulaNode(L, [](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return static_cast<double>(ctx.pipeline_b);
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeConst(lua_State* L)
+{
+	// FormulaNode.const(n) — a node that always returns the given value
+	const double k = lua_tonumber(L, 1);
+	pushFormulaNode(L, [k](const BlackTek::FormulaContext&) -> double { return k; });
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeRandom(lua_State* L)
+{
+	// FormulaNode.random(min_node_or_number, max_node_or_number) — integer uniform roll
+	auto lo = nodeOrNumber(L, 1);
+	auto hi = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [lo = std::move(lo), hi = std::move(hi)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		const int32_t a = static_cast<int32_t>(lo(ctx));
+		const int32_t b = static_cast<int32_t>(hi(ctx));
+		return static_cast<double>(uniform_random(std::min(a, b), std::max(a, b)));
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeMin(lua_State* L)
+{
+	auto a = nodeOrNumber(L, 1);
+	auto b = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [a = std::move(a), b = std::move(b)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return std::min(a(ctx), b(ctx));
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeMax(lua_State* L)
+{
+	auto a = nodeOrNumber(L, 1);
+	auto b = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [a = std::move(a), b = std::move(b)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return std::max(a(ctx), b(ctx));
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeFloor(lua_State* L)
+{
+	auto a = nodeOrNumber(L, 1);
+	pushFormulaNode(L, [a = std::move(a)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return std::floor(a(ctx));
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeCeil(lua_State* L)
+{
+	auto a = nodeOrNumber(L, 1);
+	pushFormulaNode(L, [a = std::move(a)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return std::ceil(a(ctx));
+	});
+	return 1;
+}
+
+// ── Arithmetic metamethods ────────────────────────────────────────────────────
+
+int LuaScriptInterface::luaFormulaNodeAdd(lua_State* L)
+{
+	auto lhs = nodeOrNumber(L, 1);
+	auto rhs = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [lhs = std::move(lhs), rhs = std::move(rhs)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return lhs(ctx) + rhs(ctx);
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeSub(lua_State* L)
+{
+	auto lhs = nodeOrNumber(L, 1);
+	auto rhs = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [lhs = std::move(lhs), rhs = std::move(rhs)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return lhs(ctx) - rhs(ctx);
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeMul(lua_State* L)
+{
+	auto lhs = nodeOrNumber(L, 1);
+	auto rhs = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [lhs = std::move(lhs), rhs = std::move(rhs)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return lhs(ctx) * rhs(ctx);
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeDiv(lua_State* L)
+{
+	auto lhs = nodeOrNumber(L, 1);
+	auto rhs = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [lhs = std::move(lhs), rhs = std::move(rhs)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		const double d = rhs(ctx);
+		return d != 0.0 ? lhs(ctx) / d : 0.0;
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeUnm(lua_State* L)
+{
+	auto a = nodeOrNumber(L, 1);
+	pushFormulaNode(L, [a = std::move(a)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return -a(ctx);
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeGC(lua_State* L)
+{
+	auto* fn = static_cast<BlackTek::CompiledFormula*>(lua_touserdata(L, 1));
+	if (fn)
+		std::destroy_at(fn);
+	return 0;
+}
+
+int LuaScriptInterface::luaCombatRegisterFormula(lua_State* L)
+{
+	// combat:registerFormula(stage, sit_idx, node)
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const auto stage   = getNumber<BlackTek::FormulaStage>(L, 2);
+	const uint8_t sit  = getNumber<uint8_t>(L, 3);
+	if (sit > 3)
+	{
+		reportErrorFunc(L, "Situation index out of range — use 0 (PvP), 1 (PvM), 2 (MvP) or 3 (MvM).");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	auto* node = getFormulaNode(L, 4);
+	if (not node or not *node)
+	{
+		reportErrorFunc(L, "FormulaNode expected as fourth argument.");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	combat->RegisterCompiledFormula(sit, stage, *node);
 	pushBoolean(L, true);
 	return 1;
 }
