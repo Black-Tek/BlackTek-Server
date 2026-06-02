@@ -4,8 +4,6 @@
 #ifndef FS_MONSTERS_H
 #define FS_MONSTERS_H
 
-#include <toml++/toml.hpp>
-
 #include "creature.h"
 
 const uint32_t MAX_LOOTCHANCE = 100000;
@@ -241,7 +239,6 @@ class Monsters
 
 		SkillRegistry getRegisteredSkills(std::string monster_name);
 
-		bool loadFromToml(bool reloading = false);
 		bool isLoaded() const {
 			return loaded;
 		}
@@ -261,10 +258,6 @@ class Monsters
 	private:
 		ConditionHandle getDamageCondition(ConditionType_t conditionType,
 		                                   int32_t maxDamage, int32_t minDamage, int32_t startDamage, uint32_t tickInterval);
-
-		MonsterType* loadMonsterFromToml(const toml::table& data, const std::string& monsterKey, bool reloading);
-
-		LootBlock parseLootItem(const toml::table& lootTable);
 
 		bool loaded = false;
 };
