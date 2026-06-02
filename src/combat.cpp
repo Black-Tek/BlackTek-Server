@@ -262,36 +262,36 @@ namespace BlackTek
 
 	void ApplyOutputPreset(Combat::OutputFactors& out, std::string_view preset) noexcept
 	{
-		if      (preset == "Tibia")			out = Combat::TibiaOutput;
-		else if (preset == "LoL")			out = Combat::LoLOutput;
-		else if (preset == "Pokemon")		out = Combat::PokemonOutput;
-		else if (preset == "DarkSouls")		out = Combat::DarkSoulsOutput;
-		else if (preset == "DnD")			out = Combat::DnDOutput;
+		if      (preset == "Classic")		out = Combat::ClassicOutput;
+		else if (preset == "Scaled")		out = Combat::ScaledOutput;
+		else if (preset == "Balanced")		out = Combat::BalancedOutput;
+		else if (preset == "Absorption")	out = Combat::AbsorptionOutput;
+		else if (preset == "Tabletop")		out = Combat::TabletopOutput;
 		else if (preset == "Exponential")	out = Combat::ExponentialOutput;
 	}
 
 	void ApplyDefensePreset(Combat::ResistanceFactors& out, std::string_view preset) noexcept
 	{
-		if      (preset == "Tibia")			out = Combat::TibiaDefense;
-		else if (preset == "LoL")			out = Combat::LoLResistance;
-		else if (preset == "Pokemon")		out = Combat::PokemonResistance;
-		else if (preset == "DarkSouls")		out = Combat::DarkSoulsResistance;
+		if      (preset == "Classic")		out = Combat::ClassicDefense;
+		else if (preset == "Scaled")		out = Combat::ScaledResistance;
+		else if (preset == "Balanced")		out = Combat::BalancedResistance;
+		else if (preset == "Absorption")	out = Combat::AbsorptionResistance;
 	}
 
 	void ApplyArmorPreset(Combat::ResistanceFactors& out, std::string_view preset) noexcept
 	{
-		if      (preset == "Tibia")			out = Combat::TibiaArmor;
-		else if (preset == "DarkSouls")		out = Combat::DarkSoulsResistance;
+		if      (preset == "Classic")		out = Combat::ClassicArmor;
+		else if (preset == "Absorption")	out = Combat::AbsorptionResistance;
 	}
 
 	void ApplyResolutionPreset(Combat::ResolutionFactors& out, std::string_view preset) noexcept
 	{
-		if      (preset == "Tibia")         out = Combat::TibiaResolution;
-		else if (preset == "LoL")           out = Combat::LoLResolution;
-		else if (preset == "Pokemon")       out = Combat::PokemonResolution;
-		else if (preset == "DarkSouls")     out = Combat::DarkSoulsResolution;
-		else if (preset == "MonsterHunter") out = Combat::MonsterHunterResolution;
-		else if (preset == "Genshin")       out = Combat::GenshinResolution;
+		if      (preset == "Classic")       out = Combat::ClassicResolution;
+		else if (preset == "Scaled")        out = Combat::ScaledResolution;
+		else if (preset == "Balanced")      out = Combat::BalancedResolution;
+		else if (preset == "Absorption")    out = Combat::AbsorptionResolution;
+		else if (preset == "Proportional")  out = Combat::ProportionalResolution;
+		else if (preset == "Gradual")       out = Combat::GradualResolution;
 	}
 
 	void LoadFormulaDefaults(uint8_t sit_idx, std::string_view out_preset, std::string_view def_preset, std::string_view arm_preset, std::string_view res_preset) noexcept
@@ -1325,7 +1325,7 @@ namespace BlackTek
 		const bool ward = victim->getMaster() and victim->getMaster()->is_player();
 
 		if (not commander and not ward)
-			return Combat::TargetCode::CanNotAttackThisMonster; // this is tibia style rules, monsters don't harm other monsters in general, we will want this to be the users decision
+			return Combat::TargetCode::CanNotAttackThisMonster; // this is classic style rules, monsters don't harm other monsters in general, we will want this to be the users decision
 
 		return Combat::TargetCode::Valid;
 	}

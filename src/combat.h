@@ -234,13 +234,13 @@ namespace BlackTek
 
 		// ── Damage Output ────────────────────────────────────────────────────────
 		// How an attacker's stat translates into raw damage before any mitigation.
-		// Plug in the relevant stat (e.g. level*2 + magLevel*3 for Tibia) at call time.
+		// Plug in the relevant stat (e.g. level*2 + magLevel*3 in Classic mode) at call time.
 
 		enum class OutputFormula : uint8_t
 		{
-			Flat,          // normal_random(min_value, max_value) — Diablo / classic ARPG
-			Linear,        // stat * scaling + base — deterministic, e.g. LoL AD/AP
-			LinearRange,   // normal_random(stat*min_scale+min_base, stat*max_scale+max_base) — Tibia
+			Flat,          // normal_random(min_value, max_value) — classic ARPG flat roll
+			Linear,        // stat * scaling + base — deterministic AD/AP scaling
+			LinearRange,   // normal_random(stat*min_scale+min_base, stat*max_scale+max_base) — Classic
 			Power,         // stat^exponent * scaling + base — super-linear RPG scaling
 		};
 
@@ -265,8 +265,8 @@ namespace BlackTek
 		enum class ResistanceFormula : uint8_t
 		{
 			Identity,      // returns stat unchanged — resolution formula handles mitigation
-			LinearRandom,  // uniform_random(stat*min_scale+min_base, stat*max_scale+max_base) — Tibia defense
-			Parity,        // Tibia armor: stat>threshold → range; else flat
+			LinearRandom,  // uniform_random(stat*min_scale+min_base, stat*max_scale+max_base) — Classic defense
+			Parity,        // Classic armor: stat>threshold → range; else flat
 			Percent,       // (stat*100)/(stat+constant) → integer [0–100] for Layered resolution
 		};
 
@@ -289,10 +289,10 @@ namespace BlackTek
 
 		enum class ResolutionFormula : uint8_t
 		{
-			Subtractive,      // max(floor, output - resistance) — Tibia / Fire Emblem
-			RatioMitigation,  // output * constant / (constant + resistance) — LoL / WoW
-			ScaledDivision,   // (output * multiplier / resistance) + addend — Pokémon
-			Layered,          // max(floor, output*(1 - resistance/100) - flat_reduction) — Dark Souls
+			Subtractive,      // max(floor, output - resistance) — Classic; output minus resistance, floored
+			RatioMitigation,  // output * constant / (constant + resistance) — Scaled; ratio mitigation
+			ScaledDivision,   // (output * multiplier / resistance) + addend — Balanced; division with addend
+			Layered,          // max(floor, output*(1 - resistance/100) - flat_reduction) — Absorption; layered mitigation
 		};
 
 		struct [[nodiscard]] ResolutionFactors
@@ -362,9 +362,9 @@ namespace BlackTek
 		};
 
 
-		// ── Tibia ────────────────────────────────────────────────────────────────
+		// ── Classic ──────────────────────────────────────────────────────────────
 		// stat = level * 2 + magicLevel * 3; output rolls from 0 to stat
-		static constexpr OutputFactors TibiaOutput
+		static constexpr OutputFactors ClassicOutput
 		{
 			.min_scale = 0.0f,
 			.max_scale = 1.0f,
@@ -372,7 +372,7 @@ namespace BlackTek
 		};
 
 		// uniform_random(defense / 2, defense)
-		static constexpr ResistanceFactors TibiaDefense
+		static constexpr ResistanceFactors ClassicDefense
 		{
 			.min_scale = 0.5f,
 			.max_scale = 1.0f,
@@ -380,7 +380,7 @@ namespace BlackTek
 		};
 
 		// stat > 3: uniform_random(stat / 2, stat - (stat % 2 + 1)); stat in [1, 3]: flat 1
-		static constexpr ResistanceFactors TibiaArmor
+		static constexpr ResistanceFactors ClassicArmor
 		{
 			.min_scale    = 0.5f,
 			.threshold    = 3.0f,
@@ -390,58 +390,58 @@ namespace BlackTek
 		};
 
 		// max(0, output - resistance_roll)
-		static constexpr ResolutionFactors TibiaResolution
+		static constexpr ResolutionFactors ClassicResolution
 		{
 			.floor = 0.0f,
 			.formula_type = ResolutionFormula::Subtractive
 		};
 
-		// ── League of Legends ─────────────────────────────────────────────────
-		// stat = AD or AP value; output = base + stat * scaling
-		static constexpr OutputFactors LoLOutput
+		// ── Scaled ────────────────────────────────────────────────────────────
+		// stat = attack value; output = base + stat * scaling
+		static constexpr OutputFactors ScaledOutput
 		{
 			.scaling = 1.0f,
 			.formula_type = OutputFormula::Linear
 		};
 
 		// armor / defense passed through unchanged; ratio applied in resolution
-		static constexpr ResistanceFactors LoLResistance
+		static constexpr ResistanceFactors ScaledResistance
 		{
 			.formula_type = ResistanceFormula::Identity
 		};
 
 		// output * 100 / (100 + armor)
-		static constexpr ResolutionFactors LoLResolution
+		static constexpr ResolutionFactors ScaledResolution
 		{
 			.constant = 100.0f,
 			.formula_type = ResolutionFormula::RatioMitigation
 		};
 
-		// ── Pokémon ───────────────────────────────────────────────────────────
+		// ── Balanced ──────────────────────────────────────────────────────────
 		// stat = pre-computed attack component (level, power, attack folded in by caller)
-		static constexpr OutputFactors PokemonOutput
+		static constexpr OutputFactors BalancedOutput
 		{
 			.scaling = 1.0f,
 			.formula_type = OutputFormula::Linear
 		};
 
 		// defense stat passed through; ScaledDivision divides output by it
-		static constexpr ResistanceFactors PokemonResistance
+		static constexpr ResistanceFactors BalancedResistance
 		{
 			.formula_type = ResistanceFormula::Identity
 		};
 
 		// (output / defense) + 2
-		static constexpr ResolutionFactors PokemonResolution
+		static constexpr ResolutionFactors BalancedResolution
 		{
 			.multiplier = 1.0f,
 			.addend     = 2.0f,
 			.formula_type = ResolutionFormula::ScaledDivision
 		};
 
-		// ── Dark Souls ────────────────────────────────────────────────────────
+		// ── Absorption ────────────────────────────────────────────────────────
 		// weapon AR rolled flat; set min_value / max_value per weapon at call time
-		static constexpr OutputFactors DarkSoulsOutput
+		static constexpr OutputFactors AbsorptionOutput
 		{
 			.min_value = 0.0f,
 			.max_value = 1.0f,
@@ -449,24 +449,24 @@ namespace BlackTek
 		};
 
 		// absorption % = stat * 100 / (stat + 100)
-		static constexpr ResistanceFactors DarkSoulsResistance
+		static constexpr ResistanceFactors AbsorptionResistance
 		{
 			.constant = 100.0f,
 			.formula_type = ResistanceFormula::Percent
 		};
 
 		// max(1, output * (1 - absorption / 100))
-		static constexpr ResolutionFactors DarkSoulsResolution
+		static constexpr ResolutionFactors AbsorptionResolution
 		{
 			.floor = 1.0f,
 			.formula_type = ResolutionFormula::Layered
 		};
 
-		// ── D&D / Classic Tabletop ────────────────────────────────────────────
+		// ── Tabletop ──────────────────────────────────────────────────────────
 		// stat = ability modifier; normal_random(stat + 1, stat + die_max)
-		// Both bounds shift with the modifier — unlike Tibia where stat IS the ceiling.
+		// Both bounds shift with the modifier — unlike Classic where stat IS the ceiling.
 		// Override max_base per weapon (8 = d8, 12 = d12, 6 = d6, etc.)
-		static constexpr OutputFactors DnDOutput
+		static constexpr OutputFactors TabletopOutput
 		{
 			.min_scale = 1.0f,
 			.min_base  = 1.0f,
@@ -485,21 +485,21 @@ namespace BlackTek
 			.formula_type = OutputFormula::Power
 		};
 
-		// ── Monster Hunter ────────────────────────────────────────────────────
+		// ── Proportional ──────────────────────────────────────────────────────
 		// stat = pre-computed (effective_attack * motion_value); resistance = effective_defense
-		// Pure division with no addend, unlike Pokémon which adds 2 after dividing.
-		static constexpr ResolutionFactors MonsterHunterResolution
+		// Pure division with no addend, unlike Balanced which adds 2 after dividing.
+		static constexpr ResolutionFactors ProportionalResolution
 		{
 			.multiplier = 1.0f,
 			.addend     = 0.0f,
 			.formula_type = ResolutionFormula::ScaledDivision
 		};
 
-		// ── Genshin Impact ────────────────────────────────────────────────────
-		// output * 950 / (950 + DEF) 
-		// Same shape as LoL but the 10x larger constant means mitigation grows
+		// ── Gradual ───────────────────────────────────────────────────────────
+		// output * 950 / (950 + DEF)
+		// Same shape as Scaled but the 10x larger constant means mitigation grows
 		// much more slowly; a character needs ~950 DEF to reach 50% reduction.
-		static constexpr ResolutionFactors GenshinResolution
+		static constexpr ResolutionFactors GradualResolution
 		{
 			.constant = 950.0f,
 			.formula_type = ResolutionFormula::RatioMitigation
@@ -831,7 +831,7 @@ namespace BlackTek
 
 	// ── Formula Override System ───────────────────────────────────────────────
 	// Three-tier resolution per damage-block step:
-	//   Level 0 — no config:      Tibia defaults (zero overhead)
+	//   Level 0 — no config:      Classic defaults (zero overhead)
 	//   Level 1 — TOML / Lua:     C++ factor params from formula map
 	//   Level 2 — Lua callback:   full Lua function (registered per sit/stage)
 	//
@@ -839,10 +839,10 @@ namespace BlackTek
 
 	struct SituationFormulas
 	{
-		Combat::OutputFactors     output     = Combat::TibiaOutput;
-		Combat::ResistanceFactors defense    = Combat::TibiaDefense;
-		Combat::ResistanceFactors armor      = Combat::TibiaArmor;
-		Combat::ResolutionFactors resolution = Combat::TibiaResolution;
+		Combat::OutputFactors     output     = Combat::ClassicOutput;
+		Combat::ResistanceFactors defense    = Combat::ClassicDefense;
+		Combat::ResistanceFactors armor      = Combat::ClassicArmor;
+		Combat::ResolutionFactors resolution = Combat::ClassicResolution;
 
 		static constexpr auto Total = 4;
 	};
@@ -899,7 +899,7 @@ namespace BlackTek
 	// unique_ptr nodes are heap-stable — the raw pointer cached on Combat never moves.
 	struct CombatFormulaCache
 	{
-		std::array<SituationFormulas, 4>      situations{};  // defaults to Tibia presets via SituationFormulas{}
+		std::array<SituationFormulas, 4>      situations{};  // defaults to Classic presets via SituationFormulas{}
 		std::unique_ptr<CompiledFormulaSlots> compiled;
 	};
 

@@ -15974,7 +15974,7 @@ int LuaScriptInterface::luaCombatSetFormula(lua_State* L)
 	float maxa = static_cast<float>(getNumber<double>(L, 5));
 	float maxb = static_cast<float>(getNumber<double>(L, 6));
 
-	BlackTek::Combat::OutputFactors factors = BlackTek::Combat::TibiaOutput;
+	BlackTek::Combat::OutputFactors factors = BlackTek::Combat::ClassicOutput;
 	factors.min_scale = mina;
 	factors.min_base  = minb;
 	factors.max_scale = maxa;
