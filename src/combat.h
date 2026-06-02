@@ -112,13 +112,21 @@ namespace BlackTek
 	enum class FormulaStage : uint8_t;
 	struct FormulaContext;
 	struct CompiledFormulaSlots;
+	struct CombatFormulaCache;
 
 	class Combat;
 	using CombatHandle = intrusive_ptr<Combat>;
 	using CompiledFormula = std::function<double(const FormulaContext&)>;
 
-	extern std::pmr::unordered_map<int64_t, CombatArea> combat_area_map;
-	extern std::pmr::unordered_map<int64_t, CombatArea> combat_ext_area_map;
+	// Holds both cardinal and diagonal CombatArea data for one Combat object.
+	// Stored by value in combat_area_pair_map; cached_areas on Combat points into it.
+	struct CombatAreaPair
+	{
+		CombatArea area;
+		CombatArea ext_area;
+	};
+
+	extern std::pmr::unordered_map<int64_t, CombatAreaPair> combat_area_pair_map;
 
 	class Combat
 	{
@@ -323,11 +331,15 @@ namespace BlackTek
 			FriendlyParty,		// using this enables party only combat objects for the casters party
 			EnemyParty,			// same as above but for target's party
 			FraggedOnly,		// using this targets only people with skulls
-			MultiLevel,			// this is a game changer, we will add after the main work is all done
+			MultiLevel,			// hits across multiple z-levels; floors with ground items act as barriers
+			IgnoreGround,		// only meaningful with MultiLevel: skip the ground-barrier check and hit all floors in the range
 			Aggressive,
 			IgnoreBarriers,		// ignores walls for line of sight and such on the combat
 			UseCharges,			// I think this one is used by weapons to reduce ammo
-			HasArea,
+			HasArea,            // set by setArea() when any area data is registered
+			HasExtArea,         // set by setArea() when diagonal (ext) area data is non-empty
+			HasFormulaCache,    // set when formula_cache is first allocated (any formula override)
+			HasCompiledFormula, // set when formula_cache->compiled is allocated (Lua callbacks)
 			Critical,
 			Leech,
 			AttackModified,
@@ -524,7 +536,7 @@ namespace BlackTek
 		void heal_target(const CreaturePtr& caster, const CreaturePtr& target, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void execute(const CreaturePtr& caster, const Position& center) noexcept;
 		void setArea(AreaCombat* area);
-		void setArea(std::unique_ptr<AreaCombat> area);
+		void setArea(std::unique_ptr<AreaCombat> const area);
 		void defense_block_effect(const Position& target_position) const noexcept;
 		void armor_block_effect(const Position& target_position) const noexcept;
 		void heal_notification(const CreaturePtr& caster, const CreaturePtr& target, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
@@ -549,7 +561,7 @@ namespace BlackTek
 		[[nodiscard]]
 		inline bool hasArea() const noexcept
 		{
-			return combat_area_map.contains(combat_id) or combat_ext_area_map.contains(combat_id);
+			return cached_areas != nullptr;
 		}
 
 		[[nodiscard]] static int32_t calculate_output(const OutputFactors& factors, int32_t stat) noexcept
@@ -738,16 +750,15 @@ namespace BlackTek
 		[[nodiscard]] uint32_t defense_augment(const CreaturePtr& attacker, const PlayerPtr& victim, uint32_t currentDamage, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 
 		template <typename VictimT>
-		void accumulate_attack_mods(const PlayerPtr& caster, const VictimT& victim,
-		                             uint32_t& currentDamage, LeechData& leech_data, LeechData& steal_data,
-		                             const std::optional<std::span<const CreaturePtr>>& spectators) noexcept;
+		void accumulate_attack_mods(const PlayerPtr& caster, const VictimT& victim, uint32_t& currentDamage, LeechData& leech_data, LeechData& steal_data, const std::optional<std::span<const CreaturePtr>>& spectators) noexcept;
 
 		static constexpr Config k_formula_flags[4] = { Config::HasPvPFormula, Config::HasPvMFormula, Config::HasMvPFormula, Config::HasMvMFormula };
 
 		int64_t combat_id = -1;
 		std::bitset<64> config;
-		CompiledFormulaSlots* compiled_formula_ptr   = nullptr; // raw pointer into combat_compiled_map; not owned
-		const SituationFormulas* situation_formula_ptr = nullptr; // raw pointer into combat_formula_map; not owned
+		CombatFormulaCache* formula_cache = nullptr;           // raw ptr into combat_formula_cache_map; not owned
+		mutable const CombatAreaPair* cached_areas = nullptr; // raw ptr into combat_area_pair_map; set by setArea()
+		std::unique_ptr<std::vector<ConditionHandle>> condition_list;
 
 		mutable int32_t ref_count{ 0 };
 		uint32_t damage = 0;
@@ -762,7 +773,6 @@ namespace BlackTek
 		uint8_t origin = Origin::None;
 		uint8_t impactEffect = CONST_ME_NONE;
 		uint8_t distanceEffect = CONST_ANI_NONE;
-		std::unique_ptr<std::vector<ConditionHandle>> condition_list;
 
 		friend class CombatRegistry;
 		friend void intrusive_ptr_add_ref(const Combat* p) noexcept;
@@ -846,7 +856,6 @@ namespace BlackTek
 	};
 
 	extern std::array<SituationFormulas, 4> g_default_situation_formulas;
-	extern std::pmr::unordered_map<int64_t, std::array<SituationFormulas, 4>> combat_formula_map;
 
 	// ── Compiled Formula System ───────────────────────────────────────────────
 	// Context passed to every compiled formula at execution time.
@@ -885,9 +894,16 @@ namespace BlackTek
 		}
 	};
 
-	// Stores compiled formula slots outside the Combat object so Combat stays lean.
-	// unique_ptr entries are heap-stable — the raw pointer cached on Combat never moves.
-	extern std::unordered_map<int64_t, std::unique_ptr<CompiledFormulaSlots>> combat_compiled_map;
+	// Merges per-combat SituationFormulas overrides and compiled Lua formula callbacks
+	// into one heap-allocated node. Combat::formula_cache points into this map.
+	// unique_ptr nodes are heap-stable — the raw pointer cached on Combat never moves.
+	struct CombatFormulaCache
+	{
+		std::array<SituationFormulas, 4>      situations{};  // defaults to Tibia presets via SituationFormulas{}
+		std::unique_ptr<CompiledFormulaSlots> compiled;
+	};
+
+	extern std::unordered_map<int64_t, std::unique_ptr<CombatFormulaCache>> combat_formula_cache_map;
 
 	void ApplyOutputPreset(Combat::OutputFactors& out, std::string_view preset) noexcept;
 	void ApplyDefensePreset(Combat::ResistanceFactors& out, std::string_view preset) noexcept;

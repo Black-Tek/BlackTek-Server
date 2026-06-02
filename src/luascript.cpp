@@ -3044,6 +3044,10 @@ void LuaScriptInterface::registerFunctions()
 		registerMethodClosure("Combat", "isEnemyParty",       luaCombatGetConfigFlag, static_cast<int>(Config::EnemyParty));
 		registerMethodClosure("Combat", "setFraggedOnly",     luaCombatSetConfigFlag, static_cast<int>(Config::FraggedOnly));
 		registerMethodClosure("Combat", "isFraggedOnly",      luaCombatGetConfigFlag, static_cast<int>(Config::FraggedOnly));
+		registerMethodClosure("Combat", "setMultiLevel",      luaCombatSetConfigFlag, static_cast<int>(Config::MultiLevel));
+		registerMethodClosure("Combat", "isMultiLevel",       luaCombatGetConfigFlag, static_cast<int>(Config::MultiLevel));
+		registerMethodClosure("Combat", "setIgnoreGround",    luaCombatSetConfigFlag, static_cast<int>(Config::IgnoreGround));
+		registerMethodClosure("Combat", "isIgnoreGround",     luaCombatGetConfigFlag, static_cast<int>(Config::IgnoreGround));
 		registerMethodClosure("Combat", "setAggressive",      luaCombatSetConfigFlag, static_cast<int>(Config::Aggressive));
 		registerMethodClosure("Combat", "isAggressive",       luaCombatGetConfigFlag, static_cast<int>(Config::Aggressive));
 		registerMethodClosure("Combat", "setIgnoreBarriers",  luaCombatSetConfigFlag, static_cast<int>(Config::IgnoreBarriers));

@@ -30,16 +30,15 @@ namespace BlackTek
 	// Combat destructors (triggered by registry teardown) still reference these maps,
 	// so they must remain alive for the full lifetime of the registry.
 	// new_delete_resource() avoids any dependency on the registry allocator.
-	std::array<SituationFormulas, SituationFormulas::Total>											g_default_situation_formulas = {};
-	std::pmr::unordered_map<int64_t, std::array<SituationFormulas, SituationFormulas::Total>>		combat_formula_map{ std::pmr::new_delete_resource() };
-	std::unordered_map<int64_t, std::unique_ptr<CompiledFormulaSlots>>								combat_compiled_map;
+	std::array<SituationFormulas, SituationFormulas::Total> g_default_situation_formulas = {};
+	// Defined before g_combat_registry so it outlives the registry (destructors reference it).
+	std::unordered_map<int64_t, std::unique_ptr<CombatFormulaCache>> combat_formula_cache_map;
 
 	static int64_t lua_formula_id_counter_{ -2 };
 
     CombatRegistry g_combat_registry;
 
-	std::pmr::unordered_map<int64_t, CombatArea> combat_area_map{ BlackTek::g_combat_registry.Allocator() };
-	std::pmr::unordered_map<int64_t, CombatArea> combat_ext_area_map{ BlackTek::g_combat_registry.Allocator() };
+	std::pmr::unordered_map<int64_t, CombatAreaPair> combat_area_pair_map{ BlackTek::g_combat_registry.Allocator() };
 
 	void intrusive_ptr_release(const Combat* p) noexcept
 	{
@@ -70,18 +69,20 @@ namespace BlackTek
 		auto handle = Create();
 		Combat& dst = *handle;
 
-		dst.damage              = src.damage;
-		dst.config              = src.config;
-		dst.defense_charge_cost     = src.defense_charge_cost;
-		dst.armor_charge_cost       = src.armor_charge_cost;
+		dst.damage                   = src.damage;
+		dst.config                   = src.config;
+		dst.formula_cache            = src.formula_cache;   // non-owning; same cache map entry as parent
+		dst.cached_areas             = src.cached_areas;    // non-owning; same area pair map entry as parent
+		dst.defense_charge_cost      = src.defense_charge_cost;
+		dst.armor_charge_cost        = src.armor_charge_cost;
 		dst.def_modifier_charge_cost = src.def_modifier_charge_cost;
 		dst.atk_modifier_charge_cost = src.atk_modifier_charge_cost;
-		dst.itemId              = src.itemId;
-		dst.damage_type         = src.damage_type;
-		dst.blockType           = src.blockType;
-		dst.origin              = src.origin;
-		dst.impactEffect        = src.impactEffect;
-		dst.distanceEffect      = src.distanceEffect;
+		dst.itemId                   = src.itemId;
+		dst.damage_type              = src.damage_type;
+		dst.blockType                = src.blockType;
+		dst.origin                   = src.origin;
+		dst.impactEffect             = src.impactEffect;
+		dst.distanceEffect           = src.distanceEffect;
 
 		return handle;
 	}
@@ -113,10 +114,7 @@ namespace BlackTek
 		if (combat_id == -1)
 			return;
 
-		combat_formula_map.erase(combat_id);
-
-		if (compiled_formula_ptr)
-			combat_compiled_map.erase(combat_id);
+		combat_formula_cache_map.erase(combat_id);
 	}
 
 	// ── Formula override methods ──────────────────────────────────────────────
@@ -135,15 +133,14 @@ namespace BlackTek
 
 		const int64_t fid = ensureFormulaId();
 
-		auto it = combat_formula_map.find(fid);
-		if (it == combat_formula_map.end())
+		if (not formula_cache)
 		{
-			auto [newIt, ok] = combat_formula_map.emplace(fid, g_default_situation_formulas);
-			it = newIt;
+			auto [it, ok] = combat_formula_cache_map.emplace(fid, std::make_unique<CombatFormulaCache>());
+			formula_cache = it->second.get();
+			config.set(Config::HasFormulaCache);
 		}
 
-		it->second[sit_idx] = std::move(formulas);
-		situation_formula_ptr = it->second.data();
+		formula_cache->situations[sit_idx] = std::move(formulas);
 
 		config.set(k_formula_flags[sit_idx]);
 	}
@@ -153,14 +150,21 @@ namespace BlackTek
 		if (sit_idx >= 4 or not fn)
 			return;
 
-		if (not compiled_formula_ptr)
+		if (not formula_cache)
 		{
 			const int64_t fid = ensureFormulaId();
-			auto [it, ok] = combat_compiled_map.emplace(fid, std::make_unique<CompiledFormulaSlots>());
-			compiled_formula_ptr = it->second.get();
+			auto [it, ok] = combat_formula_cache_map.emplace(fid, std::make_unique<CombatFormulaCache>());
+			formula_cache = it->second.get();
+			config.set(Config::HasFormulaCache);
 		}
 
-		compiled_formula_ptr->set(sit_idx, static_cast<uint8_t>(stage), std::move(fn));
+		if (not formula_cache->compiled)
+		{
+			formula_cache->compiled = std::make_unique<CompiledFormulaSlots>();
+			config.set(Config::HasCompiledFormula);
+		}
+
+		formula_cache->compiled->set(sit_idx, static_cast<uint8_t>(stage), std::move(fn));
 	}
 
 	// ── BindKey resolution ────────────────────────────────────────────────────
@@ -947,47 +951,60 @@ namespace BlackTek
 			return;
 
 		CombatArea cardinal = area->GetCombatArea();
-		const bool hasCard = std::ranges::any_of(cardinal.directions, [](const auto& d) { return not d.empty(); });
-		if (hasCard)
-			combat_area_map[combat_id] = std::move(cardinal);
+		CombatArea ext      = area->GetExtCombatArea();
 
-		CombatArea ext = area->GetExtCombatArea();
-		const bool hasExt = std::ranges::any_of(ext.directions, [](const auto& d) { return not d.empty(); });
-		if (hasExt)
-			combat_ext_area_map[combat_id] = std::move(ext);
+		const bool hasCard = std::ranges::any_of(cardinal.directions, [](const auto& d) { return not d.empty(); });
+		const bool hasExt  = std::ranges::any_of(ext.directions,      [](const auto& d) { return not d.empty(); });
+
+		if (hasCard or hasExt)
+		{
+			auto& pair = combat_area_pair_map[combat_id];
+			if (hasCard) pair.area     = std::move(cardinal);
+			if (hasExt)  pair.ext_area = std::move(ext);
+			cached_areas = &pair;
+			config.set(Config::HasArea);
+			if (hasExt) config.set(Config::HasExtArea);
+		}
 
 		delete area;
 	}
 
-	void Combat::setArea(std::unique_ptr<AreaCombat> area)
+	void Combat::setArea(std::unique_ptr<AreaCombat> const area)
 	{
 		if (not area)
 			return;
 
 		CombatArea cardinal = area->GetCombatArea();
-		const bool hasCard = std::ranges::any_of(cardinal.directions, [](const auto& d) { return not d.empty(); });
-		if (hasCard)
-			combat_area_map[combat_id] = std::move(cardinal);
+		CombatArea ext      = area->GetExtCombatArea();
 
-		CombatArea ext = area->GetExtCombatArea();
-		const bool hasExt = std::ranges::any_of(ext.directions, [](const auto& d) { return not d.empty(); });
-		if (hasExt)
-			combat_ext_area_map[combat_id] = std::move(ext);
+		const bool hasCard = std::ranges::any_of(cardinal.directions, [](const auto& d) { return not d.empty(); });
+		const bool hasExt  = std::ranges::any_of(ext.directions,      [](const auto& d) { return not d.empty(); });
+
+		if (hasCard or hasExt)
+		{
+			auto& pair = combat_area_pair_map[combat_id];
+			if (hasCard) pair.area     = std::move(cardinal);
+			if (hasExt)  pair.ext_area = std::move(ext);
+			cached_areas = &pair;
+			config.set(Config::HasArea);
+			if (hasExt) config.set(Config::HasExtArea);
+		}
 	}
 
 	const DamageArea Combat::getAreaPositions(const Position& casterPos, const Position& targetPos)
 	{
 		area_position_buffer.clear();
+		area_tile_buffer.clear();
 
 		const int32_t dx = Position::getOffsetX(targetPos, casterPos);
 		const int32_t dy = Position::getOffsetY(targetPos, casterPos);
 		const std::vector<DamageLocation>* locations = nullptr;
 		int32_t stored_max_extent = 0;
 
-		if ((dx != 0) and (dy != 0))
+		// Flags set at setArea() time — no pointer or container checks needed here.
+		if (config.test(Config::HasArea))
 		{
-			auto extIt = combat_ext_area_map.find(combat_id);
-			if (extIt != combat_ext_area_map.end())
+			if ((dx != 0) and (dy != 0) and config.test(Config::HasExtArea))
 			{
 				Direction diagDir;
 				if      (dx < 0 and dy < 0) diagDir = DIRECTION_NORTHWEST;
@@ -996,34 +1013,103 @@ namespace BlackTek
 				else                        diagDir = DIRECTION_SOUTHEAST;
 
 				const uint8_t slot = static_cast<uint8_t>(diagDir) ^ DIRECTION_DIAGONAL_MASK;
-				locations = &extIt->second.directions[slot];
-				stored_max_extent = extIt->second.max_extent;
+				locations = &cached_areas->ext_area.directions[slot];
+				stored_max_extent = cached_areas->ext_area.max_extent;
+			}
+
+			if (not locations)
+			{
+				Direction cardDir;
+				if      (dx < 0) cardDir = DIRECTION_WEST;
+				else if (dx > 0) cardDir = DIRECTION_EAST;
+				else if (dy < 0) cardDir = DIRECTION_NORTH;
+				else             cardDir = DIRECTION_SOUTH;
+
+				locations = &cached_areas->area.directions[cardDir];
+				stored_max_extent = cached_areas->area.max_extent;
 			}
 		}
 
-		if (not locations)
-		{
-			auto it = combat_area_map.find(combat_id);
-			if (it == combat_area_map.end())
-				return { area_position_buffer, 0, 0 };
-
-			Direction cardDir;
-			if      (dx < 0) cardDir = DIRECTION_WEST;
-			else if (dx > 0) cardDir = DIRECTION_EAST;
-			else if (dy < 0) cardDir = DIRECTION_NORTH;
-			else             cardDir = DIRECTION_SOUTH;
-
-			locations = &it->second.directions[cardDir];
-			stored_max_extent = it->second.max_extent;
-		}
-
-		if (locations->empty())
+		if (not locations or locations->empty())
 			return { area_position_buffer, 0, 0 };
 
-		area_position_buffer.reserve(locations->size());
+		const size_t loc_count      = locations->size();
+		const DamageLocation* locs  = locations->data();
+		const uint16_t base_x       = targetPos.x;
+		const uint16_t base_y       = targetPos.y;
 
-		for (const auto& loc : *locations)
-			area_position_buffer.emplace_back(static_cast<uint16_t>(targetPos.x + loc.spread), static_cast<uint16_t>(targetPos.y + loc.forward), targetPos.z);
+		if (config.test(Config::MultiLevel))
+		{
+			const int casterZ          = static_cast<int>(casterPos.z);
+			const bool ignore_ground   = config.test(Config::IgnoreGround);
+			static const int floor_range = g_config.GetNumber(ConfigManager::MULTILEVEL_FLOOR_RANGE);
+
+			const uint8_t minZ = ignore_ground
+				? static_cast<uint8_t>(std::max(0, casterZ - floor_range))
+				: static_cast<uint8_t>(casterZ);
+			const uint8_t maxZ = static_cast<uint8_t>(std::min(MAP_MAX_LAYERS - 1, casterZ + floor_range));
+
+			if (ignore_ground)
+			{
+				// No barrier: emit every floor in the visible range.
+				// Pre-size the buffer so all writes go directly to contiguous storage.
+				const size_t total = loc_count * static_cast<size_t>(maxZ - minZ + 1);
+				area_position_buffer.resize(total);
+				Position* dst = area_position_buffer.data();
+
+				for (uint8_t z = minZ; z <= maxZ; ++z)
+				{
+					for (size_t k = 0; k < loc_count; ++k)
+					{
+						*dst++ = Position(
+							static_cast<uint16_t>(base_x + locs[k].spread),
+							static_cast<uint16_t>(base_y + locs[k].forward),
+							z);
+					}
+				}
+			}
+			else
+			{
+				// Per-column ground barrier: iterate downward from the caster's floor.
+				// The first tile that has a ground item stops propagation for that column.
+				// The resolved TilePtr is pushed to area_tile_buffer in lock-step with
+				// area_position_buffer, so execute() can skip the second getTile() call.
+				area_position_buffer.reserve(loc_count);
+				area_tile_buffer.reserve(loc_count);
+
+				for (size_t k = 0; k < loc_count; ++k)
+				{
+					const uint16_t wx = static_cast<uint16_t>(base_x + locs[k].spread);
+					const uint16_t wy = static_cast<uint16_t>(base_y + locs[k].forward);
+
+					for (uint8_t z = minZ; z <= maxZ; ++z)
+					{
+						const auto tile = g_game.map.getTile(wx, wy, z);
+						if (tile and tile->getGround())
+						{
+							area_position_buffer.emplace_back(wx, wy, z);
+							area_tile_buffer.push_back(tile);
+							break;
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			// Single-floor path: pre-size and write directly into contiguous storage.
+			area_position_buffer.resize(loc_count);
+			Position* dst = area_position_buffer.data();
+			const uint8_t z = targetPos.z;
+
+			for (size_t k = 0; k < loc_count; ++k)
+			{
+				dst[k] = Position(
+					static_cast<uint16_t>(base_x + locs[k].spread),
+					static_cast<uint16_t>(base_y + locs[k].forward),
+					z);
+			}
+		}
 
 		const int32_t distance = std::max(std::abs(dx), std::abs(dy));
 		return { std::move(area_position_buffer), distance, stored_max_extent };
@@ -2483,21 +2569,46 @@ namespace BlackTek
 		alignas(32) uint8_t  valid_mask[MAX_TILES];
 		TilePtr              tile_cache[MAX_TILES];
 
+		// When the ground-barrier MultiLevel path ran in getAreaPositions(), tiles were
+		// already fetched and stored in area_tile_buffer in lock-step with positions.
+		// Re-use those directly to avoid a second getTile() call per position.
+		const bool tiles_prefetched = area_tile_buffer.size() >= n;
 		for (size_t i = 0; i < n; ++i)
 		{
-			tile_cache[i]   = g_game.map.getTile(positions[i]);
+			tile_cache[i]   = tiles_prefetched ? area_tile_buffer[i] : g_game.map.getTile(positions[i]);
 			packed_flags[i] = tile_cache[i] ? tile_cache[i]->getFlags() : ~0u;
 		}
+		// Release pre-fetched tile refs now — recursive execute() calls (deflect, ricochet)
+		// must be able to use area_tile_buffer for their own getAreaPositions() pass.
+		if (tiles_prefetched)
+			area_tile_buffer.clear();
 
 		std::memset(valid_mask, 0xFF, n);
 
+		// Pre-compute all config flags used in the filter loops below.
+		const bool cfg_aggressive      = config.test(Config::Aggressive);
+		const bool cfg_ignore_barriers = config.test(Config::IgnoreBarriers);
+		const bool cfg_top_target_only = config.test(Config::TopTargetOnly);
+		const bool cfg_self_only       = config.test(Config::SelfOnly);
+		const bool cfg_friendly_party  = config.test(Config::FriendlyParty);
+		const bool cfg_enemy_party     = config.test(Config::EnemyParty);
+		const bool cfg_fragged_only    = config.test(Config::FraggedOnly);
+
 		const bool admin = caster->getCreatureSubType() == CreatureSubType::Player and caster->getPlayer()->hasFlag(PlayerFlag_IgnoreProtectionZone);
-		const uint32_t flag_reject = TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT | (config.test(Config::Aggressive) and not admin ? static_cast<uint32_t>(TILESTATE_PROTECTIONZONE) : 0u);
+		const uint32_t flag_reject = TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT | (cfg_aggressive and not admin ? static_cast<uint32_t>(TILESTATE_PROTECTIONZONE) : 0u);
 
 #ifdef __AVX2__
 		{
 			const __m256i vReject = _mm256_set1_epi32(static_cast<int32_t>(flag_reject));
 			const __m256i vZero   = _mm256_setzero_si256();
+
+			// Byte j of this mask has exactly bit j set, used to isolate one bit per byte
+			// after broadcasting the movemask result — avoids the store+reload round-trip.
+			alignas(16) static const uint8_t k_bit_isolate[16] = {
+				0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,
+				0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
+			};
+			const __m128i vIsolate = _mm_load_si128(reinterpret_cast<const __m128i*>(k_bit_isolate));
 
 			size_t i = 0;
 			for (; i + 8 <= n; i += 8)
@@ -2505,11 +2616,18 @@ namespace BlackTek
 				const __m256i vFlags    = _mm256_load_si256(reinterpret_cast<const __m256i*>(packed_flags + i));
 				const __m256i vHit      = _mm256_and_si256(vFlags, vReject);
 				const __m256i vPassMask = _mm256_cmpeq_epi32(vHit, vZero);
-				alignas(32) int32_t lane[8];
-				_mm256_store_si256(reinterpret_cast<__m256i*>(lane), vPassMask);
 
-				for (size_t j = 0; j < 8; ++j)
-					valid_mask[i + j] &= lane[j] ? 0xFF : 0x00;
+				// Extract sign bit of each 32-bit lane: 1 = pass (0xFFFFFFFF), 0 = reject.
+				const int bits = _mm256_movemask_ps(_mm256_castsi256_ps(vPassMask));
+
+				// Broadcast the 8-bit result, isolate one bit per byte, compare to zero
+				// (inverted), then invert again — net result: 0xFF=pass, 0x00=reject per byte.
+				const __m128i vBits     = _mm_set1_epi8(static_cast<char>(bits));
+				const __m128i vTest     = _mm_and_si128(vBits, vIsolate);
+				const __m128i vExpanded = _mm_xor_si128(_mm_cmpeq_epi8(vTest, _mm_setzero_si128()), _mm_set1_epi8(-1));
+
+				const __m128i vValid = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(valid_mask + i));
+				_mm_storel_epi64(reinterpret_cast<__m128i*>(valid_mask + i), _mm_and_si128(vValid, vExpanded));
 			}
 
 			for (; i < n; ++i)
@@ -2531,7 +2649,7 @@ namespace BlackTek
 		auto valid_tiles = std::views::iota(size_t{0}, n) | std::views::filter([&](size_t idx) { return static_cast<bool>(valid_mask[idx]); })
 			| std::views::filter([&](size_t idx) {
 				// IgnoreBarriers bypasses line-of-sight walls for area combat.
-				return config.test(Config::IgnoreBarriers) or not tile_cache[idx]->hasProperty(CONST_PROP_BLOCKPROJECTILE);
+				return cfg_ignore_barriers or not tile_cache[idx]->hasProperty(CONST_PROP_BLOCKPROJECTILE);
 			});
 
 		for (size_t idx : valid_tiles)
@@ -2544,32 +2662,32 @@ namespace BlackTek
 			if (not creaturesOnTile)
 				continue;
 
-			const auto& topCreature = config.test(Config::TopTargetOnly) ? tile->getTopCreature() : nullptr;
+			const auto& topCreature = cfg_top_target_only ? tile->getTopCreature() : nullptr;
 			const bool onCasterTile = (caster->getTile() == tile);
 
 			auto strikeable = *creaturesOnTile
 				// Tile-top filter: when TopTargetOnly is set, only the top creature per tile (or caster on their own tile).
 				| std::views::filter([&](const CreaturePtr& creature) -> bool {
-					if (not config.test(Config::TopTargetOnly))
+					if (not cfg_top_target_only)
 						return true;
 					return onCasterTile ? (creature == caster) : (creature == topCreature);
 				})
 				// SelfOnly: only the caster themselves is a valid target (used by self-cast spells/heals).
 				// When set it overrides the aggressive self-exclusion below.
 				| std::views::filter([&](const CreaturePtr& creature) -> bool {
-					if (not config.test(Config::SelfOnly))
+					if (not cfg_self_only)
 						return true;
 					return creature == caster;
 				})
 				// Aggressive self-exclusion: aggressive combats skip the caster unless SelfOnly is set.
 				| std::views::filter([&](const CreaturePtr& creature) -> bool {
-					if (not config.test(Config::Aggressive) or config.test(Config::SelfOnly))
+					if (not cfg_aggressive or cfg_self_only)
 						return true;
 					return caster != creature;
 				})
 				// Standard target-validity check for aggressive combats.
 				| std::views::filter([&](const CreaturePtr& creature) -> bool {
-					if (not config.test(Config::Aggressive))
+					if (not cfg_aggressive)
 						return true;
 
 					switch (creature->getCreatureSubType())
@@ -2582,7 +2700,7 @@ namespace BlackTek
 				})
 				// FriendlyParty: only hit creatures that share the caster's party (or the caster themselves).
 				| std::views::filter([&](const CreaturePtr& creature) -> bool {
-					if (not config.test(Config::FriendlyParty))
+					if (not cfg_friendly_party)
 						return true;
 					if (creature == caster)
 						return true;
@@ -2596,7 +2714,7 @@ namespace BlackTek
 				})
 				// EnemyParty: skip creatures that are in the caster's party; always skips the caster.
 				| std::views::filter([&](const CreaturePtr& creature) -> bool {
-					if (not config.test(Config::EnemyParty))
+					if (not cfg_enemy_party)
 						return true;
 					if (creature == caster)
 						return false;
@@ -2610,7 +2728,7 @@ namespace BlackTek
 				})
 				// FraggedOnly: only target players that currently carry a skull (i.e., have killed others).
 				| std::views::filter([&](const CreaturePtr& creature) -> bool {
-					if (not config.test(Config::FraggedOnly))
+					if (not cfg_fragged_only)
 						return true;
 					const auto targetPlayer = creature->getPlayer();
 					if (not targetPlayer)
@@ -2758,11 +2876,13 @@ namespace BlackTek
 		const uint8_t sit_idx = (attacker and attacker->getCreatureSubType() == CreatureSubType::Player) ? 0u : 2u;
 
 		// Three-tier resolution: compiled formula (tier 2) → TOML factor params (tier 1) → defaults (tier 0)
-		const CompiledFormulaSlots* compiled = compiled_formula_ptr;
+		const CompiledFormulaSlots* compiled = config.test(Config::HasCompiledFormula)
+			? formula_cache->compiled.get()
+			: nullptr;
 
-		const SituationFormulas* formulas = situation_formula_ptr
-			? &situation_formula_ptr[sit_idx]
-			: &g_default_situation_formulas[sit_idx];
+		const SituationFormulas& formulas = config.test(Config::HasFormulaCache)
+			? formula_cache->situations[sit_idx]
+			: g_default_situation_formulas[sit_idx];
 
 		FormulaContext ctx;
 		ctx.caster = attacker;
@@ -2782,7 +2902,7 @@ namespace BlackTek
 			}
 			else
 			{
-				defense_value = calculate_resistance(formulas->defense, target->getDefense());
+				defense_value = calculate_resistance(formulas.defense, target->getDefense());
 			}
 
 			if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
@@ -2793,7 +2913,7 @@ namespace BlackTek
 			}
 			else
 			{
-				computed_damage = static_cast<uint32_t>(calculate_resolution(formulas->resolution, static_cast<int32_t>(computed_damage), defense_value));
+				computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), defense_value));
 			}
 
 			if (computed_damage == 0)
@@ -2819,7 +2939,7 @@ namespace BlackTek
 			}
 			else
 			{
-				armor_value = calculate_resistance(formulas->armor, target->getArmor());
+				armor_value = calculate_resistance(formulas.armor, target->getArmor());
 			}
 
 			if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
@@ -2830,7 +2950,7 @@ namespace BlackTek
 			}
 			else
 			{
-				computed_damage = static_cast<uint32_t>(calculate_resolution(formulas->resolution, static_cast<int32_t>(computed_damage), armor_value));
+				computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), armor_value));
 			}
 
 			if (computed_damage == 0)
@@ -2877,11 +2997,13 @@ namespace BlackTek
 		const uint8_t sit_idx = (attacker and attacker->getCreatureSubType() == CreatureSubType::Player) ? 1u : 3u;
 
 		// Three-tier resolution: compiled formula (tier 2) → TOML factor params (tier 1) → defaults (tier 0)
-		const CompiledFormulaSlots* compiled = compiled_formula_ptr;
+		const CompiledFormulaSlots* compiled = config.test(Config::HasCompiledFormula)
+			? formula_cache->compiled.get()
+			: nullptr;
 
-		const SituationFormulas* formulas = situation_formula_ptr
-			? &situation_formula_ptr[sit_idx]
-			: &g_default_situation_formulas[sit_idx];
+		const SituationFormulas& formulas = config.test(Config::HasFormulaCache)
+			? formula_cache->situations[sit_idx]
+			: g_default_situation_formulas[sit_idx];
 
 		FormulaContext ctx;
 		ctx.caster = attacker;
@@ -2901,7 +3023,7 @@ namespace BlackTek
 			}
 			else
 			{
-				defense_value = calculate_resistance(formulas->defense, target->getDefense());
+				defense_value = calculate_resistance(formulas.defense, target->getDefense());
 			}
 
 			if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
@@ -2912,7 +3034,7 @@ namespace BlackTek
 			}
 			else
 			{
-				computed_damage = static_cast<uint32_t>(calculate_resolution(formulas->resolution, static_cast<int32_t>(computed_damage), defense_value));
+				computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), defense_value));
 			}
 
 			if (computed_damage == 0)
@@ -2935,7 +3057,7 @@ namespace BlackTek
 			}
 			else
 			{
-				armor_value = calculate_resistance(formulas->armor, target->getArmor());
+				armor_value = calculate_resistance(formulas.armor, target->getArmor());
 			}
 
 			if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
@@ -2946,7 +3068,7 @@ namespace BlackTek
 			}
 			else
 			{
-				computed_damage = static_cast<uint32_t>(calculate_resolution(formulas->resolution, static_cast<int32_t>(computed_damage), armor_value));
+				computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), armor_value));
 			}
 
 			if (computed_damage == 0)

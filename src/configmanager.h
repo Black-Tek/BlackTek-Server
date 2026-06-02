@@ -173,6 +173,7 @@ public:
         RESTORE_EFFECT,
         REPLENISH_EFFECT,
         REVIVE_EFFECT,
+        MULTILEVEL_FLOOR_RANGE,
         LAST_INTEGER_CONFIG
     };
 

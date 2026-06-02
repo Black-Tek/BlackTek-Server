@@ -188,6 +188,7 @@ bool ConfigManager::Load()
     integers[RESTORE_EFFECT]           = static_cast<int32_t>(combatTbl["notifications"]["restore_effect"].value_or(int64_t{0}));
     integers[REPLENISH_EFFECT]         = static_cast<int32_t>(combatTbl["notifications"]["replenish_effect"].value_or(int64_t{0}));
     integers[REVIVE_EFFECT]            = static_cast<int32_t>(combatTbl["notifications"]["revive_effect"].value_or(int64_t{0}));
+    integers[MULTILEVEL_FLOOR_RANGE]   = static_cast<int32_t>(combatTbl["multilevel"]["floor_range"].value_or(int64_t{2}));
 
     integers[PZ_LOCKED]                  = static_cast<int32_t>(combatTbl["skull"]["pz_locked"].value_or(int64_t{60000}));
     integers[KILLS_TO_RED]               = static_cast<int32_t>(combatTbl["skull"]["kills_to_red"].value_or(int64_t{3}));

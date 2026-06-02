@@ -110,3 +110,11 @@ output     = "Tibia"
 defense    = "Tibia"
 armor      = "Tibia"
 resolution = "Tibia"
+
+[multilevel]
+# Number of floors above and below the caster that a MultiLevel combat can reach.
+# Normal MultiLevel (with ground barriers) propagates downward only, so this controls
+# how many floors below the caster the spell can fall through before giving up.
+# IgnoreGround uses this value in both directions (floor_range above and below).
+# Minimum useful value is 1. Default is 2.
+floor_range = 2
