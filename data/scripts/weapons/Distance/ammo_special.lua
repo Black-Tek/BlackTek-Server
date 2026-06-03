@@ -1,18 +1,5 @@
 -- Burst arrow
-local area = createCombatArea({
-    { 1, 1, 1 },
-    { 1, 3, 1 },
-    { 1, 1, 1 }
-})
-
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Physical)
-combat:setImpactEffect(CONST_ME_EXPLOSIONAREA)
-combat:setDistanceEffect(CONST_ANI_BURSTARROW)
-combat:setBlockedByArmor(true)
-combat:setFormula(COMBAT_FORMULA_SKILL, 0, 0, 1, 0)
-combat:setOrigin(Combat.Origin.Ranged)
-combat:setArea(area)
+local combat = Combat(WeaponCombats.BurstArrow)
 
 local burstArrow = Weapon(WEAPON_AMMO)
 
@@ -29,12 +16,7 @@ burstArrow:action("removecount")
 burstArrow:register()
 
 -- Poison arrow
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Physical)
-combat:setDistanceEffect(CONST_ANI_POISONARROW)
-combat:setBlockedByArmor(true)
-combat:setFormula(COMBAT_FORMULA_SKILL, 0, 0, 1, 0)
-combat:setOrigin(Combat.Origin.Ranged)
+local combat = Combat(WeaponCombats.PoisonArrow)
 
 local poisonArrow = Weapon(WEAPON_AMMO)
 

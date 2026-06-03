@@ -1,8 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Death)
-combat:setImpactEffect(CONST_ME_SMALLCLOUDS)
-combat:setDistanceEffect(CONST_ANI_DEATH)
-combat:setArea(createCombatArea(AREA_SQUAREWAVE7))
+local combat = Combat(MonsterCombats.MutatedBatCurse)
 
 local spell = Spell(SPELL_INSTANT)
 

@@ -1,10 +1,5 @@
 -- Viper star
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Physical)
-combat:setDistanceEffect(CONST_ANI_GREENSTAR)
-combat:setBlockedByArmor(true)
-combat:setFormula(COMBAT_FORMULA_SKILL, 0, 0, 1, 0)
-combat:setOrigin(Combat.Origin.Ranged)
+local combat = Combat(WeaponCombats.ViperStar)
 
 local viperStar = Weapon(WEAPON_DISTANCE)
 

@@ -1,6 +1,4 @@
-local combat = Combat()
-combat:setDistanceEffect(CONST_ANI_ENERGY)
-combat:setCreatedItem(ITEM_WILDGROWTH)
+local combat = Combat(RuneAttackCombats.WildGrowthRune)
 
 local spell = Spell(SPELL_RUNE)
 

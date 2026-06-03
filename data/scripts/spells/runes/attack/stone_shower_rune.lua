@@ -1,16 +1,13 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Earth)
-combat:setImpactEffect(CONST_ME_STONES)
-combat:setDistanceEffect(CONST_ANI_EARTH)
-combat:setArea(createCombatArea(AREA_CIRCLE3X3))
+local combat = Combat(RuneAttackCombats.StoneShowerRune)
 
-function onGetFormulaValues(player, level, magicLevel)
-	local min = (level / 5) + magicLevel + 6
-	local max = (level / 5) + (magicLevel * 2.6) + 16
-	return -min, -max
+do
+	local level = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.Level)
+	local magic = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.MagicLevel)
+	local outputNode = FormulaNode.random(level / 5 + magic + 6, level / 5 + magic * 2.6 + 16)
+	for sit = 0, 3 do
+		combat:registerFormula(Combat.FormulaStage.Output, sit, outputNode)
+	end
 end
-
-combat:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
 
 local spell = Spell(SPELL_RUNE)
 

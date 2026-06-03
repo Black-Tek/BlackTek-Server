@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Drown)
-combat:setImpactEffect(CONST_ME_MORTAREA)
-combat:setArea(createCombatArea(AREA_CIRCLE2X2))
+local combat = Combat(MonsterCombats.SouleaterDrown)
 
 local spell = Spell(SPELL_INSTANT)
 

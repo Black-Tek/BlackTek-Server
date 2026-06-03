@@ -223,6 +223,7 @@ namespace BlackTek
 			Defense,
 			WeaponAttack,
 			WeaponDefense,
+			WeaponSkill,
 			Health,
 			MaxHealth,
 			Mana,
@@ -522,7 +523,6 @@ namespace BlackTek
 			requires std::same_as<std::ranges::range_value_t<R>, DamageModifier>
 		[[nodiscard]] uint32_t handle_conversion(R&& modifiers, const CreaturePtr& attacker, const CreaturePtr& victim, uint32_t currentDamage, std::optional<std::span<const CreaturePtr>> spectators = std::nullopt);
 		[[nodiscard]] std::pair<CombatHandle, uint32_t> penetrateDamage(uint32_t currentDamage, uint32_t percent, uint32_t flat) noexcept;
-		[[nodiscard]] CombatHandle clone() const noexcept;
 
 		[[nodiscard]] uint32_t applyCrit(uint32_t currentDamage, uint32_t percent, uint32_t flat) noexcept;
 		[[nodiscard]] uint32_t process_steal(const PlayerPtr& caster, const CreaturePtr& victim, const LeechData& steal, uint32_t currentDamage) noexcept;
@@ -710,6 +710,7 @@ namespace BlackTek
 
 		void SetSituationFormulas(uint8_t index, SituationFormulas&& formulas) noexcept;
 		void RegisterCompiledFormula(uint8_t sit_idx, FormulaStage stage, CompiledFormula fn) noexcept;
+		const DamageArea getAreaPositions(const Position& casterPos, const Position& targetPos);
 
 		[[nodiscard]] static Position generateAttackPosition(const CreaturePtr& attacker, const PlayerPtr& defender) noexcept;
 		[[nodiscard]] static std::unique_ptr<AreaCombat> generateDeflectArea(const CreaturePtr& attacker, const PlayerPtr& defender, int32_t targetCount) noexcept;
@@ -740,7 +741,6 @@ namespace BlackTek
 
 	private:
 		void apply_effects(const SpectatorVec& spectators, const CreaturePtr& caster, std::span<const TilePtr> tiles);
-		const DamageArea getAreaPositions(const Position& casterPos, const Position& targetPos);
 
 		// Ensures this combat has a unique ID usable as a formula map key.
 		// Lua-managed combats start with combat_id == -1; this assigns a negative ID.
@@ -815,7 +815,6 @@ namespace BlackTek
 
 		[[nodiscard]] CombatHandle Create();
 		[[nodiscard]] CombatHandle Create(uint16_t type, uint32_t dmg);
-		[[nodiscard]] CombatHandle Clone(const Combat& src) noexcept;
 
 		void Release(int64_t id);
 
@@ -888,7 +887,7 @@ namespace BlackTek
 
 		[[nodiscard]] const CompiledFormula* get(uint8_t sit, uint8_t stage) const noexcept
 		{
-			if (!has(sit, stage))
+			if (not has(sit, stage))
 				return nullptr;
 			return &slots[sit][stage];
 		}

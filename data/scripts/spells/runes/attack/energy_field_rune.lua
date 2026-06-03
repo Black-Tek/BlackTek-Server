@@ -1,8 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Energy)
-combat:setImpactEffect(CONST_ME_ENERGYHIT)
-combat:setDistanceEffect(CONST_ANI_ENERGYBALL)
-combat:setCreatedItem(ITEM_ENERGYFIELD_PVP)
+local combat = Combat(RuneAttackCombats.EnergyFieldRune)
 
 local spell = Spell(SPELL_RUNE)
 

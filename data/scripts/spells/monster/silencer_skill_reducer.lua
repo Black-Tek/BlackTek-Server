@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setImpactEffect(CONST_ME_ENERGYHIT)
-combat:setDistanceEffect(CONST_ANI_ENERGY)
-combat:setArea(createCombatArea(AREA_CIRCLE2X2))
+local combat = Combat(MonsterCombats.SilencerSkillReducer)
 
 local parameters = {{key = CONDITION_PARAM_TICKS, value = 6 * 1000}, {key = CONDITION_PARAM_STAT_MAGICPOINTSPERCENT, value = nil}}
 

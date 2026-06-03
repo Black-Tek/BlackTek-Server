@@ -1,11 +1,4 @@
-local combat = Combat()
-combat:setImpactEffect(CONST_ME_MAGIC_GREEN)
-combat:setAggressive(false)
-
-local condition = Condition(CONDITION_HASTE)
-condition:setParameter(CONDITION_PARAM_TICKS, 33000)
-condition:setFormula(0.3, -24, 0.3, -24)
-combat:addCondition(condition)
+local combat = Combat(SupportCombats.Haste)
 
 local spell = Spell(SPELL_INSTANT)
 

@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Drown)
-combat:setImpactEffect(CONST_ME_MAGIC_GREEN)
-combat:setArea(createCombatArea(AREA_CIRCLE3X3))
+local combat = Combat(MonsterCombats.SpectreDrown)
 
 local spell = Spell(SPELL_INSTANT)
 

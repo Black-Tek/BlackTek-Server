@@ -1,5 +1,4 @@
-local combat = Combat()
-combat:setArea(createCombatArea(AREA_CIRCLE3X3))
+local combat = Combat(MonsterCombats.DjinnCancelInvisibility)
 
 local spell = Spell(SPELL_INSTANT)
 

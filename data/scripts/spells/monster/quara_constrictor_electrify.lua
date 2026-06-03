@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Energy)
-combat:setImpactEffect(CONST_ME_ENERGYHIT)
-combat:setDistanceEffect(CONST_ANI_ENERGY)
+local combat = Combat(MonsterCombats.QuaraConstrictorElectrify)
 
 local spell = Spell(SPELL_INSTANT)
 

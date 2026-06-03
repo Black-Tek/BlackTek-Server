@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Earth)
-combat:setImpactEffect(CONST_ME_CARNIPHILA)
-combat:setDistanceEffect(CONST_ANI_EARTH)
+local combat = Combat(AttackCombats.Envenom)
 
 local spell = Spell(SPELL_INSTANT)
 

@@ -1,17 +1,14 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Physical)
-combat:setImpactEffect(CONST_ME_HITAREA)
-combat:setDistanceEffect(CONST_ANI_WEAPONTYPE)
-combat:setBlockedByArmor(true)
-combat:setUseCharges(true)
+local combat = Combat(AttackCombats.WhirlwindThrow)
 
-function onGetFormulaValues(player, skill, attack, factor)
-	local min = (player:getLevel() / 5) + (skill * attack * 0.01) + 1
-	local max = (player:getLevel() / 5) + (skill * attack * 0.03) + 6
-	return -min, -max
+do
+	local level = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.Level)
+	local skill = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.WeaponSkill)
+	local attack = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.WeaponAttack)
+	local outputNode = FormulaNode.random(level / 5 + skill * attack * 0.01 + 1, level / 5 + skill * attack * 0.03 + 6)
+	for sit = 0, 3 do
+		combat:registerFormula(Combat.FormulaStage.Output, sit, outputNode)
+	end
 end
-
-combat:setCallback(CALLBACK_PARAM_SKILLVALUE, "onGetFormulaValues")
 
 local spell = Spell(SPELL_INSTANT)
 

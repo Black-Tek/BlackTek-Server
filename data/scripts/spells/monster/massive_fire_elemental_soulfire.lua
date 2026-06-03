@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Fire)
-combat:setImpactEffect(CONST_ME_MAGIC_RED)
-combat:setArea(createCombatArea(AREA_CIRCLE6X6))
+local combat = Combat(MonsterCombats.MassiveFireElementalSoulfire)
 
 local spell = Spell(SPELL_INSTANT)
 

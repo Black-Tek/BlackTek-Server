@@ -21,7 +21,7 @@ namespace BlackTek
 
     std::shared_ptr<Augment> Augments::MakeAugment(std::string_view augmentName)
     {
-        auto it = global_augments.find(augmentName.data());
+        auto it = global_augments.find(std::string(augmentName));
 
         if (it != global_augments.end())
         {
@@ -73,12 +73,12 @@ namespace BlackTek
                                     std::string_view race = table["race"].value_or("none");
                                     std::string_view creatureName = table["monster"].value_or("none");
 
-                                    // To-do: Change all static methods used below to accept const values and use const variables above.
-                                    // also change the 'Get' methods into 'parse' methods for clarity
-                                    if (ParseStance(modType) == std::to_underlying(DamageModifier::Stance::Attack))
+                                    const uint8_t stance = ParseStance(modType);
+
+                                    if (stance == std::to_underlying(DamageModifier::Stance::Attack))
                                     {
                                         auto damage_modifier = DamageModifier(
-                                            ParseStance(modType),
+                                            stance,
                                             ParseAttackModifier(modType),
                                             amount,
                                             ParseFactor(factor),
@@ -88,8 +88,7 @@ namespace BlackTek
                                             ParseCreatureType(creatureType),
                                             ParseRaceType(race));
 
-                                        // To-do : create a new variable for storing monster names to not conflict with other aux variables
-                                        if (modType == "conversion") 
+                                        if (modType == "conversion")
                                         {
                                             auto convertedType = ParseDamage(table["toDamage"].value_or("none"));
                                             damage_modifier.setTransformDamageType(convertedType);
@@ -99,12 +98,11 @@ namespace BlackTek
                                             damage_modifier.setCreatureName(creatureName);
 
                                         augment->addModifier(std::move(damage_modifier));
-
                                     }
-                                    else if (ParseStance(modType) == std::to_underlying(DamageModifier::Stance::Defense))
+                                    else if (stance == std::to_underlying(DamageModifier::Stance::Defense))
                                     {
                                         auto damage_modifier = DamageModifier(
-                                            ParseStance(modType),
+                                            stance,
                                             ParseDefenseModifier(modType),
                                             amount,
                                             ParseFactor(factor),
@@ -127,8 +125,7 @@ namespace BlackTek
                                     }
                                     else
                                     {
-
-                                        std::cout << "Modifier has unknown stance " << table["stance"] << "\n";
+                                        std::cout << "[Augments] Skipping modifier with unknown type: " << modType << "\n";
                                     }
                                 }
                                 });
@@ -165,15 +162,13 @@ namespace BlackTek
     const uint8_t Augments::ParseStance(std::string_view modName) noexcept
     {
         if (ParseAttackModifier(modName) != std::to_underlying(DamageModifier::AttackType::None))
-        {
             return std::to_underlying(DamageModifier::Stance::Attack);
-        }
-        else if (ParseDefenseModifier(modName) != std::to_underlying(DamageModifier::DefenseType::None))
-        {
+
+        if (ParseDefenseModifier(modName) != std::to_underlying(DamageModifier::DefenseType::None))
             return std::to_underlying(DamageModifier::Stance::Defense);
-        }
-        std::cout << "[::Augment Error::] no such mod by type name : " << std::string{ modName } << " /n";
-        return 0;
+
+        std::cout << "[::Augment Error::] no such mod by type name : " << std::string{ modName } << "\n";
+        return std::numeric_limits<uint8_t>::max();
     }
 
     const uint8_t Augments::ParseFactor(std::string_view factor) noexcept
@@ -409,7 +404,7 @@ namespace BlackTek
 
     std::shared_ptr<BlackTek::Augment> Augments::GetAugment(std::string_view augName)
     {
-        auto it = global_augments.find(augName.data());
+        auto it = global_augments.find(std::string(augName));
         if (it != global_augments.end())
         {
             auto augment = Augment::MakeAugment(*it->second);

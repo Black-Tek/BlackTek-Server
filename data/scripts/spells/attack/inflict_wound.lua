@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Physical)
-combat:setImpactEffect(CONST_ME_DRAWBLOOD)
-combat:setDistanceEffect(CONST_ANI_WEAPONTYPE)
+local combat = Combat(AttackCombats.InflictWound)
 
 local function getHighestSkillLevel(creature)
 	local skillLevel = -1

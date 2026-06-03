@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
-combat:setTopTargetOnly(true)
-combat:setAggressive(false)
+local combat = Combat(RuneHealingCombats.CurePoisonRune)
 
 local spell = Spell(SPELL_RUNE)
 

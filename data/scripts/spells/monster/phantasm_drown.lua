@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Drown)
-combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
-combat:setArea(createCombatArea(AREA_SQUAREWAVE7))
+local combat = Combat(MonsterCombats.PhanstamDrown)
 
 local spell = Spell(SPELL_INSTANT)
 

@@ -1,9 +1,4 @@
-local area = {{1, 1, 1}, {0, 1, 0}, {0, 3, 0}}
-
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Earth)
-combat:setImpactEffect(CONST_ME_GREEN_RINGS)
-combat:setArea(createCombatArea(area))
+local combat = Combat(MonsterCombats.WaveT)
 
 local spell = Spell(SPELL_INSTANT)
 

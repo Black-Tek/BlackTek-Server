@@ -1552,6 +1552,7 @@ class LuaScriptInterface
 		static int luaCombatSetSituationFormulas(lua_State* L);
 		static int luaCombatSetDamage(lua_State* L);
 		static int luaCombatRegisterFormula(lua_State* L);
+		static int luaCombatGetAreaPositions(lua_State* L);
 
 		// FormulaNode — Lua userdata wrapping a compiled C++ formula expression
 		// pushFormulaNode / getFormulaNode are file-scope statics in luascript.cpp

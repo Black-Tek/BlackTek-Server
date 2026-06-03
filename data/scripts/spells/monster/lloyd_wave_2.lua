@@ -1,17 +1,4 @@
-area = {
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-}
-
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Energy)
-combat:setImpactEffect(CONST_ME_PURPLECHAIN)
-combat:setArea(createCombatArea(area))
+local combat = Combat(MonsterCombats.LloydWave2)
 
 local spell = Spell(SPELL_INSTANT)
 

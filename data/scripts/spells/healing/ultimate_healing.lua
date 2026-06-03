@@ -1,15 +1,13 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Healing)
-combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
-combat:setAggressive(false)
+local combat = Combat(HealingCombats.UltimateHealing)
 
-function onGetFormulaValues(player, level, magicLevel)
-	local min = (level / 5) + (magicLevel * 6.8) + 42
-	local max = (level / 5) + (magicLevel * 12.9) + 90
-	return min, max
+do
+	local level = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.Level)
+	local magic = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.MagicLevel)
+	local outputNode = FormulaNode.random(level / 5 + magic * 6.8 + 42, level / 5 + magic * 12.9 + 90)
+	for sit = 0, 3 do
+		combat:registerFormula(Combat.FormulaStage.Output, sit, outputNode)
+	end
 end
-
-combat:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
 
 local spell = Spell(SPELL_INSTANT)
 

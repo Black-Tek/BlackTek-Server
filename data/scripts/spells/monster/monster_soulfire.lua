@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Fire)
-combat:setImpactEffect(CONST_ME_FIREAREA)
-combat:setDistanceEffect(CONST_ANI_FIRE)
+local combat = Combat(MonsterCombats.MonsterSoulfire)
 
 local spell = Spell(SPELL_INSTANT)
 

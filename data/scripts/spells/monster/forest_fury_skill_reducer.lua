@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
-combat:setDistanceEffect(CONST_ANI_LARGEROCK)
-combat:setArea(createCombatArea(AREA_CIRCLE2X2))
+local combat = Combat(MonsterCombats.ForestFurySkillReducer)
 
 local parameters = {
 	{key = CONDITION_PARAM_TICKS, value = 4 * 1000},

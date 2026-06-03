@@ -11,8 +11,14 @@
 
 namespace BlackTek
 {
-	gtl::flat_hash_map<uint64_t, std::string> loaded_augment_names;
-	gtl::flat_hash_map<uint64_t, std::string> loaded_agment_descriptions;
+	static gtl::flat_hash_map<uint64_t, std::string> loaded_augment_names;
+	static gtl::flat_hash_map<uint64_t, std::string> loaded_agment_descriptions;
+
+	Augment::~Augment()
+	{
+		loaded_augment_names.erase(m_guid);
+		loaded_agment_descriptions.erase(m_guid);
+	}
 
 	Augment::Augment(const std::string_view name, const std::string_view description) : m_guid(generateGUID())
 	{
@@ -36,6 +42,27 @@ namespace BlackTek
 	{
 		loaded_augment_names[m_guid] = original.getName();
 		loaded_agment_descriptions[m_guid] = original.getDescription();
+	}
+
+	Augment& Augment::operator=(const Augment& other)
+	{
+		if (this == &other)
+			return *this;
+		// Update our map entries with the new name/desc, preserving our own identity (m_guid).
+		loaded_augment_names[m_guid]    = other.getName();
+		loaded_agment_descriptions[m_guid] = other.getDescription();
+		m_modifiers     = other.m_modifiers;
+		m_attack_count  = other.m_attack_count;
+		trigger_index   = other.trigger_index;
+		damage_count    = other.damage_count;
+		origin_count    = other.origin_count;
+		creature_count  = other.creature_count;
+		race_count      = other.race_count;
+		reformed_count  = other.reformed_count;
+		converted_count = other.converted_count;
+		named_count     = other.named_count;
+		healing_count   = other.healing_count;
+		return *this;
 	}
 
 	const std::string& Augment::getName() const
@@ -236,14 +263,9 @@ namespace BlackTek
 				return std::nullopt;
 
 			auto mod = DamageModifier::deserialize(std::span<const std::byte, sizeof(DamageModifier)>(buf));
-			mod.guid = DamageModifier::generateGUID();
-			if ((mod.filter_index & DamageModifier::Flag::Named) and mod.name_buf[0] != '\0')
-				mod.setCreatureName(std::string_view(mod.name_buf));
 			augment->addModifier(std::move(mod));
 		}
 
-		augment->m_attack_count = attackCount;
-		loaded_augment_names[augment->getGuid()] = std::string(name);
 		return augment;
 	}
 

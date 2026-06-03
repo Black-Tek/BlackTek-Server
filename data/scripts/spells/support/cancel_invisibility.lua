@@ -1,6 +1,4 @@
-local combat = Combat()
-combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
-combat:setArea(createCombatArea(AREA_CIRCLE3X3))
+local combat = Combat(SupportCombats.CancelInvisibility)
 
 local spell = Spell(SPELL_INSTANT)
 

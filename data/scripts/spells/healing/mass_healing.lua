@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
-combat:setAggressive(false)
-combat:setArea(createCombatArea(AREA_CIRCLE3X3))
+local combat = Combat(HealingCombats.MassHealing)
 
 local spell = Spell(SPELL_INSTANT)
 

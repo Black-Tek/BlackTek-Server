@@ -1,42 +1,18 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Energy)
-combat:setImpactEffect(CONST_ME_PURPLEENERGY)
-
-combat:setArea(createCombatArea({
-	{0, 0, 1, 1, 1, 0, 0},
-	{0, 1, 1, 1, 1, 1, 0},
-	{1, 1, 1, 1, 1, 1, 1},
-	{1, 1, 1, 3, 1, 1, 1},
-	{1, 1, 1, 1, 1, 1, 1},
-	{0, 1, 1, 1, 1, 1, 0},
-	{0, 0, 1, 1, 1, 0, 0}
-}))
-
-function spellCallback(param)
-	local tile = Tile(Position(param.pos))
-	if tile then
-		if tile:getTopCreature() and tile:getTopCreature():isMonster() then
-			if tile:getTopCreature():getName():lower() == "the souldespoiler" then
-				tile:getTopCreature():addHealth(-math.random(500, 2000))
-			end
-		end
-	end
-end
-
-function onTargetTile(cid, pos)
-	local param = {}
-	param.cid = cid
-	param.pos = pos
-	param.count = 0
-	spellCallback(param)
-end
-
-combat:setCallback(CALLBACK_PARAM_TARGETTILE, "onTargetTile")
+local combat = Combat(MonsterCombats.FreedSoulSpell)
 
 local spell = Spell(SPELL_INSTANT)
 
 function spell.onCastSpell(creature, variant)
-	return combat:execute(creature, variant)
+	for _, pos in ipairs(combat:getPositions(creature, variant)) do
+		local tile = Tile(pos)
+		if tile then
+			local top = tile:getTopCreature()
+			if top and top:isMonster() and top:getName():lower() == "the souldespoiler" then
+				top:addHealth(-math.random(500, 2000))
+			end
+		end
+	end
+	return true
 end
 
 spell:name("freed soul spell")

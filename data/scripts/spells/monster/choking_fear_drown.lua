@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Drown)
-combat:setImpactEffect(CONST_ME_BUBBLES)
-combat:setArea(createCombatArea(AREA_CIRCLE6X6))
+local combat = Combat(MonsterCombats.ChokingFearDrown)
 
 local spell = Spell(SPELL_INSTANT)
 

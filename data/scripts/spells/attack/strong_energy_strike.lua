@@ -1,15 +1,13 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Energy)
-combat:setImpactEffect(CONST_ME_ENERGYAREA)
-combat:setDistanceEffect(CONST_ANI_ENERGY)
+local combat = Combat(AttackCombats.StrongEnergyStrike)
 
-function onGetFormulaValues(player, level, magicLevel)
-	local min = (level / 5) + (magicLevel * 2.8) + 16
-	local max = (level / 5) + (magicLevel * 4.4) + 28
-	return -min, -max
+do
+	local level = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.Level)
+	local magic = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.MagicLevel)
+	local outputNode = FormulaNode.random(level / 5 + magic * 2.8 + 16, level / 5 + magic * 4.4 + 28)
+	for sit = 0, 3 do
+		combat:registerFormula(Combat.FormulaStage.Output, sit, outputNode)
+	end
 end
-
-combat:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
 
 local spell = Spell(SPELL_INSTANT)
 

@@ -434,12 +434,11 @@ void Weapon::internalUseWeapon(const PlayerPtr& player, const ItemPtr& item, con
 	else
 	{
 		int32_t rawDmg = (getWeaponDamage(player, target, item) * damageModifier) / 100;
-		auto strike = combat->clone();
 		// Always derive the projectile type from the live item data so it matches the TOML definition.
-		const uint8_t shootType = static_cast<uint8_t>(Item::items[item->getID()].shootType);
-		strike->SetDistanceEffect(shootType);
-		strike->SetDamage(static_cast<uint32_t>(std::abs(rawDmg)));
-		strike->strike_target(player, target);
+		combat->SetConfig(BlackTek::Combat::Config::TrueDamage);
+		combat->SetDamage(static_cast<uint32_t>(std::abs(rawDmg)));
+		combat->SetDistanceEffect(static_cast<uint8_t>(Item::items[item->getID()].shootType));
+		combat->strike_target(player, target);
 
 		int32_t elemDmg = getElementDamage(player, target, item);
 		if (elemDmg != 0)

@@ -1,6 +1,4 @@
-local combat = Combat()
-combat:setImpactEffect(CONST_ME_SOUND_YELLOW)
-combat:setArea(createCombatArea(AREA_CIRCLE3X3))
+local combat = Combat(MonsterCombats.FurySkillReducer)
 
 local parameters = {
 	{key = CONDITION_PARAM_TICKS, value = 5 * 1000},

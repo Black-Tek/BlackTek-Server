@@ -1,17 +1,13 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Physical)
-combat:setImpactEffect(CONST_ME_HITAREA)
-combat:setDistanceEffect(CONST_ANI_ETHEREALSPEAR)
-combat:setBlockedByArmor(true)
+local combat = Combat(AttackCombats.EtherealSpear)
 
-function onGetFormulaValues(player, skill, attack, factor)
-	local distanceSkill = player:getEffectiveSkillLevel(SKILL_DISTANCE)
-	local min = (player:getLevel() / 5) + distanceSkill * 0.7
-	local max = (player:getLevel() / 5) + distanceSkill + 5
-	return -min, -max
+do
+	local level = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.Level)
+	local dist = FormulaNode.bindSkill(Combat.BindSource.Caster, SKILL_DISTANCE)
+	local outputNode = FormulaNode.random(level / 5 + dist * 0.7, level / 5 + dist + 5)
+	for sit = 0, 3 do
+		combat:registerFormula(Combat.FormulaStage.Output, sit, outputNode)
+	end
 end
-
-combat:setCallback(CALLBACK_PARAM_SKILLVALUE, "onGetFormulaValues")
 
 local spell = Spell(SPELL_INSTANT)
 

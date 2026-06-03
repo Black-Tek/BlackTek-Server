@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Holy)
-combat:setImpactEffect(CONST_ME_HOLYDAMAGE)
-combat:setDistanceEffect(CONST_ANI_SMALLHOLY)
+local combat = Combat(AttackCombats.HolyFlash)
 
 local spell = Spell(SPELL_INSTANT)
 

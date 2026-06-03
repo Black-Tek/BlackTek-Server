@@ -1,17 +1,12 @@
-local combat = Combat()
-combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
-combat:setArea(createCombatArea(AREA_CIRCLE2X2))
-
-function onTargetCreature(creature, target)
-	return doChallengeCreature(creature, target)
-end
-
-combat:setCallback(CALLBACK_PARAM_TARGETCREATURE, "onTargetCreature")
+local combat = Combat(MonsterCombats.SummonChallenge)
 
 local spell = Spell(SPELL_INSTANT)
 
 function spell.onCastSpell(creature, variant)
-	return combat:execute(creature, variant)
+	for _, target in ipairs(combat:getTargets(creature, variant)) do
+		doChallengeCreature(creature, target)
+	end
+	return true
 end
 
 spell:name("summon challenge")

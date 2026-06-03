@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Fire)
-combat:setDistanceEffect(CONST_ANI_FIRE)
-combat:setCreatedItem(ITEM_FIREFIELD_PVP_FULL)
+local combat = Combat(RuneAttackCombats.FireFieldRune)
 
 local spell = Spell(SPELL_RUNE)
 

@@ -1,15 +1,13 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Holy)
-combat:setImpactEffect(CONST_ME_HOLYAREA)
-combat:setDistanceEffect(CONST_ANI_HOLY)
+local combat = Combat(RuneAttackCombats.HolyMissileRune)
 
-function onGetFormulaValues(player, level, magicLevel)
-	local min = (level / 5) + (magicLevel * 1.8) + 11
-	local max = (level / 5) + (magicLevel * 3.8) + 23
-	return -min, -max
+do
+	local level = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.Level)
+	local magic = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.MagicLevel)
+	local outputNode = FormulaNode.random(level / 5 + magic * 1.8 + 11, level / 5 + magic * 3.8 + 23)
+	for sit = 0, 3 do
+		combat:registerFormula(Combat.FormulaStage.Output, sit, outputNode)
+	end
 end
-
-combat:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
 
 local spell = Spell(SPELL_RUNE)
 

@@ -1,13 +1,11 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Healing)
-combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
-combat:setAggressive(false)
+local combat = Combat(HealingCombats.PractiseHealing)
 
-function onGetFormulaValues(player, level, magicLevel)
-	return 5, 9
+do
+	local outputNode = FormulaNode.random(5, 9)
+	for sit = 0, 3 do
+		combat:registerFormula(Combat.FormulaStage.Output, sit, outputNode)
+	end
 end
-
-combat:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
 
 local spell = Spell(SPELL_INSTANT)
 

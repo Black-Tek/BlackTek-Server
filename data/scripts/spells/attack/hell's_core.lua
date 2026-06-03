@@ -1,15 +1,13 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Fire)
-combat:setImpactEffect(CONST_ME_FIREAREA)
-combat:setArea(createCombatArea(AREA_CIRCLE5X5))
+local combat = Combat(AttackCombats.HellsCore)
 
-function onGetFormulaValues(player, level, magicLevel)
-	local min = (level / 5) + (magicLevel * 8) + 50
-	local max = (level / 5) + (magicLevel * 12) + 75
-	return -min, -max
+do
+	local level = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.Level)
+	local magic = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.MagicLevel)
+	local outputNode = FormulaNode.random(level / 5 + magic * 8 + 50, level / 5 + magic * 12 + 75)
+	for sit = 0, 3 do
+		combat:registerFormula(Combat.FormulaStage.Output, sit, outputNode)
+	end
 end
-
-combat:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
 
 local spell = Spell(SPELL_INSTANT)
 

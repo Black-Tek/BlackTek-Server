@@ -1,18 +1,9 @@
-local combat = Combat()
-combat:setAggressive(false)
-combat:setArea(createCombatArea(AREA_CIRCLE3X3))
-
-local condition = Condition(CONDITION_ATTRIBUTES)
-condition:setParameter(CONDITION_PARAM_TICKS, 2 * 60 * 1000)
-condition:setParameter(CONDITION_PARAM_SKILL_FIST, 3)
-condition:setParameter(CONDITION_PARAM_SKILL_MELEE, 3)
-condition:setParameter(CONDITION_PARAM_SKILL_DISTANCE, 3)
-condition:setParameter(CONDITION_PARAM_BUFF_SPELL, true)
+local combat = Combat(PartyCombats.TrainParty)
 
 local spell = Spell(SPELL_INSTANT)
 
 function spell.onCastSpell(creature, variant)
-	return creature:addPartyCondition(combat, variant, condition, 60)
+	return creature:addPartyCondition(combat, variant, PartyCombats.TrainPartyCondition, 60)
 end
 
 spell:group("support")

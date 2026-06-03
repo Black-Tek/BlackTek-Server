@@ -1,17 +1,9 @@
-local combat = Combat()
-combat:setAggressive(false)
-combat:setArea(createCombatArea(AREA_CIRCLE3X3))
-
-local condition = Condition(CONDITION_REGENERATION)
-condition:setParameter(CONDITION_PARAM_TICKS, 2 * 60 * 1000)
-condition:setParameter(CONDITION_PARAM_HEALTHGAIN, 20)
-condition:setParameter(CONDITION_PARAM_HEALTHTICKS, 2000)
-condition:setParameter(CONDITION_PARAM_BUFF_SPELL, true)
+local combat = Combat(PartyCombats.HealParty)
 
 local spell = Spell(SPELL_INSTANT)
 
 function spell.onCastSpell(creature, variant)
-	return creature:addPartyCondition(combat, variant, condition, 120)
+	return creature:addPartyCondition(combat, variant, PartyCombats.HealPartyCondition, 120)
 end
 
 spell:group("support")

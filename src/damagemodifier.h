@@ -29,11 +29,12 @@ namespace BlackTek
 		}
 
 		DamageModifier() : guid(generateGUID()) {}
-		~DamageModifier() = default;
+		~DamageModifier();
 
-		// guid is preserved on copy so the identity tracks the original
-		DamageModifier(const DamageModifier&) = default;
-		DamageModifier& operator=(const DamageModifier&) = default;
+		DamageModifier(const DamageModifier& other);
+		DamageModifier& operator=(const DamageModifier& other);
+		DamageModifier(DamageModifier&& other) noexcept;
+		DamageModifier& operator=(DamageModifier&& other) noexcept;
 
 		enum Flag : uint16_t
 		{
@@ -154,8 +155,10 @@ namespace BlackTek
 			if (creatureType != CREATURETYPE_ATTACKABLE)
 				filter_index |= Flag::Creature;
 
-			if (creatureName != "none")
+			if (creatureName != "none") {
 				filter_index |= Flag::Named;
+				setCreatureName(creatureName);
+			}
 		}
 
 		std::span<const std::byte> serialize() const
@@ -163,11 +166,47 @@ namespace BlackTek
 			return std::span{ reinterpret_cast<const std::byte*>(this), sizeof(*this) };
 		}
 
-		template<typename T = DamageModifier>
-		static T deserialize(std::span<const std::byte, sizeof(T)> data) 
+		static DamageModifier deserialize(std::span<const std::byte> data)
 		{
-			const T* obj = std::start_lifetime_as<const T>(data.data());
-			return *obj;
+			// DamageModifier has user-defined ctor/dtor so start_lifetime_as is invalid.
+			// Read through a trivially-copyable mirror with identical field layout.
+			struct Layout {
+				uint64_t guid;
+				uint16_t damage_type;
+				uint16_t to_damage_type;
+				uint16_t value;
+				uint16_t filter_index;
+				uint8_t  mod_stance;
+				uint8_t  mod_type;
+				uint8_t  factor;
+				uint8_t  chance;
+				uint8_t  origin_type;
+				uint8_t  creature_type;
+				uint8_t  race_type;
+				bool     true_leech;
+				char     name_buf[32];
+			};
+			static_assert(sizeof(Layout) == sizeof(DamageModifier),
+				"DamageModifier/Layout size mismatch — update both structs together");
+
+			const Layout* raw = std::start_lifetime_as<const Layout>(data.data());
+			DamageModifier mod;
+			mod.damage_type    = raw->damage_type;
+			mod.to_damage_type = raw->to_damage_type;
+			mod.value          = raw->value;
+			mod.filter_index   = raw->filter_index;
+			mod.mod_stance     = raw->mod_stance;
+			mod.mod_type       = raw->mod_type;
+			mod.factor         = raw->factor;
+			mod.chance         = raw->chance;
+			mod.origin_type    = raw->origin_type;
+			mod.creature_type  = raw->creature_type;
+			mod.race_type      = raw->race_type;
+			mod.true_leech     = raw->true_leech;
+			std::memcpy(mod.name_buf, raw->name_buf, sizeof(mod.name_buf));
+			if ((mod.filter_index & Flag::Named) && mod.name_buf[0] != '\0')
+				mod.setCreatureName(std::string_view(mod.name_buf));
+			return mod;
 		}
 
 		[[nodiscard]] const uint64_t getGUID() const noexcept;

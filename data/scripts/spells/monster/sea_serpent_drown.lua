@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Drown)
-combat:setImpactEffect(CONST_ME_WATERSPLASH)
-combat:setArea(createCombatArea(AREA_SQUARE1X1))
+local combat = Combat(MonsterCombats.SeaSerpentDrown)
 
 local spell = Spell(SPELL_INSTANT)
 

@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Energy)
-combat:setImpactEffect(CONST_ME_BLOCKHIT)
-combat:setArea(createCombatArea(AREA_CIRCLE3X3))
+local combat = Combat(MonsterCombats.MassiveEnergyElementalElectrify)
 
 local spell = Spell(SPELL_INSTANT)
 

@@ -6,7 +6,108 @@ namespace BlackTek
 {
 	gtl::flat_hash_map<uint64_t, std::string> modifier_monster_names;
 
-	void DamageModifier::increaseValue(uint16_t amount) 
+	DamageModifier::~DamageModifier()
+	{
+		if (guid != 0)
+			modifier_monster_names.erase(guid);
+	}
+
+	DamageModifier::DamageModifier(const DamageModifier& other)
+		: guid(generateGUID()),
+		  damage_type(other.damage_type),
+		  to_damage_type(other.to_damage_type),
+		  value(other.value),
+		  filter_index(other.filter_index),
+		  mod_stance(other.mod_stance),
+		  mod_type(other.mod_type),
+		  factor(other.factor),
+		  chance(other.chance),
+		  origin_type(other.origin_type),
+		  creature_type(other.creature_type),
+		  race_type(other.race_type),
+		  true_leech(other.true_leech)
+	{
+		std::memcpy(name_buf, other.name_buf, sizeof(name_buf));
+		if (filter_index & Flag::Named) {
+			auto it = modifier_monster_names.find(other.guid);
+			if (it != modifier_monster_names.end())
+				modifier_monster_names.try_emplace(guid, it->second);
+			else if (name_buf[0] != '\0')
+				modifier_monster_names.try_emplace(guid, std::string_view(name_buf));
+		}
+	}
+
+	DamageModifier& DamageModifier::operator=(const DamageModifier& other)
+	{
+		if (this == &other)
+			return *this;
+		modifier_monster_names.erase(guid);
+		damage_type    = other.damage_type;
+		to_damage_type = other.to_damage_type;
+		value          = other.value;
+		filter_index   = other.filter_index;
+		mod_stance     = other.mod_stance;
+		mod_type       = other.mod_type;
+		factor         = other.factor;
+		chance         = other.chance;
+		origin_type    = other.origin_type;
+		creature_type  = other.creature_type;
+		race_type      = other.race_type;
+		true_leech     = other.true_leech;
+		std::memcpy(name_buf, other.name_buf, sizeof(name_buf));
+		if (filter_index & Flag::Named) {
+			auto it = modifier_monster_names.find(other.guid);
+			if (it != modifier_monster_names.end())
+				modifier_monster_names.insert_or_assign(guid, it->second);
+			else if (name_buf[0] != '\0')
+				modifier_monster_names.insert_or_assign(guid, std::string_view(name_buf));
+		}
+		return *this;
+	}
+
+	DamageModifier::DamageModifier(DamageModifier&& other) noexcept
+		: guid(other.guid),
+		  damage_type(other.damage_type),
+		  to_damage_type(other.to_damage_type),
+		  value(other.value),
+		  filter_index(other.filter_index),
+		  mod_stance(other.mod_stance),
+		  mod_type(other.mod_type),
+		  factor(other.factor),
+		  chance(other.chance),
+		  origin_type(other.origin_type),
+		  creature_type(other.creature_type),
+		  race_type(other.race_type),
+		  true_leech(other.true_leech)
+	{
+		std::memcpy(name_buf, other.name_buf, sizeof(name_buf));
+		other.guid = 0;
+	}
+
+	DamageModifier& DamageModifier::operator=(DamageModifier&& other) noexcept
+	{
+		if (this == &other)
+			return *this;
+		modifier_monster_names.erase(guid);
+		guid           = other.guid;
+		other.guid     = 0;
+		damage_type    = other.damage_type;
+		to_damage_type = other.to_damage_type;
+		value          = other.value;
+		filter_index   = other.filter_index;
+		mod_stance     = other.mod_stance;
+		mod_type       = other.mod_type;
+		factor         = other.factor;
+		chance         = other.chance;
+		origin_type    = other.origin_type;
+		creature_type  = other.creature_type;
+		race_type      = other.race_type;
+		true_leech     = other.true_leech;
+		std::memcpy(name_buf, other.name_buf, sizeof(name_buf));
+		return *this;
+	}
+
+	void DamageModifier::increaseValue(uint16_t amount)
 	{
 		if ((value + amount) <= std::numeric_limits<uint16_t>::max())
 		{
@@ -73,7 +174,7 @@ const bool DamageModifier::isFlatValue() const noexcept				{ return factor == st
 	// when going to set the data, because we store it in a container, we are not changing the object, we can actually use const XD
 void DamageModifier::setCreatureName(std::string_view creatureName) const noexcept
 {
-	modifier_monster_names.try_emplace(guid, creatureName);
+	modifier_monster_names.insert_or_assign(guid, std::string(creatureName));
 	const size_t len = std::min(creatureName.size(), sizeof(name_buf) - 1);
 	std::memcpy(name_buf, creatureName.data(), len);
 	name_buf[len] = '\0';
@@ -184,7 +285,7 @@ const bool DamageModifier::appliesByName(const std::string_view creatureName) co
 			if (it != modifier_monster_names.end())
 				return creatureName == it->second;
 
-			return true;
+			return false;
 		}
 		return true;
 	}
@@ -207,10 +308,11 @@ const bool DamageModifier::hasCreatureName() const noexcept
 
 const std::string& DamageModifier::getMonsterName() const noexcept
 	{
+		static const std::string none = "none";
 		auto it = modifier_monster_names.find(guid);
 		if (it != modifier_monster_names.end())
 			return it->second;
-		return "none";
+		return none;
 	}
 
 const uint64_t	DamageModifier::getGUID() const	noexcept			{ return guid; }

@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Fire)
-combat:setImpactEffect(CONST_ME_EXPLOSIONHIT)
-combat:setArea(createCombatArea(AREA_CIRCLE2X2))
+local combat = Combat(MonsterCombats.MagmaCrawlerSoulfire)
 
 local spell = Spell(SPELL_INSTANT)
 

@@ -1,13 +1,11 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Fire)
-combat:setImpactEffect(CONST_ME_FIREATTACK)
-combat:setDistanceEffect(CONST_ANI_FIRE)
+local combat = Combat(AttackCombats.ApprenticesStrike)
 
-function onGetFormulaValues(player, level, magicLevel)
-	return -10, -20
+do
+	local outputNode = FormulaNode.random(10, 20)
+	for sit = 0, 3 do
+		combat:registerFormula(Combat.FormulaStage.Output, sit, outputNode)
+	end
 end
-
-combat:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
 
 local spell = Spell(SPELL_INSTANT)
 

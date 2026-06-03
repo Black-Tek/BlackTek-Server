@@ -1,6 +1,4 @@
-local combat = Combat()
-combat:setDistanceEffect(CONST_ANI_ENERGY)
-combat:setCreatedItem(ITEM_MAGICWALL)
+local combat = Combat(RuneAttackCombats.MagicWallRune)
 
 local spell = Spell(SPELL_RUNE)
 

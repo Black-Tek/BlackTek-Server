@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Energy)
-combat:setImpactEffect(CONST_ME_ENERGYAREA)
-combat:setDistanceEffect(CONST_ANI_ENERGY)
+local combat = Combat(AttackCombats.Electrify)
 
 local spell = Spell(SPELL_INSTANT)
 

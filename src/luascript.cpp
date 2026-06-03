@@ -1169,18 +1169,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(BUG_CATEGORY_TECHNICAL)
 	registerEnum(BUG_CATEGORY_OTHER)
 
-	registerEnum(CALLBACK_PARAM_LEVELMAGICVALUE)
-	registerEnum(CALLBACK_PARAM_SKILLVALUE)
-	registerEnum(CALLBACK_PARAM_TARGETTILE)
-	registerEnum(CALLBACK_PARAM_TARGETCREATURE)
-	registerEnum(CALLBACK_PARAM_DAMAGEVALUE)
-
-	registerEnum(COMBAT_FORMULA_UNDEFINED)
-	registerEnum(COMBAT_FORMULA_LEVELMAGIC)
-	registerEnum(COMBAT_FORMULA_SKILL)
-	registerEnum(COMBAT_FORMULA_DAMAGE)
-	registerEnum(COMBAT_FORMULA_TARGET)
-
 	registerEnum(DIRECTION_NORTH)
 	registerEnum(DIRECTION_EAST)
 	registerEnum(DIRECTION_SOUTH)
@@ -3066,7 +3054,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Combat", "setCreatedItem",    luaCombatSetCreatedItem);
 	registerMethod("Combat", "getCreatedItem",    luaCombatGetCreatedItem);
 
-	registerMethod("Combat", "setFormula", luaCombatSetFormula);
+	registerMethod("Combat", "setMinMaxFormula", luaCombatSetFormula);
 
 	registerMethod("Combat", "setArea", luaCombatSetArea);
 	registerMethod("Combat", "addCondition", luaCombatAddCondition);
@@ -3076,21 +3064,39 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Combat", "execute", luaCombatExecute);
 
 	// Formula override API
-	registerMethod("Combat", "setSituationFormulas", luaCombatSetSituationFormulas);
-	registerMethod("Combat", "setDamage",            luaCombatSetDamage);
-	registerMethod("Combat", "registerFormula",      luaCombatRegisterFormula);
+	registerMethod("Combat", "setSituationFormulas",  luaCombatSetSituationFormulas);
+	registerMethod("Combat", "setDamage",             luaCombatSetDamage);
+	registerMethod("Combat", "registerFormula",       luaCombatRegisterFormula);
+	registerMethod("Combat", "getAreaPositions",      luaCombatGetAreaPositions);
 
-	// Combat situation index constants — pass to setSituationFormulas / set*Callback
-	registerVariable("Combat", "SITUATION_PVP", 0);
-	registerVariable("Combat", "SITUATION_PVM", 1);
-	registerVariable("Combat", "SITUATION_MVP", 2);
-	registerVariable("Combat", "SITUATION_MVM", 3);
+	// Combat.Situation sub-table — nested PascalCase enum; access as Combat.Situation.PvP etc.
+	{
+		lua_getglobal(luaState, "Combat");
+		lua_newtable(luaState);
+		lua_pushinteger(luaState, 0); lua_setfield(luaState, -2, "PvP");
+		lua_pushinteger(luaState, 1); lua_setfield(luaState, -2, "PvM");
+		lua_pushinteger(luaState, 2); lua_setfield(luaState, -2, "MvP");
+		lua_pushinteger(luaState, 3); lua_setfield(luaState, -2, "MvM");
+		lua_setfield(luaState, -2, "Situation");
+		lua_pop(luaState, 1);
+	}
 
-	// Combat formula stage constants
-	registerVariable("Combat", "STAGE_OUTPUT",     static_cast<int>(BlackTek::FormulaStage::Output));
-	registerVariable("Combat", "STAGE_DEFENSE",    static_cast<int>(BlackTek::FormulaStage::Defense));
-	registerVariable("Combat", "STAGE_ARMOR",      static_cast<int>(BlackTek::FormulaStage::Armor));
-	registerVariable("Combat", "STAGE_RESOLUTION", static_cast<int>(BlackTek::FormulaStage::Resolution));
+	// Combat.FormulaStage sub-table — nested PascalCase enum; access as Combat.FormulaStage.Output etc.
+	{
+		lua_getglobal(luaState, "Combat");
+		lua_newtable(luaState);
+		using FS = BlackTek::FormulaStage;
+		auto setFSField = [this](const char* name, FS val) {
+			lua_pushinteger(luaState, std::to_underlying(val));
+			lua_setfield(luaState, -2, name);
+		};
+		setFSField("Output",     FS::Output);
+		setFSField("Defense",    FS::Defense);
+		setFSField("Armor",      FS::Armor);
+		setFSField("Resolution", FS::Resolution);
+		lua_setfield(luaState, -2, "FormulaStage");
+		lua_pop(luaState, 1);
+	}
 
 	// Combat.BindSource and Combat.BindKey sub-tables
 	{
@@ -3114,6 +3120,7 @@ void LuaScriptInterface::registerFunctions()
 		setBKField("Defense",      BK::Defense);
 		setBKField("WeaponAttack", BK::WeaponAttack);
 		setBKField("WeaponDefense",BK::WeaponDefense);
+		setBKField("WeaponSkill",  BK::WeaponSkill);
 		setBKField("Health",       BK::Health);
 		setBKField("MaxHealth",    BK::MaxHealth);
 		setBKField("Mana",         BK::Mana);
@@ -15785,9 +15792,208 @@ int LuaScriptInterface::luaItemTypeIsStoreItem(lua_State* L)
 // Combat
 int LuaScriptInterface::luaCombatCreate(lua_State* L)
 {
-	// Combat()
+	// Combat() or Combat(table)
 	pushCombatHandle(L, g_luaEnvironment.createCombatObject(getScriptEnv()->getScriptInterface()));
 	setMetatable(L, -1, "Combat");
+
+	if (not isTable(L, 2))
+	{
+		return 1;
+	}
+
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, -1);
+	if (not combat)
+	{
+		return 1;
+	}
+
+	lua_getfield(L, 2, "damageType");
+	if (lua_isnumber(L, -1))
+	{
+		combat->SetDamageType(static_cast<uint16_t>(lua_tointeger(L, -1)));
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, 2, "impactEffect");
+	if (lua_isnumber(L, -1))
+	{
+		combat->SetImpactEffect(static_cast<uint8_t>(lua_tointeger(L, -1)));
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, 2, "distanceEffect");
+	if (lua_isnumber(L, -1))
+	{
+		combat->SetDistanceEffect(static_cast<uint8_t>(lua_tointeger(L, -1)));
+	}
+	lua_pop(L, 1);
+
+	// createdItem and itemId are aliases; createdItem takes priority
+	lua_getfield(L, 2, "createdItem");
+	const bool hasCreatedItem = lua_isnumber(L, -1);
+	if (hasCreatedItem)
+	{
+		combat->SetItemId(static_cast<uint16_t>(lua_tointeger(L, -1)));
+	}
+	lua_pop(L, 1);
+	if (not hasCreatedItem)
+	{
+		lua_getfield(L, 2, "itemId");
+		if (lua_isnumber(L, -1))
+		{
+			combat->SetItemId(static_cast<uint16_t>(lua_tointeger(L, -1)));
+		}
+		lua_pop(L, 1);
+	}
+
+	lua_getfield(L, 2, "origin");
+	if (lua_isnumber(L, -1))
+	{
+		combat->setOrigin(static_cast<BlackTek::Combat::Origin>(lua_tointeger(L, -1)));
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, 2, "damage");
+	if (lua_isnumber(L, -1))
+	{
+		combat->SetDamage(static_cast<uint32_t>(std::abs(static_cast<int32_t>(lua_tointeger(L, -1)))));
+	}
+	lua_pop(L, 1);
+
+	using Config = BlackTek::Combat::Config;
+	const auto applyFlag = [&](const char* key, Config flag)
+	{
+		lua_getfield(L, 2, key);
+		if (lua_isboolean(L, -1))
+		{
+			combat->SetConfig(flag, lua_toboolean(L, -1) != 0);
+		}
+		lua_pop(L, 1);
+	};
+	applyFlag("trueDamage",      Config::TrueDamage);
+	applyFlag("blockedByArmor",  Config::BlockedByArmor);
+	applyFlag("blockedByShield", Config::BlockedByDefense);
+	applyFlag("topTargetOnly",   Config::TopTargetOnly);
+	applyFlag("selfOnly",        Config::SelfOnly);
+	applyFlag("friendlyParty",   Config::FriendlyParty);
+	applyFlag("enemyParty",      Config::EnemyParty);
+	applyFlag("fraggedOnly",     Config::FraggedOnly);
+	applyFlag("multiLevel",      Config::MultiLevel);
+	applyFlag("ignoreGround",    Config::IgnoreGround);
+	applyFlag("aggressive",      Config::Aggressive);
+	applyFlag("ignoreBarriers",  Config::IgnoreBarriers);
+	applyFlag("useCharges",      Config::UseCharges);
+
+	lua_getfield(L, 2, "area");
+	if (lua_isnumber(L, -1))
+	{
+		const BlackTek::AreaCombat* area = g_luaEnvironment.getAreaObject(static_cast<uint32_t>(lua_tointeger(L, -1)));
+		if (area)
+		{
+			combat->setArea(new BlackTek::AreaCombat(*area));
+		}
+	}
+	lua_pop(L, 1);
+
+	// formula = { mina, minb, maxa, maxb } — positional array, or named fields, or both
+	// Named fields (mina/minb/maxa/maxb) override positional values when present.
+	// Applies the same output factors to all four combat situations.
+	lua_getfield(L, 2, "formula");
+	if (lua_istable(L, -1))
+	{
+		float mina = 0.f, minb = 0.f, maxa = 0.f, maxb = 0.f;
+
+		lua_rawgeti(L, -1, 1); if (lua_isnumber(L, -1)) { mina = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+		lua_rawgeti(L, -1, 2); if (lua_isnumber(L, -1)) { minb = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+		lua_rawgeti(L, -1, 3); if (lua_isnumber(L, -1)) { maxa = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+		lua_rawgeti(L, -1, 4); if (lua_isnumber(L, -1)) { maxb = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+
+		lua_getfield(L, -1, "mina"); if (lua_isnumber(L, -1)) { mina = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+		lua_getfield(L, -1, "minb"); if (lua_isnumber(L, -1)) { minb = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+		lua_getfield(L, -1, "maxa"); if (lua_isnumber(L, -1)) { maxa = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+		lua_getfield(L, -1, "maxb"); if (lua_isnumber(L, -1)) { maxb = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+
+		BlackTek::Combat::OutputFactors factors = BlackTek::Combat::ClassicOutput;
+		factors.min_scale = mina;
+		factors.min_base  = minb;
+		factors.max_scale = maxa;
+		factors.max_base  = maxb;
+
+		for (uint8_t i = 0; i < 4; ++i)
+		{
+			BlackTek::SituationFormulas sf = BlackTek::g_default_situation_formulas[i];
+			sf.output = factors;
+			combat->SetSituationFormulas(i, std::move(sf));
+		}
+	}
+	lua_pop(L, 1);
+
+	// situationFormulas = { [0]={...}, [1]={...}, [2]={...}, [3]={...} }
+	// Uses 0-based keys consistent with Combat.Situation.PvP/PvM/MvP/MvM constants.
+	// Each sub-table accepts "output", "defense", "armor", and "resolution" preset name strings.
+	// Applied after "formula", so per-situation overrides always win.
+	lua_getfield(L, 2, "situationFormulas");
+	if (lua_istable(L, -1))
+	{
+		for (uint8_t sit = 0; sit < 4; ++sit)
+		{
+			lua_rawgeti(L, -1, sit);
+			if (lua_istable(L, -1))
+			{
+				BlackTek::SituationFormulas sf = BlackTek::g_default_situation_formulas[sit];
+
+				lua_getfield(L, -1, "output");
+				if (isString(L, -1)) { BlackTek::ApplyOutputPreset(sf.output, getString(L, -1)); }
+				lua_pop(L, 1);
+
+				lua_getfield(L, -1, "defense");
+				if (isString(L, -1)) { BlackTek::ApplyDefensePreset(sf.defense, getString(L, -1)); }
+				lua_pop(L, 1);
+
+				lua_getfield(L, -1, "armor");
+				if (isString(L, -1)) { BlackTek::ApplyArmorPreset(sf.armor, getString(L, -1)); }
+				lua_pop(L, 1);
+
+				lua_getfield(L, -1, "resolution");
+				if (isString(L, -1)) { BlackTek::ApplyResolutionPreset(sf.resolution, getString(L, -1)); }
+				lua_pop(L, 1);
+
+				combat->SetSituationFormulas(sit, std::move(sf));
+			}
+			lua_pop(L, 1);
+		}
+	}
+	lua_pop(L, 1);
+
+	// conditions = { cond1, cond2, ... } — array of Condition userdata; all are cloned onto the combat
+	lua_getfield(L, 2, "conditions");
+	if (lua_istable(L, -1))
+	{
+		lua_pushnil(L);
+		while (lua_next(L, -2) != 0)
+		{
+			Condition* cond = getUserdata<Condition>(L, -1);
+			if (cond)
+			{
+				combat->AddCondition(cond->clone());
+			}
+			lua_pop(L, 1);
+		}
+	}
+	lua_pop(L, 1);
+
+	// condition = cond — single Condition userdata, convenience alias for a one-condition combat
+	lua_getfield(L, 2, "condition");
+	if (not lua_isnil(L, -1))
+	{
+		Condition* cond = getUserdata<Condition>(L, -1);
+		if (cond)
+		{
+			combat->AddCondition(cond->clone());
+		}
+	}
+	lua_pop(L, 1);
+
 	return 1;
 }
 
@@ -15960,7 +16166,7 @@ int LuaScriptInterface::luaCombatGetCreatedItem(lua_State* L)
 
 int LuaScriptInterface::luaCombatSetFormula(lua_State* L)
 {
-	// combat:setFormula(type, mina, minb, maxa, maxb)
+	// combat:setMinMaxFormula(mina, minb, maxa, maxb)
 	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
 	if (not combat)
 	{
@@ -15969,10 +16175,10 @@ int LuaScriptInterface::luaCombatSetFormula(lua_State* L)
 		return 1;
 	}
 
-	float mina = static_cast<float>(getNumber<double>(L, 3));
-	float minb = static_cast<float>(getNumber<double>(L, 4));
-	float maxa = static_cast<float>(getNumber<double>(L, 5));
-	float maxb = static_cast<float>(getNumber<double>(L, 6));
+	float mina = static_cast<float>(getNumber<double>(L, 2));
+	float minb = static_cast<float>(getNumber<double>(L, 3));
+	float maxa = static_cast<float>(getNumber<double>(L, 4));
+	float maxb = static_cast<float>(getNumber<double>(L, 5));
 
 	BlackTek::Combat::OutputFactors factors = BlackTek::Combat::ClassicOutput;
 	factors.min_scale = mina;
@@ -16478,6 +16684,57 @@ int LuaScriptInterface::luaCombatRegisterFormula(lua_State* L)
 
 	combat->RegisterCompiledFormula(sit, stage, *node);
 	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatGetAreaPositions(lua_State* L)
+{
+	// combat:getAreaPositions(creature, variant) → array of positions
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	const auto creature = getCreature(L, 2);
+	const LuaVariant& variant = getVariant(L, 3);
+
+	if (not combat or not creature)
+	{
+		lua_newtable(L);
+		return 1;
+	}
+
+	Position center;
+	switch (variant.type())
+	{
+		case VARIANT_NUMBER:
+		{
+			const auto target = g_game.getCreatureByID(variant.getNumber());
+			center = target ? target->getPosition() : creature->getPosition();
+			break;
+		}
+		case VARIANT_STRING:
+		{
+			const auto target = g_game.getPlayerByName(variant.getString());
+			center = target ? target->getPosition() : creature->getPosition();
+			break;
+		}
+		case VARIANT_POSITION:
+			center = variant.getPosition();
+			break;
+		case VARIANT_TARGETPOSITION:
+			center = variant.getTargetPosition();
+			break;
+		default:
+			lua_newtable(L);
+			return 1;
+	}
+
+	const auto& area = combat->getAreaPositions(creature->getPosition(), center);
+
+	lua_newtable(L);
+	int32_t idx = 0;
+	for (const auto& pos : area.positions)
+	{
+		pushPosition(L, pos);
+		lua_rawseti(L, -2, ++idx);
+	}
 	return 1;
 }
 

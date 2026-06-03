@@ -1,7 +1,5 @@
 if configManager.getBoolean(configKeys.MANASHIELD_BREAKABLE) then
-	local combat = Combat()
-	combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
-	combat:setAggressive(0)
+	local combat = Combat({ impactEffect = CONST_ME_MAGIC_BLUE, aggressive = false })
 
 	local cancelMagicShield = Spell(SPELL_INSTANT)
 

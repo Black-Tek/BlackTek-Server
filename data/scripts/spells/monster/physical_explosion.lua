@@ -1,12 +1,4 @@
-local condition = Condition(Combat.DamageType.Physical)
-condition:setParameter(CONDITION_PARAM_DELAYED, 1)
-condition:addDamage(3, 10000, -25)
-
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Physical)
-combat:setImpactEffect(6)
-combat:setArea(createCombatArea(AREA_SQUARE1X1))
-combat:addCondition(condition)
+local combat = Combat(MonsterCombats.PhysicalExplosion)
 
 local spell = Spell(SPELL_INSTANT)
 

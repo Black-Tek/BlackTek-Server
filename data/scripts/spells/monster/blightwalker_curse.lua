@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Death)
-combat:setImpactEffect(CONST_ME_SMALLCLOUDS)
-combat:setArea(createCombatArea(AREA_CIRCLE6X6))
+local combat = Combat(MonsterCombats.BlightwalkerCurse)
 
 local spell = Spell(SPELL_INSTANT)
 

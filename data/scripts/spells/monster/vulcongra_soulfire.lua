@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Fire)
-combat:setImpactEffect(CONST_ME_HITBYFIRE)
-combat:setArea(createCombatArea(AREA_SQUARE1X1))
+local combat = Combat(MonsterCombats.VulcongraSoulfire)
 
 local spell = Spell(SPELL_INSTANT)
 

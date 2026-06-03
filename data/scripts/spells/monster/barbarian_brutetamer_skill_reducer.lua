@@ -1,6 +1,4 @@
-local combat = Combat()
-combat:setDistanceEffect(CONST_ANI_SNOWBALL)
-combat:setImpactEffect(CONST_ME_POFF)
+local combat = Combat(MonsterCombats.BarbarianBrutetamerSkillReducer)
 
 local parameters = {
 	{key = CONDITION_PARAM_TICKS, value = 5 * 1000},

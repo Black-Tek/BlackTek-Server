@@ -1,6 +1,4 @@
-local combat = Combat()
-combat:setImpactEffect(CONST_ME_STUN)
-combat:setArea(createCombatArea(AREA_BEAM8))
+local combat = Combat(MonsterCombats.WarGolemSkillReducer)
 
 local parameters = {{key = CONDITION_PARAM_TICKS, value = 3 * 1000}, {key = CONDITION_PARAM_SKILL_SHIELDPERCENT, value = 70}}
 

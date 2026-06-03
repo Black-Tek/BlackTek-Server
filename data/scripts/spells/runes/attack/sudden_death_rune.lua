@@ -1,15 +1,13 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Death)
-combat:setImpactEffect(CONST_ME_MORTAREA)
-combat:setDistanceEffect(CONST_ANI_SUDDENDEATH)
+local combat = Combat(RuneAttackCombats.SuddenDeathRune)
 
-function onGetFormulaValues(player, level, magicLevel)
-	local min = (level / 5) + (magicLevel * 4.3) + 32
-	local max = (level / 5) + (magicLevel * 7.4) + 48
-	return -min, -max
+do
+	local level = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.Level)
+	local magic = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.MagicLevel)
+	local outputNode = FormulaNode.random(level / 5 + magic * 4.3 + 32, level / 5 + magic * 7.4 + 48)
+	for sit = 0, 3 do
+		combat:registerFormula(Combat.FormulaStage.Output, sit, outputNode)
+	end
 end
-
-combat:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
 
 local spell = Spell(SPELL_RUNE)
 

@@ -1,9 +1,4 @@
-local area = {{1, 1, 1}, {1, 1, 1}, {0, 1, 0}, {0, 3, 0}}
-
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Physical)
-combat:setImpactEffect(CONST_ME_EXPLOSIONHIT)
-combat:setArea(createCombatArea(area))
+local combat = Combat(MonsterCombats.ExplosionWave)
 
 local spell = Spell(SPELL_INSTANT)
 

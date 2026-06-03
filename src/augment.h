@@ -32,9 +32,9 @@ namespace BlackTek
 			return getName() == other.getName();
 		}
 
-		~Augment() = default;
+		~Augment();
 
-		Augment& operator=(const Augment&) = default;
+		Augment& operator=(const Augment& other);
 
 		const std::string& getName() const;
 		const std::string& getDescription() const;
@@ -100,7 +100,4 @@ namespace BlackTek
 		return std::make_shared<Augment>(original);
 	}
 
-	extern gtl::flat_hash_map<uint64_t, Augment> loaded_augments;
-	extern gtl::flat_hash_map<uint64_t, std::string> loaded_augment_names;
-	extern gtl::flat_hash_map<uint64_t, std::string> loaded_agment_descriptions;
 }

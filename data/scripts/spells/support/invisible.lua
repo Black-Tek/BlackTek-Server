@@ -1,10 +1,4 @@
-local combat = Combat()
-combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
-combat:setAggressive(false)
-
-local condition = Condition(CONDITION_INVISIBLE)
-condition:setParameter(CONDITION_PARAM_TICKS, 200000)
-combat:addCondition(condition)
+local combat = Combat(SupportCombats.Invisible)
 
 local spell = Spell(SPELL_INSTANT)
 

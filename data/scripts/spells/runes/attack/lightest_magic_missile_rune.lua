@@ -1,13 +1,11 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Energy)
-combat:setImpactEffect(CONST_ME_ENERGYAREA)
-combat:setDistanceEffect(CONST_ANI_ENERGY)
+local combat = Combat(RuneAttackCombats.LightestMagicMissileRune)
 
-function onGetFormulaValues(player, level, magicLevel)
-	return -3, -7
+do
+	local outputNode = FormulaNode.random(3, 7)
+	for sit = 0, 3 do
+		combat:registerFormula(Combat.FormulaStage.Output, sit, outputNode)
+	end
 end
-
-combat:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
 
 local spell = Spell(SPELL_RUNE)
 

@@ -1,6 +1,4 @@
-local combat = Combat()
-combat:setImpactEffect(CONST_ME_MAGIC_BLUE)
-combat:setAggressive(false)
+local combat = Combat(HealingCombats.CurePoison)
 
 local spell = Spell(SPELL_INSTANT)
 

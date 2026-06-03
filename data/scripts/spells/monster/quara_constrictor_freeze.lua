@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Ice)
-combat:setImpactEffect(CONST_ME_GREEN_RINGS)
-combat:setArea(createCombatArea(AREA_SQUARE1X1))
+local combat = Combat(MonsterCombats.QuaraConstrictorFreeze)
 
 local spell = Spell(SPELL_INSTANT)
 

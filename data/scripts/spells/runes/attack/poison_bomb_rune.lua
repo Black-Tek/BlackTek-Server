@@ -1,8 +1,4 @@
-local combat = Combat()
-combat:setDamageType(Combat.DamageType.Earth)
-combat:setDistanceEffect(CONST_ANI_ENERGY)
-combat:setCreatedItem(ITEM_POISONFIELD_PVP)
-combat:setArea(createCombatArea(AREA_SQUARE1X1))
+local combat = Combat(RuneAttackCombats.PoisonBombRune)
 
 local spell = Spell(SPELL_RUNE)
 

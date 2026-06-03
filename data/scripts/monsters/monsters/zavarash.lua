@@ -1,0 +1,239 @@
+local mtype = Game.createMonsterType("Zavarash")
+local monster = {}
+
+monster.name = "Zavarash"
+monster.description = "Zavarash"
+monster.experience = 21000
+monster.race = "fire"
+monster.maxHealth = 35000
+monster.health = 35000
+monster.speed = 440
+monster.manaCost = 0
+monster.corpse = 6068
+monster.outfit = {
+    lookType = 12,
+    lookHead = 0,
+    lookBody = 15,
+    lookLegs = 57,
+    lookFeet = 84,
+}
+monster.changeTarget = {
+    interval = 2000,
+    chance = 25,
+}
+monster.targetDistance = 4
+monster.staticAttackChance = 90
+monster.flags = {
+    summonable = false,
+    attackable = true,
+    hostile = true,
+    illusionable = false,
+    convinceable = false,
+    pushable = false,
+    canPushItems = true,
+    canPushCreatures = true,
+    boss = true,
+}
+monster.attacks = {
+    {
+        name = "melee",
+        interval = 2000,
+        minDamage = 0,
+        maxDamage = -600,
+    },
+    {
+        name = "physical",
+        interval = 2000,
+        chance = 15,
+        range = 7,
+        minDamage = 0,
+        maxDamage = -6000,
+        shootEffect = CONST_ANI_THROWINGKNIFE,
+    },
+}
+monster.defenses = {
+    defense = 65,
+    armor = 55,
+    {
+        name = "healing",
+        interval = 2000,
+        chance = 30,
+        minDamage = 400,
+        maxDamage = 600,
+        radius = 8,
+        effect = CONST_ME_MAGIC_BLUE,
+    },
+    {
+        name = "speed",
+        interval = 2000,
+        chance = 18,
+        speed = 784,
+        duration = 7000,
+        effect = CONST_ME_MAGIC_GREEN,
+    },
+    {
+        name = "invisible",
+        interval = 2000,
+        chance = 20,
+        duration = 10000,
+        effect = CONST_ME_MAGIC_BLUE,
+    },
+}
+monster.elements = {
+    {type = COMBAT_PHYSICALDAMAGE, percent = 90},
+    {type = COMBAT_DEATHDAMAGE, percent = 65},
+    {type = COMBAT_ENERGYDAMAGE, percent = 60},
+    {type = COMBAT_FIREDAMAGE, percent = 70},
+    {type = COMBAT_ICEDAMAGE, percent = 60},
+    {type = COMBAT_EARTHDAMAGE, percent = 60},
+    {type = COMBAT_HOLYDAMAGE, percent = -20},
+}
+monster.immunities = {
+    {type = "lifedrain", combat = true},
+    {type = "paralyze", condition = true},
+    {type = "outfit", condition = true},
+    {type = "drunk", condition = true},
+    {type = "invisible", condition = true},
+}
+monster.maxSummons = 2
+monster.summons = {
+    {name = "Dark Torturer", interval = 1000, chance = 100, max = 0},
+}
+monster.voices = {
+    interval = 5000,
+    chance = 10,
+    {text = "Harrr, Harrr!", yell = true},
+}
+monster.loot = {
+    {
+        id = 22396,
+        chance = 100000,
+    },
+    {
+        id = 2148,
+        chance = 50000,
+        maxCount = 100,
+    },
+    {
+        id = 2148,
+        chance = 50000,
+        maxCount = 97,
+    },
+    {
+        id = 2152,
+        chance = 100000,
+        maxCount = 50,
+    },
+    {
+        id = 5954,
+        chance = 100000,
+    },
+    {
+        id = 22598,
+        chance = 60000,
+    },
+    {
+        id = 6500,
+        chance = 60000,
+    },
+    {
+        id = 7632,
+        chance = 40000,
+    },
+    {
+        id = 18414,
+        chance = 40000,
+        maxCount = 8,
+    },
+    {
+        id = 7590,
+        chance = 34440,
+        maxCount = 10,
+    },
+    {
+        id = 8473,
+        chance = 34440,
+        maxCount = 10,
+    },
+    {
+        id = 8472,
+        chance = 34440,
+        maxCount = 5,
+    },
+    {
+        id = 18413,
+        chance = 30000,
+        maxCount = 8,
+    },
+    {
+        id = 18415,
+        chance = 30000,
+        maxCount = 8,
+    },
+    {
+        id = 2155,
+        chance = 20000,
+    },
+    {
+        id = 2515,
+        chance = 15030,
+    },
+    {
+        id = 2427,
+        chance = 15030,
+    },
+    {
+        id = 2158,
+        chance = 15030,
+    },
+    {
+        id = 9971,
+        chance = 15030,
+    },
+    {
+        id = 7428,
+        chance = 15030,
+    },
+    {
+        id = 2452,
+        chance = 12940,
+    },
+    {
+        id = 2519,
+        chance = 11540,
+    },
+    {
+        id = 22610,
+        chance = 10000,
+    },
+    {
+        id = 8891,
+        chance = 9620,
+    },
+    {
+        id = 7387,
+        chance = 8390,
+    },
+    {
+        id = 2520,
+        chance = 6290,
+    },
+    {
+        id = 2514,
+        chance = 1400,
+    },
+    {
+        id = 7431,
+        chance = 700,
+    },
+    {
+        id = 8877,
+        chance = 350,
+    },
+    {
+        id = 8928,
+        chance = 170,
+    },
+}
+
+mtype:register(monster)

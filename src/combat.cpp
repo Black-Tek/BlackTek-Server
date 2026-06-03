@@ -64,34 +64,6 @@ namespace BlackTek
 		return handle;
 	}
 
-	CombatHandle CombatRegistry::Clone(const Combat& src) noexcept
-	{
-		auto handle = Create();
-		Combat& dst = *handle;
-
-		dst.damage                   = src.damage;
-		dst.config                   = src.config;
-		dst.formula_cache            = src.formula_cache;   // non-owning; same cache map entry as parent
-		dst.cached_areas             = src.cached_areas;    // non-owning; same area pair map entry as parent
-		dst.defense_charge_cost      = src.defense_charge_cost;
-		dst.armor_charge_cost        = src.armor_charge_cost;
-		dst.def_modifier_charge_cost = src.def_modifier_charge_cost;
-		dst.atk_modifier_charge_cost = src.atk_modifier_charge_cost;
-		dst.itemId                   = src.itemId;
-		dst.damage_type              = src.damage_type;
-		dst.blockType                = src.blockType;
-		dst.origin                   = src.origin;
-		dst.impactEffect             = src.impactEffect;
-		dst.distanceEffect           = src.distanceEffect;
-
-		return handle;
-	}
-
-	CombatHandle Combat::clone() const noexcept
-	{
-		return g_combat_registry.Clone(*this);
-	}
-
 	void CombatRegistry::Release(int64_t id)
 	{
 		table_.erase(id);   // hopefully destructs Combat in-place and returns the memory block back to the pool as expected
@@ -215,6 +187,23 @@ namespace BlackTek
 					return static_cast<int32_t>(creature->getArmor());
 				const auto shield = player->getWeapon(CONST_SLOT_LEFT, false);
 				return shield ? static_cast<int32_t>(shield->getArmor()) : 0;
+			}
+
+			case Combat::BindKey::WeaponSkill:
+			{
+				if (not player)
+					return 0;
+				const auto weapon = player->getWeapon(CONST_SLOT_RIGHT, false);
+				if (not weapon)
+					return static_cast<int32_t>(player->getSkillLevel(SKILL_FIST));
+				switch (weapon->getWeaponType())
+				{
+					case WEAPON_SWORD:    return static_cast<int32_t>(player->getSkillLevel(SKILL_SWORD));
+					case WEAPON_AXE:      return static_cast<int32_t>(player->getSkillLevel(SKILL_AXE));
+					case WEAPON_CLUB:     return static_cast<int32_t>(player->getSkillLevel(SKILL_CLUB));
+					case WEAPON_DISTANCE: return static_cast<int32_t>(player->getSkillLevel(SKILL_DISTANCE));
+					default:              return static_cast<int32_t>(player->getSkillLevel(SKILL_FIST));
+				}
 			}
 
 			case Combat::BindKey::Health:
@@ -2469,7 +2458,38 @@ namespace BlackTek
 
 	void Combat::heal_target(const CreaturePtr& caster, const CreaturePtr& target, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
 	{
-		if (damage_type != DamageType::Healing or damage == 0)
+		if (damage_type != DamageType::Healing)
+			return;
+
+		// Output stage: compiled formula → TOML/Lua factor params → fixed damage
+		const bool caster_player = caster && caster->getCreatureSubType() == CreatureSubType::Player;
+		const bool target_player = target && target->getCreatureSubType() == CreatureSubType::Player;
+		const uint8_t sit_idx = caster_player
+			? (target_player ? 0u : 1u)
+			: (target_player ? 2u : 3u);
+
+		const CompiledFormulaSlots* compiled = config.test(Config::HasCompiledFormula)
+			? formula_cache->compiled.get()
+			: nullptr;
+
+		FormulaContext ctx;
+		ctx.caster = caster;
+		ctx.target = target;
+
+		uint32_t heal_amount = damage;
+		if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Output)) : nullptr)
+		{
+			heal_amount = static_cast<uint32_t>(std::abs((*fn)(ctx)));
+		}
+		else if (config.test(Config::HasFormulaCache) && caster && caster->is_player())
+		{
+			const SituationFormulas& formulas = formula_cache->situations[sit_idx];
+			const int32_t stat = static_cast<int32_t>(caster->getPlayer()->getLevel())
+			                   + static_cast<int32_t>(caster->getPlayer()->getMagicLevel()) * 3;
+			heal_amount = static_cast<uint32_t>(std::abs(calculate_output(formulas.output, stat)));
+		}
+
+		if (heal_amount == 0)
 			return;
 
 		if (config.test(Config::HealthTarget))
@@ -2482,7 +2502,7 @@ namespace BlackTek
 			if (caster->is_player())
 				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), target);
 
-			const uint32_t healed = std::min<uint32_t>(damage, static_cast<uint32_t>(maxHeal));
+			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(maxHeal));
 			target->changeHealth(healed);
 			heal_notification(caster, target, healed, spectators);
 		}
@@ -2501,7 +2521,7 @@ namespace BlackTek
 			if (caster->is_player())
 				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player);
 
-			const uint32_t healed = std::min<uint32_t>(damage, static_cast<uint32_t>(maxMana));
+			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(maxMana));
 			player->changeMana(static_cast<int32_t>(healed));
 			heal_notification(caster, player, healed, spectators);
 		}
@@ -2521,7 +2541,7 @@ namespace BlackTek
 			if (caster->is_player())
 				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player);
 
-			const uint32_t healed = std::min<uint32_t>(damage, static_cast<uint32_t>(remaining));
+			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(remaining));
 			player->changeStamina(static_cast<int32_t>(healed));
 			heal_notification(caster, player, healed, spectators);
 		}
@@ -2540,7 +2560,7 @@ namespace BlackTek
 			if (caster->is_player())
 				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player);
 
-			const uint32_t healed = std::min<uint32_t>(damage, static_cast<uint32_t>(maxSoul));
+			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(maxSoul));
 			player->changeSoul(static_cast<int32_t>(healed));
 			heal_notification(caster, player, healed, spectators);
 		}
@@ -2858,7 +2878,6 @@ namespace BlackTek
 	std::expected<uint32_t, Combat::BlockType> Combat::block(const CreaturePtr& attacker, const PlayerPtr& target) noexcept
 	{
 		BlockType blockType = BlockType::NoBlock;
-		uint32_t computed_damage = damage;
 
 		bool apply_armor_reduction = config.test(BlockedByArmor);
 		bool apply_defense_reduction = config.test(Config::BlockedByDefense);
@@ -2887,6 +2906,19 @@ namespace BlackTek
 		FormulaContext ctx;
 		ctx.caster = attacker;
 		ctx.target = target;
+
+		// Output stage: compiled formula → TOML/Lua factor params → fixed damage
+		uint32_t computed_damage = damage;
+		if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Output)) : nullptr)
+		{
+			computed_damage = static_cast<uint32_t>(std::abs((*fn)(ctx)));
+		}
+		else if (config.test(Config::HasFormulaCache) && attacker && attacker->is_player())
+		{
+			const int32_t stat = static_cast<int32_t>(attacker->getPlayer()->getLevel())
+			                   + static_cast<int32_t>(attacker->getPlayer()->getMagicLevel()) * 3;
+			computed_damage = static_cast<uint32_t>(std::abs(calculate_output(formulas.output, stat)));
+		}
 
 		if (apply_defense_reduction and target->can_use_defense()
 		    and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
@@ -2980,7 +3012,6 @@ namespace BlackTek
 	std::expected<uint32_t, Combat::BlockType> Combat::block(const CreaturePtr& attacker, const MonsterPtr& target) noexcept
 	{
 		BlockType blockType = BlockType::NoBlock;
-		uint32_t computed_damage = damage;
 
 		bool apply_armor_reduction = config.test(BlockedByArmor);
 		const bool apply_defense_reduction = config.test(Config::BlockedByDefense);
@@ -3008,6 +3039,19 @@ namespace BlackTek
 		FormulaContext ctx;
 		ctx.caster = attacker;
 		ctx.target = target;
+
+		// Output stage: compiled formula → TOML/Lua factor params → fixed damage
+		uint32_t computed_damage = damage;
+		if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Output)) : nullptr)
+		{
+			computed_damage = static_cast<uint32_t>(std::abs((*fn)(ctx)));
+		}
+		else if (config.test(Config::HasFormulaCache) && attacker && attacker->is_player())
+		{
+			const int32_t stat = static_cast<int32_t>(attacker->getPlayer()->getLevel())
+			                   + static_cast<int32_t>(attacker->getPlayer()->getMagicLevel()) * 3;
+			computed_damage = static_cast<uint32_t>(std::abs(calculate_output(formulas.output, stat)));
+		}
 
 		if (apply_defense_reduction and target->can_use_defense()
 			and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
