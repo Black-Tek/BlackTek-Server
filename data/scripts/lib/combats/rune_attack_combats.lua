@@ -20,6 +20,7 @@ RuneAttackCombats = {
     },
 
     EnergyBombRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Energy,
         impactEffect   = CONST_ME_ENERGYHIT,
         distanceEffect = CONST_ANI_ENERGYBALL,
@@ -28,6 +29,7 @@ RuneAttackCombats = {
     },
 
     EnergyFieldRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Energy,
         impactEffect   = CONST_ME_ENERGYHIT,
         distanceEffect = CONST_ANI_ENERGYBALL,
@@ -35,6 +37,7 @@ RuneAttackCombats = {
     },
 
     EnergyWallRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Energy,
         impactEffect   = CONST_ME_ENERGYHIT,
         distanceEffect = CONST_ANI_ENERGYBALL,
@@ -43,6 +46,7 @@ RuneAttackCombats = {
     },
 
     FireBombRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Fire,
         distanceEffect = CONST_ANI_FIRE,
         createdItem    = ITEM_FIREFIELD_PVP_FULL,
@@ -50,12 +54,14 @@ RuneAttackCombats = {
     },
 
     FireFieldRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Fire,
         distanceEffect = CONST_ANI_FIRE,
         createdItem    = ITEM_FIREFIELD_PVP_FULL,
     },
 
     FireWallRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Fire,
         distanceEffect = CONST_ANI_FIRE,
         createdItem    = ITEM_FIREFIELD_PVP_FULL,
@@ -63,6 +69,7 @@ RuneAttackCombats = {
     },
 
     PoisonBombRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Earth,
         distanceEffect = CONST_ANI_ENERGY,
         createdItem    = ITEM_POISONFIELD_PVP,
@@ -70,12 +77,14 @@ RuneAttackCombats = {
     },
 
     PoisonFieldRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Earth,
         distanceEffect = CONST_ANI_ENERGY,
         createdItem    = ITEM_POISONFIELD_PVP,
     },
 
     PoisonWallRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Earth,
         distanceEffect = CONST_ANI_ENERGY,
         createdItem    = ITEM_POISONFIELD_PVP,
@@ -84,12 +93,14 @@ RuneAttackCombats = {
 
     -- Condition rune
     ParalyzeRune = {
+        aggressive   = true,
         impactEffect = CONST_ME_MAGIC_RED,
         condition    = _paralyzeCondition,
     },
 
     -- Area-damage runes (formula callbacks stay in spell files)
     AvalancheRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Ice,
         impactEffect   = CONST_ME_ICEAREA,
         distanceEffect = CONST_ANI_ICE,
@@ -97,6 +108,7 @@ RuneAttackCombats = {
     },
 
     ExplosionRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Physical,
         impactEffect   = CONST_ME_EXPLOSIONAREA,
         distanceEffect = CONST_ANI_EXPLOSION,
@@ -105,6 +117,7 @@ RuneAttackCombats = {
     },
 
     GreatFireballRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Fire,
         impactEffect   = CONST_ME_FIREAREA,
         distanceEffect = CONST_ANI_FIRE,
@@ -112,6 +125,7 @@ RuneAttackCombats = {
     },
 
     LightStoneShowerRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Earth,
         impactEffect   = CONST_ME_STONES,
         distanceEffect = CONST_ANI_EARTH,
@@ -119,6 +133,7 @@ RuneAttackCombats = {
     },
 
     StoneShowerRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Earth,
         impactEffect   = CONST_ME_STONES,
         distanceEffect = CONST_ANI_EARTH,
@@ -126,6 +141,7 @@ RuneAttackCombats = {
     },
 
     ThunderstormRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Energy,
         impactEffect   = CONST_ME_ENERGYHIT,
         distanceEffect = CONST_ANI_ENERGYBALL,
@@ -134,60 +150,70 @@ RuneAttackCombats = {
 
     -- Single-target runes (formula callbacks stay in spell files)
     FireballRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Fire,
         impactEffect   = CONST_ME_FIREATTACK,
         distanceEffect = CONST_ANI_FIRE,
     },
 
     HeavyMagicMissileRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Energy,
         impactEffect   = CONST_ME_ENERGYHIT,
         distanceEffect = CONST_ANI_ENERGY,
     },
 
     HolyMissileRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Holy,
         impactEffect   = CONST_ME_HOLYAREA,
         distanceEffect = CONST_ANI_HOLY,
     },
 
     IcicleRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Ice,
         impactEffect   = CONST_ME_ICEATTACK,
         distanceEffect = CONST_ANI_SMALLICE,
     },
 
     LightestMagicMissileRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Energy,
         impactEffect   = CONST_ME_ENERGYAREA,
         distanceEffect = CONST_ANI_ENERGY,
     },
 
     LightestMissileRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Energy,
         impactEffect   = CONST_ME_ENERGYHIT,
         distanceEffect = CONST_ANI_ENERGY,
     },
 
     LightMagicMissileRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Energy,
         impactEffect   = CONST_ME_ENERGYHIT,
         distanceEffect = CONST_ANI_ENERGY,
     },
 
     SoulfireRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Fire,
         impactEffect   = CONST_ME_HITBYFIRE,
         distanceEffect = CONST_ANI_FIRE,
     },
 
     StalagmiteRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Earth,
         impactEffect   = CONST_ME_STONES,
         distanceEffect = CONST_ANI_EARTH,
     },
 
     SuddenDeathRune = {
+        aggressive     = true,
         damageType     = Combat.DamageType.Death,
         impactEffect   = CONST_ME_MORTAREA,
         distanceEffect = CONST_ANI_SUDDENDEATH,

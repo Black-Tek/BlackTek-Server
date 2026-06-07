@@ -1,8 +1,8 @@
-local mtype = Game.createMonsterType("Demon")
+local mtype = Game.createMonsterType("Demon (Goblin)")
 local monster = {}
 
-monster.name = "Demon"
-monster.description = "a demon"
+monster.name = "Demon (Goblin)"
+monster.description = "a demon goblin"
 monster.experience = 25
 monster.race = "blood"
 monster.maxHealth = 50

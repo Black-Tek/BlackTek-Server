@@ -711,6 +711,25 @@ namespace BlackTek
 
 	}
 
+	namespace
+	{
+		constexpr uint32_t kScatterRejectFlags = TILESTATE_PROTECTIONZONE
+			| TILESTATE_FLOORCHANGE
+			| TILESTATE_TELEPORT
+			| TILESTATE_IMMOVABLEBLOCKSOLID
+			| TILESTATE_NOPVPZONE
+			| TILESTATE_IMMOVABLEBLOCKPATH
+			| TILESTATE_IMMOVABLENOFIELDBLOCKPATH;
+
+		[[nodiscard]] bool isValidScatterTile(const TilePtr& tile, const Position& origin, const Position& dest) noexcept
+		{
+			return tile
+				and g_game.canThrowObjectTo(origin, dest)
+				and tile->getZone() != ZONE_PROTECTION
+				and not tile->hasFlag(kScatterRejectFlags);
+		}
+	}
+
 	Position Combat::generateAttackPosition(const CreaturePtr& attacker, const PlayerPtr& defender) noexcept
 	{
 		const auto defense_position = defender->getPosition();
@@ -735,28 +754,16 @@ namespace BlackTek
 
 		const auto& pattern = DIRECTION_PATTERNS[attackDirection & 0x7]; // Mask to handle diagonal directions
 
-		auto addLocationInline = [&](int x, int y) 
+		auto addLocationInline = [&](int x, int y)
 		{
-			Position targetLocation
+			const Position targetLocation
 			{
 				static_cast<uint16_t>(defense_position.x + x),
 				static_cast<uint16_t>(defense_position.y + y),
 				defense_position.z
 			};
-
 			const auto& tile = g_game.map.getTile(targetLocation);
-			const bool isValid = tile
-				and g_game.canThrowObjectTo(defense_position, targetLocation)
-				and tile->getZone() != ZONE_PROTECTION
-				and not tile->hasFlag(TILESTATE_PROTECTIONZONE
-					| TILESTATE_FLOORCHANGE
-					| TILESTATE_TELEPORT
-					| TILESTATE_IMMOVABLEBLOCKSOLID
-					| TILESTATE_NOPVPZONE
-					| TILESTATE_IMMOVABLEBLOCKPATH
-					| TILESTATE_IMMOVABLENOFIELDBLOCKPATH);
-
-			if (isValid)
+			if (isValidScatterTile(tile, defense_position, targetLocation))
 				possibleTargets.emplace_back(targetLocation);
 		};
 
@@ -820,23 +827,9 @@ namespace BlackTek
 			for (int y = -radius; y <= radius; ++y)
 			{
 				Position pos(center.x + x, center.y + y, center.z);
-
-				auto tile = g_game.map.getTile(pos);
-				const bool isValid = tile
-					and g_game.canThrowObjectTo(center, pos)
-					and tile->getZone() != ZONE_PROTECTION
-					and not tile->hasFlag(TILESTATE_PROTECTIONZONE
-						| TILESTATE_FLOORCHANGE
-						| TILESTATE_TELEPORT
-						| TILESTATE_IMMOVABLEBLOCKSOLID
-						| TILESTATE_NOPVPZONE
-						| TILESTATE_IMMOVABLEBLOCKPATH
-						| TILESTATE_IMMOVABLENOFIELDBLOCKPATH);
-
-				if (isValid)
-				{
+				const auto tile = g_game.map.getTile(pos);
+				if (isValidScatterTile(tile, center, pos))
 					out.push_back(pos);
-				}
 			}
 		}
 	}
@@ -2053,9 +2046,18 @@ namespace BlackTek
 
 	void Combat::strike_target(const PlayerPtr& caster, const PlayerPtr& victim, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
 	{
+		const bool cfg_has_condition = config.test(Config::HasCondition);
+
 		if (damage_type == DamageType::Unknown)
 		{
-			return; // log here
+			if (cfg_has_condition)
+			{
+				for (const auto& cond : *condition_list)
+					victim->addCondition(cond->clone());
+				if (impactEffect != CONST_ME_NONE)
+					g_game.addMagicEffect(victim->getPosition(), impactEffect);
+			}
+			return;
 		}
 
 		if (damage_type == DamageType::Healing)
@@ -2130,7 +2132,7 @@ namespace BlackTek
 		else
 		{
 			post_damage(caster, victim, currentDamage, std::move(leech_data));
-			if (config.test(Config::HasCondition))
+			if (cfg_has_condition)
 			{
 				for (const auto& cond : *condition_list)
 					victim->addCondition(cond->clone());
@@ -2161,9 +2163,17 @@ namespace BlackTek
 
 	void Combat::strike_target(const PlayerPtr& caster, const MonsterPtr& victim, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
 	{
+		const bool cfg_has_condition = config.test(Config::HasCondition);
+
 		if (damage_type == DamageType::Unknown)
 		{
-			// log this
+			if (cfg_has_condition)
+			{
+				for (const auto& cond : *condition_list)
+					victim->addCondition(cond->clone());
+				if (impactEffect != CONST_ME_NONE)
+					g_game.addMagicEffect(victim->getPosition(), impactEffect);
+			}
 			return;
 		}
 
@@ -2219,7 +2229,7 @@ namespace BlackTek
 		else
 		{
 			post_damage(caster, victim, currentDamage, std::move(leech_data));
-			if (config.test(Config::HasCondition))
+			if (cfg_has_condition)
 			{
 				for (const auto& cond : *condition_list)
 					victim->addCondition(cond->clone());
@@ -2250,9 +2260,17 @@ namespace BlackTek
 
 	void Combat::strike_target(const MonsterPtr& attacker, const PlayerPtr& victim, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
 	{
+		const bool cfg_has_condition = config.test(Config::HasCondition);
+
 		if (damage_type == DamageType::Unknown)
 		{
-			// log this
+			if (cfg_has_condition)
+			{
+				for (const auto& cond : *condition_list)
+					victim->addCondition(cond->clone());
+				if (impactEffect != CONST_ME_NONE)
+					g_game.addMagicEffect(victim->getPosition(), impactEffect);
+			}
 			return;
 		}
 
@@ -2313,7 +2331,7 @@ namespace BlackTek
 		}
 		else
 		{
-			if (config.test(Config::HasCondition))
+			if (cfg_has_condition)
 			{
 				for (const auto& cond : *condition_list)
 					victim->addCondition(cond->clone());
@@ -2323,9 +2341,17 @@ namespace BlackTek
 
 	void Combat::strike_target(const MonsterPtr& attacker, const MonsterPtr& victim, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
 	{
+		const bool cfg_has_condition = config.test(Config::HasCondition);
+
 		if (damage_type == DamageType::Unknown)
 		{
-			// log this
+			if (cfg_has_condition)
+			{
+				for (const auto& cond : *condition_list)
+					victim->addCondition(cond->clone());
+				if (impactEffect != CONST_ME_NONE)
+					g_game.addMagicEffect(victim->getPosition(), impactEffect);
+			}
 			return;
 		}
 
@@ -2372,7 +2398,7 @@ namespace BlackTek
 		}
 		else
 		{
-			if (config.test(Config::HasCondition))
+			if (cfg_has_condition)
 			{
 				for (const auto& cond : *condition_list)
 					victim->addCondition(cond->clone());
@@ -2566,6 +2592,66 @@ namespace BlackTek
 		}
 	}
 
+	namespace
+	{
+		// Checks whether an intermediate tile on a line-of-sight walk is passable for area combat.
+		// Uses precomputed TILESTATE flags: immovable solid objects (walls, trees) and path-blockers.
+		bool isAreaCombatTileClear(const uint16_t x, const uint16_t y, const uint8_t z) noexcept
+		{
+			const auto tile = g_game.map.getTile(x, y, z);
+			if (not tile) return true;
+			constexpr uint32_t kBarrier = TILESTATE_IMMOVABLEBLOCKSOLID
+				| TILESTATE_BLOCKPATH
+				| TILESTATE_IMMOVABLENOFIELDBLOCKPATH;
+			return (tile->getFlags() & kBarrier) == 0u;
+		}
+
+		bool checkSteepLineForCombat(const uint16_t x0, const uint16_t y0, const uint16_t x1, const uint16_t y1, const uint8_t z) noexcept
+		{
+			const float dx    = x1 - x0;
+			const float slope = (dx == 0.0f) ? 1.0f : (y1 - y0) / dx;
+			float yi = y0 + slope;
+			for (uint16_t x = x0 + 1; x < x1; ++x, yi += slope)
+			{
+				if (not isAreaCombatTileClear(static_cast<uint16_t>(std::floor(yi + 0.1f)), x, z))
+					return false;
+			}
+			return true;
+		}
+
+		bool checkSlightLineForCombat(const uint16_t x0, const uint16_t y0, const uint16_t x1, const uint16_t y1, const uint8_t z) noexcept
+		{
+			const float dx    = x1 - x0;
+			const float slope = (dx == 0.0f) ? 1.0f : (y1 - y0) / dx;
+			float yi = y0 + slope;
+			for (uint16_t x = x0 + 1; x < x1; ++x, yi += slope)
+			{
+				if (not isAreaCombatTileClear(x, static_cast<uint16_t>(std::floor(yi + 0.1f)), z))
+					return false;
+			}
+			return true;
+		}
+
+		// Area-combat-specific sight check. Treats immovable-solid obstacles (walls, trees, bushes)
+		// and path-blockers as opaque for the purpose of determining valid spell tiles. Only same-floor.
+		bool isAreaCombatSightClear(const Position& from, const Position& to) noexcept
+		{
+			if (from == to or from.z != to.z) return true;
+			if (std::abs(from.x - to.x) < 2 and std::abs(from.y - to.y) < 2) return true;
+
+			if (std::abs(to.y - from.y) > std::abs(to.x - from.x))
+			{
+				if (to.y > from.y)
+					return checkSteepLineForCombat(from.y, from.x, to.y, to.x, from.z);
+				return checkSteepLineForCombat(to.y, to.x, from.y, from.x, from.z);
+			}
+
+			if (from.x > to.x)
+				return checkSlightLineForCombat(to.x, to.y, from.x, from.y, from.z);
+			return checkSlightLineForCombat(from.x, from.y, to.x, to.y, from.z);
+		}
+	} // anonymous namespace
+
 	void Combat::execute(const CreaturePtr& caster, const Position& center) noexcept
 	{
 		const auto& [positions, distance, stored_extent] = getAreaPositions(caster->getPosition(), center);
@@ -2615,7 +2701,12 @@ namespace BlackTek
 		const bool cfg_fragged_only    = config.test(Config::FraggedOnly);
 
 		const bool admin = caster->getCreatureSubType() == CreatureSubType::Player and caster->getPlayer()->hasFlag(PlayerFlag_IgnoreProtectionZone);
-		const uint32_t flag_reject = TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT | (cfg_aggressive and not admin ? static_cast<uint32_t>(TILESTATE_PROTECTIONZONE) : 0u);
+		constexpr uint32_t kBarrier = TILESTATE_IMMOVABLEBLOCKSOLID
+			| TILESTATE_BLOCKPATH
+			| TILESTATE_IMMOVABLENOFIELDBLOCKPATH;
+		const uint32_t flag_reject = TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT
+			| (cfg_aggressive and not admin ? static_cast<uint32_t>(TILESTATE_PROTECTIONZONE) : 0u)
+			| (cfg_ignore_barriers ? 0u : kBarrier);
 
 #ifdef __AVX2__
 		{
@@ -2668,8 +2759,8 @@ namespace BlackTek
 
 		auto valid_tiles = std::views::iota(size_t{0}, n) | std::views::filter([&](size_t idx) { return static_cast<bool>(valid_mask[idx]); })
 			| std::views::filter([&](size_t idx) {
-				// IgnoreBarriers bypasses line-of-sight walls for area combat.
-				return cfg_ignore_barriers or not tile_cache[idx]->hasProperty(CONST_PROP_BLOCKPROJECTILE);
+				// Line-of-sight check from area center — rejects tiles hidden behind walls, fences, or trees.
+				return cfg_ignore_barriers or isAreaCombatSightClear(center, positions[idx]);
 			});
 
 		for (size_t idx : valid_tiles)

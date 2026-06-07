@@ -1571,6 +1571,7 @@ class LuaScriptInterface
 		static int luaFormulaNodeMul(lua_State* L);
 		static int luaFormulaNodeDiv(lua_State* L);
 		static int luaFormulaNodeUnm(lua_State* L);
+		static int luaFormulaNodePow(lua_State* L);
 		static int luaFormulaNodeGC(lua_State* L);
 
 		// Condition

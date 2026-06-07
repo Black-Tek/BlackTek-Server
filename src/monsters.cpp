@@ -235,6 +235,7 @@ bool Monsters::deserializeSpell(MonsterSpell* spell, spellBlock_t& sb, const std
 	if (spell->name == "melee")
 	{
 		sb.isMelee = true;
+		sb.range = 1;
 		combat->SetConfig(BlackTek::Combat::Config::Aggressive);
 		combat->SetConfig(BlackTek::Combat::Config::BlockedByArmor);
 		combat->SetConfig(BlackTek::Combat::Config::BlockedByDefense);

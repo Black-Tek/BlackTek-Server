@@ -189,7 +189,7 @@ namespace BlackTek
 			static_assert(sizeof(Layout) == sizeof(DamageModifier),
 				"DamageModifier/Layout size mismatch — update both structs together");
 
-			const Layout* raw = std::start_lifetime_as<const Layout>(data.data());
+			const Layout* raw = std::start_lifetime_as<Layout>(data.data());
 			DamageModifier mod;
 			mod.damage_type    = raw->damage_type;
 			mod.to_damage_type = raw->to_damage_type;

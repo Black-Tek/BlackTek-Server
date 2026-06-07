@@ -3154,6 +3154,7 @@ void LuaScriptInterface::registerFunctions()
 	lua_pushcfunction(luaState, luaFormulaNodeMul); lua_setfield(luaState, -2, "__mul");
 	lua_pushcfunction(luaState, luaFormulaNodeDiv); lua_setfield(luaState, -2, "__div");
 	lua_pushcfunction(luaState, luaFormulaNodeUnm); lua_setfield(luaState, -2, "__unm");
+	lua_pushcfunction(luaState, luaFormulaNodePow); lua_setfield(luaState, -2, "__pow");
 	lua_pushcfunction(luaState, luaFormulaNodeGC);  lua_setfield(luaState, -2, "__gc");
 	lua_pop(luaState, 1); // pop metatable
 
@@ -16642,6 +16643,17 @@ int LuaScriptInterface::luaFormulaNodeUnm(lua_State* L)
 	pushFormulaNode(L, [a = std::move(a)](const BlackTek::FormulaContext& ctx) -> double
 	{
 		return -a(ctx);
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodePow(lua_State* L)
+{
+	auto lhs = nodeOrNumber(L, 1);
+	auto rhs = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [lhs = std::move(lhs), rhs = std::move(rhs)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return std::pow(lhs(ctx), rhs(ctx));
 	});
 	return 1;
 }
