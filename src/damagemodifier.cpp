@@ -28,12 +28,19 @@ namespace BlackTek
 		  true_leech(other.true_leech)
 	{
 		std::memcpy(name_buf, other.name_buf, sizeof(name_buf));
-		if (filter_index & Flag::Named) {
+
+		if (filter_index & Flag::Named)
+		{
 			auto it = modifier_monster_names.find(other.guid);
 			if (it != modifier_monster_names.end())
-				modifier_monster_names.try_emplace(guid, it->second);
+			{
+				std::string name_copy = it->second;
+				modifier_monster_names.try_emplace(guid, std::move(name_copy));
+			}
 			else if (name_buf[0] != '\0')
+			{
 				modifier_monster_names.try_emplace(guid, std::string_view(name_buf));
+			}
 		}
 	}
 
@@ -41,6 +48,7 @@ namespace BlackTek
 	{
 		if (this == &other)
 			return *this;
+
 		modifier_monster_names.erase(guid);
 		damage_type    = other.damage_type;
 		to_damage_type = other.to_damage_type;
@@ -54,9 +62,13 @@ namespace BlackTek
 		creature_type  = other.creature_type;
 		race_type      = other.race_type;
 		true_leech     = other.true_leech;
+
 		std::memcpy(name_buf, other.name_buf, sizeof(name_buf));
-		if (filter_index & Flag::Named) {
+
+		if (filter_index & Flag::Named)
+		{
 			auto it = modifier_monster_names.find(other.guid);
+
 			if (it != modifier_monster_names.end())
 				modifier_monster_names.insert_or_assign(guid, it->second);
 			else if (name_buf[0] != '\0')
@@ -88,6 +100,7 @@ namespace BlackTek
 	{
 		if (this == &other)
 			return *this;
+
 		modifier_monster_names.erase(guid);
 		guid           = other.guid;
 		other.guid     = 0;
@@ -163,15 +176,13 @@ void DamageModifier::setType(uint8_t modType)
 		}
 	}
 
-	// I think we need to prevent users from changing the stance on a modifier so for now, we comment this one out..
-	//inline void DamageModifier::setStance(uint8_t stance)						{ mod_stance = stance; }
+// I think we need to prevent users from changing the stance on a modifier so for now, we comment this one out..
+//inline void DamageModifier::setStance(uint8_t stance)						{ mod_stance = stance; }
 void DamageModifier::setValue(uint16_t amount)						{ value = amount; }
 void DamageModifier::setChance(uint8_t amount)						{ chance = amount; }
 void DamageModifier::setFactor(uint8_t value)						{ factor = value; }
 const bool DamageModifier::isPercent() const noexcept				{ return factor == std::to_underlying(Factor::Percent); }
 const bool DamageModifier::isFlatValue() const noexcept				{ return factor == std::to_underlying(Factor::Flat); }
-	// Mental Note: I just realized while writing this function, that an additional benefit to "out of band"ing these strings (sparse data) is that
-	// when going to set the data, because we store it in a container, we are not changing the object, we can actually use const XD
 void DamageModifier::setCreatureName(std::string_view creatureName) const noexcept
 {
 	modifier_monster_names.insert_or_assign(guid, std::string(creatureName));
@@ -277,7 +288,6 @@ const bool DamageModifier::appliesByName(const std::string_view creatureName) co
 	{
 		if (filter_index & DamageModifier::Flag::Named)
 		{
-			// Fast-reject: inline buffer mismatch means the name cannot match — skip hash lookup
 			if (name_buf[0] != '\0' and std::string_view(name_buf) != creatureName)
 				return false;
 

@@ -66,18 +66,12 @@ namespace BlackTek
 		int32_t max_extent = 0;
 	};
 
-	// Pre-rotated offset from a target position.  After baking direction into the
-	// stored values: spread = dx (east positive), forward = dy (south positive).
-	// Apply directly: world = { target.x + spread, target.y + forward }.
 	struct DamageLocation
 	{
 		int16_t spread;  // dx — east positive, west negative
 		int16_t forward; // dy — south positive, north negative
 	};
 
-	// Holds four pre-rotated DamageLocation sets, one per cardinal direction.
-	// Indexed by Direction enum: NORTH=0, EAST=1, SOUTH=2, WEST=3.
-	// Built once at area-setup time; execution just picks the slot and iterates.
 	struct CombatArea
 	{
 		std::array<std::vector<DamageLocation>, 4> directions;
@@ -88,15 +82,17 @@ namespace BlackTek
 	class AreaCombat
 	{
 	public:
-		void setupArea(const std::vector<uint32_t>& vec, uint32_t rows);
-		void setupExtArea(const std::vector<uint32_t>& vec, uint32_t rows);
+		void setupArea(const std::vector<uint32_t>& area_data, uint32_t rows);
+		void setupArea(int32_t radius);
+		void setupArea(int32_t length, int32_t spread);
+		void setupExtArea(const std::vector<uint32_t>& area_data, uint32_t rows);
 
 		[[nodiscard]] CombatArea GetCombatArea() const;
 		[[nodiscard]] CombatArea GetExtCombatArea() const;
 
 	private:
 		std::vector<MatrixArea> areas;
-		bool hasExtArea = false;
+		bool hasExtendedArea = false;
 	};
 
 
@@ -118,12 +114,18 @@ namespace BlackTek
 	using CombatHandle = intrusive_ptr<Combat>;
 	using CompiledFormula = std::function<double(const FormulaContext&)>;
 
-	// Holds both cardinal and diagonal CombatArea data for one Combat object.
-	// Stored by value in combat_area_pair_map; cached_areas on Combat points into it.
 	struct CombatAreaPair
 	{
 		CombatArea area;
-		CombatArea ext_area;
+		CombatArea extended_area;
+	};
+
+	struct ValidatedArea
+	{
+		std::vector<Position>& positions;
+		std::vector<TilePtr>& tiles;
+		int32_t                distance;
+		int32_t                stored_extent;
 	};
 
 	extern std::pmr::unordered_map<int64_t, CombatAreaPair> combat_area_pair_map;
@@ -233,10 +235,6 @@ namespace BlackTek
 			Stamina,
 		};
 
-		// ── Damage Output ────────────────────────────────────────────────────────
-		// How an attacker's stat translates into raw damage before any mitigation.
-		// Plug in the relevant stat (e.g. level*2 + magLevel*3 in Classic mode) at call time.
-
 		enum class OutputFormula : uint8_t
 		{
 			Flat,          // normal_random(min_value, max_value) — classic ARPG flat roll
@@ -259,10 +257,6 @@ namespace BlackTek
 			OutputFormula formula_type = OutputFormula::Linear;
 		};
 
-		// ── Damage Resistance ─────────────────────────────────────────────────────
-		// How a defender's stat translates into a resistance value.
-		// The meaning of the returned int depends on the paired ResolutionFormula.
-
 		enum class ResistanceFormula : uint8_t
 		{
 			Identity,      // returns stat unchanged — resolution formula handles mitigation
@@ -283,10 +277,6 @@ namespace BlackTek
 			uint8_t parity_offset = 0;     // Parity: hi = stat - (stat%2 + parity_offset)
 			ResistanceFormula formula_type = ResistanceFormula::Identity;
 		};
-
-		// ── Damage Resolution ─────────────────────────────────────────────────────
-		// How raw output and resistance combine into final damage.
-		// output = calculate_output result; resistance = calculate_resistance result.
 
 		enum class ResolutionFormula : uint8_t
 		{
@@ -363,8 +353,6 @@ namespace BlackTek
 		};
 
 
-		// ── Classic ──────────────────────────────────────────────────────────────
-		// stat = level * 2 + magicLevel * 3; output rolls from 0 to stat
 		static constexpr OutputFactors ClassicOutput
 		{
 			.min_scale = 0.0f,
@@ -372,7 +360,6 @@ namespace BlackTek
 			.formula_type = OutputFormula::LinearRange
 		};
 
-		// uniform_random(defense / 2, defense)
 		static constexpr ResistanceFactors ClassicDefense
 		{
 			.min_scale = 0.5f,
@@ -380,7 +367,6 @@ namespace BlackTek
 			.formula_type = ResistanceFormula::LinearRandom
 		};
 
-		// stat > 3: uniform_random(stat / 2, stat - (stat % 2 + 1)); stat in [1, 3]: flat 1
 		static constexpr ResistanceFactors ClassicArmor
 		{
 			.min_scale    = 0.5f,
@@ -390,49 +376,40 @@ namespace BlackTek
 			.formula_type = ResistanceFormula::Parity
 		};
 
-		// max(0, output - resistance_roll)
 		static constexpr ResolutionFactors ClassicResolution
 		{
 			.floor = 0.0f,
 			.formula_type = ResolutionFormula::Subtractive
 		};
 
-		// ── Scaled ────────────────────────────────────────────────────────────
-		// stat = attack value; output = base + stat * scaling
 		static constexpr OutputFactors ScaledOutput
 		{
 			.scaling = 1.0f,
 			.formula_type = OutputFormula::Linear
 		};
 
-		// armor / defense passed through unchanged; ratio applied in resolution
 		static constexpr ResistanceFactors ScaledResistance
 		{
 			.formula_type = ResistanceFormula::Identity
 		};
 
-		// output * 100 / (100 + armor)
 		static constexpr ResolutionFactors ScaledResolution
 		{
 			.constant = 100.0f,
 			.formula_type = ResolutionFormula::RatioMitigation
 		};
 
-		// ── Balanced ──────────────────────────────────────────────────────────
-		// stat = pre-computed attack component (level, power, attack folded in by caller)
 		static constexpr OutputFactors BalancedOutput
 		{
 			.scaling = 1.0f,
 			.formula_type = OutputFormula::Linear
 		};
 
-		// defense stat passed through; ScaledDivision divides output by it
 		static constexpr ResistanceFactors BalancedResistance
 		{
 			.formula_type = ResistanceFormula::Identity
 		};
 
-		// (output / defense) + 2
 		static constexpr ResolutionFactors BalancedResolution
 		{
 			.multiplier = 1.0f,
@@ -440,8 +417,6 @@ namespace BlackTek
 			.formula_type = ResolutionFormula::ScaledDivision
 		};
 
-		// ── Absorption ────────────────────────────────────────────────────────
-		// weapon AR rolled flat; set min_value / max_value per weapon at call time
 		static constexpr OutputFactors AbsorptionOutput
 		{
 			.min_value = 0.0f,
@@ -449,24 +424,18 @@ namespace BlackTek
 			.formula_type = OutputFormula::Flat
 		};
 
-		// absorption % = stat * 100 / (stat + 100)
 		static constexpr ResistanceFactors AbsorptionResistance
 		{
 			.constant = 100.0f,
 			.formula_type = ResistanceFormula::Percent
 		};
 
-		// max(1, output * (1 - absorption / 100))
 		static constexpr ResolutionFactors AbsorptionResolution
 		{
 			.floor = 1.0f,
 			.formula_type = ResolutionFormula::Layered
 		};
 
-		// ── Tabletop ──────────────────────────────────────────────────────────
-		// stat = ability modifier; normal_random(stat + 1, stat + die_max)
-		// Both bounds shift with the modifier — unlike Classic where stat IS the ceiling.
-		// Override max_base per weapon (8 = d8, 12 = d12, 6 = d6, etc.)
 		static constexpr OutputFactors TabletopOutput
 		{
 			.min_scale = 1.0f,
@@ -476,9 +445,6 @@ namespace BlackTek
 			.formula_type = OutputFormula::LinearRange
 		};
 
-		// ── Exponential / Endgame RPG ─────────────────────────────────────────
-		// stat^2 * scaling — quadratic growth rewards heavy stat investment.
-		// Useful for high-end spells or ability-tree systems.
 		static constexpr OutputFactors ExponentialOutput
 		{
 			.scaling  = 1.0f,
@@ -486,9 +452,6 @@ namespace BlackTek
 			.formula_type = OutputFormula::Power
 		};
 
-		// ── Proportional ──────────────────────────────────────────────────────
-		// stat = pre-computed (effective_attack * motion_value); resistance = effective_defense
-		// Pure division with no addend, unlike Balanced which adds 2 after dividing.
 		static constexpr ResolutionFactors ProportionalResolution
 		{
 			.multiplier = 1.0f,
@@ -496,10 +459,6 @@ namespace BlackTek
 			.formula_type = ResolutionFormula::ScaledDivision
 		};
 
-		// ── Gradual ───────────────────────────────────────────────────────────
-		// output * 950 / (950 + DEF)
-		// Same shape as Scaled but the 10x larger constant means mitigation grows
-		// much more slowly; a character needs ~950 DEF to reach 50% reduction.
 		static constexpr ResolutionFactors GradualResolution
 		{
 			.constant = 950.0f,
@@ -508,8 +467,8 @@ namespace BlackTek
 
 
 		static bool isProtected(const PlayerConstPtr& attacker, const PlayerConstPtr& target);
-		static void postCombatEffects(const CreaturePtr& caster, const Position& pos, const Combat& combat);
-		static void addDistanceEffect(const CreaturePtr& caster, const Position& fromPos, const Position& toPos, uint8_t effect);
+		static void postCombatEffects(const CreaturePtr& caster, const Position& position, const Combat& combat);
+		static void addDistanceEffect(const CreaturePtr& caster, const Position& fromPosition, const Position& toPosition, uint8_t effect);
 
 		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const PlayerPtr& victim) const noexcept;
 		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const MonsterPtr& victim) const noexcept;
@@ -534,6 +493,7 @@ namespace BlackTek
 		void strike_target(const CreaturePtr& attacker, const CreaturePtr& defender, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void apply_healing_modifiers(const PlayerPtr& caster, const auto& target);
 		void heal_target(const CreaturePtr& caster, const CreaturePtr& target, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
+		[[nodiscard]] ValidatedArea buildValidatedArea(const Position& caster_position, const Position& center, const uint32_t flag_reject, const bool config_ignore_barriers) const noexcept;
 		void execute(const CreaturePtr& caster, const Position& center) noexcept;
 		void setArea(AreaCombat* area);
 		void setArea(std::unique_ptr<AreaCombat> const area);
@@ -556,7 +516,7 @@ namespace BlackTek
 		[[nodiscard]] std::expected<uint32_t, BlockType> block(const CreaturePtr& attacker, const PlayerPtr& target) noexcept;
 		[[nodiscard]] std::expected<uint32_t, BlockType> block(const CreaturePtr& attacker, const MonsterPtr& target) noexcept;
 		[[nodiscard]] uint32_t apply_damage(const CreaturePtr& attacker, const PlayerPtr& target, uint32_t currentDamage, std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
-		[[nodiscard]] uint32_t apply_damage(const CreaturePtr& attacker, const MonsterPtr& target, uint32_t currentDamage, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
+		[[nodiscard]] uint32_t apply_damage(const CreaturePtr& attacker, const MonsterPtr& target, uint32_t currentDamage, std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 
 		[[nodiscard]]
 		inline bool hasArea() const noexcept
@@ -576,9 +536,9 @@ namespace BlackTek
 
 				case OutputFormula::LinearRange:
 				{
-					int32_t lo = static_cast<int32_t>(static_cast<float>(stat) * factors.min_scale + factors.min_base);
-					int32_t hi = static_cast<int32_t>(static_cast<float>(stat) * factors.max_scale + factors.max_base);
-					return normal_random(lo, hi);
+					int32_t lower = static_cast<int32_t>(static_cast<float>(stat) * factors.min_scale + factors.min_base);
+					int32_t upper = static_cast<int32_t>(static_cast<float>(stat) * factors.max_scale + factors.max_base);
+					return normal_random(lower, upper);
 				}
 
 				case OutputFormula::Power:
@@ -606,18 +566,18 @@ namespace BlackTek
 
 				case ResistanceFormula::LinearRandom:
 				{
-					int32_t lo = static_cast<int32_t>(static_cast<float>(stat) * factors.min_scale + factors.min_base);
-					int32_t hi = static_cast<int32_t>(static_cast<float>(stat) * factors.max_scale + factors.max_base);
-					return uniform_random(lo, hi);
+					int32_t lower = static_cast<int32_t>(static_cast<float>(stat) * factors.min_scale + factors.min_base);
+					int32_t upper = static_cast<int32_t>(static_cast<float>(stat) * factors.max_scale + factors.max_base);
+					return uniform_random(lower, upper);
 				}
 
 				case ResistanceFormula::Parity:
 				{
 					if (stat > static_cast<int32_t>(factors.threshold))
 					{
-						int32_t lo = static_cast<int32_t>(static_cast<float>(stat) * factors.min_scale);
-						int32_t hi = stat - (stat % 2 + static_cast<int32_t>(factors.parity_offset));
-						return uniform_random(lo, hi);
+						int32_t lower = static_cast<int32_t>(static_cast<float>(stat) * factors.min_scale);
+						int32_t upper = stat - (stat % 2 + static_cast<int32_t>(factors.parity_offset));
+						return uniform_random(lower, upper);
 					}
 					return static_cast<int32_t>(factors.flat_amount);
 				}
@@ -660,14 +620,14 @@ namespace BlackTek
 		}
 
 
-		void postCombatEffects(CreaturePtr& caster, const Position& pos) const { postCombatEffects(caster, pos, *this); }
+		void postCombatEffects(CreaturePtr& caster, const Position& position) const { postCombatEffects(caster, position, *this); }
 		void setOrigin(Origin o) { origin = o; }
 
 		void SetDamageType(uint16_t type) noexcept { damage_type = type; }
-		void SetDamage(uint32_t dmg) noexcept { damage = dmg; }
+		void SetDamage(uint32_t new_damage) noexcept { damage = new_damage; }
 		void SetImpactEffect(uint8_t effect) noexcept { impactEffect = effect; }
 		void SetDistanceEffect(uint8_t effect) noexcept { distanceEffect = effect; }
-		void SetBlockType(uint8_t btype) noexcept { blockType = btype; }
+		void SetBlockType(uint8_t block_type) noexcept { blockType = block_type; }
 		void SetItemId(uint16_t item) noexcept { itemId = item; }
 		void SetConfig(Config flag, bool value = true) noexcept { config.set(flag, value); }
 		[[nodiscard]] bool GetConfig(Config flag) const noexcept { return config.test(flag); }
@@ -678,8 +638,6 @@ namespace BlackTek
 		[[nodiscard]] uint8_t GetBlockType() const noexcept { return blockType; }
 		[[nodiscard]] uint16_t GetItemId() const noexcept { return itemId; }
 
-		// ── Semantic Config flag wrappers ─────────────────────────────────────────
-		// Setters
 		void setTrueDamage(bool v)      noexcept { SetConfig(Config::TrueDamage, v);       }
 		void setBlockedByArmor(bool v)  noexcept { SetConfig(Config::BlockedByArmor, v);   }
 		void setBlockedByShield(bool v) noexcept { SetConfig(Config::BlockedByDefense, v); }
@@ -692,7 +650,6 @@ namespace BlackTek
 		void setIgnoreBarriers(bool v)  noexcept { SetConfig(Config::IgnoreBarriers, v);   }
 		void setUseCharges(bool v)      noexcept { SetConfig(Config::UseCharges, v);       }
 
-		// Getters
 		[[nodiscard]] bool isTrueDamage()      const noexcept { return GetConfig(Config::TrueDamage);       }
 		[[nodiscard]] bool isBlockedByArmor()  const noexcept { return GetConfig(Config::BlockedByArmor);   }
 		[[nodiscard]] bool isBlockedByShield() const noexcept { return GetConfig(Config::BlockedByDefense); }
@@ -709,12 +666,12 @@ namespace BlackTek
 		void ClearConditions() noexcept;
 
 		void SetSituationFormulas(uint8_t index, SituationFormulas&& formulas) noexcept;
-		void RegisterCompiledFormula(uint8_t sit_idx, FormulaStage stage, CompiledFormula fn) noexcept;
-		const DamageArea getAreaPositions(const Position& casterPos, const Position& targetPos);
+		void RegisterCompiledFormula(uint8_t situation_index, FormulaStage stage, CompiledFormula formula) noexcept;
+		const DamageArea getAreaPositions(const Position& caster_position, const Position& targetPos);
 
 		[[nodiscard]] static Position generateAttackPosition(const CreaturePtr& attacker, const PlayerPtr& defender) noexcept;
 		[[nodiscard]] static std::unique_ptr<AreaCombat> generateDeflectArea(const CreaturePtr& attacker, const PlayerPtr& defender, int32_t targetCount) noexcept;
-		static void getOpenPositionsInRadius(const PlayerPtr& defender, int radius, std::vector<Position>& out) noexcept;
+		static void getOpenPositionsInRadius(const PlayerPtr& defender, int radius, std::vector<Position>& output) noexcept;
 
 		static void deflect_damage(const CreaturePtr& attacker, const PlayerPtr& defender, uint32_t amount, uint16_t damageType, uint8_t distanceEffect, uint8_t impactEffect) noexcept;
 
@@ -765,14 +722,19 @@ namespace BlackTek
 
 		uint16_t defense_charge_cost = 0;
 		uint16_t armor_charge_cost = 0;
-		uint16_t def_modifier_charge_cost = 0;
-		uint16_t atk_modifier_charge_cost = 0;
+		uint16_t defense_modifier_charge_cost = 0;
+		uint16_t attack_modifier_charge_cost = 0;
 		uint16_t itemId = 0;
 		uint16_t damage_type = DamageType::Unknown;
 		uint8_t blockType = BlockType::NoBlock;
 		uint8_t origin = Origin::None;
 		uint8_t impactEffect = CONST_ME_NONE;
 		uint8_t distanceEffect = CONST_ANI_NONE;
+
+		[[nodiscard]] static bool IsAreaTileClear(uint16_t x, uint16_t y, uint8_t z) noexcept;
+		[[nodiscard]] static bool CheckSteepLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t z) noexcept;
+		[[nodiscard]] static bool CheckSlightLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t z) noexcept;
+		[[nodiscard]] static bool IsAreaSightClear(const Position& from, const Position& to) noexcept;
 
 		friend class CombatRegistry;
 		friend void intrusive_ptr_add_ref(const Combat* p) noexcept;
@@ -814,7 +776,7 @@ namespace BlackTek
 		CombatRegistry& operator=(const CombatRegistry&) = delete;
 
 		[[nodiscard]] CombatHandle Create();
-		[[nodiscard]] CombatHandle Create(uint16_t type, uint32_t dmg);
+		[[nodiscard]] CombatHandle Create(uint16_t type, uint32_t damage);
 
 		void Release(int64_t id);
 
@@ -827,14 +789,6 @@ namespace BlackTek
 		[[nodiscard]] std::pmr::memory_resource* Allocator() noexcept { return &pool_; }
 	};
 	extern CombatRegistry g_combat_registry;
-
-	// ── Formula Override System ───────────────────────────────────────────────
-	// Three-tier resolution per damage-block step:
-	//   Level 0 — no config:      Classic defaults (zero overhead)
-	//   Level 1 — TOML / Lua:     C++ factor params from formula map
-	//   Level 2 — Lua callback:   full Lua function (registered per sit/stage)
-	//
-	// Situation indices: 0=PvP, 1=PvM, 2=MvP, 3=MvM
 
 	struct SituationFormulas
 	{
@@ -856,10 +810,6 @@ namespace BlackTek
 
 	extern std::array<SituationFormulas, 4> g_default_situation_formulas;
 
-	// ── Compiled Formula System ───────────────────────────────────────────────
-	// Context passed to every compiled formula at execution time.
-	// Stages that only need one or two values (reduction, resolution) read the
-	// fields relevant to them; unused fields are left at their zero defaults.
 	struct FormulaContext
 	{
 		CreaturePtr caster;
@@ -874,22 +824,22 @@ namespace BlackTek
 		CompiledFormula slots[4][4];
 		std::bitset<16> active;
 
-		[[nodiscard]] bool has(uint8_t sit, uint8_t stage) const noexcept
+		[[nodiscard]] bool has(uint8_t situation, uint8_t stage) const noexcept
 		{
-			return active.test(static_cast<size_t>(sit) * 4 + stage);
+			return active.test(static_cast<size_t>(situation) * 4 + stage);
 		}
 
-		void set(uint8_t sit, uint8_t stage, CompiledFormula fn) noexcept
+		void set(uint8_t situation, uint8_t stage, CompiledFormula formula) noexcept
 		{
-			slots[sit][stage] = std::move(fn);
-			active.set(static_cast<size_t>(sit) * 4 + stage);
+			slots[situation][stage] = std::move(formula);
+			active.set(static_cast<size_t>(situation) * 4 + stage);
 		}
 
-		[[nodiscard]] const CompiledFormula* get(uint8_t sit, uint8_t stage) const noexcept
+		[[nodiscard]] const CompiledFormula* get(uint8_t situation, uint8_t stage) const noexcept
 		{
-			if (not has(sit, stage))
+			if (not has(situation, stage))
 				return nullptr;
-			return &slots[sit][stage];
+			return &slots[situation][stage];
 		}
 	};
 
@@ -904,11 +854,11 @@ namespace BlackTek
 
 	extern std::unordered_map<int64_t, std::unique_ptr<CombatFormulaCache>> combat_formula_cache_map;
 
-	void ApplyOutputPreset(Combat::OutputFactors& out, std::string_view preset) noexcept;
-	void ApplyDefensePreset(Combat::ResistanceFactors& out, std::string_view preset) noexcept;
-	void ApplyArmorPreset(Combat::ResistanceFactors& out, std::string_view preset) noexcept;
-	void ApplyResolutionPreset(Combat::ResolutionFactors& out, std::string_view preset) noexcept;
-	void LoadFormulaDefaults(uint8_t sit_idx, std::string_view out_preset, std::string_view def_preset, std::string_view arm_preset, std::string_view res_preset) noexcept;
+	void ApplyOutputPreset(Combat::OutputFactors& output, std::string_view preset) noexcept;
+	void ApplyDefensePreset(Combat::ResistanceFactors& output, std::string_view preset) noexcept;
+	void ApplyArmorPreset(Combat::ResistanceFactors& output, std::string_view preset) noexcept;
+	void ApplyResolutionPreset(Combat::ResolutionFactors& output, std::string_view preset) noexcept;
+	void LoadFormulaDefaults(uint8_t situation_index, std::string_view output_preset, std::string_view defense_preset, std::string_view armor_preset, std::string_view resolution_preset) noexcept;
 
 	// Used by FormulaNode closures built in Lua to read creature stats at combat time.
 	int32_t resolve_bind_key(Combat::BindKey key, const CreaturePtr& creature) noexcept;

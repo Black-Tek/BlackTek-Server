@@ -599,6 +599,7 @@ class Game
 		void updateCreatureWalk(uint32_t creatureId) noexcept;
 		void checkCreatureAttack(uint32_t creatureId) noexcept;
 		void playerSecondaryAttack(uint32_t playerId, uint32_t targetId) noexcept;
+		void playerParryCounter(uint32_t playerId, uint32_t attackerId) noexcept;
 		void checkLight();
 
 		//animation help functions

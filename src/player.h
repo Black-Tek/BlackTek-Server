@@ -1687,8 +1687,9 @@ class Player final : public Creature, public Cylinder
 		uint32_t creature_modifiers_count = 0;
 		uint32_t race_modifiers_count = 0;
 		uint32_t healing_modifier_count = 0;
-		float    m_dual_wield_multiplier  = 1.0f;
-		bool     m_is_secondary_attack    = false;
+		float    m_dual_wield_multiplier    = 1.0f;
+		bool     m_is_secondary_attack      = false;
+		slots_t  m_secondary_attack_slot    = CONST_SLOT_LEFT;
 
 		static constexpr uint16_t MODIFIER_CONDITIONAL_MASK =
 			BlackTek::DamageModifier::Flag::Damage   |

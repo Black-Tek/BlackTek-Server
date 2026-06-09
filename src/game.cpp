@@ -5022,6 +5022,48 @@ void Game::playerSecondaryAttack(const uint32_t playerId, const uint32_t targetI
 	player->doSecondaryAttack(target);
 }
 
+void Game::playerParryCounter(const uint32_t playerId, const uint32_t attackerId) noexcept
+{
+	const auto& player = getPlayerByID(playerId);
+	if (not player or player->getHealth() <= 0)
+		return;
+
+	const auto& attacker = getCreatureByID(attackerId);
+	if (not attacker or attacker->getHealth() <= 0)
+		return;
+
+	if (not Position::areInRange<1, 1>(player->getPosition(), attacker->getPosition()))
+		return;
+
+	const auto* voc = player->getVocation();
+	if (not voc or voc->dualWield.parry_counter_multiplier <= 0.0f)
+		return;
+
+	const auto& shield = player->getInventoryItem(CONST_SLOT_LEFT);
+	if (not shield or shield->getWeaponType() != WEAPON_SHIELD)
+		return;
+
+	const int32_t shieldSkill   = player->getSkillLevel(SKILL_SHIELD);
+	const int32_t shieldDefense = std::max<int32_t>(0, shield->getDefense());
+	const float attackFactor    = player->getAttackFactor();
+	const int32_t maxDmg = static_cast<int32_t>(
+		Weapons::getMaxWeaponDamage(player->getLevel(), shieldSkill, shieldDefense, attackFactor)
+		* voc->dualWield.parry_counter_multiplier
+	);
+
+	if (maxDmg <= 0)
+		return;
+
+	auto strike = BlackTek::g_combat_registry.Create(
+		static_cast<uint16_t>(BlackTek::Combat::DamageType::Physical),
+		static_cast<uint32_t>(normal_random(0, maxDmg))
+	);
+	strike->SetConfig(BlackTek::Combat::Config::BlockedByArmor);
+	strike->SetConfig(BlackTek::Combat::Config::Aggressive);
+	strike->setOrigin(BlackTek::Combat::Origin::Melee);
+	strike->strike_target(player, attacker);
+}
+
 
 
 void Game::addCreatureCheck(const CreaturePtr& creature) noexcept
@@ -5152,28 +5194,28 @@ void Game::addCreatureHealth(const SpectatorVec& spectators, const CreatureConst
 	}
 }
 
-void Game::addMagicEffect(const Position& pos, const uint8_t effect, std::span<const CreaturePtr> spectators)
+void Game::addMagicEffect(const Position& position, const uint8_t effect, std::span<const CreaturePtr> spectators)
 {
 	for (const auto& c : spectators)
 	{
 		auto* player = static_cast<Player*>(c.get());
-		player->sendMagicEffect(pos, effect);
+		player->sendMagicEffect(position, effect);
 	}
 }
 
-void Game::addMagicEffect(const Position& pos, const uint8_t effect)
+void Game::addMagicEffect(const Position& position, const uint8_t effect)
 {
 	SpectatorVec spectators;
-	map.getSpectators(spectators, pos, true, true);
-	addMagicEffect(spectators, pos, effect);
+	map.getSpectators(spectators, position, true, true);
+	addMagicEffect(spectators, position, effect);
 }
 
-void Game::addMagicEffect(const SpectatorVec& spectators, const Position& pos, const uint8_t effect)
+void Game::addMagicEffect(const SpectatorVec& spectators, const Position& position, const uint8_t effect)
 {
 	for (const auto& c : spectators.players())
 	{
 		auto* player = static_cast<Player*>(c.get());
-		player->sendMagicEffect(pos, effect);
+		player->sendMagicEffect(position, effect);
 	}
 }
 

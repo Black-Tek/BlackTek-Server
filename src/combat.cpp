@@ -53,20 +53,20 @@ namespace BlackTek
 		const int64_t newId = next_id_++;
 		auto [it, ok] = table_.try_emplace(newId);
 		it->second.set_id(newId);
-		return CombatHandle(&it->second);   // add_ref fires here so ref_count becomes 1
+		return CombatHandle(&it->second);
 	}
 
-	CombatHandle CombatRegistry::Create(uint16_t type, uint32_t dmg)
+	CombatHandle CombatRegistry::Create(uint16_t type, uint32_t damage)
 	{
 		auto handle = Create();
 		handle->damage_type = type;
-		handle->damage = dmg;
+		handle->damage = damage;
 		return handle;
 	}
 
 	void CombatRegistry::Release(int64_t id)
 	{
-		table_.erase(id);   // hopefully destructs Combat in-place and returns the memory block back to the pool as expected
+		table_.erase(id);
 	}
 
 	Combat* CombatRegistry::Get(int64_t id) noexcept
@@ -89,8 +89,6 @@ namespace BlackTek
 		combat_formula_cache_map.erase(combat_id);
 	}
 
-	// ── Formula override methods ──────────────────────────────────────────────
-
 	int64_t Combat::ensureFormulaId() noexcept
 	{
 		if (combat_id == -1)
@@ -98,34 +96,34 @@ namespace BlackTek
 		return combat_id;
 	}
 
-	void Combat::SetSituationFormulas(uint8_t sit_idx, SituationFormulas&& formulas) noexcept
+	void Combat::SetSituationFormulas(uint8_t situation_index, SituationFormulas&& formulas) noexcept
 	{
-		if (sit_idx >= 4)
+		if (situation_index >= 4)
 			return;
 
-		const int64_t fid = ensureFormulaId();
+		const int64_t formula_id = ensureFormulaId();
 
 		if (not formula_cache)
 		{
-			auto [it, ok] = combat_formula_cache_map.emplace(fid, std::make_unique<CombatFormulaCache>());
+			auto [it, ok] = combat_formula_cache_map.emplace(formula_id, std::make_unique<CombatFormulaCache>());
 			formula_cache = it->second.get();
 			config.set(Config::HasFormulaCache);
 		}
 
-		formula_cache->situations[sit_idx] = std::move(formulas);
+		formula_cache->situations[situation_index] = std::move(formulas);
 
-		config.set(k_formula_flags[sit_idx]);
+		config.set(k_formula_flags[situation_index]);
 	}
 
-	void Combat::RegisterCompiledFormula(uint8_t sit_idx, FormulaStage stage, CompiledFormula fn) noexcept
+	void Combat::RegisterCompiledFormula(uint8_t situation_index, FormulaStage stage, CompiledFormula formula) noexcept
 	{
-		if (sit_idx >= 4 or not fn)
+		if (situation_index >= 4 or not formula)
 			return;
 
 		if (not formula_cache)
 		{
-			const int64_t fid = ensureFormulaId();
-			auto [it, ok] = combat_formula_cache_map.emplace(fid, std::make_unique<CombatFormulaCache>());
+			const int64_t formula_id = ensureFormulaId();
+			auto [it, ok] = combat_formula_cache_map.emplace(formula_id, std::make_unique<CombatFormulaCache>());
 			formula_cache = it->second.get();
 			config.set(Config::HasFormulaCache);
 		}
@@ -136,12 +134,8 @@ namespace BlackTek
 			config.set(Config::HasCompiledFormula);
 		}
 
-		formula_cache->compiled->set(sit_idx, static_cast<uint8_t>(stage), std::move(fn));
+		formula_cache->compiled->set(situation_index, static_cast<uint8_t>(stage), std::move(formula));
 	}
-
-	// ── BindKey resolution ────────────────────────────────────────────────────
-	// Maps a BindKey to a concrete integer stat read directly from a C++ creature.
-	// Called exclusively by FormulaNode closures at combat execution time.
 
 	int32_t resolve_bind_key(Combat::BindKey key, const CreaturePtr& creature) noexcept
 	{
@@ -249,50 +243,50 @@ namespace BlackTek
 		config.set(Config::HasCondition, false);
 	}
 
-	void ApplyOutputPreset(Combat::OutputFactors& out, std::string_view preset) noexcept
+	void ApplyOutputPreset(Combat::OutputFactors& output, std::string_view preset) noexcept
 	{
-		if      (preset == "Classic")		out = Combat::ClassicOutput;
-		else if (preset == "Scaled")		out = Combat::ScaledOutput;
-		else if (preset == "Balanced")		out = Combat::BalancedOutput;
-		else if (preset == "Absorption")	out = Combat::AbsorptionOutput;
-		else if (preset == "Tabletop")		out = Combat::TabletopOutput;
-		else if (preset == "Exponential")	out = Combat::ExponentialOutput;
+		if      (preset == "Classic")		output = Combat::ClassicOutput;
+		else if (preset == "Scaled")		output = Combat::ScaledOutput;
+		else if (preset == "Balanced")		output = Combat::BalancedOutput;
+		else if (preset == "Absorption")	output = Combat::AbsorptionOutput;
+		else if (preset == "Tabletop")		output = Combat::TabletopOutput;
+		else if (preset == "Exponential")	output = Combat::ExponentialOutput;
 	}
 
-	void ApplyDefensePreset(Combat::ResistanceFactors& out, std::string_view preset) noexcept
+	void ApplyDefensePreset(Combat::ResistanceFactors& output, std::string_view preset) noexcept
 	{
-		if      (preset == "Classic")		out = Combat::ClassicDefense;
-		else if (preset == "Scaled")		out = Combat::ScaledResistance;
-		else if (preset == "Balanced")		out = Combat::BalancedResistance;
-		else if (preset == "Absorption")	out = Combat::AbsorptionResistance;
+		if      (preset == "Classic")		output = Combat::ClassicDefense;
+		else if (preset == "Scaled")		output = Combat::ScaledResistance;
+		else if (preset == "Balanced")		output = Combat::BalancedResistance;
+		else if (preset == "Absorption")	output = Combat::AbsorptionResistance;
 	}
 
-	void ApplyArmorPreset(Combat::ResistanceFactors& out, std::string_view preset) noexcept
+	void ApplyArmorPreset(Combat::ResistanceFactors& output, std::string_view preset) noexcept
 	{
-		if      (preset == "Classic")		out = Combat::ClassicArmor;
-		else if (preset == "Absorption")	out = Combat::AbsorptionResistance;
+		if      (preset == "Classic")		output = Combat::ClassicArmor;
+		else if (preset == "Absorption")	output = Combat::AbsorptionResistance;
 	}
 
-	void ApplyResolutionPreset(Combat::ResolutionFactors& out, std::string_view preset) noexcept
+	void ApplyResolutionPreset(Combat::ResolutionFactors& output, std::string_view preset) noexcept
 	{
-		if      (preset == "Classic")       out = Combat::ClassicResolution;
-		else if (preset == "Scaled")        out = Combat::ScaledResolution;
-		else if (preset == "Balanced")      out = Combat::BalancedResolution;
-		else if (preset == "Absorption")    out = Combat::AbsorptionResolution;
-		else if (preset == "Proportional")  out = Combat::ProportionalResolution;
-		else if (preset == "Gradual")       out = Combat::GradualResolution;
+		if      (preset == "Classic")       output = Combat::ClassicResolution;
+		else if (preset == "Scaled")        output = Combat::ScaledResolution;
+		else if (preset == "Balanced")      output = Combat::BalancedResolution;
+		else if (preset == "Absorption")    output = Combat::AbsorptionResolution;
+		else if (preset == "Proportional")  output = Combat::ProportionalResolution;
+		else if (preset == "Gradual")       output = Combat::GradualResolution;
 	}
 
-	void LoadFormulaDefaults(uint8_t sit_idx, std::string_view out_preset, std::string_view def_preset, std::string_view arm_preset, std::string_view res_preset) noexcept
+	void LoadFormulaDefaults(uint8_t situation_index, std::string_view output_preset, std::string_view defense_preset, std::string_view armor_preset, std::string_view resolution_preset) noexcept
 	{
-		if (sit_idx >= 4)
+		if (situation_index >= 4)
 			return;
 
-		auto& sf = g_default_situation_formulas[sit_idx];
-		ApplyOutputPreset(sf.output, out_preset);
-		ApplyDefensePreset(sf.defense, def_preset);
-		ApplyArmorPreset(sf.armor, arm_preset);
-		ApplyResolutionPreset(sf.resolution, res_preset);
+		auto& sf = g_default_situation_formulas[situation_index];
+		ApplyOutputPreset(sf.output, output_preset);
+		ApplyDefensePreset(sf.defense, defense_preset);
+		ApplyArmorPreset(sf.armor, armor_preset);
+		ApplyResolutionPreset(sf.resolution, resolution_preset);
 	}
 
 	thread_local std::vector<TilePtr>     area_tile_buffer;
@@ -735,7 +729,6 @@ namespace BlackTek
 		const auto defense_position = defender->getPosition();
 		const Direction attackDirection = getDirectionTo(defense_position, attacker->getPosition());
 
-		// Offsets
 		static constexpr std::array<std::array<int, 4>, 8> DIRECTION_PATTERNS = 
 		{ {
 				// x_start, x_end, y_start, y_end
@@ -752,7 +745,7 @@ namespace BlackTek
 		std::vector<Position> possibleTargets;
 		possibleTargets.reserve(9);
 
-		const auto& pattern = DIRECTION_PATTERNS[attackDirection & 0x7]; // Mask to handle diagonal directions
+		const auto& pattern = DIRECTION_PATTERNS[attackDirection & 0x7]; // this is a mask to handle diagonal directions
 
 		auto addLocationInline = [&](int x, int y)
 		{
@@ -819,17 +812,17 @@ namespace BlackTek
 		return combatArea;
 	}
 
-	void Combat::getOpenPositionsInRadius(const PlayerPtr& defender, int radius, std::vector<Position>& out) noexcept
+	void Combat::getOpenPositionsInRadius(const PlayerPtr& defender, int radius, std::vector<Position>& output) noexcept
 	{
 		const auto& center = defender->getPosition();
 		for (int x = -radius; x <= radius; ++x)
 		{
 			for (int y = -radius; y <= radius; ++y)
 			{
-				Position pos(center.x + x, center.y + y, center.z);
-				const auto tile = g_game.map.getTile(pos);
-				if (isValidScatterTile(tile, center, pos))
-					out.push_back(pos);
+				Position position(center.x + x, center.y + y, center.z);
+				const auto tile = g_game.map.getTile(position);
+				if (isValidScatterTile(tile, center, position))
+					output.push_back(position);
 			}
 		}
 	}
@@ -892,14 +885,6 @@ namespace BlackTek
 
 
 
-	// Extracts DamageLocations from an already-rotated MatrixArea.
-	// After rotation, each active cell's offsets from the center ARE the world dx/dy:
-	//   spread  = col - cx  →  dx (east positive)
-	//   forward = row - cy  →  dy (south positive)
-	// With this new way of handling it, the caller is now responsible for passing the correctly-rotated matrix for each direction,
-	// but we have the absolute minimal data required as integer math applicable to target location, which should drastically reduce
-	// the actual workload taking place during combat execution... the future improvements to this design will be to retrieve it as a
-	// constant read only view (std::span) of the contiguous data for use during execution
 	static std::pair<std::vector<DamageLocation>, int32_t> CreateDamageLocations(const MatrixArea& area)
 	{
 		if (area.GetRows() == 0 or area.GetCols() == 0)
@@ -932,20 +917,20 @@ namespace BlackTek
 		if (not area)
 			return;
 
-		CombatArea cardinal = area->GetCombatArea();
-		CombatArea ext      = area->GetExtCombatArea();
+		CombatArea cardinal  = area->GetCombatArea();
+		CombatArea extended  = area->GetExtCombatArea();
 
-		const bool hasCard = std::ranges::any_of(cardinal.directions, [](const auto& d) { return not d.empty(); });
-		const bool hasExt  = std::ranges::any_of(ext.directions,      [](const auto& d) { return not d.empty(); });
+		const bool hasCard     = std::ranges::any_of(cardinal.directions, [](const auto& d) { return not d.empty(); });
+		const bool hasExtended = std::ranges::any_of(extended.directions, [](const auto& d) { return not d.empty(); });
 
-		if (hasCard or hasExt)
+		if (hasCard or hasExtended)
 		{
 			auto& pair = combat_area_pair_map[combat_id];
-			if (hasCard) pair.area     = std::move(cardinal);
-			if (hasExt)  pair.ext_area = std::move(ext);
+			if (hasCard)     pair.area          = std::move(cardinal);
+			if (hasExtended) pair.extended_area  = std::move(extended);
 			cached_areas = &pair;
 			config.set(Config::HasArea);
-			if (hasExt) config.set(Config::HasExtArea);
+			if (hasExtended) config.set(Config::HasExtArea);
 		}
 
 		delete area;
@@ -956,58 +941,192 @@ namespace BlackTek
 		if (not area)
 			return;
 
-		CombatArea cardinal = area->GetCombatArea();
-		CombatArea ext      = area->GetExtCombatArea();
+		CombatArea cardinal  = area->GetCombatArea();
+		CombatArea extended  = area->GetExtCombatArea();
 
-		const bool hasCard = std::ranges::any_of(cardinal.directions, [](const auto& d) { return not d.empty(); });
-		const bool hasExt  = std::ranges::any_of(ext.directions,      [](const auto& d) { return not d.empty(); });
+		const bool hasCard     = std::ranges::any_of(cardinal.directions, [](const auto& d) { return not d.empty(); });
+		const bool hasExtended = std::ranges::any_of(extended.directions, [](const auto& d) { return not d.empty(); });
 
-		if (hasCard or hasExt)
+		if (hasCard or hasExtended)
 		{
 			auto& pair = combat_area_pair_map[combat_id];
-			if (hasCard) pair.area     = std::move(cardinal);
-			if (hasExt)  pair.ext_area = std::move(ext);
+			if (hasCard)     pair.area          = std::move(cardinal);
+			if (hasExtended) pair.extended_area  = std::move(extended);
 			cached_areas = &pair;
 			config.set(Config::HasArea);
-			if (hasExt) config.set(Config::HasExtArea);
+			if (hasExtended) config.set(Config::HasExtArea);
 		}
 	}
 
-	const DamageArea Combat::getAreaPositions(const Position& casterPos, const Position& targetPos)
+
+	ValidatedArea Combat::buildValidatedArea(
+		const Position& caster_position,
+		const Position& center,
+		const uint32_t  flag_reject,
+		const bool      config_ignore_barriers) const noexcept
 	{
 		area_position_buffer.clear();
 		area_tile_buffer.clear();
 
-		const int32_t dx = Position::getOffsetX(targetPos, casterPos);
-		const int32_t dy = Position::getOffsetY(targetPos, casterPos);
+		const int32_t dx = Position::getOffsetX(center, caster_position);
+		const int32_t dy = Position::getOffsetY(center, caster_position);
 		const std::vector<DamageLocation>* locations = nullptr;
 		int32_t stored_max_extent = 0;
 
-		// Flags set at setArea() time — no pointer or container checks needed here.
 		if (config.test(Config::HasArea))
 		{
 			if ((dx != 0) and (dy != 0) and config.test(Config::HasExtArea))
 			{
-				Direction diagDir;
-				if      (dx < 0 and dy < 0) diagDir = DIRECTION_NORTHWEST;
-				else if (dx > 0 and dy < 0) diagDir = DIRECTION_NORTHEAST;
-				else if (dx < 0)            diagDir = DIRECTION_SOUTHWEST;
-				else                        diagDir = DIRECTION_SOUTHEAST;
+				Direction diagonalDirection;
+				if (dx < 0 and dy < 0) diagonalDirection = DIRECTION_NORTHWEST;
+				else if (dx > 0 and dy < 0) diagonalDirection = DIRECTION_NORTHEAST;
+				else if (dx < 0)            diagonalDirection = DIRECTION_SOUTHWEST;
+				else                        diagonalDirection = DIRECTION_SOUTHEAST;
 
-				const uint8_t slot = static_cast<uint8_t>(diagDir) ^ DIRECTION_DIAGONAL_MASK;
-				locations = &cached_areas->ext_area.directions[slot];
-				stored_max_extent = cached_areas->ext_area.max_extent;
+				const uint8_t slot = static_cast<uint8_t>(diagonalDirection) ^ DIRECTION_DIAGONAL_MASK;
+				locations = &cached_areas->extended_area.directions[slot];
+				stored_max_extent = cached_areas->extended_area.max_extent;
 			}
 
 			if (not locations)
 			{
-				Direction cardDir;
-				if      (dx < 0) cardDir = DIRECTION_WEST;
-				else if (dx > 0) cardDir = DIRECTION_EAST;
-				else if (dy < 0) cardDir = DIRECTION_NORTH;
-				else             cardDir = DIRECTION_SOUTH;
+				Direction cardinalDirection;
+				if (dx < 0) cardinalDirection = DIRECTION_WEST;
+				else if (dx > 0) cardinalDirection = DIRECTION_EAST;
+				else if (dy < 0) cardinalDirection = DIRECTION_NORTH;
+				else             cardinalDirection = DIRECTION_SOUTH;
 
-				locations = &cached_areas->area.directions[cardDir];
+				locations = &cached_areas->area.directions[cardinalDirection];
+				stored_max_extent = cached_areas->area.max_extent;
+			}
+		}
+
+		const int32_t distance = std::max(std::abs(dx), std::abs(dy));
+
+		if (not locations or locations->empty())
+			return { area_position_buffer, area_tile_buffer, distance, 0 };
+
+		const size_t loc_count = locations->size();
+		const DamageLocation* locs = locations->data();
+		const uint16_t base_x = center.x;
+		const uint16_t base_y = center.y;
+
+		const auto try_emit = [&](const TilePtr& tile, const Position& position) noexcept
+			{
+				if ((tile->getFlags() & flag_reject) != 0u)
+					return;
+				if (not config_ignore_barriers and not Combat::IsAreaSightClear(center, position))
+					return;
+				area_position_buffer.push_back(position);
+				area_tile_buffer.push_back(tile);
+			};
+
+		if (config.test(Config::MultiLevel))
+		{
+			const int  casterZ = static_cast<int>(caster_position.z);
+			const bool ignore_ground = config.test(Config::IgnoreGround);
+
+			const int floor_range = g_config.GetNumber(ConfigManager::MULTILEVEL_FLOOR_RANGE);
+
+			const uint8_t minZ = ignore_ground
+				? static_cast<uint8_t>(std::max(0, casterZ - floor_range))
+				: static_cast<uint8_t>(casterZ);
+			const uint8_t maxZ = static_cast<uint8_t>(std::min(MAP_MAX_LAYERS - 1, casterZ + floor_range));
+
+			const size_t upper = loc_count * static_cast<size_t>(maxZ - minZ + 1);
+			area_position_buffer.reserve(upper);
+			area_tile_buffer.reserve(upper);
+
+			if (ignore_ground)
+			{
+				for (uint8_t z = minZ; z <= maxZ; ++z)
+				{
+					for (size_t k = 0; k < loc_count; ++k)
+					{
+						const uint16_t wx = static_cast<uint16_t>(base_x + locs[k].spread);
+						const uint16_t wy = static_cast<uint16_t>(base_y + locs[k].forward);
+						const Position position(wx, wy, z);
+						const auto tile = g_game.map.getTile(wx, wy, z);
+						if (not tile)
+							continue;
+						try_emit(tile, position);
+					}
+				}
+			}
+			else
+			{
+				for (size_t k = 0; k < loc_count; ++k)
+				{
+					const uint16_t wx = static_cast<uint16_t>(base_x + locs[k].spread);
+					const uint16_t wy = static_cast<uint16_t>(base_y + locs[k].forward);
+
+					for (uint8_t z = minZ; z <= maxZ; ++z)
+					{
+						const auto tile = g_game.map.getTile(wx, wy, z);
+						if (tile and tile->getGround())
+						{
+							try_emit(tile, Position(wx, wy, z));
+							break;
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			area_position_buffer.reserve(loc_count);
+			area_tile_buffer.reserve(loc_count);
+
+			const uint8_t z = center.z;
+			for (size_t k = 0; k < loc_count; ++k)
+			{
+				const uint16_t wx = static_cast<uint16_t>(base_x + locs[k].spread);
+				const uint16_t wy = static_cast<uint16_t>(base_y + locs[k].forward);
+				const auto tile = g_game.map.getTile(wx, wy, z);
+				if (not tile)
+					continue;
+				try_emit(tile, Position(wx, wy, z));
+			}
+		}
+
+		return { area_position_buffer, area_tile_buffer, distance, stored_max_extent };
+	}
+
+
+	const DamageArea Combat::getAreaPositions(const Position& caster_position, const Position& targetPos)
+	{
+		area_position_buffer.clear();
+		area_tile_buffer.clear();
+
+		const int32_t dx = Position::getOffsetX(targetPos, caster_position);
+		const int32_t dy = Position::getOffsetY(targetPos, caster_position);
+		const std::vector<DamageLocation>* locations = nullptr;
+		int32_t stored_max_extent = 0;
+
+		if (config.test(Config::HasArea))
+		{
+			if ((dx != 0) and (dy != 0) and config.test(Config::HasExtArea))
+			{
+				Direction diagonalDirection;
+				if      (dx < 0 and dy < 0) diagonalDirection = DIRECTION_NORTHWEST;
+				else if (dx > 0 and dy < 0) diagonalDirection = DIRECTION_NORTHEAST;
+				else if (dx < 0)            diagonalDirection = DIRECTION_SOUTHWEST;
+				else                        diagonalDirection = DIRECTION_SOUTHEAST;
+
+				const uint8_t slot = static_cast<uint8_t>(diagonalDirection) ^ DIRECTION_DIAGONAL_MASK;
+				locations = &cached_areas->extended_area.directions[slot];
+				stored_max_extent = cached_areas->extended_area.max_extent;
+			}
+
+			if (not locations)
+			{
+				Direction cardinalDirection;
+				if      (dx < 0) cardinalDirection = DIRECTION_WEST;
+				else if (dx > 0) cardinalDirection = DIRECTION_EAST;
+				else if (dy < 0) cardinalDirection = DIRECTION_NORTH;
+				else             cardinalDirection = DIRECTION_SOUTH;
+
+				locations = &cached_areas->area.directions[cardinalDirection];
 				stored_max_extent = cached_areas->area.max_extent;
 			}
 		}
@@ -1022,7 +1141,7 @@ namespace BlackTek
 
 		if (config.test(Config::MultiLevel))
 		{
-			const int casterZ          = static_cast<int>(casterPos.z);
+			const int casterZ          = static_cast<int>(caster_position.z);
 			const bool ignore_ground   = config.test(Config::IgnoreGround);
 			static const int floor_range = g_config.GetNumber(ConfigManager::MULTILEVEL_FLOOR_RANGE);
 
@@ -1033,8 +1152,6 @@ namespace BlackTek
 
 			if (ignore_ground)
 			{
-				// No barrier: emit every floor in the visible range.
-				// Pre-size the buffer so all writes go directly to contiguous storage.
 				const size_t total = loc_count * static_cast<size_t>(maxZ - minZ + 1);
 				area_position_buffer.resize(total);
 				Position* dst = area_position_buffer.data();
@@ -1052,10 +1169,6 @@ namespace BlackTek
 			}
 			else
 			{
-				// Per-column ground barrier: iterate downward from the caster's floor.
-				// The first tile that has a ground item stops propagation for that column.
-				// The resolved TilePtr is pushed to area_tile_buffer in lock-step with
-				// area_position_buffer, so execute() can skip the second getTile() call.
 				area_position_buffer.reserve(loc_count);
 				area_tile_buffer.reserve(loc_count);
 
@@ -1079,7 +1192,6 @@ namespace BlackTek
 		}
 		else
 		{
-			// Single-floor path: pre-size and write directly into contiguous storage.
 			area_position_buffer.resize(loc_count);
 			Position* dst = area_position_buffer.data();
 			const uint8_t z = targetPos.z;
@@ -1222,8 +1334,8 @@ namespace BlackTek
 				item->setOwner(casterID);
 
 				CylinderPtr holder = tile;
-				ReturnValue ret = g_game.internalAddItem(holder, item);
-				auto decay = (ret == RETURNVALUE_NOERROR) and item->canDecay();
+				ReturnValue return_value = g_game.internalAddItem(holder, item);
+				auto decay = (return_value == RETURNVALUE_NOERROR) and item->canDecay();
 
 				if (decay) [[likely]]
 					g_game.startDecay(item);
@@ -1281,12 +1393,15 @@ namespace BlackTek
 		if (damage_type == DamageType::Healing)
 			return Combat::TargetCode::Valid;
 
+		if (victim->hasFlag(PlayerFlag_CannotBeAttacked))
+			return Combat::TargetCode::CanNotAttackThisPlayer;
+
 		const auto& master = attacker->getMaster();
 		const auto& commander = (master) ? ((master->is_player()) ? master->getPlayer() : nullptr) : nullptr;
 
 		if (commander)
 		{
-			const bool attack_blocked = commander->hasFlag(PlayerFlag_CannotAttackPlayer) or isProtected(commander, victim) or victim->hasFlag(PlayerFlag_CannotBeAttacked);
+			const bool attack_blocked = commander->hasFlag(PlayerFlag_CannotAttackPlayer) or isProtected(commander, victim);
 
 			if (attack_blocked)
 				return Combat::TargetCode::CanNotAttackThisPlayer;
@@ -1307,7 +1422,9 @@ namespace BlackTek
 		const bool ward = victim->getMaster() and victim->getMaster()->is_player();
 
 		if (not commander and not ward)
-			return Combat::TargetCode::CanNotAttackThisMonster; // this is classic style rules, monsters don't harm other monsters in general, we will want this to be the users decision
+			return Combat::TargetCode::CanNotAttackThisMonster; 
+		// this is classic style rules, monsters don't harm other monsters in general, we will want this to be the users decision
+		// todo: this prevention on targetting doesn't stop aoe's from damaging, so that needs to be addressed
 
 		return Combat::TargetCode::Valid;
 	}
@@ -1427,7 +1544,9 @@ namespace BlackTek
 	// the damage value, and that is actually not the most common, or at least not the only top common path... People will often
 	// choose to target percent based on victim's stats.. example, 10 percent lifesteal would steal 10 percent of the victims overall health
 	// rather than just 10 percent of the damage output. I don't know how I have never really realized this huge fallacy before now.
-	// The 'Todo' here is to build another cache system strictly bound by "damage output" or "victim stat"
+	// The 'Todo' here is to build another cache system strictly bound by "damage output" or "victim stat", and to do so, we must first change
+	// damagemodifier so that it stores such data for us... and then, we also have to rework everywhere augments are applied to again follow the same chain
+	// or priority order we have established already... this is a massive additional feature for damage modifiers/augments and combat that will have to come later
 
 	uint32_t Combat::process_steal(const PlayerPtr& caster, const CreaturePtr& victim, const LeechData& steal, uint32_t currentDamage) noexcept
 	{
@@ -1455,7 +1574,7 @@ namespace BlackTek
 				lifesteal->config.set(Config::AttackModified);
 				lifesteal->config.set(Config::TrueDamage);		// This is our new path for setting damage values directly
 				lifesteal->damage = stolen;						// by setting it as true damage it skips the "block" call which does the callbacks for damage calculation
-				lifesteal->strike_target(caster, victim, true);	// and calling the strike_target directly if we are not executing an area combat, execute if it is an area combat
+				lifesteal->strike_target(caster, victim, true);	// and calling the strike_target directly if we are not executing an area combat. Use execute() if it is indeed an area combat for your use case
 			}
 		}
 
@@ -1786,11 +1905,11 @@ namespace BlackTek
 
 		auto accumulate = [&](const DamageModifier& modifier)
 		{
-			const auto def_type = static_cast<DefenseType>(modifier.mod_type);
-			const bool is_flat  = modifier.isFlatValue();
-			const uint32_t val  = modifier.getValue();
+			const auto defense_type = static_cast<DefenseType>(modifier.mod_type);
+			const bool is_flat      = modifier.isFlatValue();
+			const uint32_t val      = modifier.getValue();
 
-			switch (def_type)
+			switch (defense_type)
 			{
 				case DefenseType::Resist:    (is_flat ? flat_resist    : percent_resist)    += val; break;
 				case DefenseType::Weakness:  (is_flat ? flat_weak      : percent_weak)      += val; break;
@@ -1807,15 +1926,15 @@ namespace BlackTek
 
 		if (victim->hasFilteredDefenseMods())
 		{
-			auto fv = victim->getFilteredDefenseMods() | std::views::filter(applied);
-			for (const auto& modifier : fv)
+			auto filtered_view = victim->getFilteredDefenseMods() | std::views::filter(applied);
+			for (const auto& modifier : filtered_view)
 				accumulate(modifier);
 		}
 
 		if (victim->hasNamedDefenseMods())
 		{
-			auto fv = victim->getNamedDefenseMods() | std::views::filter(applied);
-			for (const auto& modifier : fv)
+			auto filtered_view = victim->getNamedDefenseMods() | std::views::filter(applied);
+			for (const auto& modifier : filtered_view)
 				accumulate(modifier);
 		}
 
@@ -1927,23 +2046,20 @@ namespace BlackTek
 		return currentDamage;
 	}
 
-	// Returns false if damage was fully consumed by conversion (caller should stop processing).
 	template <typename VictimT>
-	void Combat::accumulate_attack_mods(const PlayerPtr& caster, const VictimT& victim,
-	                                     uint32_t& currentDamage, LeechData& leech_data, LeechData& steal_data,
-	                                     const std::optional<std::span<const CreaturePtr>>& spectators) noexcept
+	void Combat::accumulate_attack_mods(const PlayerPtr& caster, const VictimT& victim, uint32_t& currentDamage, LeechData& leech_data, LeechData& steal_data, const std::optional<std::span<const CreaturePtr>>& spectators) noexcept
 	{
 		if (not caster->hasAttackModifiers() or config.test(Config::AttackModified))
 			return;
 
-		const float atk_mult    = caster->get_atk_modifier_charge_cost_multiplier();
-		const uint32_t atk_cost = static_cast<uint32_t>(std::round(static_cast<float>(atk_modifier_charge_cost) * atk_mult));
+		const float attack_multiplier    = caster->get_atk_modifier_charge_cost_multiplier();
+		const uint32_t attack_cost = static_cast<uint32_t>(std::round(static_cast<float>(attack_modifier_charge_cost) * attack_multiplier));
 
-		if (atk_cost != 0 and caster->get_atk_modifier_charges() < atk_cost)
+		if (attack_cost != 0 and caster->get_atk_modifier_charges() < attack_cost)
 			return;
 
-		if (atk_cost > 0)
-			caster->set_atk_modifier_charges(caster->get_atk_modifier_charges() - atk_cost);
+		if (attack_cost > 0)
+			caster->set_atk_modifier_charges(caster->get_atk_modifier_charges() - attack_cost);
 
 		const auto conversion_count = caster->conversion_mod_count();
 		const auto victim_race      = victim->getRace();
@@ -2004,25 +2120,25 @@ namespace BlackTek
 			for (const auto& modifier : post_view)
 			{
 				const auto mod_type = static_cast<DamageModifier::AttackType>(modifier.mod_type);
-				auto& tgt = modifier.true_leech ? steal_data : leech_data;
+				auto& target_data = modifier.true_leech ? steal_data : leech_data;
 
 				switch (mod_type)
 				{
 					case DamageModifier::AttackType::Lifesteal:
-						tgt.percent_health += modifier.isFlatValue() ? 0 : modifier.getValue();
-						tgt.flat_health    += modifier.isFlatValue() ? modifier.getValue() : 0;
+						target_data.percent_health += modifier.isFlatValue() ? 0 : modifier.getValue();
+						target_data.flat_health    += modifier.isFlatValue() ? modifier.getValue() : 0;
 						break;
 					case DamageModifier::AttackType::Manasteal:
-						tgt.percent_mana   += modifier.isFlatValue() ? 0 : modifier.getValue();
-						tgt.flat_mana      += modifier.isFlatValue() ? modifier.getValue() : 0;
+						target_data.percent_mana   += modifier.isFlatValue() ? 0 : modifier.getValue();
+						target_data.flat_mana      += modifier.isFlatValue() ? modifier.getValue() : 0;
 						break;
 					case DamageModifier::AttackType::Staminasteal:
-						tgt.percent_stamina += modifier.isFlatValue() ? 0 : modifier.getValue();
-						tgt.flat_stamina    += modifier.isFlatValue() ? modifier.getValue() : 0;
+						target_data.percent_stamina += modifier.isFlatValue() ? 0 : modifier.getValue();
+						target_data.flat_stamina    += modifier.isFlatValue() ? modifier.getValue() : 0;
 						break;
 					case DamageModifier::AttackType::Soulsteal:
-						tgt.percent_soul += modifier.isFlatValue() ? 0 : modifier.getValue();
-						tgt.flat_soul    += modifier.isFlatValue() ? modifier.getValue() : 0;
+						target_data.percent_soul += modifier.isFlatValue() ? 0 : modifier.getValue();
+						target_data.flat_soul    += modifier.isFlatValue() ? modifier.getValue() : 0;
 						break;
 					default: [[unlikely]]
 						break;
@@ -2046,11 +2162,11 @@ namespace BlackTek
 
 	void Combat::strike_target(const PlayerPtr& caster, const PlayerPtr& victim, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
 	{
-		const bool cfg_has_condition = config.test(Config::HasCondition);
+		const bool config_has_condition = config.test(Config::HasCondition);
 
 		if (damage_type == DamageType::Unknown)
 		{
-			if (cfg_has_condition)
+			if (config_has_condition)
 			{
 				for (const auto& cond : *condition_list)
 					victim->addCondition(cond->clone());
@@ -2105,13 +2221,13 @@ namespace BlackTek
 
 		if (victim->hasDefenseModifiers() and not config.test(Config::DefenseModified))
 		{
-			const float def_mult = victim->get_def_modifier_charge_cost_multiplier();
-			const uint32_t def_cost = static_cast<uint32_t>(std::round(static_cast<float>(def_modifier_charge_cost) * def_mult));
+			const float defense_multiplier = victim->get_def_modifier_charge_cost_multiplier();
+			const uint32_t defense_cost = static_cast<uint32_t>(std::round(static_cast<float>(defense_modifier_charge_cost) * defense_multiplier));
 
-			if (def_cost == 0 or victim->get_def_modifier_charges() >= def_cost)
+			if (defense_cost == 0 or victim->get_def_modifier_charges() >= defense_cost)
 			{
-				if (def_cost > 0)
-					victim->set_def_modifier_charges(victim->get_def_modifier_charges() - def_cost);
+				if (defense_cost > 0)
+					victim->set_def_modifier_charges(victim->get_def_modifier_charges() - defense_cost);
 
 				const auto reform_count = victim->reform_mod_count();
 
@@ -2132,13 +2248,12 @@ namespace BlackTek
 		else
 		{
 			post_damage(caster, victim, currentDamage, std::move(leech_data));
-			if (cfg_has_condition)
+			if (config_has_condition)
 			{
 				for (const auto& cond : *condition_list)
 					victim->addCondition(cond->clone());
 			}
 
-			// UseCharges: on a successful hit, consume one charge/count from the caster's equipped weapon.
 			if (config.test(Config::UseCharges))
 			{
 				if (const auto& weaponItem = caster->getWeapon(CONST_SLOT_RIGHT, false))
@@ -2163,11 +2278,11 @@ namespace BlackTek
 
 	void Combat::strike_target(const PlayerPtr& caster, const MonsterPtr& victim, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
 	{
-		const bool cfg_has_condition = config.test(Config::HasCondition);
+		const bool config_has_condition = config.test(Config::HasCondition);
 
 		if (damage_type == DamageType::Unknown)
 		{
-			if (cfg_has_condition)
+			if (config_has_condition)
 			{
 				for (const auto& cond : *condition_list)
 					victim->addCondition(cond->clone());
@@ -2229,13 +2344,12 @@ namespace BlackTek
 		else
 		{
 			post_damage(caster, victim, currentDamage, std::move(leech_data));
-			if (cfg_has_condition)
+			if (config_has_condition)
 			{
 				for (const auto& cond : *condition_list)
 					victim->addCondition(cond->clone());
 			}
 
-			// UseCharges: on a successful hit, consume one charge/count from the caster's equipped weapon.
 			if (config.test(Config::UseCharges))
 			{
 				if (const auto& weaponItem = caster->getWeapon(CONST_SLOT_RIGHT, false))
@@ -2260,11 +2374,11 @@ namespace BlackTek
 
 	void Combat::strike_target(const MonsterPtr& attacker, const PlayerPtr& victim, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
 	{
-		const bool cfg_has_condition = config.test(Config::HasCondition);
+		const bool config_has_condition = config.test(Config::HasCondition);
 
 		if (damage_type == DamageType::Unknown)
 		{
-			if (cfg_has_condition)
+			if (config_has_condition)
 			{
 				for (const auto& cond : *condition_list)
 					victim->addCondition(cond->clone());
@@ -2307,13 +2421,13 @@ namespace BlackTek
 
 		if (victim->hasDefenseModifiers() and not config.test(Config::DefenseModified))
 		{
-			const float def_mult = victim->get_def_modifier_charge_cost_multiplier();
-			const uint32_t def_cost = static_cast<uint32_t>(std::round(static_cast<float>(def_modifier_charge_cost) * def_mult));
+			const float defense_multiplier = victim->get_def_modifier_charge_cost_multiplier();
+			const uint32_t defense_cost = static_cast<uint32_t>(std::round(static_cast<float>(defense_modifier_charge_cost) * defense_multiplier));
 
-			if (def_cost == 0 or victim->get_def_modifier_charges() >= def_cost)
+			if (defense_cost == 0 or victim->get_def_modifier_charges() >= defense_cost)
 			{
-				if (def_cost > 0)
-					victim->set_def_modifier_charges(victim->get_def_modifier_charges() - def_cost);
+				if (defense_cost > 0)
+					victim->set_def_modifier_charges(victim->get_def_modifier_charges() - defense_cost);
 
 				const auto reform_count = victim->reform_mod_count();
 
@@ -2331,7 +2445,7 @@ namespace BlackTek
 		}
 		else
 		{
-			if (cfg_has_condition)
+			if (config_has_condition)
 			{
 				for (const auto& cond : *condition_list)
 					victim->addCondition(cond->clone());
@@ -2341,11 +2455,11 @@ namespace BlackTek
 
 	void Combat::strike_target(const MonsterPtr& attacker, const MonsterPtr& victim, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
 	{
-		const bool cfg_has_condition = config.test(Config::HasCondition);
+		const bool config_has_condition = config.test(Config::HasCondition);
 
 		if (damage_type == DamageType::Unknown)
 		{
-			if (cfg_has_condition)
+			if (config_has_condition)
 			{
 				for (const auto& cond : *condition_list)
 					victim->addCondition(cond->clone());
@@ -2386,19 +2500,13 @@ namespace BlackTek
 			currentDamage = blockResult.value();
 		}
 
-		// Do we do anything here for summons attacking or being attacked or anything like that? Perhaps in the future when we allow passing
-		// either augments or modifiers directly with combat this version of combat becomes useful, or maybe we revamp the summon system and finally
-		// make summon an actual "thing" type derived from monster like I always thought it should be... I just feel like I'm forgetting something obvious right now
-
-		// about the above comment, I think perhaps we can allow multiple formula's for different target creature types, monster, npc, boss or player.
-
 		if (apply_damage(attacker, victim, currentDamage, spectators) == 0)
 		{
 			// some kind of log here ?
 		}
 		else
 		{
-			if (cfg_has_condition)
+			if (config_has_condition)
 			{
 				for (const auto& cond : *condition_list)
 					victim->addCondition(cond->clone());
@@ -2460,8 +2568,8 @@ namespace BlackTek
 
 		if (caster->hasFilteredHealingMods())
 		{
-			auto fv = caster->getFilteredHealingMods() | std::views::filter(applied);
-			for (const auto& modifier : fv)
+			auto filtered_view = caster->getFilteredHealingMods() | std::views::filter(applied);
+			for (const auto& modifier : filtered_view)
 			{
 				percent_boost += modifier.isFlatValue() ? 0 : modifier.getValue();
 				flat_boost    += modifier.isFlatValue() ? modifier.getValue() : 0;
@@ -2470,8 +2578,8 @@ namespace BlackTek
 
 		if (caster->hasNamedHealingMods())
 		{
-			auto fv = caster->getNamedHealingMods() | std::views::filter(applied);
-			for (const auto& modifier : fv)
+			auto filtered_view = caster->getNamedHealingMods() | std::views::filter(applied);
+			for (const auto& modifier : filtered_view)
 			{
 				percent_boost += modifier.isFlatValue() ? 0 : modifier.getValue();
 				flat_boost    += modifier.isFlatValue() ? modifier.getValue() : 0;
@@ -2487,10 +2595,9 @@ namespace BlackTek
 		if (damage_type != DamageType::Healing)
 			return;
 
-		// Output stage: compiled formula → TOML/Lua factor params → fixed damage
 		const bool caster_player = caster && caster->getCreatureSubType() == CreatureSubType::Player;
 		const bool target_player = target && target->getCreatureSubType() == CreatureSubType::Player;
-		const uint8_t sit_idx = caster_player
+		const uint8_t situation_index = caster_player
 			? (target_player ? 0u : 1u)
 			: (target_player ? 2u : 3u);
 
@@ -2498,18 +2605,18 @@ namespace BlackTek
 			? formula_cache->compiled.get()
 			: nullptr;
 
-		FormulaContext ctx;
-		ctx.caster = caster;
-		ctx.target = target;
+		FormulaContext context;
+		context.caster = caster;
+		context.target = target;
 
 		uint32_t heal_amount = damage;
-		if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Output)) : nullptr)
+		if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Output)) : nullptr)
 		{
-			heal_amount = static_cast<uint32_t>(std::abs((*fn)(ctx)));
+			heal_amount = static_cast<uint32_t>(std::abs((*formula)(context)));
 		}
 		else if (config.test(Config::HasFormulaCache) && caster && caster->is_player())
 		{
-			const SituationFormulas& formulas = formula_cache->situations[sit_idx];
+			const SituationFormulas& formulas = formula_cache->situations[situation_index];
 			const int32_t stat = static_cast<int32_t>(caster->getPlayer()->getLevel())
 			                   + static_cast<int32_t>(caster->getPlayer()->getMagicLevel()) * 3;
 			heal_amount = static_cast<uint32_t>(std::abs(calculate_output(formulas.output, stat)));
@@ -2592,276 +2699,246 @@ namespace BlackTek
 		}
 	}
 
-	namespace
+	bool Combat::IsAreaTileClear(const uint16_t x, const uint16_t y, const uint8_t z) noexcept
 	{
-		// Checks whether an intermediate tile on a line-of-sight walk is passable for area combat.
-		// Uses precomputed TILESTATE flags: immovable solid objects (walls, trees) and path-blockers.
-		bool isAreaCombatTileClear(const uint16_t x, const uint16_t y, const uint8_t z) noexcept
+		const auto tile = g_game.map.getTile(x, y, z);
+		if (not tile) return true;
+		constexpr uint32_t barrier = TILESTATE_IMMOVABLEBLOCKSOLID
+			| TILESTATE_BLOCKPATH
+			| TILESTATE_IMMOVABLENOFIELDBLOCKPATH;
+		return (tile->getFlags() & barrier) == 0u;
+	}
+
+	bool Combat::CheckSteepLine(const uint16_t x0, const uint16_t y0, const uint16_t x1, const uint16_t y1, const uint8_t z) noexcept
+	{
+		const float dx    = x1 - x0;
+		const float slope = (dx == 0.0f) ? 1.0f : (y1 - y0) / dx;
+		float yi = y0 + slope;
+		for (uint16_t x = x0 + 1; x < x1; ++x, yi += slope)
 		{
-			const auto tile = g_game.map.getTile(x, y, z);
-			if (not tile) return true;
-			constexpr uint32_t kBarrier = TILESTATE_IMMOVABLEBLOCKSOLID
-				| TILESTATE_BLOCKPATH
-				| TILESTATE_IMMOVABLENOFIELDBLOCKPATH;
-			return (tile->getFlags() & kBarrier) == 0u;
+			if (not IsAreaTileClear(static_cast<uint16_t>(std::floor(yi + 0.1f)), x, z))
+				return false;
+		}
+		return true;
+	}
+
+	bool Combat::CheckSlightLine(const uint16_t x0, const uint16_t y0, const uint16_t x1, const uint16_t y1, const uint8_t z) noexcept
+	{
+		const float dx    = x1 - x0;
+		const float slope = (dx == 0.0f) ? 1.0f : (y1 - y0) / dx;
+		float yi = y0 + slope;
+		for (uint16_t x = x0 + 1; x < x1; ++x, yi += slope)
+		{
+			if (not IsAreaTileClear(x, static_cast<uint16_t>(std::floor(yi + 0.1f)), z))
+				return false;
+		}
+		return true;
+	}
+
+	bool Combat::IsAreaSightClear(const Position& from, const Position& to) noexcept
+	{
+		if (from == to or from.z != to.z) return true;
+		if (std::abs(from.x - to.x) < 2 and std::abs(from.y - to.y) < 2) return true;
+
+		if (std::abs(to.y - from.y) > std::abs(to.x - from.x))
+		{
+			if (to.y > from.y)
+				return CheckSteepLine(from.y, from.x, to.y, to.x, from.z);
+			return CheckSteepLine(to.y, to.x, from.y, from.x, from.z);
 		}
 
-		bool checkSteepLineForCombat(const uint16_t x0, const uint16_t y0, const uint16_t x1, const uint16_t y1, const uint8_t z) noexcept
-		{
-			const float dx    = x1 - x0;
-			const float slope = (dx == 0.0f) ? 1.0f : (y1 - y0) / dx;
-			float yi = y0 + slope;
-			for (uint16_t x = x0 + 1; x < x1; ++x, yi += slope)
-			{
-				if (not isAreaCombatTileClear(static_cast<uint16_t>(std::floor(yi + 0.1f)), x, z))
-					return false;
-			}
-			return true;
-		}
-
-		bool checkSlightLineForCombat(const uint16_t x0, const uint16_t y0, const uint16_t x1, const uint16_t y1, const uint8_t z) noexcept
-		{
-			const float dx    = x1 - x0;
-			const float slope = (dx == 0.0f) ? 1.0f : (y1 - y0) / dx;
-			float yi = y0 + slope;
-			for (uint16_t x = x0 + 1; x < x1; ++x, yi += slope)
-			{
-				if (not isAreaCombatTileClear(x, static_cast<uint16_t>(std::floor(yi + 0.1f)), z))
-					return false;
-			}
-			return true;
-		}
-
-		// Area-combat-specific sight check. Treats immovable-solid obstacles (walls, trees, bushes)
-		// and path-blockers as opaque for the purpose of determining valid spell tiles. Only same-floor.
-		bool isAreaCombatSightClear(const Position& from, const Position& to) noexcept
-		{
-			if (from == to or from.z != to.z) return true;
-			if (std::abs(from.x - to.x) < 2 and std::abs(from.y - to.y) < 2) return true;
-
-			if (std::abs(to.y - from.y) > std::abs(to.x - from.x))
-			{
-				if (to.y > from.y)
-					return checkSteepLineForCombat(from.y, from.x, to.y, to.x, from.z);
-				return checkSteepLineForCombat(to.y, to.x, from.y, from.x, from.z);
-			}
-
-			if (from.x > to.x)
-				return checkSlightLineForCombat(to.x, to.y, from.x, from.y, from.z);
-			return checkSlightLineForCombat(from.x, from.y, to.x, to.y, from.z);
-		}
-	} // anonymous namespace
+		if (from.x > to.x)
+			return CheckSlightLine(to.x, to.y, from.x, from.y, from.z);
+		return CheckSlightLine(from.x, from.y, to.x, to.y, from.z);
+	}
 
 	void Combat::execute(const CreaturePtr& caster, const Position& center) noexcept
 	{
-		const auto& [positions, distance, stored_extent] = getAreaPositions(caster->getPosition(), center);
+		const bool config_aggressive = config.test(Config::Aggressive);
+		const bool config_ignore_barriers = config.test(Config::IgnoreBarriers);
+		const bool config_top_target_only = config.test(Config::TopTargetOnly);
+		const bool config_self_only = config.test(Config::SelfOnly);
+		const bool config_friendly_party = config.test(Config::FriendlyParty);
+		const bool config_enemy_party = config.test(Config::EnemyParty);
+		const bool config_fragged_only = config.test(Config::FraggedOnly);
+		const bool config_any_party = config_friendly_party or config_enemy_party;
 
-		if (positions.empty())
+		const bool admin = caster->getCreatureSubType() == CreatureSubType::Player and caster->getPlayer()->hasFlag(PlayerFlag_IgnoreProtectionZone);
+
+		const Position& caster_position = caster->getPosition();
+
+		constexpr uint32_t kBarrier =
+			TILESTATE_IMMOVABLEBLOCKSOLID |
+			TILESTATE_BLOCKPATH |
+			TILESTATE_IMMOVABLENOFIELDBLOCKPATH;
+
+		const uint32_t flag_reject =
+			TILESTATE_FLOORCHANGE |
+			TILESTATE_TELEPORT |
+			(config_aggressive and not admin ? static_cast<uint32_t>(TILESTATE_PROTECTIONZONE) : 0u) |
+			(config_ignore_barriers ? 0u : kBarrier);
+
+		const auto [positions, tiles, distance, stored_extent] = buildValidatedArea(caster_position, center, flag_reject, config_ignore_barriers);
+
+		if (tiles.empty())
 			return;
 
 		static constexpr size_t MAX_TILES = 256;
-		const size_t n = std::min(positions.size(), MAX_TILES);
+		const size_t n = std::min(tiles.size(), MAX_TILES);
 
-		const int32_t area_extent = std::max(distance, stored_extent);
-
-		auto spectators = g_game.map.fetchSpectators(center, true, true,
-			area_extent + Map::maxViewportX, area_extent + Map::maxViewportX,
-			area_extent + Map::maxViewportY, area_extent + Map::maxViewportY);
-
-		if (caster and (distanceEffect != CONST_ANI_NONE))
-			addDistanceEffect(caster, caster->getPosition(), center, distanceEffect);
-
-		alignas(32) uint32_t packed_flags[MAX_TILES];
-		alignas(32) uint8_t  valid_mask[MAX_TILES];
-		TilePtr              tile_cache[MAX_TILES];
-
-		// When the ground-barrier MultiLevel path ran in getAreaPositions(), tiles were
-		// already fetched and stored in area_tile_buffer in lock-step with positions.
-		// Re-use those directly to avoid a second getTile() call per position.
-		const bool tiles_prefetched = area_tile_buffer.size() >= n;
-		for (size_t i = 0; i < n; ++i)
-		{
-			tile_cache[i]   = tiles_prefetched ? area_tile_buffer[i] : g_game.map.getTile(positions[i]);
-			packed_flags[i] = tile_cache[i] ? tile_cache[i]->getFlags() : ~0u;
-		}
-		// Release pre-fetched tile refs now — recursive execute() calls (deflect, ricochet)
-		// must be able to use area_tile_buffer for their own getAreaPositions() pass.
-		if (tiles_prefetched)
-			area_tile_buffer.clear();
-
-		std::memset(valid_mask, 0xFF, n);
-
-		// Pre-compute all config flags used in the filter loops below.
-		const bool cfg_aggressive      = config.test(Config::Aggressive);
-		const bool cfg_ignore_barriers = config.test(Config::IgnoreBarriers);
-		const bool cfg_top_target_only = config.test(Config::TopTargetOnly);
-		const bool cfg_self_only       = config.test(Config::SelfOnly);
-		const bool cfg_friendly_party  = config.test(Config::FriendlyParty);
-		const bool cfg_enemy_party     = config.test(Config::EnemyParty);
-		const bool cfg_fragged_only    = config.test(Config::FraggedOnly);
-
-		const bool admin = caster->getCreatureSubType() == CreatureSubType::Player and caster->getPlayer()->hasFlag(PlayerFlag_IgnoreProtectionZone);
-		constexpr uint32_t kBarrier = TILESTATE_IMMOVABLEBLOCKSOLID
-			| TILESTATE_BLOCKPATH
-			| TILESTATE_IMMOVABLENOFIELDBLOCKPATH;
-		const uint32_t flag_reject = TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT
-			| (cfg_aggressive and not admin ? static_cast<uint32_t>(TILESTATE_PROTECTIONZONE) : 0u)
-			| (cfg_ignore_barriers ? 0u : kBarrier);
-
-#ifdef __AVX2__
-		{
-			const __m256i vReject = _mm256_set1_epi32(static_cast<int32_t>(flag_reject));
-			const __m256i vZero   = _mm256_setzero_si256();
-
-			// Byte j of this mask has exactly bit j set, used to isolate one bit per byte
-			// after broadcasting the movemask result — avoids the store+reload round-trip.
-			alignas(16) static const uint8_t k_bit_isolate[16] = {
-				0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,
-				0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
-			};
-			const __m128i vIsolate = _mm_load_si128(reinterpret_cast<const __m128i*>(k_bit_isolate));
-
-			size_t i = 0;
-			for (; i + 8 <= n; i += 8)
-			{
-				const __m256i vFlags    = _mm256_load_si256(reinterpret_cast<const __m256i*>(packed_flags + i));
-				const __m256i vHit      = _mm256_and_si256(vFlags, vReject);
-				const __m256i vPassMask = _mm256_cmpeq_epi32(vHit, vZero);
-
-				// Extract sign bit of each 32-bit lane: 1 = pass (0xFFFFFFFF), 0 = reject.
-				const int bits = _mm256_movemask_ps(_mm256_castsi256_ps(vPassMask));
-
-				// Broadcast the 8-bit result, isolate one bit per byte, compare to zero
-				// (inverted), then invert again — net result: 0xFF=pass, 0x00=reject per byte.
-				const __m128i vBits     = _mm_set1_epi8(static_cast<char>(bits));
-				const __m128i vTest     = _mm_and_si128(vBits, vIsolate);
-				const __m128i vExpanded = _mm_xor_si128(_mm_cmpeq_epi8(vTest, _mm_setzero_si128()), _mm_set1_epi8(-1));
-
-				const __m128i vValid = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(valid_mask + i));
-				_mm_storel_epi64(reinterpret_cast<__m128i*>(valid_mask + i), _mm_and_si128(vValid, vExpanded));
-			}
-
-			for (; i < n; ++i)
-				valid_mask[i] &= ((packed_flags[i] & flag_reject) == 0u) ? 0xFF : 0x00;
-		}
-#else
-		for (size_t i = 0; i < n; ++i)
-			valid_mask[i] &= ((packed_flags[i] & flag_reject) == 0u) ? 0xFF : 0x00;
-#endif
+		uint16_t minX = positions[0].x;
+		uint16_t maxX = positions[0].x;
+		uint16_t minY = positions[0].y;
+		uint16_t maxY = positions[0].y;
 
 		area_creature_buffer.clear();
-		area_creature_buffer.reserve(n * 2);
-		auto& toDamageCreatures = area_creature_buffer;
-
 		area_valid_tile_buffer.clear();
+		area_creature_buffer.reserve(n);
 		area_valid_tile_buffer.reserve(n);
+
 		auto& valid_tile_list = area_valid_tile_buffer;
 
-		auto valid_tiles = std::views::iota(size_t{0}, n) | std::views::filter([&](size_t idx) { return static_cast<bool>(valid_mask[idx]); })
-			| std::views::filter([&](size_t idx) {
-				// Line-of-sight check from area center — rejects tiles hidden behind walls, fences, or trees.
-				return cfg_ignore_barriers or isAreaCombatSightClear(center, positions[idx]);
-			});
+		const auto casterPlayer = caster->getPlayer();
+		const auto casterTile = caster->getTile();
 
-		for (size_t idx : valid_tiles)
+		auto isStrikeable = [=, &caster] (const CreaturePtr& creature, const CreaturePtr& topCreature, bool onCasterTile) -> bool
 		{
-			const auto& tile = tile_cache[idx];
+			if (config_top_target_only)
+			{
+				if (not (onCasterTile ? (creature == caster) : (creature == topCreature)))
+					return false;
+			}
+
+			if (config_self_only and creature != caster)
+				return false;
+
+			const CreatureSubType subtype = creature->getCreatureSubType();
+
+			if (config_fragged_only and subtype != CreatureSubType::Player)
+				return false;
+
+			if (config_aggressive)
+			{
+				if (not config_self_only and creature == caster)
+					return false;
+
+				switch (subtype)
+				{
+					case CreatureSubType::Player:
+					{
+						if (target(caster, PlayerCast(creature)) != Combat::TargetCode::Valid)
+							return false;
+
+						break;
+					}
+
+					case CreatureSubType::Monster:
+					{
+						if (target(caster, MonsterCast(creature)) != Combat::TargetCode::Valid)
+							return false;
+
+						break;
+					}
+
+					default:
+						return false;
+					}
+			}
+
+			PlayerPtr targetPlayer = nullptr;
+
+			if (config_any_party or config_fragged_only)
+			{
+				if (subtype == CreatureSubType::Player)
+					targetPlayer = creature->getPlayer();
+			}
+
+			if (config_any_party)
+			{
+				const bool isCaster = creature == caster;
+
+				if (config_friendly_party)
+				{
+					if (not isCaster)
+					{
+						if (not casterPlayer)
+							return true;
+
+						if (not targetPlayer or not casterPlayer->isPartner(targetPlayer))
+							return false;
+					}
+				}
+
+				if (config_enemy_party)
+				{
+					if (isCaster)
+						return false;
+
+					if (casterPlayer and targetPlayer and casterPlayer->isPartner(targetPlayer))
+					{
+						return false;
+					}
+				}
+			}
+
+			if (config_fragged_only)
+			{
+				if (not targetPlayer or targetPlayer->getSkull() == SKULL_NONE)
+					return false;
+			}
+
+			return true;
+		};
+
+		for (size_t i = 0; i < n; ++i)
+		{
+			const auto& position = positions[i];
+			minX = std::min(minX, position.x);
+			maxX = std::max(maxX, position.x);
+			minY = std::min(minY, position.y);
+			maxY = std::max(maxY, position.y);
+
+			const auto& tile = tiles[i];
 
 			valid_tile_list.push_back(tile);
 
 			const auto& creaturesOnTile = tile->getCreatures();
+
 			if (not creaturesOnTile)
 				continue;
 
-			const auto& topCreature = cfg_top_target_only ? tile->getTopCreature() : nullptr;
-			const bool onCasterTile = (caster->getTile() == tile);
+			const bool onCasterTile = (casterTile == tile);
 
-			auto strikeable = *creaturesOnTile
-				// Tile-top filter: when TopTargetOnly is set, only the top creature per tile (or caster on their own tile).
-				| std::views::filter([&](const CreaturePtr& creature) -> bool {
-					if (not cfg_top_target_only)
-						return true;
-					return onCasterTile ? (creature == caster) : (creature == topCreature);
-				})
-				// SelfOnly: only the caster themselves is a valid target (used by self-cast spells/heals).
-				// When set it overrides the aggressive self-exclusion below.
-				| std::views::filter([&](const CreaturePtr& creature) -> bool {
-					if (not cfg_self_only)
-						return true;
-					return creature == caster;
-				})
-				// Aggressive self-exclusion: aggressive combats skip the caster unless SelfOnly is set.
-				| std::views::filter([&](const CreaturePtr& creature) -> bool {
-					if (not cfg_aggressive or cfg_self_only)
-						return true;
-					return caster != creature;
-				})
-				// Standard target-validity check for aggressive combats.
-				| std::views::filter([&](const CreaturePtr& creature) -> bool {
-					if (not cfg_aggressive)
-						return true;
+			const CreaturePtr topCreature =	config_top_target_only	? tile->getTopCreature() : nullptr;
 
-					switch (creature->getCreatureSubType())
-					{
-						case CreatureSubType::Player: return target(caster, PlayerCast(creature)) == Combat::TargetCode::Valid;
-						case CreatureSubType::Monster: return target(caster, MonsterCast(creature)) == Combat::TargetCode::Valid;
-						default: [[unlikely]]
-							return false;
-					}
-				})
-				// FriendlyParty: only hit creatures that share the caster's party (or the caster themselves).
-				| std::views::filter([&](const CreaturePtr& creature) -> bool {
-					if (not cfg_friendly_party)
-						return true;
-					if (creature == caster)
-						return true;
-					const auto casterPlayer = caster->getPlayer();
-					if (not casterPlayer)
-						return true; // non-player casters have no party concept
-					const auto targetPlayer = creature->getPlayer();
-					if (not targetPlayer)
-						return false; // party filter only applies to players
-					return casterPlayer->isPartner(targetPlayer);
-				})
-				// EnemyParty: skip creatures that are in the caster's party; always skips the caster.
-				| std::views::filter([&](const CreaturePtr& creature) -> bool {
-					if (not cfg_enemy_party)
-						return true;
-					if (creature == caster)
-						return false;
-					const auto casterPlayer = caster->getPlayer();
-					if (not casterPlayer)
-						return true;
-					const auto targetPlayer = creature->getPlayer();
-					if (not targetPlayer)
-						return true; // monsters are always enemies
-					return not casterPlayer->isPartner(targetPlayer);
-				})
-				// FraggedOnly: only target players that currently carry a skull (i.e., have killed others).
-				| std::views::filter([&](const CreaturePtr& creature) -> bool {
-					if (not cfg_fragged_only)
-						return true;
-					const auto targetPlayer = creature->getPlayer();
-					if (not targetPlayer)
-						return false; // FraggedOnly only applies to players
-					return targetPlayer->getSkull() != SKULL_NONE;
-				});
-
-			for (const auto& creature : strikeable)
-				toDamageCreatures.push_back(creature);
+			for (const auto& creature : *creaturesOnTile)
+			{
+				if (isStrikeable(creature, topCreature, onCasterTile))
+					area_creature_buffer.push_back(creature);
+			}
 		}
+
+		const int32_t ex = std::max(static_cast<int32_t>(maxX) - static_cast<int32_t>(center.x), static_cast<int32_t>(center.x) - static_cast<int32_t>(minX));
+		const int32_t ey = std::max(static_cast<int32_t>(maxY) - static_cast<int32_t>(center.y),static_cast<int32_t>(center.y) - static_cast<int32_t>(minY));
+
+		auto spectators = g_game.map.fetchSpectators(center, true, true, ex + Map::maxViewportX, ex + Map::maxViewportX, ey + Map::maxViewportY, ey + Map::maxViewportY);
+
+		if (distanceEffect != CONST_ANI_NONE)
+			addDistanceEffect(caster, caster_position, center, distanceEffect);
+
+		const std::span<const CreaturePtr> spectators_span(spectators.begin(), spectators.size());
 
 		apply_effects(spectators, caster, valid_tile_list);
 
-		const std::span<const CreaturePtr> spec_span(spectators.begin(), spectators.size());
+		std::vector<CreaturePtr> toDamageCreatures = std::move(area_creature_buffer);
 
 		for (const auto& target_creature : toDamageCreatures)
-			strike_target(caster, target_creature, true, spec_span);
+			strike_target(caster, target_creature, true, spectators_span);
 	}
 
-	void AreaCombat::setupArea(const std::vector<uint32_t>& vec, uint32_t rows)
+	void AreaCombat::setupArea(const std::vector<uint32_t>& area_data, uint32_t rows)
 	{
-		auto area = CreateArea(vec, rows);
+		auto area = CreateArea(area_data, rows);
 		if (areas.size() == 0)
 			areas.resize(4);
 
@@ -2871,20 +2948,60 @@ namespace BlackTek
 		areas[DIRECTION_NORTH] = std::move(area);
 	}
 
-	void AreaCombat::setupExtArea(const std::vector<uint32_t>& vec, uint32_t rows)
+	void AreaCombat::setupExtArea(const std::vector<uint32_t>& area_data, uint32_t rows)
 	{
-		if (vec.empty())
+		if (area_data.empty())
 		{
 			return;
 		}
 
-		hasExtArea = true;
-		auto area = CreateArea(vec, rows);
+		hasExtendedArea = true;
+		auto area = CreateArea(area_data, rows);
 		areas.resize(8);
 		areas[DIRECTION_NORTHEAST] = area.Rotate90();
 		areas[DIRECTION_SOUTHEAST] = area.Rotate180();
 		areas[DIRECTION_SOUTHWEST] = area.Rotate270();
 		areas[DIRECTION_NORTHWEST] = std::move(area);
+	}
+
+	void AreaCombat::setupArea(int32_t radius)
+	{
+		const int32_t size = 2 * radius + 1;
+		std::vector<uint32_t> area_data(static_cast<size_t>(size * size), 0u);
+		for (int32_t y = 0; y < size; ++y)
+		{
+			for (int32_t x = 0; x < size; ++x)
+			{
+				const int32_t dx = x - radius;
+				const int32_t dy = y - radius;
+				if (dx * dx + dy * dy <= radius * radius)
+					area_data[static_cast<size_t>(y * size + x)] = 1u;
+			}
+		}
+		area_data[static_cast<size_t>(radius * size + radius)] = 3u;
+		setupArea(area_data, static_cast<uint32_t>(size));
+	}
+
+	void AreaCombat::setupArea(int32_t length, int32_t spread)
+	{
+		const int32_t cols = 2 * spread + 1;
+		std::vector<uint32_t> area_data;
+		area_data.reserve(static_cast<size_t>(length * cols));
+
+		for (int32_t row = 0; row < length - 1; ++row)
+		{
+			const int32_t distFromCenter = length - 1 - row;
+			const int32_t halfWidth = (spread > 0 and length > 1)
+				? spread * distFromCenter / (length - 1)
+				: 0;
+			for (int32_t col = 0; col < cols; ++col)
+				area_data.push_back(std::abs(col - spread) <= halfWidth ? 1u : 0u);
+		}
+
+		for (int32_t col = 0; col < cols; ++col)
+			area_data.push_back(col == spread ? 3u : 0u);
+
+		setupArea(area_data, static_cast<uint32_t>(length));
 	}
 
 	CombatArea AreaCombat::GetCombatArea() const
@@ -2908,11 +3025,9 @@ namespace BlackTek
 
 	CombatArea AreaCombat::GetExtCombatArea() const
 	{
-		if (not hasExtArea or areas.size() < 8)
+		if (not hasExtendedArea or areas.size() < 8)
 			return {};
 
-		// Slot layout mirrors the diagonal-mask-strip used in getAreaPositions:
-		// direction ^ DIRECTION_DIAGONAL_MASK → SW=4^4=0, SE=5^4=1, NW=6^4=2, NE=7^4=3
 		CombatArea result;
 		auto assign = [&](size_t slot, const MatrixArea& src)
 		{
@@ -2927,17 +3042,17 @@ namespace BlackTek
 		return result;
 	}
 
-	void Combat::postCombatEffects(const CreaturePtr& caster, const Position& pos, const Combat& combat)
+	void Combat::postCombatEffects(const CreaturePtr& caster, const Position& position, const Combat& combat)
 	{
 		if (combat.impactEffect != CONST_ME_NONE)
-			g_game.addMagicEffect(pos, combat.impactEffect);
+			g_game.addMagicEffect(position, combat.impactEffect);
 	}
 
-	void Combat::addDistanceEffect(const CreaturePtr& caster, const Position& fromPos, const Position& toPos, uint8_t effect)
+	void Combat::addDistanceEffect(const CreaturePtr& caster, const Position& fromPosition, const Position& toPosition, uint8_t effect)
 	{
 		if (effect == CONST_ANI_NONE)
 			return;
-		g_game.addDistanceEffect(fromPos, toPos, effect);
+		g_game.addDistanceEffect(fromPosition, toPosition, effect);
 	}
 
 	void Combat::defense_block_effect(const Position& target_position) const noexcept
@@ -2973,42 +3088,48 @@ namespace BlackTek
 		bool apply_armor_reduction = config.test(BlockedByArmor);
 		bool apply_defense_reduction = config.test(Config::BlockedByDefense);
 
-		const float def_mult = target->get_defense_charge_cost_multiplier();
-		const float arm_mult = target->get_armor_charge_cost_multiplier();
-		const float def_base = static_cast<float>(apply_defense_reduction ? defense_charge_cost : g_config.GetNumber(ConfigManager::DEFAULT_DEFENSE_CHARGE_COST));
-		const float arm_base = static_cast<float>(apply_armor_reduction ? armor_charge_cost   : g_config.GetNumber(ConfigManager::DEFAULT_ARMOR_CHARGE_COST));
+		const float defense_multiplier = target->get_defense_charge_cost_multiplier();
+		const float armor_multiplier = target->get_armor_charge_cost_multiplier();
+		const float defense_base = static_cast<float>(apply_defense_reduction ? defense_charge_cost : g_config.GetNumber(ConfigManager::DEFAULT_DEFENSE_CHARGE_COST));
+		const float armor_base = static_cast<float>(apply_armor_reduction ? armor_charge_cost   : g_config.GetNumber(ConfigManager::DEFAULT_ARMOR_CHARGE_COST));
 
-		const uint32_t defense_cost = static_cast<uint32_t>(std::round(def_base * def_mult));
-		const uint32_t armor_cost   = static_cast<uint32_t>(std::round(arm_base * arm_mult));
+		const uint32_t defense_cost = static_cast<uint32_t>(std::round(defense_base * defense_multiplier));
+		const uint32_t armor_cost   = static_cast<uint32_t>(std::round(armor_base * armor_multiplier));
 
-		// Three-tier formula resolution:
-		// PvP (idx 0) when attacker is a player; MvP (idx 2) when attacker is a monster.
-		const uint8_t sit_idx = (attacker and attacker->getCreatureSubType() == CreatureSubType::Player) ? 0u : 2u;
+		const uint8_t situation_index = (attacker and attacker->getCreatureSubType() == CreatureSubType::Player) ? 0u : 2u;
 
-		// Three-tier resolution: compiled formula (tier 2) → TOML factor params (tier 1) → defaults (tier 0)
 		const CompiledFormulaSlots* compiled = config.test(Config::HasCompiledFormula)
 			? formula_cache->compiled.get()
 			: nullptr;
 
 		const SituationFormulas& formulas = config.test(Config::HasFormulaCache)
-			? formula_cache->situations[sit_idx]
-			: g_default_situation_formulas[sit_idx];
+			? formula_cache->situations[situation_index]
+			: g_default_situation_formulas[situation_index];
 
-		FormulaContext ctx;
-		ctx.caster = attacker;
-		ctx.target = target;
+		FormulaContext context;
+		context.caster = attacker;
+		context.target = target;
 
-		// Output stage: compiled formula → TOML/Lua factor params → fixed damage
 		uint32_t computed_damage = damage;
-		if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Output)) : nullptr)
+		if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Output)) : nullptr)
 		{
-			computed_damage = static_cast<uint32_t>(std::abs((*fn)(ctx)));
+			computed_damage = static_cast<uint32_t>(std::abs((*formula)(context)));
 		}
 		else if (config.test(Config::HasFormulaCache) && attacker && attacker->is_player())
 		{
 			const int32_t stat = static_cast<int32_t>(attacker->getPlayer()->getLevel())
 			                   + static_cast<int32_t>(attacker->getPlayer()->getMagicLevel()) * 3;
 			computed_damage = static_cast<uint32_t>(std::abs(calculate_output(formulas.output, stat)));
+		}
+		else if (attacker and attacker->getCreatureSubType() == CreatureSubType::Monster)
+		{
+			int32_t min_value = 0, max_value = 0;
+			if (const auto mon = attacker->getMonster(); mon and mon->getCombatValues(min_value, max_value))
+			{
+				const int32_t lower = std::min(std::abs(min_value), std::abs(max_value));
+				const int32_t upper = std::max(std::abs(min_value), std::abs(max_value));
+				computed_damage = static_cast<uint32_t>(uniform_random(lower, upper));
+			}
 		}
 
 		if (apply_defense_reduction and target->can_use_defense()
@@ -3018,21 +3139,21 @@ namespace BlackTek
 				target->set_defense_charges(target->get_defense_charges() - defense_cost);
 
 			int32_t defense_value = 0;
-			if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Defense)) : nullptr)
+			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Defense)) : nullptr)
 			{
-				ctx.pipeline_a = target->getDefense();
-				defense_value = static_cast<int32_t>((*fn)(ctx));
+				context.pipeline_a = target->getDefense();
+				defense_value = static_cast<int32_t>((*formula)(context));
 			}
 			else
 			{
 				defense_value = calculate_resistance(formulas.defense, target->getDefense());
 			}
 
-			if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
+			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
 			{
-				ctx.pipeline_a = static_cast<int32_t>(computed_damage);
-				ctx.pipeline_b = defense_value;
-				computed_damage = static_cast<uint32_t>((*fn)(ctx));
+				context.pipeline_a = static_cast<int32_t>(computed_damage);
+				context.pipeline_b = defense_value;
+				computed_damage = static_cast<uint32_t>((*formula)(context));
 			}
 			else
 			{
@@ -3043,6 +3164,24 @@ namespace BlackTek
 			{
 				blockType = BlockType::Defensive;
 				apply_armor_reduction = false;
+
+				if (attacker and not target->hasCondition(CONDITION_PACIFIED))
+				{
+					const auto* voc = target->getVocation();
+					if (voc and voc->dualWield.enabled and voc->dualWield.parry_counter_multiplier > 0.0f)
+					{
+						const auto& shield = target->getInventoryItem(CONST_SLOT_LEFT);
+						if (shield and shield->getWeaponType() == WEAPON_SHIELD and	Position::areInRange<1, 1>(target->getPosition(), attacker->getPosition()))
+						{
+							const auto counterDelay = std::max<uint32_t>(SCHEDULER_MINTICKS, voc->dualWield.parry_counter_delay);
+							g_scheduler.addEvent(createSchedulerTask(counterDelay, [playerId = target->getID(), attackerId = attacker->getID()]()
+								{
+									g_game.playerParryCounter(playerId, attackerId);
+								}
+							));
+						}
+					}
+				}
 			}
 
 			// reduces shield block count and awards shielding skill if shield is equipped
@@ -3055,21 +3194,21 @@ namespace BlackTek
 				target->set_armor_charges(target->get_armor_charges() - armor_cost);
 
 			int32_t armor_value = 0;
-			if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Armor)) : nullptr)
+			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Armor)) : nullptr)
 			{
-				ctx.pipeline_a = target->getArmor();
-				armor_value = static_cast<int32_t>((*fn)(ctx));
+				context.pipeline_a = target->getArmor();
+				armor_value = static_cast<int32_t>((*formula)(context));
 			}
 			else
 			{
 				armor_value = calculate_resistance(formulas.armor, target->getArmor());
 			}
 
-			if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
+			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
 			{
-				ctx.pipeline_a = static_cast<int32_t>(computed_damage);
-				ctx.pipeline_b = armor_value;
-				computed_damage = static_cast<uint32_t>((*fn)(ctx));
+				context.pipeline_a = static_cast<int32_t>(computed_damage);
+				context.pipeline_b = armor_value;
+				computed_damage = static_cast<uint32_t>((*formula)(context));
 			}
 			else
 			{
@@ -3107,41 +3246,48 @@ namespace BlackTek
 		bool apply_armor_reduction = config.test(BlockedByArmor);
 		const bool apply_defense_reduction = config.test(Config::BlockedByDefense);
 
-		const float def_mult = target->get_defense_charge_cost_multiplier();
-		const float arm_mult = target->get_armor_charge_cost_multiplier();
-		const float def_base = static_cast<float>(apply_defense_reduction ? defense_charge_cost : g_config.GetNumber(ConfigManager::DEFAULT_DEFENSE_CHARGE_COST));
-		const float arm_base = static_cast<float>(apply_armor_reduction ? armor_charge_cost : g_config.GetNumber(ConfigManager::DEFAULT_ARMOR_CHARGE_COST));
+		const float defense_multiplier = target->get_defense_charge_cost_multiplier();
+		const float armor_multiplier = target->get_armor_charge_cost_multiplier();
+		const float defense_base = static_cast<float>(apply_defense_reduction ? defense_charge_cost : g_config.GetNumber(ConfigManager::DEFAULT_DEFENSE_CHARGE_COST));
+		const float armor_base = static_cast<float>(apply_armor_reduction ? armor_charge_cost : g_config.GetNumber(ConfigManager::DEFAULT_ARMOR_CHARGE_COST));
 
-		const uint32_t defense_cost = static_cast<uint32_t>(std::round(def_base * def_mult));
-		const uint32_t armor_cost = static_cast<uint32_t>(std::round(arm_base * arm_mult));
+		const uint32_t defense_cost = static_cast<uint32_t>(std::round(defense_base * defense_multiplier));
+		const uint32_t armor_cost = static_cast<uint32_t>(std::round(armor_base * armor_multiplier));
 
-		// PvM (idx 1) when attacker is a player; MvM (idx 3) when attacker is a monster.
-		const uint8_t sit_idx = (attacker and attacker->getCreatureSubType() == CreatureSubType::Player) ? 1u : 3u;
+		const uint8_t situation_index = (attacker and attacker->getCreatureSubType() == CreatureSubType::Player) ? 1u : 3u;
 
-		// Three-tier resolution: compiled formula (tier 2) → TOML factor params (tier 1) → defaults (tier 0)
 		const CompiledFormulaSlots* compiled = config.test(Config::HasCompiledFormula)
 			? formula_cache->compiled.get()
 			: nullptr;
 
 		const SituationFormulas& formulas = config.test(Config::HasFormulaCache)
-			? formula_cache->situations[sit_idx]
-			: g_default_situation_formulas[sit_idx];
+			? formula_cache->situations[situation_index]
+			: g_default_situation_formulas[situation_index];
 
-		FormulaContext ctx;
-		ctx.caster = attacker;
-		ctx.target = target;
+		FormulaContext context;
+		context.caster = attacker;
+		context.target = target;
 
-		// Output stage: compiled formula → TOML/Lua factor params → fixed damage
 		uint32_t computed_damage = damage;
-		if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Output)) : nullptr)
+		if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Output)) : nullptr)
 		{
-			computed_damage = static_cast<uint32_t>(std::abs((*fn)(ctx)));
+			computed_damage = static_cast<uint32_t>(std::abs((*formula)(context)));
 		}
 		else if (config.test(Config::HasFormulaCache) && attacker && attacker->is_player())
 		{
 			const int32_t stat = static_cast<int32_t>(attacker->getPlayer()->getLevel())
 			                   + static_cast<int32_t>(attacker->getPlayer()->getMagicLevel()) * 3;
 			computed_damage = static_cast<uint32_t>(std::abs(calculate_output(formulas.output, stat)));
+		}
+		else if (attacker and attacker->getCreatureSubType() == CreatureSubType::Monster)
+		{
+			int32_t min_value = 0, max_value = 0;
+			if (const auto mon = attacker->getMonster(); mon and mon->getCombatValues(min_value, max_value))
+			{
+				const int32_t lower = std::min(std::abs(min_value), std::abs(max_value));
+				const int32_t upper = std::max(std::abs(min_value), std::abs(max_value));
+				computed_damage = static_cast<uint32_t>(uniform_random(lower, upper));
+			}
 		}
 
 		if (apply_defense_reduction and target->can_use_defense()
@@ -3151,21 +3297,21 @@ namespace BlackTek
 				target->set_defense_charges(target->get_defense_charges() - defense_cost);
 
 			int32_t defense_value = 0;
-			if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Defense)) : nullptr)
+			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Defense)) : nullptr)
 			{
-				ctx.pipeline_a = target->getDefense();
-				defense_value = static_cast<int32_t>((*fn)(ctx));
+				context.pipeline_a = target->getDefense();
+				defense_value = static_cast<int32_t>((*formula)(context));
 			}
 			else
 			{
 				defense_value = calculate_resistance(formulas.defense, target->getDefense());
 			}
 
-			if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
+			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
 			{
-				ctx.pipeline_a = static_cast<int32_t>(computed_damage);
-				ctx.pipeline_b = defense_value;
-				computed_damage = static_cast<uint32_t>((*fn)(ctx));
+				context.pipeline_a = static_cast<int32_t>(computed_damage);
+				context.pipeline_b = defense_value;
+				computed_damage = static_cast<uint32_t>((*formula)(context));
 			}
 			else
 			{
@@ -3185,21 +3331,21 @@ namespace BlackTek
 				target->set_armor_charges(target->get_armor_charges() - armor_cost);
 
 			int32_t armor_value = 0;
-			if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Armor)) : nullptr)
+			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Armor)) : nullptr)
 			{
-				ctx.pipeline_a = target->getArmor();
-				armor_value = static_cast<int32_t>((*fn)(ctx));
+				context.pipeline_a = target->getArmor();
+				armor_value = static_cast<int32_t>((*formula)(context));
 			}
 			else
 			{
 				armor_value = calculate_resistance(formulas.armor, target->getArmor());
 			}
 
-			if (const auto* fn = compiled ? compiled->get(sit_idx, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
+			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
 			{
-				ctx.pipeline_a = static_cast<int32_t>(computed_damage);
-				ctx.pipeline_b = armor_value;
-				computed_damage = static_cast<uint32_t>((*fn)(ctx));
+				context.pipeline_a = static_cast<int32_t>(computed_damage);
+				context.pipeline_b = armor_value;
+				computed_damage = static_cast<uint32_t>((*formula)(context));
 			}
 			else
 			{
@@ -3300,102 +3446,134 @@ namespace BlackTek
 		if (amount == 0)
 			return;
 
-		const auto notice = UnPackHealNotice(collect_heal_notice_data());
-		if (notice.stat_name.empty()) [[unlikely]]
-			return;
-
-		const bool self_target       = (caster == target);
-		const auto target_position   = target->getPosition();
-		const auto& target_name      = target->getName();
-		const auto& caster_name      = caster->getNameDescription();
-		const auto origin_notice      = collect_origin_notice(static_cast<Origin>(origin));
-		const std::string amount_str  = std::to_string(amount);
-		const std::string stat_str    = std::string(notice.stat_name);
-		const std::string origin_verb = std::string(origin_notice.verb);
-
 		SpectatorVec owned;
-		if (not spectators) {
-			owned = g_game.map.fetchSpectators(target_position, true, true);
+
+		if (not spectators)
+		{
+			owned = g_game.map.fetchSpectators(target->getPosition(), true, true);
+
+			if (owned.empty() and not target->is_player() and not caster->is_player())
+				return;
+
 			spectators.emplace(owned.begin(), owned.end());
 		}
 
-		auto is_observer = [&](const auto& spectator) { return spectator != target and spectator != caster and spectator->is_player(); };
+		auto		is_observer				= [&](const auto& spectator) { return spectator != target and spectator != caster and spectator->is_player(); };
+		auto		observer_view			= *spectators | std::views::filter(is_observer);
+		auto		observer_iterator		= observer_view.begin();
+		const bool	has_observers			= (observer_iterator != observer_view.end());
+		const auto	notice					= UnPackHealNotice(collect_heal_notice_data());
 
-		const bool is_defense_conversion = (origin == Origin::Absorb   or origin == Origin::Restore
-		                                 or origin == Origin::Replenish or origin == Origin::Revive);
-		const bool is_drain_gain         = (origin == Origin::LifeSteal   or origin == Origin::ManaSteal
-		                                 or origin == Origin::StaminaSteal or origin == Origin::SoulSteal);
+		if (notice.stat_name.empty()) [[unlikely]]
+			return;
 
-		const std::string target_text =
-		    is_defense_conversion ? "Your " + origin_verb + " restored " + amount_str + " " + stat_str + "."
-		  : is_drain_gain         ? "You drained " + amount_str + " " + stat_str + " from your target."
-		  : self_target           ? "You heal yourself for " + amount_str + " " + stat_str + "."
-		                          : "You are healed for " + amount_str + " " + stat_str + " by " + origin_verb + ".";
-
-		const std::string caster_text =
-		    is_defense_conversion ? target_name + "'s " + origin_verb + " restored " + amount_str + " " + stat_str + " from your attack."
-		  : is_drain_gain         ? "You drained " + amount_str + " " + stat_str + " from " + target_name + "."
-		                          : target_name + " is healed for " + amount_str + " " + stat_str + " by your " + origin_verb + ".";
-
-		const std::string observer_text =
-		    is_defense_conversion ? target_name + "'s " + origin_verb + " restored " + amount_str + " " + stat_str + "."
-		  : is_drain_gain         ? caster_name + " drained " + amount_str + " " + stat_str + "."
-		                          : target_name + " is healed for " + amount_str + " " + stat_str + " by " + origin_verb + ".";
-
-		TextMessage observer_message = {};
-		observer_message.position      = target_position;
-		observer_message.primary.color = notice.color;
-		observer_message.primary.value = amount;
-		observer_message.type          = MESSAGE_HEALED_OTHERS;
-		observer_message.text          = observer_text;
+		const bool	self_target				= (caster == target);
+		const auto	target_position			= target->getPosition();
+		const auto	origin_notice			= collect_origin_notice(static_cast<Origin>(origin));
+		const bool	is_defense_conversion	= (origin == Origin::Absorb or origin == Origin::Restore or origin == Origin::Replenish or origin == Origin::Revive);
+		const bool	is_drain_gain			= (origin == Origin::LifeSteal or origin == Origin::ManaSteal or origin == Origin::StaminaSteal or origin == Origin::SoulSteal);
 
 		if (target->is_player())
 		{
+			const std::string amount_str	= std::to_string(amount);
+			const std::string stat_str		= std::string(notice.stat_name);
+			const std::string origin_verb	= std::string(origin_notice.verb);
+
+			const std::string target_text =	
+				is_defense_conversion 
+				? "Your " + origin_verb + " restored " + amount_str + " " + stat_str + "." 
+				: is_drain_gain 
+				? "You drained " + amount_str + " " + stat_str + " from your target." 
+				: self_target
+				? "You heal yourself for " + amount_str + " " + stat_str + "."
+				: "You are healed for " + amount_str + " " + stat_str + " by " + origin_verb + ".";
+
 			TextMessage target_message = {};
-			target_message.position      = target_position;
+			target_message.position = target_position;
 			target_message.primary.color = notice.color;
 			target_message.primary.value = amount;
-			target_message.type          = MESSAGE_HEALED;
-			target_message.text          = target_text;
+			target_message.type = MESSAGE_HEALED;
+			target_message.text = target_text;
 
 			auto* player = static_cast<Player*>(target.get());
 			player->sendTextMessage(target_message);
+
 			if (notice.effect != CONST_ME_NONE)
 				player->sendMagicEffect(target_position, notice.effect);
+
 			if (origin_notice.effect != CONST_ME_NONE)
 				player->sendMagicEffect(target_position, origin_notice.effect);
+
 			player->sendStats();
 		}
 
 		if (not self_target and caster->is_player())
 		{
-			TextMessage caster_message = {};
-			caster_message.position      = target_position;
-			caster_message.primary.color = notice.color;
-			caster_message.primary.value = amount;
-			caster_message.type          = MESSAGE_HEALED_OTHERS;
-			caster_message.text          = caster_text;
+			const std::string amount_str	= std::to_string(amount);
+			const std::string stat_str		= std::string(notice.stat_name);
+			const std::string origin_verb	= std::string(origin_notice.verb);
+			const auto& target_name			= target->getName();
+
+			const std::string caster_text =
+				is_defense_conversion
+				? target_name + "'s " + origin_verb + " restored " + amount_str + " " + stat_str + " from your attack."
+				: is_drain_gain 
+				? "You drained " + amount_str + " " + stat_str + " from " + target_name + "."
+				: target_name + " is healed for " + amount_str + " " + stat_str + " by your " + origin_verb + ".";
+
+			TextMessage caster_message			= {};
+			caster_message.position				= target_position;
+			caster_message.primary.color		= notice.color;
+			caster_message.primary.value		= amount;
+			caster_message.type					= MESSAGE_HEALED_OTHERS;
+			caster_message.text					= caster_text;
 
 			auto* player = static_cast<Player*>(caster.get());
 			player->sendTextMessage(caster_message);
+
 			if (notice.effect != CONST_ME_NONE)
 				player->sendMagicEffect(target_position, notice.effect);
+
 			if (origin_notice.effect != CONST_ME_NONE)
 				player->sendMagicEffect(target_position, origin_notice.effect);
 		}
 
-		const bool send_notice_effect = (notice.effect != CONST_ME_NONE);
-		const bool send_origin_effect = (origin_notice.effect != CONST_ME_NONE);
-
-		auto observer_view = *spectators | std::views::filter(is_observer);
-		for (const auto& spectator : observer_view)
+		if (has_observers)
 		{
-			auto* player = static_cast<Player*>(spectator.get());
-			player->sendTextMessage(observer_message);
-			if (send_notice_effect)
-				player->sendMagicEffect(target_position, notice.effect);
-			if (send_origin_effect)
-				player->sendMagicEffect(target_position, origin_notice.effect);
+			const std::string amount_str		= std::to_string(amount);
+			const std::string stat_str			= std::string(notice.stat_name);
+			const std::string origin_verb		= std::string(origin_notice.verb);
+			const auto& target_name				= target->getName();
+			const auto& caster_name				= caster->getNameDescription();
+
+			const std::string observer_text =
+				is_defense_conversion 
+				? target_name + "'s " + origin_verb + " restored " + amount_str + " " + stat_str + "."
+				: is_drain_gain 
+				? caster_name + " drained " + amount_str + " " + stat_str + "."
+				: target_name + " is healed for " + amount_str + " " + stat_str + " by " + origin_verb + ".";
+
+			TextMessage observer_message = {};
+			observer_message.position			= target_position;
+			observer_message.primary.color		= notice.color;
+			observer_message.primary.value		= amount;
+			observer_message.type				= MESSAGE_HEALED_OTHERS;
+			observer_message.text				= observer_text;
+
+			const bool send_notice_effect = (notice.effect != CONST_ME_NONE);
+			const bool send_origin_effect = (origin_notice.effect != CONST_ME_NONE);
+
+			for (auto it = observer_iterator; it != observer_view.end(); ++it)
+			{
+				auto* player = static_cast<Player*>((*it).get());
+				player->sendTextMessage(observer_message);
+
+				if (send_notice_effect)
+					player->sendMagicEffect(target_position, notice.effect);
+
+				if (send_origin_effect)
+					player->sendMagicEffect(target_position, origin_notice.effect);
+			}
 		}
 	}
 
@@ -3404,86 +3582,111 @@ namespace BlackTek
 		if (amount == 0)
 			return;
 
-		const bool self_target        = (attacker == defender);
-		const auto defender_position  = defender->getPosition();
-		const auto& defender_name     = defender->getName();
-		const auto& attacker_name     = attacker->getNameDescription();
-		const auto origin_notice       = collect_origin_notice(static_cast<Origin>(origin));
-		const std::string amount_str   = std::to_string(amount);
-		const std::string origin_verb  = std::string(origin_notice.verb);
-
 		SpectatorVec owned;
-		if (not spectators) {
-			owned = g_game.map.fetchSpectators(defender_position, true, true);
+
+		if (not spectators)
+		{
+			owned = g_game.map.fetchSpectators(defender->getPosition(), true, true);
+
+			if (owned.empty() and not defender->is_player() and not attacker->is_player())
+				return;
+
 			spectators.emplace(owned.begin(), owned.end());
 		}
 
-		auto is_observer = [&](const auto& spectator) { return spectator != defender and spectator != attacker and spectator->is_player(); };
-
-		const bool is_drain = (origin == Origin::ManaSteal);
-
-		const std::string defender_text =
-		    is_drain    ? attacker_name + " drained " + amount_str + " mana from you."
-		  : self_target ? "You lose " + amount_str + " mana due to your own " + origin_verb + "."
-		                : "You lose " + amount_str + " mana due to " + origin_verb + " by " + attacker_name + ".";
-
-		const std::string attacker_text =
-		    is_drain ? "You drained " + amount_str + " mana from " + defender_name + "."
-		             : defender_name + " loses " + amount_str + " mana due to your " + origin_verb + ".";
-
-		const std::string observer_text =
-		    is_drain ? attacker_name + " drained " + amount_str + " mana from " + defender_name + "."
-		             : defender_name + " loses " + amount_str + " mana due to " + origin_verb + " by " + attacker_name + ".";
-
-		TextMessage observer_message = {};
-		observer_message.position      = defender_position;
-		observer_message.primary.color = TEXTCOLOR_BLUE;
-		observer_message.primary.value = amount;
-		observer_message.type          = MESSAGE_DAMAGE_OTHERS;
-		observer_message.text          = observer_text;
+		auto		is_observer				= [&](const auto& spectator) { return spectator != defender and spectator != attacker and spectator->is_player(); };
+		auto		observer_view			= *spectators | std::views::filter(is_observer);
+		auto		observer_iterator		= observer_view.begin();
+		const bool	has_observers			= (observer_iterator != observer_view.end());
+		const bool	self_target				= (attacker == defender);
+		const auto	defender_position		= defender->getPosition();
+		const auto	origin_notice			= collect_origin_notice(static_cast<Origin>(origin));
+		const bool	is_drain				= (origin == Origin::ManaSteal);
 
 		if (defender->is_player())
 		{
-			TextMessage defender_message = {};
-			defender_message.position      = defender_position;
-			defender_message.primary.color = TEXTCOLOR_BLUE;
-			defender_message.primary.value = amount;
-			defender_message.type          = MESSAGE_DAMAGE_RECEIVED;
-			defender_message.text          = defender_text;
+			const std::string amount_str	= std::to_string(amount);
+			const std::string origin_verb	= std::string(origin_notice.verb);
+			const auto& attacker_name		= attacker->getNameDescription();
+
+			const std::string defender_text =
+				is_drain 
+				? attacker_name + " drained " + amount_str + " mana from you."
+				: self_target 
+				? "You lose " + amount_str + " mana due to your own " + origin_verb + "."
+				: "You lose " + amount_str + " mana due to " + origin_verb + " by " + attacker_name + ".";
+
+			TextMessage defender_message	= {};
+			defender_message.position		= defender_position;
+			defender_message.primary.color	= TEXTCOLOR_BLUE;
+			defender_message.primary.value	= amount;
+			defender_message.type			= MESSAGE_DAMAGE_RECEIVED;
+			defender_message.text			= defender_text;
 
 			auto* player = static_cast<Player*>(defender.get());
 			player->sendTextMessage(defender_message);
 			player->sendMagicEffect(defender_position, CONST_ME_LOSEENERGY);
+
 			if (origin_notice.effect != CONST_ME_NONE)
 				player->sendMagicEffect(defender_position, origin_notice.effect);
 		}
 
 		if (not self_target and attacker->is_player())
 		{
-			TextMessage attacker_message = {};
-			attacker_message.position      = defender_position;
-			attacker_message.primary.color = TEXTCOLOR_BLUE;
-			attacker_message.primary.value = amount;
-			attacker_message.type          = MESSAGE_DAMAGE_DEALT;
-			attacker_message.text          = attacker_text;
+			const std::string amount_str	= std::to_string(amount);
+			const std::string origin_verb	= std::string(origin_notice.verb);
+			const auto& defender_name		= defender->getName();
+
+			const std::string attacker_text =
+				is_drain 
+				? "You drained " + amount_str + " mana from " + defender_name + "."
+				: defender_name + " loses " + amount_str + " mana due to your " + origin_verb + ".";
+
+			TextMessage attacker_message	= {};
+			attacker_message.position		= defender_position;
+			attacker_message.primary.color	= TEXTCOLOR_BLUE;
+			attacker_message.primary.value	= amount;
+			attacker_message.type			= MESSAGE_DAMAGE_DEALT;
+			attacker_message.text			= attacker_text;
 
 			auto* player = static_cast<Player*>(attacker.get());
 			player->sendTextMessage(attacker_message);
 			player->sendMagicEffect(defender_position, CONST_ME_LOSEENERGY);
+
 			if (origin_notice.effect != CONST_ME_NONE)
 				player->sendMagicEffect(defender_position, origin_notice.effect);
 		}
 
-		const bool send_origin_effect_mana = (origin_notice.effect != CONST_ME_NONE);
-
-		auto observer_view = *spectators | std::views::filter(is_observer);
-		for (const auto& spectator : observer_view)
+		if (has_observers)
 		{
-			auto* player = static_cast<Player*>(spectator.get());
-			player->sendTextMessage(observer_message);
-			player->sendMagicEffect(defender_position, CONST_ME_LOSEENERGY);
-			if (send_origin_effect_mana)
-				player->sendMagicEffect(defender_position, origin_notice.effect);
+			const std::string amount_str	= std::to_string(amount);
+			const std::string origin_verb	= std::string(origin_notice.verb);
+			const auto& defender_name		= defender->getName();
+			const auto& attacker_name		= attacker->getNameDescription();
+
+			const std::string observer_text =
+				is_drain
+				? attacker_name + " drained " + amount_str + " mana from " + defender_name + "."
+				: defender_name + " loses " + amount_str + " mana due to " + origin_verb + " by " + attacker_name + ".";
+
+			TextMessage observer_message	= {};
+			observer_message.position		= defender_position;
+			observer_message.primary.color	= TEXTCOLOR_BLUE;
+			observer_message.primary.value	= amount;
+			observer_message.type			= MESSAGE_DAMAGE_OTHERS;
+			observer_message.text			= observer_text;
+
+			const bool send_origin_effect_mana = (origin_notice.effect != CONST_ME_NONE);
+
+			for (auto it = observer_iterator; it != observer_view.end(); ++it)
+			{
+				auto* player = static_cast<Player*>((*it).get());
+				player->sendTextMessage(observer_message);
+				player->sendMagicEffect(defender_position, CONST_ME_LOSEENERGY);
+
+				if (send_origin_effect_mana)
+					player->sendMagicEffect(defender_position, origin_notice.effect);
+			}
 		}
 	}
 
@@ -3492,121 +3695,147 @@ namespace BlackTek
 		if (amount == 0)
 			return;
 
-		const bool self_target        = (attacker == defender);
-		const auto defender_position  = defender->getPosition();
-		const auto& defender_name     = defender->getName();
-		const auto& attacker_name     = attacker->getNameDescription();
-		const auto notice              = UnPackNotice(collect_notice_data(defender));
-		const auto origin_notice       = collect_origin_notice(static_cast<Origin>(origin));
-		const std::string amount_str   = std::to_string(amount);
-		const std::string origin_verb  = std::string(origin_notice.verb);
-
+		// in some rare likelihood that a monster damages another monster and a player isn't around to see it
+		// then we don't bother sending notifications
 		SpectatorVec owned;
-		if (not spectators) {
-			owned = g_game.map.fetchSpectators(defender_position, true, true);
+		if (not spectators)
+		{
+			owned = g_game.map.fetchSpectators(defender->getPosition(), true, true);
+			if (owned.empty() and not defender->is_player() and not attacker->is_player())
+				return;
+
 			spectators.emplace(owned.begin(), owned.end());
 		}
 
-		auto is_observer = [&](const auto& spectator) { return spectator != defender and spectator != attacker and spectator->is_player(); };
-
-		const bool is_reflect  = (origin == Origin::Reflect);
-		const bool is_deflect  = (origin == Origin::Deflect);
-		const bool is_ricochet = (origin == Origin::Ricochet);
-		const bool is_piercing = (origin == Origin::Piercing);
-		const bool is_drain    = (origin == Origin::LifeSteal   or origin == Origin::ManaSteal
-		                       or origin == Origin::StaminaSteal or origin == Origin::SoulSteal);
-
-		// attacker = source of the resistance for reflect/deflect; defender = recipient of secondary damage
-		const std::string defender_text =
-		    is_reflect  ? (self_target
-		                    ? "You reflected " + amount_str + " damage from your own attack."
-		                    : "You are struck by " + amount_str + " reflected damage from " + attacker_name + "'s resistance.")
-		  : is_deflect  ? "You are hit by " + amount_str + " deflected damage from " + attacker_name + "'s resistance."
-		  : is_ricochet ? "You are hit by " + amount_str + " ricocheting damage."
-		  : is_piercing ? "You are struck by " + amount_str + " piercing damage from " + attacker_name + ", bypassing your defenses."
-		  : is_drain    ? attacker_name + " drained " + amount_str + " health from you via " + origin_verb + "."
-		  : self_target ? "You lose " + amount_str + " health due to your own " + origin_verb + "."
-		                : "You lose " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
-
-		const std::string attacker_text =
-		    is_reflect  ? "Your resistance reflected " + amount_str + " damage to " + defender_name + "."
-		  : is_deflect  ? "Your resistance deflected " + amount_str + " damage to " + defender_name + "."
-		  : is_ricochet ? "Your attack ricocheted for " + amount_str + " damage."
-		  : is_piercing ? "Your attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
-		  : is_drain    ? "You drained " + amount_str + " health from " + defender_name + " via " + origin_verb + "."
-		                : defender_name + " loses " + amount_str + " health due to your " + origin_verb + ".";
-
-		const std::string observer_text =
-		    is_reflect  ? attacker_name + "'s resistance reflected " + amount_str + " damage to " + defender_name + "."
-		  : is_deflect  ? attacker_name + "'s resistance deflected " + amount_str + " damage to " + defender_name + "."
-		  : is_ricochet ? "A ricocheting attack struck " + defender_name + " for " + amount_str + " damage."
-		  : is_piercing ? attacker_name + "'s attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
-		  : is_drain    ? attacker_name + " drained " + amount_str + " health from " + defender_name + "."
-		                : defender_name + " loses " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
-
-		TextMessage observer_message = {};
-		observer_message.position      = defender_position;
-		observer_message.primary.color = notice.color;
-		observer_message.primary.value = amount;
-		observer_message.type          = MESSAGE_DAMAGE_OTHERS;
-		observer_message.text          = observer_text;
+		auto		is_observer			= [&](const auto& spectator) { return spectator != defender and spectator != attacker and spectator->is_player(); };
+		auto		observer_view		= *spectators | std::views::filter(is_observer);
+		auto		observer_iterator	= observer_view.begin();
+		const bool	has_observers		= (observer_iterator != observer_view.end());
+		const auto	notice				= UnPackNotice(collect_notice_data(defender));
+		const auto	origin_notice		= collect_origin_notice(static_cast<Origin>(origin));
+		const auto	defender_position	= defender->getPosition();
+		const bool	self_target			= (attacker == defender);
+		const bool	is_reflect			= (origin == Origin::Reflect);
+		const bool	is_deflect			= (origin == Origin::Deflect);
+		const bool	is_ricochet			= (origin == Origin::Ricochet);
+		const bool	is_piercing			= (origin == Origin::Piercing);
+		const bool	is_drain			= (origin == Origin::LifeSteal or origin == Origin::ManaSteal or origin == Origin::StaminaSteal or origin == Origin::SoulSteal);
 
 		if (defender->is_player())
 		{
-			TextMessage defender_message = {};
-			defender_message.position      = defender_position;
-			defender_message.primary.color = notice.color;
-			defender_message.primary.value = amount;
-			defender_message.type          = MESSAGE_DAMAGE_RECEIVED;
-			defender_message.text          = defender_text;
+			const std::string amount_str	= std::to_string(amount);
+			const std::string origin_verb	= std::string(origin_notice.verb);
+			const auto& attacker_name		= attacker->getNameDescription();
+
+			const std::string defender_text =
+				is_reflect ? (self_target
+					? "You reflected " + amount_str + " damage from your own attack."
+					: "You are struck by " + amount_str + " reflected damage from " + attacker_name + "'s resistance.")
+				: is_deflect ? "You are hit by " + amount_str + " deflected damage from " + attacker_name + "'s resistance."
+				: is_ricochet ? "You are hit by " + amount_str + " ricocheting damage."
+				: is_piercing ? "You are struck by " + amount_str + " piercing damage from " + attacker_name + ", bypassing your defenses."
+				: is_drain ? attacker_name + " drained " + amount_str + " health from you via " + origin_verb + "."
+				: self_target ? "You lose " + amount_str + " health due to your own " + origin_verb + "."
+				: "You lose " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
+
+			TextMessage defender_message	= {};
+			defender_message.position		= defender_position;
+			defender_message.primary.color	= notice.color;
+			defender_message.primary.value	= amount;
+			defender_message.type			= MESSAGE_DAMAGE_RECEIVED;
+			defender_message.text			= defender_text;
 
 			auto* player = static_cast<Player*>(defender.get());
 			player->sendTextMessage(defender_message);
+
 			if (notice.effect != CONST_ME_NONE)
 				player->sendMagicEffect(defender_position, notice.effect);
+
 			if (origin_notice.effect != CONST_ME_NONE)
 				player->sendMagicEffect(defender_position, origin_notice.effect);
+
 			player->sendStats();
 		}
 
 		if (not self_target and attacker->is_player())
 		{
-			TextMessage attacker_message = {};
-			attacker_message.position      = defender_position;
-			attacker_message.primary.color = notice.color;
-			attacker_message.primary.value = amount;
-			attacker_message.type          = MESSAGE_DAMAGE_DEALT;
-			attacker_message.text          = attacker_text;
+			const std::string amount_str	= std::to_string(amount);
+			const std::string origin_verb	= std::string(origin_notice.verb);
+			const auto& defender_name		= defender->getName();
+
+			const std::string attacker_text =
+				is_reflect ? "Your resistance reflected " + amount_str + " damage to " + defender_name + "."
+				: is_deflect ? "Your resistance deflected " + amount_str + " damage to " + defender_name + "."
+				: is_ricochet ? "Your attack ricocheted for " + amount_str + " damage."
+				: is_piercing ? "Your attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
+				: is_drain ? "You drained " + amount_str + " health from " + defender_name + " via " + origin_verb + "."
+				: defender_name + " loses " + amount_str + " health due to your " + origin_verb + ".";
+
+			TextMessage attacker_message	= {};
+			attacker_message.position		= defender_position;
+			attacker_message.primary.color	= notice.color;
+			attacker_message.primary.value	= amount;
+			attacker_message.type			= MESSAGE_DAMAGE_DEALT;
+			attacker_message.text			= attacker_text;
 
 			auto* player = static_cast<Player*>(attacker.get());
 			player->sendTextMessage(attacker_message);
+
 			if (notice.effect != CONST_ME_NONE)
 				player->sendMagicEffect(defender_position, notice.effect);
+
 			if (origin_notice.effect != CONST_ME_NONE)
 				player->sendMagicEffect(defender_position, origin_notice.effect);
+
 			player->sendCreatureHealth(defender);
 		}
 
-		const bool send_dmg_notice_effect  = (notice.effect != CONST_ME_NONE);
-		const bool send_dmg_origin_effect  = (origin_notice.effect != CONST_ME_NONE);
-
-		auto observer_view = *spectators | std::views::filter(is_observer);
-		for (const auto& spectator : observer_view)
+		if (has_observers)
 		{
-			auto* player = static_cast<Player*>(spectator.get());
-			player->sendTextMessage(observer_message);
-			if (send_dmg_notice_effect)
-				player->sendMagicEffect(defender_position, notice.effect);
-			if (send_dmg_origin_effect)
-				player->sendMagicEffect(defender_position, origin_notice.effect);
-			player->sendCreatureHealth(defender);
+			const std::string amount_str	= std::to_string(amount);
+			const std::string origin_verb	= std::string(origin_notice.verb);
+			const auto& defender_name		= defender->getName();
+			const auto& attacker_name		= attacker->getNameDescription();
+
+			const std::string observer_text =
+				is_reflect ? attacker_name + "'s resistance reflected " + amount_str + " damage to " + defender_name + "."
+				: is_deflect ? attacker_name + "'s resistance deflected " + amount_str + " damage to " + defender_name + "."
+				: is_ricochet ? "A ricocheting attack struck " + defender_name + " for " + amount_str + " damage."
+				: is_piercing ? attacker_name + "'s attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
+				: is_drain ? attacker_name + " drained " + amount_str + " health from " + defender_name + "."
+				: defender_name + " loses " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
+
+			TextMessage observer_message	= {};
+			observer_message.position		= defender_position;
+			observer_message.primary.color	= notice.color;
+			observer_message.primary.value	= amount;
+			observer_message.type			= MESSAGE_DAMAGE_OTHERS;
+			observer_message.text			= observer_text;
+
+			const bool send_damage_notice_effect = (notice.effect != CONST_ME_NONE);
+			const bool send_damage_origin_effect = (origin_notice.effect != CONST_ME_NONE);
+
+			for (auto it = observer_iterator; it != observer_view.end(); ++it)
+			{
+				auto* player = static_cast<Player*>((*it).get());
+				player->sendTextMessage(observer_message);
+
+				if (send_damage_notice_effect)
+					player->sendMagicEffect(defender_position, notice.effect);
+
+				if (send_damage_origin_effect)
+					player->sendMagicEffect(defender_position, origin_notice.effect);
+
+				player->sendCreatureHealth(defender);
+			}
 		}
 
 		if (notice.fluid != FLUID_NONE)
 		{
-			TilePtr tile       = g_game.map.getTile(defender_position);
-			CylinderPtr c_tile = tile;
-			auto fluid = Item::CreateItem(ITEM_SMALLSPLASH, notice.fluid);
+			TilePtr tile		= g_game.map.getTile(defender_position);
+			CylinderPtr c_tile	= tile;
+			auto fluid			= Item::CreateItem(ITEM_SMALLSPLASH, notice.fluid);
+
 			if (fluid) [[likely]]
 			{
 				g_game.internalAddItem(c_tile, fluid, INDEX_WHEREEVER, FLAG_NOLIMIT);
@@ -3617,12 +3846,13 @@ namespace BlackTek
 
 	uint32_t Combat::apply_damage(const CreaturePtr& attacker, const PlayerPtr& target, uint32_t currentDamage, std::optional<std::span<const CreaturePtr>> pre_cache) const noexcept
 	{
-		const auto target_mana   = target->getMana();
+		const auto target_mana = target->getMana();
 		const auto target_health = static_cast<uint32_t>(target->getHealth());
-		const auto manashield    = target->hasCondition(CONDITION_MANASHIELD);
-		const auto manadrain     = damage_type == Combat::DamageType::ManaDrain;
-		auto damage_limit        = (manashield or manadrain) ? (manadrain ? target_mana : target_mana + target_health) : target_health;
-		uint32_t damage_dealt    = 0;
+		const auto manashield = target->hasCondition(CONDITION_MANASHIELD);
+		const auto manadrain = (damage_type == Combat::DamageType::ManaDrain);
+
+		auto damage_limit = (manashield or manadrain) ? (manadrain ? target_mana : target_mana + target_health) : target_health;
+		uint32_t damage_dealt = 0;
 		SpectatorVec owned_spectators;
 
 		if (manadrain or manashield)
@@ -3647,8 +3877,6 @@ namespace BlackTek
 		{
 			const auto health_changed = std::min(currentDamage - damage_dealt, damage_limit);
 
-			// Fire PREPAREDEATH before any drain so the creature is still alive during the event.
-			// If any handler vetoes the death, cancel the damage entirely.
 			if (health_changed == target_health)
 			{
 				for (const auto& creatureEvent : target->getCreatureEvents(CREATURE_EVENT_PREPAREDEATH))
@@ -3670,20 +3898,17 @@ namespace BlackTek
 		return damage_dealt;
 	}
 
-	uint32_t Combat::apply_damage(const CreaturePtr& attacker, const MonsterPtr& target, uint32_t currentDamage, const std::optional<std::span<const CreaturePtr>> spectators) const noexcept
+	uint32_t Combat::apply_damage(const CreaturePtr& attacker, const MonsterPtr& target, uint32_t currentDamage, std::optional<std::span<const CreaturePtr>> spectators) const noexcept
 	{
 		if (damage_type == Combat::DamageType::ManaDrain)
 			return 0;
 
-		const auto target_health  = static_cast<uint32_t>(target->getHealth());
-		const auto target_position = target->getPosition();
-		const auto health_changed  = std::min(currentDamage, target_health);
+		const auto target_health = static_cast<uint32_t>(target->getHealth());
+		const auto health_changed = std::min(currentDamage, target_health);
 
 		if (health_changed == 0)
 			return 0;
 
-		// Fire PREPAREDEATH before any drain so the creature is still alive during the event.
-		// If any handler vetoes the death, cancel the damage entirely.
 		if (health_changed == target_health)
 		{
 			for (const auto& creatureEvent : target->getCreatureEvents(CREATURE_EVENT_PREPAREDEATH))
@@ -3693,14 +3918,14 @@ namespace BlackTek
 
 		target->drainHealth(attacker, health_changed);
 
-		auto pre_cache = spectators;
 		SpectatorVec owned;
-		if (not pre_cache) {
-			owned = g_game.map.fetchSpectators(target_position, true, true);
-			pre_cache.emplace(owned.begin(), owned.end());
+		if (not spectators)
+		{
+			owned = g_game.map.fetchSpectators(target->getPosition(), true, true);
+			spectators.emplace(owned.begin(), owned.end());
 		}
 
-		damage_notification(attacker, target, health_changed, pre_cache);
+		damage_notification(attacker, target, health_changed, spectators);
 
 		return health_changed;
 	}

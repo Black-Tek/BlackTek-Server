@@ -2309,13 +2309,13 @@ void Player::onThink(const uint32_t interval)
 		const uint32_t gained = modifier_charge_ticks / mod_interval;
 		modifier_charge_ticks %= mod_interval;
 
-		const uint32_t def_mod_cap = get_def_modifier_charges_cap();
-		if (def_mod_cap > 0)
-			def_modifier_charges = std::min<uint32_t>(def_modifier_charges + gained, def_mod_cap);
+		const uint32_t defense_modifier_cap = get_def_modifier_charges_cap();
+		if (defense_modifier_cap > 0)
+			def_modifier_charges = std::min<uint32_t>(def_modifier_charges + gained, defense_modifier_cap);
 
-		const uint32_t atk_mod_cap = get_atk_modifier_charges_cap();
-		if (atk_mod_cap > 0)
-			atk_modifier_charges = std::min<uint32_t>(atk_modifier_charges + gained, atk_mod_cap);
+		const uint32_t attack_modifier_cap = get_atk_modifier_charges_cap();
+		if (attack_modifier_cap > 0)
+			atk_modifier_charges = std::min<uint32_t>(atk_modifier_charges + gained, attack_modifier_cap);
 	}
 
 	sendPing();
@@ -3984,8 +3984,8 @@ void Player::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t 
 				reform_modifier_count += item->getReformModifierCount();
 
 				for (const auto& augment : *item->getAugments())
-					for (const auto& mod : augment->getModifiers())
-						cacheModifier(mod);
+					for (const auto& modifier : augment->getModifiers())
+						cacheModifier(modifier);
 			}
 		}
 	}
@@ -4063,8 +4063,8 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 				reform_modifier_count -= item->getReformModifierCount();
 
 				for (const auto& augment : *item->getAugments())
-					for (const auto& mod : augment->getModifiers())
-						uncacheModifier(mod);
+					for (const auto& modifier : augment->getModifiers())
+						uncacheModifier(modifier);
 			}
 		}
 	}
@@ -4290,9 +4290,31 @@ void Player::getPathSearchParams(const CreatureConstPtr& creature, FindPathParam
 bool Player::canDualWield() const noexcept
 {
 	const auto* voc = getVocation();
-	return voc and voc->dualWield.enabled
-		and getWeapon(CONST_SLOT_RIGHT, true) != nullptr
-		and getWeapon(CONST_SLOT_LEFT, true)  != nullptr;
+	if (not voc or not voc->dualWield.enabled)
+		return false;
+
+	const auto& rightItem = inventory[CONST_SLOT_RIGHT];
+	const auto& leftItem  = inventory[CONST_SLOT_LEFT];
+	if (not rightItem or not leftItem)
+		return false;
+
+	const auto& cfg = voc->dualWield;
+	auto isAllowed = [&](const ItemPtr& item) -> bool
+	{
+		const WeaponType_t wt = item->getWeaponType();
+		if (wt == WEAPON_AMMO or wt == WEAPON_QUIVER)
+			return false;
+		if (cfg.allowed_weapon_mask != 0 and not (cfg.allowed_weapon_mask & (1u << static_cast<uint8_t>(wt))))
+			return false;
+		if (wt == WEAPON_DISTANCE and cfg.throwable_only)
+		{
+			const ItemType& it = Item::items[item->getID()];
+			return it.ammoType == AMMO_NONE;
+		}
+		return true;
+	};
+
+	return isAllowed(rightItem) and isAllowed(leftItem);
 }
 
 void Player::doSecondaryAttack(const CreaturePtr& target)
@@ -4304,7 +4326,12 @@ void Player::doSecondaryAttack(const CreaturePtr& target)
 	if (not voc or not voc->dualWield.enabled)
 		return;
 
-	const auto& secondaryTool = getWeapon(CONST_SLOT_LEFT, true);
+	// Distance weapons: ignoreAmmo=false returns the ammo item, enabling proper ammo consumption.
+	// All other types: ignoreAmmo=true since ammo checks don't apply.
+	const bool isDistanceSecondary = inventory[m_secondary_attack_slot] and
+		inventory[m_secondary_attack_slot]->getWeaponType() == WEAPON_DISTANCE;
+
+	const auto& secondaryTool = getWeapon(m_secondary_attack_slot, not isDistanceSecondary);
 	if (not secondaryTool)
 		return;
 
@@ -4313,13 +4340,10 @@ void Player::doSecondaryAttack(const CreaturePtr& target)
 
 	if (const auto& weapon = g_weapons->getWeapon(secondaryTool))
 	{
-		// Item is registered in the Lua weapons system — use the full weapon handler.
 		weapon->useWeapon(getPlayer(), secondaryTool, target);
 	}
 	else
 	{
-		// Item has its own attack data but is not registered as a Lua weapon.
-		// Perform a basic melee attack derived entirely from the item's stats.
 		const WeaponType_t wt = secondaryTool->getWeaponType();
 		if (wt == WEAPON_SWORD or wt == WEAPON_CLUB or wt == WEAPON_AXE)
 		{
@@ -4342,6 +4366,7 @@ void Player::doSecondaryAttack(const CreaturePtr& target)
 					strike->SetConfig(BlackTek::Combat::Config::BlockedByArmor);
 					strike->SetConfig(BlackTek::Combat::Config::BlockedByDefense);
 					strike->SetConfig(BlackTek::Combat::Config::Aggressive);
+					strike->SetConfig(BlackTek::Combat::Config::SecondaryAttack);
 					strike->setOrigin(BlackTek::Combat::Origin::Melee);
 					strike->strike_target(getPlayer(), target);
 
@@ -4355,11 +4380,40 @@ void Player::doSecondaryAttack(const CreaturePtr& target)
 				}
 			}
 		}
-		else
+		else if (wt == WEAPON_DISTANCE)
 		{
-			// Non-melee item or unknown type — fall back to fist attack.
-			Weapon::useFist(getPlayer(), target);
+			// Self-contained throwable (ammoType == AMMO_NONE) — basic stat-derived distance attack.
+			// Note: item charges are not consumed here; register the weapon in Lua for full behaviour.
+			const ItemType& itemType = Item::items[secondaryTool->getID()];
+			if (itemType.ammoType == AMMO_NONE)
+			{
+				const int32_t attackSkill = getSkillLevel(SKILL_DISTANCE);
+				const int32_t attackValue = std::max<int32_t>(0, secondaryTool->getAttack());
+				const float attackFactor  = getAttackFactor();
+				const int32_t maxDmg = static_cast<int32_t>(
+					Weapons::getMaxWeaponDamage(getLevel(), attackSkill, attackValue, attackFactor)
+					* voc->distDamageMultiplier
+					* getDualWieldMultiplier()
+				);
+				if (maxDmg > 0)
+				{
+					auto strike = BlackTek::g_combat_registry.Create(
+						static_cast<uint16_t>(BlackTek::Combat::DamageType::Physical),
+						static_cast<uint32_t>(normal_random(0, maxDmg))
+					);
+					strike->SetConfig(BlackTek::Combat::Config::BlockedByArmor);
+					strike->SetConfig(BlackTek::Combat::Config::Aggressive);
+					strike->SetConfig(BlackTek::Combat::Config::SecondaryAttack);
+					strike->SetDistanceEffect(static_cast<uint8_t>(itemType.shootType));
+					strike->setOrigin(BlackTek::Combat::Origin::Throwable);
+					strike->strike_target(getPlayer(), target);
+
+					if (not hasFlag(PlayerFlag_NotGainSkill) and getAddAttackSkill())
+						addSkillAdvance(SKILL_DISTANCE, 1);
+				}
+			}
 		}
+		// Wands and other types require Lua weapon registration — skip unregistered
 	}
 
 	setDualWieldMultiplier(1.0f);
@@ -4380,13 +4434,41 @@ void Player::doAttacking(uint32_t)
 		bool result = false;
 
 		const bool dualWielding = canDualWield();
-		const auto& tool = dualWielding ? getWeapon(CONST_SLOT_RIGHT) : getWeapon();
-		const auto& weapon = g_weapons->getWeapon(tool);
 		uint32_t delay = getAttackSpeed();
 		bool classicSpeed = g_config.GetBoolean(ConfigManager::CLASSIC_ATTACK_SPEED);
 
+		ItemPtr tool;
 		if (dualWielding)
+		{
+			slots_t primarySlot     = CONST_SLOT_RIGHT;
+			m_secondary_attack_slot = CONST_SLOT_LEFT;
+
+			// When both hands carry distance weapons, whichever has ammo is primary.
+			const auto& rightItem = inventory[CONST_SLOT_RIGHT];
+			const auto& leftItem  = inventory[CONST_SLOT_LEFT];
+			if (rightItem and leftItem and
+				rightItem->getWeaponType() == WEAPON_DISTANCE and
+				leftItem->getWeaponType()  == WEAPON_DISTANCE)
+			{
+				if (not getWeapon(CONST_SLOT_RIGHT, false) and getWeapon(CONST_SLOT_LEFT, false))
+				{
+					primarySlot             = CONST_SLOT_LEFT;
+					m_secondary_attack_slot = CONST_SLOT_RIGHT;
+				}
+			}
+
+			// Distance weapons: ignoreAmmo=false so the ammo item is returned and consumed normally.
+			// All other types: ignoreAmmo=true since ammo checks don't apply to melee/wands.
+			const ItemPtr& primaryItem = (primarySlot == CONST_SLOT_RIGHT) ? rightItem : leftItem;
+			tool = getWeapon(primarySlot, primaryItem->getWeaponType() != WEAPON_DISTANCE);
 			setDualWieldMultiplier(getVocation()->dualWield.primaryMultiplier);
+		}
+		else
+		{
+			tool = getWeapon();
+		}
+
+		const auto& weapon = g_weapons->getWeapon(tool);
 
 		if (weapon) {
 			if (!weapon->interruptSwing()) {
@@ -5816,86 +5898,86 @@ size_t Player::getMaxDepotItems() const
 	return g_config.GetNumber(isPremium() ? ConfigManager::DEPOT_PREMIUM_LIMIT : ConfigManager::DEPOT_FREE_LIMIT);
 }
 
-void Player::cacheModifier(const BlackTek::DamageModifier& mod) noexcept
+void Player::cacheModifier(const BlackTek::DamageModifier& modifier) noexcept
 {
 	if (not m_modifier_cache)
 		m_modifier_cache = std::make_unique<BlackTek::ModifierCache>();
 
 	auto& cache  = *m_modifier_cache;
-	const auto filter = mod.getFilterIndex();
+	const auto filter = modifier.getFilterIndex();
 
 	if (filter & BlackTek::DamageModifier::Flag::Converted)
 	{
-		cache.conversion.push_back(mod);
+		cache.conversion.push_back(modifier);
 		return;
 	}
 
 	if (filter & BlackTek::DamageModifier::Flag::Reformed)
 	{
-		cache.reform.push_back(mod);
+		cache.reform.push_back(modifier);
 		return;
 	}
 
 	if (filter & BlackTek::DamageModifier::Flag::HealBoost)
 	{
 		if (filter & BlackTek::DamageModifier::Flag::Named)
-			cache.named_healing.push_back(mod);
+			cache.named_healing.push_back(modifier);
 		else if (filter & MODIFIER_CONDITIONAL_MASK)
-			cache.filtered_healing.push_back(mod);
+			cache.filtered_healing.push_back(modifier);
 		else
 		{
-			const auto idx = mod.getType() - BlackTek::ModifierCache::HealFirst;
-			if (idx < BlackTek::ModifierCache::HealTypes)
-				cache.main_healing[idx].add(mod);
+			const auto index = modifier.getType() - BlackTek::ModifierCache::HealFirst;
+			if (index < BlackTek::ModifierCache::HealTypes)
+				cache.main_healing[index].add(modifier);
 		}
 		return;
 	}
 
-	if (mod.isAttackStance())
+	if (modifier.isAttackStance())
 	{
-		const bool post = isPostDamageAttack(mod.getType());
+		const bool post = isPostDamageAttack(modifier.getType());
 
-		if (filter & BlackTek::DamageModifier::Flag::Named) 
+		if (filter & BlackTek::DamageModifier::Flag::Named)
 		{
-			post ? cache.post_named_attack.push_back(mod)
-			     : cache.during_named_attack.push_back(mod);
+			post ? cache.post_named_attack.push_back(modifier)
+			     : cache.during_named_attack.push_back(modifier);
 		}
 		else if (filter & MODIFIER_CONDITIONAL_MASK)
 		{
-			post ? cache.post_filtered_attack.push_back(mod)
-			     : cache.during_filtered_attack.push_back(mod);
+			post ? cache.post_filtered_attack.push_back(modifier)
+			     : cache.during_filtered_attack.push_back(modifier);
 		}
 		else
 		{
-			post ? cache.post_main_attack[mod.getType()].add(mod)
-			     : cache.during_main_attack[mod.getType()].add(mod);
+			post ? cache.post_main_attack[modifier.getType()].add(modifier)
+			     : cache.during_main_attack[modifier.getType()].add(modifier);
 		}
 	}
 	else
 	{
 		if (filter & BlackTek::DamageModifier::Flag::Named)
 		{
-			cache.named_defense.push_back(mod);
+			cache.named_defense.push_back(modifier);
 		}
 		else if (filter & MODIFIER_CONDITIONAL_MASK)
 		{
-			cache.filted_defense.push_back(mod);
+			cache.filted_defense.push_back(modifier);
 		}
 		else
 		{
-			cache.main_defense[mod.getType()].add(mod);
+			cache.main_defense[modifier.getType()].add(modifier);
 		}
 	}
 }
 
-void Player::uncacheModifier(const BlackTek::DamageModifier& mod) noexcept
+void Player::uncacheModifier(const BlackTek::DamageModifier& modifier) noexcept
 {
 	if (not m_modifier_cache)
 		return;
 
 	auto& cache  = *m_modifier_cache;
-	const auto filter = mod.getFilterIndex();
-	const auto guid   = mod.getGUID();
+	const auto filter = modifier.getFilterIndex();
+	const auto guid   = modifier.getGUID();
 
 	if (filter & BlackTek::DamageModifier::Flag::Converted)
 	{
@@ -5917,16 +5999,16 @@ void Player::uncacheModifier(const BlackTek::DamageModifier& mod) noexcept
 			std::erase_if(cache.filtered_healing, [guid](const auto& m) { return m.getGUID() == guid; });
 		else
 		{
-			const auto idx = mod.getType() - BlackTek::ModifierCache::HealFirst;
-			if (idx < BlackTek::ModifierCache::HealTypes)
-				cache.main_healing[idx].subtract(mod);
+			const auto index = modifier.getType() - BlackTek::ModifierCache::HealFirst;
+			if (index < BlackTek::ModifierCache::HealTypes)
+				cache.main_healing[index].subtract(modifier);
 		}
 		return;
 	}
 
-	if (mod.isAttackStance())
+	if (modifier.isAttackStance())
 	{
-		const bool post = isPostDamageAttack(mod.getType());
+		const bool post = isPostDamageAttack(modifier.getType());
 
 		if (filter & BlackTek::DamageModifier::Flag::Named)
 		{
@@ -5940,8 +6022,8 @@ void Player::uncacheModifier(const BlackTek::DamageModifier& mod) noexcept
 		}
 		else
 		{
-			post ? cache.post_main_attack[mod.getType()].subtract(mod)
-			     : cache.during_main_attack[mod.getType()].subtract(mod);
+			post ? cache.post_main_attack[modifier.getType()].subtract(modifier)
+			     : cache.during_main_attack[modifier.getType()].subtract(modifier);
 		}
 	}
 	else
@@ -5956,7 +6038,7 @@ void Player::uncacheModifier(const BlackTek::DamageModifier& mod) noexcept
 		}
 		else
 		{
-			cache.main_defense[mod.getType()].subtract(mod);
+			cache.main_defense[modifier.getType()].subtract(modifier);
 		}
 	}
 }
@@ -5978,8 +6060,8 @@ const bool Player::addAugment(const std::shared_ptr<BlackTek::Augment>& augment)
 		race_modifiers_count += augment->race_triggers();
 		named_modifiers_count += augment->name_count();
 
-		for (const auto& mod : augment->getModifiers())
-			cacheModifier(mod);
+		for (const auto& modifier : augment->getModifiers())
+			cacheModifier(modifier);
 
 		augments.push_back(augment);
 		g_events->eventPlayerOnAugment(this->getPlayer(), augment);
@@ -6004,8 +6086,8 @@ const bool Player::addAugment(const std::string_view augmentName)
 		race_modifiers_count += augment->race_triggers();
 		named_modifiers_count += augment->name_count();
 
-		for (const auto& mod : augment->getModifiers())
-			cacheModifier(mod);
+		for (const auto& modifier : augment->getModifiers())
+			cacheModifier(modifier);
 
 		getAugments().emplace_back(augment);
 
@@ -6034,8 +6116,8 @@ const bool Player::removeAugment(const std::shared_ptr<BlackTek::Augment>& augme
 		race_modifiers_count -= augment->race_triggers();
 		named_modifiers_count -= augment->name_count();
 
-		for (const auto& mod : augment->getModifiers())
-			uncacheModifier(mod);
+		for (const auto& modifier : augment->getModifiers())
+			uncacheModifier(modifier);
 
 		g_events->eventPlayerOnRemoveAugment(this->getPlayer(), augment);
 		augments->erase(it);
@@ -6153,8 +6235,8 @@ const bool Player::removeAugment(std::string_view augmentName)
 		race_modifiers_count -= augment->race_triggers();
 		named_modifiers_count -= augment->name_count();
 
-		for (const auto& mod : augment->getModifiers())
-			uncacheModifier(mod);
+		for (const auto& modifier : augment->getModifiers())
+			uncacheModifier(modifier);
 
 		g_events->eventPlayerOnRemoveAugment(this->getPlayer(), augment);
 		return true;

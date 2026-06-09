@@ -224,6 +224,30 @@ bool Vocations::loadFromToml() {
 						vocation.dualWield.primaryMultiplier   = static_cast<float>(dw->at_path("primary_multiplier").value_or(1.0));
 						vocation.dualWield.secondaryMultiplier = static_cast<float>(dw->at_path("secondary_multiplier").value_or(1.0));
 						vocation.dualWield.delay               = dw->at_path("delay").value_or(300u);
+
+						if (const auto* types_arr = dw->at_path("allowed_types").as_array())
+						{
+							uint16_t mask = 0;
+							bool throwable_only = false;
+							for (const auto& val : *types_arr)
+							{
+								if (const auto* sv = val.as_string())
+								{
+									std::string_view s = sv->get();
+									if      (s == "all")               { mask = 0; break; }
+									else if (s == "melee")             mask |= (1u << WEAPON_SWORD) | (1u << WEAPON_CLUB) | (1u << WEAPON_AXE);
+									else if (s == "magic")             mask |= (1u << WEAPON_WAND);
+									else if (s == "ranged")            mask |= (1u << WEAPON_DISTANCE);
+									else if (s == "non_magical_ranged") { mask |= (1u << WEAPON_DISTANCE); throwable_only = true; }
+									else if (s == "shields")           mask |= (1u << WEAPON_SHIELD);
+								}
+							}
+							vocation.dualWield.allowed_weapon_mask = mask;
+							vocation.dualWield.throwable_only      = throwable_only;
+						}
+
+						vocation.dualWield.parry_counter_multiplier = static_cast<float>(dw->at_path("parry_counter_multiplier").value_or(0.0));
+						vocation.dualWield.parry_counter_delay      = dw->at_path("parry_counter_delay").value_or(200u);
 					}
 
 					if (auto extra_skills = vocation_data["extraskills"].as_array()) 

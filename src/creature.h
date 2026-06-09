@@ -749,6 +749,7 @@ class Creature : virtual public Thing, public SharedObject
 
 		void updateMapCache();
 		void updateTileCache(TilePtr tile, int32_t dx, int32_t dy);
+		void updateTileCache(const TilePtr& tile, int32_t dx, int32_t dy, const CreaturePtr& self);
 		void updateTileCache(TilePtr tile, const Position& pos);
 		void onCreatureDisappear(const CreatureConstPtr& creature, bool isLogout);
 		virtual void doAttacking(uint32_t) {}

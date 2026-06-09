@@ -16,6 +16,15 @@ struct DualWieldConfig
 	float    primaryMultiplier   = 1.0f;
 	float    secondaryMultiplier = 1.0f;
 	uint32_t delay               = 300;
+	// Bitmask of WeaponType_t values permitted in each dual-wield slot.
+	// 0 = no restriction (all types allowed); otherwise (1u << WeaponType_t) must be set.
+	uint16_t allowed_weapon_mask = 0;
+	// When true AND WEAPON_DISTANCE is permitted, only throwables (ammoType == AMMO_NONE) qualify.
+	bool     throwable_only           = false;
+	// Shield in off-hand: on BLOCK_DEFENSE, fire a counter-attack scaled by shield skill + defense.
+	// 0 = disabled; set > 0 to enable the parry counter.
+	float    parry_counter_multiplier = 0.0f;
+	uint32_t parry_counter_delay      = 200;
 };
 
 class Vocation

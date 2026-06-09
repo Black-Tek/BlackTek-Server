@@ -230,7 +230,10 @@ bool Monsters::deserializeSpell(MonsterSpell* spell, spellBlock_t& sb, const std
 
 	sb.combatSpell = true;
 	auto combat = BlackTek::g_combat_registry.Create();
-	auto combatSpell = new CombatSpell(combat, spell->needTarget, spell->needDirection);
+
+	// Length-based directional spells need needDirection so the area aims toward the target.
+	const bool resolvedNeedDirection = spell->needDirection or (spell->length > 0 and not spell->needTarget);
+	auto combatSpell = new CombatSpell(combat, spell->needTarget, resolvedNeedDirection);
 
 	if (spell->name == "melee")
 	{
@@ -272,6 +275,22 @@ bool Monsters::deserializeSpell(MonsterSpell* spell, spellBlock_t& sb, const std
 
 		combat->SetDamageType(static_cast<uint16_t>(combatType));
 		combat->SetConfig(BlackTek::Combat::Config::Aggressive);
+	}
+
+	if (spell->effect != CONST_ME_NONE)
+		combat->SetImpactEffect(static_cast<uint8_t>(spell->effect));
+
+	if (spell->shoot != CONST_ANI_NONE)
+		combat->SetDistanceEffect(static_cast<uint8_t>(spell->shoot));
+
+	if (spell->radius > 0 or spell->length > 0)
+	{
+		auto area = std::make_unique<BlackTek::AreaCombat>();
+		if (spell->radius > 0)
+			area->setupArea(spell->radius);
+		else
+			area->setupArea(spell->length, spell->spread);
+		combat->setArea(std::move(area));
 	}
 
 	sb.spell = combatSpell;

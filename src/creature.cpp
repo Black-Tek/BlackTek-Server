@@ -32,8 +32,6 @@ Creature::~Creature()
 		summon->removeMaster();
 	}
 
-	// ConditionHandle automatically releases the condition back to the pool
-	// when destroyed; no explicit deletion required.
 	conditions.clear();
 }
 
@@ -158,11 +156,11 @@ void Creature::onThink(uint32_t interval)
 		const uint32_t charges_gained = blockTicks / charge_interval;
 		blockTicks %= charge_interval;
 
-		const uint32_t def_cap = get_defense_charges_cap();
-		defense_charges = std::min<uint32_t>(defense_charges + charges_gained, def_cap);
+		const uint32_t defense_cap = get_defense_charges_cap();
+		defense_charges = std::min<uint32_t>(defense_charges + charges_gained, defense_cap);
 
-		const uint32_t arm_cap = get_armor_charges_cap();
-		armor_charges = std::min<uint32_t>(armor_charges + charges_gained, arm_cap);
+		const uint32_t armor_cap = get_armor_charges_cap();
+		armor_charges = std::min<uint32_t>(armor_charges + charges_gained, armor_cap);
 	}
 
 	if (isUpdatingPath) 
@@ -353,9 +351,21 @@ void Creature::updateMapCache()
 
 void Creature::updateTileCache(TilePtr tile, int32_t dx, int32_t dy)
 {
-	if (std::abs(dx) <= maxWalkCacheWidth && std::abs(dy) <= maxWalkCacheHeight) {
-		localMapCache[maxWalkCacheHeight + dy][maxWalkCacheWidth + dx] = tile && tile->queryAdd(getCreature(), FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE) == RETURNVALUE_NOERROR;
+	if (std::abs(dx) <= maxWalkCacheWidth and std::abs(dy) <= maxWalkCacheHeight)
+	{
+		localMapCache[maxWalkCacheHeight + dy][maxWalkCacheWidth + dx] = tile and tile->queryAdd(getCreature(), FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE) == RETURNVALUE_NOERROR;
 	}
+}
+
+void Creature::updateTileCache(const TilePtr& tile, int32_t dx, int32_t dy, const CreaturePtr& self)
+{
+	bool& entry = localMapCache[maxWalkCacheHeight + dy][maxWalkCacheWidth + dx];
+	if (not tile or tile->hasFlag(TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT | TILESTATE_BLOCKSOLID))
+	{
+		entry = false;
+		return;
+	}
+	entry = tile->queryAdd(self, FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE) == RETURNVALUE_NOERROR;
 }
 
 void Creature::updateTileCache(TilePtr tile, const Position& pos)
@@ -494,174 +504,200 @@ void Creature::onAttackedCreatureChangeZone(ZoneType_t zone)
 	}
 }
 
-void Creature::onCreatureMove(const CreaturePtr& creature,
-								const TilePtr& newTile,
-								const Position& newPos,
-								const TilePtr& oldTile,
-								const Position& oldPos,
-								bool teleport)
+void Creature::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos, const TilePtr& oldTile, const Position& oldPos, bool teleport)
 {
-	if (creature == shared_from_this()) {
+	const CreaturePtr& self = getCreature();
+	const bool isSelf = (creature == self);
+
+	const int32_t dx = newPos.x - oldPos.x;
+	const int32_t dy = newPos.y - oldPos.y;
+	const int32_t dz = newPos.z - oldPos.z;
+
+	if (isSelf)
+	{
 		lastStep = OTSYS_TIME();
 		lastStepCost = 1;
 
-		if (!teleport) {
-			if (oldPos.z != newPos.z) {
-				//floor change extra cost
+		if (not teleport)
+		{
+			if (dz != 0)
+			{
 				lastStepCost = 2;
-			} else if (Position::getDistanceX(newPos, oldPos) >= 1 && Position::getDistanceY(newPos, oldPos) >= 1) {
-				//diagonal extra cost
+			}
+			else if ((dx >= 1 or dx <= -1) and (dy >= 1 or dy <= -1))
+			{
 				lastStepCost = 3;
 			}
-		} else {
+		}
+		else
+		{
 			stopEventWalk();
 		}
 
-		if (!summons.empty()) {
-			//check if any of our summons is out of range (+/- 2 floors or 30 tiles away)
-			std::forward_list<CreaturePtr> despawnList;
-			for (auto& summon : summons) {
+		if (not summons.empty())
+		{
+			static thread_local std::vector<CreaturePtr> despawnList;
+			despawnList.clear();
+
+			for (const auto& summon : summons)
+			{
 				const Position& pos = summon->getPosition();
-				if (Position::getDistanceZ(newPos, pos) > 2 || (std::max<int32_t>(Position::getDistanceX(newPos, pos), Position::getDistanceY(newPos, pos)) > 30)) {
-					despawnList.push_front(summon);
-				}
+
+				if ((pos.z > newPos.z ? pos.z - newPos.z : newPos.z - pos.z) > 2 or (std::max<int32_t>(pos.x > newPos.x ? pos.x - newPos.x : newPos.x - pos.x, pos.y > newPos.y ? pos.y - newPos.y : newPos.y - pos.y) > 30))
+					despawnList.push_back(summon);
 			}
 
-			for (CreaturePtr despawnCreature : despawnList) {
+			for (const CreaturePtr& despawnCreature : despawnList)
 				g_game.removeCreature(despawnCreature, true);
-			}
 		}
 
-		if (newTile->getZone() != oldTile->getZone()) {
+		if (newTile->getZone() != oldTile->getZone())
 			onChangeZone(getZone());
-		}
 
-		//update map cache
-		if (isMapLoaded) {
-			if (teleport || oldPos.z != newPos.z) {
+		if (isMapLoaded)
+		{
+			if (teleport or dz != 0)
+			{
 				updateMapCache();
-			} else {
+			}
+			else
+			{
 				const Position& myPos = getPosition();
 
-				if (oldPos.y > newPos.y) { //north
-					//shift y south
-					for (int32_t y = mapWalkHeight - 1; --y >= 0;) {
+				if (dy < 0) // north
+				{
+					for (int32_t y = mapWalkHeight - 1; --y >= 0;)
+					{
 						memcpy(localMapCache[y + 1], localMapCache[y], sizeof(localMapCache[y]));
 					}
-
-					//update 0
-					for (int32_t x = -maxWalkCacheWidth; x <= maxWalkCacheWidth; ++x) {
-						auto cacheTile = g_game.map.getTile(myPos.getX() + x, myPos.getY() - maxWalkCacheHeight, myPos.z);
-						updateTileCache(cacheTile, x, -maxWalkCacheHeight);
+					for (int32_t x = -maxWalkCacheWidth; x <= maxWalkCacheWidth; ++x)
+					{
+						const auto cacheTile = g_game.map.getTile(myPos.getX() + x, myPos.getY() - maxWalkCacheHeight, myPos.z);
+						updateTileCache(cacheTile, x, -maxWalkCacheHeight, self);
 					}
-				} else if (oldPos.y < newPos.y) { // south
-					//shift y north
-					for (int32_t y = 0; y <= mapWalkHeight - 2; ++y) {
+				}
+				else if (dy > 0) // south
+				{
+					for (int32_t y = 0; y <= mapWalkHeight - 2; ++y)
+					{
 						memcpy(localMapCache[y], localMapCache[y + 1], sizeof(localMapCache[y]));
 					}
-
-					//update mapWalkHeight - 1
-					for (int32_t x = -maxWalkCacheWidth; x <= maxWalkCacheWidth; ++x) {
-						auto cacheTile = g_game.map.getTile(myPos.getX() + x, myPos.getY() + maxWalkCacheHeight, myPos.z);
-						updateTileCache(cacheTile, x, maxWalkCacheHeight);
+					for (int32_t x = -maxWalkCacheWidth; x <= maxWalkCacheWidth; ++x)
+					{
+						const auto cacheTile = g_game.map.getTile(myPos.getX() + x, myPos.getY() + maxWalkCacheHeight, myPos.z);
+						updateTileCache(cacheTile, x, maxWalkCacheHeight, self);
 					}
 				}
 
-				if (oldPos.x < newPos.x) { // east
-					//shift y west
+				if (dx > 0) // east
+				{
 					int32_t starty = 0;
 					int32_t endy = mapWalkHeight - 1;
-					int32_t dy = Position::getDistanceY(oldPos, newPos);
 
-					if (dy < 0) {
+					if (dy < 0)
+					{
 						endy += dy;
-					} else if (dy > 0) {
+					}
+					else if (dy > 0)
+					{
 						starty = dy;
 					}
 
-					for (int32_t y = starty; y <= endy; ++y) {
-						for (int32_t x = 0; x <= mapWalkWidth - 2; ++x) {
-							localMapCache[y][x] = localMapCache[y][x + 1];
-						}
+					for (int32_t y = starty; y <= endy; ++y)
+					{
+						memmove(&localMapCache[y][0], &localMapCache[y][1], (mapWalkWidth - 1) * sizeof(bool));
 					}
-
-					//update mapWalkWidth - 1
-					for (int32_t y = -maxWalkCacheHeight; y <= maxWalkCacheHeight; ++y) {
-						auto cacheTile = g_game.map.getTile(myPos.x + maxWalkCacheWidth, myPos.y + y, myPos.z);
-						updateTileCache(cacheTile, maxWalkCacheWidth, y);
+					for (int32_t y = -maxWalkCacheHeight; y <= maxWalkCacheHeight; ++y)
+					{
+						const auto cacheTile = g_game.map.getTile(myPos.x + maxWalkCacheWidth, myPos.y + y, myPos.z);
+						updateTileCache(cacheTile, maxWalkCacheWidth, y, self);
 					}
-				} else if (oldPos.x > newPos.x) { // west
-					//shift y east
+				}
+				else if (dx < 0) // west
+				{
 					int32_t starty = 0;
 					int32_t endy = mapWalkHeight - 1;
-					int32_t dy = Position::getDistanceY(oldPos, newPos);
 
-					if (dy < 0) {
+					if (dy < 0)
+					{
 						endy += dy;
-					} else if (dy > 0) {
+					}
+					else if (dy > 0)
+					{
 						starty = dy;
 					}
 
-					for (int32_t y = starty; y <= endy; ++y) {
-						for (int32_t x = mapWalkWidth - 1; --x >= 0;) {
-							localMapCache[y][x + 1] = localMapCache[y][x];
-						}
+					for (int32_t y = starty; y <= endy; ++y)
+					{
+						memmove(&localMapCache[y][1], &localMapCache[y][0], (mapWalkWidth - 1) * sizeof(bool));
 					}
-
-					//update 0
-					for (int32_t y = -maxWalkCacheHeight; y <= maxWalkCacheHeight; ++y) {
-						auto cacheTile = g_game.map.getTile(myPos.x - maxWalkCacheWidth, myPos.y + y, myPos.z);
-						updateTileCache(cacheTile, -maxWalkCacheWidth, y);
+					for (int32_t y = -maxWalkCacheHeight; y <= maxWalkCacheHeight; ++y)
+					{
+						const auto cacheTile = g_game.map.getTile(myPos.x - maxWalkCacheWidth, myPos.y + y, myPos.z);
+						updateTileCache(cacheTile, -maxWalkCacheWidth, y, self);
 					}
 				}
 
 				updateTileCache(oldTile, oldPos);
 			}
 		}
-	} else {
-		if (isMapLoaded) {
+	}
+	else
+	{
+		if (isMapLoaded)
+		{
 			const Position& myPos = getPosition();
-
-			if (newPos.z == myPos.z) {
+			if (newPos.z == myPos.z)
+			{
 				updateTileCache(newTile, newPos);
 			}
-
-			if (oldPos.z == myPos.z) {
+			if (oldPos.z == myPos.z)
+			{
 				updateTileCache(oldTile, oldPos);
 			}
 		}
 	}
 
-	if (auto target = getFollowCreature()) {
-		if (creature == target || (creature == shared_from_this())) {
-			if (hasFollowPath) {
-				if ((creature == target) && listWalkDir.empty()) {
+	if (const auto& target = getFollowCreature())
+	{
+		if (creature == target or isSelf)
+		{
+			if (hasFollowPath)
+			{
+				if (creature == target and listWalkDir.empty())
+				{
 					isUpdatingPath = false;
 					goToFollowCreature();
 				}
-				else {
+				else
+				{
 					isUpdatingPath = true;
 				}
 			}
 
-			if (newPos.z != oldPos.z || !canSee(target->getPosition())) {
+			if (dz != 0 or not canSee(target->getPosition()))
+			{
 				onCreatureDisappear(target, false);
 			}
 		}
 	}
 
-	if (auto target = getAttackedCreature()) {
-		if (creature == target || (creature == shared_from_this())) {
-			if (newPos.z != oldPos.z || !canSee(target->getPosition())) {
+	if (const auto& target = getAttackedCreature())
+	{
+		if (creature == target or isSelf)
+		{
+			if (dz != 0 or not canSee(target->getPosition()))
+			{
 				onCreatureDisappear(target, false);
 			}
-			else {
-				if (hasExtraSwing()) {
-					//our target is moving lets see if we can get in hit
+			else
+			{
+				if (hasExtraSwing())
+				{
 					g_game.checkCreatureAttack(getID());
 				}
-
-				if (newTile->getZone() != oldTile->getZone()) {
+				if (newTile->getZone() != oldTile->getZone())
+				{
 					onAttackedCreatureChangeZone(target->getZone());
 				}
 			}
@@ -1241,7 +1277,6 @@ bool Creature::addCondition(ConditionHandle condition, bool force/* = false*/)
 	if (!force && condition->getType() == CONDITION_HASTE && hasCondition(CONDITION_PARALYZE)) {
 		int64_t walkDelay = getWalkDelay();
 		if (walkDelay > 0) {
-			// Clone for the delayed addition so the handle stays valid here.
 			auto delayed = condition->clone();
 			g_scheduler.addEvent(createSchedulerTask(walkDelay, [id = getID(), cond = std::move(delayed)]() mutable {
 				if (auto creature = g_game.getCreatureByID(id))
@@ -1255,7 +1290,6 @@ bool Creature::addCondition(ConditionHandle condition, bool force/* = false*/)
 
 	if (Condition* prevCond = getCondition(condition->getType(), condition->getId(), condition->getSubId()))
 	{
-		// Stack into the existing condition — the incoming handle releases here.
 		prevCond->addCondition(self, condition.Get());
 		return true;
 	}
@@ -1268,13 +1302,11 @@ bool Creature::addCondition(ConditionHandle condition, bool force/* = false*/)
 		return true;
 	}
 
-	// startCondition rejected it — ConditionHandle destructs and returns to pool.
 	return false;
 }
 
 bool Creature::addCombatCondition(ConditionHandle condition)
 {
-	// Save type before potential move.
 	const ConditionType_t type = condition ? condition->getType() : CONDITION_NONE;
 
 	if (!addCondition(std::move(condition)))
@@ -1302,11 +1334,9 @@ void Creature::removeCondition(ConditionType_t type, bool force/* = false*/)
 			}
 		}
 
-		// Capture handle before erasing so endCondition can be called safely.
 		ConditionHandle cond = std::move(*it);
 		it = conditions.erase(it);
 		cond->endCondition(self);
-		// cond destructs here, releasing back to pool.
 		onEndCondition(type);
 	}
 }
@@ -1393,14 +1423,12 @@ Condition* Creature::getCondition(ConditionType_t type, ConditionId_t conditionI
 void Creature::executeConditions(uint32_t interval)
 {
 	const auto self = std::static_pointer_cast<Creature>(shared_from_this());
-	// Collect raw ptrs for iteration; handles stay alive in conditions list.
 	std::vector<Condition*> snapshot;
 	snapshot.reserve(conditions.size());
 	for (const auto& h : conditions)
 		snapshot.push_back(h.Get());
 
 	for (Condition* condition : snapshot) {
-		// Re-confirm the condition is still in the list before acting.
 		auto it = std::ranges::find_if(conditions, [condition](const ConditionHandle& h) { return h.Get() == condition; });
 		if (it == conditions.end())
 			continue;

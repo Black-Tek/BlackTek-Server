@@ -40,8 +40,10 @@ namespace BlackTek
 		named_count(original.named_count),
 		healing_count(original.healing_count)
 	{
-		loaded_augment_names[m_guid] = original.getName();
-		loaded_agment_descriptions[m_guid] = original.getDescription();
+		std::string name = original.getName();
+		std::string desc = original.getDescription();
+		loaded_augment_names[m_guid]      = std::move(name);
+		loaded_agment_descriptions[m_guid] = std::move(desc);
 	}
 
 	Augment& Augment::operator=(const Augment& other)
