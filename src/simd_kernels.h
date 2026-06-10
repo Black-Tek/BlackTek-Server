@@ -9,6 +9,14 @@
 #include <immintrin.h>
 #include "simd_dispatch.h"
 
+#if defined(__GNUC__) || defined(__clang__)
+#  define BT_TARGET_AVX2  __attribute__((target("avx2")))
+#  define BT_TARGET_SSE41 __attribute__((target("sse4.1")))
+#else
+#  define BT_TARGET_AVX2
+#  define BT_TARGET_SSE41
+#endif
+
 namespace BlackTek
 {
 	struct ResistanceFactors;
@@ -58,12 +66,12 @@ namespace detail
 			return static_cast<CoordOffset>(_mm_extract_epi16(packedValues, 0));
 		}
 
-		inline MapCoord sse41_hmin_epu16(Vec128Int packedValues) noexcept
+		BT_TARGET_SSE41 inline MapCoord sse41_hmin_epu16(Vec128Int packedValues) noexcept
 		{
 			return static_cast<MapCoord>(_mm_extract_epi16(_mm_minpos_epu16(packedValues), 0));
 		}
 
-		inline MapCoord sse41_hmax_epu16(Vec128Int packedValues) noexcept
+		BT_TARGET_SSE41 inline MapCoord sse41_hmax_epu16(Vec128Int packedValues) noexcept
 		{
 			Vec128Int invertedValues = _mm_xor_si128(packedValues, _mm_set1_epi16(-1));
 			return static_cast<MapCoord>(~_mm_extract_epi16(_mm_minpos_epu16(invertedValues), 0) & 0xFFFFu);
@@ -105,7 +113,7 @@ namespace detail
 			scalar_gen_positions(spreads + index, forwards + index, count - index, base_x, base_y, out_xs + index, out_ys + index);
 		}
 
-		inline void avx2_gen_positions(const CoordOffset* spreads, const CoordOffset* forwards, size_t count, MapCoord base_x, MapCoord base_y, MapCoord* out_xs, MapCoord* out_ys) noexcept
+		BT_TARGET_AVX2 inline void avx2_gen_positions(const CoordOffset* spreads, const CoordOffset* forwards, size_t count, MapCoord base_x, MapCoord base_y, MapCoord* out_xs, MapCoord* out_ys) noexcept
 		{
 			const Vec256Int broadcastBaseX = _mm256_set1_epi16(static_cast<CoordOffset>(base_x));
 			const Vec256Int broadcastBaseY = _mm256_set1_epi16(static_cast<CoordOffset>(base_y));
@@ -190,7 +198,7 @@ inline void gen_positions(const CoordOffset* spreads, const CoordOffset* forward
 			scalar_compute_bbox(xs + index, ys + index, count - index, minX, maxX, minY, maxY);
 		}
 
-		inline void sse41_compute_bbox(
+		BT_TARGET_SSE41 inline void sse41_compute_bbox(
 			const MapCoord* xs, const MapCoord* ys, size_t count,
 			MapCoord& minX, MapCoord& maxX, MapCoord& minY, MapCoord& maxY) noexcept
 		{
@@ -218,7 +226,7 @@ inline void gen_positions(const CoordOffset* spreads, const CoordOffset* forward
 			scalar_compute_bbox(xs + index, ys + index, count - index, minX, maxX, minY, maxY);
 		}
 
-		inline void avx2_compute_bbox(const MapCoord* xs, const MapCoord* ys, size_t count, MapCoord& minX, MapCoord& maxX, MapCoord& minY, MapCoord& maxY) noexcept
+		BT_TARGET_AVX2 inline void avx2_compute_bbox(const MapCoord* xs, const MapCoord* ys, size_t count, MapCoord& minX, MapCoord& maxX, MapCoord& minY, MapCoord& maxY) noexcept
 		{
 			Vec256Int packedMinX = _mm256_set1_epi16(-1);  // 0xFFFF
 			Vec256Int packedMaxX = _mm256_setzero_si256();
@@ -452,7 +460,7 @@ namespace detail
 	}
 
 	template<class ResistanceFactors>
-	inline void avx2_batch_resistance(const CombatStat* stats, size_t count,const ResistanceFactors& f,	const CombatStat* rng_vals,	CombatStat* out) noexcept
+	BT_TARGET_AVX2 inline void avx2_batch_resistance(const CombatStat* stats, size_t count,const ResistanceFactors& f,	const CombatStat* rng_vals,	CombatStat* out) noexcept
 	{
 		using RF = decltype(f.formula_type);
 		switch (f.formula_type)
@@ -710,7 +718,7 @@ namespace detail
 	}
 
 	template<class ResolutionFactors>
-	inline void avx2_batch_resolve(const CombatStat* outputs, const CombatStat* resistances, size_t count, const ResolutionFactors& f, CombatStat* out) noexcept
+	BT_TARGET_AVX2 inline void avx2_batch_resolve(const CombatStat* outputs, const CombatStat* resistances, size_t count, const ResolutionFactors& f, CombatStat* out) noexcept
 	{
 		using RF = decltype(f.formula_type);
 		const Vec256Float vecFloor = _mm256_set1_ps(f.floor);
