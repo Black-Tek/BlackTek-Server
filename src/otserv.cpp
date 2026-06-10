@@ -24,6 +24,7 @@
 #include "augments.h"
 #include "zones.h"
 #include "console.h"
+#include "simd_dispatch.h"
 #include <memory>
 
 #if __has_include("gitmetadata.h")
@@ -299,6 +300,8 @@ void mainLoader(int, char*[], ServiceManager* services)
 {
 	// dispatcher thread
 	g_game.setGameState(GAME_STATE_STARTUP);
+
+	BlackTek::SIMD::detect();
 
 	srand(static_cast<unsigned int>(OTSYS_TIME()));
 

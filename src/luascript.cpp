@@ -3038,6 +3038,8 @@ void LuaScriptInterface::registerFunctions()
 		registerMethodClosure("Combat", "isIgnoreGround",     luaCombatGetConfigFlag, static_cast<int>(Config::IgnoreGround));
 		registerMethodClosure("Combat", "setAggressive",      luaCombatSetConfigFlag, static_cast<int>(Config::Aggressive));
 		registerMethodClosure("Combat", "isAggressive",       luaCombatGetConfigFlag, static_cast<int>(Config::Aggressive));
+		registerMethodClosure("Combat", "setIsUtility",       luaCombatSetConfigFlag, static_cast<int>(Config::IsUtility));
+		registerMethodClosure("Combat", "isUtility",          luaCombatGetConfigFlag, static_cast<int>(Config::IsUtility));
 		registerMethodClosure("Combat", "setIgnoreBarriers",  luaCombatSetConfigFlag, static_cast<int>(Config::IgnoreBarriers));
 		registerMethodClosure("Combat", "isIgnoreBarriers",   luaCombatGetConfigFlag, static_cast<int>(Config::IgnoreBarriers));
 		registerMethodClosure("Combat", "setUseCharges",      luaCombatSetConfigFlag, static_cast<int>(Config::UseCharges));
@@ -15811,7 +15813,12 @@ int LuaScriptInterface::luaCombatCreate(lua_State* L)
 	lua_getfield(L, 2, "damageType");
 	if (lua_isnumber(L, -1))
 	{
-		combat->SetDamageType(static_cast<uint16_t>(lua_tointeger(L, -1)));
+		const auto type = static_cast<uint16_t>(lua_tointeger(L, -1));
+		combat->SetDamageType(type);
+		using DT = BlackTek::Combat::DamageType;
+		const bool is_utility = (type == DT::Unknown || type == DT::Healing);
+		combat->SetConfig(BlackTek::Combat::Config::Aggressive, !is_utility);
+		combat->SetConfig(BlackTek::Combat::Config::IsUtility, is_utility);
 	}
 	lua_pop(L, 1);
 
@@ -15882,6 +15889,7 @@ int LuaScriptInterface::luaCombatCreate(lua_State* L)
 	applyFlag("multiLevel",      Config::MultiLevel);
 	applyFlag("ignoreGround",    Config::IgnoreGround);
 	applyFlag("aggressive",      Config::Aggressive);
+	applyFlag("isUtility",       Config::IsUtility);
 	applyFlag("ignoreBarriers",  Config::IgnoreBarriers);
 	applyFlag("useCharges",      Config::UseCharges);
 
@@ -16052,7 +16060,12 @@ int LuaScriptInterface::luaCombatSetDamageType(lua_State* L)
 		return 1;
 	}
 
-	combat->SetDamageType(getNumber<uint16_t>(L, 2));
+	const auto type = getNumber<uint16_t>(L, 2);
+	combat->SetDamageType(type);
+	using DT = BlackTek::Combat::DamageType;
+	const bool is_utility = (type == DT::Unknown or type == DT::Healing);
+	combat->SetConfig(BlackTek::Combat::Config::Aggressive, not is_utility);
+	combat->SetConfig(BlackTek::Combat::Config::IsUtility, is_utility);
 	pushBoolean(L, true);
 	return 1;
 }

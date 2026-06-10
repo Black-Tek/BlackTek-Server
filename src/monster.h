@@ -6,12 +6,13 @@
 
 #include "tile.h"
 #include "monsters.h"
+#include <gtl/phmap.hpp>
 
 class Creature;
 class Game;
 class Spawn;
 
-using CreatureHashSet = std::unordered_set<CreaturePtr>;
+using CreatureHashSet = gtl::flat_hash_set<CreaturePtr>;
 using CreatureList = std::vector<CreatureWeakPtr>;
 
 enum TargetSearchType_t {
@@ -217,6 +218,7 @@ class Monster final : public Creature
 	private:
 		CreatureHashSet friendList;
 		CreatureList targetList;
+		gtl::flat_hash_set<CreaturePtr> targetSet;
 
 		std::string name;
 		std::string nameDescription;

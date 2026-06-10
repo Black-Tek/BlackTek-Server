@@ -1255,16 +1255,14 @@ bool Creature::setMaster(const CreaturePtr& newMaster) {
 	}
 
 	if (newMaster) {
-		newMaster->summons.push_back(std::static_pointer_cast<Creature>(shared_from_this()));
+		newMaster->summons.insert(std::static_pointer_cast<Creature>(shared_from_this()));
 	}
 
 	CreaturePtr oldMaster = getMaster();
 	master = newMaster;
 
 	if (oldMaster) {
-		if (auto summon = std::find(oldMaster->summons.begin(), oldMaster->summons.end(), this->getCreature()); summon != oldMaster->summons.end()) {
-			oldMaster->summons.erase(summon);
-		}
+		oldMaster->summons.erase(this->getCreature());
 	}
 	return true;
 }

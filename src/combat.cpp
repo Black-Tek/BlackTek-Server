@@ -14,6 +14,8 @@
 
 #include <optional>
 #include <immintrin.h>
+#include "simd_dispatch.h"
+#include "simd_kernels.h"
 
 using namespace BlackTek::Constant;
 using BlackTek::MatrixArea;
@@ -289,10 +291,26 @@ namespace BlackTek
 		ApplyResolutionPreset(sf.resolution, resolution_preset);
 	}
 
-	thread_local std::vector<TilePtr>     area_tile_buffer;
-	thread_local std::vector<Position>    area_position_buffer;
-	thread_local std::vector<CreaturePtr> area_creature_buffer;
-	thread_local std::vector<TilePtr>     area_valid_tile_buffer;
+	thread_local std::vector<TilePtr>			area_tile_buffer;
+	thread_local std::vector<Position>			area_position_buffer;
+	thread_local std::vector<CreaturePtr>		area_creature_buffer;
+	thread_local std::vector<TilePtr>			area_valid_tile_buffer;
+	thread_local std::vector<uint16_t>			area_xs_buffer;
+	thread_local std::vector<uint16_t>			area_ys_buffer;
+	thread_local std::vector<uint32_t>			batch_damage_scratch;
+	thread_local std::vector<Combat::BlockType> batch_block_type_scratch;
+	thread_local std::vector<int32_t>			batch_stats_scratch; // we reuse for defense/armor stats per target
+	thread_local std::vector<int32_t>			batch_resistance_scratch;
+	thread_local std::vector<int32_t>			batch_rng_scratch;
+
+	struct BatchStrikeContext
+	{
+		const uint32_t*          damages     = nullptr;
+		const Combat::BlockType* block_types = nullptr;
+		size_t                   index       = 0;
+		bool                     active      = false;
+	};
+	thread_local BatchStrikeContext g_batch_ctx;
 
 	template<typename T>
 	concept ByteLike = std::is_integral_v<T> or std::is_enum_v<T>;
@@ -885,14 +903,21 @@ namespace BlackTek
 
 
 
-	static std::pair<std::vector<DamageLocation>, int32_t> CreateDamageLocations(const MatrixArea& area)
+	struct DamageLocationSoA
+	{
+		std::vector<int16_t> spreads;
+		std::vector<int16_t> forwards;
+		int32_t              max_extent = 0;
+	};
+
+	static DamageLocationSoA CreateDamageLocations(const MatrixArea& area)
 	{
 		if (area.GetRows() == 0 or area.GetCols() == 0)
 			return {};
 
 		const auto [cx, cy] = area.GetCenter();
 
-		std::vector<DamageLocation> locations;
+		DamageLocationSoA result;
 		int32_t max_extent = 0;
 
 		for (uint32_t row = 0; row < area.GetRows(); ++row)
@@ -903,13 +928,15 @@ namespace BlackTek
 				{
 					const int16_t spread  = static_cast<int16_t>(static_cast<int32_t>(col) - static_cast<int32_t>(cx));
 					const int16_t forward = static_cast<int16_t>(static_cast<int32_t>(row) - static_cast<int32_t>(cy));
-					locations.push_back({ .spread = spread, .forward = forward });
+					result.spreads.push_back(spread);
+					result.forwards.push_back(forward);
 					max_extent = std::max(max_extent, std::max(std::abs(static_cast<int32_t>(spread)), std::abs(static_cast<int32_t>(forward))));
 				}
 			}
 		}
 
-		return { std::move(locations), max_extent };
+		result.max_extent = max_extent;
+		return result;
 	}
 
 	void Combat::setArea(AreaCombat* area)
@@ -920,8 +947,8 @@ namespace BlackTek
 		CombatArea cardinal  = area->GetCombatArea();
 		CombatArea extended  = area->GetExtCombatArea();
 
-		const bool hasCard     = std::ranges::any_of(cardinal.directions, [](const auto& d) { return not d.empty(); });
-		const bool hasExtended = std::ranges::any_of(extended.directions, [](const auto& d) { return not d.empty(); });
+		const bool hasCard     = std::ranges::any_of(cardinal.spreads, [](const auto& d) { return not d.empty(); });
+		const bool hasExtended = std::ranges::any_of(extended.spreads, [](const auto& d) { return not d.empty(); });
 
 		if (hasCard or hasExtended)
 		{
@@ -944,8 +971,8 @@ namespace BlackTek
 		CombatArea cardinal  = area->GetCombatArea();
 		CombatArea extended  = area->GetExtCombatArea();
 
-		const bool hasCard     = std::ranges::any_of(cardinal.directions, [](const auto& d) { return not d.empty(); });
-		const bool hasExtended = std::ranges::any_of(extended.directions, [](const auto& d) { return not d.empty(); });
+		const bool hasCard     = std::ranges::any_of(cardinal.spreads, [](const auto& d) { return not d.empty(); });
+		const bool hasExtended = std::ranges::any_of(extended.spreads, [](const auto& d) { return not d.empty(); });
 
 		if (hasCard or hasExtended)
 		{
@@ -970,8 +997,10 @@ namespace BlackTek
 
 		const int32_t dx = Position::getOffsetX(center, caster_position);
 		const int32_t dy = Position::getOffsetY(center, caster_position);
-		const std::vector<DamageLocation>* locations = nullptr;
-		int32_t stored_max_extent = 0;
+		const int16_t* spreads_ptr   = nullptr;
+		const int16_t* forwards_ptr  = nullptr;
+		size_t         loc_count     = 0;
+		int32_t        stored_max_extent = 0;
 
 		if (config.test(Config::HasArea))
 		{
@@ -984,11 +1013,13 @@ namespace BlackTek
 				else                        diagonalDirection = DIRECTION_SOUTHEAST;
 
 				const uint8_t slot = static_cast<uint8_t>(diagonalDirection) ^ DIRECTION_DIAGONAL_MASK;
-				locations = &cached_areas->extended_area.directions[slot];
+				spreads_ptr  = cached_areas->extended_area.spreads[slot].data();
+				forwards_ptr = cached_areas->extended_area.forwards[slot].data();
+				loc_count    = cached_areas->extended_area.spreads[slot].size();
 				stored_max_extent = cached_areas->extended_area.max_extent;
 			}
 
-			if (not locations)
+			if (not spreads_ptr)
 			{
 				Direction cardinalDirection;
 				if (dx < 0) cardinalDirection = DIRECTION_WEST;
@@ -996,20 +1027,26 @@ namespace BlackTek
 				else if (dy < 0) cardinalDirection = DIRECTION_NORTH;
 				else             cardinalDirection = DIRECTION_SOUTH;
 
-				locations = &cached_areas->area.directions[cardinalDirection];
+				spreads_ptr  = cached_areas->area.spreads[cardinalDirection].data();
+				forwards_ptr = cached_areas->area.forwards[cardinalDirection].data();
+				loc_count    = cached_areas->area.spreads[cardinalDirection].size();
 				stored_max_extent = cached_areas->area.max_extent;
 			}
 		}
 
 		const int32_t distance = std::max(std::abs(dx), std::abs(dy));
 
-		if (not locations or locations->empty())
+		if (not spreads_ptr or loc_count == 0)
 			return { area_position_buffer, area_tile_buffer, distance, 0 };
 
-		const size_t loc_count = locations->size();
-		const DamageLocation* locs = locations->data();
 		const uint16_t base_x = center.x;
 		const uint16_t base_y = center.y;
+
+		// Pre-compute all positions via SIMD gen_positions into thread-local scratch
+		area_xs_buffer.resize(loc_count);
+		area_ys_buffer.resize(loc_count);
+		SIMD::gen_positions(spreads_ptr, forwards_ptr, loc_count, base_x, base_y,
+			area_xs_buffer.data(), area_ys_buffer.data());
 
 		const auto try_emit = [&](const TilePtr& tile, const Position& position) noexcept
 			{
@@ -1043,13 +1080,12 @@ namespace BlackTek
 				{
 					for (size_t k = 0; k < loc_count; ++k)
 					{
-						const uint16_t wx = static_cast<uint16_t>(base_x + locs[k].spread);
-						const uint16_t wy = static_cast<uint16_t>(base_y + locs[k].forward);
-						const Position position(wx, wy, z);
+						const uint16_t wx = area_xs_buffer[k];
+						const uint16_t wy = area_ys_buffer[k];
 						const auto tile = g_game.map.getTile(wx, wy, z);
 						if (not tile)
 							continue;
-						try_emit(tile, position);
+						try_emit(tile, Position(wx, wy, z));
 					}
 				}
 			}
@@ -1057,8 +1093,8 @@ namespace BlackTek
 			{
 				for (size_t k = 0; k < loc_count; ++k)
 				{
-					const uint16_t wx = static_cast<uint16_t>(base_x + locs[k].spread);
-					const uint16_t wy = static_cast<uint16_t>(base_y + locs[k].forward);
+					const uint16_t wx = area_xs_buffer[k];
+					const uint16_t wy = area_ys_buffer[k];
 
 					for (uint8_t z = minZ; z <= maxZ; ++z)
 					{
@@ -1080,8 +1116,8 @@ namespace BlackTek
 			const uint8_t z = center.z;
 			for (size_t k = 0; k < loc_count; ++k)
 			{
-				const uint16_t wx = static_cast<uint16_t>(base_x + locs[k].spread);
-				const uint16_t wy = static_cast<uint16_t>(base_y + locs[k].forward);
+				const uint16_t wx = area_xs_buffer[k];
+				const uint16_t wy = area_ys_buffer[k];
 				const auto tile = g_game.map.getTile(wx, wy, z);
 				if (not tile)
 					continue;
@@ -1092,7 +1128,6 @@ namespace BlackTek
 		return { area_position_buffer, area_tile_buffer, distance, stored_max_extent };
 	}
 
-
 	const DamageArea Combat::getAreaPositions(const Position& caster_position, const Position& targetPos)
 	{
 		area_position_buffer.clear();
@@ -1100,8 +1135,10 @@ namespace BlackTek
 
 		const int32_t dx = Position::getOffsetX(targetPos, caster_position);
 		const int32_t dy = Position::getOffsetY(targetPos, caster_position);
-		const std::vector<DamageLocation>* locations = nullptr;
-		int32_t stored_max_extent = 0;
+		const int16_t* spreads_ptr  = nullptr;
+		const int16_t* forwards_ptr = nullptr;
+		size_t         loc_count    = 0;
+		int32_t stored_max_extent   = 0;
 
 		if (config.test(Config::HasArea))
 		{
@@ -1114,11 +1151,13 @@ namespace BlackTek
 				else                        diagonalDirection = DIRECTION_SOUTHEAST;
 
 				const uint8_t slot = static_cast<uint8_t>(diagonalDirection) ^ DIRECTION_DIAGONAL_MASK;
-				locations = &cached_areas->extended_area.directions[slot];
+				spreads_ptr  = cached_areas->extended_area.spreads[slot].data();
+				forwards_ptr = cached_areas->extended_area.forwards[slot].data();
+				loc_count    = cached_areas->extended_area.spreads[slot].size();
 				stored_max_extent = cached_areas->extended_area.max_extent;
 			}
 
-			if (not locations)
+			if (not spreads_ptr)
 			{
 				Direction cardinalDirection;
 				if      (dx < 0) cardinalDirection = DIRECTION_WEST;
@@ -1126,18 +1165,24 @@ namespace BlackTek
 				else if (dy < 0) cardinalDirection = DIRECTION_NORTH;
 				else             cardinalDirection = DIRECTION_SOUTH;
 
-				locations = &cached_areas->area.directions[cardinalDirection];
+				spreads_ptr  = cached_areas->area.spreads[cardinalDirection].data();
+				forwards_ptr = cached_areas->area.forwards[cardinalDirection].data();
+				loc_count    = cached_areas->area.spreads[cardinalDirection].size();
 				stored_max_extent = cached_areas->area.max_extent;
 			}
 		}
 
-		if (not locations or locations->empty())
+		if (not spreads_ptr or loc_count == 0)
 			return { area_position_buffer, 0, 0 };
 
-		const size_t loc_count      = locations->size();
-		const DamageLocation* locs  = locations->data();
-		const uint16_t base_x       = targetPos.x;
-		const uint16_t base_y       = targetPos.y;
+		const uint16_t base_x = targetPos.x;
+		const uint16_t base_y = targetPos.y;
+
+		// Pre-compute all positions via SIMD gen_positions
+		area_xs_buffer.resize(loc_count);
+		area_ys_buffer.resize(loc_count);
+		SIMD::gen_positions(spreads_ptr, forwards_ptr, loc_count, base_x, base_y,
+			area_xs_buffer.data(), area_ys_buffer.data());
 
 		if (config.test(Config::MultiLevel))
 		{
@@ -1159,12 +1204,7 @@ namespace BlackTek
 				for (uint8_t z = minZ; z <= maxZ; ++z)
 				{
 					for (size_t k = 0; k < loc_count; ++k)
-					{
-						*dst++ = Position(
-							static_cast<uint16_t>(base_x + locs[k].spread),
-							static_cast<uint16_t>(base_y + locs[k].forward),
-							z);
-					}
+						*dst++ = Position(area_xs_buffer[k], area_ys_buffer[k], z);
 				}
 			}
 			else
@@ -1174,8 +1214,8 @@ namespace BlackTek
 
 				for (size_t k = 0; k < loc_count; ++k)
 				{
-					const uint16_t wx = static_cast<uint16_t>(base_x + locs[k].spread);
-					const uint16_t wy = static_cast<uint16_t>(base_y + locs[k].forward);
+					const uint16_t wx = area_xs_buffer[k];
+					const uint16_t wy = area_ys_buffer[k];
 
 					for (uint8_t z = minZ; z <= maxZ; ++z)
 					{
@@ -1193,16 +1233,9 @@ namespace BlackTek
 		else
 		{
 			area_position_buffer.resize(loc_count);
-			Position* dst = area_position_buffer.data();
 			const uint8_t z = targetPos.z;
-
 			for (size_t k = 0; k < loc_count; ++k)
-			{
-				dst[k] = Position(
-					static_cast<uint16_t>(base_x + locs[k].spread),
-					static_cast<uint16_t>(base_y + locs[k].forward),
-					z);
-			}
+				area_position_buffer[k] = Position(area_xs_buffer[k], area_ys_buffer[k], z);
 		}
 
 		const int32_t distance = std::max(std::abs(dx), std::abs(dy));
@@ -2786,10 +2819,16 @@ namespace BlackTek
 		static constexpr size_t MAX_TILES = 256;
 		const size_t n = std::min(tiles.size(), MAX_TILES);
 
-		uint16_t minX = positions[0].x;
-		uint16_t maxX = positions[0].x;
-		uint16_t minY = positions[0].y;
-		uint16_t maxY = positions[0].y;
+		// Gather xs/ys from AoS positions into flat arrays for SIMD bbox
+		alignas(32) uint16_t tmp_xs[MAX_TILES];
+		alignas(32) uint16_t tmp_ys[MAX_TILES];
+		for (size_t i = 0; i < n; ++i)
+		{
+			tmp_xs[i] = positions[i].x;
+			tmp_ys[i] = positions[i].y;
+		}
+		uint16_t minX = 0, maxX = 0, minY = 0, maxY = 0;
+		SIMD::compute_bbox(tmp_xs, tmp_ys, n, minX, maxX, minY, maxY);
 
 		area_creature_buffer.clear();
 		area_valid_tile_buffer.clear();
@@ -2892,12 +2931,6 @@ namespace BlackTek
 
 		for (size_t i = 0; i < n; ++i)
 		{
-			const auto& position = positions[i];
-			minX = std::min(minX, position.x);
-			maxX = std::max(maxX, position.x);
-			minY = std::min(minY, position.y);
-			maxY = std::max(maxY, position.y);
-
 			const auto& tile = tiles[i];
 
 			valid_tile_list.push_back(tile);
@@ -2931,9 +2964,34 @@ namespace BlackTek
 		apply_effects(spectators, caster, valid_tile_list);
 
 		std::vector<CreaturePtr> toDamageCreatures = std::move(area_creature_buffer);
+		const size_t strike_n = toDamageCreatures.size();
+
+		// Activate SIMD batch damage computation for qualifying AoE hits
+		const bool use_batch = strike_n > 1
+			and damage_type != DamageType::Unknown
+			and damage_type != DamageType::Healing
+			and not config.test(Config::TrueDamage)
+			and not config.test(Config::HasCompiledFormula);
+
+		if (use_batch)
+		{
+			batch_damage_scratch.resize(strike_n);
+			batch_block_type_scratch.resize(strike_n);
+			block_batch(caster,
+				{ toDamageCreatures.data(), strike_n },
+				{ batch_damage_scratch.data(), strike_n },
+				{ batch_block_type_scratch.data(), strike_n });
+
+			g_batch_ctx.damages     = batch_damage_scratch.data();
+			g_batch_ctx.block_types = batch_block_type_scratch.data();
+			g_batch_ctx.index       = 0;
+			g_batch_ctx.active      = true;
+		}
 
 		for (const auto& target_creature : toDamageCreatures)
 			strike_target(caster, target_creature, true, spectators_span);
+
+		g_batch_ctx.active = false;
 	}
 
 	void AreaCombat::setupArea(const std::vector<uint32_t>& area_data, uint32_t rows)
@@ -3012,9 +3070,10 @@ namespace BlackTek
 		CombatArea result;
 		auto assign = [&](size_t slot, const MatrixArea& src)
 		{
-			auto [locs, ext] = CreateDamageLocations(src);
-			result.directions[slot] = std::move(locs);
-			result.max_extent = std::max(result.max_extent, ext);
+			auto soa = CreateDamageLocations(src);
+			result.spreads[slot]  = std::move(soa.spreads);
+			result.forwards[slot] = std::move(soa.forwards);
+			result.max_extent = std::max(result.max_extent, soa.max_extent);
 		};
 		assign(DIRECTION_NORTH, areas[DIRECTION_NORTH]);
 		assign(DIRECTION_EAST,  areas[DIRECTION_EAST]);
@@ -3031,9 +3090,10 @@ namespace BlackTek
 		CombatArea result;
 		auto assign = [&](size_t slot, const MatrixArea& src)
 		{
-			auto [locs, ext] = CreateDamageLocations(src);
-			result.directions[slot] = std::move(locs);
-			result.max_extent = std::max(result.max_extent, ext);
+			auto soa = CreateDamageLocations(src);
+			result.spreads[slot]  = std::move(soa.spreads);
+			result.forwards[slot] = std::move(soa.forwards);
+			result.max_extent = std::max(result.max_extent, soa.max_extent);
 		};
 		assign(DIRECTION_SOUTHWEST ^ DIRECTION_DIAGONAL_MASK, areas[DIRECTION_SOUTHWEST]);
 		assign(DIRECTION_SOUTHEAST ^ DIRECTION_DIAGONAL_MASK, areas[DIRECTION_SOUTHEAST]);
@@ -3085,138 +3145,182 @@ namespace BlackTek
 	{
 		BlockType blockType = BlockType::NoBlock;
 
-		bool apply_armor_reduction = config.test(BlockedByArmor);
+		bool apply_armor_reduction   = config.test(BlockedByArmor);
 		bool apply_defense_reduction = config.test(Config::BlockedByDefense);
 
 		const float defense_multiplier = target->get_defense_charge_cost_multiplier();
-		const float armor_multiplier = target->get_armor_charge_cost_multiplier();
+		const float armor_multiplier   = target->get_armor_charge_cost_multiplier();
 		const float defense_base = static_cast<float>(apply_defense_reduction ? defense_charge_cost : g_config.GetNumber(ConfigManager::DEFAULT_DEFENSE_CHARGE_COST));
-		const float armor_base = static_cast<float>(apply_armor_reduction ? armor_charge_cost   : g_config.GetNumber(ConfigManager::DEFAULT_ARMOR_CHARGE_COST));
+		const float armor_base   = static_cast<float>(apply_armor_reduction   ? armor_charge_cost   : g_config.GetNumber(ConfigManager::DEFAULT_ARMOR_CHARGE_COST));
 
 		const uint32_t defense_cost = static_cast<uint32_t>(std::round(defense_base * defense_multiplier));
-		const uint32_t armor_cost   = static_cast<uint32_t>(std::round(armor_base * armor_multiplier));
+		const uint32_t armor_cost   = static_cast<uint32_t>(std::round(armor_base   * armor_multiplier));
 
 		const uint8_t situation_index = (attacker and attacker->getCreatureSubType() == CreatureSubType::Player) ? 0u : 2u;
 
-		const CompiledFormulaSlots* compiled = config.test(Config::HasCompiledFormula)
-			? formula_cache->compiled.get()
-			: nullptr;
-
-		const SituationFormulas& formulas = config.test(Config::HasFormulaCache)
-			? formula_cache->situations[situation_index]
-			: g_default_situation_formulas[situation_index];
-
-		FormulaContext context;
-		context.caster = attacker;
-		context.target = target;
-
 		uint32_t computed_damage = damage;
-		if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Output)) : nullptr)
+
+		if (g_batch_ctx.active)
 		{
-			computed_damage = static_cast<uint32_t>(std::abs((*formula)(context)));
-		}
-		else if (config.test(Config::HasFormulaCache) && attacker && attacker->is_player())
-		{
-			const int32_t stat = static_cast<int32_t>(attacker->getPlayer()->getLevel())
-			                   + static_cast<int32_t>(attacker->getPlayer()->getMagicLevel()) * 3;
-			computed_damage = static_cast<uint32_t>(std::abs(calculate_output(formulas.output, stat)));
-		}
-		else if (attacker and attacker->getCreatureSubType() == CreatureSubType::Monster)
-		{
-			int32_t min_value = 0, max_value = 0;
-			if (const auto mon = attacker->getMonster(); mon and mon->getCombatValues(min_value, max_value))
-			{
-				const int32_t lower = std::min(std::abs(min_value), std::abs(max_value));
-				const int32_t upper = std::max(std::abs(min_value), std::abs(max_value));
-				computed_damage = static_cast<uint32_t>(uniform_random(lower, upper));
-			}
-		}
+			// Batch path: formula already computed by block_batch; apply charges + side-effects
+			computed_damage = g_batch_ctx.damages[g_batch_ctx.index];
+			blockType       = g_batch_ctx.block_types[g_batch_ctx.index];
+			++g_batch_ctx.index;
 
-		if (apply_defense_reduction and target->can_use_defense()
-		    and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
-		{
-			if (defense_cost > 0)
-				target->set_defense_charges(target->get_defense_charges() - defense_cost);
+			if (apply_defense_reduction and target->can_use_defense()
+			    and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
+			{
+				if (defense_cost > 0)
+					target->set_defense_charges(target->get_defense_charges() - defense_cost);
 
-			int32_t defense_value = 0;
-			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Defense)) : nullptr)
-			{
-				context.pipeline_a = target->getDefense();
-				defense_value = static_cast<int32_t>((*formula)(context));
-			}
-			else
-			{
-				defense_value = calculate_resistance(formulas.defense, target->getDefense());
-			}
-
-			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
-			{
-				context.pipeline_a = static_cast<int32_t>(computed_damage);
-				context.pipeline_b = defense_value;
-				computed_damage = static_cast<uint32_t>((*formula)(context));
-			}
-			else
-			{
-				computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), defense_value));
-			}
-
-			if (computed_damage == 0)
-			{
-				blockType = BlockType::Defensive;
-				apply_armor_reduction = false;
-
-				if (attacker and not target->hasCondition(CONDITION_PACIFIED))
+				if (blockType == BlockType::Defensive)
 				{
-					const auto* voc = target->getVocation();
-					if (voc and voc->dualWield.enabled and voc->dualWield.parry_counter_multiplier > 0.0f)
+					apply_armor_reduction = false;
+					if (attacker and not target->hasCondition(CONDITION_PACIFIED))
 					{
-						const auto& shield = target->getInventoryItem(CONST_SLOT_LEFT);
-						if (shield and shield->getWeaponType() == WEAPON_SHIELD and	Position::areInRange<1, 1>(target->getPosition(), attacker->getPosition()))
+						const auto* voc = target->getVocation();
+						if (voc and voc->dualWield.enabled and voc->dualWield.parry_counter_multiplier > 0.0f)
 						{
-							const auto counterDelay = std::max<uint32_t>(SCHEDULER_MINTICKS, voc->dualWield.parry_counter_delay);
-							g_scheduler.addEvent(createSchedulerTask(counterDelay, [playerId = target->getID(), attackerId = attacker->getID()]()
-								{
-									g_game.playerParryCounter(playerId, attackerId);
-								}
-							));
+							const auto& shield = target->getInventoryItem(CONST_SLOT_LEFT);
+							if (shield and shield->getWeaponType() == WEAPON_SHIELD
+							    and Position::areInRange<1, 1>(target->getPosition(), attacker->getPosition()))
+							{
+								const auto counterDelay = std::max<uint32_t>(SCHEDULER_MINTICKS, voc->dualWield.parry_counter_delay);
+								g_scheduler.addEvent(createSchedulerTask(counterDelay, [playerId = target->getID(), attackerId = attacker->getID()]()
+									{ g_game.playerParryCounter(playerId, attackerId); }));
+							}
 						}
 					}
 				}
+
+				target->onBlockHit();
 			}
 
-			// reduces shield block count and awards shielding skill if shield is equipped
-			target->onBlockHit();
+			if (apply_armor_reduction and (armor_cost == 0 or target->get_armor_charges() >= armor_cost))
+			{
+				if (armor_cost > 0)
+					target->set_armor_charges(target->get_armor_charges() - armor_cost);
+			}
 		}
-
-		if (apply_armor_reduction and (armor_cost == 0 or target->get_armor_charges() >= armor_cost))
+		else
 		{
-			if (armor_cost > 0)
-				target->set_armor_charges(target->get_armor_charges() - armor_cost);
+			const CompiledFormulaSlots* compiled = config.test(Config::HasCompiledFormula)
+				? formula_cache->compiled.get()
+				: nullptr;
 
-			int32_t armor_value = 0;
-			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Armor)) : nullptr)
+			const SituationFormulas& formulas = config.test(Config::HasFormulaCache)
+				? formula_cache->situations[situation_index]
+				: g_default_situation_formulas[situation_index];
+
+			FormulaContext context;
+			context.caster = attacker;
+			context.target = target;
+
+			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Output)) : nullptr)
 			{
-				context.pipeline_a = target->getArmor();
-				armor_value = static_cast<int32_t>((*formula)(context));
+				computed_damage = static_cast<uint32_t>(std::abs((*formula)(context)));
 			}
-			else
+			else if (config.test(Config::HasFormulaCache) && attacker && attacker->is_player())
 			{
-				armor_value = calculate_resistance(formulas.armor, target->getArmor());
+				const int32_t stat = static_cast<int32_t>(attacker->getPlayer()->getLevel())
+				                   + static_cast<int32_t>(attacker->getPlayer()->getMagicLevel()) * 3;
+				computed_damage = static_cast<uint32_t>(std::abs(calculate_output(formulas.output, stat)));
+			}
+			else if (attacker and attacker->getCreatureSubType() == CreatureSubType::Monster)
+			{
+				int32_t min_value = 0, max_value = 0;
+				if (const auto mon = attacker->getMonster(); mon and mon->getCombatValues(min_value, max_value))
+				{
+					const int32_t lower = std::min(std::abs(min_value), std::abs(max_value));
+					const int32_t upper = std::max(std::abs(min_value), std::abs(max_value));
+					computed_damage = static_cast<uint32_t>(uniform_random(lower, upper));
+				}
 			}
 
-			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
+			if (apply_defense_reduction and target->can_use_defense()
+			    and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
 			{
-				context.pipeline_a = static_cast<int32_t>(computed_damage);
-				context.pipeline_b = armor_value;
-				computed_damage = static_cast<uint32_t>((*formula)(context));
-			}
-			else
-			{
-				computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), armor_value));
+				if (defense_cost > 0)
+					target->set_defense_charges(target->get_defense_charges() - defense_cost);
+
+				int32_t defense_value = 0;
+				if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Defense)) : nullptr)
+				{
+					context.pipeline_a = target->getDefense();
+					defense_value = static_cast<int32_t>((*formula)(context));
+				}
+				else
+				{
+					defense_value = calculate_resistance(formulas.defense, target->getDefense());
+				}
+
+				if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
+				{
+					context.pipeline_a = static_cast<int32_t>(computed_damage);
+					context.pipeline_b = defense_value;
+					computed_damage = static_cast<uint32_t>((*formula)(context));
+				}
+				else
+				{
+					computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), defense_value));
+				}
+
+				if (computed_damage == 0)
+				{
+					blockType = BlockType::Defensive;
+					apply_armor_reduction = false;
+
+					if (attacker and not target->hasCondition(CONDITION_PACIFIED))
+					{
+						const auto* voc = target->getVocation();
+						if (voc and voc->dualWield.enabled and voc->dualWield.parry_counter_multiplier > 0.0f)
+						{
+							const auto& shield = target->getInventoryItem(CONST_SLOT_LEFT);
+							if (shield and shield->getWeaponType() == WEAPON_SHIELD
+							    and Position::areInRange<1, 1>(target->getPosition(), attacker->getPosition()))
+							{
+								const auto counterDelay = std::max<uint32_t>(SCHEDULER_MINTICKS, voc->dualWield.parry_counter_delay);
+								g_scheduler.addEvent(createSchedulerTask(counterDelay, [playerId = target->getID(), attackerId = attacker->getID()]()
+									{ g_game.playerParryCounter(playerId, attackerId); }));
+							}
+						}
+					}
+				}
+
+				// reduces shield block count and awards shielding skill if shield is equipped
+				target->onBlockHit();
 			}
 
-			if (computed_damage == 0)
-				blockType = BlockType::Armor;
+			if (apply_armor_reduction and (armor_cost == 0 or target->get_armor_charges() >= armor_cost))
+			{
+				if (armor_cost > 0)
+					target->set_armor_charges(target->get_armor_charges() - armor_cost);
+
+				int32_t armor_value = 0;
+				if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Armor)) : nullptr)
+				{
+					context.pipeline_a = target->getArmor();
+					armor_value = static_cast<int32_t>((*formula)(context));
+				}
+				else
+				{
+					armor_value = calculate_resistance(formulas.armor, target->getArmor());
+				}
+
+				if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
+				{
+					context.pipeline_a = static_cast<int32_t>(computed_damage);
+					context.pipeline_b = armor_value;
+					computed_damage = static_cast<uint32_t>((*formula)(context));
+				}
+				else
+				{
+					computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), armor_value));
+				}
+
+				if (computed_damage == 0)
+					blockType = BlockType::Armor;
+			}
 		}
 
 		if (attacker and damage_type != DamageType::Healing)
@@ -3243,117 +3347,143 @@ namespace BlackTek
 	{
 		BlockType blockType = BlockType::NoBlock;
 
-		bool apply_armor_reduction = config.test(BlockedByArmor);
+		bool apply_armor_reduction   = config.test(BlockedByArmor);
 		const bool apply_defense_reduction = config.test(Config::BlockedByDefense);
 
 		const float defense_multiplier = target->get_defense_charge_cost_multiplier();
-		const float armor_multiplier = target->get_armor_charge_cost_multiplier();
+		const float armor_multiplier   = target->get_armor_charge_cost_multiplier();
 		const float defense_base = static_cast<float>(apply_defense_reduction ? defense_charge_cost : g_config.GetNumber(ConfigManager::DEFAULT_DEFENSE_CHARGE_COST));
-		const float armor_base = static_cast<float>(apply_armor_reduction ? armor_charge_cost : g_config.GetNumber(ConfigManager::DEFAULT_ARMOR_CHARGE_COST));
+		const float armor_base   = static_cast<float>(apply_armor_reduction   ? armor_charge_cost   : g_config.GetNumber(ConfigManager::DEFAULT_ARMOR_CHARGE_COST));
 
 		const uint32_t defense_cost = static_cast<uint32_t>(std::round(defense_base * defense_multiplier));
-		const uint32_t armor_cost = static_cast<uint32_t>(std::round(armor_base * armor_multiplier));
+		const uint32_t armor_cost   = static_cast<uint32_t>(std::round(armor_base   * armor_multiplier));
 
 		const uint8_t situation_index = (attacker and attacker->getCreatureSubType() == CreatureSubType::Player) ? 1u : 3u;
 
-		const CompiledFormulaSlots* compiled = config.test(Config::HasCompiledFormula)
-			? formula_cache->compiled.get()
-			: nullptr;
-
-		const SituationFormulas& formulas = config.test(Config::HasFormulaCache)
-			? formula_cache->situations[situation_index]
-			: g_default_situation_formulas[situation_index];
-
-		FormulaContext context;
-		context.caster = attacker;
-		context.target = target;
-
 		uint32_t computed_damage = damage;
-		if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Output)) : nullptr)
-		{
-			computed_damage = static_cast<uint32_t>(std::abs((*formula)(context)));
-		}
-		else if (config.test(Config::HasFormulaCache) && attacker && attacker->is_player())
-		{
-			const int32_t stat = static_cast<int32_t>(attacker->getPlayer()->getLevel())
-			                   + static_cast<int32_t>(attacker->getPlayer()->getMagicLevel()) * 3;
-			computed_damage = static_cast<uint32_t>(std::abs(calculate_output(formulas.output, stat)));
-		}
-		else if (attacker and attacker->getCreatureSubType() == CreatureSubType::Monster)
-		{
-			int32_t min_value = 0, max_value = 0;
-			if (const auto mon = attacker->getMonster(); mon and mon->getCombatValues(min_value, max_value))
-			{
-				const int32_t lower = std::min(std::abs(min_value), std::abs(max_value));
-				const int32_t upper = std::max(std::abs(min_value), std::abs(max_value));
-				computed_damage = static_cast<uint32_t>(uniform_random(lower, upper));
-			}
-		}
 
-		if (apply_defense_reduction and target->can_use_defense()
-			and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
+		if (g_batch_ctx.active)
 		{
-			if (defense_cost > 0)
-				target->set_defense_charges(target->get_defense_charges() - defense_cost);
+			// Batch path: formula already computed by block_batch; apply charges + side-effects
+			computed_damage = g_batch_ctx.damages[g_batch_ctx.index];
+			blockType       = g_batch_ctx.block_types[g_batch_ctx.index];
+			++g_batch_ctx.index;
 
-			int32_t defense_value = 0;
-			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Defense)) : nullptr)
+			if (apply_defense_reduction and target->can_use_defense()
+			    and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
 			{
-				context.pipeline_a = target->getDefense();
-				defense_value = static_cast<int32_t>((*formula)(context));
-			}
-			else
-			{
-				defense_value = calculate_resistance(formulas.defense, target->getDefense());
+				if (defense_cost > 0)
+					target->set_defense_charges(target->get_defense_charges() - defense_cost);
+				// Monsters have no parry/onBlockHit logic
 			}
 
-			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
+			if (apply_armor_reduction and blockType != BlockType::Defensive
+			    and (armor_cost == 0 or target->get_armor_charges() >= armor_cost))
 			{
-				context.pipeline_a = static_cast<int32_t>(computed_damage);
-				context.pipeline_b = defense_value;
-				computed_damage = static_cast<uint32_t>((*formula)(context));
-			}
-			else
-			{
-				computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), defense_value));
-			}
-
-			if (computed_damage == 0)
-			{
-				blockType = BlockType::Defensive;
-				apply_armor_reduction = false;
+				if (armor_cost > 0)
+					target->set_armor_charges(target->get_armor_charges() - armor_cost);
 			}
 		}
-
-		if (apply_armor_reduction and (armor_cost == 0 or target->get_armor_charges() >= armor_cost))
+		else
 		{
-			if (armor_cost > 0)
-				target->set_armor_charges(target->get_armor_charges() - armor_cost);
+			const CompiledFormulaSlots* compiled = config.test(Config::HasCompiledFormula)
+				? formula_cache->compiled.get()
+				: nullptr;
 
-			int32_t armor_value = 0;
-			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Armor)) : nullptr)
+			const SituationFormulas& formulas = config.test(Config::HasFormulaCache)
+				? formula_cache->situations[situation_index]
+				: g_default_situation_formulas[situation_index];
+
+			FormulaContext context;
+			context.caster = attacker;
+			context.target = target;
+
+			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Output)) : nullptr)
 			{
-				context.pipeline_a = target->getArmor();
-				armor_value = static_cast<int32_t>((*formula)(context));
+				computed_damage = static_cast<uint32_t>(std::abs((*formula)(context)));
 			}
-			else
+			else if (config.test(Config::HasFormulaCache) && attacker && attacker->is_player())
 			{
-				armor_value = calculate_resistance(formulas.armor, target->getArmor());
+				const int32_t stat = static_cast<int32_t>(attacker->getPlayer()->getLevel())
+				                   + static_cast<int32_t>(attacker->getPlayer()->getMagicLevel()) * 3;
+				computed_damage = static_cast<uint32_t>(std::abs(calculate_output(formulas.output, stat)));
+			}
+			else if (attacker and attacker->getCreatureSubType() == CreatureSubType::Monster)
+			{
+				int32_t min_value = 0, max_value = 0;
+				if (const auto mon = attacker->getMonster(); mon and mon->getCombatValues(min_value, max_value))
+				{
+					const int32_t lower = std::min(std::abs(min_value), std::abs(max_value));
+					const int32_t upper = std::max(std::abs(min_value), std::abs(max_value));
+					computed_damage = static_cast<uint32_t>(uniform_random(lower, upper));
+				}
 			}
 
-			if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
+			if (apply_defense_reduction and target->can_use_defense()
+				and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
 			{
-				context.pipeline_a = static_cast<int32_t>(computed_damage);
-				context.pipeline_b = armor_value;
-				computed_damage = static_cast<uint32_t>((*formula)(context));
-			}
-			else
-			{
-				computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), armor_value));
+				if (defense_cost > 0)
+					target->set_defense_charges(target->get_defense_charges() - defense_cost);
+
+				int32_t defense_value = 0;
+				if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Defense)) : nullptr)
+				{
+					context.pipeline_a = target->getDefense();
+					defense_value = static_cast<int32_t>((*formula)(context));
+				}
+				else
+				{
+					defense_value = calculate_resistance(formulas.defense, target->getDefense());
+				}
+
+				if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
+				{
+					context.pipeline_a = static_cast<int32_t>(computed_damage);
+					context.pipeline_b = defense_value;
+					computed_damage = static_cast<uint32_t>((*formula)(context));
+				}
+				else
+				{
+					computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), defense_value));
+				}
+
+				if (computed_damage == 0)
+				{
+					blockType = BlockType::Defensive;
+					apply_armor_reduction = false;
+				}
 			}
 
-			if (computed_damage == 0)
-				blockType = BlockType::Armor;
+			if (apply_armor_reduction and (armor_cost == 0 or target->get_armor_charges() >= armor_cost))
+			{
+				if (armor_cost > 0)
+					target->set_armor_charges(target->get_armor_charges() - armor_cost);
+
+				int32_t armor_value = 0;
+				if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Armor)) : nullptr)
+				{
+					context.pipeline_a = target->getArmor();
+					armor_value = static_cast<int32_t>((*formula)(context));
+				}
+				else
+				{
+					armor_value = calculate_resistance(formulas.armor, target->getArmor());
+				}
+
+				if (const auto* formula = compiled ? compiled->get(situation_index, static_cast<uint8_t>(FormulaStage::Resolution)) : nullptr)
+				{
+					context.pipeline_a = static_cast<int32_t>(computed_damage);
+					context.pipeline_b = armor_value;
+					computed_damage = static_cast<uint32_t>((*formula)(context));
+				}
+				else
+				{
+					computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), armor_value));
+				}
+
+				if (computed_damage == 0)
+					blockType = BlockType::Armor;
+			}
 		}
 
 		if (attacker and damage_type != DamageType::Healing)
@@ -3371,6 +3501,187 @@ namespace BlackTek
 		if (blockType != BlockType::NoBlock)
 			return std::unexpected(blockType);
 		return computed_damage;
+	}
+
+	void Combat::block_batch(
+		const CreaturePtr&              attacker,
+		std::span<const CreaturePtr>    targets,
+		std::span<uint32_t>             out_damages,
+		std::span<BlockType>            out_block_types) noexcept
+	{
+		const size_t n = targets.size();
+
+		// TrueDamage fast-path: no mitigation
+		if (config.test(Config::TrueDamage))
+		{
+			std::fill(out_damages.begin(), out_damages.end(), damage);
+			std::fill(out_block_types.begin(), out_block_types.end(), BlockType::NoBlock);
+			return;
+		}
+
+		// CompiledFormula scalar fallback: std::function is not vectorizable
+		if (config.test(Config::HasCompiledFormula))
+		{
+			const bool prev_active = g_batch_ctx.active;
+			g_batch_ctx.active = false;
+			for (size_t k = 0; k < n; ++k)
+			{
+				const auto& tc      = targets[k];
+				const auto  subtype = tc->getCreatureSubType();
+				std::expected<uint32_t, BlockType> result;
+				if (subtype == CreatureSubType::Player)
+					result = block(attacker, PlayerCast(tc));
+				else if (subtype == CreatureSubType::Monster)
+					result = block(attacker, MonsterCast(tc));
+				if (result)
+				{
+					out_damages[k]     = result.value();
+					out_block_types[k] = BlockType::NoBlock;
+				}
+				else
+				{
+					out_damages[k]     = 0;
+					out_block_types[k] = result.error();
+				}
+			}
+			g_batch_ctx.active = prev_active;
+			return;
+		}
+
+		const uint8_t situation_index = (attacker and attacker->getCreatureSubType() == CreatureSubType::Player) ? 0u : 2u;
+
+		const SituationFormulas& formulas = config.test(Config::HasFormulaCache)
+			? formula_cache->situations[situation_index]
+			: g_default_situation_formulas[situation_index];
+
+		// Compute base damage once (same for all targets with same formula + attacker stats)
+		uint32_t base_damage = damage;
+		if (config.test(Config::HasFormulaCache) and attacker and attacker->is_player())
+		{
+			const int32_t stat = static_cast<int32_t>(attacker->getPlayer()->getLevel())
+			                   + static_cast<int32_t>(attacker->getPlayer()->getMagicLevel()) * 3;
+			base_damage = static_cast<uint32_t>(std::abs(calculate_output(formulas.output, stat)));
+		}
+		else if (attacker and attacker->getCreatureSubType() == CreatureSubType::Monster)
+		{
+			int32_t min_value = 0, max_value = 0;
+			if (const auto mon = attacker->getMonster(); mon and mon->getCombatValues(min_value, max_value))
+			{
+				const int32_t lower = std::min(std::abs(min_value), std::abs(max_value));
+				const int32_t upper = std::max(std::abs(min_value), std::abs(max_value));
+				base_damage = static_cast<uint32_t>(uniform_random(lower, upper));
+			}
+		}
+
+		const bool apply_def = config.test(Config::BlockedByDefense);
+		const bool apply_arm = config.test(BlockedByArmor);
+
+		// Gather defense stats (0 for targets that can't defend — formula maps 0 stat to 0 resistance)
+		batch_stats_scratch.resize(n);
+		for (size_t k = 0; k < n; ++k)
+		{
+			const auto& tc = targets[k];
+			if (not apply_def) { batch_stats_scratch[k] = 0; continue; }
+			switch (tc->getCreatureSubType())
+			{
+				case CreatureSubType::Player:
+				{
+					const auto pl = PlayerCast(tc);
+					batch_stats_scratch[k] = pl->can_use_defense() ? pl->getDefense() : 0;
+					break;
+				}
+				case CreatureSubType::Monster:
+				{
+					const auto mo = MonsterCast(tc);
+					batch_stats_scratch[k] = mo->can_use_defense() ? mo->getDefense() : 0;
+					break;
+				}
+				default:
+					batch_stats_scratch[k] = 0;
+					break;
+			}
+		}
+
+		// SIMD batch defense resistance
+		batch_resistance_scratch.resize(n);
+		if (formulas.defense.formula_type == ResistanceFormula::LinearRandom
+		    or formulas.defense.formula_type == ResistanceFormula::Parity)
+		{
+			batch_rng_scratch.resize(n);
+			for (size_t k = 0; k < n; ++k)
+				batch_rng_scratch[k] = static_cast<int32_t>(uniform_random(0, INT32_MAX));
+			SIMD::batch_resistance(batch_stats_scratch.data(), n, formulas.defense,
+				batch_rng_scratch.data(), batch_resistance_scratch.data());
+		}
+		else
+		{
+			SIMD::batch_resistance(batch_stats_scratch.data(), n, formulas.defense,
+				nullptr, batch_resistance_scratch.data());
+		}
+
+		// SIMD defense resolution: after_defense[k] = resolve(base_damage, defense_resist[k])
+		// Use batch_rng_scratch as the intermediate damage int32_t buffer
+		batch_rng_scratch.resize(n);
+		std::fill(batch_rng_scratch.begin(), batch_rng_scratch.end(), static_cast<int32_t>(base_damage));
+		SIMD::batch_resolve(batch_rng_scratch.data(), batch_resistance_scratch.data(), n,
+			formulas.resolution, batch_rng_scratch.data());
+
+		// Determine defensive blocks + gather armor stats
+		for (size_t k = 0; k < n; ++k)
+		{
+			if (batch_rng_scratch[k] <= 0)
+			{
+				out_block_types[k] = BlockType::Defensive;
+				batch_stats_scratch[k] = 0;  // armor doesn't apply when defensively blocked
+			}
+			else
+			{
+				out_block_types[k] = BlockType::NoBlock;
+				if (not apply_arm) { batch_stats_scratch[k] = 0; continue; }
+				const auto& tc = targets[k];
+				switch (tc->getCreatureSubType())
+				{
+					case CreatureSubType::Player:
+						batch_stats_scratch[k] = PlayerCast(tc)->getArmor();
+						break;
+					case CreatureSubType::Monster:
+						batch_stats_scratch[k] = MonsterCast(tc)->getArmor();
+						break;
+					default:
+						batch_stats_scratch[k] = 0;
+						break;
+				}
+			}
+		}
+
+		// SIMD batch armor resistance
+		if (formulas.armor.formula_type == ResistanceFormula::LinearRandom
+		    or formulas.armor.formula_type == ResistanceFormula::Parity)
+		{
+			batch_resistance_scratch.resize(n);
+			for (size_t k = 0; k < n; ++k)
+				batch_resistance_scratch[k] = static_cast<int32_t>(uniform_random(0, INT32_MAX));
+			// reuse batch_resistance_scratch as rng, then as armor resistance output
+			SIMD::batch_resistance(batch_stats_scratch.data(), n, formulas.armor,
+				batch_resistance_scratch.data(), batch_resistance_scratch.data());
+		}
+		else
+		{
+			SIMD::batch_resistance(batch_stats_scratch.data(), n, formulas.armor,
+				nullptr, batch_resistance_scratch.data());
+		}
+
+		// SIMD armor resolution: final_damage[k] = resolve(after_defense[k], armor_resist[k])
+		SIMD::batch_resolve(batch_rng_scratch.data(), batch_resistance_scratch.data(), n,
+			formulas.resolution, batch_rng_scratch.data());
+
+		// Copy final results and assign Armor block type where armor fully mitigated
+		for (size_t k = 0; k < n; ++k)
+		{
+			out_damages[k] = static_cast<uint32_t>(std::max(0, batch_rng_scratch[k]));
+			if (out_block_types[k] == BlockType::NoBlock and out_damages[k] == 0)
+				out_block_types[k] = BlockType::Armor;
+		}
 	}
 
 	uint32_t Combat::collect_notice_data(const CreaturePtr& target) const noexcept

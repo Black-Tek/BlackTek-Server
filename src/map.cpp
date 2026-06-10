@@ -263,10 +263,19 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 
 	bool teleport = forceTeleport || !newTile->getGround() || !Position::areInRange<1, 1, 0>(oldPos, newPos);
 
-	SpectatorVec spectators, newPosSpectators;
-	getSpectators(spectators, oldPos, true);
-	getSpectators(newPosSpectators, newPos, true);
-	spectators.addSpectators(newPosSpectators);
+	SpectatorVec spectators;
+	if (!teleport) {
+		// 1-step walk: a single expanded scan covers spectators of both old and new positions,
+		// avoiding a second getSpectators call and the O(n²) addSpectators merge entirely.
+		getSpectators(spectators, oldPos, true, false,
+		              maxViewportX + 1, maxViewportX + 1,
+		              maxViewportY + 1, maxViewportY + 1);
+	} else {
+		SpectatorVec newPosSpectators;
+		getSpectators(spectators, oldPos, true);
+		getSpectators(newPosSpectators, newPos, true);
+		spectators.addSpectators(newPosSpectators);
+	}
 
 	std::vector<int32_t> oldStackPosVector;
 	for (const auto& c : spectators.players())
@@ -349,12 +358,19 @@ void Map::getSpectatorsInternal(SpectatorVec& spectators, const Position& center
     const uint16_t x2 = std::min<uint32_t>(0xFFFF, std::max<int32_t>(0, (max_x + maxoffset)));
     const uint16_t y2 = std::min<uint32_t>(0xFFFF, std::max<int32_t>(0, (max_y + maxoffset)));
 
-    const std::array<int32_t, 4> cache_values{
-        min_y + minoffset,
-        max_y + maxoffset,
-        min_x + minoffset,
-        max_x + maxoffset
-    };
+    const int32_t base_yMin = min_y + minoffset;
+    const int32_t base_yMax = max_y + maxoffset;
+    const int32_t base_xMin = min_x + minoffset;
+    const int32_t base_xMax = max_x + maxoffset;
+
+    // Precompute XY bounds for every valid Z level so the inner loop does
+    // a table lookup instead of 4 additions per creature.
+    struct ZBounds { int32_t yMin, yMax, xMin, xMax; };
+    ZBounds zbounds[MAP_MAX_LAYERS];
+    for (int32_t z = minRangeZ; z <= maxRangeZ; ++z) {
+        const int32_t off = static_cast<int32_t>(centerPos.getZ()) - z;
+        zbounds[z] = { base_yMin + off, base_yMax + off, base_xMin + off, base_xMax + off };
+    }
 
     const int32_t startx1 = x1 - (x1 % FLOOR_SIZE);
     const int32_t starty1 = y1 - (y1 % FLOOR_SIZE);
@@ -369,19 +385,17 @@ void Map::getSpectatorsInternal(SpectatorVec& spectators, const Position& center
         for (int_fast32_t nx = startx1; nx <= endx2; nx += FLOOR_SIZE) {
             if (leafE) {
                 const auto& node_list = (onlyPlayers ? leafE->player_list : leafE->creature_list);
-                std::ranges::for_each(node_list, [&](const CreaturePtr& creature) {
+                for (const CreaturePtr& creature : node_list) {
                     const Position& cpos = creature->getPosition();
                     if (minRangeZ > cpos.z || maxRangeZ < cpos.z) {
-                        return;
+                        continue;
                     }
-
-                    const int_fast16_t offsetZ = Position::getOffsetZ(centerPos, cpos);
-                    if ((cache_values[0] + offsetZ) > cpos.y || (cache_values[1] + offsetZ) < cpos.y || (cache_values[2] + offsetZ) > cpos.x || (cache_values[3] + offsetZ) < cpos.x) {
-                        return;
+                    const auto& b = zbounds[cpos.z];
+                    if (b.yMin > cpos.y || b.yMax < cpos.y || b.xMin > cpos.x || b.xMax < cpos.x) {
+                        continue;
                     }
-
                     spectators.emplace_back(creature);
-                });
+                }
                 leafE = leafE->leafE;
             } else {
                 leafE = QTreeNode::getLeafStatic<const QTreeLeafNode*, const QTreeNode*>(&root, nx + FLOOR_SIZE, ny);

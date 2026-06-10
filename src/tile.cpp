@@ -464,20 +464,6 @@ ReturnValue Tile::queryAdd(CreaturePtr creature, uint32_t flags)
     if (ground == nullptr)
         return RETURNVALUE_NOTPOSSIBLE;
 
-	const auto creatures = getCreatures();
-
-	if (creatures and not creatures->empty() and not hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags))
-	{
-		for (const auto& tileCreature : *creatures)
-		{
-			if (not tileCreature->isInGhostMode() and (tileCreature->getPlayer() and not tileCreature->getPlayer()->isAccessPlayer()))
-			{
-				if (creature->getPlayer() and not creature->getPlayer()->isAccessPlayer() and not creature->getPlayer()->canWalkthrough(tileCreature))
-					return RETURNVALUE_NOTENOUGHROOM;
-			}
-		}
-	}
-
     // If the FLAG_IGNOREBLOCKITEM bit isn't set we dont have to iterate every single item
 	if (not hasBitSet(FLAG_IGNOREBLOCKITEM, flags))
 	{
@@ -507,6 +493,8 @@ ReturnValue Tile::queryAdd(CreaturePtr creature, uint32_t flags)
 		results = queryAdd(std::static_pointer_cast<Player>(creature), flags);
 	else if (creature->getCreatureSubType() == CreatureSubType::Monster)
 		results = queryAdd(std::static_pointer_cast<Monster>(creature), flags);
+	else if (creature->getCreatureSubType() == CreatureSubType::Npc)
+		results = queryAdd(std::static_pointer_cast<Npc>(creature), flags);
 
 	return results;
 }
@@ -634,7 +622,7 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags)
 			if (not (monster->canWalkOnFieldType(combatType) or monster->isIgnoringFieldDamage()))
 				return RETURNVALUE_NOTPOSSIBLE;
 			else
-				return RETURNVALUE_NOTPOSSIBLE;
+				return RETURNVALUE_NOERROR;
 		}
 	}
 
@@ -672,10 +660,6 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
     if (hasBitSet(FLAG_NOLIMIT, flags))
         return RETURNVALUE_NOERROR;
 
-    // Can't move store items to tiles
-    if (item->isStoreItem())
-        return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
-
     // If its a wall, but not a hangable item.
     bool itemIsHangable = item->isHangable();
     if (ground == nullptr and not itemIsHangable)
@@ -683,6 +667,7 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
 
 	if (isHouseTile())
 	{
+		// House tiles allow store items only if they carry a wrapid (placed via wrapping).
 		if (item->isStoreItem() and not item->hasAttribute(ITEM_ATTRIBUTE_WRAPID))
 			return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
 
@@ -691,6 +676,10 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
 			if (not house->isInvited(mover->getPlayer()))
 				return RETURNVALUE_PLAYERISNOTINVITED;
 		}
+	}
+	else if (item->isStoreItem())
+	{
+		return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
 	}
 
 
@@ -706,11 +695,6 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
 		}
     }
 
-	//////////////////////////////////////////////////////////////
-	// Can move the hangable check inside the loop instead, get rid of the else,
-	// and then merge the other if(items) check and loop into this one.
-
-    // If we have a hangable item and the tile supports hangables
     if (itemIsHangable and hasFlag(TILESTATE_SUPPORTS_HANGABLE))
 	{
         if (items)
@@ -721,60 +705,47 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
 					return RETURNVALUE_NEEDEXCHANGE;
 			}
         }
-	// I believe this 'else' is not needed, and potentially limiting where we don't want to be.
-    } 
+    }
 	else
 	{
-        if (ground)
+		auto isSolidBlocked = [&](const ItemType& iiType) -> bool
 		{
-            const ItemType& iiType = Item::items[ground->getID()];
+			if (not iiType.blockSolid)
+				return false;
+			if (iiType.allowPickupable and not item->isMagicField() and not item->isBlocking())
+				return false;
+			return not item->isPickupable() or not iiType.hasHeight or iiType.pickupable or iiType.isBed();
+		};
 
-            if (iiType.blockSolid)
-			{
-				if (not iiType.allowPickupable or item->isMagicField() or item->isBlocking())
-				{
-					if (not item->isPickupable())
-						return RETURNVALUE_NOTENOUGHROOM;
+		if (ground and isSolidBlocked(Item::items[ground->getID()]))
+			return RETURNVALUE_NOTENOUGHROOM;
 
-
-					if (not iiType.hasHeight or iiType.pickupable or iiType.isBed())
-						return RETURNVALUE_NOTENOUGHROOM;
-				}
-            }
-        }
-		// We can move this into the previous check and combine the loops. 
-        if (items)
+		if (items)
 		{
-            for (const auto& tileItem : *items)
+			for (const auto& tileItem : *items)
 			{
-                const ItemType& iiType = Item::items[tileItem->getID()];
+				if (isSolidBlocked(Item::items[tileItem->getID()]))
+					return RETURNVALUE_NOTENOUGHROOM;
+			}
+		}
+	}
 
-                if (not iiType.blockSolid)
-                    continue;
-
-                if (iiType.allowPickupable and not item->isMagicField() and not item->isBlocking())
-                    continue;
-
-                if (not item->isPickupable())
-                    return RETURNVALUE_NOTENOUGHROOM;
-
-                if (not iiType.hasHeight or iiType.pickupable or iiType.isBed())
-                    return RETURNVALUE_NOTENOUGHROOM;
-            }
-        }
-    }
     return RETURNVALUE_NOERROR;
 }
 
 ReturnValue Tile::queryAdd(int32_t, const ThingPtr& thing, uint32_t, uint32_t flags, CreaturePtr mover)
 {
-	if (auto creature = thing->getCreature())
-		return queryAdd(creature, flags);
+	if (hasBitSet(FLAG_NOLIMIT, flags))
+		return RETURNVALUE_NOERROR;
+
+	if (thing->is_creature())
+		return queryAdd(thing->getCreature(), flags);
 
 	if (auto item = thing->getItem())
 		return queryAdd(item, flags, mover);
 
-	std::cout << "|| WARNING || Tile::queryAdd() passed the object "<< typeid(thing).name() << ", that is not a creature or item! " << "\n";
+	std::cout << "|| WARNING || Tile::queryAdd() received unknown ThingSubType: "
+	          << static_cast<int>(thing->getThingSubType()) << "\n";
 
 	return RETURNVALUE_NOERROR;
 }

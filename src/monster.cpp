@@ -315,17 +315,10 @@ void Monster::addTarget(const CreaturePtr& creature, bool pushFront /* = false *
 {
 	assert(creature != this->getCreature());
 
-	// Ensure the creature is not already in targetList
-	auto it = std::ranges::find_if(targetList, [&](const CreatureWeakPtr& weakTarget) {
-		auto target = weakTarget.lock();
-		return target && target == creature;
-		});
-
-	if (it == targetList.end()) {
+	if (targetSet.insert(creature).second) {
 		if (pushFront) {
 			targetList.insert(targetList.begin(), creature);
-		}
-		else {
+		} else {
 			targetList.push_back(creature);
 		}
 	}
@@ -333,13 +326,15 @@ void Monster::addTarget(const CreaturePtr& creature, bool pushFront /* = false *
 
 void Monster::removeTarget(const CreaturePtr& creature)
 {
-	auto it = std::ranges::find_if(targetList, [&](const CreatureWeakPtr& weakTarget) {
-		auto target = weakTarget.lock();
-		return target && target == creature;
+	if (targetSet.erase(creature)) {
+		auto it = std::ranges::find_if(targetList, [&](const CreatureWeakPtr& weakTarget) {
+			auto target = weakTarget.lock();
+			return target && target == creature;
 		});
 
-	if (it != targetList.end()) {
-		targetList.erase(it);
+		if (it != targetList.end()) {
+			targetList.erase(it);
+		}
 	}
 }
 
@@ -362,9 +357,11 @@ void Monster::updateTargetList()
 	while (targetIterator != targetList.end()) {
 		CreaturePtr creature = targetIterator->lock();
 		if (!creature || creature->getHealth() <= 0 || !canSee(creature->getPosition())) {
-			targetIterator = targetList.erase(targetIterator); // Remove expired/null entries
-		}
-		else {
+			if (creature) {
+				targetSet.erase(creature);
+			}
+			targetIterator = targetList.erase(targetIterator);
+		} else {
 			++targetIterator;
 		}
 	}
@@ -381,6 +378,7 @@ void Monster::updateTargetList()
 void Monster::clearTargetList()
 {
 	targetList.clear();
+	targetSet.clear();
 }
 
 void Monster::clearFriendList()
@@ -1826,7 +1824,7 @@ void Monster::drainHealth(const CreaturePtr& attacker, const int32_t damage)
 {
 	Creature::drainHealth(attacker, damage);
 
-	if (damage > 0 && randomStepping) {
+	if (damage > 0 && randomStepping && !ignoreFieldDamage) {
 		ignoreFieldDamage = true;
 		updateMapCache();
 	}

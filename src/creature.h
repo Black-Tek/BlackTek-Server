@@ -367,7 +367,7 @@ class Creature : virtual public Thing, public SharedObject
 			return nullptr;
 		}
 
-		const std::list<CreaturePtr>& getSummons() const {
+		const gtl::flat_hash_set<CreaturePtr>& getSummons() const {
 			return summons;
 		}
 
@@ -687,7 +687,7 @@ class Creature : virtual public Thing, public SharedObject
 		using CountMap = std::map<uint32_t, CountBlock_t>;
 		CountMap damageMap;
 
-		std::list<CreaturePtr> summons;
+		gtl::flat_hash_set<CreaturePtr> summons;
 		CreatureEventList eventsList;
 		ConditionList conditions;
 

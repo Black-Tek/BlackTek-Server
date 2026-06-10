@@ -74,8 +74,11 @@ namespace BlackTek
 
 	struct CombatArea
 	{
-		std::array<std::vector<DamageLocation>, 4> directions;
+		std::array<std::vector<int16_t>, 4> spreads;   // per-direction east/west offsets
+		std::array<std::vector<int16_t>, 4> forwards;  // per-direction north/south offsets
 		int32_t max_extent = 0; // max(abs(spread), abs(forward)) across all directions — pre-computed for spectator radius
+
+		[[nodiscard]] size_t count(size_t dir) const noexcept { return spreads[dir].size(); }
 	};
 
 
@@ -522,6 +525,7 @@ namespace BlackTek
 		[[nodiscard]] uint8_t immunity_block_effect() const noexcept;
 		[[nodiscard]] std::expected<uint32_t, BlockType> block(const CreaturePtr& attacker, const PlayerPtr& target) noexcept;
 		[[nodiscard]] std::expected<uint32_t, BlockType> block(const CreaturePtr& attacker, const MonsterPtr& target) noexcept;
+		void block_batch(const CreaturePtr& attacker, std::span<const CreaturePtr> targets, std::span<uint32_t> out_damages, std::span<BlockType> out_block_types) noexcept;
 		[[nodiscard]] uint32_t apply_damage(const CreaturePtr& attacker, const PlayerPtr& target, uint32_t currentDamage, std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 		[[nodiscard]] uint32_t apply_damage(const CreaturePtr& attacker, const MonsterPtr& target, uint32_t currentDamage, std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 
@@ -654,6 +658,7 @@ namespace BlackTek
 		void setEnemyParty(bool v)      noexcept { SetConfig(Config::EnemyParty, v);       }
 		void setFraggedOnly(bool v)     noexcept { SetConfig(Config::FraggedOnly, v);      }
 		void setAggressive(bool v)      noexcept { SetConfig(Config::Aggressive, v);       }
+		void setIsUtility(bool v)       noexcept { SetConfig(Config::IsUtility, v);        }
 		void setIgnoreBarriers(bool v)  noexcept { SetConfig(Config::IgnoreBarriers, v);   }
 		void setUseCharges(bool v)      noexcept { SetConfig(Config::UseCharges, v);       }
 
@@ -666,6 +671,7 @@ namespace BlackTek
 		[[nodiscard]] bool isEnemyParty()      const noexcept { return GetConfig(Config::EnemyParty);       }
 		[[nodiscard]] bool isFraggedOnly()     const noexcept { return GetConfig(Config::FraggedOnly);      }
 		[[nodiscard]] bool isAggressive()      const noexcept { return GetConfig(Config::Aggressive);       }
+		[[nodiscard]] bool isUtility()         const noexcept { return GetConfig(Config::IsUtility);        }
 		[[nodiscard]] bool isIgnoreBarriers()  const noexcept { return GetConfig(Config::IgnoreBarriers);   }
 		[[nodiscard]] bool usesCharges()       const noexcept { return GetConfig(Config::UseCharges);       }
 
