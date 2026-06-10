@@ -37,7 +37,9 @@ jobs:
       run: |
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         sudo apt-get update
-        sudo apt-get install -y gcc-15 g++-15
+        sudo apt-get install -y gcc-15 g++-15 libstdc++-15-dev
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-15 100 --slave /usr/bin/g++ g++ /usr/bin/g++-15
+        sudo update-alternatives --set gcc /usr/bin/gcc-15
         echo "CC=gcc-15" >> $GITHUB_ENV
         echo "CXX=g++-15" >> $GITHUB_ENV
     
@@ -116,12 +118,12 @@ jobs:
     
     - name: Compile Release 64
       run: |
-        make -j $(nproc) config=release_64
+        make -j $(nproc) config=release_64 CC=gcc-15 CXX=g++-15
         cp Black-Tek-Server BlackTek-Server-Release
-    
+
     - name: Compile Debug 64
       run: |
-        make -j $(nproc) config=debug_64
+        make -j $(nproc) config=debug_64 CC=gcc-15 CXX=g++-15
         cp Black-Tek-Server BlackTek-Server-Debug
         rm Black-Tek-Server
     
