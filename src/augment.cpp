@@ -81,7 +81,7 @@ namespace BlackTek
 		return (it != loaded_agment_descriptions.end()) ? it->second : empty;
 	}
 
-	inline void Augment::addModifier(DamageModifier&& mod)
+	void Augment::addModifier(DamageModifier&& mod)
 	{
 		const auto filters = mod.getFilterIndex();
 		const auto stance = mod.getStance();
