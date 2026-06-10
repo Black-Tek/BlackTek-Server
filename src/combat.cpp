@@ -745,7 +745,9 @@ namespace BlackTek
 	Position Combat::generateAttackPosition(const CreaturePtr& attacker, const PlayerPtr& defender) noexcept
 	{
 		const auto defense_position = defender->getPosition();
-		const Direction attackDirection = getDirectionTo(defense_position, attacker->getPosition());
+		const Direction attackDirection = attacker
+			? getDirectionTo(defense_position, attacker->getPosition())
+			: getOppositeDirection(defender->getDirection());
 
 		static constexpr std::array<std::array<int, 4>, 8> DIRECTION_PATTERNS = 
 		{ {
@@ -792,7 +794,9 @@ namespace BlackTek
 		auto combatArea = std::make_unique<AreaCombat>();
 		const auto& defendersPosition = defender->getPosition();
 
-		switch (const auto direction = getDirectionTo(defendersPosition, attacker->getPosition()))
+		switch (const auto direction = attacker
+			? getDirectionTo(defendersPosition, attacker->getPosition())
+			: getOppositeDirection(defender->getDirection()))
 		{
 			case DIRECTION_NORTH:		[[fallthrough]];
 			case DIRECTION_EAST:		[[fallthrough]];
@@ -872,32 +876,33 @@ namespace BlackTek
 		deflect->execute(defender, attackPos);
 	}
 
-	void Combat::ricochetDamage(const PlayerPtr& defender, uint32_t amount, uint16_t damageType, uint8_t distanceEffect, uint8_t impactEffect) noexcept
+	uint32_t Combat::ricochetDamage(const PlayerPtr& defender, uint32_t amount, uint16_t damageType, uint8_t distanceEffect, uint8_t impactEffect) noexcept
 	{
 		std::vector<Position> targetList;
 		getOpenPositionsInRadius(defender, 3, targetList);
 
-		if (targetList.size() > 0)
-		{
-			const auto& targetPos = targetList[uniform_random(0, targetList.size() - 1)];
+		if (targetList.empty())
+			return 0;
 
-			auto damageArea = std::make_unique<AreaCombat>();
-			damageArea->setupArea(Deflect1xArea, 5);
+		const auto& targetPos = targetList[uniform_random(0, targetList.size() - 1)];
 
-			auto ricochet = g_combat_registry.Create(damageType, amount);
-			ricochet->config.set(Config::Aggressive);
-			ricochet->config.set(Config::TopTargetOnly);
-			ricochet->config.set(Config::TrueDamage);
-			ricochet->config.set(Config::HasArea);
-			ricochet->config.set(Config::IsRicochet);
-			ricochet->config.set(Config::AttackModified);
-			ricochet->config.set(Config::DefenseModified);
-			ricochet->distanceEffect = distanceEffect;
-			ricochet->origin = Origin::Ricochet;
-			ricochet->impactEffect = (impactEffect == CONST_ME_NONE) ? CombatTypeToAreaEffect(static_cast<CombatType_t>(damageType)) : impactEffect;
-			ricochet->setArea(std::move(damageArea));
-			ricochet->execute(defender, targetPos);
-		}
+		auto damageArea = std::make_unique<AreaCombat>();
+		damageArea->setupArea(Deflect1xArea, 5);
+
+		auto ricochet = g_combat_registry.Create(damageType, amount);
+		ricochet->config.set(Config::Aggressive);
+		ricochet->config.set(Config::TopTargetOnly);
+		ricochet->config.set(Config::TrueDamage);
+		ricochet->config.set(Config::HasArea);
+		ricochet->config.set(Config::IsRicochet);
+		ricochet->config.set(Config::AttackModified);
+		ricochet->config.set(Config::DefenseModified);
+		ricochet->distanceEffect = distanceEffect;
+		ricochet->origin = Origin::Ricochet;
+		ricochet->impactEffect = (impactEffect == CONST_ME_NONE) ? CombatTypeToAreaEffect(static_cast<CombatType_t>(damageType)) : impactEffect;
+		ricochet->setArea(std::move(damageArea));
+		ricochet->execute(defender, targetPos);
+		return amount;
 	}
 
 
@@ -2060,7 +2065,7 @@ namespace BlackTek
 			reflect->strike_target(victim, attacker, true);
 		}
 
-		if (not is_bounce and (percent_deflect or flat_deflect) and attacker)
+		if (not is_bounce and (percent_deflect or flat_deflect))
 		{
 			uint32_t deflected = (percent_deflect ? currentDamage * percent_deflect / 100 : 0) + flat_deflect;
 			deflected = std::min(deflected, currentDamage);
@@ -2068,12 +2073,11 @@ namespace BlackTek
 			deflect_damage(attacker, victim, deflected, damage_type, distanceEffect, impactEffect);
 		}
 
-		if (not is_bounce and (percent_ricochet or flat_ricochet) and attacker)
+		if (not is_bounce and (percent_ricochet or flat_ricochet))
 		{
 			uint32_t ricocheted = (percent_ricochet ? currentDamage * percent_ricochet / 100 : 0) + flat_ricochet;
 			ricocheted = std::min(ricocheted, currentDamage);
-			currentDamage -= ricocheted;
-			ricochetDamage(victim, ricocheted, damage_type, distanceEffect, impactEffect);
+			currentDamage -= ricochetDamage(victim, ricocheted, damage_type, distanceEffect, impactEffect);
 		}
 
 		return currentDamage;

@@ -688,7 +688,7 @@ namespace BlackTek
 
 		static void deflect_damage(const CreaturePtr& attacker, const PlayerPtr& defender, uint32_t amount, uint16_t damageType, uint8_t distanceEffect, uint8_t impactEffect) noexcept;
 
-		static void ricochetDamage(const PlayerPtr& defender, uint32_t amount, uint16_t damageType, uint8_t distanceEffect, uint8_t impactEffect) noexcept;
+		[[nodiscard]] static uint32_t ricochetDamage(const PlayerPtr& defender, uint32_t amount, uint16_t damageType, uint8_t distanceEffect, uint8_t impactEffect) noexcept;
 
 		[[nodiscard]] int64_t id() const noexcept { return combat_id; }
 		void set_id(int64_t new_id) { combat_id = new_id; }
