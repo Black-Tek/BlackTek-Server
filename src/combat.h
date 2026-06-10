@@ -130,6 +130,67 @@ namespace BlackTek
 
 	extern std::pmr::unordered_map<int64_t, CombatAreaPair> combat_area_pair_map;
 
+	enum class OutputFormula : uint8_t
+	{
+		Flat,          // normal_random(min_value, max_value) — classic ARPG flat roll
+		Linear,        // stat * scaling + base — deterministic AD/AP scaling
+		LinearRange,   // normal_random(stat*min_scale+min_base, stat*max_scale+max_base) — Classic
+		Power,         // stat^exponent * scaling + base — super-linear RPG scaling
+	};
+
+	struct [[nodiscard]] OutputFactors
+	{
+		float scaling   = 1.0f;    // Linear / Power: multiplier on stat
+		float base      = 0.0f;    // Linear / Power: flat addition
+		float min_scale = 0.0f;    // LinearRange: lower-bound stat multiplier
+		float min_base  = 0.0f;    // LinearRange: lower-bound flat
+		float max_scale = 1.0f;    // LinearRange: upper-bound stat multiplier
+		float max_base  = 0.0f;    // LinearRange: upper-bound flat
+		float min_value = 0.0f;    // Flat: lower bound
+		float max_value = 1.0f;    // Flat: upper bound
+		float exponent  = 1.0f;    // Power: exponent applied to stat before scaling
+		OutputFormula formula_type = OutputFormula::Linear;
+	};
+
+	enum class ResistanceFormula : uint8_t
+	{
+		Identity,      // returns stat unchanged — resolution formula handles mitigation
+		LinearRandom,  // uniform_random(stat*min_scale+min_base, stat*max_scale+max_base) — Classic defense
+		Parity,        // Classic armor: stat>threshold → range; else flat
+		Percent,       // (stat*100)/(stat+constant) → integer [0–100] for Layered resolution
+	};
+
+	struct [[nodiscard]] ResistanceFactors
+	{
+		float min_scale       = 0.5f;   // LinearRandom / Parity: lower-bound stat multiplier
+		float max_scale       = 1.0f;   // LinearRandom: upper-bound stat multiplier
+		float min_base        = 0.0f;   // LinearRandom: lower-bound flat
+		float max_base        = 0.0f;   // LinearRandom: upper-bound flat
+		float threshold       = 0.0f;   // Parity: stat must exceed this for range formula
+		float flat_amount     = 1.0f;   // Parity / fallback: flat resistance when below threshold
+		float constant        = 100.0f; // Percent: denominator addend — percent = stat*100/(stat+constant)
+		uint8_t parity_offset = 0;      // Parity: hi = stat - (stat%2 + parity_offset)
+		ResistanceFormula formula_type = ResistanceFormula::Identity;
+	};
+
+	enum class ResolutionFormula : uint8_t
+	{
+		Subtractive,      // max(floor, output - resistance) — Classic; output minus resistance, floored
+		RatioMitigation,  // output * constant / (constant + resistance) — Scaled; ratio mitigation
+		ScaledDivision,   // (output * multiplier / resistance) + addend — Balanced; division with addend
+		Layered,          // max(floor, output*(1 - resistance/100) - flat_reduction) — Absorption; layered mitigation
+	};
+
+	struct [[nodiscard]] ResolutionFactors
+	{
+		float constant       = 100.0f; // RatioMitigation: K in output*K/(K+resistance)
+		float multiplier     = 1.0f;   // ScaledDivision: scales output before dividing by resistance
+		float addend         = 0.0f;   // ScaledDivision: bonus added after division
+		float flat_reduction = 0.0f;   // Layered: subtracted after percent mitigation
+		float floor          = 0.0f;   // Subtractive / Layered: minimum final damage
+		ResolutionFormula formula_type = ResolutionFormula::Subtractive;
+	};
+
 	class Combat
 	{
 	public:
@@ -235,66 +296,12 @@ namespace BlackTek
 			Stamina,
 		};
 
-		enum class OutputFormula : uint8_t
-		{
-			Flat,          // normal_random(min_value, max_value) — classic ARPG flat roll
-			Linear,        // stat * scaling + base — deterministic AD/AP scaling
-			LinearRange,   // normal_random(stat*min_scale+min_base, stat*max_scale+max_base) — Classic
-			Power,         // stat^exponent * scaling + base — super-linear RPG scaling
-		};
-
-		struct [[nodiscard]] OutputFactors
-		{
-			float scaling   = 1.0f;    // Linear / Power: multiplier on stat
-			float base      = 0.0f;    // Linear / Power: flat addition
-			float min_scale = 0.0f;    // LinearRange: lower-bound stat multiplier
-			float min_base  = 0.0f;    // LinearRange: lower-bound flat
-			float max_scale = 1.0f;    // LinearRange: upper-bound stat multiplier
-			float max_base  = 0.0f;    // LinearRange: upper-bound flat
-			float min_value = 0.0f;    // Flat: lower bound
-			float max_value = 1.0f;    // Flat: upper bound
-			float exponent  = 1.0f;    // Power: exponent applied to stat before scaling
-			OutputFormula formula_type = OutputFormula::Linear;
-		};
-
-		enum class ResistanceFormula : uint8_t
-		{
-			Identity,      // returns stat unchanged — resolution formula handles mitigation
-			LinearRandom,  // uniform_random(stat*min_scale+min_base, stat*max_scale+max_base) — Classic defense
-			Parity,        // Classic armor: stat>threshold → range; else flat
-			Percent,       // (stat*100)/(stat+constant) → integer [0–100] for Layered resolution
-		};
-
-		struct [[nodiscard]] ResistanceFactors
-		{
-			float min_scale      = 0.5f;   // LinearRandom / Parity: lower-bound stat multiplier
-			float max_scale      = 1.0f;   // LinearRandom: upper-bound stat multiplier
-			float min_base       = 0.0f;   // LinearRandom: lower-bound flat
-			float max_base       = 0.0f;   // LinearRandom: upper-bound flat
-			float threshold      = 0.0f;   // Parity: stat must exceed this for range formula
-			float flat_amount    = 1.0f;   // Parity / fallback: flat resistance when below threshold
-			float constant       = 100.0f; // Percent: denominator addend — percent = stat*100/(stat+constant)
-			uint8_t parity_offset = 0;     // Parity: hi = stat - (stat%2 + parity_offset)
-			ResistanceFormula formula_type = ResistanceFormula::Identity;
-		};
-
-		enum class ResolutionFormula : uint8_t
-		{
-			Subtractive,      // max(floor, output - resistance) — Classic; output minus resistance, floored
-			RatioMitigation,  // output * constant / (constant + resistance) — Scaled; ratio mitigation
-			ScaledDivision,   // (output * multiplier / resistance) + addend — Balanced; division with addend
-			Layered,          // max(floor, output*(1 - resistance/100) - flat_reduction) — Absorption; layered mitigation
-		};
-
-		struct [[nodiscard]] ResolutionFactors
-		{
-			float constant       = 100.0f; // RatioMitigation: K in output*K/(K+resistance)
-			float multiplier     = 1.0f;   // ScaledDivision: scales output before dividing by resistance
-			float addend         = 0.0f;   // ScaledDivision: bonus added after division
-			float flat_reduction = 0.0f;   // Layered: subtracted after percent mitigation
-			float floor          = 0.0f;   // Subtractive / Layered: minimum final damage
-			ResolutionFormula formula_type = ResolutionFormula::Subtractive;
-		};
+		using OutputFormula     = ::BlackTek::OutputFormula;
+		using OutputFactors     = ::BlackTek::OutputFactors;
+		using ResistanceFormula = ::BlackTek::ResistanceFormula;
+		using ResistanceFactors = ::BlackTek::ResistanceFactors;
+		using ResolutionFormula = ::BlackTek::ResolutionFormula;
+		using ResolutionFactors = ::BlackTek::ResolutionFactors;
 
 		enum TargetCode : uint8_t
 		{
