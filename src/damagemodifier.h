@@ -17,6 +17,22 @@
 #include <cstring>
 #include <gtl/phmap.hpp>
 #include <atomic>
+#include <new>
+
+#ifndef __cpp_lib_start_lifetime_as
+// libstdc++ (GCC) has not implemented std::start_lifetime_as despite it being C++23.
+// This shim uses std::launder to approximate the same effect for trivially copyable types.
+namespace std {
+	template<class T>
+	[[nodiscard]] T* start_lifetime_as(void* p) noexcept {
+		return launder(reinterpret_cast<T*>(p));
+	}
+	template<class T>
+	[[nodiscard]] const T* start_lifetime_as(const void* p) noexcept {
+		return launder(reinterpret_cast<const T*>(p));
+	}
+}
+#endif
 
 namespace BlackTek
 {

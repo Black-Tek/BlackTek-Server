@@ -131,13 +131,13 @@ jobs:
       - name: Compile Release
         run: |
           cd D:\a\BlackTek-Server\BlackTek-Server
-          msbuild Black-Tek-Server.sln /p:Configuration=Release
+          msbuild Black-Tek-Server.sln /p:Configuration=Release /p:LanguageStandard=stdcppLatest
           cmd /c copy Black-Tek-Server.exe BlackTek-Server-Release.exe
-      
+
       - name: Compile Debug
         run: |
           cd D:\a\BlackTek-Server\BlackTek-Server
-          msbuild Black-Tek-Server.sln /p:Configuration=Debug
+          msbuild Black-Tek-Server.sln /p:Configuration=Debug /p:LanguageStandard=stdcppLatest
           cmd /c copy Black-Tek-Server.exe BlackTek-Server-Debug.exe
           del Black-Tek-Server.exe
           cd D:\a\BlackTek-Server
