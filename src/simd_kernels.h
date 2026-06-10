@@ -41,6 +41,7 @@ namespace detail
 		for (size_t index = 0; index < count; ++index) runningMin = std::min(runningMin, values[index]);
 		return runningMin;
 	}
+
 	inline MapCoord scalar_hmax_u16(const MapCoord* values, size_t count) noexcept
 	{
 		MapCoord runningMax = 0u;
@@ -153,9 +154,7 @@ inline void gen_positions(const CoordOffset* spreads, const CoordOffset* forward
 
 	namespace detail
 	{
-		inline void scalar_compute_bbox(
-			const MapCoord* xs, const MapCoord* ys, size_t count,
-			MapCoord& minX, MapCoord& maxX, MapCoord& minY, MapCoord& maxY) noexcept
+		inline void scalar_compute_bbox(const MapCoord* xs, const MapCoord* ys, size_t count, MapCoord& minX, MapCoord& maxX, MapCoord& minY, MapCoord& maxY) noexcept
 		{
 			for (size_t index = 0; index < count; ++index)
 			{
@@ -167,9 +166,7 @@ inline void gen_positions(const CoordOffset* spreads, const CoordOffset* forward
 		}
 
 	#if defined(_MSC_VER) || defined(__GNUC__) || defined(__clang__)
-		inline void sse2_compute_bbox(
-			const MapCoord* xs, const MapCoord* ys, size_t count,
-			MapCoord& minX, MapCoord& maxX, MapCoord& minY, MapCoord& maxY) noexcept
+		inline void sse2_compute_bbox(const MapCoord* xs, const MapCoord* ys, size_t count, MapCoord& minX, MapCoord& maxX, MapCoord& minY, MapCoord& maxY) noexcept
 		{
 			// we use the signflip trick, ie, XOR with 0x8000 converts uint16 ordering to int16 ordering.
 			const Vec128Int signFlipMask = _mm_set1_epi16(static_cast<CoordOffset>(0x8000));
@@ -198,9 +195,7 @@ inline void gen_positions(const CoordOffset* spreads, const CoordOffset* forward
 			scalar_compute_bbox(xs + index, ys + index, count - index, minX, maxX, minY, maxY);
 		}
 
-		BT_TARGET_SSE41 inline void sse41_compute_bbox(
-			const MapCoord* xs, const MapCoord* ys, size_t count,
-			MapCoord& minX, MapCoord& maxX, MapCoord& minY, MapCoord& maxY) noexcept
+		BT_TARGET_SSE41 inline void sse41_compute_bbox(const MapCoord* xs, const MapCoord* ys, size_t count, MapCoord& minX, MapCoord& maxX, MapCoord& minY, MapCoord& maxY) noexcept
 		{
 			Vec128Int packedMinX = _mm_set1_epi16(-1);   // 0xFFFF
 			Vec128Int packedMaxX = _mm_setzero_si128();
@@ -226,6 +221,20 @@ inline void gen_positions(const CoordOffset* spreads, const CoordOffset* forward
 			scalar_compute_bbox(xs + index, ys + index, count - index, minX, maxX, minY, maxY);
 		}
 
+		BT_TARGET_AVX2 inline MapCoord avx2_hmin_epu16(Vec256Int packed) noexcept
+		{
+			Vec128Int lowerHalf = _mm256_castsi256_si128(packed);
+			Vec128Int upperHalf = _mm256_extracti128_si256(packed, 1);
+			return sse41_hmin_epu16(_mm_min_epu16(lowerHalf, upperHalf));
+		}
+
+		BT_TARGET_AVX2 inline MapCoord avx2_hmax_epu16(Vec256Int packed) noexcept
+		{
+			Vec128Int lowerHalf = _mm256_castsi256_si128(packed);
+			Vec128Int upperHalf = _mm256_extracti128_si256(packed, 1);
+			return sse41_hmax_epu16(_mm_max_epu16(lowerHalf, upperHalf));
+		}
+
 		BT_TARGET_AVX2 inline void avx2_compute_bbox(const MapCoord* xs, const MapCoord* ys, size_t count, MapCoord& minX, MapCoord& maxX, MapCoord& minY, MapCoord& maxY) noexcept
 		{
 			Vec256Int packedMinX = _mm256_set1_epi16(-1);  // 0xFFFF
@@ -245,24 +254,10 @@ inline void gen_positions(const CoordOffset* spreads, const CoordOffset* forward
 			}
 
 			// we reduce 256-bit to 128-bit then we use the SSE4.1 horizontal reduce
-			auto reduce_min = [](const Vec256Int packed) -> MapCoord
-			{
-				Vec128Int lowerHalf = _mm256_castsi256_si128(packed);
-				Vec128Int upperHalf = _mm256_extracti128_si256(packed, 1);
-				return detail::sse41_hmin_epu16(_mm_min_epu16(lowerHalf, upperHalf));
-			};
-
-			auto reduce_max = [](const Vec256Int packed) -> MapCoord
-			{
-				Vec128Int lowerHalf = _mm256_castsi256_si128(packed);
-				Vec128Int upperHalf = _mm256_extracti128_si256(packed, 1);
-				return detail::sse41_hmax_epu16(_mm_max_epu16(lowerHalf, upperHalf));
-			};
-
-			minX = reduce_min(packedMinX);
-			maxX = reduce_max(packedMaxX);
-			minY = reduce_min(packedMinY);
-			maxY = reduce_max(packedMaxY);
+			minX = avx2_hmin_epu16(packedMinX);
+			maxX = avx2_hmax_epu16(packedMaxX);
+			minY = avx2_hmin_epu16(packedMinY);
+			maxY = avx2_hmax_epu16(packedMaxY);
 
 			sse41_compute_bbox(xs + index, ys + index, count - index, minX, maxX, minY, maxY);
 		}
@@ -379,7 +374,6 @@ namespace detail
 				for (; index + 4 <= count; index += 4)
 				{
 					Vec128Float floatStats = _mm_cvtepi32_ps(_mm_loadu_si128(reinterpret_cast<const Vec128Int*>(stats + index)));
-					// clamp negatives to 0
 					floatStats = _mm_max_ps(floatStats, vecZero);
 					Vec128Float resultFloat = _mm_div_ps(_mm_mul_ps(floatStats, vecOneHundred), _mm_add_ps(floatStats, vecConstant));
 					_mm_storeu_si128(reinterpret_cast<Vec128Int*>(out + index), _mm_cvttps_epi32(resultFloat));
@@ -434,17 +428,15 @@ namespace detail
 				for (; index + 4 <= count; index += 4)
 				{
 					Vec128Int   packedStats        = _mm_loadu_si128(reinterpret_cast<const Vec128Int*>(stats + index));
-					Vec128Int   aboveThresholdMask = _mm_cmpgt_epi32(packedStats, vecThreshold);   // all-ones where stat > threshold
-					// above-threshold path: intLowerBound = stat*min_scale, intUpperBound = stat - (stat%2 + parity_off)
+					Vec128Int   aboveThresholdMask = _mm_cmpgt_epi32(packedStats, vecThreshold);
 					Vec128Float floatStats         = _mm_cvtepi32_ps(packedStats);
 					Vec128Int   intLowerBound      = _mm_cvttps_epi32(_mm_mul_ps(floatStats, vecMinScale));
-					Vec128Int   statParityBit      = _mm_and_si128(packedStats, vecOneInt);         // stat & 1
+					Vec128Int   statParityBit      = _mm_and_si128(packedStats, vecOneInt);
 					Vec128Int   intUpperBound      = _mm_sub_epi32(packedStats, _mm_add_epi32(statParityBit, vecParityOffset));
 					Vec128Float floatRange         = _mm_add_ps(_mm_cvtepi32_ps(_mm_sub_epi32(intUpperBound, intLowerBound)), vecOne);
-					floatRange                     = _mm_max_ps(floatRange, vecOne);
+								floatRange         = _mm_max_ps(floatRange, vecOne);
 					Vec128Int   maskedRng          = _mm_and_si128(_mm_loadu_si128(reinterpret_cast<const Vec128Int*>(rng_vals + index)), rngMask31Bit);
 					Vec128Int   randomResult       = _mm_add_epi32(intLowerBound, _mm_cvttps_epi32(_mm_mul_ps(_mm_mul_ps(_mm_cvtepi32_ps(maskedRng), vecRngInverse), floatRange)));
-					// blend: above-threshold → randomResult, below → vecFlatAmount
 					Vec128Int   outputValues       = _mm_or_si128(_mm_and_si128(aboveThresholdMask, randomResult), _mm_andnot_si128(aboveThresholdMask, vecFlatAmount));
 					_mm_storeu_si128(reinterpret_cast<Vec128Int*>(out + index), outputValues);
 				}
