@@ -6074,6 +6074,10 @@ const bool Player::addAugment(const std::string_view augmentName)
 {
 	if (auto augment = BlackTek::Augments::GetAugment(augmentName))
 	{
+		auto& augments = getAugments();
+		if (std::ranges::find_if(augments, [&augment](const auto& a) { return *a == *augment; }) != augments.end())
+			return false;
+
 		augment_count += 1;
 		attack_modifier_count += augment->attack_mod_count();
 		defense_modifier_count += augment->defense_mod_count();

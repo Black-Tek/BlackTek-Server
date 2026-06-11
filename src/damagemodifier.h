@@ -296,7 +296,10 @@ namespace BlackTek
 
 		void subtract(const DamageModifier& mod) noexcept
 		{
-			mod.isPercent() ? percent -= mod.getValue() : flat -= mod.getValue();
+			if (mod.isPercent())
+				percent = (mod.getValue() <= percent) ? percent - mod.getValue() : 0;
+			else
+				flat = (mod.getValue() <= flat) ? flat - mod.getValue() : 0;
 		}
 	};
 

@@ -1977,15 +1977,18 @@ namespace BlackTek
 		}
 
 		if (percent_weak)
-			currentDamage += currentDamage * percent_weak / 100;
+		{
+			const uint64_t added = (uint64_t)currentDamage * percent_weak / 100;
+			currentDamage = static_cast<uint32_t>(std::min<uint64_t>((uint64_t)currentDamage + added, std::numeric_limits<uint32_t>::max()));
+		}
 
 		if (flat_weak)
 			currentDamage += flat_weak;
 
 		if (percent_resist)
 		{
-			const uint32_t reduction = currentDamage * percent_resist / 100;
-			currentDamage = (reduction >= currentDamage) ? 0 : currentDamage - reduction;
+			const uint32_t reduction = static_cast<uint32_t>(std::min<uint64_t>((uint64_t)currentDamage * percent_resist / 100, currentDamage));
+			currentDamage -= reduction;
 		}
 
 		if (flat_resist)
@@ -1993,8 +1996,7 @@ namespace BlackTek
 
 		if (percent_absorb or flat_absorb)
 		{
-			uint32_t absorbed = (percent_absorb ? currentDamage * percent_absorb / 100 : 0) + flat_absorb;
-			absorbed = std::min(absorbed, currentDamage);
+			const uint32_t absorbed = static_cast<uint32_t>(std::min<uint64_t>((percent_absorb ? (uint64_t)currentDamage * percent_absorb / 100 : 0) + flat_absorb, currentDamage));
 			currentDamage -= absorbed;
 
 			auto heal = g_combat_registry.Create(DamageType::Healing, absorbed);
@@ -2007,8 +2009,7 @@ namespace BlackTek
 
 		if (percent_restore or flat_restore)
 		{
-			uint32_t restored = (percent_restore ? currentDamage * percent_restore / 100 : 0) + flat_restore;
-			restored = std::min(restored, currentDamage);
+			const uint32_t restored = static_cast<uint32_t>(std::min<uint64_t>((percent_restore ? (uint64_t)currentDamage * percent_restore / 100 : 0) + flat_restore, currentDamage));
 			currentDamage -= restored;
 
 			auto mana = g_combat_registry.Create(DamageType::Healing, restored);
@@ -2021,8 +2022,7 @@ namespace BlackTek
 
 		if (percent_replenish or flat_replenish)
 		{
-			uint32_t replenished = (percent_replenish ? currentDamage * percent_replenish / 100 : 0) + flat_replenish;
-			replenished = std::min(replenished, currentDamage);
+			const uint32_t replenished = static_cast<uint32_t>(std::min<uint64_t>((percent_replenish ? (uint64_t)currentDamage * percent_replenish / 100 : 0) + flat_replenish, currentDamage));
 			currentDamage -= replenished;
 
 			auto stamina = g_combat_registry.Create(DamageType::Healing, replenished);
@@ -2035,8 +2035,7 @@ namespace BlackTek
 
 		if (percent_revive or flat_revive)
 		{
-			uint32_t revived = (percent_revive ? currentDamage * percent_revive / 100 : 0) + flat_revive;
-			revived = std::min(revived, currentDamage);
+			const uint32_t revived = static_cast<uint32_t>(std::min<uint64_t>((percent_revive ? (uint64_t)currentDamage * percent_revive / 100 : 0) + flat_revive, currentDamage));
 			currentDamage -= revived;
 
 			auto soul = g_combat_registry.Create(DamageType::Healing, revived);
@@ -2051,8 +2050,7 @@ namespace BlackTek
 
 		if (not is_bounce and (percent_reflect or flat_reflect) and attacker)
 		{
-			uint32_t reflected = (percent_reflect ? currentDamage * percent_reflect / 100 : 0) + flat_reflect;
-			reflected = std::min(reflected, currentDamage);
+			const uint32_t reflected = static_cast<uint32_t>(std::min<uint64_t>((percent_reflect ? (uint64_t)currentDamage * percent_reflect / 100 : 0) + flat_reflect, currentDamage));
 			currentDamage -= reflected;
 
 			auto reflect = g_combat_registry.Create(damage_type, reflected);
@@ -2067,16 +2065,14 @@ namespace BlackTek
 
 		if (not is_bounce and (percent_deflect or flat_deflect))
 		{
-			uint32_t deflected = (percent_deflect ? currentDamage * percent_deflect / 100 : 0) + flat_deflect;
-			deflected = std::min(deflected, currentDamage);
+			const uint32_t deflected = static_cast<uint32_t>(std::min<uint64_t>((percent_deflect ? (uint64_t)currentDamage * percent_deflect / 100 : 0) + flat_deflect, currentDamage));
 			currentDamage -= deflected;
 			deflect_damage(attacker, victim, deflected, damage_type, distanceEffect, impactEffect);
 		}
 
 		if (not is_bounce and (percent_ricochet or flat_ricochet))
 		{
-			uint32_t ricocheted = (percent_ricochet ? currentDamage * percent_ricochet / 100 : 0) + flat_ricochet;
-			ricocheted = std::min(ricocheted, currentDamage);
+			const uint32_t ricocheted = static_cast<uint32_t>(std::min<uint64_t>((percent_ricochet ? (uint64_t)currentDamage * percent_ricochet / 100 : 0) + flat_ricochet, currentDamage));
 			currentDamage -= ricochetDamage(victim, ricocheted, damage_type, distanceEffect, impactEffect);
 		}
 
@@ -2667,7 +2663,10 @@ namespace BlackTek
 			const int32_t maxHeal = target->getMaxHealth() - target->getHealth();
 
 			if (maxHeal <= 0)
+			{
+				g_game.addCreatureHealth(target);
 				return;
+			}
 
 			if (caster->is_player())
 				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), target);
@@ -4070,6 +4069,7 @@ namespace BlackTek
 				player->sendMagicEffect(defender_position, origin_notice.effect);
 
 			player->sendStats();
+			player->sendCreatureHealth(defender);
 		}
 
 		if (not self_target and attacker->is_player())
