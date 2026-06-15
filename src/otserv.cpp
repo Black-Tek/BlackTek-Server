@@ -476,12 +476,8 @@ void mainLoader(int, char*[], ServiceManager* services)
 	IOGuild::loadGuilds();
 	Console::printProgress("Guilds", true, std::to_string(g_game.getGuilds().size()));
 
-	// Load lua monsters
-	if (not g_scripts->loadScripts("monster", false, false))
-	{
-		startupErrorMessage("Failed to load lua monsters");
-		return;
-	}
+	// Load lua monsters (folder is optional)
+	g_scripts->loadScripts("monster", false, false);
 	Console::printProgress("Monsters", true, std::to_string(g_monsters.count()));
 
 	// Load zones
