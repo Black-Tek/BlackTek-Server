@@ -63,7 +63,8 @@ class Door;
 using DoorPtr = std::shared_ptr<Door>;
 using DoorConstPtr = std::shared_ptr<const Door>;
 
-class MagicField;
+namespace BlackTek { class MagicField; }
+using MagicField = BlackTek::MagicField;
 using MagicFieldPtr = std::shared_ptr<MagicField>;
 using MagicFieldConstPtr = std::shared_ptr<const MagicField>;
 

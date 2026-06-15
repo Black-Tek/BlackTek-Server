@@ -5,11 +5,29 @@
 
 #include "spectators.h"
 #include "creature.h"
+#include <gtl/phmap.hpp>
 
-// partitionByType is defined here rather than inline in spectators.h because
-// spectators.h is pulled in via tile.h which is pulled in via creature.h,
-// forming a cycle that prevents creature.h from being included in spectators.h.
-// By the time this translation unit is compiled, Creature is fully defined.
+// Both methods live here rather than inline in spectators.h because spectators.h
+// is pulled in via tile.h → creature.h, forming a cycle that prevents creature.h
+// from being included in spectators.h. By the time this TU is compiled, Creature
+// is fully defined and gtl headers are available without polluting every includer.
+
+void SpectatorVec::addSpectators(const SpectatorVec& other)
+{
+    if (other.empty()) return;
+    if (vec_.empty()) {
+        *this = other;
+        return;
+    }
+
+    gtl::flat_hash_set<CreaturePtr> seen(vec_.begin(), vec_.end());
+    for (const auto& c : other.vec_) {
+        if (seen.insert(c).second)
+            vec_.emplace_back(c);
+    }
+    partitionByType();
+}
+
 void SpectatorVec::partitionByType()
 {
     auto mid1 = std::partition(vec_.begin(), vec_.end(), [](const CreaturePtr& c)

@@ -1,26 +1,15 @@
-local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_MAGIC_BLUE)
-combat:setParameter(COMBAT_PARAM_AGGRESSIVE, 0)
-combat:setArea(createCombatArea(AREA_CIRCLE3X3))
-
-function onTargetCreature(creature, target)
-	local min = 400
-	local max = 600
-	local master = target:getMaster()
-	if target:isPlayer() and not master or master and master:isPlayer() then
-		return true
-	end
-
-	doTargetCombat(0, target, COMBAT_HEALING, min, max, CONST_ME_NONE)
-	return true
-end
-
-combat:setCallback(CALLBACK_PARAM_TARGETCREATURE, "onTargetCreature")
+local combat = Combat(MonsterCombats.IcicleHeal)
 
 local spell = Spell(SPELL_INSTANT)
 
 function spell.onCastSpell(creature, variant)
-	return combat:execute(creature, variant)
+	for _, target in ipairs(combat:getTargets(creature, variant)) do
+		local master = target:getMaster()
+		if not (target:isPlayer() and not master or master and master:isPlayer()) then
+			doTargetCombat(0, target, Combat.DamageType.Healing, 400, 600, CONST_ME_NONE)
+		end
+	end
+	return true
 end
 
 spell:name("icicle heal")

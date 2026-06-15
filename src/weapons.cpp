@@ -398,9 +398,8 @@ bool Weapon::useWeapon(const PlayerPtr player, const ItemPtr item, const Creatur
 
 bool Weapon::useFist(const PlayerPtr& player, const CreaturePtr& target)
 {
-	if (!Position::areInRange<1, 1>(player->getPosition(), target->getPosition())) {
+	if (not Position::areInRange<1, 1>(player->getPosition(), target->getPosition()))
 		return false;
-	}
 
 	float attackFactor = player->getAttackFactor();
 	int32_t attackSkill = player->getSkillLevel(SKILL_FIST);
@@ -408,43 +407,48 @@ bool Weapon::useFist(const PlayerPtr& player, const CreaturePtr& target)
 
 	int32_t maxDamage = Weapons::getMaxWeaponDamage(player->getLevel(), attackSkill, attackValue, attackFactor);
 
-	CombatParams params;
-	params.combatType = COMBAT_PHYSICALDAMAGE;
-	params.blockedByArmor = true;
-	params.blockedByShield = true;
+	auto fist = BlackTek::g_combat_registry.Create(
+		static_cast<uint16_t>(BlackTek::Combat::DamageType::Physical),
+		static_cast<uint32_t>(normal_random(0, maxDamage))
+	);
+	fist->SetConfig(BlackTek::Combat::Config::BlockedByArmor);
+	fist->SetConfig(BlackTek::Combat::Config::BlockedByDefense);
+	fist->SetConfig(BlackTek::Combat::Config::Aggressive);
+	fist->setOrigin(BlackTek::Combat::Origin::Fist);
+	fist->strike_target(player, target);
 
-	CombatDamage damage;
-	damage.origin = ORIGIN_MELEE;
-	damage.primary.type = params.combatType;
-	damage.primary.value = -normal_random(0, maxDamage);
-
-	Combat::doTargetCombat(player, target, damage, params);
-	if (!player->hasFlag(PlayerFlag_NotGainSkill) && player->getAddAttackSkill()) {
+	if (not player->hasFlag(PlayerFlag_NotGainSkill) and player->getAddAttackSkill())
 		player->addSkillAdvance(SKILL_FIST, 1);
-	}
 
 	return true;
 }
 
 void Weapon::internalUseWeapon(const PlayerPtr& player, const ItemPtr& item, const CreaturePtr& target, int32_t damageModifier) const
 {
-	if (scripted) {
+	if (scripted)
+	{
 		LuaVariant var;
 		var.setNumber(target->getID());
 		executeUseWeapon(player, var);
-	} else {
-		CombatDamage damage;
-		WeaponType_t weaponType = item->getWeaponType();
-		if (weaponType == WEAPON_AMMO || weaponType == WEAPON_DISTANCE) {
-			damage.origin = ORIGIN_RANGED;
-		} else {
-			damage.origin = ORIGIN_MELEE;
+	}
+	else
+	{
+		int32_t rawDmg = (getWeaponDamage(player, target, item) * damageModifier) / 100;
+		combat->SetConfig(BlackTek::Combat::Config::TrueDamage);
+		combat->SetDamage(static_cast<uint32_t>(std::abs(rawDmg)));
+		combat->SetDistanceEffect(static_cast<uint8_t>(Item::items[item->getID()].shootType));
+		combat->strike_target(player, target);
+
+		int32_t elemDmg = getElementDamage(player, target, item);
+		if (elemDmg != 0)
+		{
+			auto elemStrike = BlackTek::g_combat_registry.Create(
+				static_cast<uint16_t>(getElementType()),
+				static_cast<uint32_t>(std::abs(elemDmg))
+			);
+			elemStrike->SetConfig(BlackTek::Combat::Config::Aggressive);
+			elemStrike->strike_target(player, target);
 		}
-		damage.primary.type = params.combatType;
-		damage.primary.value = (getWeaponDamage(player, target, item) * damageModifier) / 100;
-		damage.secondary.type = getElementType();
-		damage.secondary.value = getElementDamage(player, target, item);
-		Combat::doTargetCombat(player, target, damage, params);
 	}
 
 	onUsedWeapon(player, item, target->getTile());
@@ -452,12 +456,18 @@ void Weapon::internalUseWeapon(const PlayerPtr& player, const ItemPtr& item, con
 
 void Weapon::internalUseWeapon(const PlayerPtr& player, const ItemPtr& item, const TilePtr& tile) const
 {
-	if (scripted) {
+	if (scripted)
+	{
 		LuaVariant var;
 		var.setTargetPosition(tile->getPosition());
 		executeUseWeapon(player, var);
-	} else {
-		Combat::postCombatEffects(player, tile->getPosition(), params);
+	}
+	else
+	{
+		const uint8_t shootType = static_cast<uint8_t>(Item::items[item->getID()].shootType);
+		if (shootType != CONST_ANI_NONE)
+			BlackTek::Combat::addDistanceEffect(player, player->getPosition(), tile->getPosition(), shootType);
+		BlackTek::Combat::postCombatEffects(player, tile->getPosition(), *combat);
 		g_game.addMagicEffect(tile->getPosition(), CONST_ME_POFF);
 	}
 
@@ -580,9 +590,12 @@ void Weapon::decrementItemCount(const ItemPtr& item)
 WeaponMelee::WeaponMelee(LuaScriptInterface* interface) :
 	Weapon(interface)
 {
-	params.blockedByArmor = true;
-	params.blockedByShield = true;
-	params.combatType = COMBAT_PHYSICALDAMAGE;
+	combat = BlackTek::g_combat_registry.Create();
+	combat->SetDamageType(BlackTek::Combat::DamageType::Physical);
+	combat->SetConfig(BlackTek::Combat::Config::BlockedByArmor);
+	combat->SetConfig(BlackTek::Combat::Config::BlockedByDefense);
+	combat->SetConfig(BlackTek::Combat::Config::Aggressive);
+	combat->setOrigin(BlackTek::Combat::Origin::Melee);
 }
 
 void WeaponMelee::configureWeapon(const ItemType& it)
@@ -590,8 +603,8 @@ void WeaponMelee::configureWeapon(const ItemType& it)
 	if (it.abilities) {
 		elementType = it.abilities->elementType;
 		elementDamage = it.abilities->elementDamage;
-		params.aggressive = true;
-		params.useCharges = true;
+		combat->SetConfig(BlackTek::Combat::Config::Aggressive);
+		combat->SetConfig(BlackTek::Combat::Config::UseCharges);
 	} else {
 		elementType = COMBAT_NONE;
 		elementDamage = 0;
@@ -651,7 +664,7 @@ int32_t WeaponMelee::getElementDamage(const PlayerConstPtr& player, const Creatu
 	float attackFactor = player->getAttackFactor();
 
 	int32_t maxValue = Weapons::getMaxWeaponDamage(player->getLevel(), attackSkill, attackValue, attackFactor);
-	return -normal_random(0, static_cast<int32_t>(maxValue * player->getVocation()->meleeDamageMultiplier));
+	return -normal_random(0, static_cast<int32_t>(maxValue * player->getVocation()->meleeDamageMultiplier * player->getDualWieldMultiplier()));
 }
 
 int32_t WeaponMelee::getWeaponDamage(const PlayerConstPtr& player, const CreatureConstPtr&, const ItemConstPtr& item, bool maxDamage /*= false*/) const {
@@ -662,9 +675,9 @@ int32_t WeaponMelee::getWeaponDamage(const PlayerConstPtr& player, const Creatur
 	int32_t attackSkill = player->getWeaponSkill(item);
 	int32_t attackValue = std::max<int32_t>(0, item->getAttack());
 	const float meleeDamageMultiplier = playerVocation->meleeDamageMultiplier;
-	int32_t maxValue = static_cast<int32_t>(Weapons::getMaxWeaponDamage(playerLevel, attackSkill, attackValue, playerAttackFactor) * meleeDamageMultiplier);
+	int32_t maxValue = static_cast<int32_t>(Weapons::getMaxWeaponDamage(playerLevel, attackSkill, attackValue, playerAttackFactor) * meleeDamageMultiplier * player->getDualWieldMultiplier());
 
-	if (maxDamage) 
+	if (maxDamage)
 	{
 		return -maxValue;
 	}
@@ -674,19 +687,22 @@ int32_t WeaponMelee::getWeaponDamage(const PlayerConstPtr& player, const Creatur
 WeaponDistance::WeaponDistance(LuaScriptInterface* interface) :
 	Weapon(interface)
 {
-	params.blockedByArmor = true;
-	params.combatType = COMBAT_PHYSICALDAMAGE;
+	combat = BlackTek::g_combat_registry.Create();
+	combat->SetDamageType(BlackTek::Combat::DamageType::Physical);
+	combat->SetConfig(BlackTek::Combat::Config::BlockedByArmor);
+	combat->SetConfig(BlackTek::Combat::Config::Aggressive);
+	combat->setOrigin(BlackTek::Combat::Origin::Ranged);
 }
 
 void WeaponDistance::configureWeapon(const ItemType& it)
 {
-	params.distanceEffect = it.shootType;
+	combat->SetDistanceEffect(static_cast<uint8_t>(it.shootType));
 
 	if (it.abilities) {
 		elementType = it.abilities->elementType;
 		elementDamage = it.abilities->elementDamage;
-		params.aggressive = true;
-		params.useCharges = true;
+		combat->SetConfig(BlackTek::Combat::Config::Aggressive);
+		combat->SetConfig(BlackTek::Combat::Config::UseCharges);
 	} else {
 		elementType = COMBAT_NONE;
 		elementDamage = 0;
@@ -893,7 +909,12 @@ bool WeaponWand::configureEvent(const pugi::xml_node& node)
 
 void WeaponWand::configureWeapon(const ItemType& it)
 {
-	params.distanceEffect = it.shootType;
+	if (not combat)
+	{
+		combat = BlackTek::g_combat_registry.Create();
+		combat->SetConfig(BlackTek::Combat::Config::Aggressive);
+	}
+	combat->SetDistanceEffect(static_cast<uint8_t>(it.shootType));
 
 	Weapon::configureWeapon(it);
 }

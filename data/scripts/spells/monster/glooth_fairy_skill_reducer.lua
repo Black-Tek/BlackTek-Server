@@ -17,7 +17,7 @@ for i = 40, 60 do
 	condition:setParameter(CONDITION_PARAM_STAT_MAGICPOINTSPERCENT, i)
 
 	combat[i] = Combat()
-	combat[i]:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_ENERGYAREA)
+	combat[i]:setImpactEffect(CONST_ME_ENERGYAREA)
 	combat[i]:setArea(createCombatArea(area))
 	combat[i]:addCondition(condition)
 end

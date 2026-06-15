@@ -174,8 +174,6 @@ class Container : public Item, public Cylinder
 		gtl::btree_map<uint32_t, uint32_t>& getAllItemTypeCount(gtl::btree_map<uint32_t, uint32_t>& countMap) const override final;
 		ThingPtr getThing(size_t index) override final;
 
-		ItemVector getItems(bool recursive = false) const;
-
 		void postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
 		void postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
 

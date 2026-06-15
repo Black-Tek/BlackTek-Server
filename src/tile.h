@@ -218,7 +218,10 @@ class Tile : public Cylinder, public SharedObject
 		uint32_t getTopItemCount() const;
 		uint32_t getDownItemCount() const;
 
-		bool hasProperty(ITEMPROPERTY prop) const;
+		bool hasProperty(ITEMPROPERTY prop) const {
+			return (itemProperties >> static_cast<uint32_t>(prop)) & 1u;
+		}
+
 		bool hasProperty(const ItemPtr& exclude, ITEMPROPERTY prop) const;
 
 		bool hasFlag(uint32_t flag) const {
@@ -339,6 +342,8 @@ class Tile : public Cylinder, public SharedObject
 		void onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType);
 		void onRemoveTileItem(const SpectatorVec& spectators, const std::vector<int32_t>& oldStackPosVector, const ItemPtr& item);
 		void onUpdateTile(const SpectatorVec& spectators);
+		void applyItemProperties(const ItemConstPtr& item);
+		void recalculateItemProperties();
 		void setTileFlags(const ItemConstPtr& item);
 		void resetTileFlags(const ItemPtr& item);
 
@@ -346,6 +351,7 @@ class Tile : public Cylinder, public SharedObject
 		ItemPtr ground = nullptr;
 		Position tilePos;
 		uint32_t flags = 0;
+		uint32_t itemProperties = 0;
 		TileItemsPtr items;
 		TileCreaturesPtr creatures;
 };

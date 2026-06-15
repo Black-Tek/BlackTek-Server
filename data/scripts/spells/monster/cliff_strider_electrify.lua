@@ -1,6 +1,4 @@
-local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_ENERGYDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_ENERGYHIT)
+local combat = Combat(MonsterCombats.CliffStriderElectrify)
 
 local spell = Spell(SPELL_INSTANT)
 

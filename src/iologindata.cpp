@@ -131,7 +131,7 @@ std::pair<uint32_t, uint32_t> IOLoginData::gameworldAuthentication(std::string_v
 	return std::make_pair(accountId, characterId);
 }
 
-void IOLoginData::loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augmentList, const DBResult_ptr& result) {
+void IOLoginData::loadPlayerAugments(std::vector<std::shared_ptr<BlackTek::Augment>>& augmentList, const DBResult_ptr& result) {
 	try {
 		if (!result) {
 			std::cout << "ERROR: Null result in loadPlayerAugments" << std::endl;
@@ -163,18 +163,17 @@ void IOLoginData::loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augm
 		augmentList.reserve(augmentCount);
 
 		for (uint32_t i = 0; i < augmentCount; ++i) {
-			auto augment = std::make_shared<Augment>();
-
 			try {
-				if (!augment->unserialize(augmentStream)) {
-					std::cout << "WARNING: Failed to unserialize augment " << i
+				auto result = BlackTek::Augment::deserialize(augmentStream);
+				if (not result.has_value()) {
+					std::cout << "WARNING: Failed to deserialize augment " << i
 						<< " for player " << playerID << std::endl;
 					return;
 				}
-				augmentList.emplace_back(augment);
+				augmentList.emplace_back(std::move(*result));
 			}
 			catch (const std::exception& e) {
-				std::cout << "ERROR: Exception while unserializing augment " << i
+				std::cout << "ERROR: Exception while deserializing augment " << i
 					<< " for player " << playerID << ": " << e.what() << std::endl;
 				return;
 			}
@@ -516,7 +515,7 @@ bool IOLoginData::preloadPlayer(const PlayerPtr& player)
 	return true;
 }
 
-bool IOLoginData::loadPlayerById(const PlayerPtr& player, uint32_t id, std::vector<Condition*>* outConditions)
+bool IOLoginData::loadPlayerById(const PlayerPtr& player, uint32_t id, std::vector<ConditionHandle>* outConditions)
 {
 	Database& db = Database::getInstance();
 	return loadPlayer(player, db.storeQuery(fmt::format("SELECT `id`, `name`, `account_id`, `group_id`, `sex`, `vocation`, `experience`, `level`, `maglevel`, `health`, `healthmax`, `blessings`, `mana`, `manamax`, `manaspent`, `soul`, `lookbody`, `lookfeet`, `lookhead`, `looklegs`, `looktype`, `lookaddons`, `posx`, `posy`, `posz`, `cap`, `lastlogin`, `lastlogout`, `lastip`, `conditions`, `skulltime`, `skull`, `town_id`, `balance`, `offlinetraining_time`, `offlinetraining_skill`, `stamina`, `skill_fist`, `skill_fist_tries`, `skill_club`, `skill_club_tries`, `skill_sword`, `skill_sword_tries`, `skill_axe`, `skill_axe_tries`, `skill_dist`, `skill_dist_tries`, `skill_shielding`, `skill_shielding_tries`, `skill_fishing`, `skill_fishing_tries`, `direction` FROM `players` WHERE `id` = {:d}", id)), outConditions);
@@ -528,7 +527,7 @@ bool IOLoginData::loadPlayerByName(const PlayerPtr& player, const std::string& n
 	return loadPlayer(player, db.storeQuery(fmt::format("SELECT `id`, `name`, `account_id`, `group_id`, `sex`, `vocation`, `experience`, `level`, `maglevel`, `health`, `healthmax`, `blessings`, `mana`, `manamax`, `manaspent`, `soul`, `lookbody`, `lookfeet`, `lookhead`, `looklegs`, `looktype`, `lookaddons`, `posx`, `posy`, `posz`, `cap`, `lastlogin`, `lastlogout`, `lastip`, `conditions`, `skulltime`, `skull`, `town_id`, `balance`, `offlinetraining_time`, `offlinetraining_skill`, `stamina`, `skill_fist`, `skill_fist_tries`, `skill_club`, `skill_club_tries`, `skill_sword`, `skill_sword_tries`, `skill_axe`, `skill_axe_tries`, `skill_dist`, `skill_dist_tries`, `skill_shielding`, `skill_shielding_tries`, `skill_fishing`, `skill_fishing_tries`, `direction` FROM `players` WHERE `name` = {:s}", db.escapeString(name))));
 }
 
-bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::vector<Condition*>* outConditions)
+bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::vector<ConditionHandle>* outConditions)
 {
 	if (!result) {
 		return false;
@@ -583,26 +582,15 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::
 	PropStream propStream;
 	propStream.init(conditions.data(), conditions.size());
 
-	Condition* condition = Condition::createCondition(propStream);
-
-	while (condition)
+	for (auto condition = Condition::createCondition(propStream); condition; condition = Condition::createCondition(propStream))
 	{
 		if (condition->unserialize(propStream))
 		{
 			if (outConditions)
-			{
-				outConditions->push_back(condition);
-			}
-			else
-			{
-				delete condition;
-			}
+				outConditions->push_back(std::move(condition));
+			// else: condition falls out of scope and auto-releases
 		}
-		else
-		{
-			delete condition;
-		}
-		condition = Condition::createCondition(propStream);
+		// on unserialize failure: condition falls out of scope and auto-releases
 	}
 
 	if (!player->setVocation(result->getNumber<uint16_t>("vocation"))) {
@@ -900,7 +888,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::
 
 	if ((result = db.storeQuery(fmt::format("SELECT `player_id`, `augments` FROM `player_augments` WHERE `player_id` = {:d}", player->getGUID())))) {
 		try {
-			std::vector<std::shared_ptr<Augment>> augments;
+			std::vector<std::shared_ptr<BlackTek::Augment>> augments;
 			IOLoginData::loadPlayerAugments(augments, result);
 
 			if (!augments.empty()) {

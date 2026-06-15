@@ -1,6 +1,4 @@
-local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_STUN)
-combat:setArea(createCombatArea(AREA_CIRCLE6X6))
+local combat = Combat(MonsterCombats.ShockHeadSkillReducer2)
 
 local parameters = {{key = CONDITION_PARAM_TICKS, value = 4 * 1000}, {key = CONDITION_PARAM_STAT_MAGICPOINTSPERCENT, value = 70}}
 

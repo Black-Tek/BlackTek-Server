@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_DEATHDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_MORTAREA)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_DEATH)
+local combat = Combat(AttackCombats.Curse)
 
 local spell = Spell(SPELL_INSTANT)
 

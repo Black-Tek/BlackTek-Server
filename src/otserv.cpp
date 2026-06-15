@@ -24,6 +24,7 @@
 #include "augments.h"
 #include "zones.h"
 #include "console.h"
+#include "simd_dispatch.h"
 #include <memory>
 
 #if __has_include("gitmetadata.h")
@@ -300,6 +301,8 @@ void mainLoader(int, char*[], ServiceManager* services)
 	// dispatcher thread
 	g_game.setGameState(GAME_STATE_STARTUP);
 
+	BlackTek::SIMD::detect();
+
 	srand(static_cast<unsigned int>(OTSYS_TIME()));
 
 	#ifdef _WIN32
@@ -473,19 +476,8 @@ void mainLoader(int, char*[], ServiceManager* services)
 	IOGuild::loadGuilds();
 	Console::printProgress("Guilds", true, std::to_string(g_game.getGuilds().size()));
 
-	// Load monsters
-	if (not g_monsters.loadFromXml())
-	{
-		startupErrorMessage("Unable to load monsters!");
-		return;
-	}
-
-	// Load lua monsters
-	if (not g_scripts->loadScripts("monster", false, false))
-	{
-		startupErrorMessage("Failed to load lua monsters");
-		return;
-	}
+	// Load lua monsters (folder is optional)
+	g_scripts->loadScripts("monster", false, false);
 	Console::printProgress("Monsters", true, std::to_string(g_monsters.count()));
 
 	// Load zones
@@ -493,8 +485,8 @@ void mainLoader(int, char*[], ServiceManager* services)
 	Console::printProgress("Zones", true, std::to_string(Zones::count()));
 
 	// Load augments
-	Augments::loadAll();
-	Console::printProgress("Augments", true, std::to_string(Augments::count()));
+	BlackTek::Augments::loadAll();
+	Console::printProgress("Augments", true, std::to_string(BlackTek::Augments::count()));
 
 
 	// Load map

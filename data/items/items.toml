@@ -7085,7 +7085,6 @@ name = "backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 1989
@@ -7164,7 +7163,6 @@ name = "green backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 1999
@@ -7173,7 +7171,6 @@ name = "yellow backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 2000
@@ -7182,7 +7179,6 @@ name = "red backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 2001
@@ -7191,7 +7187,6 @@ name = "purple backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 2002
@@ -7200,7 +7195,6 @@ name = "blue backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 2003
@@ -7209,7 +7203,6 @@ name = "grey backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 2004
@@ -7218,7 +7211,6 @@ name = "golden backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 2005
@@ -8110,7 +8102,6 @@ name = "ancient tiara"
 weight = 820
 armor = 0
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 2140
@@ -8395,7 +8386,6 @@ description = "It shows your spells and can also shield against attacks when wor
 weight = 1800
 defense = 14
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2176
@@ -8532,7 +8522,6 @@ weight = 2100
 weaponType = "wand"
 shootType = "fire"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 2192
@@ -8560,7 +8549,6 @@ weight = 750
 slotType = "feet"
 speed = 40
 showattributes = true
-imbuementslots = 1
 
 [[items]]
 id = 2196
@@ -8826,7 +8814,6 @@ id = 2217
 article = "a"
 name = "spellbook"
 weight = 5800
-imbuementslots = 1
 
 [[items]]
 id = 2218
@@ -9595,7 +9582,6 @@ weight = 700
 armor = 3
 magiclevelpoints = 1
 slotType = "head"
-imbuementslots = 1
 
 [[items]]
 id = 2324
@@ -9901,7 +9887,6 @@ name = "backpack of holding"
 weight = 1500
 containerSize = 24
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 2366
@@ -9973,7 +9958,6 @@ defense = 12
 attack = 14
 weaponType = "sword"
 extradef = 1
-imbuementslots = 2
 
 [[items]]
 id = 2377
@@ -10041,7 +10025,6 @@ defense = 21
 attack = 24
 weaponType = "sword"
 extradef = 2
-imbuementslots = 2
 
 [[items]]
 id = 2384
@@ -10122,7 +10105,6 @@ defense = 10
 attack = 45
 weaponType = "club"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 2392
@@ -10146,7 +10128,6 @@ defense = 22
 attack = 46
 weaponType = "sword"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 2394
@@ -10218,7 +10199,6 @@ defense = 35
 attack = 48
 weaponType = "sword"
 extradef = 3
-imbuementslots = 2
 
 [[items]]
 id = 2401
@@ -10285,7 +10265,6 @@ defense = 30
 attack = 36
 weaponType = "sword"
 extradef = 1
-imbuementslots = 2
 
 [[items]]
 id = 2408
@@ -10350,7 +10329,6 @@ defense = 23
 attack = 26
 weaponType = "sword"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 2414
@@ -10362,7 +10340,6 @@ defense = 16
 attack = 47
 weaponType = "axe"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 2415
@@ -10374,7 +10351,6 @@ defense = 22
 attack = 52
 weaponType = "axe"
 slotType = "two-handed"
-imbuementslots = 2
 
 [[items]]
 id = 2416
@@ -10433,7 +10409,6 @@ defense = 35
 attack = 49
 weaponType = "club"
 extradef = 1
-imbuementslots = 2
 
 [[items]]
 id = 2422
@@ -10453,7 +10428,6 @@ defense = 15
 attack = 28
 weaponType = "club"
 extradef = 1
-imbuementslots = 2
 
 [[items]]
 id = 2424
@@ -10465,7 +10439,6 @@ defense = 30
 attack = 41
 weaponType = "club"
 extradef = 2
-imbuementslots = 2
 
 [[items]]
 id = 2425
@@ -10496,7 +10469,6 @@ defense = 15
 attack = 46
 weaponType = "axe"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 2428
@@ -10516,7 +10488,6 @@ defense = 18
 attack = 28
 weaponType = "axe"
 extradef = 1
-imbuementslots = 2
 
 [[items]]
 id = 2430
@@ -10527,7 +10498,6 @@ defense = 21
 attack = 33
 weaponType = "axe"
 extradef = 1
-imbuementslots = 2
 
 [[items]]
 id = 2431
@@ -10539,7 +10509,6 @@ defense = 30
 attack = 50
 weaponType = "axe"
 extradef = 3
-imbuementslots = 1
 
 [[items]]
 id = 2432
@@ -10584,7 +10553,6 @@ defense = 19
 attack = 31
 weaponType = "axe"
 extradef = 2
-imbuementslots = 2
 
 [[items]]
 id = 2436
@@ -10596,7 +10564,6 @@ defense = 12
 attack = 36
 weaponType = "club"
 extradef = 1
-imbuementslots = 2
 
 [[items]]
 id = 2437
@@ -10615,7 +10582,6 @@ weight = 1450
 defense = 23
 attack = 37
 weaponType = "sword"
-imbuementslots = 2
 
 [[items]]
 id = 2439
@@ -10663,7 +10629,6 @@ defense = 14
 attack = 49
 weaponType = "axe"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 2444
@@ -10675,7 +10640,6 @@ defense = 12
 attack = 48
 weaponType = "club"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 2445
@@ -10686,7 +10650,6 @@ defense = 16
 attack = 38
 extradef = 1
 weaponType = "club"
-imbuementslots = 2
 
 [[items]]
 id = 2446
@@ -10707,7 +10670,6 @@ defense = 24
 attack = 45
 weaponType = "axe"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 2448
@@ -10747,7 +10709,6 @@ defense = 22
 attack = 38
 weaponType = "sword"
 extradef = 2
-imbuementslots = 2
 
 [[items]]
 id = 2452
@@ -10759,7 +10720,6 @@ defense = 15
 attack = 49
 weaponType = "club"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 2453
@@ -10771,7 +10731,6 @@ defense = 30
 attack = 50
 weaponType = "club"
 slotType = "two-handed"
-imbuementslots = 2
 
 [[items]]
 id = 2454
@@ -10782,7 +10741,6 @@ defense = 10
 attack = 48
 weaponType = "axe"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 2455
@@ -10793,7 +10751,6 @@ weaponType = "distance"
 slotType = "two-handed"
 ammoType = "bolt"
 range = 5
-imbuementslots = 3
 
 [[items]]
 id = 2456
@@ -10868,7 +10825,6 @@ name = "chain armor"
 weight = 10000
 armor = 6
 slotType = "body"
-imbuementslots = 2
 
 [[items]]
 id = 2465
@@ -10885,7 +10841,6 @@ name = "golden armor"
 weight = 8000
 armor = 14
 slotType = "body"
-imbuementslots = 2
 
 [[items]]
 id = 2467
@@ -10927,7 +10882,6 @@ description = "It's the famous Helmet of the Stars."
 weight = 3200
 armor = 12
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 2472
@@ -10936,7 +10890,6 @@ name = "magic plate armor"
 weight = 8500
 armor = 17
 slotType = "body"
-imbuementslots = 2
 
 [[items]]
 id = 2473
@@ -10962,7 +10915,6 @@ name = "warrior helmet"
 weight = 6800
 armor = 8
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 2476
@@ -10971,7 +10923,6 @@ name = "knight armor"
 weight = 12000
 armor = 12
 slotType = "body"
-imbuementslots = 2
 
 [[items]]
 id = 2477
@@ -11052,7 +11003,6 @@ name = "noble armor"
 weight = 12000
 armor = 11
 slotType = "body"
-imbuementslots = 2
 
 [[items]]
 id = 2487
@@ -11061,7 +11011,6 @@ name = "crown armor"
 weight = 9900
 armor = 13
 slotType = "body"
-imbuementslots = 1
 
 [[items]]
 id = 2488
@@ -11094,7 +11043,6 @@ name = "crown helmet"
 weight = 2950
 armor = 7
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 2492
@@ -11103,7 +11051,6 @@ name = "dragon scale mail"
 weight = 11400
 armor = 15
 slotType = "body"
-imbuementslots = 1
 
 [[items]]
 id = 2493
@@ -11113,7 +11060,6 @@ description = "You hear an evil whispering from inside."
 weight = 2950
 armor = 10
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 2494
@@ -11122,7 +11068,6 @@ name = "demon armor"
 weight = 8000
 armor = 16
 slotType = "body"
-imbuementslots = 2
 
 [[items]]
 id = 2495
@@ -11147,7 +11092,6 @@ name = "crusader helmet"
 weight = 5200
 armor = 8
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 2498
@@ -11157,7 +11101,6 @@ description = "An excellent masterpiece of a smith."
 weight = 4800
 armor = 9
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 2499
@@ -11166,7 +11109,6 @@ name = "amazon helmet"
 weight = 2950
 armor = 7
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 2500
@@ -11176,7 +11118,6 @@ weight = 4500
 armor = 13
 skillDist = 3
 slotType = "body"
-imbuementslots = 2
 
 [[items]]
 id = 2501
@@ -11193,7 +11134,6 @@ name = "dwarven helmet"
 weight = 4200
 armor = 6
 slotType = "head"
-imbuementslots = 2
 augment = "dwarven helmet"
 
 [[items]]
@@ -11203,7 +11143,6 @@ name = "dwarven armor"
 weight = 13000
 armor = 10
 slotType = "body"
-imbuementslots = 2
 augment = "dwarven armor"
 
 [[items]]
@@ -11222,7 +11161,6 @@ name = "elven mail"
 weight = 9000
 armor = 9
 slotType = "body"
-imbuementslots = 3
 
 [[items]]
 id = 2506
@@ -11255,7 +11193,6 @@ name = "steel shield"
 weight = 6900
 defense = 21
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2510
@@ -11297,7 +11234,6 @@ description = "It's an enchanted shield."
 weight = 5700
 defense = 37
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2515
@@ -11314,7 +11250,6 @@ name = "dragon shield"
 weight = 6000
 defense = 31
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2517
@@ -11332,7 +11267,6 @@ name = "bonelord shield"
 weight = 4700
 defense = 28
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2519
@@ -11341,7 +11275,6 @@ name = "crown shield"
 weight = 6200
 defense = 32
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2520
@@ -11351,7 +11284,6 @@ description = "This powerful shield seems to be as light as air."
 weight = 2600
 defense = 35
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2521
@@ -11369,7 +11301,6 @@ description = "The shield is made of dragon scales."
 weight = 8400
 defense = 38
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2523
@@ -11388,7 +11319,6 @@ description = "Many gems sparkle on the shield."
 weight = 6700
 defense = 22
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2525
@@ -11421,7 +11351,6 @@ name = "tower shield"
 weight = 8200
 defense = 32
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2529
@@ -11447,7 +11376,6 @@ name = "viking shield"
 weight = 6600
 defense = 22
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2532
@@ -11464,7 +11392,6 @@ name = "griffin shield"
 weight = 5000
 defense = 29
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2534
@@ -11474,7 +11401,6 @@ description = "Dark powers enchant this shield."
 weight = 3800
 defense = 34
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2535
@@ -11483,7 +11409,6 @@ name = "castle shield"
 weight = 4900
 defense = 28
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2536
@@ -11492,7 +11417,6 @@ name = "medusa shield"
 weight = 5800
 defense = 33
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2537
@@ -11501,7 +11425,6 @@ name = "amazon shield"
 weight = 6200
 defense = 32
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2538
@@ -11519,7 +11442,6 @@ description = "This shield feels warm to the touch."
 weight = 3500
 defense = 34
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2540
@@ -11544,7 +11466,6 @@ name = "tempest shield"
 weight = 5100
 defense = 36
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 2543
@@ -12189,7 +12110,6 @@ name = "patched boots"
 weight = 1000
 armor = 2
 slotType = "feet"
-imbuementslots = 1
 
 [[items]]
 id = 2642
@@ -12197,7 +12117,6 @@ article = ""
 name = "sandals"
 weight = 600
 slotType = "feet"
-imbuementslots = 1
 
 [[items]]
 id = 2643
@@ -12206,7 +12125,6 @@ name = "leather boots"
 weight = 900
 armor = 1
 slotType = "feet"
-imbuementslots = 1
 
 [[items]]
 id = 2644
@@ -12214,7 +12132,6 @@ article = ""
 name = "bunnyslippers"
 weight = 600
 slotType = "feet"
-imbuementslots = 1
 
 [[items]]
 id = 2645
@@ -12223,7 +12140,6 @@ name = "steel boots"
 weight = 2900
 armor = 3
 slotType = "feet"
-imbuementslots = 1
 
 [[items]]
 id = 2646
@@ -12232,7 +12148,6 @@ name = "golden boots"
 weight = 3100
 armor = 4
 slotType = "feet"
-imbuementslots = 1
 
 [[items]]
 id = 2647
@@ -12315,7 +12230,6 @@ description = "It is a magic robe."
 weight = 2200
 armor = 11
 slotType = "body"
-imbuementslots = 2
 
 [[items]]
 id = 2657
@@ -12361,7 +12275,6 @@ name = "magician hat"
 weight = 750
 armor = 1
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 2663
@@ -19925,7 +19838,6 @@ name = "camouflage backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 3941
@@ -20045,7 +19957,6 @@ description = "A label on the backpack reads: Property of Sam, Thais."
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 3961
@@ -20067,7 +19978,6 @@ defense = 12
 attack = 35
 weaponType = "axe"
 extradef = 1
-imbuementslots = 2
 
 [[items]]
 id = 3963
@@ -20125,7 +20035,6 @@ name = "leopard armor"
 weight = 9500
 armor = 9
 slotType = "body"
-imbuementslots = 2
 
 [[items]]
 id = 3969
@@ -20158,7 +20067,6 @@ name = "bonelord helmet"
 weight = 4600
 armor = 7
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 3973
@@ -20175,7 +20083,6 @@ name = "sentinel shield"
 weight = 4900
 defense = 22
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 3975
@@ -20224,7 +20131,6 @@ name = "crocodile boots"
 weight = 900
 armor = 1
 slotType = "feet"
-imbuementslots = 1
 
 [[items]]
 id = 3983
@@ -27946,7 +27852,6 @@ name = "pirate boots"
 weight = 800
 armor = 2
 slotType = "feet"
-imbuementslots = 1
 
 [[items]]
 id = 5463
@@ -29580,7 +29485,6 @@ name = "skull helmet"
 weight = 4200
 armor = 9
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 5743
@@ -29911,7 +29815,6 @@ name = "jewelled backpack"
 weight = 1700
 containerSize = 22
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 5802
@@ -30678,7 +30581,6 @@ name = "pirate backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 5927
@@ -30849,7 +30751,6 @@ name = "beach backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 5950
@@ -34059,7 +33960,6 @@ description = "It was crafted by the ancient order of the nightmare knights."
 weight = 3200
 defense = 37
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 6392
@@ -34276,7 +34176,6 @@ description = "It is enchanted with unholy, necromantic powers."
 weight = 3200
 defense = 37
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 6434
@@ -34869,7 +34768,6 @@ defense = 38
 attack = 50
 weaponType = "sword"
 slotType = "two-handed"
-imbuementslots = 2
 
 [[items]]
 id = 6529
@@ -35044,7 +34942,6 @@ defense = 15
 attack = 50
 weaponType = "axe"
 slotType = "two-handed"
-imbuementslots = 2
 
 [[items]]
 id = 6556
@@ -39354,7 +39251,6 @@ name = "fur backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 7343
@@ -39647,7 +39543,6 @@ defense = 20
 attack = 42
 slotType = "two-handed"
 weaponType = "axe"
-imbuementslots = 3
 
 [[items]]
 id = 7381
@@ -39668,7 +39563,6 @@ defense = 22
 attack = 47
 weaponType = "sword"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 7383
@@ -39679,7 +39573,6 @@ defense = 24
 attack = 42
 weaponType = "sword"
 extradef = 1
-imbuementslots = 2
 
 [[items]]
 id = 7384
@@ -39691,7 +39584,6 @@ defense = 25
 attack = 44
 weaponType = "sword"
 extradef = 2
-imbuementslots = 2
 
 [[items]]
 id = 7385
@@ -39702,7 +39594,6 @@ defense = 20
 attack = 28
 weaponType = "sword"
 extradef = 1
-imbuementslots = 2
 
 [[items]]
 id = 7386
@@ -39744,7 +39635,6 @@ attack = 44
 weaponType = "axe"
 extradef = 1
 description = "This axe is only granted to a scrapper of the Svargrond arena."
-imbuementslots = 2
 
 [[items]]
 id = 7390
@@ -39766,7 +39656,6 @@ defense = 29
 attack = 45
 weaponType = "sword"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 7392
@@ -39778,7 +39667,6 @@ attack = 42
 weaponType = "club"
 slotType = "two-handed"
 description = "This club is only granted to a greenhorn of the Svargrond arena."
-imbuementslots = 3
 
 [[items]]
 id = 7393
@@ -39843,7 +39731,6 @@ defense = 28
 attack = 44
 weaponType = "sword"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 7403
@@ -39854,7 +39741,6 @@ defense = 21
 attack = 48
 weaponType = "sword"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 7404
@@ -39865,7 +39751,6 @@ defense = 12
 attack = 40
 weaponType = "sword"
 extradef = -2
-imbuementslots = 2
 
 [[items]]
 id = 7405
@@ -39876,7 +39761,6 @@ defense = 34
 attack = 49
 weaponType = "sword"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 7406
@@ -39888,7 +39772,6 @@ defense = 22
 attack = 42
 weaponType = "sword"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 7407
@@ -39899,7 +39782,6 @@ defense = 12
 attack = 40
 weaponType = "sword"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 7408
@@ -39910,7 +39792,6 @@ defense = 19
 attack = 32
 weaponType = "sword"
 extradef = 1
-imbuementslots = 2
 
 [[items]]
 id = 7409
@@ -39930,7 +39811,6 @@ weight = 2300
 defense = 19
 attack = 43
 weaponType = "club"
-imbuementslots = 2
 
 [[items]]
 id = 7411
@@ -39951,7 +39831,6 @@ defense = 24
 attack = 41
 weaponType = "axe"
 extradef = -2
-imbuementslots = 2
 
 [[items]]
 id = 7413
@@ -39973,7 +39852,6 @@ defense = 21
 attack = 47
 weaponType = "club"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 7415
@@ -39985,7 +39863,6 @@ defense = 20
 attack = 44
 weaponType = "club"
 extradef = -2
-imbuementslots = 2
 
 [[items]]
 id = 7416
@@ -39996,7 +39873,6 @@ defense = 21
 attack = 43
 weaponType = "sword"
 extradef = -3
-imbuementslots = 2
 
 [[items]]
 id = 7417
@@ -40007,7 +39883,6 @@ defense = 32
 attack = 45
 weaponType = "sword"
 extradef = 2
-imbuementslots = 2
 
 [[items]]
 id = 7418
@@ -40018,7 +39893,6 @@ defense = 23
 attack = 46
 weaponType = "sword"
 extradef = -3
-imbuementslots = 2
 
 [[items]]
 id = 7419
@@ -40029,7 +39903,6 @@ defense = 19
 attack = 40
 weaponType = "axe"
 extradef = -3
-imbuementslots = 2
 
 [[items]]
 id = 7420
@@ -40049,7 +39922,6 @@ weight = 2600
 defense = 18
 attack = 45
 weaponType = "club"
-imbuementslots = 2
 
 [[items]]
 id = 7422
@@ -40070,7 +39942,6 @@ defense = 20
 attack = 51
 weaponType = "club"
 slotType = "two-handed"
-imbuementslots = 2
 
 [[items]]
 id = 7424
@@ -40081,7 +39952,6 @@ defense = 25
 attack = 40
 weaponType = "club"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 7425
@@ -40102,7 +39972,6 @@ defense = 25
 attack = 43
 weaponType = "club"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 7427
@@ -40136,7 +40005,6 @@ defense = 21
 attack = 47
 weaponType = "club"
 extradef = 3
-imbuementslots = 2
 
 [[items]]
 id = 7430
@@ -40147,7 +40015,6 @@ weight = 1800
 defense = 18
 attack = 35
 weaponType = "club"
-imbuementslots = 2
 
 [[items]]
 id = 7431
@@ -40158,7 +40025,6 @@ defense = 38
 extradef = -2
 attack = 48
 weaponType = "club"
-imbuementslots = 2
 
 [[items]]
 id = 7432
@@ -40190,7 +40056,6 @@ attack = 47
 weaponType = "axe"
 extradef = 3
 description = "This axe is only granted to a warlord of the Svargrond arena."
-imbuementslots = 2
 
 [[items]]
 id = 7435
@@ -40201,7 +40066,6 @@ defense = 25
 attack = 49
 weaponType = "axe"
 extradef = -2
-imbuementslots = 2
 
 [[items]]
 id = 7436
@@ -40222,7 +40086,6 @@ weight = 2100
 defense = 18
 attack = 37
 weaponType = "club"
-imbuementslots = 2
 
 [[items]]
 id = 7438
@@ -40235,7 +40098,6 @@ weaponType = "distance"
 ammoType = "arrow"
 range = 6
 hitChance = 5
-imbuementslots = 3
 
 [[items]]
 id = 7439
@@ -40332,7 +40194,6 @@ weight = 4100
 defense = 17
 attack = 39
 weaponType = "club"
-imbuementslots = 2
 
 [[items]]
 id = 7452
@@ -40343,7 +40204,6 @@ defense = 21
 attack = 41
 weaponType = "club"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 7453
@@ -40354,7 +40214,6 @@ defense = 20
 attack = 51
 weaponType = "axe"
 slotType = "two-handed"
-imbuementslots = 2
 
 [[items]]
 id = 7454
@@ -40375,7 +40234,6 @@ defense = 28
 attack = 48
 weaponType = "axe"
 extradef = 2
-imbuementslots = 2
 
 [[items]]
 id = 7456
@@ -40385,7 +40243,6 @@ weight = 3800
 defense = 22
 attack = 39
 weaponType = "axe"
-imbuementslots = 2
 
 [[items]]
 id = 7457
@@ -40396,7 +40253,6 @@ weight = 1200
 armor = 2
 slotType = "feet"
 speed = -12
-imbuementslots = 1
 
 [[items]]
 id = 7458
@@ -40406,7 +40262,6 @@ description = "It feels nice and warm on your ears."
 weight = 1800
 armor = 3
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 7459
@@ -40425,7 +40280,6 @@ name = "norse shield"
 weight = 4100
 defense = 28
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 7461
@@ -40451,7 +40305,6 @@ weight = 2000
 armor = 10
 slotType = "body"
 description = "It is imbued with protective magic."
-imbuementslots = 2
 
 [[items]]
 id = 7464
@@ -43673,7 +43526,6 @@ name = "terra boots"
 weight = 750
 armor = 2
 slotType = "feet"
-imbuementslots = 1
 augment = "terra boots"
 
 [[items]]
@@ -43727,7 +43579,6 @@ name = "magma boots"
 weight = 750
 armor = 2
 slotType = "feet"
-imbuementslots = 1
 augment = "magma boots"
 
 [[items]]
@@ -43737,7 +43588,6 @@ name = "glacier shoes"
 weight = 750
 armor = 2
 slotType = "feet"
-imbuementslots = 1
 augment = "glacier shoes"
 
 [[items]]
@@ -43747,7 +43597,6 @@ name = "lightning boots"
 weight = 750
 armor = 2
 slotType = "feet"
-imbuementslots = 1
 augment = "lightning boots"
 
 [[items]]
@@ -45132,7 +44981,6 @@ weight = 3600
 defense = 10
 attack = 18
 weaponType = "sword"
-imbuementslots = 2
 
 [[items]]
 id = 8210
@@ -48455,7 +48303,6 @@ name = "mage hat"
 weight = 900
 armor = 3
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 8821
@@ -48629,7 +48476,6 @@ weaponType = "distance"
 ammoType = "bolt"
 range = 5
 hitChance = 1
-imbuementslots = 3
 
 [[items]]
 id = 8850
@@ -48641,7 +48487,6 @@ weaponType = "distance"
 ammoType = "bolt"
 range = 3
 attack = 4
-imbuementslots = 3
 
 [[items]]
 id = 8851
@@ -48654,7 +48499,6 @@ ammoType = "bolt"
 range = 6
 hitChance = 3
 attack = 5
-imbuementslots = 3
 
 [[items]]
 id = 8852
@@ -48667,7 +48511,6 @@ ammoType = "bolt"
 range = 6
 hitChance = -20
 attack = 20
-imbuementslots = 3
 
 [[items]]
 id = 8853
@@ -48679,7 +48522,6 @@ weaponType = "distance"
 ammoType = "bolt"
 range = 5
 attack = 4
-imbuementslots = 3
 
 [[items]]
 id = 8854
@@ -48692,7 +48534,6 @@ ammoType = "arrow"
 range = 7
 hitChance = 5
 attack = 3
-imbuementslots = 3
 
 [[items]]
 id = 8855
@@ -48705,7 +48546,6 @@ ammoType = "arrow"
 range = 6
 hitChance = 2
 attack = 3
-imbuementslots = 3
 
 [[items]]
 id = 8856
@@ -48728,7 +48568,6 @@ weaponType = "distance"
 ammoType = "arrow"
 range = 6
 hitChance = 3
-imbuementslots = 3
 
 [[items]]
 id = 8858
@@ -48994,7 +48833,6 @@ armor = 15
 slotType = "body"
 weight = 6900
 skillDist = 3
-imbuementslots = 1
 
 [[items]]
 id = 8889
@@ -49022,7 +48860,6 @@ armor = 12
 slotType = "body"
 weight = 6500
 skillDist = 2
-imbuementslots = 1
 
 [[items]]
 id = 8892
@@ -49072,7 +48909,6 @@ weight = 1950
 magiclevelpoints = 1
 defense = 18
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 8901
@@ -49083,7 +48919,6 @@ weight = 2100
 magiclevelpoints = 1
 defense = 22
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 8902
@@ -49183,7 +49018,6 @@ weight = 2900
 weaponType = "wand"
 shootType = "death"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 8911
@@ -49194,7 +49028,6 @@ weight = 2900
 weaponType = "wand"
 shootType = "ice"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 8912
@@ -49256,7 +49089,6 @@ weight = 2550
 weaponType = "wand"
 shootType = "energy"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 8921
@@ -49267,7 +49099,6 @@ weight = 2700
 weaponType = "wand"
 shootType = "fire"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 8922
@@ -49278,7 +49109,6 @@ weight = 2850
 weaponType = "wand"
 shootType = "death"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 8923
@@ -49297,7 +49127,6 @@ defense = 28
 attack = 51
 weaponType = "axe"
 extradef = 2
-imbuementslots = 1
 
 [[items]]
 id = 8925
@@ -49308,7 +49137,6 @@ defense = 29
 attack = 52
 weaponType = "axe"
 extradef = 3
-imbuementslots = 1
 
 [[items]]
 id = 8926
@@ -49319,7 +49147,6 @@ defense = 20
 attack = 53
 weaponType = "axe"
 slotType = "two-handed"
-imbuementslots = 2
 
 [[items]]
 id = 8927
@@ -49340,7 +49167,6 @@ defense = 30
 attack = 50
 weaponType = "club"
 extradef = 2
-imbuementslots = 1
 
 [[items]]
 id = 8929
@@ -49351,7 +49177,6 @@ defense = 20
 attack = 51
 weaponType = "club"
 slotType = "two-handed"
-imbuementslots = 2
 
 [[items]]
 id = 8930
@@ -49362,7 +49187,6 @@ defense = 33
 attack = 49
 weaponType = "sword"
 extradef = 3
-imbuementslots = 2
 
 [[items]]
 id = 8931
@@ -49373,7 +49197,6 @@ defense = 35
 attack = 50
 weaponType = "sword"
 extradef = 3
-imbuementslots = 1
 
 [[items]]
 id = 8932
@@ -50362,7 +50185,6 @@ weight = 700
 armor = 3
 magiclevelpoints = 1
 slotType = "head"
-imbuementslots = 1
 
 [[items]]
 id = 9081
@@ -54041,7 +53863,6 @@ name = "brocade backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 9775
@@ -54078,7 +53899,6 @@ weight = 3500
 armor = 5
 slotType = "head"
 magiclevelpoints = 2
-imbuementslots = 1
 
 [[items]]
 id = 9779
@@ -55118,7 +54938,6 @@ article = ""
 name = "coconut shoes"
 slotType = "feet"
 weight = 600
-imbuementslots = 1
 
 [[items]]
 id = 9932
@@ -55755,7 +55574,6 @@ weight = 600
 armor = 3
 slotType = "head"
 magiclevelpoints = 1
-imbuementslots = 1
 
 [[items]]
 id = 10017
@@ -57369,7 +57187,6 @@ weight = 500
 defense = 10
 weaponType = "shield"
 description = "A sturdy shield made of old meat."
-imbuementslots = 1
 
 [[items]]
 id = 10290
@@ -57389,7 +57206,6 @@ description = "It has to be one of the fabled helmets of light."
 weight = 700
 armor = 5
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 10292
@@ -57419,7 +57235,6 @@ description = "It seems a bit chunky, but what was good enough for a white knigh
 weight = 500
 defense = 8
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 10295
@@ -57431,7 +57246,6 @@ slotType = "two-handed"
 weaponType = "distance"
 ammoType = "arrow"
 range = 4
-imbuementslots = 3
 
 [[items]]
 id = 10296
@@ -57441,7 +57255,6 @@ description = "Oddly enough it is not made of metal at all, but years without wa
 weight = 800
 armor = 6
 slotType = "body"
-imbuementslots = 2
 
 [[items]]
 id = 10297
@@ -57451,7 +57264,6 @@ description = "This shield will surely care for anyone who can bear it."
 weight = 1700
 defense = 8
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 10298
@@ -57461,7 +57273,6 @@ description = "There is evil inside."
 weight = 1250
 armor = 3
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 10299
@@ -57471,7 +57282,6 @@ description = "One can only hope nobody will ever insist on wearing that."
 weight = 1100
 armor = 3
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 10300
@@ -58771,7 +58581,6 @@ name = "demon backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 10519
@@ -58780,7 +58589,6 @@ name = "orange backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 10520
@@ -58797,7 +58605,6 @@ name = "moon backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 10522
@@ -58806,7 +58613,6 @@ name = "crown backpack"
 weight = 1700
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 10523
@@ -59112,7 +58918,6 @@ name = "witch hat"
 weight = 780
 armor = 3
 slotType = "head"
-imbuementslots = 1
 augment = "witch hat"
 
 [[items]]
@@ -61985,7 +61790,6 @@ name = "crystal boots"
 armor = 3
 slotType = "feet"
 weight = 1850
-imbuementslots = 1
 augment = "crystal boots"
 
 [[items]]
@@ -61995,7 +61799,6 @@ name = "dragon scale boots"
 armor = 3
 slotType = "feet"
 weight = 1850
-imbuementslots = 1
 augment = "dragon scale boots"
 
 [[items]]
@@ -62005,7 +61808,6 @@ name = "heart backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 11120
@@ -62716,7 +62518,6 @@ name = "guardian boots"
 armor = 3
 slotType = "feet"
 weight = 2250
-imbuementslots = 1
 augment = "guardian boots"
 
 [[items]]
@@ -62726,7 +62527,6 @@ name = "expedition backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 11242
@@ -62743,7 +62543,6 @@ name = "dragon backpack"
 weight = 1700
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 11244
@@ -62752,7 +62551,6 @@ name = "minotaur backpack"
 weight = 1850
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 11245
@@ -62899,7 +62697,6 @@ name = "santa backpack"
 weight = 1650
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 11264
@@ -63191,7 +62988,6 @@ name = "Zaoan helmet"
 weight = 6600
 armor = 9
 slotType = "head"
-imbuementslots = 1
 augment = "zaoan helmet"
 
 [[items]]
@@ -63202,7 +62998,6 @@ weight = 700
 armor = 1
 slotType = "feet"
 speed = 10
-imbuementslots = 1
 
 [[items]]
 id = 11304
@@ -63222,7 +63017,6 @@ defense = 20
 attack = 47
 weaponType = "axe"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 11306
@@ -63243,7 +63037,6 @@ defense = 18
 attack = 43
 weaponType = "sword"
 extradef = 2
-imbuementslots = 2
 
 [[items]]
 id = 11308
@@ -63264,7 +63057,6 @@ defense = 22
 attack = 32
 weaponType = "axe"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 11310
@@ -63379,7 +63171,6 @@ attack = 37
 weaponType = "axe"
 slotType = "two-handed"
 weight = 8700
-imbuementslots = 3
 
 [[items]]
 id = 11324
@@ -63697,7 +63488,6 @@ weight = 900
 armor = 4
 magiclevelpoints = 1
 slotType = "head"
-imbuementslots = 1
 
 [[items]]
 id = 11369
@@ -63869,7 +63659,6 @@ weight = 3600
 defense = 10
 attack = 18
 weaponType = "sword"
-imbuementslots = 2
 
 [[items]]
 id = 11396
@@ -70267,7 +70056,6 @@ weight = 12000
 armor = 15
 slotType = "body"
 speed = 20
-imbuementslots = 2
 
 [[items]]
 id = 12608
@@ -70320,7 +70108,6 @@ defense = 30
 attack = 47
 weaponType = "sword"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 12614
@@ -70550,7 +70337,6 @@ defense = 36
 skillSword = 3
 weaponType = "shield"
 showattributes = true
-imbuementslots = 1
 
 [[items]]
 id = 12645
@@ -70560,7 +70346,6 @@ weight = 4300
 armor = 9
 slotType = "head"
 skillDist = 1
-imbuementslots = 1
 augment = "elite draken helmet"
 
 [[items]]
@@ -70571,7 +70356,6 @@ armor = 3
 speed = 30
 weight = 2500
 slotType = "feet"
-imbuementslots = 1
 
 [[items]]
 id = 12647
@@ -70592,7 +70376,6 @@ defense = 29
 attack = 48
 weaponType = "club"
 extradef = 3
-imbuementslots = 2
 
 [[items]]
 id = 12649
@@ -70603,7 +70386,6 @@ defense = 29
 attack = 48
 weaponType = "sword"
 extradef = 2
-imbuementslots = 2
 
 [[items]]
 id = 12650
@@ -77623,7 +77405,6 @@ description = "It seems a bit chunky, but what was good enough for a white knigh
 weight = 500
 defense = 8
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 14354
@@ -83292,7 +83073,6 @@ armor = 16
 slotType = "body"
 skillShield = 3
 showattributes = true
-imbuementslots = 2
 augment = "ornate chestplate"
 
 [[items]]
@@ -83304,7 +83084,6 @@ armor = 16
 slotType = "body"
 skillDist = 3
 showattributes = true
-imbuementslots = 2
 augment = "depth lorica"
 
 [[items]]
@@ -83336,7 +83115,6 @@ armor = 3
 slotType = "feet"
 speed = -10
 showattributes = true
-imbuementslots = 1
 augment = "depth calcei"
 
 [[items]]
@@ -83348,7 +83126,6 @@ defense = 25
 weaponType = "shield"
 magiclevelpoints = 2
 showattributes = true
-imbuementslots = 1
 
 [[items]]
 id = 15412
@@ -83368,7 +83145,6 @@ weight = 7100
 defense = 36
 showattributes = true
 weaponType = "shield"
-imbuementslots = 1
 augment = "ornate shield"
 
 [[items]]
@@ -83379,7 +83155,6 @@ weight = 14900
 attack = 49
 defense = 24
 weaponType = "club"
-imbuementslots = 2
 
 [[items]]
 id = 15415
@@ -83637,7 +83412,6 @@ weight = 8800
 attack = 42
 defense = 21
 weaponType = "axe"
-imbuementslots = 2
 
 [[items]]
 id = 15452
@@ -83652,7 +83426,6 @@ name = "warrior's shield"
 weight = 7500
 defense = 33
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 15454
@@ -83893,7 +83666,6 @@ name = "carapace shield"
 weight = 5500
 defense = 36
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 15492
@@ -83903,7 +83675,6 @@ weight = 7500
 attack = 46
 defense = 24
 weaponType = "axe"
-imbuementslots = 2
 
 [[items]]
 id = 15493
@@ -84730,7 +84501,6 @@ ammoType = "arrow"
 range = 6
 hitChance = 5
 attack = 2
-imbuementslots = 3
 
 [[items]]
 id = 15644
@@ -84751,7 +84521,6 @@ name = "deepling backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 15646
@@ -84760,7 +84529,6 @@ name = "buggy backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 15647
@@ -84770,7 +84538,6 @@ weight = 8900
 attack = 44
 defense = 28
 weaponType = "club"
-imbuementslots = 2
 
 [[items]]
 id = 15648
@@ -84888,7 +84655,6 @@ description = "It was awarded during the festivities of the worlds 15th annivers
 weight = 1500
 containerSize = 15
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 16008
@@ -85182,7 +84948,6 @@ ammoType = "bolt"
 range = 6
 attack = 9
 hitChance = 1
-imbuementslots = 3
 
 [[items]]
 id = 16112
@@ -91358,7 +91123,6 @@ name = "mushroom backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 18394
@@ -91367,7 +91131,6 @@ name = "crystal backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 18395
@@ -91460,7 +91223,6 @@ weight = 7900
 armor = 15
 slotType = "body"
 speed = 30
-imbuementslots = 1
 augment = "prismatic armor"
 
 [[items]]
@@ -91482,7 +91244,6 @@ armor = 3
 slotType = "feet"
 speed = 30
 showattributes = true
-imbuementslots = 1
 augment = "prismatic boots"
 
 [[items]]
@@ -91845,7 +91606,6 @@ weaponType = "axe"
 extradef = 3
 description = "Even in the light of day, the stars seem to reflect in each facet of this crystalline axe."
 skillAxe = 1
-imbuementslots = 1
 
 [[items]]
 id = 18452
@@ -91857,7 +91617,6 @@ attack = 50
 weaponType = "club"
 extradef = 3
 skillClub = 1
-imbuementslots = 1
 
 [[items]]
 id = 18453
@@ -91882,7 +91641,6 @@ ammoType = "arrow"
 range = 6
 attack = 4
 hitChance = 4
-imbuementslots = 3
 
 [[items]]
 id = 18455
@@ -91954,7 +91712,6 @@ attack = 50
 weaponType = "sword"
 extradef = 3
 skillSword = 1
-imbuementslots = 1
 
 [[items]]
 id = 18466
@@ -99373,7 +99130,6 @@ attack = 27
 defense = 19
 extradef = 2
 weaponType = "club"
-imbuementslots = 2
 
 [[items]]
 id = 20094
@@ -99612,7 +99368,6 @@ name = "helmet of the lost"
 weight = 3500
 armor = 7
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 20133
@@ -107905,7 +107660,6 @@ name = "pannier backpack"
 containerSize = 20
 slotType = "backpack"
 weight = 1800
-imbuementslots = 1
 
 [[items]]
 id = 21476
@@ -108703,7 +108457,6 @@ ammoType = "bolt"
 range = 5
 attack = 3
 hitChance = 2
-imbuementslots = 3
 
 [[items]]
 id = 21691
@@ -108721,7 +108474,6 @@ name = "albino plate"
 weight = 8400
 armor = 11
 slotType = "body"
-imbuementslots = 2
 
 [[items]]
 id = 21693
@@ -108749,7 +108501,6 @@ ammoType = "arrow"
 range = 6
 attack = 1
 hitChance = 4
-imbuementslots = 3
 
 [[items]]
 id = 21697
@@ -108758,7 +108509,6 @@ name = "runic ice shield"
 weight = 4900
 defense = 31
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 21699
@@ -108806,14 +108556,12 @@ name = "haunted mirror piece"
 weight = 2800
 defense = 34
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 21708
 article = ""
 name = "vampire silk slippers"
 weight = 1150
-imbuementslots = 1
 
 [[items]]
 id = 21709
@@ -111904,7 +111652,6 @@ defense = 29
 attack = 50
 weaponType = "sword"
 extradef = 2
-imbuementslots = 1
 
 [[items]]
 id = 22400
@@ -111916,7 +111663,6 @@ attack = 52
 weaponType = "sword"
 extradef = 3
 skillSword = 1
-imbuementslots = 1
 
 [[items]]
 id = 22401
@@ -111937,7 +111683,6 @@ defense = 31
 attack = 52
 weaponType = "sword"
 slotType = "two-handed"
-imbuementslots = 1
 
 [[items]]
 id = 22403
@@ -111949,7 +111694,6 @@ attack = 54
 weaponType = "sword"
 skillSword = 3
 slotType = "two-handed"
-imbuementslots = 2
 
 [[items]]
 id = 22404
@@ -111970,7 +111714,6 @@ defense = 27
 attack = 51
 weaponType = "axe"
 extradef = 2
-imbuementslots = 1
 
 [[items]]
 id = 22406
@@ -111982,7 +111725,6 @@ attack = 53
 weaponType = "axe"
 extradef = 3
 skillAxe = 1
-imbuementslots = 1
 
 [[items]]
 id = 22407
@@ -112003,7 +111745,6 @@ defense = 30
 attack = 52
 weaponType = "axe"
 slotType = "two-handed"
-imbuementslots = 1
 
 [[items]]
 id = 22409
@@ -112015,7 +111756,6 @@ attack = 54
 weaponType = "axe"
 skillAxe = 3
 slotType = "two-handed"
-imbuementslots = 2
 
 [[items]]
 id = 22410
@@ -112036,7 +111776,6 @@ defense = 26
 attack = 50
 weaponType = "club"
 extradef = 2
-imbuementslots = 1
 
 [[items]]
 id = 22412
@@ -112048,7 +111787,6 @@ attack = 52
 weaponType = "club"
 extradef = 3
 skillClub = 1
-imbuementslots = 1
 
 [[items]]
 id = 22413
@@ -112069,7 +111807,6 @@ defense = 30
 attack = 53
 weaponType = "club"
 slotType = "two-handed"
-imbuementslots = 1
 
 [[items]]
 id = 22415
@@ -112081,7 +111818,6 @@ attack = 55
 weaponType = "club"
 skillClub = 3
 slotType = "two-handed"
-imbuementslots = 2
 
 [[items]]
 id = 22416
@@ -112106,7 +111842,6 @@ ammoType = "arrow"
 range = 7
 attack = 4
 hitChance = 5
-imbuementslots = 1
 
 [[items]]
 id = 22418
@@ -112120,7 +111855,6 @@ range = 7
 attack = 6
 hitChance = 5
 skillDist = 3
-imbuementslots = 2
 
 [[items]]
 id = 22419
@@ -112145,7 +111879,6 @@ ammoType = "bolt"
 range = 5
 hitChance = 2
 attack = 6
-imbuementslots = 1
 
 [[items]]
 id = 22421
@@ -112159,7 +111892,6 @@ range = 5
 hitChance = 4
 attack = 9
 skillDist = 3
-imbuementslots = 2
 
 [[items]]
 id = 22422
@@ -112179,7 +111911,6 @@ weight = 3500
 magiclevelpoints = 2
 defense = 16
 weaponType = "shield"
-imbuementslots = 1
 augment = "umbral spellbook"
 
 [[items]]
@@ -112190,7 +111921,6 @@ weight = 3000
 magiclevelpoints = 4
 defense = 20
 weaponType = "shield"
-imbuementslots = 1
 augment = "umbral master spellbook"
 
 [[items]]
@@ -113719,7 +113449,6 @@ id = 22678
 article = "an"
 name = "arcane staff"
 weight = 4000
-imbuementslots = 2
 
 [[items]]
 id = 22679
@@ -113825,7 +113554,6 @@ name = "cake backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 22699
@@ -118289,7 +118017,6 @@ name = "mooh'tah plate"
 armor = 12
 slotType = "body"
 weight = 12500
-imbuementslots = 2
 
 [[items]]
 id = 23538
@@ -118298,7 +118025,6 @@ name = "heat core"
 armor = 12
 slotType = "body"
 weight = 5500
-imbuementslots = 2
 
 [[items]]
 id = 23539
@@ -118316,7 +118042,6 @@ name = "metal spats"
 armor = 1
 slotType = "feet"
 weight = 1800
-imbuementslots = 1
 augment = "metal spats"
 
 [[items]]
@@ -118344,7 +118069,6 @@ defense = 19
 attack = 33
 weaponType = "club"
 weight = 3200
-imbuementslots = 2
 
 [[items]]
 id = 23544
@@ -119025,7 +118749,6 @@ name = "feedbag"
 containerSize = 20
 slotType = "backpack"
 weight = 1800
-imbuementslots = 1
 
 [[items]]
 id = 23664
@@ -119044,7 +118767,6 @@ name = "glooth backpack"
 containerSize = 20
 slotType = "backpack"
 weight = 1800
-imbuementslots = 1
 
 [[items]]
 id = 23667
@@ -119548,7 +119270,6 @@ name = "stone floor"
 id = 23781
 article = "a"
 name = "spellbook"
-imbuementslots = 1
 
 [[items]]
 id = 23782
@@ -122355,7 +122076,6 @@ weight = 500
 slotType = "feet"
 speed = 30
 armor = 2
-imbuementslots = 1
 
 [[items]]
 id = 24638
@@ -123040,7 +122760,6 @@ name = "wolf backpack"
 weight = 1800
 containerSize = 20
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 24741
@@ -123058,7 +122777,6 @@ weight = 1200
 slotType = "feet"
 speed = 20
 armor = 2
-imbuementslots = 1
 
 [[items]]
 id = 24743
@@ -123703,7 +123421,6 @@ weight = 2900
 weaponType = "wand"
 shootType = "smallearth"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 24840
@@ -123763,7 +123480,6 @@ name = "shamanic mask"
 weight = 3100
 armor = 4
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 24849
@@ -126213,7 +125929,6 @@ name = "rift shield"
 defense = 37
 weaponType = "shield"
 weight = 6500
-imbuementslots = 1
 
 [[items]]
 id = 25383
@@ -126224,7 +125939,6 @@ defense = 28
 attack = 48
 weaponType = "axe"
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 25384
@@ -126384,7 +126098,6 @@ name = "visage of the end days"
 armor = 10
 weight = 3800
 slotType = "head"
-imbuementslots = 2
 
 [[items]]
 id = 25411
@@ -126394,7 +126107,6 @@ weight = 2400
 magiclevelpoints = 4
 defense = 18
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 25412
@@ -126403,7 +126115,6 @@ name = "treader of torment"
 armor = 4
 weight = 3600
 slotType = "feet"
-imbuementslots = 1
 
 [[items]]
 id = 25413
@@ -126420,7 +126131,6 @@ name = "death gaze"
 weight = 7900
 defense = 38
 weaponType = "shield"
-imbuementslots = 1
 
 [[items]]
 id = 25415
@@ -126459,7 +126169,6 @@ weight = 7700
 defense = 32
 attack = 51
 weaponType = "club"
-imbuementslots = 1
 
 [[items]]
 id = 25419
@@ -126841,7 +126550,6 @@ ammoType = "arrow"
 range = 7
 attack = 5
 hitChance = 3
-imbuementslots = 3
 
 [[items]]
 id = 25523
@@ -126854,7 +126562,6 @@ ammoType = "bolt"
 range = 5
 hitChance = 4
 attack = 5
-imbuementslots = 3
 
 [[items]]
 id = 25524
@@ -127595,7 +127302,6 @@ defense = 33
 attack = 50
 weaponType = "sword"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25880
@@ -127606,7 +127312,6 @@ attack = 52
 weaponType = "sword"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25881
@@ -127616,7 +127321,6 @@ defense = 31
 attack = 51
 weaponType = "axe"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25882
@@ -127627,7 +127331,6 @@ attack = 52
 weaponType = "axe"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25883
@@ -127637,7 +127340,6 @@ defense = 30
 attack = 50
 weaponType = "club"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25884
@@ -127648,7 +127350,6 @@ attack = 53
 weaponType = "club"
 weight = 7000
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 25885
@@ -127661,7 +127362,6 @@ ammoType = "arrow"
 range = 6
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25886
@@ -127674,7 +127374,6 @@ ammoType = "bolt"
 range = 5
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25887
@@ -127684,7 +127383,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "energy"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25888
@@ -127694,187 +127392,156 @@ weight = 3500
 weaponType = "wand"
 shootType = "ice"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25889
 article = "a"
 name = "blade of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25890
 article = "a"
 name = "slayer of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25891
 article = "an"
 name = "axe of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25892
 article = "a"
 name = "chopper of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25893
 article = "a"
 name = "mace of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25894
 article = "a"
 name = "hammer of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25895
 article = "a"
 name = "bow of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25896
 article = "a"
 name = "crossbow of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25897
 article = "a"
 name = "wand of mayhem"
-imbuementslots = 2
 
 [[items]]
 id = 25898
 article = "a"
 name = "rod of mayhem"
-imbuementslots = 2
 
 [[items]]
 id = 25899
 article = "a"
 name = "blade of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25900
 article = "a"
 name = "slayer of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25901
 article = "an"
 name = "axe of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25902
 article = "a"
 name = "chopper of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25903
 article = "a"
 name = "mace of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25904
 article = "a"
 name = "hammer of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25905
 article = "a"
 name = "crossbow of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25906
 article = "a"
 name = "bow of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25907
 article = "a"
 name = "wand of mayhem"
-imbuementslots = 2
 
 [[items]]
 id = 25908
 article = "a"
 name = "rod of mayhem"
-imbuementslots = 2
 
 [[items]]
 id = 25909
 article = "a"
 name = "blade of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25910
 article = "a"
 name = "slayer of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25911
 article = "an"
 name = "axe of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25912
 article = "a"
 name = "chopper of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25913
 article = "a"
 name = "mace of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25914
 article = "a"
 name = "hammer of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25915
 article = "a"
 name = "bow of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25916
 article = "a"
 name = "crossbow of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 25917
 article = "a"
 name = "wand of mayhem"
-imbuementslots = 2
 
 [[items]]
 id = 25918
 article = "a"
 name = "rod of mayhem"
-imbuementslots = 2
 
 [[items]]
 id = 25919
@@ -127884,7 +127551,6 @@ defense = 33
 attack = 50
 weaponType = "sword"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25920
@@ -127894,7 +127560,6 @@ defense = 33
 attack = 50
 weaponType = "sword"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25921
@@ -127904,7 +127569,6 @@ defense = 33
 attack = 50
 weaponType = "sword"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25922
@@ -127914,7 +127578,6 @@ defense = 33
 attack = 50
 weaponType = "sword"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25923
@@ -127925,7 +127588,6 @@ attack = 52
 weaponType = "sword"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25924
@@ -127936,7 +127598,6 @@ attack = 52
 weaponType = "sword"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25925
@@ -127947,7 +127608,6 @@ attack = 52
 weaponType = "sword"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25926
@@ -127958,7 +127618,6 @@ attack = 52
 weaponType = "sword"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25927
@@ -127968,7 +127627,6 @@ defense = 31
 attack = 51
 weaponType = "axe"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25928
@@ -127978,7 +127636,6 @@ defense = 31
 attack = 51
 weaponType = "axe"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25929
@@ -127988,7 +127645,6 @@ defense = 31
 attack = 51
 weaponType = "axe"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25930
@@ -127998,7 +127654,6 @@ defense = 31
 attack = 51
 weaponType = "axe"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25931
@@ -128009,7 +127664,6 @@ attack = 52
 weaponType = "axe"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25932
@@ -128020,7 +127674,6 @@ attack = 52
 weaponType = "axe"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25933
@@ -128031,7 +127684,6 @@ attack = 52
 weaponType = "axe"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25934
@@ -128042,7 +127694,6 @@ attack = 52
 weaponType = "axe"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25935
@@ -128052,7 +127703,6 @@ defense = 30
 attack = 50
 weaponType = "club"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25936
@@ -128062,7 +127712,6 @@ defense = 30
 attack = 50
 weaponType = "club"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25937
@@ -128072,7 +127721,6 @@ defense = 30
 attack = 50
 weaponType = "club"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25938
@@ -128082,7 +127730,6 @@ defense = 30
 attack = 50
 weaponType = "club"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25939
@@ -128093,7 +127740,6 @@ attack = 53
 weaponType = "club"
 weight = 7000
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 25940
@@ -128104,7 +127750,6 @@ attack = 53
 weaponType = "club"
 weight = 7000
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 25941
@@ -128115,7 +127760,6 @@ attack = 53
 weaponType = "club"
 weight = 7000
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 25942
@@ -128126,7 +127770,6 @@ attack = 53
 weaponType = "club"
 weight = 7000
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 25943
@@ -128139,7 +127782,6 @@ ammoType = "arrow"
 range = 6
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25944
@@ -128152,7 +127794,6 @@ ammoType = "arrow"
 range = 6
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25945
@@ -128165,7 +127806,6 @@ ammoType = "arrow"
 range = 6
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25946
@@ -128178,7 +127818,6 @@ ammoType = "arrow"
 range = 6
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25947
@@ -128191,7 +127830,6 @@ ammoType = "bolt"
 range = 5
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25948
@@ -128204,7 +127842,6 @@ ammoType = "bolt"
 range = 5
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25949
@@ -128217,7 +127854,6 @@ ammoType = "bolt"
 range = 5
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25950
@@ -128230,7 +127866,6 @@ ammoType = "bolt"
 range = 5
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25951
@@ -128240,7 +127875,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "energy"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25952
@@ -128250,7 +127884,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "energy"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25953
@@ -128260,7 +127893,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "energy"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25954
@@ -128270,7 +127902,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "energy"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25955
@@ -128280,7 +127911,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "ice"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25956
@@ -128290,7 +127920,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "ice"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25957
@@ -128300,7 +127929,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "ice"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25958
@@ -128310,7 +127938,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "ice"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25959
@@ -128320,7 +127947,6 @@ defense = 33
 attack = 50
 weaponType = "sword"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25960
@@ -128330,7 +127956,6 @@ defense = 33
 attack = 50
 weaponType = "sword"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25961
@@ -128340,7 +127965,6 @@ defense = 33
 attack = 50
 weaponType = "sword"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25962
@@ -128350,7 +127974,6 @@ defense = 33
 attack = 50
 weaponType = "sword"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25963
@@ -128361,7 +127984,6 @@ attack = 52
 weaponType = "sword"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25964
@@ -128372,7 +127994,6 @@ attack = 52
 weaponType = "sword"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25965
@@ -128383,7 +128004,6 @@ attack = 52
 weaponType = "sword"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25966
@@ -128394,7 +128014,6 @@ attack = 52
 weaponType = "sword"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25967
@@ -128404,7 +128023,6 @@ defense = 31
 attack = 51
 weaponType = "axe"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25968
@@ -128414,7 +128032,6 @@ defense = 31
 attack = 51
 weaponType = "axe"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25969
@@ -128424,7 +128041,6 @@ defense = 31
 attack = 51
 weaponType = "axe"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25970
@@ -128434,7 +128050,6 @@ defense = 31
 attack = 51
 weaponType = "axe"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25971
@@ -128445,7 +128060,6 @@ attack = 52
 weaponType = "axe"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25972
@@ -128456,7 +128070,6 @@ attack = 52
 weaponType = "axe"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25973
@@ -128467,7 +128080,6 @@ attack = 52
 weaponType = "axe"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25974
@@ -128478,7 +128090,6 @@ attack = 52
 weaponType = "axe"
 slotType = "two-handed"
 weight = 7000
-imbuementslots = 3
 
 [[items]]
 id = 25975
@@ -128488,7 +128099,6 @@ defense = 30
 attack = 50
 weaponType = "club"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25976
@@ -128498,7 +128108,6 @@ defense = 30
 attack = 50
 weaponType = "club"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25977
@@ -128508,7 +128117,6 @@ defense = 30
 attack = 50
 weaponType = "club"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25978
@@ -128518,7 +128126,6 @@ defense = 30
 attack = 50
 weaponType = "club"
 weight = 5000
-imbuementslots = 3
 
 [[items]]
 id = 25979
@@ -128529,7 +128136,6 @@ attack = 53
 weaponType = "club"
 weight = 7000
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 25980
@@ -128540,7 +128146,6 @@ attack = 53
 weaponType = "club"
 weight = 7000
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 25981
@@ -128551,7 +128156,6 @@ attack = 53
 weaponType = "club"
 weight = 7000
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 25982
@@ -128562,7 +128166,6 @@ attack = 53
 weaponType = "club"
 weight = 7000
 slotType = "two-handed"
-imbuementslots = 3
 
 [[items]]
 id = 25983
@@ -128575,7 +128178,6 @@ ammoType = "arrow"
 range = 6
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25984
@@ -128588,7 +128190,6 @@ ammoType = "arrow"
 range = 6
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25985
@@ -128601,7 +128202,6 @@ ammoType = "arrow"
 range = 6
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25986
@@ -128614,7 +128214,6 @@ ammoType = "arrow"
 range = 6
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25987
@@ -128627,7 +128226,6 @@ ammoType = "bolt"
 range = 5
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25988
@@ -128640,7 +128238,6 @@ ammoType = "bolt"
 range = 5
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25989
@@ -128653,7 +128250,6 @@ ammoType = "bolt"
 range = 5
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25990
@@ -128666,7 +128262,6 @@ ammoType = "bolt"
 range = 5
 hitChance = 6
 attack = 6
-imbuementslots = 3
 
 [[items]]
 id = 25991
@@ -128676,7 +128271,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "energy"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25992
@@ -128686,7 +128280,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "energy"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25993
@@ -128696,7 +128289,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "energy"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25994
@@ -128706,7 +128298,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "energy"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25995
@@ -128716,7 +128307,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "ice"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25996
@@ -128726,7 +128316,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "ice"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25997
@@ -128736,7 +128325,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "ice"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25998
@@ -128746,7 +128334,6 @@ weight = 3500
 weaponType = "wand"
 shootType = "ice"
 range = 3
-imbuementslots = 2
 
 [[items]]
 id = 25999
@@ -129829,7 +129416,6 @@ name = "energetic backpack"
 weight = 2160
 containerSize = 24
 slotType = "backpack"
-imbuementslots = 1
 
 [[items]]
 id = 26182
@@ -130217,541 +129803,451 @@ name = "waterfall"
 id = 26233
 article = "a"
 name = "blade of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26234
 article = "a"
 name = "blade of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26235
 article = "a"
 name = "blade of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26236
 article = "a"
 name = "slayer of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26237
 article = "a"
 name = "slayer of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26238
 article = "a"
 name = "slayer of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26239
 article = "an"
 name = "axe of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26240
 article = "an"
 name = "axe of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26241
 article = "an"
 name = "axe of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26242
 article = "a"
 name = "chopper of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26243
 article = "a"
 name = "chopper of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26244
 article = "a"
 name = "chopper of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26245
 article = "a"
 name = "mace of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26246
 article = "a"
 name = "mace of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26247
 article = "a"
 name = "mace of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26248
 article = "a"
 name = "hammer of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26249
 article = "a"
 name = "hammer of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26250
 article = "a"
 name = "hammer of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26251
 article = "a"
 name = "bow of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26252
 article = "a"
 name = "blade of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26253
 article = "a"
 name = "bow of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26254
 article = "a"
 name = "bow of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26255
 article = "a"
 name = "blade of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26256
 article = "a"
 name = "blade of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26257
 article = "a"
 name = "slayer of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26258
 article = "a"
 name = "slayer of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26260
 article = "a"
 name = "slayer of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26261
 article = "a"
 name = "blade of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26262
 article = "an"
 name = "axe of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26263
 article = "an"
 name = "axe of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26264
 article = "a"
 name = "crossbow of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26265
 article = "a"
 name = "blade of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26266
 article = "a"
 name = "crossbow of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26267
 article = "an"
 name = "axe of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26268
 article = "a"
 name = "crossbow of mayhem"
-imbuementslots = 3
 
 [[items]]
 id = 26269
 article = "a"
 name = "chopper of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26270
 article = "a"
 name = "blade of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26271
 article = "a"
 name = "chopper of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26272
 article = "a"
 name = "slayer of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26273
 article = "a"
 name = "chopper of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26274
 article = "a"
 name = "slayer of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26275
 article = "a"
 name = "mace of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26276
 article = "a"
 name = "mace of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26277
 article = "a"
 name = "slayer of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26278
 article = "a"
 name = "mace of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26279
 article = "a"
 name = "hammer of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26280
 article = "an"
 name = "axe of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26281
 article = "a"
 name = "hammer of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26282
 article = "an"
 name = "axe of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26283
 article = "a"
 name = "hammer of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26284
 article = "an"
 name = "axe of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26285
 article = "a"
 name = "bow of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26286
 article = "a"
 name = "bow of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26287
 article = "a"
 name = "chopper of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26288
 article = "a"
 name = "bow of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26289
 article = "a"
 name = "crossbow of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26290
 article = "a"
 name = "chopper of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26291
 article = "a"
 name = "crossbow of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26292
 article = "a"
 name = "crossbow of remedy"
-imbuementslots = 3
 
 [[items]]
 id = 26293
 article = "a"
 name = "chopper of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26294
 article = "a"
 name = "wand of remedy"
-imbuementslots = 2
 
 [[items]]
 id = 26295
 article = "a"
 name = "wand of remedy"
-imbuementslots = 2
 
 [[items]]
 id = 26296
 article = "a"
 name = "mace of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26297
 article = "a"
 name = "wand of remedy"
-imbuementslots = 2
 
 [[items]]
 id = 26298
 article = "a"
 name = "mace of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26299
 article = "a"
 name = "rod of remedy"
-imbuementslots = 2
 
 [[items]]
 id = 26300
 article = "a"
 name = "mace of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26301
 article = "a"
 name = "rod of remedy"
-imbuementslots = 2
 
 [[items]]
 id = 26302
 article = "a"
 name = "rod of remedy"
-imbuementslots = 2
 
 [[items]]
 id = 26303
 article = "a"
 name = "hammer of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26304
 article = "a"
 name = "hammer of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26305
 article = "a"
 name = "hammer of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26306
 article = "a"
 name = "bow of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26307
 article = "a"
 name = "bow of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26308
 article = "a"
 name = "bow of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26309
 article = "a"
 name = "crossbow of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26310
 article = "a"
 name = "crossbow of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26311
 article = "a"
 name = "crossbow of carving"
-imbuementslots = 3
 
 [[items]]
 id = 26312
 article = "a"
 name = "wand of carving"
-imbuementslots = 2
 
 [[items]]
 id = 26313
 article = "a"
 name = "wand of carving"
-imbuementslots = 2
 
 [[items]]
 id = 26314
 article = "a"
 name = "wand of carving"
-imbuementslots = 2
 
 [[items]]
 id = 26315
 article = "a"
 name = "rod of carving"
-imbuementslots = 2
 
 [[items]]
 id = 26316
 article = "a"
 name = "rod of carving"
-imbuementslots = 2
 
 [[items]]
 id = 26317
 article = "a"
 name = "rod of carving"
-imbuementslots = 2
 
 [[items]]
 id = 26318
 article = "a"
 name = "wand of mayhem"
-imbuementslots = 2
 
 [[items]]
 id = 26319
 article = "a"
 name = "wand of mayhem"
-imbuementslots = 2
 
 [[items]]
 id = 26320
 article = "a"
 name = "wand of mayhem"
-imbuementslots = 2
 
 [[items]]
 id = 26321
 article = "a"
 name = "rod of mayhem"
-imbuementslots = 2
 
 [[items]]
 id = 26322
 article = "a"
 name = "rod of mayhem"
-imbuementslots = 2
 
 [[items]]
 id = 26323
 article = "a"
 name = "rod of mayhem"
-imbuementslots = 2
 
 [[items]]
 id = 26332

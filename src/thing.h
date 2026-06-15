@@ -139,17 +139,9 @@ class Thing
             return thing_subtype;
         }
 
-        // BlackTek Instance System
-        uint32_t getInstanceID() const { return instanceID; }
-        void setInstanceID(uint32_t id) { instanceID = id; }
-        bool compareInstance(uint32_t id) const { return instanceID == id; }
-
     protected:
         constexpr Thing() = default;
         ThingSubType thing_subtype = ThingSubType::None;
-    private:
-        // BlackTek Instance System
-        uint32_t instanceID = 0; // 0 = global instance
 };
 
 #endif

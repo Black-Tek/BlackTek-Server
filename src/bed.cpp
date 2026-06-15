@@ -239,11 +239,17 @@ void BedItem::regeneratePlayer(const PlayerPtr& player) const
 			regen = sleptTime / 30;
 		}
 
-		CombatDamage statchange;
-		statchange.primary.value = static_cast<int32_t>(regen);
-		statchange.primary.type = COMBAT_HEALING;
-		g_game.combatChangeMana(nullptr, player, statchange);
-		g_game.combatChangeHealth(nullptr, player, statchange);
+		auto hpRegen = BlackTek::g_combat_registry.Create(
+		    static_cast<uint16_t>(BlackTek::Combat::DamageType::Healing), regen);
+		hpRegen->SetConfig(BlackTek::Combat::Config::HealthTarget);
+		hpRegen->SetConfig(BlackTek::Combat::Config::TrueDamage);
+		hpRegen->heal_target(player, player, true);
+
+		auto manaRegen = BlackTek::g_combat_registry.Create(
+		    static_cast<uint16_t>(BlackTek::Combat::DamageType::Healing), regen);
+		manaRegen->SetConfig(BlackTek::Combat::Config::ManaTarget);
+		manaRegen->SetConfig(BlackTek::Combat::Config::TrueDamage);
+		manaRegen->heal_target(player, player, true);
 	}
 
 	const int32_t soulRegen = sleptTime / (60 * 15);

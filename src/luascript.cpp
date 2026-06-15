@@ -29,7 +29,10 @@
 #include "weapons.h"
 #include "luavariant.h"
 #include "augments.h"
+#include "damagemodifier.h"
 #include "zones.h"
+
+using BlackTek::DamageModifier;
 
 extern Chat* g_chat;
 extern Game g_game;
@@ -907,15 +910,6 @@ void LuaScriptInterface::pushBoolean(lua_State* L, bool value)
 	lua_pushboolean(L, value ? 1 : 0);
 }
 
-void LuaScriptInterface::pushCombatDamage(lua_State* L, const CombatDamage& damage)
-{
-	lua_pushinteger(L, damage.primary.value);
-	lua_pushinteger(L, damage.primary.type);
-	lua_pushinteger(L, damage.secondary.value);
-	lua_pushinteger(L, damage.secondary.type);
-	lua_pushinteger(L, damage.origin);
-}
-
 void LuaScriptInterface::pushInstantSpell(lua_State* L, const InstantSpell& spell)
 {
 	lua_createtable(L, 0, 7);
@@ -1029,6 +1023,19 @@ void LuaScriptInterface::pushLoot(lua_State* L, const std::vector<LootBlock>& lo
         std::replace(enumName.begin(), enumName.end(), ':', '_'); \
     } \
     registerGlobalVariable(enumName, \
+        static_cast<std::underlying_type_t<decltype(value)>>(value)); \
+}
+
+#define registerEmbeddedEnumClass(value) { \
+    std::string enumName = #value; \
+    std::replace(enumName.begin(), enumName.end(), ':', '_'); \
+    std::string clean; \
+    clean.reserve(enumName.size()); \
+    for (size_t i = 0; i < enumName.size(); ++i) { \
+        if (enumName[i] == '_' && i + 1 < enumName.size() && enumName[i+1] == '_') continue; \
+        clean += enumName[i]; \
+    } \
+    registerGlobalVariable(clean, \
         static_cast<std::underlying_type_t<decltype(value)>>(value)); \
 }
 
@@ -1162,18 +1169,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(BUG_CATEGORY_TECHNICAL)
 	registerEnum(BUG_CATEGORY_OTHER)
 
-	registerEnum(CALLBACK_PARAM_LEVELMAGICVALUE)
-	registerEnum(CALLBACK_PARAM_SKILLVALUE)
-	registerEnum(CALLBACK_PARAM_TARGETTILE)
-	registerEnum(CALLBACK_PARAM_TARGETCREATURE)
-	registerEnum(CALLBACK_PARAM_DAMAGEVALUE)
-
-	registerEnum(COMBAT_FORMULA_UNDEFINED)
-	registerEnum(COMBAT_FORMULA_LEVELMAGIC)
-	registerEnum(COMBAT_FORMULA_SKILL)
-	registerEnum(COMBAT_FORMULA_DAMAGE)
-	registerEnum(COMBAT_FORMULA_TARGET)
-
 	registerEnum(DIRECTION_NORTH)
 	registerEnum(DIRECTION_EAST)
 	registerEnum(DIRECTION_SOUTH)
@@ -1182,31 +1177,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(DIRECTION_SOUTHEAST)
 	registerEnum(DIRECTION_NORTHWEST)
 	registerEnum(DIRECTION_NORTHEAST)
-
-	registerEnum(COMBAT_NONE)
-	registerEnum(COMBAT_PHYSICALDAMAGE)
-	registerEnum(COMBAT_ENERGYDAMAGE)
-	registerEnum(COMBAT_EARTHDAMAGE)
-	registerEnum(COMBAT_FIREDAMAGE)
-	registerEnum(COMBAT_UNDEFINEDDAMAGE)
-	registerEnum(COMBAT_LIFEDRAIN)
-	registerEnum(COMBAT_MANADRAIN)
-	registerEnum(COMBAT_HEALING)
-	registerEnum(COMBAT_DROWNDAMAGE)
-	registerEnum(COMBAT_ICEDAMAGE)
-	registerEnum(COMBAT_HOLYDAMAGE)
-	registerEnum(COMBAT_DEATHDAMAGE)
-
-	registerEnum(COMBAT_PARAM_TYPE)
-	registerEnum(COMBAT_PARAM_EFFECT)
-	registerEnum(COMBAT_PARAM_DISTANCEEFFECT)
-	registerEnum(COMBAT_PARAM_BLOCKSHIELD)
-	registerEnum(COMBAT_PARAM_BLOCKARMOR)
-	registerEnum(COMBAT_PARAM_TARGETCASTERORTOPMOST)
-	registerEnum(COMBAT_PARAM_CREATEITEM)
-	registerEnum(COMBAT_PARAM_AGGRESSIVE)
-	registerEnum(COMBAT_PARAM_DISPEL)
-	registerEnum(COMBAT_PARAM_USECHARGES)
 
 	registerEnum(CONDITION_NONE)
 	registerEnum(CONDITION_POISON)
@@ -1825,13 +1795,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(SLOTP_DEPOT)
 	registerEnum(SLOTP_TWO_HAND)
 
-	// Use with combat functions
-	registerEnum(ORIGIN_NONE)
-	registerEnum(ORIGIN_CONDITION)
-	registerEnum(ORIGIN_SPELL)
-	registerEnum(ORIGIN_MELEE)
-	registerEnum(ORIGIN_RANGED)
-
 	// Use with house:getAccessList, house:setAccessList
 	registerEnum(GUEST_LIST)
 	registerEnum(SUBOWNER_LIST)
@@ -1980,37 +1943,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(DECAYING_TRUE)
 	registerEnum(DECAYING_PENDING)
 	
-	// Imbuements
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_NONE);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_FIRE_DAMAGE);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_EARTH_DAMAGE);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_ICE_DAMAGE);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_ENERGY_DAMAGE);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_DEATH_DAMAGE);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_HOLY_DAMAGE);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_LIFE_LEECH);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_MANA_LEECH);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_CRITICAL_CHANCE);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_CRITICAL_AMOUNT);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_FIRE_RESIST);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_EARTH_RESIST);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_ICE_RESIST);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_ENERGY_RESIST);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_HOLY_RESIST);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_DEATH_RESIST);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_PARALYSIS_DEFLECTION);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_SPEED_BOOST);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_CAPACITY_BOOST);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_FIST_SKILL);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_AXE_SKILL);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_SWORD_SKILL);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_CLUB_SKILL);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_DISTANCE_SKILL);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_FISHING_SKILL);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_SHIELD_SKILL);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_MAGIC_LEVEL);
-	registerEnum(ImbuementType::IMBUEMENT_TYPE_LAST);
-
 	// Discord webhook enums
 	registerEnum(DiscordMessageType::MESSAGE_NORMAL);
 	registerEnum(DiscordMessageType::MESSAGE_ERROR);
@@ -2018,31 +1950,36 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(DiscordMessageType::MESSAGE_INFO);
 
 	// Attack Modifiers
-	registerEnum(ATTACK_MODIFIER_FIRST)
-	registerEnum(ATTACK_MODIFIER_NONE)
-	registerEnum(ATTACK_MODIFIER_LIFESTEAL)
-	registerEnum(ATTACK_MODIFIER_MANASTEAL)
-	registerEnum(ATTACK_MODIFIER_STAMINASTEAL)
-	registerEnum(ATTACK_MODIFIER_SOULSTEAL)
-	registerEnum(ATTACK_MODIFIER_CRITICAL)
-	registerEnum(ATTACK_MODIFIER_PIERCING)
-	registerEnum(ATTACK_MODIFIER_CONVERSION)
-	registerEnum(ATTACK_MODIFIER_LAST)
+	registerGlobalVariable("ATTACK_MODIFIER_NONE",         std::to_underlying(BlackTek::DamageModifier::AttackType::None));
+	registerGlobalVariable("ATTACK_MODIFIER_FIRST",        std::to_underlying(BlackTek::DamageModifier::AttackType::First));
+	registerGlobalVariable("ATTACK_MODIFIER_LIFESTEAL",    std::to_underlying(BlackTek::DamageModifier::AttackType::Lifesteal));
+	registerGlobalVariable("ATTACK_MODIFIER_MANASTEAL",    std::to_underlying(BlackTek::DamageModifier::AttackType::Manasteal));
+	registerGlobalVariable("ATTACK_MODIFIER_STAMINASTEAL", std::to_underlying(BlackTek::DamageModifier::AttackType::Staminasteal));
+	registerGlobalVariable("ATTACK_MODIFIER_SOULSTEAL",    std::to_underlying(BlackTek::DamageModifier::AttackType::Soulsteal));
+	registerGlobalVariable("ATTACK_MODIFIER_CRITICAL",     std::to_underlying(BlackTek::DamageModifier::AttackType::Critical));
+	registerGlobalVariable("ATTACK_MODIFIER_PIERCING",     std::to_underlying(BlackTek::DamageModifier::AttackType::Piercing));
+	registerGlobalVariable("ATTACK_MODIFIER_CONVERSION",   std::to_underlying(BlackTek::DamageModifier::AttackType::Conversion));
+	registerGlobalVariable("ATTACK_MODIFIER_REGENERATION",  std::to_underlying(BlackTek::DamageModifier::AttackType::Regeneration));
+	registerGlobalVariable("ATTACK_MODIFIER_ATTUNEMENT",    std::to_underlying(BlackTek::DamageModifier::AttackType::Attunement));
+	registerGlobalVariable("ATTACK_MODIFIER_VIGOR",         std::to_underlying(BlackTek::DamageModifier::AttackType::Vigor));
+	registerGlobalVariable("ATTACK_MODIFIER_TRANSCENDENCE", std::to_underlying(BlackTek::DamageModifier::AttackType::Transcendence));
+	registerGlobalVariable("ATTACK_MODIFIER_LAST",         std::to_underlying(BlackTek::DamageModifier::AttackType::Last));
 
 	// Defense Modifiers
-	registerEnum(DEFENSE_MODIFIER_FIRST)
-	registerEnum(DEFENSE_MODIFIER_NONE)
-	registerEnum(DEFENSE_MODIFIER_ABSORB)
-	registerEnum(DEFENSE_MODIFIER_RESTORE)
-	registerEnum(DEFENSE_MODIFIER_REPLENISH)
-	registerEnum(DEFENSE_MODIFIER_REVIVE)
-	registerEnum(DEFENSE_MODIFIER_REFLECT)
-	registerEnum(DEFENSE_MODIFIER_DEFLECT)
-	registerEnum(DEFENSE_MODIFIER_RICOCHET)
-	registerEnum(DEFENSE_MODIFIER_RESIST)
-	registerEnum(DEFENSE_MODIFIER_REFORM)
-	registerEnum(DEFENSE_MODIFIER_WEAKNESS)
-	registerEnum(DEFENSE_MODIFIER_LAST)
+	registerGlobalVariable("DEFENSE_MODIFIER_NONE",      std::to_underlying(BlackTek::DamageModifier::DefenseType::None));
+	registerGlobalVariable("DEFENSE_MODIFIER_FIRST",     std::to_underlying(BlackTek::DamageModifier::DefenseType::First));
+	registerGlobalVariable("DEFENSE_MODIFIER_ABSORB",    std::to_underlying(BlackTek::DamageModifier::DefenseType::Absorb));
+	registerGlobalVariable("DEFENSE_MODIFIER_RESTORE",   std::to_underlying(BlackTek::DamageModifier::DefenseType::Restore));
+	registerGlobalVariable("DEFENSE_MODIFIER_REPLENISH", std::to_underlying(BlackTek::DamageModifier::DefenseType::Replenish));
+	registerGlobalVariable("DEFENSE_MODIFIER_REVIVE",    std::to_underlying(BlackTek::DamageModifier::DefenseType::Revive));
+	registerGlobalVariable("DEFENSE_MODIFIER_REFLECT",   std::to_underlying(BlackTek::DamageModifier::DefenseType::Reflect));
+	registerGlobalVariable("DEFENSE_MODIFIER_DEFLECT",   std::to_underlying(BlackTek::DamageModifier::DefenseType::Deflect));
+	registerGlobalVariable("DEFENSE_MODIFIER_RICOCHET",  std::to_underlying(BlackTek::DamageModifier::DefenseType::Ricochet));
+	registerGlobalVariable("DEFENSE_MODIFIER_RESIST",    std::to_underlying(BlackTek::DamageModifier::DefenseType::Resist));
+	registerGlobalVariable("DEFENSE_MODIFIER_REFORM",    std::to_underlying(BlackTek::DamageModifier::DefenseType::Reform));
+	registerGlobalVariable("DEFENSE_MODIFIER_WEAKNESS",  std::to_underlying(BlackTek::DamageModifier::DefenseType::Weakness));
+	registerGlobalVariable("DEFENSE_MODIFIER_LAST",      std::to_underlying(BlackTek::DamageModifier::DefenseType::Last));
+
 	registerEnumClass(Components::Stats::StatModifierType::None)
 	registerEnumClass(Components::Stats::StatModifierType::Add)
 	registerEnumClass(Components::Stats::StatModifierType::Subtract)
@@ -2418,17 +2355,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Item", "setStoreItem", luaItemSetStoreItem);
 	registerMethod("Item", "isStoreItem", luaItemIsStoreItem);
 
-	registerMethod("Item", "getImbuementSlots", luaItemGetImbuementSlots);
-	registerMethod("Item", "getFreeImbuementSlots", luaItemGetFreeImbuementSlots);
-	registerMethod("Item", "canImbue", luaItemCanImbue);
-	registerMethod("Item", "addImbuementSlots", luaItemAddImbuementSlots);
-	registerMethod("Item", "removeImbuementSlots", luaItemRemoveImbuementSlots);
-	registerMethod("Item", "hasImbuementType", luaItemHasImbuementType);
-	registerMethod("Item", "hasImbuements", luaItemHasImbuements); // change to isImbued
-	registerMethod("Item", "addImbuement", luaItemAddImbuement);
-	registerMethod("Item", "removeImbuement", luaItemRemoveImbuement);
-	registerMethod("Item", "getImbuements", luaItemGetImbuements);
-
 	registerMethod("Item", "addAugment", luaItemAddAugment);
 	registerMethod("Item", "removeAugment", luaItemRemoveAugment);
 	registerMethod("Item", "isAugmented", luaItemIsAugmented);
@@ -2455,30 +2381,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Item", "getStat", luaItemGetStat);
 	registerMethod("Item", "getStats", luaItemGetStats);
 
-	// BlackTek Instance System
-	registerMethod("Item", "getInstanceId", luaItemGetInstanceId);
-	registerMethod("Item", "setInstanceId", luaItemSetInstanceId);
-
-	// Imbuement
-	registerClass("Imbuement", "", luaImbuementCreate);
-	registerMetaMethod("Imbuement", "__eq", luaUserdataCompare);
-	//registerMetaMethod("Imbuement", "__gc", destroySharedUserData<Imbuement>);
-	registerMethod("Imbuement", "getType", luaImbuementGetType);
-	registerMethod("Imbuement", "isSkill", luaImbuementIsSkill);
-	registerMethod("Imbuement", "isSpecialSkill", luaImbuementIsSpecialSkill);
-	registerMethod("Imbuement", "isStat", luaImbuementIsStat);
-	registerMethod("Imbuement", "isDamage", luaImbuementIsDamage);
-	registerMethod("Imbuement", "isResist", luaImbuementIsResist);
-	registerMethod("Imbuement", "getValue", luaImbuementGetValue);
-	registerMethod("Imbuement", "setValue", luaImbuementSetValue);
-	registerMethod("Imbuement", "getDuration", luaImbuementGetDuration);
-	registerMethod("Imbuement", "setDuration", luaImbuementSetDuration);
-	registerMethod("Imbuement", "makeEquipDecayed", luaImbuementSetEquipDecay);
-	registerMethod("Imbuement", "makeInfightDecayed", luaImbuementSetInfightDecay);
-	registerMethod("Imbuement", "isEquipDecayed", luaImbuementIsEquipDecay);
-	registerMethod("Imbuement", "isInfightDecayed", luaImbuementIsInfightDecay);
-
-	// DamageModifer
+	// DamageModifier
 	registerClass("DamageModifier", "", luaDamageModifierCreate);
 	registerMetaMethod("DamageModifier", "__eq", luaUserdataCompare);
 	//registerMetaMethod("DamageModifier", "__gc", destroySharedUserData<DamageModifier>);
@@ -2650,10 +2553,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Creature", "hasStat", luaCreatureHasStat);
 	registerMethod("Creature", "getStat", luaCreatureGetStat);
 	registerMethod("Creature", "getStats", luaCreatureGetStats);
-
-	// BlackTek Instance System
-	registerMethod("Creature", "getInstanceId", luaCreatureGetInstanceId);
-	registerMethod("Creature", "setInstanceId", luaCreatureSetInstanceId);
 
 	// Stat
 	registerClass("Stat", "", luaStatCreate);
@@ -3114,18 +3013,239 @@ void LuaScriptInterface::registerFunctions()
 	registerMetaMethod("Combat", "__gc", luaCombatDelete);
 	registerMethod("Combat", "delete", luaCombatDelete);
 
-	registerMethod("Combat", "setParameter", luaCombatSetParameter);
-	registerMethod("Combat", "getParameter", luaCombatGetParameter);
+	// Config flag methods — setter/getter pairs via upvalue closures
+	{
+		using Config = BlackTek::Combat::Config;
+		registerMethodClosure("Combat", "setTrueDamage",      luaCombatSetConfigFlag, static_cast<int>(Config::TrueDamage));
+		registerMethodClosure("Combat", "isTrueDamage",       luaCombatGetConfigFlag, static_cast<int>(Config::TrueDamage));
+		registerMethodClosure("Combat", "setBlockedByArmor",  luaCombatSetConfigFlag, static_cast<int>(Config::BlockedByArmor));
+		registerMethodClosure("Combat", "isBlockedByArmor",   luaCombatGetConfigFlag, static_cast<int>(Config::BlockedByArmor));
+		registerMethodClosure("Combat", "setBlockedByShield", luaCombatSetConfigFlag, static_cast<int>(Config::BlockedByDefense));
+		registerMethodClosure("Combat", "isBlockedByShield",  luaCombatGetConfigFlag, static_cast<int>(Config::BlockedByDefense));
+		registerMethodClosure("Combat", "setTopTargetOnly",   luaCombatSetConfigFlag, static_cast<int>(Config::TopTargetOnly));
+		registerMethodClosure("Combat", "isTopTargetOnly",    luaCombatGetConfigFlag, static_cast<int>(Config::TopTargetOnly));
+		registerMethodClosure("Combat", "setSelfOnly",        luaCombatSetConfigFlag, static_cast<int>(Config::SelfOnly));
+		registerMethodClosure("Combat", "isSelfOnly",         luaCombatGetConfigFlag, static_cast<int>(Config::SelfOnly));
+		registerMethodClosure("Combat", "setFriendlyParty",   luaCombatSetConfigFlag, static_cast<int>(Config::FriendlyParty));
+		registerMethodClosure("Combat", "isFriendlyParty",    luaCombatGetConfigFlag, static_cast<int>(Config::FriendlyParty));
+		registerMethodClosure("Combat", "setEnemyParty",      luaCombatSetConfigFlag, static_cast<int>(Config::EnemyParty));
+		registerMethodClosure("Combat", "isEnemyParty",       luaCombatGetConfigFlag, static_cast<int>(Config::EnemyParty));
+		registerMethodClosure("Combat", "setFraggedOnly",     luaCombatSetConfigFlag, static_cast<int>(Config::FraggedOnly));
+		registerMethodClosure("Combat", "isFraggedOnly",      luaCombatGetConfigFlag, static_cast<int>(Config::FraggedOnly));
+		registerMethodClosure("Combat", "setMultiLevel",      luaCombatSetConfigFlag, static_cast<int>(Config::MultiLevel));
+		registerMethodClosure("Combat", "isMultiLevel",       luaCombatGetConfigFlag, static_cast<int>(Config::MultiLevel));
+		registerMethodClosure("Combat", "setIgnoreGround",    luaCombatSetConfigFlag, static_cast<int>(Config::IgnoreGround));
+		registerMethodClosure("Combat", "isIgnoreGround",     luaCombatGetConfigFlag, static_cast<int>(Config::IgnoreGround));
+		registerMethodClosure("Combat", "setAggressive",      luaCombatSetConfigFlag, static_cast<int>(Config::Aggressive));
+		registerMethodClosure("Combat", "isAggressive",       luaCombatGetConfigFlag, static_cast<int>(Config::Aggressive));
+		registerMethodClosure("Combat", "setIsUtility",       luaCombatSetConfigFlag, static_cast<int>(Config::IsUtility));
+		registerMethodClosure("Combat", "isUtility",          luaCombatGetConfigFlag, static_cast<int>(Config::IsUtility));
+		registerMethodClosure("Combat", "setIgnoreBarriers",  luaCombatSetConfigFlag, static_cast<int>(Config::IgnoreBarriers));
+		registerMethodClosure("Combat", "isIgnoreBarriers",   luaCombatGetConfigFlag, static_cast<int>(Config::IgnoreBarriers));
+		registerMethodClosure("Combat", "setUseCharges",      luaCombatSetConfigFlag, static_cast<int>(Config::UseCharges));
+		registerMethodClosure("Combat", "usesCharges",        luaCombatGetConfigFlag, static_cast<int>(Config::UseCharges));
+	}
 
-	registerMethod("Combat", "setFormula", luaCombatSetFormula);
+	// Property methods — damage type, visual effects, item creation
+	registerMethod("Combat", "setDamageType",     luaCombatSetDamageType);
+	registerMethod("Combat", "getDamageType",     luaCombatGetDamageType);
+	registerMethod("Combat", "setImpactEffect",   luaCombatSetImpactEffect);
+	registerMethod("Combat", "getImpactEffect",   luaCombatGetImpactEffect);
+	registerMethod("Combat", "setDistanceEffect", luaCombatSetDistanceEffect);
+	registerMethod("Combat", "getDistanceEffect", luaCombatGetDistanceEffect);
+	registerMethod("Combat", "setCreatedItem",    luaCombatSetCreatedItem);
+	registerMethod("Combat", "getCreatedItem",    luaCombatGetCreatedItem);
+
+	registerMethod("Combat", "setMinMaxFormula", luaCombatSetFormula);
 
 	registerMethod("Combat", "setArea", luaCombatSetArea);
 	registerMethod("Combat", "addCondition", luaCombatAddCondition);
 	registerMethod("Combat", "clearConditions", luaCombatClearConditions);
-	registerMethod("Combat", "setCallback", luaCombatSetCallback);
 	registerMethod("Combat", "setOrigin", luaCombatSetOrigin);
 
 	registerMethod("Combat", "execute", luaCombatExecute);
+
+	// Formula override API
+	registerMethod("Combat", "setSituationFormulas",  luaCombatSetSituationFormulas);
+	registerMethod("Combat", "setDamage",             luaCombatSetDamage);
+	registerMethod("Combat", "registerFormula",       luaCombatRegisterFormula);
+	registerMethod("Combat", "getAreaPositions",      luaCombatGetAreaPositions);
+
+	// Combat.Situation sub-table — nested PascalCase enum; access as Combat.Situation.PvP etc.
+	{
+		lua_getglobal(luaState, "Combat");
+		lua_newtable(luaState);
+		lua_pushinteger(luaState, 0); lua_setfield(luaState, -2, "PvP");
+		lua_pushinteger(luaState, 1); lua_setfield(luaState, -2, "PvM");
+		lua_pushinteger(luaState, 2); lua_setfield(luaState, -2, "MvP");
+		lua_pushinteger(luaState, 3); lua_setfield(luaState, -2, "MvM");
+		lua_setfield(luaState, -2, "Situation");
+		lua_pop(luaState, 1);
+	}
+
+	// Combat.FormulaStage sub-table — nested PascalCase enum; access as Combat.FormulaStage.Output etc.
+	{
+		lua_getglobal(luaState, "Combat");
+		lua_newtable(luaState);
+		using FS = BlackTek::FormulaStage;
+		auto setFSField = [this](const char* name, FS val) {
+			lua_pushinteger(luaState, std::to_underlying(val));
+			lua_setfield(luaState, -2, name);
+		};
+		setFSField("Output",     FS::Output);
+		setFSField("Defense",    FS::Defense);
+		setFSField("Armor",      FS::Armor);
+		setFSField("Resolution", FS::Resolution);
+		lua_setfield(luaState, -2, "FormulaStage");
+		lua_pop(luaState, 1);
+	}
+
+	// Combat.BindSource and Combat.BindKey sub-tables
+	{
+		lua_getglobal(luaState, "Combat");
+
+		lua_newtable(luaState);
+		lua_pushinteger(luaState, std::to_underlying(BlackTek::Combat::BindSource::Caster)); lua_setfield(luaState, -2, "Caster");
+		lua_pushinteger(luaState, std::to_underlying(BlackTek::Combat::BindSource::Target)); lua_setfield(luaState, -2, "Target");
+		lua_setfield(luaState, -2, "BindSource");
+
+		lua_newtable(luaState);
+		using BK = BlackTek::Combat::BindKey;
+		auto setBKField = [this](const char* name, BK val) {
+			lua_pushinteger(luaState, std::to_underlying(val));
+			lua_setfield(luaState, -2, name);
+		};
+		setBKField("Level",        BK::Level);
+		setBKField("MagicLevel",   BK::MagicLevel);
+		setBKField("SkillLevel",   BK::SkillLevel);
+		setBKField("Attack",       BK::Attack);
+		setBKField("Defense",      BK::Defense);
+		setBKField("WeaponAttack", BK::WeaponAttack);
+		setBKField("WeaponDefense",BK::WeaponDefense);
+		setBKField("WeaponSkill",  BK::WeaponSkill);
+		setBKField("Health",       BK::Health);
+		setBKField("MaxHealth",    BK::MaxHealth);
+		setBKField("Mana",         BK::Mana);
+		setBKField("MaxMana",      BK::MaxMana);
+		setBKField("Soul",         BK::Soul);
+		setBKField("MaxSoul",      BK::MaxSoul);
+		setBKField("Stamina",      BK::Stamina);
+		lua_setfield(luaState, -2, "BindKey");
+
+		lua_pop(luaState, 1); // pop Combat table
+	}
+
+	// FormulaNode metatable — holds a compiled C++ formula lambda (no Lua VM at runtime)
+	luaL_newmetatable(luaState, "FormulaNode");
+	lua_newtable(luaState);
+	// Class-level factory functions on the FormulaNode table
+	lua_pushcfunction(luaState, luaFormulaNodeBind);      lua_setfield(luaState, -2, "bind");
+	lua_pushcfunction(luaState, luaFormulaNodeBindSkill); lua_setfield(luaState, -2, "bindSkill");
+	lua_pushcfunction(luaState, luaFormulaNodeOutput);    lua_setfield(luaState, -2, "output");
+	lua_pushcfunction(luaState, luaFormulaNodeResistance);lua_setfield(luaState, -2, "resistance");
+	lua_pushcfunction(luaState, luaFormulaNodeConst);     lua_setfield(luaState, -2, "const");
+	lua_pushcfunction(luaState, luaFormulaNodeRandom);    lua_setfield(luaState, -2, "random");
+	lua_pushcfunction(luaState, luaFormulaNodeMin);       lua_setfield(luaState, -2, "min");
+	lua_pushcfunction(luaState, luaFormulaNodeMax);       lua_setfield(luaState, -2, "max");
+	lua_pushcfunction(luaState, luaFormulaNodeFloor);     lua_setfield(luaState, -2, "floor");
+	lua_pushcfunction(luaState, luaFormulaNodeCeil);      lua_setfield(luaState, -2, "ceil");
+	lua_setfield(luaState, -2, "__index");
+	// Arithmetic metamethods — build new lambda closures, no Lua VM at combat time
+	lua_pushcfunction(luaState, luaFormulaNodeAdd); lua_setfield(luaState, -2, "__add");
+	lua_pushcfunction(luaState, luaFormulaNodeSub); lua_setfield(luaState, -2, "__sub");
+	lua_pushcfunction(luaState, luaFormulaNodeMul); lua_setfield(luaState, -2, "__mul");
+	lua_pushcfunction(luaState, luaFormulaNodeDiv); lua_setfield(luaState, -2, "__div");
+	lua_pushcfunction(luaState, luaFormulaNodeUnm); lua_setfield(luaState, -2, "__unm");
+	lua_pushcfunction(luaState, luaFormulaNodePow); lua_setfield(luaState, -2, "__pow");
+	lua_pushcfunction(luaState, luaFormulaNodeGC);  lua_setfield(luaState, -2, "__gc");
+	lua_pop(luaState, 1); // pop metatable
+
+	// Expose FormulaNode as a global so scripts can call FormulaNode.bind(...)
+	lua_newtable(luaState);
+	lua_pushcfunction(luaState, luaFormulaNodeBind);      lua_setfield(luaState, -2, "bind");
+	lua_pushcfunction(luaState, luaFormulaNodeBindSkill); lua_setfield(luaState, -2, "bindSkill");
+	lua_pushcfunction(luaState, luaFormulaNodeOutput);    lua_setfield(luaState, -2, "output");
+	lua_pushcfunction(luaState, luaFormulaNodeResistance);lua_setfield(luaState, -2, "resistance");
+	lua_pushcfunction(luaState, luaFormulaNodeConst);     lua_setfield(luaState, -2, "const");
+	lua_pushcfunction(luaState, luaFormulaNodeRandom);    lua_setfield(luaState, -2, "random");
+	lua_pushcfunction(luaState, luaFormulaNodeMin);       lua_setfield(luaState, -2, "min");
+	lua_pushcfunction(luaState, luaFormulaNodeMax);       lua_setfield(luaState, -2, "max");
+	lua_pushcfunction(luaState, luaFormulaNodeFloor);     lua_setfield(luaState, -2, "floor");
+	lua_pushcfunction(luaState, luaFormulaNodeCeil);      lua_setfield(luaState, -2, "ceil");
+	lua_setglobal(luaState, "FormulaNode");
+
+	// Combat.Origin sub-table — nested PascalCase enum; access as Combat.Origin.Ranged etc.
+	{
+		lua_getglobal(luaState, "Combat");
+		lua_newtable(luaState);
+
+		using Origin = BlackTek::Combat::Origin;
+		const auto setOriginField = [this](const char* name, Origin val)
+		{
+			lua_pushinteger(luaState, std::to_underlying(val));
+			lua_setfield(luaState, -2, name);
+		};
+		setOriginField("None",         Origin::None);
+		setOriginField("Condition",    Origin::Condition);
+		setOriginField("Spell",        Origin::Spell);
+		setOriginField("Melee",        Origin::Melee);
+		setOriginField("Ranged",       Origin::Ranged);
+		setOriginField("Fist",         Origin::Fist);
+		setOriginField("Sword",        Origin::Sword);
+		setOriginField("Axe",          Origin::Axe);
+		setOriginField("Club",         Origin::Club);
+		setOriginField("Wand",         Origin::Wand);
+		setOriginField("Rod",          Origin::Rod);
+		setOriginField("Bow",          Origin::Bow);
+		setOriginField("Crossbow",     Origin::Crossbow);
+		setOriginField("Throwable",    Origin::Throwable);
+		setOriginField("Augment",      Origin::Augment);
+		setOriginField("Absorb",       Origin::Absorb);
+		setOriginField("Restore",      Origin::Restore);
+		setOriginField("Replenish",    Origin::Replenish);
+		setOriginField("Revive",       Origin::Revive);
+		setOriginField("Reflect",      Origin::Reflect);
+		setOriginField("Deflect",      Origin::Deflect);
+		setOriginField("Ricochet",     Origin::Ricochet);
+		setOriginField("Piercing",     Origin::Piercing);
+		setOriginField("LifeSteal",    Origin::LifeSteal);
+		setOriginField("ManaSteal",    Origin::ManaSteal);
+		setOriginField("StaminaSteal", Origin::StaminaSteal);
+		setOriginField("SoulSteal",    Origin::SoulSteal);
+
+		// Combat.Origin = sub-table; pops sub-table then pops Combat
+		lua_setfield(luaState, -2, "Origin");
+		lua_pop(luaState, 1);
+	}
+
+	// Combat.DamageType sub-table — nested PascalCase enum; access as Combat.DamageType.Physical etc.
+	{
+		lua_getglobal(luaState, "Combat");
+		lua_newtable(luaState);
+
+		const auto setDmgField = [this](const char* name, CombatType_t val)
+		{
+			lua_pushinteger(luaState, static_cast<lua_Integer>(val));
+			lua_setfield(luaState, -2, name);
+		};
+		setDmgField("None",      COMBAT_NONE);
+		setDmgField("Physical",  COMBAT_PHYSICALDAMAGE);
+		setDmgField("Energy",    COMBAT_ENERGYDAMAGE);
+		setDmgField("Earth",     COMBAT_EARTHDAMAGE);
+		setDmgField("Fire",      COMBAT_FIREDAMAGE);
+		setDmgField("Undefined", COMBAT_UNDEFINEDDAMAGE);
+		setDmgField("LifeDrain", COMBAT_LIFEDRAIN);
+		setDmgField("ManaDrain", COMBAT_MANADRAIN);
+		setDmgField("Healing",   COMBAT_HEALING);
+		setDmgField("Drown",     COMBAT_DROWNDAMAGE);
+		setDmgField("Ice",       COMBAT_ICEDAMAGE);
+		setDmgField("Holy",      COMBAT_HOLYDAMAGE);
+		setDmgField("Death",     COMBAT_DEATHDAMAGE);
+
+		// Combat.DamageType = sub-table; pops sub-table then pops Combat
+		lua_setfield(luaState, -2, "DamageType");
+		lua_pop(luaState, 1);
+	}
 
 	// Condition
 	registerClass("Condition", "", luaConditionCreate);
@@ -3222,6 +3342,11 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("MonsterType", "armor", luaMonsterTypeArmor);
 	registerMethod("MonsterType", "defense", luaMonsterTypeDefense);
+	registerMethod("MonsterType", "defenseChargeInterval", luaMonsterTypeDefenseChargeInterval);
+	registerMethod("MonsterType", "defenseChargesCap", luaMonsterTypeDefenseChargesCap);
+	registerMethod("MonsterType", "armorChargesCap", luaMonsterTypeArmorChargesCap);
+	registerMethod("MonsterType", "defenseChargeCostMultiplier", luaMonsterTypeDefenseChargeCostMultiplier);
+	registerMethod("MonsterType", "armorChargeCostMultiplier", luaMonsterTypeArmorChargeCostMultiplier);
 	registerMethod("MonsterType", "outfit", luaMonsterTypeOutfit);
 	registerMethod("MonsterType", "race", luaMonsterTypeRace);
 	registerMethod("MonsterType", "corpseId", luaMonsterTypeCorpseId);
@@ -3595,72 +3720,6 @@ void LuaScriptInterface::registerClass(const std::string& className, const std::
 	lua_pop(luaState, 2);
 }
 
-// BlackTek Instance System
-int LuaScriptInterface::luaCreatureGetInstanceId(lua_State* L)
-{
-	if (const auto creature = getSharedPtr<Creature>(L, 1))
-		lua_pushinteger(L, creature->getInstanceID());
-	else
-		lua_pushnil(L);
-	return 1;
-}
-
-int LuaScriptInterface::luaCreatureSetInstanceId(lua_State* L)
-{
-	// creature:setInstanceId(instanceId)
-	const auto creature = getSharedPtr<Creature>(L, 1);
-	if (!creature)
-	{
-		lua_pushnil(L);
-		return 1;
-	}
-
-	uint32_t id = getNumber<uint32_t>(L, 2, 0);
-	const uint32_t previousInstanceId = creature->getInstanceID();
-	creature->setInstanceID(id);
-
-	if (previousInstanceId != id)
-	{
-		SpectatorVec spectators;
-		g_game.map.getSpectators(spectators, creature->getPosition(), true, true);
-
-		for (const auto& spectator : spectators.players())
-			std::static_pointer_cast<Player>(spectator)->refreshWorldView();
-
-		if (const auto& player = creature->getPlayer())
-			player->refreshWorldView();
-	}
-
-	pushBoolean(L, true);
-	return 1;
-}
-
-int LuaScriptInterface::luaItemGetInstanceId(lua_State* L)
-{
-	// item:getInstanceId()
-	if (const auto item = getSharedPtr<Item>(L, 1))
-		lua_pushinteger(L, item->getInstanceID());
-	else
-		lua_pushnil(L);
-	return 1;
-}
-
-int LuaScriptInterface::luaItemSetInstanceId(lua_State* L)
-{
-	// item:setInstanceId(instanceId)
-	const auto item = getSharedPtr<Item>(L, 1);
-	if (!item)
-	{
-		lua_pushnil(L);
-		return 1;
-	}
-
-	uint32_t id = getNumber<uint32_t>(L, 2, 0);
-	item->setInstanceID(id);
-	pushBoolean(L, true);
-	return 1;
-}
-
 void LuaScriptInterface::registerTable(const std::string& tableName) const
 {
 	// _G[tableName] = {}
@@ -3673,6 +3732,18 @@ void LuaScriptInterface::registerMethod(const std::string& globalName, const std
 	// globalName.methodName = func
 	lua_getglobal(luaState, globalName.c_str());
 	lua_pushcfunction(luaState, func);
+	lua_setfield(luaState, -2, methodName.c_str());
+
+	// pop globalName
+	lua_pop(luaState, 1);
+}
+
+void LuaScriptInterface::registerMethodClosure(const std::string& globalName, const std::string& methodName, lua_CFunction func, int upvalue) const
+{
+	// globalName.methodName = closure(func, upvalue)
+	lua_getglobal(luaState, globalName.c_str());
+	lua_pushinteger(luaState, static_cast<lua_Integer>(upvalue));
+	lua_pushcclosure(luaState, func, 1);
 	lua_setfield(luaState, -2, methodName.c_str());
 
 	// pop globalName
@@ -3891,7 +3962,7 @@ int LuaScriptInterface::luaCreateCombatArea(lua_State* L)
 	}
 
 	uint32_t areaId = g_luaEnvironment.createAreaObject(env->getScriptInterface());
-	AreaCombat* area = g_luaEnvironment.getAreaObject(areaId);
+	BlackTek::AreaCombat* area = g_luaEnvironment.getAreaObject(areaId);
 
 	int parameters = lua_gettop(L);
 	if (parameters >= 2) {
@@ -3921,71 +3992,77 @@ int LuaScriptInterface::luaCreateCombatArea(lua_State* L)
 int LuaScriptInterface::luaDoAreaCombat(lua_State* L)
 {
 	//doAreaCombat(cid, type, pos, area, min, max, effect[, origin = ORIGIN_SPELL[, blockArmor = false[, blockShield = false[, ignoreResistances = false]]]])
-	auto creature = getCreature(L, 1);
-	if (!creature && (!isNumber(L, 1) || getNumber<uint32_t>(L, 1) != 0)) {
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
-		pushBoolean(L, false);
-		return 1;
-	}
+	//auto creature = getCreature(L, 1);
+	//if (!creature && (!isNumber(L, 1) || getNumber<uint32_t>(L, 1) != 0)) {
+	//	reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
+	//	pushBoolean(L, false);
+	//	return 1;
+	//}
 
-	uint32_t areaId = getNumber<uint32_t>(L, 4);
-	const AreaCombat* area = g_luaEnvironment.getAreaObject(areaId);
-	if (area || areaId == 0) {
-		CombatType_t combatType = getNumber<CombatType_t>(L, 2);
+	//uint32_t areaId = getNumber<uint32_t>(L, 4);
+	//const AreaCombat* area = g_luaEnvironment.getAreaObject(areaId);
+	//if (area || areaId == 0) {
+	//	CombatType_t combatType = getNumber<CombatType_t>(L, 2);
 
-		CombatParams params;
-		params.combatType = combatType;
-		params.impactEffect = getNumber<uint8_t>(L, 7);
-		params.blockedByArmor = getBoolean(L, 9, false);
-		params.blockedByShield = getBoolean(L, 10, false);
-		params.ignoreResistances = getBoolean(L, 11, false);
+	//	Combat params;
+	//	params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(combatType));
+	//	params.setParam(COMBAT_PARAM_EFFECT, getNumber<uint8_t>(L, 7));
+	//	params.setParam(COMBAT_PARAM_BLOCKARMOR, getBoolean(L, 9, false) ? 1 : 0);
+	//	params.setParam(COMBAT_PARAM_BLOCKSHIELD, getBoolean(L, 10, false) ? 1 : 0);
+	//	params.setParam(COMBAT_PARAM_IGNORERESISTANCES, getBoolean(L, 11, false) ? 1 : 0);
 
-		CombatDamage damage;
-		damage.origin = getNumber<CombatOrigin>(L, 8, ORIGIN_SPELL);
-		damage.primary.type = combatType;
-		damage.primary.value = normal_random(getNumber<int32_t>(L, 5), getNumber<int32_t>(L, 6));
+	//	CombatDamage damage;
+	//	damage.origin = getNumber<CombatOrigin>(L, 8, ORIGIN_SPELL);
+	//	damage.primary.type = combatType;
+	//	damage.primary.value = normal_random(getNumber<int32_t>(L, 5), getNumber<int32_t>(L, 6));
 
-		Combat::doAreaCombat(creature, getPosition(L, 3), area, damage, params);
-		pushBoolean(L, true);
-	} else {
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_AREA_NOT_FOUND));
-		pushBoolean(L, false);
-	}
+	//	Combat::doAreaCombat(creature, getPosition(L, 3), area, damage, params);
+	//	pushBoolean(L, true);
+	//} else {
+	//	reportErrorFunc(L, getErrorDesc(LUA_ERROR_AREA_NOT_FOUND));
+	//	pushBoolean(L, false);
+	//}
 	return 1;
 }
 
 int LuaScriptInterface::luaDoTargetCombat(lua_State* L)
 {
-	//doTargetCombat(cid, target, type, min, max, effect[, origin = ORIGIN_SPELL[, blockArmor = false[, blockShield = false[, ignoreResistances = false]]]])
+	// doTargetCombat(cid, target, type, min, max, effect[, origin = ORIGIN_SPELL[, blockArmor = false[, blockShield = false]]])
 	auto creature = getCreature(L, 1);
-	if (!creature && (!isNumber(L, 1) || getNumber<uint32_t>(L, 1) != 0)) {
+	if (not creature and (not isNumber(L, 1) or getNumber<uint32_t>(L, 1) != 0))
+	{
 		reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
 		return 1;
 	}
 
 	auto target = getCreature(L, 2);
-	if (!target) {
+	if (not target)
+	{
 		reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		pushBoolean(L, false);
 		return 1;
 	}
 
-	CombatType_t combatType = getNumber<CombatType_t>(L, 3);
+	const uint16_t combatType = static_cast<uint16_t>(getNumber<CombatType_t>(L, 3));
+	const int32_t minDmg      = getNumber<int32_t>(L, 4);
+	const int32_t maxDmg      = getNumber<int32_t>(L, 5);
+	const uint8_t effect      = getNumber<uint8_t>(L, 6, CONST_ME_NONE);
+	const bool blockArmor     = getBoolean(L, 8, false);
+	const bool blockShield    = getBoolean(L, 9, false);
 
-	CombatParams params;
-	params.combatType = combatType;
-	params.impactEffect = getNumber<uint8_t>(L, 6);
-	params.blockedByArmor = getBoolean(L, 8, false);
-	params.blockedByShield = getBoolean(L, 9, false);
-	params.ignoreResistances = getBoolean(L, 10, false);
+	auto strike = BlackTek::g_combat_registry.Create(
+		combatType,
+		static_cast<uint32_t>(std::abs(normal_random(minDmg, maxDmg)))
+	);
+	strike->SetImpactEffect(effect);
+	strike->SetConfig(BlackTek::Combat::Config::Aggressive);
+	if (blockArmor)
+		strike->SetConfig(BlackTek::Combat::Config::BlockedByArmor);
+	if (blockShield)
+		strike->SetConfig(BlackTek::Combat::Config::BlockedByDefense);
 
-	CombatDamage damage;
-	damage.origin = getNumber<CombatOrigin>(L, 7, ORIGIN_SPELL);
-	damage.primary.type = combatType;
-	damage.primary.value = normal_random(getNumber<int32_t>(L, 4), getNumber<int32_t>(L, 5));
-
-	Combat::doTargetCombat(creature, target, damage, params);
+	strike->strike_target(creature, target);
 	pushBoolean(L, true);
 	return 1;
 }
@@ -7460,7 +7537,7 @@ int LuaScriptInterface::luaItemTransform(lua_State* L)
 		return 1;
 	}
 
-	if (item->isAugmented() || item->hasImbuements()) {
+	if (item->isAugmented()) {
 		lua_pushboolean(L, false);
 		return 1;
 	}
@@ -7507,7 +7584,7 @@ int LuaScriptInterface::luaItemDecay(lua_State* L)
 	// item:decay(decayId)
 	if (const auto& item = getSharedPtr<Item>(L, 1)) {
 
-		if (item->isAugmented() || item->hasImbuements()) {
+		if (item->isAugmented()) {
 			lua_pushboolean(L, false);
 			return 1;
 		}
@@ -7594,170 +7671,6 @@ int LuaScriptInterface::luaItemIsStoreItem(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaItemGetImbuementSlots(lua_State* L)
-{
-	// item:getImbuementSlots() -- returns how many total slots
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		lua_pushinteger(L, item->getImbuementSlots());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemGetFreeImbuementSlots(lua_State* L)
-{
-	// item:getFreeImbuementSlots() -- returns how many slots are available for use
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		if (item->hasImbuements()) 
-		{
-			lua_pushinteger(L, item->getFreeImbuementSlots());
-			return 1;
-        }
-		lua_pushinteger(L, 0);
-        return 1;
-	}
-    lua_pushnil(L);
-	return 1;
-}
-
-int LuaScriptInterface::luaItemCanImbue(lua_State* L)
-{
-	// item:canImbue(amount) -- returns true if item has slots that are free
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		pushBoolean(L, item->canImbue());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemAddImbuementSlots(lua_State* L)
-{
-	// item:addImbuementSlots(amount) -- tries to add imbuement slot(s), returns true if successful
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		pushBoolean(L, item->addImbuementSlots(getNumber<uint32_t>(L, 2)));
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemRemoveImbuementSlots(lua_State* L)
-{
-	// item:removeImbuementSlots(amount, destroy) -- tries to remove imbuement slot(s), returns true if successful
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		pushBoolean(L, item->removeImbuementSlots(getNumber<uint32_t>(L, 2), getBoolean(L, 5, false)));
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemHasImbuementType(lua_State* L)
-{
-	// item:hasImbuementType(type)
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-        if (item->hasImbuements()) 
-		{
-			pushBoolean(L, item->hasImbuementType(getNumber<ImbuementType>(L, 2, ImbuementType::IMBUEMENT_TYPE_NONE)));
-            return 1;
-		}
-        pushBoolean(L, false);
-        return 1;
-	}
-    lua_pushnil(L);
-	return 1;
-}
-
-int LuaScriptInterface::luaItemHasImbuement(lua_State* L)
-{
-	// item:hasImbuement(imbueType, amount, duration, realtime)
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		if (const std::shared_ptr<Imbuement> imbue = getSharedPtr<Imbuement>(L, 2)) {
-			pushBoolean(L, item->hasImbuement(imbue));
-		} else {
-			// should be nil, or at least send a message about the failure
-			pushBoolean(L, false);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemHasImbuements(lua_State* L)
-{
-	// item:hasImbuements() -- returns true if item has any imbuements
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		pushBoolean(L, item->hasImbuements());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemAddImbuement(lua_State* L)
-{
-	// item:addImbuement(imbuement) -- returns true if it successfully adds the imbuement
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		if (const std::shared_ptr<Imbuement> imbue = getSharedPtr<Imbuement>(L, 2)) {
-			pushBoolean(L, item->addImbuement(imbue, true));
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemRemoveImbuement(lua_State* L)
-{
-	// item:removeImbuement(imbuement)
-	if (const auto& item = getSharedPtr<Item>(L, 1))
-	{
-		if (const std::shared_ptr<Imbuement> imbue = getSharedPtr<Imbuement>(L, 2)) {
-			pushBoolean(L, item->removeImbuement(imbue, false));
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-
-int LuaScriptInterface::luaItemGetImbuements(lua_State* L)
-{
-	// item:getImbuements() -- returns a table that contains values that are imbuement userdata?
-	const auto& item = getSharedPtr<Item>(L, 1);
-	if (not item) {
-		lua_pushnil(L);
-		return 1;
-	}
-    if (item->hasImbuements()) {
-		auto& imbues = item->getImbuements();
-        lua_createtable(L, imbues->size(), 0);
-
-        int index = 0;
-        for (const auto& imbuement : *imbues) {
-            pushSharedPtr(L, imbuement);
-            setMetatable(L, -1, "Imbuement");
-            lua_rawseti(L, -2, ++index);
-        }
-        return 1;
-    }
-    lua_createtable(L, 0, 0);
-    return 1;
-}
-
 int LuaScriptInterface::luaItemAddAugment(lua_State* L)
 {
 	const auto item = getSharedPtr<Item>(L, 1);
@@ -7773,14 +7686,14 @@ int LuaScriptInterface::luaItemAddAugment(lua_State* L)
 
 	if (isString(L, 2)) {
 		std::cout << getString(L, 2) << " \n";
-		if (auto augment = Augments::GetAugment(getString(L, 2))) {
+		if (auto augment = BlackTek::Augments::GetAugment(getString(L, 2))) {
 			lua_pushboolean(L, item->addAugment(augment));
 		} else {
 			lua_pushnil(L);
 			reportError(__FUNCTION__, "Item::addAugment() argument not found as any name in augments loaded on startup! \n");
 		}
 	} else if (isUserdata(L, 2)) {
-		if (auto augment = getSharedPtr<Augment>(L, 2)) {
+		if (auto augment = getSharedPtr<BlackTek::Augment>(L, 2)) {
 			lua_pushboolean(L, item->addAugment(augment));
 		} else {
 			lua_pushnil(L);
@@ -7805,7 +7718,7 @@ int LuaScriptInterface::luaItemRemoveAugment(lua_State* L)
 		const auto name = getString(L, 2);
 		lua_pushboolean(L, item->removeAugment(name));
 	} else if (isUserdata(L, 2)) {
-		if (auto augment = getSharedPtr<Augment>(L, 2)) {
+		if (auto augment = getSharedPtr<BlackTek::Augment>(L, 2)) {
 			lua_pushboolean(L, item->removeAugment(augment));
 		} else {
 			reportError(__FUNCTION__, "Item::removeAugment() invalid userdata type passed as argument! \n");
@@ -7841,7 +7754,7 @@ int LuaScriptInterface::luaItemHasAugment(lua_State* L)
 		const auto name = getString(L, 2);
 		lua_pushboolean(L, item->hasAugment(name));
 	} else if (isUserdata(L, 2)) {
-		if (std::shared_ptr<Augment> augment = getSharedPtr<Augment>(L, 2)) {
+		if (std::shared_ptr<BlackTek::Augment> augment = getSharedPtr<BlackTek::Augment>(L, 2)) {
 			lua_pushboolean(L, item->hasAugment(augment));
 		} else {
 			reportError(__FUNCTION__, "Item::hasAugment() invalid userdata type passed as argument! \n");
@@ -8458,517 +8371,6 @@ int LuaScriptInterface::luaItemGetStats(lua_State* L)
 	return 0;
 }
 
-// Imbuement
-
-int LuaScriptInterface::luaImbuementCreate(lua_State* L)
-{
-	// Imbuement(type, amount, duration, decayType = IMBUE_DECAY_EQUIPPED)
-	ImbuementType imbueType = getNumber<ImbuementType>(L, 2, ImbuementType::IMBUEMENT_TYPE_NONE);
-	uint32_t amount = getNumber<uint32_t>(L, 3);
-	uint32_t duration = getNumber<uint32_t>(L, 4);
-	ImbuementDecayType decayType = getNumber<ImbuementDecayType>(L, 5, ImbuementDecayType::IMBUEMENT_DECAY_EQUIPPED);
-	pushSharedPtr(L, std::make_shared<Imbuement>(Imbuement(imbueType, amount, duration, decayType)));
-	setMetatable(L, -1, "Imbuement");
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementGetType(lua_State* L)
-{
-	// imbuement:getType()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->imbuetype);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementGetValue(lua_State* L)
-{
-	// imbuement:getValue()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->value);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-
-int LuaScriptInterface::luaImbuementGetDuration(lua_State* L)
-{
-	// imbuement:getDuration()
-    if (const auto &imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->duration);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementIsSkill(lua_State* L)
-{
-	// imbuement:isSkill()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->isSkill());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementIsSpecialSkill(lua_State* L)
-{
-	// imbuement:isSpecialSkill()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->isSpecialSkill());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementIsDamage(lua_State* L)
-{
-	// imbuement:isDamage()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->isDamage());
-	}
-	else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementIsResist(lua_State* L)
-{
-	// imbuement:isResist()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->isResist());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementIsStat(lua_State* L)
-{
-	// imbuement:isStat()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		lua_pushinteger(L, imbue->isStat());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementSetValue(lua_State* L)
-{
-	// imbuement:setAmount(amount)
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		imbue->value = getNumber<uint32_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementSetDuration(lua_State* L)
-{
-	// imbuement:setDuration(duration)
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		imbue->duration = getNumber<uint32_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementSetEquipDecay(lua_State* L)
-{
-	// imbuement:makeEquipDecayed()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		imbue->decaytype = ImbuementDecayType::IMBUEMENT_DECAY_EQUIPPED;
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementSetInfightDecay(lua_State* L)
-{
-	// imbuement:makeInfightDecayed()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		imbue->decaytype = ImbuementDecayType::IMBUEMENT_DECAY_INFIGHT;
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementIsEquipDecay(lua_State* L)
-{
-	// imbuement:isEquipDecayed()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		pushBoolean(L, imbue->decaytype == ImbuementDecayType::IMBUEMENT_DECAY_EQUIPPED);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaImbuementIsInfightDecay(lua_State* L)
-{
-	// imbuement:isInfightDecayed()
-	if (const auto& imbue = getSharedPtr<Imbuement>(L, 1); imbue) {
-		pushBoolean(L, imbue->decaytype == ImbuementDecayType::IMBUEMENT_DECAY_INFIGHT);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierCreate(lua_State* L)
-{
-	// DamageModifier()
-	if (lua_gettop(L) < 2) {
-		pushSharedPtr(L, DamageModifier::makeModifier());
-		setMetatable(L, -1, "DamageModifier");
-		return 1;
-	}
-
-	// DamageModifier(stance, type, value, percent/flat, chance, combatType, originType, creatureType, race)
-	if (const auto stance = getNumber<ImbuementType>(L, 2))
-	{
-		const auto modType = getNumber<uint8_t>(L, 3);
-		const auto amount = getNumber<uint16_t>(L, 4);
-		const auto factor = getNumber<ModFactor>(L, 5);
-		const auto chance = getNumber<uint8_t>(L, 6, 100);
-		const auto combatType = getNumber<CombatType_t>(L, 7, COMBAT_NONE);
-		const auto originType = getNumber<CombatOrigin>(L, 8, ORIGIN_NONE);
-		const auto creatureType = getNumber<CreatureType_t>(L, 9, CREATURETYPE_ATTACKABLE);
-		const auto race = getNumber<RaceType_t>(L, 10, RACE_NONE);
-		const auto& creatureName = getString(L, 11, "none");
-
-		if (modType && amount && factor)
-		{
-			const auto& modifier = DamageModifier::makeModifier(stance, modType, amount, factor, chance, combatType, originType, creatureType, race, creatureName);
-			pushSharedPtr(L, modifier);
-			setMetatable(L, -1, "DamageModifier");
-			return 1;
-		}
-		else
-		{
-			lua_pushnil(L);
-			return 1;
-		}
-	}
-
-	// DamageModifier(damageModifier)
-	if (const auto& originalModifier = getSharedPtr<DamageModifier>(L, 2))
-	{
-		pushSharedPtr(L, DamageModifier::makeModifier(*originalModifier.get()));
-		setMetatable(L, -1, "DamageModifier");
-		return 1;
-	}
-
-	lua_pushnil(L);
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetType(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
-	{
-		if (const auto modType = getNumber<uint8_t>(L, 2)) 
-		{
-			modifier->setType(modType);
-		}
-	}
-	else 
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetStance(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
-	{
-		if (const auto stance = getNumber<uint8_t>(L, 2))
-		{
-			modifier->setStance(stance);
-		}
-	}
-	else
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetChance(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
-	{
-		if (const auto chance = getNumber<uint8_t>(L, 2))
-		{
-			modifier->setChance(chance);
-		}
-	}
-	else
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetValue(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
-	{
-		if (const auto amount = getNumber<uint8_t>(L, 2)) 
-		{
-			modifier->setValue(amount);
-		}
-	} 
-	else 
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetRateFactor(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
-	{
-		if (const auto factor = getNumber<uint8_t>(L, 2)) 
-		{
-			modifier->setFactor(factor);
-		}
-	} 
-	else 
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetCombatFilter(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
-	{
-		if (auto combatType = getNumber<CombatType_t>(L, 2); combatType >= 0)
-		{
-			modifier->setCombatType(combatType);
-		}
-	} 
-	else 
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetOriginFilter(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1)) 
-	{
-		if (const auto origin = getNumber<CombatOrigin>(L, 2)) 
-		{
-			modifier->setOriginType(origin);
-		}
-	}
-	else 
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetRaceFilter(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
-	{
-		if (const auto race = getNumber<RaceType_t>(L, 2))
-		{
-			modifier->setRaceType(race);
-		}
-	}
-	else
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetCreatureTypeFilter(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
-	{
-		if (const auto c_type = getNumber<CreatureType_t>(L, 2))
-		{
-			modifier->setCreatureType(c_type);
-		}
-	}
-	else
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierSetCreatureName(lua_State* L)
-{
-	if (const auto& modifier = getSharedPtr<DamageModifier>(L, 1))
-	{
-			modifier->setCreatureName(getString(L, 2, "none"));
-	}
-	else
-	{
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetType(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getType());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetStance(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getStance());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetChance(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getChance());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetValue(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getValue());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetFactor(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->isPercent() ? PERCENT_MODIFIER : FLAT_MODIFIER);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetCombatType(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getDamageType());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetOriginType(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getOriginType());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetRaceType(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getRaceType());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetCreatureType(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getCreatureType());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetCreatureName(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		pushString(L, modifier->getMonsterName());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierGetConversionType(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushinteger(L, modifier->getConversionType());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDamageModifierIsPercent(lua_State* L)
-{
-	const auto& modifier = getSharedPtr<DamageModifier>(L, 1);
-	if (modifier) {
-		lua_pushboolean(L, modifier->isPercent());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
 int LuaScriptInterface::luaAugmentRegister(lua_State* L)
 {
 	if (lua_gettop(L) < 2) {
@@ -8976,26 +8378,27 @@ int LuaScriptInterface::luaAugmentRegister(lua_State* L)
 		return 1;
 	}
 
-	const auto& augment = getSharedPtr<Augment>(L, 1);
-	if (Augments::GetAugment(augment->getName())) 
+	const auto& augment = getSharedPtr<BlackTek::Augment>(L, 1);
+	if (BlackTek::Augments::GetAugment(augment->getName())) 
 	{
 		// already registered
 		lua_pushboolean(L, 0);
 		return 1;
 	}
-	Augments::AddAugment(augment);
+	BlackTek::Augments::AddAugment(augment);
 	lua_pushboolean(L, 1);
 	return 1;
 }
 
 int LuaScriptInterface::luaAugmentCreate(lua_State* L)
-{	// To-do : Augment(augment) and Augment(name) <-- where name is looked up from global collection.
+{
+	// Todo: change this to use tables for modifiers
 	// Augment(name, description, modifier or table_of_modifiers)
 
 	if (isString(L, 2)) {
 		const auto name = getString(L, 2);
 
-		if (const auto augment = Augments::GetAugment(name)) {
+		if (const auto augment = BlackTek::Augments::GetAugment(name)) {
 			pushSharedPtr(L, augment);
 			setMetatable(L, -1, "Augment");
 			return 1; // return early here because we found a global augment with this name
@@ -9003,9 +8406,9 @@ int LuaScriptInterface::luaAugmentCreate(lua_State* L)
 
 		auto description = getString(L, 3);
 		if (isUserdata(L, 4)) {
-			if (auto modifier = getSharedPtr<DamageModifier>(L, 4)) {
-				auto augment = Augment::MakeAugment(name, description);
-				augment->addModifier(modifier);
+			if (auto modifier = getUserdata<DamageModifier>(L, 4)) {
+				auto augment = BlackTek::Augment::MakeAugment(name, description);
+				//augment->addModifier(modifier);
 				pushSharedPtr(L, augment);
 				setMetatable(L, -1, "Augment");
 			} else {
@@ -9035,9 +8438,9 @@ int LuaScriptInterface::luaAugmentCreate(lua_State* L)
 
 			// Create augment with all modifiers
 			// To-do : Add augments created this particular way to global table
-			const auto augment = Augment::MakeAugment(name, description);
+			const auto augment = BlackTek::Augment::MakeAugment(name, description);
 			for (auto& modifier : list) {
-				augment->addModifier(modifier);
+				//augment->addModifier(modifier);
 			}
 			pushSharedPtr(L, augment);
 			setMetatable(L, -1, "Augment");
@@ -9055,34 +8458,34 @@ int LuaScriptInterface::luaAugmentCreate(lua_State* L)
 int LuaScriptInterface::luaAugmentSetName(lua_State* L)
 {
 	// Augment:setName(newName)
-	const auto augment = getSharedPtr<Augment>(L, 1);
+	const auto augment = getSharedPtr<BlackTek::Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		return 0;
 	}
 
 	auto newName = getString(L, 2);
-	augment->setName(newName);
+	//augment->setName(newName);
 	return 0;
 }
 
 int LuaScriptInterface::luaAugmentSetDescription(lua_State* L)
 {
 	// Augment:getDescription(newDescription)
-	const auto augment = getSharedPtr<Augment>(L, 1);
+	const auto augment = getSharedPtr<BlackTek::Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		return 0;
 	}
 
 	const auto newDescription = getString(L, 2);
-	augment->setDescription(newDescription);
+	//augment->setDescription(newDescription);
 	return 0;
 }
 
 int LuaScriptInterface::luaAugmentGetName(lua_State* L) {
 	// Augment:getName()
-	const auto augment = getSharedPtr<Augment>(L, 1); // Get augment object
+	const auto augment = getSharedPtr<BlackTek::Augment>(L, 1); // Get augment object
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		lua_pushnil(L);
@@ -9096,7 +8499,7 @@ int LuaScriptInterface::luaAugmentGetName(lua_State* L) {
 
 int LuaScriptInterface::luaAugmentGetDescription(lua_State* L) {
 	// Augment:getDescription()
-	const auto& augment = getSharedPtr<Augment>(L, 1);
+	const auto& augment = getSharedPtr<BlackTek::Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		lua_pushnil(L);
@@ -9112,7 +8515,7 @@ int LuaScriptInterface::luaAugmentGetDescription(lua_State* L) {
 int LuaScriptInterface::luaAugmentAddDamageModifier(lua_State* L)
 {
 	// Augment:addDamageModifier(modifier)
-	const auto augment = getSharedPtr<Augment>(L, 1);
+	const auto augment = getSharedPtr<BlackTek::Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		return 0;
@@ -9124,14 +8527,14 @@ int LuaScriptInterface::luaAugmentAddDamageModifier(lua_State* L)
 		return 0;
 	}
 
-	augment->addModifier(modifier);
+	//augment->addModifier(modifier);
 	return 0;
 }
 
 int LuaScriptInterface::luaAugmentRemoveDamageModifier(lua_State* L)
 {
 	// Augment:RemoveDamageModifier(modifier)
-	const auto augment = getSharedPtr<Augment>(L, 1);
+	const auto augment = getSharedPtr<BlackTek::Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		return 0;
@@ -9143,13 +8546,13 @@ int LuaScriptInterface::luaAugmentRemoveDamageModifier(lua_State* L)
 		return 0;
 	}
 
-	augment->removeModifier(modifier);
+	//augment->removeModifier(modifier);
 	return 0;
 }
 
 int LuaScriptInterface::luaAugmentGetAttackModifiers(lua_State* L) {
 	// Augment:GetAttackModifiers([modType])
-	const auto augment = getSharedPtr<Augment>(L, 1);
+	const auto augment = getSharedPtr<BlackTek::Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		lua_pushnil(L);
@@ -9158,12 +8561,12 @@ int LuaScriptInterface::luaAugmentGetAttackModifiers(lua_State* L) {
 
 	std::vector<std::shared_ptr<DamageModifier>> modifiers;
 
-	if (lua_gettop(L) > 1 && lua_isinteger(L, 2)) {
-		const uint8_t modType = static_cast<uint8_t>(lua_tointeger(L, 2));
-		modifiers = augment->getAttackModifiers(modType);
-	} else {
-		modifiers = augment->getAttackModifiers();
-	}
+	//if (lua_gettop(L) > 1 && lua_isinteger(L, 2)) {
+	//	const uint8_t modType = static_cast<uint8_t>(lua_tointeger(L, 2));
+	//	modifiers = augment->getAttackModifiers(modType);
+	//} else {
+	//	modifiers = augment->getAttackModifiers();
+	//}
 
 	lua_newtable(L);
 	int index = 1;
@@ -9178,7 +8581,7 @@ int LuaScriptInterface::luaAugmentGetAttackModifiers(lua_State* L) {
 
 int LuaScriptInterface::luaAugmentGetDefenseModifiers(lua_State* L) {
 	// Augment:GetDefenseModifiers([modType])
-	const auto augment = getSharedPtr<Augment>(L, 1);
+	const auto augment = getSharedPtr<BlackTek::Augment>(L, 1);
 	if (!augment) {
 		reportError(__FUNCTION__, "Invalid Augment userdata\n");
 		lua_pushnil(L);
@@ -9187,12 +8590,12 @@ int LuaScriptInterface::luaAugmentGetDefenseModifiers(lua_State* L) {
 
 	std::vector<std::shared_ptr<DamageModifier>> modifiers;
 
-	if (lua_gettop(L) > 1 && lua_isinteger(L, 2)) {
-		uint8_t modType = static_cast<uint8_t>(lua_tointeger(L, 2));
-		modifiers = augment->getDefenseModifiers(modType);
-	} else {
-		modifiers = augment->getDefenseModifiers();
-	}
+	//if (lua_gettop(L) > 1 && lua_isinteger(L, 2)) {
+	//	uint8_t modType = static_cast<uint8_t>(lua_tointeger(L, 2));
+	//	modifiers = augment->getDefenseModifiers(modType);
+	//} else {
+	//	modifiers = augment->getDefenseModifiers();
+	//}
 
 	lua_newtable(L);
 	int index = 1;
@@ -9213,6 +8616,201 @@ void LuaScriptInterface::pushDamageModifier(lua_State* L, const std::shared_ptr<
     } else {
         lua_pushnil(L);
     }
+}
+
+// DamageModifier
+int LuaScriptInterface::luaDamageModifierCreate(lua_State* L)
+{
+	auto modifier = std::make_shared<DamageModifier>();
+	pushSharedPtr(L, modifier);
+	setMetatable(L, -1, "DamageModifier");
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetType(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	modifier->setType(getNumber<uint8_t>(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetStance(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	modifier->mod_stance = getNumber<uint8_t>(L, 2);
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetChance(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	modifier->setChance(getNumber<uint8_t>(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetValue(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	modifier->setValue(getNumber<uint16_t>(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetRateFactor(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	modifier->setFactor(getNumber<uint8_t>(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetCombatFilter(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	modifier->setCombatType(getNumber<uint16_t>(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetOriginFilter(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	modifier->setOriginType(getNumber<uint8_t>(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetRaceFilter(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	modifier->setRaceType(getNumber<uint8_t>(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetCreatureTypeFilter(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	modifier->setCreatureType(getNumber<uint8_t>(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierSetCreatureName(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	modifier->setCreatureName(getString(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetType(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	lua_pushinteger(L, modifier->getType());
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetStance(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	lua_pushinteger(L, modifier->getStance());
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetChance(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	lua_pushinteger(L, modifier->getChance());
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetValue(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	lua_pushinteger(L, modifier->getValue());
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetFactor(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	lua_pushinteger(L, modifier->factor);
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetCombatType(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	lua_pushinteger(L, modifier->getDamageType());
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetOriginType(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	lua_pushinteger(L, modifier->getOriginType());
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetRaceType(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	lua_pushinteger(L, modifier->getRaceType());
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetCreatureType(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	lua_pushinteger(L, modifier->getCreatureType());
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetCreatureName(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	pushString(L, modifier->getMonsterName());
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierGetConversionType(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	lua_pushinteger(L, modifier->getConversionType());
+	return 1;
+}
+
+int LuaScriptInterface::luaDamageModifierIsPercent(lua_State* L)
+{
+	const auto modifier = getSharedPtr<DamageModifier>(L, 1);
+	if (not modifier) { lua_pushnil(L); return 1; }
+	pushBoolean(L, modifier->isPercent());
+	return 1;
 }
 
 // Container
@@ -9494,15 +9092,24 @@ int LuaScriptInterface::luaContainerGetItems(lua_State* L)
 	}
 
 	bool recursive = getBoolean(L, 2, false);
-	const auto items = container->getItems(recursive);
-
-	lua_createtable(L, items.size(), 0);
 
 	int index = 0;
-	for (const auto item : items) {
-		pushSharedPtr(L, item);
-		setItemMetatable(L, -1, item);
-		lua_rawseti(L, -2, ++index);
+	if (recursive) {
+		lua_newtable(L);
+		for (ContainerIterator it = container->iterator(); it.hasNext(); it.advance()) {
+			const auto item = *it;
+			pushSharedPtr(L, item);
+			setItemMetatable(L, -1, item);
+			lua_rawseti(L, -2, ++index);
+		}
+	} else {
+		const auto& itemList = container->getItemList();
+		lua_createtable(L, static_cast<int>(itemList.size()), 0);
+		for (const auto& item : itemList) {
+			pushSharedPtr(L, item);
+			setItemMetatable(L, -1, item);
+			lua_rawseti(L, -2, ++index);
+		}
 	}
 	return 1;
 }
@@ -10064,14 +9671,25 @@ int LuaScriptInterface::luaCreatureAddHealth(lua_State* L)
 		return 1;
 	}
 
-	CombatDamage damage;
-	damage.primary.value = getNumber<int32_t>(L, 2);
-	if (damage.primary.value >= 0) {
-		damage.primary.type = COMBAT_HEALING;
-	} else {
-		damage.primary.type = COMBAT_UNDEFINEDDAMAGE;
+	const int32_t healthChange = getNumber<int32_t>(L, 2);
+	if (healthChange >= 0)
+	{
+		auto heal = BlackTek::g_combat_registry.Create(
+		    static_cast<uint16_t>(BlackTek::Combat::DamageType::Healing),
+		    static_cast<uint32_t>(healthChange));
+		heal->SetConfig(BlackTek::Combat::Config::HealthTarget);
+		heal->SetConfig(BlackTek::Combat::Config::TrueDamage);
+		heal->heal_target(creature, creature, true);
 	}
-	pushBoolean(L, g_game.combatChangeHealth(nullptr, creature, damage));
+	else
+	{
+		auto dmg = BlackTek::g_combat_registry.Create(
+		    static_cast<uint16_t>(BlackTek::Combat::DamageType::Undefined),
+		    static_cast<uint32_t>(-healthChange));
+		dmg->SetConfig(BlackTek::Combat::Config::TrueDamage);
+		dmg->strike_target(creature, creature, true);
+	}
+	pushBoolean(L, true);
 	return 1;
 }
 
@@ -11911,11 +11529,25 @@ int LuaScriptInterface::luaPlayerAddMana(lua_State* L)
 	const bool animationOnLoss = getBoolean(L, 3, false);
 	if (!animationOnLoss && manaChange < 0) {
 		player->changeMana(manaChange);
-	} else {
-		CombatDamage damage;
-		damage.primary.value = manaChange;
-		damage.origin = ORIGIN_NONE;
-		g_game.combatChangeMana(nullptr, player, damage);
+	}
+	else if (manaChange >= 0)
+	{
+		auto mana = BlackTek::g_combat_registry.Create(
+		    static_cast<uint16_t>(BlackTek::Combat::DamageType::Healing),
+		    static_cast<uint32_t>(manaChange));
+		mana->SetConfig(BlackTek::Combat::Config::ManaTarget);
+		mana->SetConfig(BlackTek::Combat::Config::TrueDamage);
+		mana->setOrigin(BlackTek::Combat::Origin::None);
+		mana->heal_target(player, player, true);
+	}
+	else
+	{
+		auto drain = BlackTek::g_combat_registry.Create(
+		    static_cast<uint16_t>(BlackTek::Combat::DamageType::ManaDrain),
+		    static_cast<uint32_t>(-manaChange));
+		drain->SetConfig(BlackTek::Combat::Config::TrueDamage);
+		drain->setOrigin(BlackTek::Combat::Origin::None);
+		drain->strike_target(player, player, true);
 	}
 	pushBoolean(L, true);
 	return 1;
@@ -13742,7 +13374,8 @@ int LuaScriptInterface::luaPlayerGetEquipment(lua_State* L)
 	}
 
 	auto validate = (isBoolean(L, 2)) ? getBoolean(L, 2) : true;
-	auto equipment = player->getEquipment(validate);
+	std::vector<ItemPtr> equipment;
+	player->getEquipment(equipment, validate);
 
 	lua_newtable(L);
 	int index = 1;
@@ -13763,14 +13396,14 @@ int LuaScriptInterface::luaPlayerAddAugment(lua_State* L)
 	}
 
 	if (isString(L, 2)) {
-		if (auto augment = Augments::GetAugment(getString(L, 2))) {
+		if (auto augment = BlackTek::Augments::GetAugment(getString(L, 2))) {
 			lua_pushboolean(L, player->addAugment(augment));
 		} else {
 			lua_pushnil(L);
 			reportError(__FUNCTION__, "Player::addAugment() argument not found as any name in augments loaded on startup! \n");
 		}
 	} else if (isUserdata(L, 2)) {
-		if (std::shared_ptr augment = getSharedPtr<Augment>(L, 2)) {
+		if (std::shared_ptr augment = getSharedPtr<BlackTek::Augment>(L, 2)) {
 			lua_pushboolean(L, player->addAugment(augment));
 		} else {
 			lua_pushnil(L);
@@ -13795,7 +13428,7 @@ int LuaScriptInterface::luaPlayerRemoveAugment(lua_State* L)
 		const auto name = getString(L, 2);
 		lua_pushboolean(L, player->removeAugment(name));
 	} else if (isUserdata(L, 2)) {
-		if (std::shared_ptr<Augment> augment = getSharedPtr<Augment>(L, 2)) {
+		if (std::shared_ptr<BlackTek::Augment> augment = getSharedPtr<BlackTek::Augment>(L, 2)) {
 			lua_pushboolean(L, player->removeAugment(augment));
 		} else {
 			reportError(__FUNCTION__, "Player::removeAugment() invalid userdata type passed as argument! \n");
@@ -13832,7 +13465,7 @@ int LuaScriptInterface::luaPlayerHasAugment(lua_State* L)
 		const auto checkItems = getBoolean(L, 3);
 		lua_pushboolean(L, player->hasAugment(name, checkItems));
 	} else if (isUserdata(L, 2)) {
-		if (std::shared_ptr<Augment>& augment = getSharedPtr<Augment>(L, 2)) {
+		if (std::shared_ptr<BlackTek::Augment>& augment = getSharedPtr<BlackTek::Augment>(L, 2)) {
 			if (isBoolean(L, 3)) {
 				const auto checkItems = getBoolean(L, 3);
 				lua_pushboolean(L, player->hasAugment(augment, checkItems));
@@ -16162,78 +15795,417 @@ int LuaScriptInterface::luaItemTypeIsStoreItem(lua_State* L)
 // Combat
 int LuaScriptInterface::luaCombatCreate(lua_State* L)
 {
-	// Combat()
-	pushSharedPtr(L, g_luaEnvironment.createCombatObject(getScriptEnv()->getScriptInterface()));
+	// Combat() or Combat(table)
+	pushCombatHandle(L, g_luaEnvironment.createCombatObject(getScriptEnv()->getScriptInterface()));
 	setMetatable(L, -1, "Combat");
+
+	if (not isTable(L, 2))
+	{
+		return 1;
+	}
+
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, -1);
+	if (not combat)
+	{
+		return 1;
+	}
+
+	lua_getfield(L, 2, "damageType");
+	if (lua_isnumber(L, -1))
+	{
+		const auto type = static_cast<uint16_t>(lua_tointeger(L, -1));
+		combat->SetDamageType(type);
+		using DT = BlackTek::Combat::DamageType;
+		const bool is_utility = (type == DT::Unknown || type == DT::Healing);
+		combat->SetConfig(BlackTek::Combat::Config::Aggressive, !is_utility);
+		combat->SetConfig(BlackTek::Combat::Config::IsUtility, is_utility);
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, 2, "impactEffect");
+	if (lua_isnumber(L, -1))
+	{
+		combat->SetImpactEffect(static_cast<uint8_t>(lua_tointeger(L, -1)));
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, 2, "distanceEffect");
+	if (lua_isnumber(L, -1))
+	{
+		combat->SetDistanceEffect(static_cast<uint8_t>(lua_tointeger(L, -1)));
+	}
+	lua_pop(L, 1);
+
+	// createdItem and itemId are aliases; createdItem takes priority
+	lua_getfield(L, 2, "createdItem");
+	const bool hasCreatedItem = lua_isnumber(L, -1);
+	if (hasCreatedItem)
+	{
+		combat->SetItemId(static_cast<uint16_t>(lua_tointeger(L, -1)));
+	}
+	lua_pop(L, 1);
+	if (not hasCreatedItem)
+	{
+		lua_getfield(L, 2, "itemId");
+		if (lua_isnumber(L, -1))
+		{
+			combat->SetItemId(static_cast<uint16_t>(lua_tointeger(L, -1)));
+		}
+		lua_pop(L, 1);
+	}
+
+	lua_getfield(L, 2, "origin");
+	if (lua_isnumber(L, -1))
+	{
+		combat->setOrigin(static_cast<BlackTek::Combat::Origin>(lua_tointeger(L, -1)));
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, 2, "damage");
+	if (lua_isnumber(L, -1))
+	{
+		combat->SetDamage(static_cast<uint32_t>(std::abs(static_cast<int32_t>(lua_tointeger(L, -1)))));
+	}
+	lua_pop(L, 1);
+
+	using Config = BlackTek::Combat::Config;
+	const auto applyFlag = [&](const char* key, Config flag)
+	{
+		lua_getfield(L, 2, key);
+		if (lua_isboolean(L, -1))
+		{
+			combat->SetConfig(flag, lua_toboolean(L, -1) != 0);
+		}
+		lua_pop(L, 1);
+	};
+	applyFlag("trueDamage",      Config::TrueDamage);
+	applyFlag("blockedByArmor",  Config::BlockedByArmor);
+	applyFlag("blockedByShield", Config::BlockedByDefense);
+	applyFlag("topTargetOnly",   Config::TopTargetOnly);
+	applyFlag("selfOnly",        Config::SelfOnly);
+	applyFlag("friendlyParty",   Config::FriendlyParty);
+	applyFlag("enemyParty",      Config::EnemyParty);
+	applyFlag("fraggedOnly",     Config::FraggedOnly);
+	applyFlag("multiLevel",      Config::MultiLevel);
+	applyFlag("ignoreGround",    Config::IgnoreGround);
+	applyFlag("aggressive",      Config::Aggressive);
+	applyFlag("isUtility",       Config::IsUtility);
+	applyFlag("ignoreBarriers",  Config::IgnoreBarriers);
+	applyFlag("useCharges",      Config::UseCharges);
+
+	lua_getfield(L, 2, "area");
+	if (lua_isnumber(L, -1))
+	{
+		const BlackTek::AreaCombat* area = g_luaEnvironment.getAreaObject(static_cast<uint32_t>(lua_tointeger(L, -1)));
+		if (area)
+		{
+			combat->setArea(new BlackTek::AreaCombat(*area));
+		}
+	}
+	lua_pop(L, 1);
+
+	// formula = { mina, minb, maxa, maxb } — positional array, or named fields, or both
+	// Named fields (mina/minb/maxa/maxb) override positional values when present.
+	// Applies the same output factors to all four combat situations.
+	lua_getfield(L, 2, "formula");
+	if (lua_istable(L, -1))
+	{
+		float mina = 0.f, minb = 0.f, maxa = 0.f, maxb = 0.f;
+
+		lua_rawgeti(L, -1, 1); if (lua_isnumber(L, -1)) { mina = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+		lua_rawgeti(L, -1, 2); if (lua_isnumber(L, -1)) { minb = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+		lua_rawgeti(L, -1, 3); if (lua_isnumber(L, -1)) { maxa = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+		lua_rawgeti(L, -1, 4); if (lua_isnumber(L, -1)) { maxb = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+
+		lua_getfield(L, -1, "mina"); if (lua_isnumber(L, -1)) { mina = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+		lua_getfield(L, -1, "minb"); if (lua_isnumber(L, -1)) { minb = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+		lua_getfield(L, -1, "maxa"); if (lua_isnumber(L, -1)) { maxa = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+		lua_getfield(L, -1, "maxb"); if (lua_isnumber(L, -1)) { maxb = static_cast<float>(lua_tonumber(L, -1)); } lua_pop(L, 1);
+
+		BlackTek::Combat::OutputFactors factors = BlackTek::Combat::ClassicOutput;
+		factors.min_scale = mina;
+		factors.min_base  = minb;
+		factors.max_scale = maxa;
+		factors.max_base  = maxb;
+
+		for (uint8_t i = 0; i < 4; ++i)
+		{
+			BlackTek::SituationFormulas sf = BlackTek::g_default_situation_formulas[i];
+			sf.output = factors;
+			combat->SetSituationFormulas(i, std::move(sf));
+		}
+	}
+	lua_pop(L, 1);
+
+	// situationFormulas = { [0]={...}, [1]={...}, [2]={...}, [3]={...} }
+	// Uses 0-based keys consistent with Combat.Situation.PvP/PvM/MvP/MvM constants.
+	// Each sub-table accepts "output", "defense", "armor", and "resolution" preset name strings.
+	// Applied after "formula", so per-situation overrides always win.
+	lua_getfield(L, 2, "situationFormulas");
+	if (lua_istable(L, -1))
+	{
+		for (uint8_t sit = 0; sit < 4; ++sit)
+		{
+			lua_rawgeti(L, -1, sit);
+			if (lua_istable(L, -1))
+			{
+				BlackTek::SituationFormulas sf = BlackTek::g_default_situation_formulas[sit];
+
+				lua_getfield(L, -1, "output");
+				if (isString(L, -1)) { BlackTek::ApplyOutputPreset(sf.output, getString(L, -1)); }
+				lua_pop(L, 1);
+
+				lua_getfield(L, -1, "defense");
+				if (isString(L, -1)) { BlackTek::ApplyDefensePreset(sf.defense, getString(L, -1)); }
+				lua_pop(L, 1);
+
+				lua_getfield(L, -1, "armor");
+				if (isString(L, -1)) { BlackTek::ApplyArmorPreset(sf.armor, getString(L, -1)); }
+				lua_pop(L, 1);
+
+				lua_getfield(L, -1, "resolution");
+				if (isString(L, -1)) { BlackTek::ApplyResolutionPreset(sf.resolution, getString(L, -1)); }
+				lua_pop(L, 1);
+
+				combat->SetSituationFormulas(sit, std::move(sf));
+			}
+			lua_pop(L, 1);
+		}
+	}
+	lua_pop(L, 1);
+
+	// conditions = { cond1, cond2, ... } — array of Condition userdata; all are cloned onto the combat
+	lua_getfield(L, 2, "conditions");
+	if (lua_istable(L, -1))
+	{
+		lua_pushnil(L);
+		while (lua_next(L, -2) != 0)
+		{
+			Condition* cond = getUserdata<Condition>(L, -1);
+			if (cond)
+			{
+				combat->AddCondition(cond->clone());
+			}
+			lua_pop(L, 1);
+		}
+	}
+	lua_pop(L, 1);
+
+	// condition = cond — single Condition userdata, convenience alias for a one-condition combat
+	lua_getfield(L, 2, "condition");
+	if (not lua_isnil(L, -1))
+	{
+		Condition* cond = getUserdata<Condition>(L, -1);
+		if (cond)
+		{
+			combat->AddCondition(cond->clone());
+		}
+	}
+	lua_pop(L, 1);
+
 	return 1;
 }
 
 int LuaScriptInterface::luaCombatDelete(lua_State* L)
 {
-	if (Combat_ptr& combat = getSharedPtr<Combat>(L, 1)) {
-		combat.reset();
-	}
+	auto& handle = getCombatHandle<BlackTek::Combat>(L, 1);
+	std::destroy_at(std::addressof(handle));
 	return 0;
 }
 
-int LuaScriptInterface::luaCombatSetParameter(lua_State* L)
+int LuaScriptInterface::luaCombatSetConfigFlag(lua_State* L)
 {
-	// combat:setParameter(key, value)
-	const Combat_ptr& combat = getSharedPtr<Combat>(L, 1);
-	if (!combat) {
+	// combat:setXxx(value) — Config flag is upvalue 1
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
 		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
 
-	CombatParam_t key = getNumber<CombatParam_t>(L, 2);
-	uint32_t value;
-	if (isBoolean(L, 3)) {
-		value = getBoolean(L, 3) ? 1 : 0;
-	} else {
-		value = getNumber<uint32_t>(L, 3);
-	}
-	combat->setParam(key, value);
+	const auto flag = static_cast<BlackTek::Combat::Config>(
+		static_cast<int>(lua_tointeger(L, lua_upvalueindex(1))));
+	const bool value = getBoolean(L, 2, true);
+	combat->SetConfig(flag, value);
 	pushBoolean(L, true);
 	return 1;
 }
 
-int LuaScriptInterface::luaCombatGetParameter(lua_State* L)
+int LuaScriptInterface::luaCombatGetConfigFlag(lua_State* L)
 {
-	// combat:getParameter(key)
-	const Combat_ptr& combat = getSharedPtr<Combat>(L, 1);
-	if (!combat) {
+	// combat:isXxx() — Config flag is upvalue 1
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
 		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
 
-	int32_t value = combat->getParam(getNumber<CombatParam_t>(L, 2));
-	if (value == std::numeric_limits<int32_t>().max()) {
+	const auto flag = static_cast<BlackTek::Combat::Config>(
+		static_cast<int>(lua_tointeger(L, lua_upvalueindex(1))));
+	pushBoolean(L, combat->GetConfig(flag));
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatSetDamageType(lua_State* L)
+{
+	// combat:setDamageType(damageType)
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
 
-	lua_pushinteger(L, value);
+	const auto type = getNumber<uint16_t>(L, 2);
+	combat->SetDamageType(type);
+	using DT = BlackTek::Combat::DamageType;
+	const bool is_utility = (type == DT::Unknown or type == DT::Healing);
+	combat->SetConfig(BlackTek::Combat::Config::Aggressive, not is_utility);
+	combat->SetConfig(BlackTek::Combat::Config::IsUtility, is_utility);
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatGetDamageType(lua_State* L)
+{
+	// combat:getDamageType()
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushinteger(L, combat->GetDamageType());
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatSetImpactEffect(lua_State* L)
+{
+	// combat:setImpactEffect(effect)
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	combat->SetImpactEffect(getNumber<uint8_t>(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatGetImpactEffect(lua_State* L)
+{
+	// combat:getImpactEffect()
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushinteger(L, combat->GetImpactEffect());
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatSetDistanceEffect(lua_State* L)
+{
+	// combat:setDistanceEffect(effect)
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	combat->SetDistanceEffect(getNumber<uint8_t>(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatGetDistanceEffect(lua_State* L)
+{
+	// combat:getDistanceEffect()
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushinteger(L, combat->GetDistanceEffect());
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatSetCreatedItem(lua_State* L)
+{
+	// combat:setCreatedItem(itemId)
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	combat->SetItemId(getNumber<uint16_t>(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatGetCreatedItem(lua_State* L)
+{
+	// combat:getCreatedItem()
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushinteger(L, combat->GetItemId());
 	return 1;
 }
 
 int LuaScriptInterface::luaCombatSetFormula(lua_State* L)
 {
-	// combat:setFormula(type, mina, minb, maxa, maxb)
-	const Combat_ptr& combat = getSharedPtr<Combat>(L, 1);
-	if (!combat) {
+	// combat:setMinMaxFormula(mina, minb, maxa, maxb)
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
 		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
 
-	formulaType_t type = getNumber<formulaType_t>(L, 2);
-	double mina = getNumber<double>(L, 3);
-	double minb = getNumber<double>(L, 4);
-	double maxa = getNumber<double>(L, 5);
-	double maxb = getNumber<double>(L, 6);
-	combat->setPlayerCombatValues(type, mina, minb, maxa, maxb);
+	float mina = static_cast<float>(getNumber<double>(L, 2));
+	float minb = static_cast<float>(getNumber<double>(L, 3));
+	float maxa = static_cast<float>(getNumber<double>(L, 4));
+	float maxb = static_cast<float>(getNumber<double>(L, 5));
+
+	BlackTek::Combat::OutputFactors factors = BlackTek::Combat::ClassicOutput;
+	factors.min_scale = mina;
+	factors.min_base  = minb;
+	factors.max_scale = maxa;
+	factors.max_base  = maxb;
+
+	for (uint8_t i = 0; i < 4; ++i)
+	{
+		BlackTek::SituationFormulas sf = BlackTek::g_default_situation_formulas[i];
+		sf.output = factors;
+		combat->SetSituationFormulas(i, std::move(sf));
+	}
 	pushBoolean(L, true);
 	return 1;
 }
@@ -16241,27 +16213,30 @@ int LuaScriptInterface::luaCombatSetFormula(lua_State* L)
 int LuaScriptInterface::luaCombatSetArea(lua_State* L)
 {
 	// combat:setArea(area)
-	if (getScriptEnv()->getScriptId() != EVENT_ID_LOADING) {
+	if (getScriptEnv()->getScriptId() != EVENT_ID_LOADING)
+	{
 		reportErrorFunc(L, "This function can only be used while loading the script.");
 		lua_pushnil(L);
 		return 1;
 	}
 
-	const AreaCombat* area = g_luaEnvironment.getAreaObject(getNumber<uint32_t>(L, 2));
-	if (!area) {
+	const BlackTek::AreaCombat* area = g_luaEnvironment.getAreaObject(getNumber<uint32_t>(L, 2));
+	if (not area)
+	{
 		reportErrorFunc(L, getErrorDesc(LUA_ERROR_AREA_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
 
-	const Combat_ptr& combat = getSharedPtr<Combat>(L, 1);
-	if (!combat) {
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
 		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
 
-	combat->setArea(new AreaCombat(*area));
+	combat->setArea(new BlackTek::AreaCombat(*area));
 	pushBoolean(L, true);
 	return 1;
 }
@@ -16269,18 +16244,22 @@ int LuaScriptInterface::luaCombatSetArea(lua_State* L)
 int LuaScriptInterface::luaCombatAddCondition(lua_State* L)
 {
 	// combat:addCondition(condition)
-	const Combat_ptr& combat = getSharedPtr<Combat>(L, 1);
-	if (!combat) {
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
 		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
 
 	Condition* condition = getUserdata<Condition>(L, 2);
-	if (condition) {
-		combat->addCondition(condition->clone());
+	if (condition)
+	{
+		combat->AddCondition(condition->clone());
 		pushBoolean(L, true);
-	} else {
+	}
+	else
+	{
 		lua_pushnil(L);
 	}
 	return 1;
@@ -16289,56 +16268,31 @@ int LuaScriptInterface::luaCombatAddCondition(lua_State* L)
 int LuaScriptInterface::luaCombatClearConditions(lua_State* L)
 {
 	// combat:clearConditions()
-	const Combat_ptr& combat = getSharedPtr<Combat>(L, 1);
-	if (!combat) {
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
 		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
 
-	combat->clearConditions();
+	combat->ClearConditions();
 	pushBoolean(L, true);
-	return 1;
-}
-
-int LuaScriptInterface::luaCombatSetCallback(lua_State* L)
-{
-	// combat:setCallback(key, function)
-	const Combat_ptr& combat = getSharedPtr<Combat>(L, 1);
-	if (!combat) {
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
-		lua_pushnil(L);
-		return 1;
-	}
-
-	CallBackParam_t key = getNumber<CallBackParam_t>(L, 2);
-	if (!combat->setCallback(key)) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	CallBack* callback = combat->getCallback(key);
-	if (!callback) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	const std::string& function = getString(L, 3);
-	pushBoolean(L, callback->loadCallBack(getScriptEnv()->getScriptInterface(), function));
 	return 1;
 }
 
 int LuaScriptInterface::luaCombatSetOrigin(lua_State* L)
 {
 	// combat:setOrigin(origin)
-	const Combat_ptr& combat = getSharedPtr<Combat>(L, 1);
-	if (!combat) {
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
 		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
 
-	combat->setOrigin(getNumber<CombatOrigin>(L, 2));
+	combat->setOrigin(getNumber<BlackTek::Combat::Origin>(L, 2));
 	pushBoolean(L, true);
 	return 1;
 }
@@ -16346,78 +16300,466 @@ int LuaScriptInterface::luaCombatSetOrigin(lua_State* L)
 int LuaScriptInterface::luaCombatExecute(lua_State* L)
 {
 	// combat:execute(creature, variant)
-	const Combat_ptr& combat = getSharedPtr<Combat>(L, 1);
-	if (!combat) {
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
 		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
 
-	if (isUserdata(L, 2)) {
+	if (isUserdata(L, 2))
+	{
 		LuaDataType type = getUserdataType(L, 2);
-		if (type != LuaData_Player && type != LuaData_Monster && type != LuaData_Npc) {
+		if (type != LuaData_Player and type != LuaData_Monster and type != LuaData_Npc)
+		{
 			pushBoolean(L, false);
 			return 1;
 		}
 	}
 
 	auto creature = getCreature(L, 2);
-
 	const LuaVariant& variant = getVariant(L, 3);
-	switch (variant.type()) {
-		case VARIANT_NUMBER: {
+
+	switch (variant.type())
+	{
+		case VARIANT_NUMBER:
+		{
 			const auto target = g_game.getCreatureByID(variant.getNumber());
-			if (!target) {
+			if (not target)
+			{
 				pushBoolean(L, false);
 				return 1;
 			}
 
-			if (combat->hasArea()) {
-				combat->doCombat(creature, target->getPosition());
-			} else {
-				combat->doCombat(creature, target);
-			}
+			if (combat->hasArea())
+				combat->execute(creature, target->getPosition());
+			else
+				combat->strike_target(creature, target);
 			break;
 		}
 
-		case VARIANT_POSITION: {
-			combat->doCombat(creature, variant.getPosition());
+		case VARIANT_POSITION:
+		{
+			combat->execute(creature, variant.getPosition());
 			break;
 		}
 
-		case VARIANT_TARGETPOSITION: {
-			if (combat->hasArea()) {
-				combat->doCombat(creature, variant.getTargetPosition());
-			} else {
+		case VARIANT_TARGETPOSITION:
+		{
+			if (combat->hasArea())
+				combat->execute(creature, variant.getTargetPosition());
+			else
+			{
 				combat->postCombatEffects(creature, variant.getTargetPosition());
 				g_game.addMagicEffect(variant.getTargetPosition(), CONST_ME_POFF);
 			}
 			break;
 		}
 
-		case VARIANT_STRING: {
+		case VARIANT_STRING:
+		{
 			const auto target = g_game.getPlayerByName(variant.getString());
-			if (!target) {
+			if (not target)
+			{
 				pushBoolean(L, false);
 				return 1;
 			}
-
-			combat->doCombat(creature, target);
+			combat->strike_target(creature, target);
 			break;
 		}
 
-		case VARIANT_NONE: {
+		case VARIANT_NONE:
+		{
 			reportErrorFunc(L, getErrorDesc(LUA_ERROR_VARIANT_NOT_FOUND));
 			pushBoolean(L, false);
 			return 1;
 		}
 
-		default: {
+		default:
 			break;
-		}
 	}
 
 	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatSetSituationFormulas(lua_State* L)
+{
+	// combat:setSituationFormulas(sit_idx, { output="Preset", defense="Preset", armor="Preset", resolution="Preset" })
+	// sit_idx: 0=PvP, 1=PvM, 2=MvP, 3=MvM
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const uint8_t sit_idx = getNumber<uint8_t>(L, 2);
+	if (sit_idx > 3)
+	{
+		reportErrorFunc(L, "Situation index out of range — use 0 (PvP), 1 (PvM), 2 (MvP) or 3 (MvM).");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (not isTable(L, 3))
+	{
+		reportErrorFunc(L, "Table expected as third argument.");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	BlackTek::SituationFormulas sf = BlackTek::g_default_situation_formulas[sit_idx];
+
+	lua_getfield(L, 3, "output");
+	if (isString(L, -1))
+		BlackTek::ApplyOutputPreset(sf.output, getString(L, -1));
+	lua_pop(L, 1);
+
+	lua_getfield(L, 3, "defense");
+	if (isString(L, -1))
+		BlackTek::ApplyDefensePreset(sf.defense, getString(L, -1));
+	lua_pop(L, 1);
+
+	lua_getfield(L, 3, "armor");
+	if (isString(L, -1))
+		BlackTek::ApplyArmorPreset(sf.armor, getString(L, -1));
+	lua_pop(L, 1);
+
+	lua_getfield(L, 3, "resolution");
+	if (isString(L, -1))
+		BlackTek::ApplyResolutionPreset(sf.resolution, getString(L, -1));
+	lua_pop(L, 1);
+
+	combat->SetSituationFormulas(sit_idx, std::move(sf));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatSetDamage(lua_State* L)
+{
+	// combat:setDamage(amount)
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	combat->SetDamage(static_cast<uint32_t>(std::abs(getNumber<int32_t>(L, 2))));
+	pushBoolean(L, true);
+	return 1;
+}
+
+// ── FormulaNode ──────────────────────────────────────────────────────────────
+// A Lua userdata wrapping a CompiledFormula (std::function<double(FormulaContext)>).
+// All arithmetic on FormulaNode values builds new C++ lambdas — no Lua VM is entered
+// when the formula executes during combat.
+
+static void pushFormulaNode(lua_State* L, BlackTek::CompiledFormula fn)
+{
+	void* ud = lua_newuserdatauv(L, sizeof(BlackTek::CompiledFormula), 0);
+	new (ud) BlackTek::CompiledFormula(std::move(fn));
+	luaL_setmetatable(L, "FormulaNode");
+}
+
+static BlackTek::CompiledFormula* getFormulaNode(lua_State* L, int32_t arg)
+{
+	return static_cast<BlackTek::CompiledFormula*>(luaL_checkudata(L, arg, "FormulaNode"));
+}
+
+// Helper: read one argument as either a FormulaNode or a literal number
+static BlackTek::CompiledFormula nodeOrNumber(lua_State* L, int32_t arg)
+{
+	if (lua_isnumber(L, arg))
+	{
+		const double k = lua_tonumber(L, arg);
+		return [k](const BlackTek::FormulaContext&) -> double { return k; };
+	}
+	if (lua_isuserdata(L, arg))
+	{
+		BlackTek::CompiledFormula fn = *getFormulaNode(L, arg);
+		return fn;
+	}
+	return [](const BlackTek::FormulaContext&) -> double { return 0.0; };
+}
+
+int LuaScriptInterface::luaFormulaNodeBind(lua_State* L)
+{
+	// FormulaNode.bind(BindSource, BindKey) — creates a node that reads a creature stat
+	const auto source = getNumber<BlackTek::Combat::BindSource>(L, 1);
+	const auto key    = getNumber<BlackTek::Combat::BindKey>(L, 2);
+
+	pushFormulaNode(L, [source, key](const BlackTek::FormulaContext& ctx) -> double
+	{
+		const CreaturePtr& creature = (source == BlackTek::Combat::BindSource::Caster) ? ctx.caster : ctx.target;
+		if (!creature)
+			return 0.0;
+		return static_cast<double>(BlackTek::resolve_bind_key(key, creature));
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeBindSkill(lua_State* L)
+{
+	// FormulaNode.bindSkill(BindSource, skillId) — creates a node reading a specific skill level
+	const auto source  = getNumber<BlackTek::Combat::BindSource>(L, 1);
+	const auto skillId = getNumber<uint8_t>(L, 2);
+
+	pushFormulaNode(L, [source, skillId](const BlackTek::FormulaContext& ctx) -> double
+	{
+		const CreaturePtr& creature = (source == BlackTek::Combat::BindSource::Caster) ? ctx.caster : ctx.target;
+		if (!creature or !creature->is_player())
+			return 0.0;
+		return static_cast<double>(creature->getPlayer()->getSkillLevel(skillId));
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeOutput(lua_State* L)
+{
+	// FormulaNode.output() — reads pipeline_a (output damage, used in resolution formulas)
+	pushFormulaNode(L, [](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return static_cast<double>(ctx.pipeline_a);
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeResistance(lua_State* L)
+{
+	// FormulaNode.resistance() — reads pipeline_b (resistance value, used in resolution formulas)
+	pushFormulaNode(L, [](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return static_cast<double>(ctx.pipeline_b);
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeConst(lua_State* L)
+{
+	// FormulaNode.const(n) — a node that always returns the given value
+	const double k = lua_tonumber(L, 1);
+	pushFormulaNode(L, [k](const BlackTek::FormulaContext&) -> double { return k; });
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeRandom(lua_State* L)
+{
+	// FormulaNode.random(min_node_or_number, max_node_or_number) — integer uniform roll
+	auto lo = nodeOrNumber(L, 1);
+	auto hi = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [lo = std::move(lo), hi = std::move(hi)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		const int32_t a = static_cast<int32_t>(lo(ctx));
+		const int32_t b = static_cast<int32_t>(hi(ctx));
+		return static_cast<double>(uniform_random(std::min(a, b), std::max(a, b)));
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeMin(lua_State* L)
+{
+	auto a = nodeOrNumber(L, 1);
+	auto b = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [a = std::move(a), b = std::move(b)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return std::min(a(ctx), b(ctx));
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeMax(lua_State* L)
+{
+	auto a = nodeOrNumber(L, 1);
+	auto b = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [a = std::move(a), b = std::move(b)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return std::max(a(ctx), b(ctx));
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeFloor(lua_State* L)
+{
+	auto a = nodeOrNumber(L, 1);
+	pushFormulaNode(L, [a = std::move(a)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return std::floor(a(ctx));
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeCeil(lua_State* L)
+{
+	auto a = nodeOrNumber(L, 1);
+	pushFormulaNode(L, [a = std::move(a)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return std::ceil(a(ctx));
+	});
+	return 1;
+}
+
+// ── Arithmetic metamethods ────────────────────────────────────────────────────
+
+int LuaScriptInterface::luaFormulaNodeAdd(lua_State* L)
+{
+	auto lhs = nodeOrNumber(L, 1);
+	auto rhs = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [lhs = std::move(lhs), rhs = std::move(rhs)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return lhs(ctx) + rhs(ctx);
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeSub(lua_State* L)
+{
+	auto lhs = nodeOrNumber(L, 1);
+	auto rhs = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [lhs = std::move(lhs), rhs = std::move(rhs)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return lhs(ctx) - rhs(ctx);
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeMul(lua_State* L)
+{
+	auto lhs = nodeOrNumber(L, 1);
+	auto rhs = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [lhs = std::move(lhs), rhs = std::move(rhs)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return lhs(ctx) * rhs(ctx);
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeDiv(lua_State* L)
+{
+	auto lhs = nodeOrNumber(L, 1);
+	auto rhs = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [lhs = std::move(lhs), rhs = std::move(rhs)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		const double d = rhs(ctx);
+		return d != 0.0 ? lhs(ctx) / d : 0.0;
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeUnm(lua_State* L)
+{
+	auto a = nodeOrNumber(L, 1);
+	pushFormulaNode(L, [a = std::move(a)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return -a(ctx);
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodePow(lua_State* L)
+{
+	auto lhs = nodeOrNumber(L, 1);
+	auto rhs = nodeOrNumber(L, 2);
+	pushFormulaNode(L, [lhs = std::move(lhs), rhs = std::move(rhs)](const BlackTek::FormulaContext& ctx) -> double
+	{
+		return std::pow(lhs(ctx), rhs(ctx));
+	});
+	return 1;
+}
+
+int LuaScriptInterface::luaFormulaNodeGC(lua_State* L)
+{
+	auto* fn = static_cast<BlackTek::CompiledFormula*>(lua_touserdata(L, 1));
+	if (fn)
+		std::destroy_at(fn);
+	return 0;
+}
+
+int LuaScriptInterface::luaCombatRegisterFormula(lua_State* L)
+{
+	// combat:registerFormula(stage, sit_idx, node)
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	if (not combat)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const auto stage   = getNumber<BlackTek::FormulaStage>(L, 2);
+	const uint8_t sit  = getNumber<uint8_t>(L, 3);
+	if (sit > 3)
+	{
+		reportErrorFunc(L, "Situation index out of range — use 0 (PvP), 1 (PvM), 2 (MvP) or 3 (MvM).");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	auto* node = getFormulaNode(L, 4);
+	if (not node or not *node)
+	{
+		reportErrorFunc(L, "FormulaNode expected as fourth argument.");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	combat->RegisterCompiledFormula(sit, stage, *node);
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatGetAreaPositions(lua_State* L)
+{
+	// combat:getAreaPositions(creature, variant) → array of positions
+	auto& combat = getCombatHandle<BlackTek::Combat>(L, 1);
+	const auto creature = getCreature(L, 2);
+	const LuaVariant& variant = getVariant(L, 3);
+
+	if (not combat or not creature)
+	{
+		lua_newtable(L);
+		return 1;
+	}
+
+	Position center;
+	switch (variant.type())
+	{
+		case VARIANT_NUMBER:
+		{
+			const auto target = g_game.getCreatureByID(variant.getNumber());
+			center = target ? target->getPosition() : creature->getPosition();
+			break;
+		}
+		case VARIANT_STRING:
+		{
+			const auto target = g_game.getPlayerByName(variant.getString());
+			center = target ? target->getPosition() : creature->getPosition();
+			break;
+		}
+		case VARIANT_POSITION:
+			center = variant.getPosition();
+			break;
+		case VARIANT_TARGETPOSITION:
+			center = variant.getTargetPosition();
+			break;
+		default:
+			lua_newtable(L);
+			return 1;
+	}
+
+	const auto& area = combat->getAreaPositions(creature->getPosition(), center);
+
+	lua_newtable(L);
+	int32_t idx = 0;
+	for (const auto& pos : area.positions)
+	{
+		pushPosition(L, pos);
+		lua_rawseti(L, -2, ++idx);
+	}
 	return 1;
 }
 
@@ -16428,9 +16770,10 @@ int LuaScriptInterface::luaConditionCreate(lua_State* L)
 	ConditionType_t conditionType = getNumber<ConditionType_t>(L, 2);
 	ConditionId_t conditionId = getNumber<ConditionId_t>(L, 3, CONDITIONID_COMBAT);
 
-	Condition* condition = Condition::createCondition(conditionId, conditionType, 0, 0);
+	auto condition = Condition::createCondition(conditionId, conditionType, 0, 0);
 	if (condition) {
-		pushUserdata<Condition>(L, condition);
+		// release() transfers raw ownership to Lua; __gc calls delete which routes through Condition::operator delete
+		pushUserdata<Condition>(L, condition.release());
 		setMetatable(L, -1, "Condition");
 	} else {
 		lua_pushnil(L);
@@ -16514,7 +16857,8 @@ int LuaScriptInterface::luaConditionClone(lua_State* L)
 	// condition:clone()
 	Condition* condition = getUserdata<Condition>(L, 1);
 	if (condition) {
-		pushUserdata<Condition>(L, condition->clone());
+		auto cloned = condition->clone();
+		pushUserdata<Condition>(L, cloned.release());
 		setMetatable(L, -1, "Condition");
 	} else {
 		lua_pushnil(L);
@@ -17378,7 +17722,7 @@ int LuaScriptInterface::luaMonsterTypeAddLoot(lua_State* L)
 	if (monsterType) {
 		Loot* loot = getUserdata<Loot>(L, 2);
 		if (loot) {
-			monsterType->loadLoot(monsterType, loot->lootBlock);
+			monsterType->loadLoot(loot->lootBlock);
 			pushBoolean(L, true);
 		} else {
 			lua_pushnil(L);
@@ -17540,6 +17884,91 @@ int LuaScriptInterface::luaMonsterTypeDefense(lua_State* L)
 			lua_pushinteger(L, monsterType->info.defense);
 		} else {
 			monsterType->info.defense = getNumber<int32_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeDefenseChargeInterval(lua_State* L)
+{
+	// get: monsterType:defenseChargeInterval() set: monsterType:defenseChargeInterval(ms)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushinteger(L, monsterType->info.defense_charge_interval);
+		} else {
+			monsterType->info.defense_charge_interval = getNumber<uint32_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeDefenseChargesCap(lua_State* L)
+{
+	// get: monsterType:defenseChargesCap() set: monsterType:defenseChargesCap(cap)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushinteger(L, monsterType->info.defense_charges_cap);
+		} else {
+			monsterType->info.defense_charges_cap = getNumber<uint32_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeArmorChargesCap(lua_State* L)
+{
+	// get: monsterType:armorChargesCap() set: monsterType:armorChargesCap(cap)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushinteger(L, monsterType->info.armor_charges_cap);
+		} else {
+			monsterType->info.armor_charges_cap = getNumber<uint32_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeDefenseChargeCostMultiplier(lua_State* L)
+{
+	// get: monsterType:defenseChargeCostMultiplier() set: monsterType:defenseChargeCostMultiplier(mult)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushnumber(L, monsterType->info.defense_charge_cost_multiplier);
+		} else {
+			monsterType->info.defense_charge_cost_multiplier = getNumber<float>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaMonsterTypeArmorChargeCostMultiplier(lua_State* L)
+{
+	// get: monsterType:armorChargeCostMultiplier() set: monsterType:armorChargeCostMultiplier(mult)
+	MonsterType* monsterType = getUserdata<MonsterType>(L, 1);
+	if (monsterType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushnumber(L, monsterType->info.armor_charge_cost_multiplier);
+		} else {
+			monsterType->info.armor_charge_cost_multiplier = getNumber<float>(L, 2);
 			pushBoolean(L, true);
 		}
 	} else {
@@ -20720,30 +21149,38 @@ int LuaScriptInterface::luaWeaponElement(lua_State* L)
 {
 	// weapon:element(combatType)
 	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		if (!getNumber<CombatType_t>(L, 2)) {
+	if (weapon)
+	{
+		if (not weapon->combat)
+			weapon->combat = BlackTek::g_combat_registry.Create();
+
+		if (not getNumber<CombatType_t>(L, 2))
+		{
 			std::string element = getString(L, 2);
 			std::string tmpStrValue = asLowerCaseString(element);
-			if (tmpStrValue == "earth") {
-				weapon->params.combatType = COMBAT_EARTHDAMAGE;
-			} else if (tmpStrValue == "ice") {
-				weapon->params.combatType = COMBAT_ICEDAMAGE;
-			} else if (tmpStrValue == "energy") {
-				weapon->params.combatType = COMBAT_ENERGYDAMAGE;
-			} else if (tmpStrValue == "fire") {
-				weapon->params.combatType = COMBAT_FIREDAMAGE;
-			} else if (tmpStrValue == "death") {
-				weapon->params.combatType = COMBAT_DEATHDAMAGE;
-			} else if (tmpStrValue == "holy") {
-				weapon->params.combatType = COMBAT_HOLYDAMAGE;
-			} else {
+			if (tmpStrValue == "earth")
+				weapon->combat->SetDamageType(static_cast<uint16_t>(COMBAT_EARTHDAMAGE));
+			else if (tmpStrValue == "ice")
+				weapon->combat->SetDamageType(static_cast<uint16_t>(COMBAT_ICEDAMAGE));
+			else if (tmpStrValue == "energy")
+				weapon->combat->SetDamageType(static_cast<uint16_t>(COMBAT_ENERGYDAMAGE));
+			else if (tmpStrValue == "fire")
+				weapon->combat->SetDamageType(static_cast<uint16_t>(COMBAT_FIREDAMAGE));
+			else if (tmpStrValue == "death")
+				weapon->combat->SetDamageType(static_cast<uint16_t>(COMBAT_DEATHDAMAGE));
+			else if (tmpStrValue == "holy")
+				weapon->combat->SetDamageType(static_cast<uint16_t>(COMBAT_HOLYDAMAGE));
+			else
 				std::cout << "[Warning - weapon:element] Type \"" << element << "\" does not exist." << std::endl;
-			}
-		} else {
-			weapon->params.combatType = getNumber<CombatType_t>(L, 2);
+		}
+		else
+		{
+			weapon->combat->SetDamageType(static_cast<uint16_t>(getNumber<CombatType_t>(L, 2)));
 		}
 		pushBoolean(L, true);
-	} else {
+	}
+	else
+	{
 		lua_pushnil(L);
 	}
 	return 1;
@@ -21658,37 +22095,35 @@ LuaScriptInterface* LuaEnvironment::getTestInterface()
 Combat_ptr LuaEnvironment::getCombatObject(uint32_t id) const
 {
 	auto it = combatMap.find(id);
-	if (it == combatMap.end()) {
-		return nullptr;
-	}
+	if (it == combatMap.end())
+		return {};
 	return it->second;
 }
 
 Combat_ptr LuaEnvironment::createCombatObject(LuaScriptInterface* interface)
 {
-	Combat_ptr combat = std::make_shared<Combat>();
-	combatMap[++lastCombatId] = combat;
+	auto handle = BlackTek::g_combat_registry.Create();
+	combatMap[++lastCombatId] = handle;
 	combatIdMap[interface].push_back(lastCombatId);
-	return combat;
+	return handle;
 }
 
 void LuaEnvironment::clearCombatObjects(LuaScriptInterface* interface)
 {
 	auto it = combatIdMap.find(interface);
-	if (it == combatIdMap.end()) {
+	if (it == combatIdMap.end())
 		return;
-	}
 
-	for (uint32_t id : it->second) {
+	for (uint32_t id : it->second)
+	{
 		auto itt = combatMap.find(id);
-		if (itt != combatMap.end()) {
+		if (itt != combatMap.end())
 			combatMap.erase(itt);
-		}
 	}
 	it->second.clear();
 }
 
-AreaCombat* LuaEnvironment::getAreaObject(uint32_t id) const
+BlackTek::AreaCombat* LuaEnvironment::getAreaObject(uint32_t id) const
 {
 	auto it = areaMap.find(id);
 	if (it == areaMap.end()) {
@@ -21699,7 +22134,7 @@ AreaCombat* LuaEnvironment::getAreaObject(uint32_t id) const
 
 uint32_t LuaEnvironment::createAreaObject(LuaScriptInterface* interface)
 {
-	areaMap[++lastAreaId] = new AreaCombat;
+	areaMap[++lastAreaId] = new BlackTek::AreaCombat;
 	areaIdMap[interface].push_back(lastAreaId);
 	return lastAreaId;
 }

@@ -251,7 +251,7 @@ Position Spells::getCasterPosition(const CreaturePtr& creature, Direction dir)
 	return getNextPosition(dir, creature->getPosition());
 }
 
-CombatSpell::CombatSpell(const Combat_ptr& combat, bool needTarget, bool needDirection) :
+CombatSpell::CombatSpell(const BlackTek::CombatHandle& combat, bool needTarget, bool needDirection) :
 	Event(&g_spells->getScriptInterface()),
 	combat(combat),
 	needDirection(needDirection),
@@ -261,7 +261,7 @@ CombatSpell::CombatSpell(const Combat_ptr& combat, bool needTarget, bool needDir
 bool CombatSpell::loadScriptCombat()
 {
 	combat = g_luaEnvironment.getCombatObject(g_luaEnvironment.lastCombatId);
-	return combat != nullptr;
+	return static_cast<bool>(combat);
 }
 
 bool CombatSpell::castSpell(const CreaturePtr& creature)
@@ -285,7 +285,7 @@ bool CombatSpell::castSpell(const CreaturePtr& creature)
 		pos = creature->getPosition();
 	}
 
-	combat->doCombat(creature, pos);
+	combat->execute(creature, pos);
 	return true;
 }
 
@@ -311,12 +311,12 @@ bool CombatSpell::castSpell(const CreaturePtr& creature, const CreaturePtr& targ
 
 	if (combat->hasArea()) {
 		if (needTarget) {
-			combat->doCombat(creature, target->getPosition());
+			combat->execute(creature, target->getPosition());
 		} else {
 			return castSpell(creature);
 		}
 	} else {
-		combat->doCombat(creature, target);
+		combat->strike_target(creature, target);
 	}
 	return true;
 }
@@ -522,12 +522,12 @@ bool Spell::playerRuneSpellCheck(const PlayerPtr& player, const Position& toPos)
 		return false;
 	}
 
-	ReturnValue ret = Combat::canDoCombat(player, tile, aggressive);
-	if (ret != RETURNVALUE_NOERROR) {
-		player->sendCancelMessage(ret);
-		g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF);
-		return false;
-	}
+	//ReturnValue ret = Combat::canDoCombat(player, tile, aggressive);
+	//if (ret != RETURNVALUE_NOERROR) {
+	//	player->sendCancelMessage(ret);
+	//	g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF);
+	//	return false;
+	//}
 
 	const auto& topVisibleCreature = tile->getBottomVisibleCreature(player);
 	if (blockingCreature && topVisibleCreature) {
@@ -548,11 +548,11 @@ bool Spell::playerRuneSpellCheck(const PlayerPtr& player, const Position& toPos)
 
 	if (aggressive && needTarget && topVisibleCreature && player->hasSecureMode()) {
 		const auto& targetPlayer = topVisibleCreature->getPlayer();
-		if (targetPlayer && targetPlayer != player && player->getSkullClient(targetPlayer) == SKULL_NONE && !Combat::isInPvpZone(player, targetPlayer)) {
-			player->sendCancelMessage(RETURNVALUE_TURNSECUREMODETOATTACKUNMARKEDPLAYERS);
-			g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF);
-			return false;
-		}
+		//if (targetPlayer && targetPlayer != player && player->getSkullClient(targetPlayer) == SKULL_NONE && !Combat::isInPvpZone(player, targetPlayer)) {
+		//	player->sendCancelMessage(RETURNVALUE_TURNSECUREMODETOATTACKUNMARKEDPLAYERS);
+		//	g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF);
+		//	return false;
+		//}
 	}
 
 	if (!g_events->eventPlayerOnSpellTry(player, this, SPELL_RUNE)) {
@@ -565,18 +565,18 @@ bool Spell::playerRuneSpellCheck(const PlayerPtr& player, const Position& toPos)
 void Spell::addCooldowns(const PlayerPtr& player) const
 {
 	if (cooldown > 0) {
-		Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLCOOLDOWN, cooldown, 0, false, spellId);
-		player->addCondition(condition);
+		auto condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLCOOLDOWN, cooldown, 0, false, spellId);
+		player->addCondition(std::move(condition));
 	}
 
 	if (group != SPELLGROUP_NONE && groupCooldown > 0) {
-		Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLGROUPCOOLDOWN, groupCooldown, 0, false, group);
-		player->addCondition(condition);
+		auto condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLGROUPCOOLDOWN, groupCooldown, 0, false, group);
+		player->addCondition(std::move(condition));
 	}
 
 	if (secondaryGroup != SPELLGROUP_NONE && secondaryGroupCooldown > 0) {
-		Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLGROUPCOOLDOWN, secondaryGroupCooldown, 0, false, secondaryGroup);
-		player->addCondition(condition);
+		auto condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLGROUPCOOLDOWN, secondaryGroupCooldown, 0, false, secondaryGroup);
+		player->addCondition(std::move(condition));
 	}
 }
 

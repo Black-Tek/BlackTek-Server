@@ -1,21 +1,30 @@
 function Combat:getPositions(creature, variant)
-	local positions = {}
-	function onTargetTile(creature, position)
-		positions[#positions + 1] = position
-	end
-
-	self:setCallback(CALLBACK_PARAM_TARGETTILE, "onTargetTile")
 	self:execute(creature, variant)
-	return positions
+	return self:getAreaPositions(creature, variant)
 end
 
 function Combat:getTargets(creature, variant)
-	local targets = {}
-	function onTargetCreature(creature, target)
-		targets[#targets + 1] = target
+	self:execute(creature, variant)
+
+	local varType = variant:getType()
+	if varType == VARIANT_NUMBER then
+		local target = Creature(variant:getNumber())
+		return target and {target} or {}
+	elseif varType == VARIANT_STRING then
+		local target = Player(variant:getString())
+		return target and {target} or {}
 	end
 
-	self:setCallback(CALLBACK_PARAM_TARGETCREATURE, "onTargetCreature")
-	self:execute(creature, variant)
+	local targets = {}
+	for _, pos in ipairs(self:getAreaPositions(creature, variant)) do
+		local tile = Tile(pos)
+		if tile then
+			for _, spec in ipairs(tile:getCreatures() or {}) do
+				if spec ~= creature then
+					targets[#targets + 1] = spec
+				end
+			end
+		end
+	end
 	return targets
 end

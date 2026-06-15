@@ -10,6 +10,23 @@
 
 extern gtl::flat_hash_map<uint16_t, SkillRegistry> vocation_skills;
 
+struct DualWieldConfig
+{
+	bool     enabled             = false;
+	float    primaryMultiplier   = 1.0f;
+	float    secondaryMultiplier = 1.0f;
+	uint32_t delay               = 300;
+	// Bitmask of WeaponType_t values permitted in each dual-wield slot.
+	// 0 = no restriction (all types allowed); otherwise (1u << WeaponType_t) must be set.
+	uint16_t allowed_weapon_mask = 0;
+	// When true AND WEAPON_DISTANCE is permitted, only throwables (ammoType == AMMO_NONE) qualify.
+	bool     throwable_only           = false;
+	// Shield in off-hand: on BLOCK_DEFENSE, fire a counter-attack scaled by shield skill + defense.
+	// 0 = disabled; set > 0 to enable the parry counter.
+	float    parry_counter_multiplier = 0.0f;
+	uint32_t parry_counter_delay      = 200;
+};
+
 class Vocation
 {
 	public:
@@ -77,9 +94,45 @@ class Vocation
 		uint32_t getAttackSpeed() const {
 			return attackSpeed;
 		}
-	
+
 		uint32_t getBaseSpeed() const {
 			return baseSpeed;
+		}
+
+		uint32_t getDefenseChargeInterval() const {
+			return defenseChargeInterval;
+		}
+
+		uint32_t getDefenseChargesCap() const {
+			return defenseChargesCap;
+		}
+
+		uint32_t getArmorChargesCap() const {
+			return armorChargesCap;
+		}
+
+		uint32_t getDefModifierChargesCap() const {
+			return defModifierChargesCap;
+		}
+
+		uint32_t getAtkModifierChargesCap() const {
+			return atkModifierChargesCap;
+		}
+
+		float getDefenseChargeCostMultiplier() const {
+			return defenseChargeCostMultiplier;
+		}
+
+		float getArmorChargeCostMultiplier() const {
+			return armorChargeCostMultiplier;
+		}
+
+		float getDefModifierChargeCostMultiplier() const {
+			return defModifierChargeCostMultiplier;
+		}
+
+		float getAtkModifierChargeCostMultiplier() const {
+			return atkModifierChargeCostMultiplier;
 		}
 
 		uint32_t getFromVocation() const {
@@ -98,6 +151,7 @@ class Vocation
 		float distDamageMultiplier = 1.0f;
 		float defenseMultiplier = 1.0f;
 		float armorMultiplier = 1.0f;
+		DualWieldConfig dualWield{};
 
 	private:
 		friend class Vocations;
@@ -120,6 +174,16 @@ class Vocation
 		uint32_t attackSpeed = 1500;
 		uint32_t baseSpeed = 220;
 		uint32_t noPongKickTime = 60000;
+		uint32_t defenseChargeInterval = 0;
+		uint32_t defenseChargesCap = 0;
+		uint32_t armorChargesCap = 0;
+		uint32_t defModifierChargesCap = 0;
+		uint32_t atkModifierChargesCap = 0;
+
+		float defenseChargeCostMultiplier = 1.0f;
+		float armorChargeCostMultiplier = 1.0f;
+		float defModifierChargeCostMultiplier = 1.0f;
+		float atkModifierChargeCostMultiplier = 1.0f;
 
 		uint16_t id;
 		uint16_t gainSoulTicks = 120;

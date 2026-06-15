@@ -1,6 +1,4 @@
-local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_HITAREA)
-combat:setArea(createCombatArea(AREA_SQUARE1X1))
+local combat = Combat(MonsterCombats.IceGolemSkillReducer)
 
 local parameters = {
 	{key = CONDITION_PARAM_TICKS, value = 4 * 1000},

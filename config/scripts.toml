@@ -5,7 +5,7 @@ warn_unsafe    = true
 convert_unsafe = true
 
 [logging]
-scripts_in_console = true
+scripts_in_console = false
 player_in_console  = true
 
 [validation]

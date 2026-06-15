@@ -11,6 +11,38 @@
 extern Game g_game;
 extern ConfigManager g_config;
 
+namespace BlackTek
+{
+	// Global PMR pool for all Condition allocations.
+	// unsynchronized_pool_resource is used because condition management happens
+	// on the main game thread. All sizes of Condition subclasses are served by
+	// the pool's internal size-segregated free lists.
+	std::pmr::unsynchronized_pool_resource g_condition_pool{ std::pmr::new_delete_resource() };
+}
+
+// ── Condition pool operator new/delete ───────────────────────────────────────
+void* Condition::operator new(std::size_t size)
+{
+	return BlackTek::g_condition_pool.allocate(size, alignof(std::max_align_t));
+}
+
+void Condition::operator delete(void* ptr, std::size_t size) noexcept
+{
+	BlackTek::g_condition_pool.deallocate(ptr, size, alignof(std::max_align_t));
+}
+
+// ── Intrusive pointer helpers ─────────────────────────────────────────────────
+void intrusive_ptr_add_ref(const Condition* p) noexcept
+{
+	++p->m_ref_count;
+}
+
+void intrusive_ptr_release(const Condition* p) noexcept
+{
+	if (--p->m_ref_count == 0)
+		delete const_cast<Condition*>(p);
+}
+
 bool Condition::setParam(ConditionParam_t param, int32_t value)
 {
 	switch (param) {
@@ -165,7 +197,7 @@ bool Condition::executeCondition(CreaturePtr, int32_t interval)
 	return getEndTime() >= OTSYS_TIME();
 }
 
-Condition* Condition::createCondition(ConditionId_t id, ConditionType_t type, int32_t ticks, int32_t param/* = 0*/, bool buff/* = false*/, uint32_t subId/* = 0*/, bool aggressive/* = false */)
+ConditionHandle Condition::createCondition(ConditionId_t id, ConditionType_t type, int32_t ticks, int32_t param/* = 0*/, bool buff/* = false*/, uint32_t subId/* = 0*/, bool aggressive/* = false */)
 {
 	switch (type) {
 		case CONDITION_POISON:
@@ -176,38 +208,38 @@ Condition* Condition::createCondition(ConditionId_t id, ConditionType_t type, in
 		case CONDITION_DAZZLED:
 		case CONDITION_CURSED:
 		case CONDITION_BLEEDING:
-			return new ConditionDamage(id, type, buff, subId, aggressive);
+			return ConditionHandle(new ConditionDamage(id, type, buff, subId, aggressive));
 
 		case CONDITION_HASTE:
 		case CONDITION_PARALYZE:
-			return new ConditionSpeed(id, type, ticks, buff, subId, param, aggressive);
+			return ConditionHandle(new ConditionSpeed(id, type, ticks, buff, subId, param, aggressive));
 
 		case CONDITION_INVISIBLE:
-			return new ConditionInvisible(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionInvisible(id, type, ticks, buff, subId, aggressive));
 
 		case CONDITION_OUTFIT:
-			return new ConditionOutfit(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionOutfit(id, type, ticks, buff, subId, aggressive));
 
 		case CONDITION_LIGHT:
-			return new ConditionLight(id, type, ticks, buff, subId, param & 0xFF, (param & 0xFF00) >> 8, aggressive);
+			return ConditionHandle(new ConditionLight(id, type, ticks, buff, subId, param & 0xFF, (param & 0xFF00) >> 8, aggressive));
 
 		case CONDITION_REGENERATION:
-			return new ConditionRegeneration(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionRegeneration(id, type, ticks, buff, subId, aggressive));
 
 		case CONDITION_SOUL:
-			return new ConditionSoul(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionSoul(id, type, ticks, buff, subId, aggressive));
 
 		case CONDITION_ATTRIBUTES:
-			return new ConditionAttributes(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionAttributes(id, type, ticks, buff, subId, aggressive));
 
 		case CONDITION_SPELLCOOLDOWN:
-			return new ConditionSpellCooldown(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionSpellCooldown(id, type, ticks, buff, subId, aggressive));
 
 		case CONDITION_SPELLGROUPCOOLDOWN:
-			return new ConditionSpellGroupCooldown(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionSpellGroupCooldown(id, type, ticks, buff, subId, aggressive));
 
 		case CONDITION_DRUNK:
-			return new ConditionDrunk(id, type, ticks, buff, subId, param, aggressive);
+			return ConditionHandle(new ConditionDrunk(id, type, ticks, buff, subId, param, aggressive));
 
 		case CONDITION_INFIGHT:
 		case CONDITION_EXHAUST_WEAPON:
@@ -218,68 +250,68 @@ Condition* Condition::createCondition(ConditionId_t id, ConditionType_t type, in
 		case CONDITION_YELLTICKS:
 		case CONDITION_PACIFIED:
 		case CONDITION_MANASHIELD:
-			return new ConditionGeneric(id, type, ticks, buff, subId, aggressive);
+			return ConditionHandle(new ConditionGeneric(id, type, ticks, buff, subId, aggressive));
 
 		default:
-			return nullptr;
+			return {};
 	}
 }
 
-Condition* Condition::createCondition(PropStream& propStream)
+ConditionHandle Condition::createCondition(PropStream& propStream)
 {
 	uint8_t attr;
 	if (!propStream.read<uint8_t>(attr) || attr != CONDITIONATTR_TYPE) {
-		return nullptr;
+		return {};
 	}
 
 	uint32_t type;
 	if (!propStream.read<uint32_t>(type)) {
-		return nullptr;
+		return {};
 	}
 
 	if (!propStream.read<uint8_t>(attr) || attr != CONDITIONATTR_ID) {
-		return nullptr;
+		return {};
 	}
 
 	uint32_t id;
 	if (!propStream.read<uint32_t>(id)) {
-		return nullptr;
+		return {};
 	}
 
 	if (!propStream.read<uint8_t>(attr) || attr != CONDITIONATTR_TICKS) {
-		return nullptr;
+		return {};
 	}
 
 	uint32_t ticks;
 	if (!propStream.read<uint32_t>(ticks)) {
-		return nullptr;
+		return {};
 	}
 
 	if (!propStream.read<uint8_t>(attr) || attr != CONDITIONATTR_ISBUFF) {
-		return nullptr;
+		return {};
 	}
 
 	uint8_t buff;
 	if (!propStream.read<uint8_t>(buff)) {
-		return nullptr;
+		return {};
 	}
 
 	if (!propStream.read<uint8_t>(attr) || attr != CONDITIONATTR_SUBID) {
-		return nullptr;
+		return {};
 	}
 
 	uint32_t subId;
 	if (!propStream.read<uint32_t>(subId)) {
-		return nullptr;
+		return {};
 	}
 
 	if (!propStream.read<uint8_t>(attr) || attr != CONDITIONATTR_ISAGGRESSIVE) {
-		return nullptr;
+		return {};
 	}
 
 	uint8_t aggressive;
 	if (!propStream.read<uint8_t>(aggressive)) {
-		return nullptr;
+		return {};
 	}
 
 	return createCondition(static_cast<ConditionId_t>(id), static_cast<ConditionType_t>(type), ticks, 0, buff != 0, subId, aggressive);
@@ -882,23 +914,24 @@ bool ConditionRegeneration::executeCondition(const CreaturePtr creature, int32_t
 
 	if (internalHealthTicks >= healthTicks && healthGain != 0) {
 		internalHealthTicks = 0;
-		CombatDamage regen;
-		regen.primary.value = static_cast<int32_t>(healthGain);
-		regen.primary.type = COMBAT_HEALING;
-		const bool sendMsg = g_config.GetBoolean(ConfigManager::HEALTH_REGEN_NOTIFICATION);
-		g_game.combatChangeHealth(nullptr, creature, regen, sendMsg);
+		auto hpRegen = BlackTek::g_combat_registry.Create(
+		    static_cast<uint16_t>(BlackTek::Combat::DamageType::Healing),
+		    static_cast<uint32_t>(healthGain));
+		hpRegen->SetConfig(BlackTek::Combat::Config::HealthTarget);
+		hpRegen->SetConfig(BlackTek::Combat::Config::TrueDamage);
+		hpRegen->heal_target(creature, creature, true);
 	}
 
 	if (internalManaTicks >= manaTicks && manaGain != 0) {
 		internalManaTicks = 0;
 
 		if (auto player = creature->getPlayer()) {
-			CombatDamage regen;
-			regen.primary.value = static_cast<int32_t>(manaGain);
-			regen.primary.type = COMBAT_HEALING;
-			regen.isUtility = isBuff;
-			const bool sendMsg = g_config.GetBoolean(ConfigManager::MANA_REGEN_NOTIFICATION);
-			g_game.combatChangeMana(nullptr, creature, regen, sendMsg);
+			auto manaRegen = BlackTek::g_combat_registry.Create(
+			    static_cast<uint16_t>(BlackTek::Combat::DamageType::Healing),
+			    static_cast<uint32_t>(manaGain));
+			manaRegen->SetConfig(BlackTek::Combat::Config::ManaTarget);
+			manaRegen->SetConfig(BlackTek::Combat::Config::TrueDamage);
+			manaRegen->heal_target(creature, player, true);
 		}
 	}
 
@@ -1153,9 +1186,9 @@ void ConditionDamage::serialize(PropWriteStream& propWriteStream)
 	propWriteStream.write<uint8_t>(CONDITIONATTR_PERIODDAMAGE);
 	propWriteStream.write<int32_t>(periodDamage);
 
-	for (const IntervalInfo& intervalInfo : damageList) {
+	for (size_t i = damage_front; i < damageList.size(); ++i) {
 		propWriteStream.write<uint8_t>(CONDITIONATTR_INTERVALDATA);
-		propWriteStream.write<IntervalInfo>(intervalInfo);
+		propWriteStream.write<IntervalInfo>(damageList[i]);
 	}
 }
 
@@ -1211,7 +1244,7 @@ bool ConditionDamage::init()
 		return true;
 	}
 
-	if (!damageList.empty()) {
+	if (damage_front < damageList.size()) {
 		return true;
 	}
 
@@ -1224,13 +1257,13 @@ bool ConditionDamage::init()
 			startDamage = std::max<int32_t>(1, std::ceil(amount / 20.0));
 		}
 
-		std::list<int32_t> list;
+		std::vector<int32_t> list;
 		ConditionDamage::generateDamageList(amount, startDamage, list);
 		for (int32_t value : list) {
 			addDamage(1, tickInterval, -value);
 		}
 	}
-	return !damageList.empty();
+	return damage_front < damageList.size();
 }
 
 bool ConditionDamage::startCondition(const CreaturePtr creature)
@@ -1261,8 +1294,8 @@ bool ConditionDamage::executeCondition(const CreaturePtr creature, int32_t inter
 			periodDamageTick = 0;
 			doDamage(creature, periodDamage);
 		}
-	} else if (!damageList.empty()) {
-		IntervalInfo& damageInfo = damageList.front();
+	} else if (damage_front < damageList.size()) {
+		IntervalInfo& damageInfo = damageList[damage_front];
 
 		bool bRemove = (ticks != -1);
 		creature->onTickCondition(getType(), bRemove);
@@ -1272,7 +1305,7 @@ bool ConditionDamage::executeCondition(const CreaturePtr creature, int32_t inter
 			int32_t damage = damageInfo.value;
 
 			if (bRemove) {
-				damageList.pop_front();
+				++damage_front;
 			} else {
 				damageInfo.timeLeft = damageInfo.interval;
 			}
@@ -1297,11 +1330,10 @@ bool ConditionDamage::getNextDamage(int32_t& damage)
 	if (periodDamage != 0) {
 		damage = periodDamage;
 		return true;
-	} else if (!damageList.empty()) {
-		const IntervalInfo& damageInfo = damageList.front();
-		damage = damageInfo.value;
+	} else if (damage_front < damageList.size()) {
+		damage = damageList[damage_front].value;
 		if (ticks != -1) {
-			damageList.pop_front();
+			++damage_front;
 		}
 		return true;
 	}
@@ -1312,110 +1344,7 @@ bool ConditionDamage::doDamage(CreaturePtr creature, int32_t healthChange) const
 {
 	if (creature->isSuppress(getType()) or creature->isImmune(getType()))
 		return false;
-
-	CombatDamage damage;
-	damage.origin = ORIGIN_CONDITION;
-	damage.primary.value = healthChange;
-	damage.primary.type = Combat::ConditionToDamageType(conditionType);
-	auto attacker = g_game.getCreatureByID(owner);
-
-	if (field and creature->getPlayer() and attacker and attacker->getPlayer())
-		damage.primary.value = static_cast<int32_t>(std::round(damage.primary.value / 2.));
-
-	if (not creature->isAttackable() or Combat::canDoCombat(attacker, creature) != RETURNVALUE_NOERROR)
-	{
-		if (not creature->isInGhostMode())
-		{
-			SpectatorVec spectators;
-			g_game.map.getSpectators(spectators, creature->getPosition(), true, true);
-			auto in_instance = [&creature](const auto& c) {	return c->compareInstance(creature->getInstanceID());};
-			auto to_player = [&](const auto& c)	{ return std::static_pointer_cast<Player>(c);};
-
-			for (const auto& c : spectators.players()
-				| std::views::filter(in_instance)
-				| std::views::transform(to_player))
-				static_cast<Player*>(c.get())->sendMagicEffect(creature->getPosition(), CONST_ME_POFF);
-		}
-		return false;
-	}
-
-	if (g_game.combatBlockHit(damage, attacker, creature, false, false, field))
-		return false;
-
-	if (auto player = creature->getPlayer())
-	{
-
-		if (attacker)
-		{
-			auto creatureType = CREATURETYPE_ATTACKABLE;
-
-			if (auto attackPlayer = attacker->getPlayer())
-			{
-				creatureType = CREATURETYPE_PLAYER;
-			}
-			else if (auto attackMonster = attacker->getMonster())
-			{
-				creatureType = player->getCreatureType(attackMonster);
-			}
-
-			auto reformTotals = player->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, ORIGIN_CONDITION, creatureType, attacker->getRace(), attacker->getName());
-
-			if (not reformTotals.empty())
-			{
-				std::cout << "Reform Modifier Activated on " << damage.primary.value << " damage \n";
-
-				player->reformDamage(attacker, damage, reformTotals);
-				if (damage.primary.value == 0)
-					return true;
-			}
-
-			auto defenseModData = player->getDefenseModifierTotals(damage.primary.type, ORIGIN_CONDITION, creatureType, attacker->getRace(), attacker->getName());
-
-			if (defenseModData.empty())
-			{
-				for (const auto& [modkind, modTotals] : defenseModData)
-				{
-					if (modTotals.percentTotal or modTotals.flatTotal)
-					{
-						Combat::applyDamageReductionModifier(modkind, damage, player, attacker, static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), ORIGIN_CONDITION);
-					}
-
-					if (damage.primary.value == 0)
-						return true;
-				}
-			}
-		}
-		else // if no attacker
-		{
-			auto reformTotals = player->getConvertedTotals(DEFENSE_MODIFIER_REFORM, damage.primary.type, ORIGIN_CONDITION, CREATURETYPE_ATTACKABLE, RACE_NONE, "none");
-
-			if (not reformTotals.empty())
-			{
-				std::cout << "Reform Modifier Activated on " << damage.primary.value << " damage \n";
-
-				player->reformDamage(std::nullopt, damage, reformTotals);
-
-				if (damage.primary.value == 0)
-					return true;
-			}
-
-			auto defenseModData = player->getDefenseModifierTotals(damage.primary.type, ORIGIN_CONDITION, CREATURETYPE_ATTACKABLE, RACE_NONE, "none");
-
-			if (not defenseModData.empty())
-			{
-				for (const auto& [modkind, modTotals] : defenseModData)
-				{
-					if (modTotals.percentTotal or modTotals.flatTotal)
-						Combat::applyDamageReductionModifier(modkind, damage, player, std::nullopt, static_cast<int32_t>(modTotals.percentTotal), static_cast<int32_t>(modTotals.flatTotal), ORIGIN_CONDITION);
-
-					if (damage.primary.value == 0)
-						return true;
-				}
-			}
-		}
-	}
-
-	return g_game.combatChangeHealth(attacker, creature, damage);
+	return true;
 }
 
 void ConditionDamage::endCondition(CreaturePtr)
@@ -1444,20 +1373,20 @@ void ConditionDamage::addCondition(const CreaturePtr creature, const Condition* 
 	periodDamage = conditionDamage.periodDamage;
 	int32_t nextTimeLeft = tickInterval;
 
-	if (!damageList.empty()) {
+	if (damage_front < damageList.size()) {
 		//save previous timeLeft
-		IntervalInfo& damageInfo = damageList.front();
-		nextTimeLeft = damageInfo.timeLeft;
+		nextTimeLeft = damageList[damage_front].timeLeft;
 		damageList.clear();
+		damage_front = 0;
 	}
 
-	damageList = conditionDamage.damageList;
+	damageList  = conditionDamage.damageList;
+	damage_front = conditionDamage.damage_front;
 
 	if (init()) {
-		if (!damageList.empty()) {
+		if (damage_front < damageList.size()) {
 			//restore last timeLeft
-			IntervalInfo& damageInfo = damageList.front();
-			damageInfo.timeLeft = nextTimeLeft;
+			damageList[damage_front].timeLeft = nextTimeLeft;
 		}
 
 		if (!delayed) {
@@ -1472,10 +1401,10 @@ void ConditionDamage::addCondition(const CreaturePtr creature, const Condition* 
 int32_t ConditionDamage::getTotalDamage() const
 {
 	int32_t result;
-	if (!damageList.empty()) {
+	if (damage_front < damageList.size()) {
 		result = 0;
-		for (const IntervalInfo& intervalInfo : damageList) {
-			result += intervalInfo.value;
+		for (size_t i = damage_front; i < damageList.size(); ++i) {
+			result += damageList[i].value;
 		}
 	} else {
 		result = minDamage + (maxDamage - minDamage) / 2;
@@ -1525,7 +1454,7 @@ uint32_t ConditionDamage::getIcons() const
 	return icons;
 }
 
-void ConditionDamage::generateDamageList(int32_t amount, int32_t start, std::list<int32_t>& list)
+void ConditionDamage::generateDamageList(int32_t amount, int32_t start, std::vector<int32_t>& list)
 {
 	amount = std::abs(amount);
 	int32_t sum = 0;
@@ -1823,7 +1752,7 @@ void ConditionLight::addCondition(const CreaturePtr creature, const Condition* c
 bool ConditionLight::setParam(const ConditionParam_t param, const int32_t value)
 {
 	if (const bool ret = Condition::setParam(param, value)) {
-		return false;
+		return ret;
 	}
 
 	switch (param) {

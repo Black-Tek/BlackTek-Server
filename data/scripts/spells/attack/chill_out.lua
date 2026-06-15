@@ -1,17 +1,13 @@
-local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_ICEDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_ICEAREA)
-combat:setArea(createCombatArea(AREA_WAVE4))
+local combat = Combat(AttackCombats.ChillOut)
 
-function onGetFormulaValues(player, level, magicLevel)
-	level = math.min(level, 20)
-	magicLevel = math.min(magicLevel, 20)
-	local min = (level / 5) + (magicLevel * 0.3) + 2
-	local max = (level / 5) + (magicLevel * 0.45) + 3
-	return -min, -max
+do
+	local level = FormulaNode.min(FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.Level), 20)
+	local magic = FormulaNode.min(FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.MagicLevel), 20)
+	local outputNode = FormulaNode.random(level / 5 + magic * 0.3 + 2, level / 5 + magic * 0.45 + 3)
+	for sit = 0, 3 do
+		combat:registerFormula(Combat.FormulaStage.Output, sit, outputNode)
+	end
 end
-
-combat:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
 
 local spell = Spell(SPELL_INSTANT)
 

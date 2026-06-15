@@ -72,15 +72,7 @@ public:
         }
     }
 
-    void addSpectators(const SpectatorVec& spectators)
-    {
-        for (const CreaturePtr& c : spectators.vec_)
-        {
-            if (std::ranges::find(vec_, c) == vec_.end())
-                vec_.emplace_back(c);
-        }
-        partitionByType();
-    }
+    void addSpectators(const SpectatorVec& other);
 
     void partitionByType();
     void setPlayersOnlyMode() noexcept

@@ -1,6 +1,4 @@
-local combat = Combat()
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_ENERGY)
-combat:setParameter(COMBAT_PARAM_CREATEITEM, ITEM_WILDGROWTH)
+local combat = Combat(RuneAttackCombats.WildGrowthRune)
 
 local spell = Spell(SPELL_RUNE)
 

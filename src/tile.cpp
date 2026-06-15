@@ -23,53 +23,40 @@ extern ConfigManager g_config;
 
 Tile real_nullptr_tile(0xFFFF, 0xFFFF, 0xFF);
 
-// BlackTek Instance System
-bool canSeeItemInInstance(uint32_t viewerInstanceId, const ItemConstPtr& item)
+void Tile::applyItemProperties(const ItemConstPtr& item)
 {
-	if (not item)
-		return false;
-
-	const uint32_t itemInstanceId = item->getInstanceID();
-	if (itemInstanceId == viewerInstanceId)
-		return true;
-
-	// Keep static map decorations/tiles shared across instances,
-	// but isolate runtime-spawned items and fields.
-	return itemInstanceId == 0 and item->isLoadedFromMap();
-}
-
-bool Tile::hasProperty(ITEMPROPERTY prop) const
-{
-	if (ground && ground->hasProperty(prop)) {
-		return true;
-	}
-
-	if (const auto items = getItemList()) {
-		for (const auto item : *items) {
-			if (item->hasProperty(prop)) {
-				return true;
-			}
+	for (uint32_t p = 0; p <= static_cast<uint32_t>(CONST_PROP_SUPPORTHANGABLE); ++p) {
+		if (item->hasProperty(static_cast<ITEMPROPERTY>(p))) {
+			itemProperties |= (1u << p);
 		}
 	}
-	return false;
+}
+
+void Tile::recalculateItemProperties()
+{
+	itemProperties = 0;
+	if (ground) {
+		applyItemProperties(ground);
+	}
+	if (const auto itemList = getItemList()) {
+		for (const auto& item : *itemList) {
+			applyItemProperties(item);
+		}
+	}
 }
 
 bool Tile::hasProperty(const ItemPtr& exclude, ITEMPROPERTY prop) const
 {
-	assert(exclude);
-
-	if (ground && exclude != ground && ground->hasProperty(prop)) {
+	if (ground and ground != exclude and ground->hasProperty(prop)) {
 		return true;
 	}
-
-	if (const auto items = getItemList()) {
-		for (const auto item : *items) {
-			if (item != exclude && item->hasProperty(prop)) {
+	if (const auto itemList = getItemList()) {
+		for (const auto& item : *itemList) {
+			if (item != exclude and item->hasProperty(prop)) {
 				return true;
 			}
 		}
 	}
-
 	return false;
 }
 
@@ -260,10 +247,6 @@ CreaturePtr Tile::getTopVisibleCreature(const CreaturePtr creature) const
 	{
 		for (const auto& tile_creature : *creatures) 
 		{
-			// BlackTek Instance System
-			if (creature and not creature->compareInstance(tile_creature->getInstanceID()))
-				continue;
-
 			const bool creature_has_sight = (creature and creature->canSeeCreature(tile_creature));
 			const bool invisible_creature = (tile_creature->isInvisible() ? true : false) or (tile_creature->getPlayer() and tile_creature->getPlayer()->isInGhostMode());
 
@@ -281,9 +264,6 @@ CreatureConstPtr Tile::getBottomVisibleCreature(const CreatureConstPtr& creature
 	if (const auto creatures = getCreatures()) {
 		if (creature) {
 			for (auto it = creatures->rbegin(), end = creatures->rend(); it != end; ++it) {
-				// BlackTek Instance System
-				if (not creature->compareInstance((*it)->getInstanceID()))
-					continue;
 				if (creature->canSeeCreature(*it)) {
 					return *it;
 				}
@@ -373,14 +353,7 @@ void Tile::onAddTileItem(ItemPtr& item)
 	TilePtr self = getTile();
 
 	// send to client and event callback
-	auto can_see_item = [&item](const auto& c)
-	{
-		auto spectator = std::static_pointer_cast<Player>(c);
-		return canSeeItemInInstance(spectator->getInstanceID(), item);
-	};
-
 	for (const auto& spectatorPlayer : spectators.players()
-		| std::views::filter(can_see_item)
 		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
 	{
 		spectatorPlayer->sendAddTileItem(getTile(), cylinderMapPos, item);
@@ -417,14 +390,7 @@ void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, con
 	const auto& self = getTile();
 
 	//send to client and event callback
-	auto can_see_new_item = [&newItem](const auto& c)
-	{
-		auto player = std::static_pointer_cast<Player>(c);
-		return canSeeItemInInstance(player->getInstanceID(), newItem);
-	};
-
 	for (const auto& spectatorPlayer : spectators.players()
-		| std::views::filter(can_see_new_item)
 		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
 	{
 		spectatorPlayer->sendUpdateTileItem(self, cylinderMapPos, newItem);
@@ -448,14 +414,7 @@ void Tile::onRemoveTileItem(const SpectatorVec& spectators, const std::vector<in
 	//send to client and event callback
 	size_t i = 0;
 
-	auto can_see_item = [&item](const auto& c)
-	{
-			auto spectator = std::static_pointer_cast<Player>(c);
-			return canSeeItemInInstance(spectator->getInstanceID(), item);
-	};
-
 	for (const auto& spectatorPlayer : spectators.players()
-		| std::views::filter(can_see_item)
 		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
 	{
 		spectatorPlayer->sendRemoveTileThing(cylinderMapPos, oldStackPosVector[i++]);
@@ -505,20 +464,6 @@ ReturnValue Tile::queryAdd(CreaturePtr creature, uint32_t flags)
     if (ground == nullptr)
         return RETURNVALUE_NOTPOSSIBLE;
 
-	const auto creatures = getCreatures();
-
-	if (creatures and not creatures->empty() and not hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags))
-	{
-		for (const auto& tileCreature : *creatures)
-		{
-			if (not tileCreature->isInGhostMode() and (tileCreature->getPlayer() and not tileCreature->getPlayer()->isAccessPlayer()))
-			{
-				if (creature->getPlayer() and not creature->getPlayer()->isAccessPlayer() and not creature->getPlayer()->canWalkthrough(tileCreature))
-					return RETURNVALUE_NOTENOUGHROOM;
-			}
-		}
-	}
-
     // If the FLAG_IGNOREBLOCKITEM bit isn't set we dont have to iterate every single item
 	if (not hasBitSet(FLAG_IGNOREBLOCKITEM, flags))
 	{
@@ -548,6 +493,8 @@ ReturnValue Tile::queryAdd(CreaturePtr creature, uint32_t flags)
 		results = queryAdd(std::static_pointer_cast<Player>(creature), flags);
 	else if (creature->getCreatureSubType() == CreatureSubType::Monster)
 		results = queryAdd(std::static_pointer_cast<Monster>(creature), flags);
+	else if (creature->getCreatureSubType() == CreatureSubType::Npc)
+		results = queryAdd(std::static_pointer_cast<Npc>(creature), flags);
 
 	return results;
 }
@@ -675,7 +622,7 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags)
 			if (not (monster->canWalkOnFieldType(combatType) or monster->isIgnoringFieldDamage()))
 				return RETURNVALUE_NOTPOSSIBLE;
 			else
-				return RETURNVALUE_NOTPOSSIBLE;
+				return RETURNVALUE_NOERROR;
 		}
 	}
 
@@ -713,10 +660,6 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
     if (hasBitSet(FLAG_NOLIMIT, flags))
         return RETURNVALUE_NOERROR;
 
-    // Can't move store items to tiles
-    if (item->isStoreItem())
-        return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
-
     // If its a wall, but not a hangable item.
     bool itemIsHangable = item->isHangable();
     if (ground == nullptr and not itemIsHangable)
@@ -724,6 +667,7 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
 
 	if (isHouseTile())
 	{
+		// House tiles allow store items only if they carry a wrapid (placed via wrapping).
 		if (item->isStoreItem() and not item->hasAttribute(ITEM_ATTRIBUTE_WRAPID))
 			return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
 
@@ -732,6 +676,10 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
 			if (not house->isInvited(mover->getPlayer()))
 				return RETURNVALUE_PLAYERISNOTINVITED;
 		}
+	}
+	else if (item->isStoreItem())
+	{
+		return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
 	}
 
 
@@ -747,11 +695,6 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
 		}
     }
 
-	//////////////////////////////////////////////////////////////
-	// Can move the hangable check inside the loop instead, get rid of the else,
-	// and then merge the other if(items) check and loop into this one.
-
-    // If we have a hangable item and the tile supports hangables
     if (itemIsHangable and hasFlag(TILESTATE_SUPPORTS_HANGABLE))
 	{
         if (items)
@@ -762,60 +705,47 @@ ReturnValue Tile::queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover)
 					return RETURNVALUE_NEEDEXCHANGE;
 			}
         }
-	// I believe this 'else' is not needed, and potentially limiting where we don't want to be.
-    } 
+    }
 	else
 	{
-        if (ground)
+		auto isSolidBlocked = [&](const ItemType& iiType) -> bool
 		{
-            const ItemType& iiType = Item::items[ground->getID()];
+			if (not iiType.blockSolid)
+				return false;
+			if (iiType.allowPickupable and not item->isMagicField() and not item->isBlocking())
+				return false;
+			return not item->isPickupable() or not iiType.hasHeight or iiType.pickupable or iiType.isBed();
+		};
 
-            if (iiType.blockSolid)
-			{
-				if (not iiType.allowPickupable or item->isMagicField() or item->isBlocking())
-				{
-					if (not item->isPickupable())
-						return RETURNVALUE_NOTENOUGHROOM;
+		if (ground and isSolidBlocked(Item::items[ground->getID()]))
+			return RETURNVALUE_NOTENOUGHROOM;
 
-
-					if (not iiType.hasHeight or iiType.pickupable or iiType.isBed())
-						return RETURNVALUE_NOTENOUGHROOM;
-				}
-            }
-        }
-		// We can move this into the previous check and combine the loops. 
-        if (items)
+		if (items)
 		{
-            for (const auto& tileItem : *items)
+			for (const auto& tileItem : *items)
 			{
-                const ItemType& iiType = Item::items[tileItem->getID()];
+				if (isSolidBlocked(Item::items[tileItem->getID()]))
+					return RETURNVALUE_NOTENOUGHROOM;
+			}
+		}
+	}
 
-                if (not iiType.blockSolid)
-                    continue;
-
-                if (iiType.allowPickupable and not item->isMagicField() and not item->isBlocking())
-                    continue;
-
-                if (not item->isPickupable())
-                    return RETURNVALUE_NOTENOUGHROOM;
-
-                if (not iiType.hasHeight or iiType.pickupable or iiType.isBed())
-                    return RETURNVALUE_NOTENOUGHROOM;
-            }
-        }
-    }
     return RETURNVALUE_NOERROR;
 }
 
 ReturnValue Tile::queryAdd(int32_t, const ThingPtr& thing, uint32_t, uint32_t flags, CreaturePtr mover)
 {
-	if (auto creature = thing->getCreature())
-		return queryAdd(creature, flags);
+	if (hasBitSet(FLAG_NOLIMIT, flags))
+		return RETURNVALUE_NOERROR;
+
+	if (thing->is_creature())
+		return queryAdd(thing->getCreature(), flags);
 
 	if (auto item = thing->getItem())
 		return queryAdd(item, flags, mover);
 
-	std::cout << "|| WARNING || Tile::queryAdd() passed the object "<< typeid(thing).name() << ", that is not a creature or item! " << "\n";
+	std::cout << "|| WARNING || Tile::queryAdd() received unknown ThingSubType: "
+	          << static_cast<int>(thing->getThingSubType()) << "\n";
 
 	return RETURNVALUE_NOERROR;
 }
@@ -1204,9 +1134,7 @@ void Tile::removeThing(ThingPtr thing, uint32_t count)
 
 		for (const auto& c : spectators.players()) {
 			const auto spectatorPlayer = std::static_pointer_cast<Player>(c);
-			if (canSeeItemInInstance(spectatorPlayer->getInstanceID(), item)) {
-				oldStackPosVector.push_back(getStackposOfItem(spectatorPlayer, item));
-			}
+			oldStackPosVector.push_back(getStackposOfItem(spectatorPlayer, item));
 		}
 
 		item->clearParent();
@@ -1229,9 +1157,7 @@ void Tile::removeThing(ThingPtr thing, uint32_t count)
 			g_game.map.getSpectators(spectators, getPosition(), true);
 			for (const auto& c : spectators.players()) {
 				const auto spectatorPlayer = std::static_pointer_cast<Player>(c);
-				if (canSeeItemInInstance(spectatorPlayer->getInstanceID(), item)) {
-					oldStackPosVector.push_back(getStackposOfItem(spectatorPlayer, item));
-				}
+				oldStackPosVector.push_back(getStackposOfItem(spectatorPlayer, item));
 			}
 
 			item->clearParent();
@@ -1316,15 +1242,8 @@ int32_t Tile::getClientIndexOfCreature(const PlayerConstPtr& player, const Creat
 		n = 0;
 	}
 
-	// BlackTek Instance System
-	const auto& sameInstance = [&](const auto& tileItem)
-	{
-		return canSeeItemInInstance(player->getInstanceID(), tileItem);
-	};
-
 	if (const auto& items = getItemList()) {
-		auto visibleTopItems = std::ranges::subrange(items->getBeginTopItem(), items->getEndTopItem()) | std::views::filter(sameInstance);
-		for (const auto& visibleTopItem : visibleTopItems)
+		for (auto it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it)
 		{
 			++n;
 		}
@@ -1344,10 +1263,6 @@ int32_t Tile::getClientIndexOfCreature(const PlayerConstPtr& player, const Creat
 
 int32_t Tile::getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr& item) const
 {
-	// BlackTek Instance System
-	if (not canSeeItemInInstance(player->getInstanceID(), item))
-		return -1;
-
 	int32_t n = 0;
 	if (ground) {
 		if (ground == item) {
@@ -1356,27 +1271,19 @@ int32_t Tile::getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr
 		++n;
 	}
 
-	// BlackTek Instance System
-	const auto& sameInstance = [&](const auto& tileItem)
-	{
-		return canSeeItemInInstance(player->getInstanceID(), tileItem);
-	};
-
 	const auto& items = getItemList();
 	if (items) {
 		if (item->isAlwaysOnTop()) {
-			auto visibleTopItems = std::ranges::subrange(items->getBeginTopItem(), items->getEndTopItem()) | std::views::filter(sameInstance);
-			for (const auto& visibleTopItem : visibleTopItems)
+			for (auto it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it)
 			{
-				if (visibleTopItem == item) {
+				if (*it == item) {
 					return n;
 				} else if (++n == 10) {
 					return -1;
 				}
 			}
 		} else {
-			auto visibleTopItems = std::ranges::subrange(items->getBeginTopItem(), items->getEndTopItem()) | std::views::filter(sameInstance);
-			for (const auto& visibleTopItem : visibleTopItems)
+			for (auto it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it)
 			{
 				if (++n >= 10) {
 					return -1;
@@ -1396,10 +1303,9 @@ int32_t Tile::getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr
 	}
 
 	if (items && !item->isAlwaysOnTop()) {
-		auto visibleDownItems = std::ranges::subrange(items->getBeginDownItem(), items->getEndDownItem()) | std::views::filter(sameInstance);
-		for (const auto& visibleDownItem : visibleDownItems)
+		for (auto it = items->getBeginDownItem(), end = items->getEndDownItem(); it != end; ++it)
 		{
-			if (visibleDownItem == item) {
+			if (*it == item) {
 				return n;
 			} else if (++n >= 10) {
 				return -1;
@@ -1597,6 +1503,8 @@ void Tile::internalAddThing(uint32_t, ThingPtr thing)
 
 void Tile::setTileFlags(const ItemConstPtr& item)
 {
+	applyItemProperties(item);
+
 	if (!hasFlag(TILESTATE_FLOORCHANGE)) {
 		if (const ItemType& it = Item::items[item->getID()]; it.floorChange != 0) {
 			setFlag(it.floorChange);
@@ -1655,31 +1563,33 @@ void Tile::setTileFlags(const ItemConstPtr& item)
 
 void Tile::resetTileFlags(const ItemPtr& item)
 {
+	recalculateItemProperties();
+
 	if (const ItemType& it = Item::items[item->getID()]; it.floorChange != 0) {
 		resetFlag(TILESTATE_FLOORCHANGE);
 	}
 
-	if (item->hasProperty(CONST_PROP_BLOCKSOLID) && !hasProperty(item, CONST_PROP_BLOCKSOLID)) {
+	if (!hasProperty(CONST_PROP_BLOCKSOLID)) {
 		resetFlag(TILESTATE_BLOCKSOLID);
 	}
 
-	if (item->hasProperty(CONST_PROP_IMMOVABLEBLOCKSOLID) && !hasProperty(item, CONST_PROP_IMMOVABLEBLOCKSOLID)) {
+	if (!hasProperty(CONST_PROP_IMMOVABLEBLOCKSOLID)) {
 		resetFlag(TILESTATE_IMMOVABLEBLOCKSOLID);
 	}
 
-	if (item->hasProperty(CONST_PROP_BLOCKPATH) && !hasProperty(item, CONST_PROP_BLOCKPATH)) {
+	if (!hasProperty(CONST_PROP_BLOCKPATH)) {
 		resetFlag(TILESTATE_BLOCKPATH);
 	}
 
-	if (item->hasProperty(CONST_PROP_NOFIELDBLOCKPATH) && !hasProperty(item, CONST_PROP_NOFIELDBLOCKPATH)) {
+	if (!hasProperty(CONST_PROP_NOFIELDBLOCKPATH)) {
 		resetFlag(TILESTATE_NOFIELDBLOCKPATH);
 	}
 
-	if (item->hasProperty(CONST_PROP_IMMOVABLEBLOCKPATH) && !hasProperty(item, CONST_PROP_IMMOVABLEBLOCKPATH)) {
+	if (!hasProperty(CONST_PROP_IMMOVABLEBLOCKPATH)) {
 		resetFlag(TILESTATE_IMMOVABLEBLOCKPATH);
 	}
 
-	if (item->hasProperty(CONST_PROP_IMMOVABLENOFIELDBLOCKPATH) && !hasProperty(item, CONST_PROP_IMMOVABLENOFIELDBLOCKPATH)) {
+	if (!hasProperty(CONST_PROP_IMMOVABLENOFIELDBLOCKPATH)) {
 		resetFlag(TILESTATE_IMMOVABLENOFIELDBLOCKPATH);
 	}
 
@@ -1707,7 +1617,7 @@ void Tile::resetTileFlags(const ItemPtr& item)
 		resetFlag(TILESTATE_DEPOT);
 	}
 
-	if (item->hasProperty(CONST_PROP_SUPPORTHANGABLE)) {
+	if (!hasProperty(CONST_PROP_SUPPORTHANGABLE)) {
 		resetFlag(TILESTATE_SUPPORTS_HANGABLE);
 	}
 }

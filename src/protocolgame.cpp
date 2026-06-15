@@ -31,23 +31,8 @@ extern Chat* g_chat;
 
 using namespace BlackTek::Network;
 
-namespace 
+namespace
 {
-	// BlackTek Instance System
-	bool canSeeItemInInstance(uint32_t viewerInstanceId, const ItemConstPtr& item)
-	{
-		if (not item)
-			return false;
-
-		const uint32_t itemInstanceId = item->getInstanceID();
-		if (itemInstanceId == viewerInstanceId)
-			return true;
-
-		// Keep static map decorations/tiles shared across instances
-		// isolate runtime-spawned items and fields
-		return itemInstanceId == 0 and item->isLoadedFromMap();
-	}
-
 	std::deque<std::pair<int64_t, uint32_t>> waitList; // (timeout, player guid)
 	auto priorityEnd = waitList.end();
 
@@ -246,11 +231,11 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			return;
 		}
 
-		std::vector<Condition*> initialConditions;
+		std::vector<ConditionHandle> initialConditions;
 
 		if (not IOLoginData::loadPlayerById(player, player->getGUID(), &initialConditions))
 		{
-			for (auto* c : initialConditions) { delete c; }
+			// initialConditions auto-releases via ConditionHandle destructors
 			disconnectClient("Your character could not be loaded.");
 			return;
 		}
@@ -260,7 +245,7 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 		// Todo : add back position spawn determined by config.lua
 		if (isAccountManager)
 		{
-			for (auto* c : initialConditions) { delete c; }
+			// initialConditions auto-releases; account managers don't restore conditions
 
 			player->accountNumber = accountId;
 			// sync premium time from player account
@@ -285,14 +270,14 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			{
 				if (not g_game.placeCreature(player, player->getTemplePosition(), false, true))
 				{
-					for (auto* c : initialConditions) { delete c; }
+					// initialConditions auto-releases
 					disconnectClient("Temple position is wrong. Contact the administrator.");
 					return;
 				}
 			}
 
-			for (auto* c : initialConditions)
-				player->addCondition(c);
+			for (auto& c : initialConditions)
+				player->addCondition(std::move(c));
 		}
 
 		if (operatingSystem >= CLIENTOS_OTCLIENT_LINUX)
@@ -758,10 +743,6 @@ void ProtocolGame::GetTileDescription(const TileConstPtr& tile, NetworkMessage& 
 	{
 		for (auto it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it)
 		{
-			// BlackTek Instance System
-			if (not canSeeItemInInstance(player->getInstanceID(), *it))
-				continue;
-			
 			msg.addItem(*it);
 
 			if (++count == 10)
@@ -792,10 +773,6 @@ void ProtocolGame::GetTileDescription(const TileConstPtr& tile, NetworkMessage& 
 	{
 		for (auto it = items->getBeginDownItem(), end = items->getEndDownItem(); it != end; ++it)
 		{
-			// BlackTek Instance System
-			if (not canSeeItemInInstance(player->getInstanceID(), *it))
-				continue;
-			
 			msg.addItem(*it);
 
 			if (++count == 10)
@@ -919,10 +896,6 @@ bool ProtocolGame::canSee(const CreatureConstPtr& creature) const
 	{
 		return false;
 	}
-
-	// BlackTek Instance System
-	if (not player->compareInstance(creature->getInstanceID()))
-		return false;
 
 	return canSee(creature->getPosition());
 }
@@ -1691,6 +1664,7 @@ void ProtocolGame::sendBasicData()
 	writeToOutputBuffer(msg);
 }
 
+// to reduce the size of text message, we can and should make a separate method for handling "channel messages"
 void ProtocolGame::sendTextMessage(const TextMessage& message)
 {
 	NetworkMessage msg;
@@ -2906,10 +2880,6 @@ void ProtocolGame::sendAddTileItem(const Position& pos, uint32_t stackpos, const
 	{
 		return;
 	}
-	// BlackTek Instance System
-	if (not canSeeItemInInstance(player->getInstanceID(), item))
-		return;
-
 	NetworkMessage msg;
 	msg.add(ServerCode::AddTileThing);
 	msg.addPosition(pos);
@@ -2924,11 +2894,6 @@ void ProtocolGame::sendUpdateTileItem(const Position& pos, uint32_t stackpos, co
 	{
 		return;
 	}
-	// BlackTek Instance System
-	if (not canSeeItemInInstance(player->getInstanceID(), item)) {
-		return;
-	}
-
 	NetworkMessage msg;
 	msg.add(ServerCode::UpdateTileThing);
 	msg.addPosition(pos);
@@ -3724,9 +3689,27 @@ void ProtocolGame::AddPlayerSkills(NetworkMessage& msg) const
 		msg.addByte(player->getSkillPercent(i));
 	}
 
+	using AT = BlackTek::DamageModifier::AttackType;
+	const auto& during = player->getMainAttackModSums();
+	const auto& post   = player->getMainAttackModPostSums();
+
+	const auto critIdx = std::to_underlying(AT::Critical);
+	const auto lifeIdx = std::to_underlying(AT::Lifesteal);
+	const auto manaIdx = std::to_underlying(AT::Manasteal);
+
+	const std::array<uint32_t, SPECIALSKILL_LAST + 1> cache_bonus = {
+		during[critIdx].percent,  // SPECIALSKILL_CRITICALHITCHANCE
+		during[critIdx].flat,     // SPECIALSKILL_CRITICALHITAMOUNT
+		post[lifeIdx].percent,    // SPECIALSKILL_LIFELEECHCHANCE
+		post[lifeIdx].flat,       // SPECIALSKILL_LIFELEECHAMOUNT
+		post[manaIdx].percent,    // SPECIALSKILL_MANALEECHCHANCE
+		post[manaIdx].flat,       // SPECIALSKILL_MANALEECHAMOUNT
+	};
+
 	for (uint8_t i = SPECIALSKILL_FIRST; i <= SPECIALSKILL_LAST; ++i)
 	{
-		msg.add<uint16_t>(std::min<uint16_t>(player->varSpecialSkills[i], 100));
+		const uint32_t total = static_cast<uint32_t>(std::max<int32_t>(0, player->varSpecialSkills[i])) + cache_bonus[i];
+		msg.add<uint16_t>(static_cast<uint16_t>(std::min<uint32_t>(total, 100u)));
 		msg.add<SpecialCode>(SpecialCode::Zero);
 	}
 }

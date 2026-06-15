@@ -699,21 +699,6 @@ gtl::btree_map<uint32_t, uint32_t>& Container::getAllItemTypeCount(gtl::btree_ma
 	return countMap;
 }
 
-ItemVector Container::getItems(bool recursive /*= false*/) const
-{
-	ItemVector containerItems;
-	if (recursive) {
-		for (ContainerIterator it = iterator(); it.hasNext(); it.advance()) {
-			containerItems.push_back(*it);
-		}
-	} else {
-		for (auto item : itemlist) {
-			containerItems.push_back(item);
-		}
-	}
-	return containerItems;
-}
-
 ThingPtr Container::getThing(size_t index)
 {
 	return getItemByIndex(index);

@@ -7,8 +7,19 @@
 #include "fileloader.h"
 #include "enums.h"
 #include "declarations.h"
+#include "intrusive.h"
+
+#include <memory_resource>
+#include <vector>
 
 class PropStream;
+
+// Forward declarations for the global condition memory pool.
+// Conditions are allocated from this pool via overridden operator new/delete.
+namespace BlackTek
+{
+	extern std::pmr::unsynchronized_pool_resource g_condition_pool;
+}
 
 enum ConditionAttr_t {
 	CONDITIONATTR_TYPE = 1,
@@ -52,6 +63,12 @@ struct IntervalInfo {
 	int32_t interval;
 };
 
+class Condition;
+using ConditionHandle = intrusive_ptr<Condition>;
+
+void intrusive_ptr_add_ref(const Condition* p) noexcept;
+void intrusive_ptr_release(const Condition* p) noexcept;
+
 class Condition
 {
 	public:
@@ -61,42 +78,62 @@ class Condition
 			subId(subId), ticks(ticks), conditionType(type), isBuff(buff), aggressive(aggressive), id(id) {}
 		virtual ~Condition() = default;
 
+		// Define explicitly: copy all data, but start the clone with zero references.
+		Condition(const Condition& o) :
+			endTime(o.endTime),
+			subId(o.subId),
+			ticks(o.ticks),
+			conditionType(o.conditionType),
+			isBuff(o.isBuff),
+			aggressive(o.aggressive),
+			id(o.id),
+			source(o.source),
+			m_ref_count(0)
+		{}
+		Condition& operator=(const Condition&) = delete;
+
+		// Pool allocation — all concrete Condition subclasses share g_condition_pool.
+		// In C++20, operator delete(void*, size_t) receives the dynamic (most-derived) size
+		// even when called through a base-class pointer, so polymorphic deletion is safe.
+		static void* operator new(std::size_t size);
+		static void  operator delete(void* ptr, std::size_t size) noexcept;
+
 		virtual bool startCondition(CreaturePtr creature);
 		virtual bool executeCondition(CreaturePtr creature, int32_t interval);
 		virtual void endCondition(CreaturePtr creature) = 0;
 		virtual void addCondition(CreaturePtr creature, const Condition* condition) = 0;
 		virtual uint32_t getIcons() const;
-	
+
 		ConditionId_t getId() const {
 			return id;
 		}
-	
+
 		uint32_t getSubId() const {
 			return subId;
 		}
 
-		virtual Condition* clone() const = 0;
+		[[nodiscard]] virtual ConditionHandle clone() const = 0;
 
 		ConditionType_t getType() const {
 			return conditionType;
 		}
-	
+
 		int64_t getEndTime() const {
 			return endTime;
 		}
-	
+
 		int32_t getTicks() const {
 			return ticks;
 		}
-	
+
 		void setTicks(int32_t newTicks);
-	
+
 		bool isAggressive() const {
 			return aggressive;
 		}
 
-		static Condition* createCondition(ConditionId_t id, ConditionType_t type, int32_t ticks, int32_t param = 0, bool buff = false, uint32_t subId = 0, bool aggressive = false);
-		static Condition* createCondition(PropStream& propStream);
+		[[nodiscard]] static ConditionHandle createCondition(ConditionId_t id, ConditionType_t type, int32_t ticks, int32_t param = 0, bool buff = false, uint32_t subId = 0, bool aggressive = false);
+		[[nodiscard]] static ConditionHandle createCondition(PropStream& propStream);
 
 		virtual bool setParam(ConditionParam_t param, int32_t value);
 		virtual int32_t getParam(ConditionParam_t param);
@@ -121,6 +158,11 @@ class Condition
 	private:
 		ConditionId_t id;
 		CreaturePtr source = nullptr;
+
+		mutable int32_t m_ref_count{ 0 };
+
+		friend void intrusive_ptr_add_ref(const Condition* p) noexcept;
+		friend void intrusive_ptr_release(const Condition* p) noexcept;
 };
 
 class ConditionGeneric : public Condition
@@ -135,8 +177,8 @@ class ConditionGeneric : public Condition
 		void addCondition(CreaturePtr creature, const Condition* condition) override;
 		uint32_t getIcons() const override;
 
-		ConditionGeneric* clone() const override {
-			return new ConditionGeneric(*this);
+		[[nodiscard]] ConditionHandle clone() const override {
+			return ConditionHandle(new ConditionGeneric(*this));
 		}
 };
 
@@ -154,8 +196,8 @@ class ConditionAttributes final : public ConditionGeneric
 		bool setParam(ConditionParam_t param, int32_t value) override;
 		int32_t getParam(ConditionParam_t param) override;
 
-		ConditionAttributes* clone() const override {
-			return new ConditionAttributes(*this);
+		[[nodiscard]] ConditionHandle clone() const override {
+			return ConditionHandle(new ConditionAttributes(*this));
 		}
 
 		//serialization
@@ -192,8 +234,8 @@ class ConditionRegeneration final : public ConditionGeneric
 		bool setParam(ConditionParam_t param, int32_t value) override;
 		int32_t getParam(ConditionParam_t param) override;
 
-		ConditionRegeneration* clone() const override {
-			return new ConditionRegeneration(*this);
+		[[nodiscard]] ConditionHandle clone() const override {
+			return ConditionHandle(new ConditionRegeneration(*this));
 		}
 
 		//serialization
@@ -222,8 +264,8 @@ class ConditionSoul final : public ConditionGeneric
 		bool setParam(ConditionParam_t param, int32_t value) override;
 		int32_t getParam(ConditionParam_t param) override;
 
-		ConditionSoul* clone() const override {
-			return new ConditionSoul(*this);
+		[[nodiscard]] ConditionHandle clone() const override {
+			return ConditionHandle(new ConditionSoul(*this));
 		}
 
 		//serialization
@@ -245,8 +287,8 @@ class ConditionInvisible final : public ConditionGeneric
 		bool startCondition(CreaturePtr creature) override;
 		void endCondition(CreaturePtr creature) override;
 
-		ConditionInvisible* clone() const override {
-			return new ConditionInvisible(*this);
+		[[nodiscard]] ConditionHandle clone() const override {
+			return ConditionHandle(new ConditionInvisible(*this));
 		}
 };
 
@@ -257,7 +299,7 @@ class ConditionDamage final : public Condition
 		ConditionDamage(ConditionId_t id, ConditionType_t type, bool buff = false, uint32_t subId = 0, bool aggressive = true) :
 			Condition(id, type, 0, buff, subId, aggressive) {}
 
-		static void generateDamageList(int32_t amount, int32_t start, std::list<int32_t>& list);
+		static void generateDamageList(int32_t amount, int32_t start, std::vector<int32_t>& list);
 
 		bool startCondition(CreaturePtr creature) override;
 		bool executeCondition(CreaturePtr creature, int32_t interval) override;
@@ -265,8 +307,8 @@ class ConditionDamage final : public Condition
 		void addCondition(CreaturePtr creature, const Condition* condition) override;
 		uint32_t getIcons() const override;
 
-		ConditionDamage* clone() const override {
-			return new ConditionDamage(*this);
+		[[nodiscard]] ConditionHandle clone() const override {
+			return ConditionHandle(new ConditionDamage(*this));
 		}
 
 		bool setParam(ConditionParam_t param, int32_t value) override;
@@ -304,7 +346,8 @@ class ConditionDamage final : public Condition
 
 		bool init();
 
-		std::list<IntervalInfo> damageList;
+		std::vector<IntervalInfo> damageList;
+		uint32_t damage_front = 0;
 
 		bool getNextDamage(int32_t& damage);
 		bool doDamage(CreaturePtr creature, int32_t healthChange) const;
@@ -324,8 +367,8 @@ class ConditionSpeed final : public Condition
 		void addCondition(CreaturePtr creature, const Condition* condition) override;
 		uint32_t getIcons() const override;
 
-		ConditionSpeed* clone() const override {
-			return new ConditionSpeed(*this);
+		[[nodiscard]] ConditionHandle clone() const override {
+			return ConditionHandle(new ConditionSpeed(*this));
 		}
 
 		bool setParam(ConditionParam_t param, int32_t value) override;
@@ -358,8 +401,8 @@ class ConditionOutfit final : public Condition
 		void endCondition(CreaturePtr creature) override;
 		void addCondition(CreaturePtr creature, const Condition* condition) override;
 
-		ConditionOutfit* clone() const override {
-			return new ConditionOutfit(*this);
+		[[nodiscard]] ConditionHandle clone() const override {
+			return ConditionHandle(new ConditionOutfit(*this));
 		}
 
 		void setOutfit(const Outfit_t& outfit);
@@ -383,8 +426,8 @@ class ConditionLight final : public Condition
 		void endCondition(CreaturePtr creature) override;
 		void addCondition(CreaturePtr creature, const Condition* condition) override;
 
-		ConditionLight* clone() const override {
-			return new ConditionLight(*this);
+		[[nodiscard]] ConditionHandle clone() const override {
+			return ConditionHandle(new ConditionLight(*this));
 		}
 
 		bool setParam(ConditionParam_t param, int32_t value) override;
@@ -409,8 +452,8 @@ class ConditionSpellCooldown final : public ConditionGeneric
 		bool startCondition(CreaturePtr creature) override;
 		void addCondition(CreaturePtr creature, const Condition* condition) override;
 
-		ConditionSpellCooldown* clone() const override {
-			return new ConditionSpellCooldown(*this);
+		[[nodiscard]] ConditionHandle clone() const override {
+			return ConditionHandle(new ConditionSpellCooldown(*this));
 		}
 };
 
@@ -423,8 +466,8 @@ class ConditionSpellGroupCooldown final : public ConditionGeneric
 		bool startCondition(CreaturePtr creature) override;
 		void addCondition(CreaturePtr creature, const Condition* condition) override;
 
-		ConditionSpellGroupCooldown* clone() const override {
-			return new ConditionSpellGroupCooldown(*this);
+		[[nodiscard]] ConditionHandle clone() const override {
+			return ConditionHandle(new ConditionSpellGroupCooldown(*this));
 		}
 };
 
@@ -444,8 +487,8 @@ class ConditionDrunk final : public Condition
 		bool setParam(ConditionParam_t param, int32_t value) override;
 		void addCondition(CreaturePtr creature, const Condition* condition) override;
 
-		ConditionDrunk* clone() const override {
-			return new ConditionDrunk(*this);
+		[[nodiscard]] ConditionHandle clone() const override {
+			return ConditionHandle(new ConditionDrunk(*this));
 		}
 
 	private:

@@ -9,7 +9,6 @@
 #include "items.h"
 #include "luascript.h"
 #include "tools.h"
-#include "imbuement.h"
 #include "augments.h"
 #include "declarations.h"
 #include "pointbasedstat.h"
@@ -27,7 +26,7 @@ class Teleport;
 class TrashHolder;
 class Mailbox;
 class Door;
-class MagicField;
+class BlackTek::MagicField;
 class BedItem;
 
 using namespace Components::Stats;
@@ -101,8 +100,8 @@ enum AttrTypes_t {
 	ATTR_PLACE_HOLDERTOO = 40,
 	ATTR_CLASSIFICATION = 41,
 	ATTR_TIER = 42,
-	ATTR_IMBUESLOTS = 43,
-	ATTR_IMBUEMENTS = 44,
+	ATTR_IMBUESLOTS = 43,  // legacy — values are skipped during load for backward compat
+	ATTR_IMBUEMENTS = 44,  // legacy — values are skipped during load for backward compat
 	ATTR_REWARDID = 45,
 	ATTR_OPENCONTAINER = 46
 };
@@ -912,7 +911,6 @@ class Item : virtual public Thing, public SharedObject
 		}
 
 		const bool isEquipped();
-		void decayImbuements(bool infight);
 
 		static std::string getDescription(const ItemType& it, int32_t lookDistance, const ItemPtr& item = nullptr, int32_t subType = -1, bool addArticle = true);
 		static std::string getNameDescription(const ItemType& it, const ItemConstPtr& item = nullptr, int32_t subType = -1, bool addArticle = true);
@@ -1231,45 +1229,26 @@ class Item : virtual public Thing, public SharedObject
 			return parentLock->isRemoved();
 		}
 
-		uint16_t getImbuementSlots() const;
-		uint16_t getFreeImbuementSlots() const;
-		bool canImbue();
-		bool addImbuementSlots(const uint16_t amount);
-		bool removeImbuementSlots(const uint16_t amount, const bool destroyImbues = false);
-		bool hasImbuementType(const ImbuementType imbuetype) const;
-		bool hasImbuement(const std::shared_ptr<Imbuement>& imbuement) const;
-		bool hasImbuements() const; /// change to isImbued();
-		bool addImbuement(std::shared_ptr<Imbuement> imbuement, bool created = true);
-		bool removeImbuement(const std::shared_ptr<Imbuement>& imbuement, bool decayed = false);
-		std::unique_ptr<std::vector<std::shared_ptr<Imbuement>>>& getImbuements() 
-		{
-            if (not imbuements.get()) 
-			{
-				imbuements = std::move(std::make_unique<std::vector<std::shared_ptr<Imbuement>>>());
-            }
-			return imbuements;
-		}
-
 		const bool addAugment(std::string_view augmentName);
-		const bool addAugment(const std::shared_ptr<Augment>& augment);
+		const bool addAugment(const std::shared_ptr<BlackTek::Augment>& augment);
 		
 		const bool removeAugment(std::string_view name);
-		const bool removeAugment(std::shared_ptr<Augment>& augment);
+		const bool removeAugment(std::shared_ptr<BlackTek::Augment>& augment);
 
 		bool isAugmented() const;
 		bool hasAugment(std::string_view name) const;
-		bool hasAugment(const std::shared_ptr<Augment>& augment) const;
+		bool hasAugment(const std::shared_ptr<BlackTek::Augment>& augment) const;
 
 		[[nodiscard]] uint32_t getAttackModifierCount() const noexcept { return attack_modifier_count; }
 		[[nodiscard]] uint32_t getDefenseModifierCount() const noexcept { return defense_modifier_count; }
 		[[nodiscard]] uint32_t getConversionModifierCount() const noexcept { return conversion_modifier_count; }
 		[[nodiscard]] uint32_t getReformModifierCount() const noexcept { return reform_modifier_count; }
 
-		std::unique_ptr<std::vector<std::shared_ptr<Augment>>>& getAugments()
+		std::unique_ptr<std::vector<std::shared_ptr<BlackTek::Augment>>>& getAugments()
 		{
 			if (not augments.get())
 			{
-				augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+				augments = std::make_unique<std::vector<std::shared_ptr<BlackTek::Augment>>>();
 			}
 
 			return augments;
@@ -1367,18 +1346,22 @@ class Item : virtual public Thing, public SharedObject
 
 	private:
         std::unique_ptr<ItemAttributes> attributes;
-		std::unique_ptr<std::vector<std::shared_ptr<Imbuement>>> imbuements;
-		std::unique_ptr<std::vector<std::shared_ptr<Augment>>> augments;
+		std::unique_ptr<std::vector<std::shared_ptr<BlackTek::Augment>>> augments;
 		uint32_t attack_modifier_count = 0;
 		uint32_t defense_modifier_count = 0;
 		uint32_t conversion_modifier_count = 0;
 		uint32_t reform_modifier_count = 0;
+		uint32_t named_modifiers_count = 0;
+		uint32_t damage_modifiers_count = 0;
+		uint32_t origin_modifiers_count = 0;
+		uint32_t creature_modifiers_count = 0;
+		uint32_t race_modifiers_count = 0;
+
 	protected:
 		uint16_t id; // the same id as in ItemType
 		ItemSubType item_subtype = ItemSubType::None;
 
 	private:
-		uint16_t imbuementSlots = 0;
 		uint8_t count = 1; // number of stacked items
 		bool loadedFromMap = false;
         std::string getWeightDescription(uint32_t weight) const;

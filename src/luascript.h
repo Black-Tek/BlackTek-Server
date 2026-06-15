@@ -1,8 +1,7 @@
 // Copyright 2024 Black Tek Server Authors. All rights reserved.
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
-#ifndef FS_LUASCRIPT_H
-#define FS_LUASCRIPT_H
+#pragma once
 
 #if __has_include("luajit/lua.hpp")
 #include <luajit/lua.hpp>
@@ -30,16 +29,21 @@
 #include "declarations.h"
 #include <gtl/phmap.hpp>
 
-class AreaCombat;
-class Combat;
-using Combat_ptr = std::shared_ptr<Combat>;
+#include "intrusive.h"
+namespace BlackTek
+{
+    class Combat;
+    class AreaCombat;
+    using CombatHandle = intrusive_ptr<Combat>;
+}
+using Combat_ptr = BlackTek::CombatHandle;
 class Condition;
 class InstantSpell;
 class Spell;
 class LuaScriptInterface;
 class Game;
 struct LootBlock;
-class DamageModifier;
+namespace BlackTek { struct DamageModifier; }
 
 template<typename T>
 concept EnumType = std::is_enum_v<T> && !std::is_same_v<T, bool>;
@@ -403,6 +407,19 @@ class LuaScriptInterface
 			return *static_cast<std::shared_ptr<T>*>(lua_touserdata(L, arg));
 		}
 
+		template<class T>
+		static intrusive_ptr<T>& getCombatHandle(lua_State* L, int32_t arg)
+		{
+			return *static_cast<intrusive_ptr<T>*>(lua_touserdata(L, arg));
+		}
+
+		template<class T>
+		static void pushCombatHandle(lua_State* L, intrusive_ptr<T> value)
+		{
+			void* ud = lua_newuserdatauv(L, sizeof(intrusive_ptr<T>), 0);
+			new (ud) intrusive_ptr<T>(std::move(value));
+		}
+
 		static bool getBoolean(lua_State* L, int32_t arg)
 		{
 			return lua_toboolean(L, arg) != 0;
@@ -477,7 +494,6 @@ class LuaScriptInterface
 
 		// Push
 		static void pushBoolean(lua_State* L, bool value);
-		static void pushCombatDamage(lua_State* L, const CombatDamage& damage);
 		static void pushInstantSpell(lua_State* L, const InstantSpell& spell);
 		static void pushPosition(lua_State* L, const Position& position, int32_t stackpos = 0);
 		static void pushSpell(lua_State* L, const Spell& spell);
@@ -486,7 +502,7 @@ class LuaScriptInterface
 		static void pushMount(lua_State* L, const Mount* mount);
 		static void pushLoot(lua_State* L, const std::vector<LootBlock>& lootList);
 
-		static void pushDamageModifier(lua_State *L, const std::shared_ptr<DamageModifier> &modifier);
+		static void pushDamageModifier(lua_State *L, const std::shared_ptr<BlackTek::DamageModifier> &modifier);
 
 		static void setField(lua_State* L, const char* index, std::floating_point auto value)
 		{
@@ -529,6 +545,8 @@ class LuaScriptInterface
 		void registerFunctions();
 
 		void registerMethod(const std::string& globalName, const std::string& methodName, lua_CFunction func) const;
+		// Registers a method as a closure with a single integer upvalue (accessible via lua_upvalueindex(1)).
+		void registerMethodClosure(const std::string& globalName, const std::string& methodName, lua_CFunction func, int upvalue) const;
 
 		static std::string getErrorDesc(ErrorCode_t code);
 
@@ -873,18 +891,6 @@ class LuaScriptInterface
 		static int luaItemSetStoreItem(lua_State* L);
 		static int luaItemIsStoreItem(lua_State* L);
 
-		static int luaItemGetImbuementSlots(lua_State* L);
-		static int luaItemGetFreeImbuementSlots(lua_State* L);
-		static int luaItemCanImbue(lua_State* L);
-		static int luaItemAddImbuementSlots(lua_State* L);
-		static int luaItemRemoveImbuementSlots(lua_State* L);
-		static int luaItemHasImbuementType(lua_State* L);
-		static int luaItemHasImbuement(lua_State* L);
-		static int luaItemHasImbuements(lua_State* L); /// change to isImbued();
-		static int luaItemAddImbuement(lua_State* L);
-		static int luaItemRemoveImbuement(lua_State* L);
-		static int luaItemGetImbuements(lua_State* L);
-
 		static int luaItemAddAugment(lua_State* L);
 		static int luaItemRemoveAugment(lua_State* L);
 		static int luaItemIsAugmented(lua_State* L);
@@ -910,24 +916,6 @@ class LuaScriptInterface
 		static int luaItemGetStat(lua_State* L);
 		static int luaItemGetStats(lua_State* L);
 
-
-		// Imbuement
-
-		static int luaImbuementCreate(lua_State* L);
-		static int luaImbuementGetType(lua_State* L);
-		static int luaImbuementIsSkill(lua_State* L);
-		static int luaImbuementIsSpecialSkill(lua_State* L);
-		static int luaImbuementIsStat(lua_State* L);
-		static int luaImbuementIsDamage(lua_State* L);
-		static int luaImbuementIsResist(lua_State* L);
-		static int luaImbuementGetValue(lua_State* L);
-		static int luaImbuementSetValue(lua_State* L);
-		static int luaImbuementGetDuration(lua_State* L);
-		static int luaImbuementSetDuration(lua_State* L);
-		static int luaImbuementSetEquipDecay(lua_State* L);
-		static int luaImbuementSetInfightDecay(lua_State* L);
-		static int luaImbuementIsEquipDecay(lua_State* L);
-		static int luaImbuementIsInfightDecay(lua_State* L);
 
 		// DamageModifier
 		static int luaDamageModifierCreate(lua_State* L);
@@ -1537,18 +1525,54 @@ class LuaScriptInterface
 		static int luaCombatCreate(lua_State* L);
 		static int luaCombatDelete(lua_State* L);
 
-		static int luaCombatSetParameter(lua_State* L);
-		static int luaCombatGetParameter(lua_State* L);
+		// Generic config-flag setter/getter used via lua_pushcclosure upvalue (upvalue 1 = Config enum int)
+		static int luaCombatSetConfigFlag(lua_State* L);
+		static int luaCombatGetConfigFlag(lua_State* L);
+
+		// Dedicated non-flag property methods
+		static int luaCombatSetDamageType(lua_State* L);
+		static int luaCombatGetDamageType(lua_State* L);
+		static int luaCombatSetImpactEffect(lua_State* L);
+		static int luaCombatGetImpactEffect(lua_State* L);
+		static int luaCombatSetDistanceEffect(lua_State* L);
+		static int luaCombatGetDistanceEffect(lua_State* L);
+		static int luaCombatSetCreatedItem(lua_State* L);
+		static int luaCombatGetCreatedItem(lua_State* L);
 
 		static int luaCombatSetFormula(lua_State* L);
 
 		static int luaCombatSetArea(lua_State* L);
 		static int luaCombatAddCondition(lua_State* L);
 		static int luaCombatClearConditions(lua_State* L);
-		static int luaCombatSetCallback(lua_State* L);
 		static int luaCombatSetOrigin(lua_State* L);
 
 		static int luaCombatExecute(lua_State* L);
+
+		// Formula override API
+		static int luaCombatSetSituationFormulas(lua_State* L);
+		static int luaCombatSetDamage(lua_State* L);
+		static int luaCombatRegisterFormula(lua_State* L);
+		static int luaCombatGetAreaPositions(lua_State* L);
+
+		// FormulaNode — Lua userdata wrapping a compiled C++ formula expression
+		// pushFormulaNode / getFormulaNode are file-scope statics in luascript.cpp
+		static int luaFormulaNodeBind(lua_State* L);
+		static int luaFormulaNodeBindSkill(lua_State* L);
+		static int luaFormulaNodeOutput(lua_State* L);
+		static int luaFormulaNodeResistance(lua_State* L);
+		static int luaFormulaNodeConst(lua_State* L);
+		static int luaFormulaNodeRandom(lua_State* L);
+		static int luaFormulaNodeMin(lua_State* L);
+		static int luaFormulaNodeMax(lua_State* L);
+		static int luaFormulaNodeFloor(lua_State* L);
+		static int luaFormulaNodeCeil(lua_State* L);
+		static int luaFormulaNodeAdd(lua_State* L);
+		static int luaFormulaNodeSub(lua_State* L);
+		static int luaFormulaNodeMul(lua_State* L);
+		static int luaFormulaNodeDiv(lua_State* L);
+		static int luaFormulaNodeUnm(lua_State* L);
+		static int luaFormulaNodePow(lua_State* L);
+		static int luaFormulaNodeGC(lua_State* L);
 
 		// Condition
 		static int luaConditionCreate(lua_State* L);
@@ -1639,6 +1663,11 @@ class LuaScriptInterface
 
 		static int luaMonsterTypeArmor(lua_State* L);
 		static int luaMonsterTypeDefense(lua_State* L);
+		static int luaMonsterTypeDefenseChargeInterval(lua_State* L);
+		static int luaMonsterTypeDefenseChargesCap(lua_State* L);
+		static int luaMonsterTypeArmorChargesCap(lua_State* L);
+		static int luaMonsterTypeDefenseChargeCostMultiplier(lua_State* L);
+		static int luaMonsterTypeArmorChargeCostMultiplier(lua_State* L);
 		static int luaMonsterTypeOutfit(lua_State* L);
 		static int luaMonsterTypeRace(lua_State* L);
 		static int luaMonsterTypeCorpseId(lua_State* L);
@@ -1891,13 +1920,6 @@ class LuaScriptInterface
 		static int luaZoneItemCount(lua_State* L);
 		static int luaZoneTileCount(lua_State* L);
 
-		// BlackTek Instance System
-		static int luaCreatureGetInstanceId(lua_State* L);
-		static int luaCreatureSetInstanceId(lua_State* L);
-		static int luaItemGetInstanceId(lua_State* L);
-		static int luaItemSetInstanceId(lua_State* L);
-		
-
 		//
 		std::string lastLuaError;
 
@@ -1931,7 +1953,7 @@ class LuaEnvironment : public LuaScriptInterface
 		Combat_ptr createCombatObject(LuaScriptInterface* interface);
 		void clearCombatObjects(LuaScriptInterface* interface);
 
-		AreaCombat* getAreaObject(uint32_t id) const;
+		BlackTek::AreaCombat* getAreaObject(uint32_t id) const;
 		uint32_t createAreaObject(LuaScriptInterface* interface);
 		void clearAreaObjects(LuaScriptInterface* interface);
 
@@ -1939,13 +1961,11 @@ class LuaEnvironment : public LuaScriptInterface
 		void executeTimerEvent(uint32_t eventIndex);
 
 		gtl::node_hash_map<uint32_t, LuaTimerEventDesc> timerEvents;
-		gtl::node_hash_map<uint32_t, Combat_ptr> combatMap;
-		gtl::node_hash_map<uint32_t, AreaCombat*> areaMap;
-
-		gtl::node_hash_map<LuaScriptInterface*, std::vector<uint32_t>> combatIdMap;
-		gtl::node_hash_map<LuaScriptInterface*, std::vector<uint32_t>> areaIdMap;
-
 		LuaScriptInterface* testInterface = nullptr;
+		gtl::flat_hash_map<uint32_t, BlackTek::CombatHandle> combatMap;
+		gtl::flat_hash_map<LuaScriptInterface*, std::vector<uint32_t>> combatIdMap;
+		gtl::flat_hash_map<uint32_t, BlackTek::AreaCombat*> areaMap;
+		gtl::flat_hash_map<LuaScriptInterface*, std::vector<uint32_t>> areaIdMap;
 
 		uint32_t lastEventTimerId = 1;
 		uint32_t lastCombatId = 0;
@@ -1962,6 +1982,3 @@ static int destroySharedUserData(lua_State* L)
 	std::destroy_at(std::addressof(obj_ref));
 	return 0;
 }
-
-
-#endif

@@ -53,6 +53,16 @@ jobs:
           restore-keys: |
             vcpkg-${{ runner.os }}-v2-
       
+      - name: Update Visual Studio 2022 to latest
+        shell: pwsh
+        run: |
+          $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe"
+          & $installer update --quiet --norestart --installPath "${env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise"
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0 -and $exitCode -ne 3010) {
+            Write-Warning "VS installer exited with code $exitCode (may already be up to date)"
+          }
+
       - name: Setup Premake & Generate Solution
         run: |
           git clone https://github.com/premake/premake-core
@@ -121,13 +131,13 @@ jobs:
       - name: Compile Release
         run: |
           cd D:\a\BlackTek-Server\BlackTek-Server
-          msbuild Black-Tek-Server.sln /p:Configuration=Release
+          msbuild Black-Tek-Server.sln /p:Configuration=Release /p:LanguageStandard=stdcppLatest
           cmd /c copy Black-Tek-Server.exe BlackTek-Server-Release.exe
-      
+
       - name: Compile Debug
         run: |
           cd D:\a\BlackTek-Server\BlackTek-Server
-          msbuild Black-Tek-Server.sln /p:Configuration=Debug
+          msbuild Black-Tek-Server.sln /p:Configuration=Debug /p:LanguageStandard=stdcppLatest
           cmd /c copy Black-Tek-Server.exe BlackTek-Server-Debug.exe
           del Black-Tek-Server.exe
           cd D:\a\BlackTek-Server

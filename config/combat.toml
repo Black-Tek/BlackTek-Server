@@ -33,3 +33,88 @@ stairhop_delay = 2000
 # WARNING: May cause high CPU usage with many players.
 equipment_slots = false
 attack_speed    = false
+
+[defense]
+# Interval in milliseconds at which players regenerate one charge per pool.
+# Vocations can override this per-vocation in their TOML files.
+player_charge_interval  = 1000
+# Interval in milliseconds at which monsters regenerate one charge per pool.
+# Individual monster types can override this via the Lua monsterType API.
+monster_charge_interval = 1000
+
+# Default cap for each charge pool for players (0 = unlimited).
+# Vocations can override per-vocation under defense_charges.
+player_defense_charges_cap        = 2
+player_armor_charges_cap          = 0
+player_def_modifier_charges_cap   = 0
+player_atk_modifier_charges_cap   = 0
+
+# Default cap for each charge pool for monsters (0 = unlimited).
+# Individual monster types can override via the Lua monsterType API.
+monster_defense_charges_cap       = 2
+monster_armor_charges_cap         = 0
+
+# Base charges consumed per combat execution, before creature multipliers are applied.
+# Combat objects use these as their default; overrides can be set per-combat-instance.
+# A value of 0 makes that pool free (calculation always fires regardless of charges).
+default_defense_charge_cost         = 1
+default_armor_charge_cost           = 0
+default_def_modifier_charge_cost    = 0
+default_atk_modifier_charge_cost    = 0
+
+[notifications]
+absorb    = false
+restore   = false
+replenish = false
+revive    = false
+
+# MagicEffectClasses (CONST_ME_*) values from const.h. 0 = no effect.
+heal_effect      = 0
+restore_effect   = 0
+replenish_effect = 0
+revive_effect    = 0
+
+# ── Damage formula presets ────────────────────────────────────────────────────
+# Select which named formula preset to use for each situation and stage.
+# Absent keys default to "Classic" (original server mechanics).
+#
+# Valid output    presets: Classic, Scaled, Balanced, Absorption, Tabletop, Exponential
+# Valid defense   presets: Classic, Scaled, Balanced, Absorption
+# Valid armor     presets: Classic, Absorption
+# Valid resolution presets: Classic, Scaled, Balanced, Absorption, Proportional, Gradual
+#
+# Per-combat overrides set in Lua via combat:setSituationFormulas() take priority
+# over these global defaults.  Lua callbacks (combat:setDefenseCallback() etc.)
+# take priority over everything.
+
+[formulas.pvp]
+output     = "Classic"
+defense    = "Classic"
+armor      = "Classic"
+resolution = "Classic"
+
+[formulas.pvm]
+output     = "Classic"
+defense    = "Classic"
+armor      = "Classic"
+resolution = "Classic"
+
+[formulas.mvp]
+output     = "Classic"
+defense    = "Classic"
+armor      = "Classic"
+resolution = "Classic"
+
+[formulas.mvm]
+output     = "Classic"
+defense    = "Classic"
+armor      = "Classic"
+resolution = "Classic"
+
+[multilevel]
+# Number of floors above and below the caster that a MultiLevel combat can reach.
+# Normal MultiLevel (with ground barriers) propagates downward only, so this controls
+# how many floors below the caster the spell can fall through before giving up.
+# IgnoreGround uses this value in both directions (floor_range above and below).
+# Minimum useful value is 1. Default is 2.
+floor_range = 2

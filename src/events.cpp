@@ -138,11 +138,7 @@ bool Events::load()
 				std::cout << "[Warning - Events::load] Unknown monster method: " << methodName << std::endl;
 			}
 		} else if (className == "Item") {
-			if (methodName == "onImbue") {
-				info.itemOnImbue = event;
-			} else if (methodName == "onRemoveImbue") {
-				info.itemOnRemoveImbue = event;
-			} else if (methodName == "onAttack") {
+			if (methodName == "onAttack") {
 				info.itemOnAttack = event;
 			} else if (methodName == "onDefend") {
 				info.itemOnDefend = event;
@@ -331,73 +327,73 @@ void Events::eventCreatureOnHear(const CreaturePtr& creature, const CreaturePtr&
 	scriptInterface.callVoidFunction(4);
 }
 
-void Events::eventCreatureOnAttack(const CreaturePtr& attacker, const CreaturePtr& target, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage, bool leechedDamage)
-{
-	// Creature:onAttack(target, blockType, combatType, origin, criticalHit, leechedDamage)
-	if (info.creatureOnAttack == -1) {
-		return;
-	}
-
-	if (!scriptInterface.reserveScriptEnv()) {
-		std::cout << "[Error - Events::eventCreatureOnAttack] Call stack overflow" << std::endl;
-		return;
-	}
-
-	ScriptEnvironment* env = scriptInterface.getScriptEnv();
-	env->setScriptId(info.creatureOnAttack, &scriptInterface);
-
-	lua_State* L = scriptInterface.getLuaState();
-	scriptInterface.pushFunction(info.creatureOnAttack);
-
-	LuaScriptInterface::pushSharedPtr(L, attacker);
-	LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
-
-	LuaScriptInterface::pushSharedPtr(L, target);
-	LuaScriptInterface::setCreatureMetatable(L, -1, target);
-
-	lua_pushinteger(L, static_cast<uint8_t>(blockType));
-	lua_pushinteger(L, static_cast<uint8_t>(combatType));
-	lua_pushinteger(L, static_cast<uint8_t>(origin));
-
-	lua_pushboolean(L, criticalDamage);
-	lua_pushboolean(L, leechedDamage);
-
-	scriptInterface.callVoidFunction(7);
-}
-
-void Events::eventCreatureOnDefend(const CreaturePtr& defender, const CreaturePtr& attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage, bool leechedDamage)
-{
-	// Creature:onDefend(attacker, blockType, combatType, origin, criticalHit, leechedDamage)
-	if (info.creatureOnDefend == -1) {
-		return;
-	}
-
-	if (!scriptInterface.reserveScriptEnv()) {
-		std::cout << "[Error - Events::eventCreatureOnDefend] Call stack overflow" << std::endl;
-		return;
-	}
-
-	ScriptEnvironment* env = scriptInterface.getScriptEnv();
-	env->setScriptId(info.creatureOnDefend, &scriptInterface);
-
-	lua_State* L = scriptInterface.getLuaState();
-	scriptInterface.pushFunction(info.creatureOnDefend);
-
-	LuaScriptInterface::pushSharedPtr(L, defender);
-	LuaScriptInterface::setCreatureMetatable(L, -1, defender);
-
-	LuaScriptInterface::pushSharedPtr(L, attacker);
-	LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
-
-	lua_pushinteger(L, static_cast<uint8_t>(blockType));
-	lua_pushinteger(L, static_cast<uint8_t>(combatType));
-	lua_pushinteger(L, static_cast<uint8_t>(origin));
-
-	lua_pushboolean(L, criticalDamage);
-	lua_pushboolean(L, leechedDamage);
-
-	scriptInterface.callVoidFunction(7);
-}
+//void Events::eventCreatureOnAttack(const CreaturePtr& attacker, const CreaturePtr& target, BlockType_t blockType, CombatType_t combatType, Combat::Origin origin, bool criticalDamage, bool leechedDamage)
+//{
+//	// Creature:onAttack(target, blockType, combatType, origin, criticalHit, leechedDamage)
+//	if (info.creatureOnAttack == -1) {
+//		return;
+//	}
+//
+//	if (!scriptInterface.reserveScriptEnv()) {
+//		std::cout << "[Error - Events::eventCreatureOnAttack] Call stack overflow" << std::endl;
+//		return;
+//	}
+//
+//	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+//	env->setScriptId(info.creatureOnAttack, &scriptInterface);
+//
+//	lua_State* L = scriptInterface.getLuaState();
+//	scriptInterface.pushFunction(info.creatureOnAttack);
+//
+//	LuaScriptInterface::pushSharedPtr(L, attacker);
+//	LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
+//
+//	LuaScriptInterface::pushSharedPtr(L, target);
+//	LuaScriptInterface::setCreatureMetatable(L, -1, target);
+//
+//	lua_pushinteger(L, static_cast<uint8_t>(blockType));
+//	lua_pushinteger(L, static_cast<uint8_t>(combatType));
+//	lua_pushinteger(L, static_cast<uint8_t>(origin));
+//
+//	lua_pushboolean(L, criticalDamage);
+//	lua_pushboolean(L, leechedDamage);
+//
+//	scriptInterface.callVoidFunction(7);
+//}
+//
+//void Events::eventCreatureOnDefend(const CreaturePtr& defender, const CreaturePtr& attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage, bool leechedDamage)
+//{
+//	// Creature:onDefend(attacker, blockType, combatType, origin, criticalHit, leechedDamage)
+//	if (info.creatureOnDefend == -1) {
+//		return;
+//	}
+//
+//	if (!scriptInterface.reserveScriptEnv()) {
+//		std::cout << "[Error - Events::eventCreatureOnDefend] Call stack overflow" << std::endl;
+//		return;
+//	}
+//
+//	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+//	env->setScriptId(info.creatureOnDefend, &scriptInterface);
+//
+//	lua_State* L = scriptInterface.getLuaState();
+//	scriptInterface.pushFunction(info.creatureOnDefend);
+//
+//	LuaScriptInterface::pushSharedPtr(L, defender);
+//	LuaScriptInterface::setCreatureMetatable(L, -1, defender);
+//
+//	LuaScriptInterface::pushSharedPtr(L, attacker);
+//	LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
+//
+//	lua_pushinteger(L, static_cast<uint8_t>(blockType));
+//	lua_pushinteger(L, static_cast<uint8_t>(combatType));
+//	lua_pushinteger(L, static_cast<uint8_t>(origin));
+//
+//	lua_pushboolean(L, criticalDamage);
+//	lua_pushboolean(L, leechedDamage);
+//
+//	scriptInterface.callVoidFunction(7);
+//}
 
 // Party
 bool Events::eventPartyOnJoin(PartyPtr party, const PlayerPtr& player)
@@ -1258,7 +1254,7 @@ bool Events::eventPlayerOnSpellTry(const PlayerPtr& player, const Spell* spell, 
 	return scriptInterface.callFunction(3);
 }
 
-void Events::eventPlayerOnAugment(const PlayerPtr& player, std::shared_ptr<Augment> augment)
+void Events::eventPlayerOnAugment(const PlayerPtr& player, std::shared_ptr<BlackTek::Augment> augment)
 {
 	// Player:onAugment(augment)
 	if (info.playerOnAugment == -1) {
@@ -1285,7 +1281,7 @@ void Events::eventPlayerOnAugment(const PlayerPtr& player, std::shared_ptr<Augme
 	scriptInterface.callVoidFunction(2);
 }
 
-void Events::eventPlayerOnRemoveAugment(const PlayerPtr& player, std::shared_ptr<Augment> augment)
+void Events::eventPlayerOnRemoveAugment(const PlayerPtr& player, std::shared_ptr<BlackTek::Augment> augment)
 {
 	// Player:onRemoveAugment(augment)
 	if (info.playerOnRemoveAugment == -1) {
@@ -1339,164 +1335,108 @@ void Events::eventMonsterOnDropLoot(const MonsterPtr& monster, const ContainerPt
 	scriptInterface.callVoidFunction(2);
 }
 
-bool Events::eventItemOnImbue(const ItemPtr& item, const std::shared_ptr<Imbuement>& imbuement, bool created)
-{
-	// Item:onImbue(imbuement, created)
-	if (info.itemOnImbue == -1) {
-		return true;
-	}
+//void Events::eventItemOnAttack(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& defender, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage, bool leechedDamage)
+//{
+//	// Item:onAttack(attacker, defender, blockType, combatType, origin, criticalDamage, leechedDamage)
+//	if (info.itemOnAttack == -1) {
+//		return;
+//	}
+//
+//	if (!scriptInterface.reserveScriptEnv()) {
+//		std::cout << "[Error - Events::eventItemOnAttack Call stack overflow" << std::endl;
+//		return;
+//	}
+//
+//	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+//	env->setScriptId(info.itemOnAttack, &scriptInterface);
+//
+//	lua_State* L = scriptInterface.getLuaState();
+//	scriptInterface.pushFunction(info.itemOnAttack);
+//
+//	LuaScriptInterface::pushSharedPtr(L, item);
+//	LuaScriptInterface::setItemMetatable(L, -1, item);
+//
+//	LuaScriptInterface::pushSharedPtr(L, itemHolder);
+//	LuaScriptInterface::setMetatable(L, -1, "Player");
+//
+//	LuaScriptInterface::pushSharedPtr(L, defender);
+//	LuaScriptInterface::setCreatureMetatable(L, -1, defender);
+//
+//	lua_pushinteger(L, static_cast<uint8_t>(blockType));
+//	lua_pushinteger(L, static_cast<uint8_t>(combatType));
+//	lua_pushinteger(L, static_cast<uint8_t>(origin));
+//
+//	lua_pushinteger(L, criticalDamage);
+//	lua_pushinteger(L, leechedDamage);
+//
+//	scriptInterface.callVoidFunction(8);
+//}
+//
+//void Events::eventItemOnDefend(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage, bool leechedDamage)
+//{
+//	// Item:onDefend(defender, attacker, blockType, combatType, origin, criticalDamage, leechedDamage)
+//	if (info.itemOnDefend == -1) {
+//		return;
+//	}
+//
+//	if (!scriptInterface.reserveScriptEnv()) {
+//		std::cout << "[Error - Events::eventItemOnDefend Call stack overflow" << std::endl;
+//		return;
+//	}
+//
+//	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+//	env->setScriptId(info.itemOnDefend, &scriptInterface);
+//
+//	lua_State* L = scriptInterface.getLuaState();
+//	scriptInterface.pushFunction(info.itemOnDefend);
+//
+//	LuaScriptInterface::pushSharedPtr(L, item);
+//	LuaScriptInterface::setItemMetatable(L, -1, item);
+//
+//	LuaScriptInterface::pushSharedPtr(L, itemHolder);
+//	LuaScriptInterface::setMetatable(L, -1, "Player");
+//
+//	LuaScriptInterface::pushSharedPtr(L, attacker);
+//	LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
+//
+//	lua_pushinteger(L, blockType);
+//	lua_pushinteger(L, static_cast<uint8_t>(combatType));
+//	lua_pushinteger(L, static_cast<uint8_t>(origin));
+//
+//	lua_pushinteger(L, criticalDamage);
+//	lua_pushinteger(L, leechedDamage);
+//
+//	scriptInterface.callVoidFunction(8);
+//}
+//
+//void Events::eventItemOnAugment(const ItemPtr& item, std::shared_ptr<BlackTek::Augment> augment)
+//{
+//	// Item:onAugment(augment)
+//	if (info.itemOnAugment == -1) {
+//		return;
+//	}
+//
+//	if (!scriptInterface.reserveScriptEnv()) {
+//		std::cout << "[Error - Events::eventItemOnAugment] Call stack overflow" << std::endl;
+//		return;
+//	}
+//
+//	ScriptEnvironment* env = scriptInterface.getScriptEnv();
+//	env->setScriptId(info.itemOnAugment, &scriptInterface);
+//
+//	lua_State* L = scriptInterface.getLuaState();
+//	scriptInterface.pushFunction(info.itemOnAugment);
+//
+//	LuaScriptInterface::pushSharedPtr(L, item);
+//	LuaScriptInterface::setMetatable(L, -1, "Item");
+//
+//	LuaScriptInterface::pushSharedPtr(L, augment);
+//	LuaScriptInterface::setMetatable(L, -1, "Augment");
+//
+//	scriptInterface.callVoidFunction(2);
+//}
 
-	if (!scriptInterface.reserveScriptEnv()) {
-		std::cout << "[Error - Events::eventItemOnImbue] Call stack overflow" << std::endl;
-		return false;
-	}
-
-	ScriptEnvironment* env = scriptInterface.getScriptEnv();
-	env->setScriptId(info.itemOnImbue, &scriptInterface);
-
-	lua_State* L = scriptInterface.getLuaState();
-	scriptInterface.pushFunction(info.itemOnImbue);
-
-	LuaScriptInterface::pushSharedPtr(L, item);
-	LuaScriptInterface::setItemMetatable(L, -1, item);
-
-	LuaScriptInterface::pushSharedPtr(L, imbuement);
-	LuaScriptInterface::setMetatable(L, -1, "Imbuement");
-
-	LuaScriptInterface::pushBoolean(L, created);
-
-	return scriptInterface.callFunction(3);
-}
-
-void Events::eventItemOnRemoveImbue(const ItemPtr& item, ImbuementType imbueType, bool decayed)
-{
-	// Item:onRemoveImbue(imbueType, decayed)
-	if (info.itemOnRemoveImbue == -1) {
-		return;
-	}
-
-	if (!scriptInterface.reserveScriptEnv()) {
-		std::cout << "[Error - Events::eventItemOnRemoveImbue] Call stack overflow" << std::endl;
-		return;
-	}
-
-	ScriptEnvironment* env = scriptInterface.getScriptEnv();
-	env->setScriptId(info.itemOnRemoveImbue, &scriptInterface);
-
-	lua_State* L = scriptInterface.getLuaState();
-	scriptInterface.pushFunction(info.itemOnRemoveImbue);
-
-	LuaScriptInterface::pushSharedPtr(L, item);
-	LuaScriptInterface::setItemMetatable(L, -1, item);
-
-	lua_pushinteger(L, static_cast<uint8_t>(imbueType));
-	LuaScriptInterface::pushBoolean(L, decayed);
-
-	scriptInterface.callVoidFunction(3);
-}
-
-void Events::eventItemOnAttack(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& defender, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage, bool leechedDamage)
-{
-	// Item:onAttack(attacker, defender, blockType, combatType, origin, criticalDamage, leechedDamage)
-	if (info.itemOnAttack == -1) {
-		return;
-	}
-
-	if (!scriptInterface.reserveScriptEnv()) {
-		std::cout << "[Error - Events::eventItemOnAttack Call stack overflow" << std::endl;
-		return;
-	}
-
-	ScriptEnvironment* env = scriptInterface.getScriptEnv();
-	env->setScriptId(info.itemOnAttack, &scriptInterface);
-
-	lua_State* L = scriptInterface.getLuaState();
-	scriptInterface.pushFunction(info.itemOnAttack);
-
-	LuaScriptInterface::pushSharedPtr(L, item);
-	LuaScriptInterface::setItemMetatable(L, -1, item);
-
-	LuaScriptInterface::pushSharedPtr(L, itemHolder);
-	LuaScriptInterface::setMetatable(L, -1, "Player");
-
-	LuaScriptInterface::pushSharedPtr(L, defender);
-	LuaScriptInterface::setCreatureMetatable(L, -1, defender);
-
-	lua_pushinteger(L, static_cast<uint8_t>(blockType));
-	lua_pushinteger(L, static_cast<uint8_t>(combatType));
-	lua_pushinteger(L, static_cast<uint8_t>(origin));
-
-	lua_pushinteger(L, criticalDamage);
-	lua_pushinteger(L, leechedDamage);
-
-	scriptInterface.callVoidFunction(8);
-}
-
-void Events::eventItemOnDefend(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage, bool leechedDamage)
-{
-	// Item:onDefend(defender, attacker, blockType, combatType, origin, criticalDamage, leechedDamage)
-	if (info.itemOnDefend == -1) {
-		return;
-	}
-
-	if (!scriptInterface.reserveScriptEnv()) {
-		std::cout << "[Error - Events::eventItemOnDefend Call stack overflow" << std::endl;
-		return;
-	}
-
-	ScriptEnvironment* env = scriptInterface.getScriptEnv();
-	env->setScriptId(info.itemOnDefend, &scriptInterface);
-
-	lua_State* L = scriptInterface.getLuaState();
-	scriptInterface.pushFunction(info.itemOnDefend);
-
-	LuaScriptInterface::pushSharedPtr(L, item);
-	LuaScriptInterface::setItemMetatable(L, -1, item);
-
-	LuaScriptInterface::pushSharedPtr(L, itemHolder);
-	LuaScriptInterface::setMetatable(L, -1, "Player");
-
-	LuaScriptInterface::pushSharedPtr(L, attacker);
-	LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
-
-	lua_pushinteger(L, blockType);
-	lua_pushinteger(L, static_cast<uint8_t>(combatType));
-	lua_pushinteger(L, static_cast<uint8_t>(origin));
-
-	lua_pushinteger(L, criticalDamage);
-	lua_pushinteger(L, leechedDamage);
-
-	scriptInterface.callVoidFunction(8);
-}
-
-void Events::eventItemOnAugment(const ItemPtr& item, std::shared_ptr<Augment> augment)
-{
-	// Item:onAugment(augment)
-	if (info.itemOnAugment == -1) {
-		return;
-	}
-
-	if (!scriptInterface.reserveScriptEnv()) {
-		std::cout << "[Error - Events::eventItemOnAugment] Call stack overflow" << std::endl;
-		return;
-	}
-
-	ScriptEnvironment* env = scriptInterface.getScriptEnv();
-	env->setScriptId(info.itemOnAugment, &scriptInterface);
-
-	lua_State* L = scriptInterface.getLuaState();
-	scriptInterface.pushFunction(info.itemOnAugment);
-
-	LuaScriptInterface::pushSharedPtr(L, item);
-	LuaScriptInterface::setMetatable(L, -1, "Item");
-
-	LuaScriptInterface::pushSharedPtr(L, augment);
-	LuaScriptInterface::setMetatable(L, -1, "Augment");
-
-	scriptInterface.callVoidFunction(2);
-}
-
-void Events::eventItemOnRemoveAugment(const ItemPtr& item, std::shared_ptr<Augment> augment)
+void Events::eventItemOnRemoveAugment(const ItemPtr& item, std::shared_ptr<BlackTek::Augment> augment)
 {
 	// Item:onRemoveAugment(augment)
 	if (info.itemOnRemoveAugment == -1) {
@@ -1523,70 +1463,70 @@ void Events::eventItemOnRemoveAugment(const ItemPtr& item, std::shared_ptr<Augme
 	scriptInterface.callVoidFunction(2);
 }
 
-void Events::eventItemOnModifierAttack(const ItemPtr &item, const PlayerPtr &itemHolder, const CreaturePtr &defender, const std::shared_ptr<DamageModifier> &modifier, CombatDamage &damage)
-{
-	if (info.itemOnModifierAttack == -1)
-	{
-		return;
-	}
-
-	if (!scriptInterface.reserveScriptEnv())
-	{
-		std::cout << "[Error - Events::eventItemOnModifierAttack Call stack overflow" << std::endl;
-		return;
-	}
-
-	ScriptEnvironment *env = scriptInterface.getScriptEnv();
-	env->setScriptId(info.itemOnModifierAttack, &scriptInterface);
-	lua_State *L = scriptInterface.getLuaState();
-	scriptInterface.pushFunction(info.itemOnModifierAttack);
-
-	LuaScriptInterface::pushSharedPtr(L, item);
-	LuaScriptInterface::setItemMetatable(L, -1, item);
-	LuaScriptInterface::pushSharedPtr(L, itemHolder);
-	LuaScriptInterface::setMetatable(L, -1, "Player");
-	LuaScriptInterface::pushSharedPtr(L, defender);
-	LuaScriptInterface::setCreatureMetatable(L, -1, defender);
-	LuaScriptInterface::pushDamageModifier(L, modifier);
-	LuaScriptInterface::pushUserdata<CombatDamage>(L, &damage);
-	LuaScriptInterface::setMetatable(L, -1, "CombatDamage");
-
-	scriptInterface.callVoidFunction(5);
-}
-
-void Events::eventItemOnModifierDefend(const ItemPtr &item, const PlayerPtr &itemHolder, const CreaturePtr &attacker, const std::shared_ptr<DamageModifier> &modifier, CombatDamage &damage)
-{
-    if (info.itemOnModifierDefend == -1)
-    {
-        return;
-    }
-
-    if (!scriptInterface.reserveScriptEnv())
-    {
-        std::cout << "[Error - Events::eventItemOnModifierDefend Call stack overflow" << std::endl;
-        return;
-    }
-
-    ScriptEnvironment *env = scriptInterface.getScriptEnv();
-    env->setScriptId(info.itemOnModifierDefend, &scriptInterface);
-    lua_State *L = scriptInterface.getLuaState();
-    scriptInterface.pushFunction(info.itemOnModifierDefend);
-
-    LuaScriptInterface::pushSharedPtr(L, item);
-    LuaScriptInterface::setItemMetatable(L, -1, item);
-    LuaScriptInterface::pushSharedPtr(L, itemHolder);
-    LuaScriptInterface::setMetatable(L, -1, "Player");
-    
-    if (attacker) {
-        LuaScriptInterface::pushSharedPtr(L, attacker);
-        LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
-    } else {
-        lua_pushnil(L);
-    }
-    
-    LuaScriptInterface::pushDamageModifier(L, modifier);
-    LuaScriptInterface::pushUserdata(L, &damage);
-    LuaScriptInterface::setMetatable(L, -1, "CombatDamage");
-
-    scriptInterface.callVoidFunction(5);
-}
+//void Events::eventItemOnModifierAttack(const ItemPtr &item, const PlayerPtr &itemHolder, const CreaturePtr &defender, const std::shared_ptr<DamageModifier> &modifier, CombatDamage &damage)
+//{
+//	if (info.itemOnModifierAttack == -1)
+//	{
+//		return;
+//	}
+//
+//	if (!scriptInterface.reserveScriptEnv())
+//	{
+//		std::cout << "[Error - Events::eventItemOnModifierAttack Call stack overflow" << std::endl;
+//		return;
+//	}
+//
+//	ScriptEnvironment *env = scriptInterface.getScriptEnv();
+//	env->setScriptId(info.itemOnModifierAttack, &scriptInterface);
+//	lua_State *L = scriptInterface.getLuaState();
+//	scriptInterface.pushFunction(info.itemOnModifierAttack);
+//
+//	LuaScriptInterface::pushSharedPtr(L, item);
+//	LuaScriptInterface::setItemMetatable(L, -1, item);
+//	LuaScriptInterface::pushSharedPtr(L, itemHolder);
+//	LuaScriptInterface::setMetatable(L, -1, "Player");
+//	LuaScriptInterface::pushSharedPtr(L, defender);
+//	LuaScriptInterface::setCreatureMetatable(L, -1, defender);
+//	LuaScriptInterface::pushDamageModifier(L, modifier);
+//	LuaScriptInterface::pushUserdata<CombatDamage>(L, &damage);
+//	LuaScriptInterface::setMetatable(L, -1, "CombatDamage");
+//
+//	scriptInterface.callVoidFunction(5);
+//}
+//
+//void Events::eventItemOnModifierDefend(const ItemPtr &item, const PlayerPtr &itemHolder, const CreaturePtr &attacker, const std::shared_ptr<DamageModifier> &modifier, CombatDamage &damage)
+//{
+//    if (info.itemOnModifierDefend == -1)
+//    {
+//        return;
+//    }
+//
+//    if (!scriptInterface.reserveScriptEnv())
+//    {
+//        std::cout << "[Error - Events::eventItemOnModifierDefend Call stack overflow" << std::endl;
+//        return;
+//    }
+//
+//    ScriptEnvironment *env = scriptInterface.getScriptEnv();
+//    env->setScriptId(info.itemOnModifierDefend, &scriptInterface);
+//    lua_State *L = scriptInterface.getLuaState();
+//    scriptInterface.pushFunction(info.itemOnModifierDefend);
+//
+//    LuaScriptInterface::pushSharedPtr(L, item);
+//    LuaScriptInterface::setItemMetatable(L, -1, item);
+//    LuaScriptInterface::pushSharedPtr(L, itemHolder);
+//    LuaScriptInterface::setMetatable(L, -1, "Player");
+//    
+//    if (attacker) {
+//        LuaScriptInterface::pushSharedPtr(L, attacker);
+//        LuaScriptInterface::setCreatureMetatable(L, -1, attacker);
+//    } else {
+//        lua_pushnil(L);
+//    }
+//    
+//    LuaScriptInterface::pushDamageModifier(L, modifier);
+//    LuaScriptInterface::pushUserdata(L, &damage);
+//    LuaScriptInterface::setMetatable(L, -1, "CombatDamage");
+//
+//    scriptInterface.callVoidFunction(5);
+//}

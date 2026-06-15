@@ -200,7 +200,7 @@ class Game
 
 		void start(ServiceManager* manager);
 
-		void forceAddCondition(uint32_t creatureId, Condition* condition);
+		void forceAddCondition(uint32_t creatureId, ConditionHandle condition);
 		void forceRemoveCondition(uint32_t creatureId, ConditionType_t type);
 
 		bool loadMainMap(const std::string& filename);
@@ -598,22 +598,18 @@ class Game
 		void checkCreatureWalk(uint32_t creatureId) noexcept;
 		void updateCreatureWalk(uint32_t creatureId) noexcept;
 		void checkCreatureAttack(uint32_t creatureId) noexcept;
+		void playerSecondaryAttack(uint32_t playerId, uint32_t targetId) noexcept;
+		void playerParryCounter(uint32_t playerId, uint32_t attackerId) noexcept;
 		void checkLight();
-
-		bool combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, const CreaturePtr& target, bool checkDefense, bool checkArmor, bool field, bool ignoreResistances = false);
-
-		void combatGetTypeInfo(CombatType_t combatType, const CreaturePtr& target, TextColor_t& color, uint8_t& effect);
-
-		bool combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& target, CombatDamage& damage, bool showMessages = true);
-		bool combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& target, CombatDamage& damage, bool showMessages = true);
 
 		//animation help functions
 		void addCreatureHealth(const CreatureConstPtr& target);
 		static void addCreatureHealth(const SpectatorVec& spectators, const CreatureConstPtr& target);
+		void addMagicEffect(const Position& pos, const uint8_t effect, std::span<const CreaturePtr> pre_cache);
 		void addMagicEffect(const Position& pos, uint8_t effect);
-		static void addMagicEffect(const SpectatorVec& spectators, const Position& pos, uint8_t effect, uint32_t instanceId = 0);
+		static void addMagicEffect(const SpectatorVec& spectators, const Position& pos, uint8_t effect);
 		void addDistanceEffect(const Position& fromPos, const Position& toPos, uint8_t effect);
-		static void addDistanceEffect(const SpectatorVec& spectators, const Position& fromPos, const Position& toPos, uint8_t effect, uint32_t instanceId = 0);
+		static void addDistanceEffect(const SpectatorVec& spectators, const Position& fromPos, const Position& toPos, uint8_t effect);
 
 		void setAccountStorageValue(const uint32_t accountId, const uint32_t key, const int32_t value);
 		int32_t getAccountStorageValue(const uint32_t accountId, const uint32_t key) const;

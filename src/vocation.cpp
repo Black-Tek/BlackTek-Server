@@ -171,10 +171,25 @@ bool Vocations::loadFromToml() {
 										vocation.gainManaAmount = mana->at("amount").value_or(1);
 										vocation.gainManaTicks = mana->at("interval").value_or(6);
 									}
-									if (auto soul = r["soul"].as_table()) 
+									if (auto soul = r["soul"].as_table())
 									{
 										vocation.gainSoulAmount = soul->at("amount").value_or(1);
 										vocation.gainSoulTicks = soul->at("interval").value_or(120);
+									}
+									if (auto defense = r["defense"].as_table())
+									{
+										vocation.defenseChargeInterval = defense->at("charge_interval").value_or(0);
+									}
+									if (auto dc = r["defense_charges"].as_table())
+									{
+										vocation.defenseChargesCap            = dc->at("defense_cap").value_or(0);
+										vocation.armorChargesCap              = dc->at("armor_cap").value_or(0);
+										vocation.defModifierChargesCap        = dc->at("def_modifier_cap").value_or(0);
+										vocation.atkModifierChargesCap        = dc->at("atk_modifier_cap").value_or(0);
+										vocation.defenseChargeCostMultiplier  = dc->at("defense_cost_multiplier").value_or(1.0f);
+										vocation.armorChargeCostMultiplier    = dc->at("armor_cost_multiplier").value_or(1.0f);
+										vocation.defModifierChargeCostMultiplier = dc->at("def_modifier_cost_multiplier").value_or(1.0f);
+										vocation.atkModifierChargeCostMultiplier = dc->at("atk_modifier_cost_multiplier").value_or(1.0f);
 									}
 								}
 							}
@@ -202,6 +217,38 @@ bool Vocations::loadFromToml() {
 					}
 
 
+
+					if (auto dw = vocation_data["dual_wield"].as_table())
+					{
+						vocation.dualWield.enabled             = dw->at_path("enabled").value_or(false);
+						vocation.dualWield.primaryMultiplier   = static_cast<float>(dw->at_path("primary_multiplier").value_or(1.0));
+						vocation.dualWield.secondaryMultiplier = static_cast<float>(dw->at_path("secondary_multiplier").value_or(1.0));
+						vocation.dualWield.delay               = dw->at_path("delay").value_or(300u);
+
+						if (const auto* types_arr = dw->at_path("allowed_types").as_array())
+						{
+							uint16_t mask = 0;
+							bool throwable_only = false;
+							for (const auto& val : *types_arr)
+							{
+								if (const auto* sv = val.as_string())
+								{
+									std::string_view s = sv->get();
+									if      (s == "all")               { mask = 0; break; }
+									else if (s == "melee")             mask |= (1u << WEAPON_SWORD) | (1u << WEAPON_CLUB) | (1u << WEAPON_AXE);
+									else if (s == "magic")             mask |= (1u << WEAPON_WAND);
+									else if (s == "ranged")            mask |= (1u << WEAPON_DISTANCE);
+									else if (s == "non_magical_ranged") { mask |= (1u << WEAPON_DISTANCE); throwable_only = true; }
+									else if (s == "shields")           mask |= (1u << WEAPON_SHIELD);
+								}
+							}
+							vocation.dualWield.allowed_weapon_mask = mask;
+							vocation.dualWield.throwable_only      = throwable_only;
+						}
+
+						vocation.dualWield.parry_counter_multiplier = static_cast<float>(dw->at_path("parry_counter_multiplier").value_or(0.0));
+						vocation.dualWield.parry_counter_delay      = dw->at_path("parry_counter_delay").value_or(200u);
+					}
 
 					if (auto extra_skills = vocation_data["extraskills"].as_array()) 
 					{

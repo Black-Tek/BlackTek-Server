@@ -4,6 +4,7 @@
 #include "otpch.h"
 
 #include "configmanager.h"
+#include "combat.h"
 #include "game.h"
 #include "monster.h"
 #include "tools.h"
@@ -177,8 +178,17 @@ bool ConfigManager::Load()
     booleans[REMOVE_WEAPON_CHARGES]   = combatTbl["items"]["remove_weapon_charges"].value_or(true);
     booleans[REMOVE_POTION_CHARGES]   = combatTbl["items"]["remove_potion_charges"].value_or(true);
     booleans[EXPERIENCE_FROM_PLAYERS] = combatTbl["pvp"]["experience_from_players"].value_or(false);
-    booleans[CLASSIC_ATTACK_SPEED]    = combatTbl["classic"]["attack_speed"].value_or(false);
-    booleans[CLASSIC_EQUIPMENT_SLOTS] = combatTbl["classic"]["equipment_slots"].value_or(false);
+    booleans[CLASSIC_ATTACK_SPEED]      = combatTbl["classic"]["attack_speed"].value_or(false);
+    booleans[CLASSIC_EQUIPMENT_SLOTS]   = combatTbl["classic"]["equipment_slots"].value_or(false);
+    booleans[ABSORB_NOTIFICATION]       = combatTbl["notifications"]["absorb"].value_or(false);
+    booleans[RESTORE_NOTIFICATION]      = combatTbl["notifications"]["restore"].value_or(false);
+    booleans[REPLENISH_NOTIFICATION]    = combatTbl["notifications"]["replenish"].value_or(false);
+    booleans[REVIVE_NOTIFICATION]       = combatTbl["notifications"]["revive"].value_or(false);
+    integers[HEAL_EFFECT]              = static_cast<int32_t>(combatTbl["notifications"]["heal_effect"].value_or(int64_t{0}));
+    integers[RESTORE_EFFECT]           = static_cast<int32_t>(combatTbl["notifications"]["restore_effect"].value_or(int64_t{0}));
+    integers[REPLENISH_EFFECT]         = static_cast<int32_t>(combatTbl["notifications"]["replenish_effect"].value_or(int64_t{0}));
+    integers[REVIVE_EFFECT]            = static_cast<int32_t>(combatTbl["notifications"]["revive_effect"].value_or(int64_t{0}));
+    integers[MULTILEVEL_FLOOR_RANGE]   = static_cast<int32_t>(combatTbl["multilevel"]["floor_range"].value_or(int64_t{2}));
 
     integers[PZ_LOCKED]                  = static_cast<int32_t>(combatTbl["skull"]["pz_locked"].value_or(int64_t{60000}));
     integers[KILLS_TO_RED]               = static_cast<int32_t>(combatTbl["skull"]["kills_to_red"].value_or(int64_t{3}));
@@ -188,6 +198,33 @@ bool ConfigManager::Load()
     integers[PROTECTION_LEVEL]           = static_cast<int32_t>(combatTbl["pvp"]["protection_level"].value_or(int64_t{1}));
     integers[EXP_FROM_PLAYERS_LEVEL_RANGE] = static_cast<int32_t>(combatTbl["pvp"]["exp_from_players_level_range"].value_or(int64_t{75}));
     integers[STAIRHOP_DELAY]             = static_cast<int32_t>(combatTbl["movement"]["stairhop_delay"].value_or(int64_t{2000}));
+    integers[PLAYER_DEFENSE_CHARGE_INTERVAL]  = static_cast<int32_t>(combatTbl["defense"]["player_charge_interval"].value_or(int64_t{1000}));
+    integers[MONSTER_DEFENSE_CHARGE_INTERVAL] = static_cast<int32_t>(combatTbl["defense"]["monster_charge_interval"].value_or(int64_t{1000}));
+    integers[PLAYER_DEFENSE_CHARGES_CAP]          = static_cast<int32_t>(combatTbl["defense"]["player_defense_charges_cap"].value_or(int64_t{2}));
+    integers[PLAYER_ARMOR_CHARGES_CAP]            = static_cast<int32_t>(combatTbl["defense"]["player_armor_charges_cap"].value_or(int64_t{0}));
+    integers[PLAYER_DEF_MODIFIER_CHARGES_CAP]     = static_cast<int32_t>(combatTbl["defense"]["player_def_modifier_charges_cap"].value_or(int64_t{0}));
+    integers[PLAYER_ATK_MODIFIER_CHARGES_CAP]     = static_cast<int32_t>(combatTbl["defense"]["player_atk_modifier_charges_cap"].value_or(int64_t{0}));
+    integers[MONSTER_DEFENSE_CHARGES_CAP]         = static_cast<int32_t>(combatTbl["defense"]["monster_defense_charges_cap"].value_or(int64_t{2}));
+    integers[MONSTER_ARMOR_CHARGES_CAP]           = static_cast<int32_t>(combatTbl["defense"]["monster_armor_charges_cap"].value_or(int64_t{0}));
+    integers[DEFAULT_DEFENSE_CHARGE_COST]         = static_cast<int32_t>(combatTbl["defense"]["default_defense_charge_cost"].value_or(int64_t{1}));
+    integers[DEFAULT_ARMOR_CHARGE_COST]           = static_cast<int32_t>(combatTbl["defense"]["default_armor_charge_cost"].value_or(int64_t{0}));
+    integers[DEFAULT_DEF_MODIFIER_CHARGE_COST]    = static_cast<int32_t>(combatTbl["defense"]["default_def_modifier_charge_cost"].value_or(int64_t{0}));
+    integers[DEFAULT_ATK_MODIFIER_CHARGE_COST]    = static_cast<int32_t>(combatTbl["defense"]["default_atk_modifier_charge_cost"].value_or(int64_t{0}));
+
+    // Damage formula global defaults — one call per situation, absent keys stay as "Tibia".
+    static constexpr std::pair<uint8_t, std::string_view> formula_sit_keys[4] = {
+        { 0, "pvp" }, { 1, "pvm" }, { 2, "mvp" }, { 3, "mvm" }
+    };
+    for (auto [idx, key] : formula_sit_keys)
+    {
+        BlackTek::LoadFormulaDefaults(
+            idx,
+            combatTbl["formulas"][key]["output"].value_or<std::string>("Tibia"),
+            combatTbl["formulas"][key]["defense"].value_or<std::string>("Tibia"),
+            combatTbl["formulas"][key]["armor"].value_or<std::string>("Tibia"),
+            combatTbl["formulas"][key]["resolution"].value_or<std::string>("Tibia")
+        );
+    }
 
     // Gameplay
     booleans[ALLOW_CHANGEOUTFIT]              = gameplayTbl["player"]["change_outfit"].value_or(true);

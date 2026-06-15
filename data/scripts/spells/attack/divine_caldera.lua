@@ -1,15 +1,13 @@
-local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_HOLYDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_HOLYAREA)
-combat:setArea(createCombatArea(AREA_CIRCLE3X3))
+local combat = Combat(AttackCombats.DivineCaldera)
 
-function onGetFormulaValues(player, level, magicLevel)
-	local min = (level / 5) + (magicLevel * 5) + 25
-	local max = (level / 5) + (magicLevel * 6.2) + 45
-	return -min, -max
+do
+	local level = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.Level)
+	local magic = FormulaNode.bind(Combat.BindSource.Caster, Combat.BindKey.MagicLevel)
+	local outputNode = FormulaNode.random(level / 5 + magic * 5 + 25, level / 5 + magic * 6.2 + 45)
+	for sit = 0, 3 do
+		combat:registerFormula(Combat.FormulaStage.Output, sit, outputNode)
+	end
 end
-
-combat:setCallback(CALLBACK_PARAM_LEVELMAGICVALUE, "onGetFormulaValues")
 
 local spell = Spell(SPELL_INSTANT)
 

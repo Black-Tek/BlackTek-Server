@@ -1,6 +1,4 @@
-local combat = Combat()
-combat:setParameter(COMBAT_PARAM_DISPEL, CONDITION_INVISIBLE)
-combat:setArea(createCombatArea(AREA_CIRCLE3X3))
+local combat = Combat(MonsterCombats.DjinnCancelInvisibility)
 
 local spell = Spell(SPELL_INSTANT)
 
