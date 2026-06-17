@@ -5,6 +5,7 @@
 
 #include <boost/range/adaptor/reversed.hpp>
 #include <fmt/format.h>
+#include <fstream>
 
 #include "matrixarea.h"
 #include "luascript.h"
@@ -1011,6 +1012,37 @@ void LuaScriptInterface::pushLoot(lua_State* L, const std::vector<LootBlock>& lo
 	}
 }
 
+namespace
+{
+    constexpr std::pair<const char*, BlackTek::Console::ChannelType> LOG_CHANNEL_KEYS[] = {
+        { "system",   BlackTek::Console::ChannelType::System },
+        { "net",      BlackTek::Console::ChannelType::Network },
+        { "db",       BlackTek::Console::ChannelType::Database },
+        { "script",   BlackTek::Console::ChannelType::Script },
+        { "map",      BlackTek::Console::ChannelType::Map },
+        { "player",   BlackTek::Console::ChannelType::Player },
+        { "admin",    BlackTek::Console::ChannelType::Admin },
+        { "security", BlackTek::Console::ChannelType::Security },
+    };
+
+    void logToChannel(lua_State* L, BlackTek::Console::ChannelType channel, BlackTek::Console::LogLevel level, int argIndex)
+    {
+        std::string text = LuaScriptInterface::getString(L, argIndex);
+
+        if (channel == BlackTek::Console::ChannelType::Script)
+        {
+            luaL_where(L, 1);
+            std::string where = LuaScriptInterface::getString(L, -1);
+            lua_pop(L, 1);
+
+            if (not where.empty())
+                text = where + text;
+        }
+
+        BlackTek::Console::LuaLog(channel, level, text);
+    }
+}
+
 #define registerEnum(value) { std::string enumName = #value; registerGlobalVariable(enumName.substr(enumName.find_last_of(':') + 1), value); }
 #define registerEnumIn(tableName, value) { std::string enumName = #value; registerVariable(tableName, enumName.substr(enumName.find_last_of(':') + 1), value); }
 
@@ -1135,6 +1167,14 @@ void LuaScriptInterface::registerFunctions()
 	//result table
 	luaL_register(luaState, "result", LuaScriptInterface::luaResultTable);
 	lua_pop(luaState, 1);
+
+	registerTable("log");
+	for (const auto& [luaKey, channel] : LOG_CHANNEL_KEYS)
+	{
+		registerLogChannel(luaKey, channel);
+	}
+	registerMethod("log", "stats", LuaScriptInterface::luaLogStats);
+	registerMethod("log", "tail",  LuaScriptInterface::luaLogTail);
 
 	/* New functions */
 	//registerClass(className, baseClass, newFunction)
@@ -3761,6 +3801,37 @@ void LuaScriptInterface::registerMetaMethod(const std::string& className, const 
 	lua_pop(luaState, 1);
 }
 
+void LuaScriptInterface::registerLogChannel(const std::string& luaKey, BlackTek::Console::ChannelType channel) const
+{
+	// log[luaKey] = { __call = info-tier, warn = .., error = .., debug = .. }, channel bound as an upvalue
+	lua_getglobal(luaState, "log");
+
+	lua_newtable(luaState);
+
+	lua_newtable(luaState);
+	lua_pushinteger(luaState, static_cast<lua_Integer>(channel));
+	lua_pushcclosure(luaState, luaLogChannelCall, 1);
+	lua_setfield(luaState, -2, "__call");
+	lua_setmetatable(luaState, -2);
+
+	lua_pushinteger(luaState, static_cast<lua_Integer>(channel));
+	lua_pushcclosure(luaState, luaLogChannelWarn, 1);
+	lua_setfield(luaState, -2, "warn");
+
+	lua_pushinteger(luaState, static_cast<lua_Integer>(channel));
+	lua_pushcclosure(luaState, luaLogChannelError, 1);
+	lua_setfield(luaState, -2, "error");
+
+	lua_pushinteger(luaState, static_cast<lua_Integer>(channel));
+	lua_pushcclosure(luaState, luaLogChannelDebug, 1);
+	lua_setfield(luaState, -2, "debug");
+
+	lua_setfield(luaState, -2, luaKey.c_str());
+
+	// pop log
+	lua_pop(luaState, 1);
+}
+
 void LuaScriptInterface::registerGlobalMethod(const std::string& functionName, lua_CFunction func) const
 {
 	// _G[functionName] = func
@@ -3872,6 +3943,104 @@ int LuaScriptInterface::luaDebugPrint(lua_State* L)
 	//debugPrint(text)
 	reportErrorFunc(L, getString(L, -1));
 	return 0;
+}
+
+int LuaScriptInterface::luaLogChannelCall(lua_State* L)
+{
+	// log.<channel>(message) -- via __call metamethod; arg 1 is the table itself
+	auto channel = static_cast<BlackTek::Console::ChannelType>(lua_tointeger(L, lua_upvalueindex(1)));
+	logToChannel(L, channel, BlackTek::Console::LogLevel::Info, 2);
+	return 0;
+}
+
+int LuaScriptInterface::luaLogChannelWarn(lua_State* L)
+{
+	// log.<channel>.warn(message)
+	auto channel = static_cast<BlackTek::Console::ChannelType>(lua_tointeger(L, lua_upvalueindex(1)));
+	logToChannel(L, channel, BlackTek::Console::LogLevel::Warning, 1);
+	return 0;
+}
+
+int LuaScriptInterface::luaLogChannelError(lua_State* L)
+{
+	// log.<channel>.error(message)
+	auto channel = static_cast<BlackTek::Console::ChannelType>(lua_tointeger(L, lua_upvalueindex(1)));
+	logToChannel(L, channel, BlackTek::Console::LogLevel::Error, 1);
+	return 0;
+}
+
+int LuaScriptInterface::luaLogChannelDebug(lua_State* L)
+{
+	// log.<channel>.debug(message)
+	auto channel = static_cast<BlackTek::Console::ChannelType>(lua_tointeger(L, lua_upvalueindex(1)));
+	logToChannel(L, channel, BlackTek::Console::LogLevel::Debug, 1);
+	return 0;
+}
+
+int LuaScriptInterface::luaLogStats(lua_State* L)
+{
+	// log.stats()
+	lua_newtable(L);
+
+	for (const auto& [luaKey, channel] : LOG_CHANNEL_KEYS)
+	{
+		auto stats = BlackTek::Console::GetChannelStats(channel);
+
+		lua_newtable(L);
+		setField(L, "written", stats.written);
+		setField(L, "dropped", stats.dropped);
+
+		lua_setfield(L, -2, luaKey);
+	}
+
+	return 1;
+}
+
+int LuaScriptInterface::luaLogTail(lua_State* L)
+{
+	// log.tail(channelName[, count])
+	std::string channelName = getString(L, 1);
+	uint16_t count = getNumber<uint16_t>(L, 2, 20);
+
+	auto it = std::ranges::find_if(LOG_CHANNEL_KEYS, [&](const auto& entry) { return channelName == entry.first; });
+	if (it == std::end(LOG_CHANNEL_KEYS))
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	auto path = BlackTek::Console::GetChannelLogPath(it->second);
+	if (not path)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	std::ifstream file(*path);
+	if (not file.is_open())
+	{
+		pushString(L, std::string());
+		return 1;
+	}
+
+	std::vector<std::string> lines;
+	std::string line;
+	while (std::getline(file, line))
+	{
+		lines.push_back(std::move(line));
+	}
+
+	size_t start = lines.size() > count ? lines.size() - count : 0;
+
+	std::string result;
+	for (size_t i = start; i < lines.size(); ++i)
+	{
+		result += lines[i];
+		result += '\n';
+	}
+
+	pushString(L, result);
+	return 1;
 }
 
 int LuaScriptInterface::luaGetWorldTime(lua_State* L)

@@ -19,6 +19,7 @@
 #endif
 #endif
 
+#include "console.h"
 #include "database.h"
 #include "enums.h"
 #include "position.h"
@@ -562,6 +563,7 @@ class LuaScriptInterface
 		void registerClass(const std::string& className, const std::string& baseClass, lua_CFunction newFunction = nullptr) const;
 		void registerTable(const std::string& tableName) const;
 		void registerMetaMethod(const std::string& className, const std::string& methodName, lua_CFunction func) const;
+		void registerLogChannel(const std::string& luaKey, BlackTek::Console::ChannelType channel) const;
 		void registerGlobalMethod(const std::string& functionName, lua_CFunction func) const;
 		void registerVariable(const std::string& tableName, const std::string& name, lua_Number value) const;
 		void registerGlobalVariable(const std::string& name, lua_Number value) const;
@@ -598,6 +600,15 @@ class LuaScriptInterface
 		static int luaDoChallengeCreature(lua_State* L);
 
 		static int luaDebugPrint(lua_State* L);
+
+		//log table — callable channel tables (log.system(...)) and tier methods (log.system.warn(...))
+		static int luaLogChannelCall(lua_State* L);
+		static int luaLogChannelWarn(lua_State* L);
+		static int luaLogChannelError(lua_State* L);
+		static int luaLogChannelDebug(lua_State* L);
+		static int luaLogStats(lua_State* L);
+		static int luaLogTail(lua_State* L);
+
 		static int luaAddEvent(lua_State* L);
 		static int luaStopEvent(lua_State* L);
 

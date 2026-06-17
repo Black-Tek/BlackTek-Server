@@ -195,7 +195,7 @@ void ServicePort::open(uint16_t port)
 	{
 		if (useIPv6 and g_config.GetBoolean(ConfigManager::IPV6_FALLBACK_TO_IPV4))
 		{
-			BlackTek::Console::Warn("[ServicePort::open] IPv6 unavailable falling back to IPv4. Error Code {}: {}", e.code().value(), e.what());
+			BlackTek::Console::Net::Warn("[ServicePort::open] IPv6 unavailable falling back to IPv4. Error Code {}: {}", e.code().value(), e.what());
 			try
 			{
 				bindIPv4();
@@ -205,12 +205,12 @@ void ServicePort::open(uint16_t port)
 			}
 			catch (boost::system::system_error& e2)
 			{
-				BlackTek::Console::Error("[ServicePort::open] Error: {}: {}", e2.code().value(), e2.what());
+				BlackTek::Console::Net::Error("[ServicePort::open] Error: {}: {}", e2.code().value(), e2.what());
 			}
 		}
 		else
 		{
-			BlackTek::Console::Error("[ServicePort::open] Error: {}: {}", e.code().value(), e.what());
+			BlackTek::Console::Net::Error("[ServicePort::open] Error: {}: {}", e.code().value(), e.what());
 		}
 
 		pendingStart = true;

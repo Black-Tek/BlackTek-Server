@@ -2064,8 +2064,7 @@ bool Game::playerBroadcastMessage(const PlayerPtr& player, const std::string& te
 	if (not player->hasFlag(PlayerFlag_CanBroadcast))
 		return false;
 
-	// maybe this should be a config to show in console or not?
-	BlackTek::Console::Print("> {} broadcasted: {}.", player->getName(), text);
+	BlackTek::Console::Player::Info("> {} broadcasted: {}.", player->getName(), text);
 
 	for (const auto& val : players | std::views::values)
 		val->sendPrivateMessage(player, TALKTYPE_BROADCAST, text);
