@@ -4,8 +4,6 @@
 #ifndef FS_CREATURE_H
 #define FS_CREATURE_H
 
-#include <bitset>
-
 #include "map.h"
 #include "position.h"
 #include "condition.h"
@@ -635,8 +633,6 @@ class Creature : virtual public Thing, public SharedObject
 			[[unlikely]] return nullptr;
 		}
 
-		int32_t getWalkCache(const Position& pos) const;
-
 		const Position& getLastPosition() const {
 			return lastPosition;
 		}
@@ -670,19 +666,10 @@ class Creature : virtual public Thing, public SharedObject
 		[[nodiscard]] bool can_use_defense() const noexcept { return canUseDefense; }
 
 	protected:
-		virtual bool useCacheMap() const {
-			return false;
-		}
-
 		struct CountBlock_t {
 			int32_t total;
 			int64_t ticks;
 		};
-
-		static constexpr int32_t mapWalkWidth = Map::maxViewportX * 2 + 1;
-		static constexpr int32_t mapWalkHeight = Map::maxViewportY * 2 + 1;
-		static constexpr int32_t maxWalkCacheWidth = (mapWalkWidth - 1) / 2;
-		static constexpr int32_t maxWalkCacheHeight = (mapWalkHeight - 1) / 2;
 
 		Position position;
 
@@ -729,9 +716,7 @@ class Creature : virtual public Thing, public SharedObject
 		Direction direction = DIRECTION_SOUTH;
 		Skulls_t skull = SKULL_NONE;
 
-		std::bitset<mapWalkHeight * mapWalkWidth> localMapCache;
 		bool isInternalRemoved = false;
-		bool isMapLoaded = false;
 		bool isUpdatingPath = false;
 		bool creatureCheck = false;
 		bool inCheckCreaturesVector = false;
@@ -749,10 +734,6 @@ class Creature : virtual public Thing, public SharedObject
 			return (0 != (scriptEventsBitField & (static_cast<uint32_t>(1) << event)));
 		}
 
-		void updateMapCache();
-		void updateTileCache(TilePtr tile, int32_t dx, int32_t dy);
-		void updateTileCache(const TilePtr& tile, int32_t dx, int32_t dy, const CreaturePtr& self);
-		void updateTileCache(TilePtr tile, const Position& pos);
 		void onCreatureDisappear(const CreatureConstPtr& creature, bool isLogout);
 		virtual void doAttacking(uint32_t) {}
 	

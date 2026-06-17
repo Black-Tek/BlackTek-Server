@@ -718,7 +718,12 @@ bool Map::isSightClear(const Position& fromPos, const Position& toPos, const boo
 
 TilePtr Map::canWalkTo(CreaturePtr& creature, const Position& pos)
 {
-	const int32_t& walkCache = creature->getWalkCache(pos);
+	int32_t walkCache = 2;
+	if (creature->getCreatureSubType() == CreatureSubType::Monster)
+	{
+		walkCache = std::static_pointer_cast<Monster>(creature)->getWalkCache(pos);
+	}
+
 	if (walkCache == 0) {
 		return nullptr;
 	} else if (walkCache == 1) {

@@ -118,12 +118,6 @@ int32_t Creature::getWalkDelay() const
 
 void Creature::onThink(uint32_t interval)
 {
-	if (not isMapLoaded and useCacheMap()) 
-	{
-		isMapLoaded = true;
-		updateMapCache();
-	}
-
 	const auto& my_master = getMaster();
 
 	if (const auto& followTarget = getFollowCreature()) 
@@ -334,155 +328,30 @@ void Creature::stopEventWalk()
 	}
 }
 
-void Creature::updateMapCache()
+void Creature::onAddTileItem(TilePtr, const Position&)
 {
-	const Position& myPos = getPosition();
-	Position pos(0, 0, myPos.z);
-
-	for (int32_t y = -maxWalkCacheHeight; y <= maxWalkCacheHeight; ++y) {
-		for (int32_t x = -maxWalkCacheWidth; x <= maxWalkCacheWidth; ++x) {
-			pos.x = myPos.getX() + x;
-			pos.y = myPos.getY() + y;
-			TilePtr tile = g_game.map.getTile(pos);
-			updateTileCache(tile, pos);
-		}
-	}
 }
 
-void Creature::updateTileCache(TilePtr tile, int32_t dx, int32_t dy)
-{
-	if (std::abs(dx) <= maxWalkCacheWidth and std::abs(dy) <= maxWalkCacheHeight)
-	{
-        constexpr uint32_t flags = FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE;
-        bool canAdd = false;
-        if (tile)
-        {
-            const auto self = getCreature();
-            if (getCreatureSubType() == CreatureSubType::Player)
-                canAdd = tile->queryAdd(std::static_pointer_cast<Player>(self), flags) == RETURNVALUE_NOERROR;
-            else if (getCreatureSubType() == CreatureSubType::Monster)
-                canAdd = tile->queryAdd(std::static_pointer_cast<Monster>(self), flags) == RETURNVALUE_NOERROR;
-            else if (getCreatureSubType() == CreatureSubType::Npc)
-                canAdd = tile->queryAdd(std::static_pointer_cast<Npc>(self), flags) == RETURNVALUE_NOERROR;
-            else
-                canAdd = true;
-        }
-        localMapCache[(maxWalkCacheHeight + dy) * mapWalkWidth + (maxWalkCacheWidth + dx)] = canAdd;
-	}
-}
-
-void Creature::updateTileCache(const TilePtr& tile, int32_t dx, int32_t dy, const CreaturePtr& self)
-{
-	auto entry = localMapCache[(maxWalkCacheHeight + dy) * mapWalkWidth + (maxWalkCacheWidth + dx)];
-	if (not tile or tile->hasFlag(TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT | TILESTATE_BLOCKSOLID))
-	{
-		entry = false;
-		return;
-	}
-    constexpr uint32_t flags = FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE;
-    if (self->getCreatureSubType() == CreatureSubType::Player)
-        entry = tile->queryAdd(std::static_pointer_cast<Player>(self), flags) == RETURNVALUE_NOERROR;
-    else if (self->getCreatureSubType() == CreatureSubType::Monster)
-        entry = tile->queryAdd(std::static_pointer_cast<Monster>(self), flags) == RETURNVALUE_NOERROR;
-    else if (self->getCreatureSubType() == CreatureSubType::Npc)
-        entry = tile->queryAdd(std::static_pointer_cast<Npc>(self), flags) == RETURNVALUE_NOERROR;
-    else
-        entry = true;
-}
-
-void Creature::updateTileCache(TilePtr tile, const Position& pos)
-{
-	const Position& myPos = getPosition();
-	if (pos.z == myPos.z) {
-		int32_t dx = Position::getOffsetX(pos, myPos);
-		int32_t dy = Position::getOffsetY(pos, myPos);
-		updateTileCache(tile, dx, dy);
-	}
-}
-
-int32_t Creature::getWalkCache(const Position& pos) const
-{
-	if (!useCacheMap()) {
-		return 2;
-	}
-
-	const Position& myPos = getPosition();
-	if (myPos.z != pos.z) {
-		return 0;
-	}
-
-	if (pos == myPos) {
-		return 1;
-	}
-
-	int32_t dx = Position::getOffsetX(pos, myPos);
-	if (std::abs(dx) <= maxWalkCacheWidth) {
-		int32_t dy = Position::getOffsetY(pos, myPos);
-		if (std::abs(dy) <= maxWalkCacheHeight) {
-			if (localMapCache[(maxWalkCacheHeight + dy) * mapWalkWidth + (maxWalkCacheWidth + dx)]) {
-				return 1;
-			} else {
-				return 0;
-			}
-		}
-	}
-
-	//out of range
-	return 2;
-}
-
-void Creature::onAddTileItem(TilePtr tile, const Position& pos)
-{
-	if (isMapLoaded && pos.z == getPosition().z) {
-		updateTileCache(tile, pos);
-	}
-}
-
-void Creature::onUpdateTileItem(const TilePtr& tile,
-								const Position& pos,
+void Creature::onUpdateTileItem(const TilePtr&,
+								const Position&,
 								const ItemPtr&,
-                                const ItemType& oldType,
+                                const ItemType&,
                                 const ItemPtr&,
-                                const ItemType& newType)
+                                const ItemType&)
 {
-	if (!isMapLoaded) {
-		return;
-	}
-
-	if (oldType.blockSolid || oldType.blockPathFind || newType.blockPathFind || newType.blockSolid) {
-		if (pos.z == getPosition().z) {
-			updateTileCache(tile, pos);
-		}
-	}
 }
 
-void Creature::onRemoveTileItem(const TilePtr& tile, const Position& pos, const ItemType& iType, const ItemPtr&)
+void Creature::onRemoveTileItem(const TilePtr&, const Position&, const ItemType&, const ItemPtr&)
 {
-	if (!isMapLoaded) {
-		return;
-	}
-
-	if (iType.blockSolid || iType.blockPathFind || iType.isGroundTile()) {
-		if (pos.z == getPosition().z) {
-			updateTileCache(tile, pos);
-		}
-	}
 }
 
 void Creature::onCreatureAppear(const CreaturePtr& creature, bool isLogin)
 {
-	if (creature == shared_from_this()) {
-		if (useCacheMap()) {
-			isMapLoaded = true;
-			updateMapCache();
-		}
-
-		if (isLogin) {
+	if (creature == shared_from_this())
+	{
+		if (isLogin)
+		{
 			setLastPosition(getPosition());
-		}
-	} else if (isMapLoaded) {
-		if (creature->getPosition().z == getPosition().z) {
-			updateTileCache(creature->getTile(), creature->getPosition());
 		}
 	}
 }
@@ -490,11 +359,6 @@ void Creature::onCreatureAppear(const CreaturePtr& creature, bool isLogin)
 void Creature::onRemoveCreature(const CreaturePtr& creature, bool)
 {
 	onCreatureDisappear(creature, true);
-	if (creature != shared_from_this() && isMapLoaded) {
-		if (creature->getPosition().z == getPosition().z) {
-			updateTileCache(creature->getTile(), creature->getPosition());
-		}
-	}
 }
 
 void Creature::onCreatureDisappear(const CreatureConstPtr& creature, bool isLogout)
@@ -575,111 +439,6 @@ void Creature::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTil
 
 		if (newTile->getZone() != oldTile->getZone())
 			onChangeZone(getZone());
-
-		if (isMapLoaded)
-		{
-			if (teleport or dz != 0)
-			{
-				updateMapCache();
-			}
-			else
-			{
-				const Position& myPos = getPosition();
-
-				if (dy < 0) // north
-				{
-					localMapCache <<= mapWalkWidth;
-					for (int32_t x = -maxWalkCacheWidth; x <= maxWalkCacheWidth; ++x)
-					{
-						const auto cacheTile = g_game.map.getTile(myPos.getX() + x, myPos.getY() - maxWalkCacheHeight, myPos.z);
-						updateTileCache(cacheTile, x, -maxWalkCacheHeight, self);
-					}
-				}
-				else if (dy > 0) // south
-				{
-					localMapCache >>= mapWalkWidth;
-					for (int32_t x = -maxWalkCacheWidth; x <= maxWalkCacheWidth; ++x)
-					{
-						const auto cacheTile = g_game.map.getTile(myPos.getX() + x, myPos.getY() + maxWalkCacheHeight, myPos.z);
-						updateTileCache(cacheTile, x, maxWalkCacheHeight, self);
-					}
-				}
-
-				if (dx > 0) // east
-				{
-					int32_t starty = 0;
-					int32_t endy = mapWalkHeight - 1;
-
-					if (dy < 0)
-					{
-						endy += dy;
-					}
-					else if (dy > 0)
-					{
-						starty = dy;
-					}
-
-					for (int32_t y = starty; y <= endy; ++y)
-					{
-						const int32_t rowBase = y * mapWalkWidth;
-						for (int32_t x = 0; x < mapWalkWidth - 1; ++x)
-						{
-							localMapCache[rowBase + x] = localMapCache[rowBase + x + 1];
-						}
-					}
-					for (int32_t y = -maxWalkCacheHeight; y <= maxWalkCacheHeight; ++y)
-					{
-						const auto cacheTile = g_game.map.getTile(myPos.x + maxWalkCacheWidth, myPos.y + y, myPos.z);
-						updateTileCache(cacheTile, maxWalkCacheWidth, y, self);
-					}
-				}
-				else if (dx < 0) // west
-				{
-					int32_t starty = 0;
-					int32_t endy = mapWalkHeight - 1;
-
-					if (dy < 0)
-					{
-						endy += dy;
-					}
-					else if (dy > 0)
-					{
-						starty = dy;
-					}
-
-					for (int32_t y = starty; y <= endy; ++y)
-					{
-						const int32_t rowBase = y * mapWalkWidth;
-						for (int32_t x = mapWalkWidth - 2; x >= 0; --x)
-						{
-							localMapCache[rowBase + x + 1] = localMapCache[rowBase + x];
-						}
-					}
-					for (int32_t y = -maxWalkCacheHeight; y <= maxWalkCacheHeight; ++y)
-					{
-						const auto cacheTile = g_game.map.getTile(myPos.x - maxWalkCacheWidth, myPos.y + y, myPos.z);
-						updateTileCache(cacheTile, -maxWalkCacheWidth, y, self);
-					}
-				}
-
-				updateTileCache(oldTile, oldPos);
-			}
-		}
-	}
-	else
-	{
-		if (isMapLoaded)
-		{
-			const Position& myPos = getPosition();
-			if (newPos.z == myPos.z)
-			{
-				updateTileCache(newTile, newPos);
-			}
-			if (oldPos.z == myPos.z)
-			{
-				updateTileCache(oldTile, oldPos);
-			}
-		}
 	}
 
 	if (const auto& target = getFollowCreature())

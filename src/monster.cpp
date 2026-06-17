@@ -127,6 +127,22 @@ void Monster::onCreatureAppear(const CreaturePtr& creature, const bool isLogin)
 {
 	Creature::onCreatureAppear(creature, isLogin);
 
+	if (creature == getCreature())
+	{
+		if (useCacheMap())
+		{
+			isMapLoaded = true;
+			updateMapCache();
+		}
+	}
+	else if (isMapLoaded)
+	{
+		if (creature->getPosition().z == getPosition().z)
+		{
+			updateTileCache(creature->getTile(), creature->getPosition());
+		}
+	}
+
 	if (mType->info.creatureAppearEvent != -1) {
 		// onCreatureAppear(self, creature)
 		LuaScriptInterface* scriptInterface = mType->info.scriptInterface;
@@ -169,6 +185,14 @@ void Monster::onRemoveCreature(const CreaturePtr& creature, const bool isLogout)
 {
 	Creature::onRemoveCreature(creature, isLogout);
 
+	if (creature != getCreature() and isMapLoaded)
+	{
+		if (creature->getPosition().z == getPosition().z)
+		{
+			updateTileCache(creature->getTile(), creature->getPosition());
+		}
+	}
+
 	if (mType->info.creatureDisappearEvent != -1) {
 		// onCreatureDisappear(self, creature)
 		LuaScriptInterface* scriptInterface = mType->info.scriptInterface;
@@ -208,6 +232,117 @@ void Monster::onRemoveCreature(const CreaturePtr& creature, const bool isLogout)
 void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos,
                              const TilePtr& oldTile, const Position& oldPos, bool teleport)
 {
+	if (isMapLoaded)
+	{
+		const bool isSelf = (creature == this->getCreature());
+		const int32_t dx = newPos.x - oldPos.x;
+		const int32_t dy = newPos.y - oldPos.y;
+		const int32_t dz = newPos.z - oldPos.z;
+
+		if (isSelf)
+		{
+			if (teleport or dz != 0)
+			{
+				updateMapCache();
+			}
+			else
+			{
+				const Position& myPos = getPosition();
+				const MonsterPtr& self = getMonster();
+
+				if (dy < 0) // north
+				{
+					localMapCache <<= mapWalkWidth;
+					for (int32_t x = -maxWalkCacheWidth; x <= maxWalkCacheWidth; ++x)
+					{
+						const auto cacheTile = g_game.map.getTile(myPos.getX() + x, myPos.getY() - maxWalkCacheHeight, myPos.z);
+						updateTileCache(cacheTile, x, -maxWalkCacheHeight, self);
+					}
+				}
+				else if (dy > 0) // south
+				{
+					localMapCache >>= mapWalkWidth;
+					for (int32_t x = -maxWalkCacheWidth; x <= maxWalkCacheWidth; ++x)
+					{
+						const auto cacheTile = g_game.map.getTile(myPos.getX() + x, myPos.getY() + maxWalkCacheHeight, myPos.z);
+						updateTileCache(cacheTile, x, maxWalkCacheHeight, self);
+					}
+				}
+
+				if (dx > 0) // east
+				{
+					int32_t starty = 0;
+					int32_t endy = mapWalkHeight - 1;
+
+					if (dy < 0)
+					{
+						endy += dy;
+					}
+					else if (dy > 0)
+					{
+						starty = dy;
+					}
+
+					for (int32_t y = starty; y <= endy; ++y)
+					{
+						const int32_t rowBase = y * mapWalkWidth;
+						for (int32_t x = 0; x < mapWalkWidth - 1; ++x)
+						{
+							localMapCache[rowBase + x] = localMapCache[rowBase + x + 1];
+						}
+					}
+					for (int32_t y = -maxWalkCacheHeight; y <= maxWalkCacheHeight; ++y)
+					{
+						const auto cacheTile = g_game.map.getTile(myPos.x + maxWalkCacheWidth, myPos.y + y, myPos.z);
+						updateTileCache(cacheTile, maxWalkCacheWidth, y, self);
+					}
+				}
+				else if (dx < 0) // west
+				{
+					int32_t starty = 0;
+					int32_t endy = mapWalkHeight - 1;
+
+					if (dy < 0)
+					{
+						endy += dy;
+					}
+					else if (dy > 0)
+					{
+						starty = dy;
+					}
+
+					for (int32_t y = starty; y <= endy; ++y)
+					{
+						const int32_t rowBase = y * mapWalkWidth;
+						for (int32_t x = mapWalkWidth - 2; x >= 0; --x)
+						{
+							localMapCache[rowBase + x + 1] = localMapCache[rowBase + x];
+						}
+					}
+					for (int32_t y = -maxWalkCacheHeight; y <= maxWalkCacheHeight; ++y)
+					{
+						const auto cacheTile = g_game.map.getTile(myPos.x - maxWalkCacheWidth, myPos.y + y, myPos.z);
+						updateTileCache(cacheTile, -maxWalkCacheWidth, y, self);
+					}
+				}
+
+				updateTileCache(oldTile, oldPos);
+			}
+		}
+		else
+		{
+			const Position& myPos = getPosition();
+			if (newPos.z == myPos.z)
+			{
+				updateTileCache(newTile, newPos);
+			}
+			if (oldPos.z == myPos.z)
+			{
+				updateTileCache(oldTile, oldPos);
+			}
+		}
+	}
+
 	Creature::onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
 
 	if (mType->info.creatureMoveEvent != -1) {
@@ -1160,6 +1295,7 @@ bool Monster::getNextStep(Direction& direction, uint32_t& flags)
 	if (!walkingToSpawn && (!getFollowCreature() || !hasFollowPath) && (!isSummon() || !isMasterInRange)) {
 		if (getTimeSinceLastMove() >= 1000) {
 			randomStepping = true;
+			isMapLoaded = false;
 			// choose a random direction
 			result = getRandomStep(getPosition(), direction);
 		}
@@ -1167,10 +1303,16 @@ bool Monster::getNextStep(Direction& direction, uint32_t& flags)
 	else if ((isSummon() && isMasterInRange) || getFollowCreature() || walkingToSpawn) {
 		if (!hasFollowPath && getMaster() && !getMaster()->getPlayer()) {
 			randomStepping = true;
+			isMapLoaded = false;
 			result = getRandomStep(getPosition(), direction);
 		}
 		else {
 			randomStepping = false;
+			if (not isMapLoaded)
+			{
+				isMapLoaded = true;
+				updateMapCache();
+			}
 			result = Creature::getNextStep(direction, flags);
 			if (result) {
 				flags |= FLAG_PATHFINDING;
@@ -1570,6 +1712,99 @@ bool Monster::followTargetFromDistance(const Position& target_position, Directio
 	// "think" about "looking" for a new way around..
     [[unlikely]]
     return false;
+}
+
+void Monster::updateMapCache()
+{
+	const Position& myPos = getPosition();
+	Position pos(0, 0, myPos.z);
+
+	for (int32_t y = -maxWalkCacheHeight; y <= maxWalkCacheHeight; ++y)
+	{
+		for (int32_t x = -maxWalkCacheWidth; x <= maxWalkCacheWidth; ++x)
+		{
+			pos.x = myPos.getX() + x;
+			pos.y = myPos.getY() + y;
+			TilePtr tile = g_game.map.getTile(pos);
+			updateTileCache(tile, pos);
+		}
+	}
+}
+
+void Monster::updateTileCache(TilePtr tile, int32_t dx, int32_t dy)
+{
+	if (std::abs(dx) <= maxWalkCacheWidth and std::abs(dy) <= maxWalkCacheHeight)
+	{
+		constexpr uint32_t flags = FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE;
+		bool canAdd = false;
+		if (tile)
+		{
+			canAdd = tile->queryAdd(getMonster(), flags) == RETURNVALUE_NOERROR;
+		}
+		localMapCache[(maxWalkCacheHeight + dy) * mapWalkWidth + (maxWalkCacheWidth + dx)] = canAdd;
+	}
+}
+
+void Monster::updateTileCache(const TilePtr& tile, int32_t dx, int32_t dy, const MonsterPtr& self)
+{
+	auto entry = localMapCache[(maxWalkCacheHeight + dy) * mapWalkWidth + (maxWalkCacheWidth + dx)];
+	if (not tile or tile->hasFlag(TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT | TILESTATE_BLOCKSOLID))
+	{
+		entry = false;
+		return;
+	}
+	constexpr uint32_t flags = FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE;
+	entry = tile->queryAdd(self, flags) == RETURNVALUE_NOERROR;
+}
+
+void Monster::updateTileCache(TilePtr tile, const Position& pos)
+{
+	const Position& myPos = getPosition();
+	if (pos.z == myPos.z)
+	{
+		int32_t dx = Position::getOffsetX(pos, myPos);
+		int32_t dy = Position::getOffsetY(pos, myPos);
+		updateTileCache(tile, dx, dy);
+	}
+}
+
+int32_t Monster::getWalkCache(const Position& pos) const
+{
+	if (not useCacheMap())
+	{
+		return 2;
+	}
+
+	const Position& myPos = getPosition();
+	if (myPos.z != pos.z)
+	{
+		return 0;
+	}
+
+	if (pos == myPos)
+	{
+		return 1;
+	}
+
+	int32_t dx = Position::getOffsetX(pos, myPos);
+	if (std::abs(dx) <= maxWalkCacheWidth)
+	{
+		int32_t dy = Position::getOffsetY(pos, myPos);
+		if (std::abs(dy) <= maxWalkCacheHeight)
+		{
+			if (localMapCache[(maxWalkCacheHeight + dy) * mapWalkWidth + (maxWalkCacheWidth + dx)])
+			{
+				return 1;
+			}
+			else
+			{
+				return 0;
+			}
+		}
+	}
+
+	//out of range
+	return 2;
 }
 
 bool Monster::canWalkTo(Position pos, const Direction direction)

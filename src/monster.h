@@ -4,7 +4,10 @@
 #ifndef FS_MONSTER_H
 #define FS_MONSTER_H
 
+#include <bitset>
+
 #include "tile.h"
+#include "map.h"
 #include "monsters.h"
 #include <gtl/phmap.hpp>
 
@@ -142,6 +145,8 @@ class Monster final : public Creature
 	
 		bool canWalkOnFieldType(CombatType_t combatType) const;
 
+		int32_t getWalkCache(const Position& pos) const;
+
 		void onAttackedCreatureDisappear(bool isLogout) override;
 
 		void onCreatureAppear(const CreaturePtr& creature, bool isLogin) override;
@@ -243,9 +248,17 @@ class Monster final : public Creature
 
 		bool ignoreFieldDamage = false;
 		bool isIdle = true;
+		bool isMapLoaded = false;
 		bool isMasterInRange = false;
 		bool randomStepping = false;
 		bool walkingToSpawn = false;
+
+		static constexpr int32_t mapWalkWidth = Map::maxViewportX * 2 + 1;
+		static constexpr int32_t mapWalkHeight = Map::maxViewportY * 2 + 1;
+		static constexpr int32_t maxWalkCacheWidth = (mapWalkWidth - 1) / 2;
+		static constexpr int32_t maxWalkCacheHeight = (mapWalkHeight - 1) / 2;
+
+		std::bitset<mapWalkHeight * mapWalkWidth> localMapCache;
 
 		void onCreatureEnter(const CreaturePtr& creature);
 		void onCreatureLeave(const CreaturePtr& creature);
@@ -284,6 +297,11 @@ class Monster final : public Creature
 		bool isInSpawnRange(const Position& pos) const;
 		bool canWalkTo(Position pos, Direction direction);
 
+		void updateMapCache();
+		void updateTileCache(TilePtr tile, int32_t dx, int32_t dy);
+		void updateTileCache(const TilePtr& tile, int32_t dx, int32_t dy, const MonsterPtr& self);
+		void updateTileCache(TilePtr tile, const Position& pos);
+
 		static bool pushItem(const ItemPtr& item);
 		static void pushItems(const TilePtr& tile);
 		static bool pushCreature(const CreaturePtr& creature);
@@ -316,8 +334,8 @@ class Monster final : public Creature
 	
 		void getPathSearchParams(const CreatureConstPtr& creature, FindPathParams& fpp) const override;
 	
-		bool useCacheMap() const override {
-			return !randomStepping;
+		bool useCacheMap() const {
+			return not randomStepping;
 		}
 
 		friend class LuaScriptInterface;
