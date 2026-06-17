@@ -4,6 +4,8 @@
 #ifndef FS_CREATURE_H
 #define FS_CREATURE_H
 
+#include <bitset>
+
 #include "map.h"
 #include "position.h"
 #include "condition.h"
@@ -727,7 +729,7 @@ class Creature : virtual public Thing, public SharedObject
 		Direction direction = DIRECTION_SOUTH;
 		Skulls_t skull = SKULL_NONE;
 
-		bool localMapCache[mapWalkHeight][mapWalkWidth] = {{ false }};
+		std::bitset<mapWalkHeight * mapWalkWidth> localMapCache;
 		bool isInternalRemoved = false;
 		bool isMapLoaded = false;
 		bool isUpdatingPath = false;
