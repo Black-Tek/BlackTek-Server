@@ -25,9 +25,8 @@ bool Scripts::loadScripts(const std::string& folderName, bool isLib, bool reload
 	namespace fs = std::filesystem;
 
 	const auto dir = fs::current_path() / "data" / folderName;
-	if(!fs::exists(dir) || !fs::is_directory(dir)) {
-		std::cout << "[Warning - Scripts::loadScripts] Can not load folder '" << folderName << "'." << std::endl;
-		return false;
+	if (!fs::exists(dir) || !fs::is_directory(dir)) {
+		return true;
 	}
 
 	fs::recursive_directory_iterator endit;
