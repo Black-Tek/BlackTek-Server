@@ -451,10 +451,8 @@ void Tile::onUpdateTile(const SpectatorVec& spectators)
 	}
 }
 
-ReturnValue Tile::queryAdd(CreaturePtr creature, uint32_t flags)
+std::optional<ReturnValue> Tile::queryAddRestrictions(uint32_t flags) const
 {
-    ReturnValue results = RETURNVALUE_NOERROR;
-
     if (hasBitSet(FLAG_NOLIMIT, flags))
         return RETURNVALUE_NOERROR;
 
@@ -465,43 +463,39 @@ ReturnValue Tile::queryAdd(CreaturePtr creature, uint32_t flags)
         return RETURNVALUE_NOTPOSSIBLE;
 
     // If the FLAG_IGNOREBLOCKITEM bit isn't set we dont have to iterate every single item
-	if (not hasBitSet(FLAG_IGNOREBLOCKITEM, flags))
-	{
-		if (hasFlag(TILESTATE_BLOCKSOLID))
-			return RETURNVALUE_NOTENOUGHROOM;
-	}
-	else
-	{
+    if (not hasBitSet(FLAG_IGNOREBLOCKITEM, flags))
+    {
+        if (hasFlag(TILESTATE_BLOCKSOLID))
+            return RETURNVALUE_NOTENOUGHROOM;
+    }
+    else
+    {
         //FLAG_IGNOREBLOCKITEM is set
-		if (ground)
-		{
-			if (const ItemType& iiType = Item::items[ground->getID()]; iiType.blockSolid and (not iiType.moveable or ground->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)))
-				return RETURNVALUE_NOTPOSSIBLE;
-		}
+        if (ground)
+        {
+            if (const ItemType& iiType = Item::items[ground->getID()]; iiType.blockSolid and (not iiType.moveable or ground->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)))
+                return RETURNVALUE_NOTPOSSIBLE;
+        }
 
         if (const auto items = getItemList())
-		{
+        {
             for (const auto& item : *items)
-			{
-	            if (const ItemType& iiType = Item::items[item->getID()]; iiType.blockSolid and (not iiType.moveable or item->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)))
+            {
+                if (const ItemType& iiType = Item::items[item->getID()]; iiType.blockSolid and (not iiType.moveable or item->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)))
                     return RETURNVALUE_NOTPOSSIBLE;
             }
         }
     }
 
-	if (creature->getCreatureSubType() == CreatureSubType::Player)
-		results = queryAdd(std::static_pointer_cast<Player>(creature), flags);
-	else if (creature->getCreatureSubType() == CreatureSubType::Monster)
-		results = queryAdd(std::static_pointer_cast<Monster>(creature), flags);
-	else if (creature->getCreatureSubType() == CreatureSubType::Npc)
-		results = queryAdd(std::static_pointer_cast<Npc>(creature), flags);
-
-	return results;
+    return std::nullopt;
 }
 
 
 ReturnValue Tile::queryAdd(PlayerPtr player, uint32_t flags)
 {
+    if (const auto restriction = queryAddRestrictions(flags))
+        return *restriction;
+
 	const auto creatures = getCreatures();
 
 	if (isHouseTile() and not house->isInvited(player))
@@ -557,6 +551,9 @@ ReturnValue Tile::queryAdd(PlayerPtr player, uint32_t flags)
 
 ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags)
 {
+    if (const auto restriction = queryAddRestrictions(flags))
+        return *restriction;
+
 	// Monsters
 	// Monsters cannot enter pz, jump floors, or step into teleports
 	if (hasFlag(TILESTATE_PROTECTIONZONE | TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT))
@@ -632,6 +629,9 @@ ReturnValue Tile::queryAdd(MonsterPtr monster, uint32_t flags)
 
 ReturnValue Tile::queryAdd(NpcPtr npc, uint32_t flags)
 {
+    if (const auto restriction = queryAddRestrictions(flags))
+        return *restriction;
+
 	if (npc->isPhaseable())
 		return RETURNVALUE_NOERROR;
 
@@ -738,8 +738,17 @@ ReturnValue Tile::queryAdd(int32_t, const ThingPtr& thing, uint32_t, uint32_t fl
 	if (hasBitSet(FLAG_NOLIMIT, flags))
 		return RETURNVALUE_NOERROR;
 
-	if (thing->is_creature())
-		return queryAdd(thing->getCreature(), flags);
+    if (const auto creature = thing->getCreature())
+    {
+        if (creature->getCreatureSubType() == CreatureSubType::Player)
+            return queryAdd(std::static_pointer_cast<Player>(creature), flags);
+        if (creature->getCreatureSubType() == CreatureSubType::Monster)
+            return queryAdd(std::static_pointer_cast<Monster>(creature), flags);
+        if (creature->getCreatureSubType() == CreatureSubType::Npc)
+            return queryAdd(std::static_pointer_cast<Npc>(creature), flags);
+
+        return RETURNVALUE_NOERROR;
+    }
 
 	if (auto item = thing->getItem())
 		return queryAdd(item, flags, mover);

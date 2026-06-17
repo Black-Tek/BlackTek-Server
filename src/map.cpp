@@ -188,7 +188,19 @@ bool Map::placeCreature(const Position& centerPos, CreaturePtr creature, bool ex
 				flags |= FLAG_IGNOREBLOCKCREATURE;
 			}
 		}
-		const ReturnValue ret = tile->queryAdd(creature, FLAG_IGNOREBLOCKITEM);
+        ReturnValue ret = RETURNVALUE_NOERROR;
+        if (creature->getCreatureSubType() == CreatureSubType::Player)
+        {
+            ret = tile->queryAdd(std::static_pointer_cast<Player>(creature), FLAG_IGNOREBLOCKITEM);
+        }
+        else if (creature->getCreatureSubType() == CreatureSubType::Monster)
+        {
+            ret = tile->queryAdd(std::static_pointer_cast<Monster>(creature), FLAG_IGNOREBLOCKITEM);
+        }
+        else if (creature->getCreatureSubType() == CreatureSubType::Npc)
+        {
+            ret = tile->queryAdd(std::static_pointer_cast<Npc>(creature), FLAG_IGNOREBLOCKITEM);
+        }
 		foundTile = forceLogin || ret == RETURNVALUE_NOERROR || ret == RETURNVALUE_PLAYERISNOTINVITED;
 	} else {
 		placeInPZ = false;
@@ -227,7 +239,21 @@ bool Map::placeCreature(const Position& centerPos, CreaturePtr creature, bool ex
 				continue;
 			}
 
-			if (tile->queryAdd(creature, 0) == RETURNVALUE_NOERROR) {
+            ReturnValue ret = RETURNVALUE_NOERROR;
+            if (creature->getCreatureSubType() == CreatureSubType::Player)
+            {
+                ret = tile->queryAdd(std::static_pointer_cast<Player>(creature), 0);
+            }
+            else if (creature->getCreatureSubType() == CreatureSubType::Monster)
+            {
+                ret = tile->queryAdd(std::static_pointer_cast<Monster>(creature), 0);
+            }
+            else if (creature->getCreatureSubType() == CreatureSubType::Npc)
+            {
+                ret = tile->queryAdd(std::static_pointer_cast<Npc>(creature), 0);
+            }
+
+			if (ret == RETURNVALUE_NOERROR) {
 				if (!extendedPos || isSightClear(centerPos, tryPos, false)) {
 					foundTile = true;
 					break;
@@ -706,14 +732,31 @@ TilePtr Map::canWalkTo(CreaturePtr& creature, const Position& pos)
 			return nullptr;
 		}
 
-		uint32_t flags = FLAG_PATHFINDING;
-		if (!creature->getPlayer()) {
-			flags |= FLAG_IGNOREFIELDDAMAGE;
-		}
+        uint32_t flags = FLAG_PATHFINDING;
+        const auto subtype = creature->getCreatureSubType();
+        if (subtype != CreatureSubType::Player)
+        {
+            flags |= FLAG_IGNOREFIELDDAMAGE;
+        }
 
-		if (tile->queryAdd(creature, flags) != RETURNVALUE_NOERROR) {
-			return nullptr;
-		}
+        ReturnValue ret = RETURNVALUE_NOERROR;
+        if (subtype == CreatureSubType::Player)
+        {
+            ret = tile->queryAdd(std::static_pointer_cast<Player>(creature), flags);
+        }
+        else if (subtype == CreatureSubType::Monster)
+        {
+            ret = tile->queryAdd(std::static_pointer_cast<Monster>(creature), flags);
+        }
+        else if (subtype == CreatureSubType::Npc)
+        {
+            ret = tile->queryAdd(std::static_pointer_cast<Npc>(creature), flags);
+        }
+
+        if (ret != RETURNVALUE_NOERROR)
+        {
+            return nullptr;
+        }
 	}
 	return tile;
 }

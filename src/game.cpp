@@ -913,7 +913,20 @@ ReturnValue Game::internalMoveCreature(CreaturePtr creature, const Direction dir
 ReturnValue Game::internalMoveCreature(CreaturePtr creature, TilePtr toTile, uint32_t flags /*= 0*/)
 {
 	//check if we can move the creature to the destination
-	ReturnValue ret = toTile->queryAdd(creature, flags);
+    ReturnValue ret = RETURNVALUE_NOERROR;
+    if (creature->getCreatureSubType() == CreatureSubType::Player)
+    {
+        ret = toTile->queryAdd(std::static_pointer_cast<Player>(creature), flags);
+    }
+    else if (creature->getCreatureSubType() == CreatureSubType::Monster)
+    {
+        ret = toTile->queryAdd(std::static_pointer_cast<Monster>(creature), flags);
+    }
+    else if (creature->getCreatureSubType() == CreatureSubType::Npc)
+    {
+        ret = toTile->queryAdd(std::static_pointer_cast<Npc>(creature), flags);
+    }
+
 	if (ret != RETURNVALUE_NOERROR) {
 		return ret;
 	}
@@ -1905,9 +1918,24 @@ ReturnValue Game::internalTeleport(const ThingPtr& thing, const Position& newPos
 	}
 
 	if (auto creature = thing->getCreature()) {
-		if (ReturnValue ret = toTile->queryAdd(creature, FLAG_NOLIMIT); ret != RETURNVALUE_NOERROR) {
-			return ret;
-		}
+        ReturnValue ret = RETURNVALUE_NOERROR;
+        if (creature->getCreatureSubType() == CreatureSubType::Player)
+        {
+            ret = toTile->queryAdd(std::static_pointer_cast<Player>(creature), FLAG_NOLIMIT);
+        }
+        else if (creature->getCreatureSubType() == CreatureSubType::Monster)
+        {
+            ret = toTile->queryAdd(std::static_pointer_cast<Monster>(creature), FLAG_NOLIMIT);
+        }
+        else if (creature->getCreatureSubType() == CreatureSubType::Npc)
+        {
+            ret = toTile->queryAdd(std::static_pointer_cast<Npc>(creature), FLAG_NOLIMIT);
+        }
+
+        if (ret != RETURNVALUE_NOERROR)
+        {
+            return ret;
+        }
 
 		map.moveCreature(creature, toTile, !pushMove);
 		return RETURNVALUE_NOERROR;

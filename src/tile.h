@@ -10,6 +10,8 @@
 #include "spectators.h"
 #include "declarations.h"
 
+#include <optional>
+
 enum tileflags_t : uint32_t {
 	TILESTATE_NONE = 0,
 
@@ -269,7 +271,6 @@ class Tile : public Cylinder, public SharedObject
 		ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
 		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags) override; // another optional wrap ref
 
-		ReturnValue queryAdd(CreaturePtr creature, uint32_t flags);
 		ReturnValue queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover);
 		ReturnValue queryAdd(PlayerPtr player, uint32_t flags);
 		ReturnValue queryAdd(MonsterPtr monster, uint32_t flags);
@@ -338,6 +339,8 @@ class Tile : public Cylinder, public SharedObject
 		void updateHouse(const ItemPtr& item);
 
 	private:
+        std::optional<ReturnValue> queryAddRestrictions(uint32_t flags) const;
+
 		void onAddTileItem(ItemPtr& item);
 		void onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType);
 		void onRemoveTileItem(const SpectatorVec& spectators, const std::vector<int32_t>& oldStackPosVector, const ItemPtr& item);

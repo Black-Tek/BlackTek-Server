@@ -353,7 +353,21 @@ void Creature::updateTileCache(TilePtr tile, int32_t dx, int32_t dy)
 {
 	if (std::abs(dx) <= maxWalkCacheWidth and std::abs(dy) <= maxWalkCacheHeight)
 	{
-		localMapCache[(maxWalkCacheHeight + dy) * mapWalkWidth + (maxWalkCacheWidth + dx)] = tile and tile->queryAdd(getCreature(), FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE) == RETURNVALUE_NOERROR;
+        constexpr uint32_t flags = FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE;
+        bool canAdd = false;
+        if (tile)
+        {
+            const auto self = getCreature();
+            if (getCreatureSubType() == CreatureSubType::Player)
+                canAdd = tile->queryAdd(std::static_pointer_cast<Player>(self), flags) == RETURNVALUE_NOERROR;
+            else if (getCreatureSubType() == CreatureSubType::Monster)
+                canAdd = tile->queryAdd(std::static_pointer_cast<Monster>(self), flags) == RETURNVALUE_NOERROR;
+            else if (getCreatureSubType() == CreatureSubType::Npc)
+                canAdd = tile->queryAdd(std::static_pointer_cast<Npc>(self), flags) == RETURNVALUE_NOERROR;
+            else
+                canAdd = true;
+        }
+        localMapCache[(maxWalkCacheHeight + dy) * mapWalkWidth + (maxWalkCacheWidth + dx)] = canAdd;
 	}
 }
 
@@ -365,7 +379,15 @@ void Creature::updateTileCache(const TilePtr& tile, int32_t dx, int32_t dy, cons
 		entry = false;
 		return;
 	}
-	entry = tile->queryAdd(self, FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE) == RETURNVALUE_NOERROR;
+    constexpr uint32_t flags = FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE;
+    if (self->getCreatureSubType() == CreatureSubType::Player)
+        entry = tile->queryAdd(std::static_pointer_cast<Player>(self), flags) == RETURNVALUE_NOERROR;
+    else if (self->getCreatureSubType() == CreatureSubType::Monster)
+        entry = tile->queryAdd(std::static_pointer_cast<Monster>(self), flags) == RETURNVALUE_NOERROR;
+    else if (self->getCreatureSubType() == CreatureSubType::Npc)
+        entry = tile->queryAdd(std::static_pointer_cast<Npc>(self), flags) == RETURNVALUE_NOERROR;
+    else
+        entry = true;
 }
 
 void Creature::updateTileCache(TilePtr tile, const Position& pos)
