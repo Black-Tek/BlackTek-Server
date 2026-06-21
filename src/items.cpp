@@ -15,6 +15,7 @@
 #include <fmt/color.h>
 #include "configmanager.h"
 #include "itemloader.h"
+#include "console.h"
 
 extern MoveEvents* g_moveEvents;
 extern Weapons* g_weapons;
@@ -461,7 +462,7 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
 
                         if (name == "none")
                         {
-                            // log here the skipped buff
+                            BlackTek::Console::Warn("Items::loadFromToml: skipping buff entry with no 'name' for item id {}", id);
                             continue;
                         }
 

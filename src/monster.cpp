@@ -5,6 +5,7 @@
 
 #include "monster.h"
 #include "game.h"
+#include "console.h"
 #include "spells.h"
 #include "events.h"
 #include "configmanager.h"
@@ -671,7 +672,7 @@ bool Monster::searchTarget(TargetSearchType_t searchType /*= TARGETSEARCH_DEFAUL
 			}
 		} while (valid = false);
 	}
-	// shouldn't be able to make it here, if so log it
+	BlackTek::Console::Warn("Monster::searchTarget: random target selection fell through without a valid target ({})", getName());
 	return false;
 }
 

@@ -9,6 +9,7 @@
 #include <chrono>
 #include <ctime>
 #include <utility>
+#include <type_traits>
 #include <print>
 #include <source_location>
 #include <filesystem>
@@ -128,9 +129,6 @@ namespace BlackTek::Console
         std::atomic<uint64_t> messagesDropped { 0 };
 
         LogChannel() = default;
-
-        // Channels live permanently in a fixed-size array for the program's lifetime;
-        // they are never copied or moved, so those operations are simply not provided.
         LogChannel(const LogChannel&) = delete;
         LogChannel& operator=(const LogChannel&) = delete;
         LogChannel(LogChannel&&) = delete;
@@ -279,12 +277,7 @@ namespace BlackTek::Console
         alignas(64) std::atomic<size_t> tail_{0};
     };
 
-
     inline RingBuffer queue;
-
-    // ------------------------------------------------------------------------
-    // Formatting helpers
-    // ------------------------------------------------------------------------
 
     inline std::string_view LevelLabel(LogLevel level)
     {
@@ -345,10 +338,6 @@ namespace BlackTek::Console
         return LogLevel::Info;
     }
 
-    // ------------------------------------------------------------------------
-    // Configuration
-    // ------------------------------------------------------------------------
-
     struct ChannelDefaults
     {
         bool enabled;
@@ -361,7 +350,7 @@ namespace BlackTek::Console
         { true,  LogLevel::Info,    LogLevel::Info },    // System
         { true,  LogLevel::Warning, LogLevel::Error },   // Network
         { true,  LogLevel::Warning, LogLevel::Error },   // Database
-        { false, LogLevel::Info,    LogLevel::Warning }, // Combat — placeholder, disabled until the metrics system wires it up
+        { false, LogLevel::Info,    LogLevel::Warning }, // Combat
         { true,  LogLevel::Debug,   LogLevel::Error },   // Script
         { true,  LogLevel::Info,    LogLevel::Warning }, // Map
         { true,  LogLevel::Info,    LogLevel::Warning }, // Player
@@ -406,10 +395,6 @@ namespace BlackTek::Console
         }
     }
 
-    // ------------------------------------------------------------------------
-    // Dispatch — shared by the root API and every channel sub-namespace
-    // ------------------------------------------------------------------------
-
     inline void PushAndNotify(Message&& msg)
     {
         while (not queue.Push(std::move(msg)))
@@ -448,10 +433,6 @@ namespace BlackTek::Console
         PushFormatted(channel, level, fmt::format(fmtStr, std::forward<Args>(args)...));
     }
 
-    // Bundles a compile-time-checked format string with the call site's source_location.
-    // Args is deduced from the trailing args... pack at the call site; the literal then
-    // converts into this wrapper, which is simpler and more portable than defaulting a
-    // std::source_location parameter after a function parameter pack.
     template <typename... Args>
     struct SourceFormat
     {
@@ -501,10 +482,6 @@ namespace BlackTek::Console
     {
         FatalWrite(channel, fmt::format(fmtStr, std::forward<Args>(args)...));
     }
-
-    // ------------------------------------------------------------------------
-    // Worker thread
-    // ------------------------------------------------------------------------
 
     inline void WriteToChannel(LogChannel& channel, const Message& msg)
     {
@@ -638,10 +615,6 @@ namespace BlackTek::Console
             processMessage();
     }
 
-    // ------------------------------------------------------------------------
-    // Lifecycle
-    // ------------------------------------------------------------------------
-
     inline void Initialize()
     {
         if (running.exchange(true))
@@ -676,10 +649,6 @@ namespace BlackTek::Console
             channel.Close();
     }
 
-    // ------------------------------------------------------------------------
-    // Runtime introspection (used by the Lua `log` table)
-    // ------------------------------------------------------------------------
-
     struct ChannelStats
     {
         uint64_t written;
@@ -709,10 +678,6 @@ namespace BlackTek::Console
 
         PushFormatted(channel, level, std::string(text));
     }
-
-    // ------------------------------------------------------------------------
-    // Public API — unchanged signatures, all routed to the System channel
-    // ------------------------------------------------------------------------
 
     inline void Print(std::string_view text)
     {
@@ -849,14 +814,23 @@ namespace BlackTek::Console
     }
 
     template <typename... Args>
+    inline void Debug(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
+    {
+        DebugDispatch<Args...>(ChannelType::System, fmtStr, std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    inline void Trace(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
+    {
+        TraceDispatch<Args...>(ChannelType::System, fmtStr, std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
     inline void Fatal(fmt::format_string<Args...> fmtStr, Args&&... args)
     {
         FatalDispatch(ChannelType::System, fmtStr, std::forward<Args>(args)...);
     }
 
-    // ------------------------------------------------------------------------
-    // Channel sub-namespaces
-    // ------------------------------------------------------------------------
 
     namespace Net
     {
@@ -873,11 +847,11 @@ namespace BlackTek::Console
         { Dispatch(ChannelType::Network, LogLevel::Error, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
-        inline void Debug(SourceFormat<Args...> fmtStr, Args&&... args)
+        inline void Debug(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
         { DebugDispatch<Args...>(ChannelType::Network, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
-        inline void Trace(SourceFormat<Args...> fmtStr, Args&&... args)
+        inline void Trace(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
         { TraceDispatch<Args...>(ChannelType::Network, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
@@ -900,11 +874,11 @@ namespace BlackTek::Console
         { Dispatch(ChannelType::Database, LogLevel::Error, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
-        inline void Debug(SourceFormat<Args...> fmtStr, Args&&... args)
+        inline void Debug(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
         { DebugDispatch<Args...>(ChannelType::Database, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
-        inline void Trace(SourceFormat<Args...> fmtStr, Args&&... args)
+        inline void Trace(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
         { TraceDispatch<Args...>(ChannelType::Database, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
@@ -927,11 +901,11 @@ namespace BlackTek::Console
         { Dispatch(ChannelType::Script, LogLevel::Error, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
-        inline void Debug(SourceFormat<Args...> fmtStr, Args&&... args)
+        inline void Debug(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
         { DebugDispatch<Args...>(ChannelType::Script, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
-        inline void Trace(SourceFormat<Args...> fmtStr, Args&&... args)
+        inline void Trace(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
         { TraceDispatch<Args...>(ChannelType::Script, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
@@ -954,11 +928,11 @@ namespace BlackTek::Console
         { Dispatch(ChannelType::Map, LogLevel::Error, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
-        inline void Debug(SourceFormat<Args...> fmtStr, Args&&... args)
+        inline void Debug(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
         { DebugDispatch<Args...>(ChannelType::Map, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
-        inline void Trace(SourceFormat<Args...> fmtStr, Args&&... args)
+        inline void Trace(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
         { TraceDispatch<Args...>(ChannelType::Map, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
@@ -981,11 +955,11 @@ namespace BlackTek::Console
         { Dispatch(ChannelType::Player, LogLevel::Error, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
-        inline void Debug(SourceFormat<Args...> fmtStr, Args&&... args)
+        inline void Debug(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
         { DebugDispatch<Args...>(ChannelType::Player, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
-        inline void Trace(SourceFormat<Args...> fmtStr, Args&&... args)
+        inline void Trace(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
         { TraceDispatch<Args...>(ChannelType::Player, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
@@ -1008,11 +982,11 @@ namespace BlackTek::Console
         { Dispatch(ChannelType::Admin, LogLevel::Error, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
-        inline void Debug(SourceFormat<Args...> fmtStr, Args&&... args)
+        inline void Debug(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
         { DebugDispatch<Args...>(ChannelType::Admin, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
-        inline void Trace(SourceFormat<Args...> fmtStr, Args&&... args)
+        inline void Trace(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
         { TraceDispatch<Args...>(ChannelType::Admin, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
@@ -1035,11 +1009,11 @@ namespace BlackTek::Console
         { Dispatch(ChannelType::Security, LogLevel::Error, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
-        inline void Debug(SourceFormat<Args...> fmtStr, Args&&... args)
+        inline void Debug(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
         { DebugDispatch<Args...>(ChannelType::Security, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>
-        inline void Trace(SourceFormat<Args...> fmtStr, Args&&... args)
+        inline void Trace(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
         { TraceDispatch<Args...>(ChannelType::Security, fmtStr, std::forward<Args>(args)...); }
 
         template <typename... Args>

@@ -8,6 +8,7 @@
 
 #include "otpch.h"
 #include "augment.h"
+#include "console.h"
 
 namespace BlackTek
 {
@@ -131,7 +132,7 @@ namespace BlackTek
 		}
 		else
 		{
-			// todo: log it
+			Console::Warn("Augment::addModifier: discarding modifier with unrecognized stance ({})", static_cast<int>(stance));
 		}
 	}
 

@@ -4446,7 +4446,8 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 					break;
 				} // else
 
-				// log and/or send a failure window
+				// todo: send a failure window to the player
+				BlackTek::Console::Database::Error("Game::onPrivateAccountManagerInput: failed to update password for account {}", account.name);
 				break;
 			}
 
@@ -5373,9 +5374,9 @@ void Game::internalDecayItem(const ItemPtr& item)
     }
     else if (decayTo == 0) 
 	{
-        if (not item->getParent()) 
+        if (not item->getParent())
 		{
-			// this shouldn't be possible, log it
+			BlackTek::Console::Error("Game::internalDecayItem ~ Item has decayTo of 0 but no parent, item id: {}", item->getID());
             return;
         }
 

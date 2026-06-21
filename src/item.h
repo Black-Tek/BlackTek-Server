@@ -12,6 +12,7 @@
 #include "augments.h"
 #include "declarations.h"
 #include "pointbasedstat.h"
+#include "console.h"
 
 #include <typeinfo>
 #include <boost/variant.hpp>
@@ -1191,7 +1192,7 @@ class Item : virtual public Thing, public SharedObject
 		CylinderPtr getParent() override {
 			auto lockedParent = parent.lock();
 			if (!lockedParent) {
-				// todo add logger here
+				BlackTek::Console::Map::Trace("Item::getParent: weak_ptr expired for item id {}", getID());
 			}
 			return lockedParent;
 		}
@@ -1199,7 +1200,7 @@ class Item : virtual public Thing, public SharedObject
 		CylinderConstPtr getParent() const override {
 			auto lockedParent = parent.lock();
 			if (!lockedParent) {
-				// todo add logger here
+				BlackTek::Console::Map::Trace("Item::getParent: weak_ptr expired for item id {}", getID());
 			}
 			return lockedParent;
 		}

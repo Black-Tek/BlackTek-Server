@@ -7,6 +7,7 @@
 
 #include "pugicast.h"
 #include "tools.h"
+#include "console.h"
 
 #include <toml++/toml.hpp>
 
@@ -43,10 +44,9 @@ bool Outfits::load()
 			{
 				sex = sexType->get();
 			}
-			else 
+			else
 			{
-				// log or throw here for debug mode
-				// remove from release builds
+				BlackTek::Console::Warn("Outfits::load: outfit entry '{}' has no valid 'sex' field, defaulting to female", index.str());
 			}
 
 			int32_t id = outfit_data["id"].value_or(0);

@@ -699,7 +699,7 @@ class Game
 					return option;
 				}
 			}
-			// log here
+			BlackTek::Console::Warn("Game::getOptionById: no character option found for id {}", id);
 			[[unlikely]]
 			return CharacterOption();
 		}

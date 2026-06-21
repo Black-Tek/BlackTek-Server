@@ -7989,20 +7989,23 @@ int LuaScriptInterface::luaItemGiveCustomSkill(lua_State* L)
 					return 1;
 				}
 			}
-			// Skill name not found, log it and send error to console
+			BlackTek::Console::Script::Warn("{}: no predefined skill named '{}' for item id {}", __FUNCTION__, skill_name, item->getID());
+			reportErrorFunc(L, fmt::format("No predefined skill named '{}' for this item", skill_name));
 			lua_pushnil(L);
 			return 1;
 		}
 		else
 		{
-			// first param is not a string, something is wrong, log it.
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			lua_pushnil(L);
 			return 1;
 		}
 	}
 	else
 	{
-		// another log location
+		BlackTek::Console::Script::Warn("{}: invalid item userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_ITEM_NOT_FOUND));
 		lua_pushnil(L);
 	}
 	return 1;
@@ -8025,29 +8028,28 @@ int LuaScriptInterface::luaItemAddCustomSkill(lua_State* L)
 			}
 			else
 			{
-				// item doesn't have that skill
-				// possible log?
+				BlackTek::Console::Script::Debug("{}: item has no custom skill named '{}'", __FUNCTION__, skill_name);
 				pushBoolean(L, false);
 				return 1;
 			}
 		}
 		else if (not isString(L, 2))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else if (not isNumber(L, 3))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'levels' argument must be a number", __FUNCTION__);
+			reportErrorFunc(L, "levels argument must be a number");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else
 		{
-			// this should for sure be unreachable, log here
+			BlackTek::Console::Script::Error("{}: reached unreachable branch (string/number argument check invariant violated)", __FUNCTION__);
 			pushBoolean(L, false);
 		}
 	}
@@ -8072,29 +8074,28 @@ int LuaScriptInterface::luaItemSubtractCustomSkill(lua_State* L)
 			}
 			else
 			{
-				// item doesn't have that skill
-				// possible log?
+				BlackTek::Console::Script::Debug("{}: item has no custom skill named '{}'", __FUNCTION__, skill_name);
 				pushBoolean(L, false);
 				return 1;
 			}
 		}
 		else if (not isString(L, 2))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else if (not isNumber(L, 3))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'levels' argument must be a number", __FUNCTION__);
+			reportErrorFunc(L, "levels argument must be a number");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else
 		{
-			// this should for sure be unreachable, log here
+			BlackTek::Console::Script::Error("{}: reached unreachable branch (string/number argument check invariant violated)", __FUNCTION__);
 			pushBoolean(L, false);
 		}
 	}
@@ -8118,29 +8119,28 @@ int LuaScriptInterface::luaItemAddBonusCustomSkill(lua_State* L)
 			}
 			else
 			{
-				// item doesn't have that skill
-				// possible log?
+				BlackTek::Console::Script::Debug("{}: item has no custom skill named '{}'", __FUNCTION__, skill_name);
 				pushBoolean(L, false);
 				return 1;
 			}
 		}
 		else if (not isString(L, 2))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else if (not isNumber(L, 3))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'levels' argument must be a number", __FUNCTION__);
+			reportErrorFunc(L, "levels argument must be a number");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else
 		{
-			// this should for sure be unreachable, log here
+			BlackTek::Console::Script::Error("{}: reached unreachable branch (string/number argument check invariant violated)", __FUNCTION__);
 			pushBoolean(L, false);
 		}
 	}
@@ -8165,29 +8165,28 @@ int LuaScriptInterface::luaItemSubtractBonusSkill(lua_State* L)
 			}
 			else
 			{
-				// item doesn't have that skill
-				// possible log?
+				BlackTek::Console::Script::Debug("{}: item has no custom skill named '{}'", __FUNCTION__, skill_name);
 				pushBoolean(L, false);
 				return 1;
 			}
 		}
 		else if (not isString(L, 2))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else if (not isNumber(L, 3))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'levels' argument must be a number", __FUNCTION__);
+			reportErrorFunc(L, "levels argument must be a number");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else
 		{
-			// this should for sure be unreachable, log here
+			BlackTek::Console::Script::Error("{}: reached unreachable branch (string/number argument check invariant violated)", __FUNCTION__);
 			pushBoolean(L, false);
 		}
 	}
@@ -8212,15 +8211,15 @@ int LuaScriptInterface::luaItemClearBonusSkill(lua_State* L)
 			}
 			else
 			{
-				// item doesn't have that skill
-				// possible log?
+				BlackTek::Console::Script::Debug("{}: item has no custom skill named '{}'", __FUNCTION__, skill_name);
 				pushBoolean(L, false);
 				return 1;
 			}
 		}
 		else
 		{
-			// first param is not a string, something is wrong, log it.
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
@@ -8242,7 +8241,8 @@ int LuaScriptInterface::luaItemRemoveCustomSkill(lua_State* L)
 		}
 		else
 		{
-			// first param is not a string, something is wrong, log it.
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
@@ -8265,7 +8265,8 @@ int LuaScriptInterface::luaItemHasCustomSkill(lua_State* L)
 		}
 		else
 		{
-			// first param is not a string, something is wrong, log it.
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
@@ -8298,7 +8299,8 @@ int LuaScriptInterface::luaItemCanGainSkillLevels(lua_State* L)
 		}
 		else
 		{
-			// first param is not a string, something is wrong, log it.
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
@@ -8330,7 +8332,8 @@ int LuaScriptInterface::luaItemGetCustomSkillLevel(lua_State* L)
 		}
 		else
 		{
-			// first param is not a string, something is wrong, log it.
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			lua_pushinteger(L, 0);
 			return 1;
 		}
@@ -8363,7 +8366,8 @@ int LuaScriptInterface::luaItemGetCustomSkillUserData(lua_State* L)
 		}
 		else
 		{
-			// first param is not a string, something is wrong, log it.
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			lua_pushnil(L);
 			return 1;
 		}
@@ -8387,7 +8391,8 @@ int LuaScriptInterface::luaItemGiveStat(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid item userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_ITEM_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
@@ -8409,7 +8414,8 @@ int LuaScriptInterface::luaItemRemoveStat(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid item userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_ITEM_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
@@ -8431,7 +8437,8 @@ int LuaScriptInterface::luaItemIncreaseStat(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid item userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_ITEM_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
@@ -8453,7 +8460,8 @@ int LuaScriptInterface::luaItemDecreaseStat(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid item userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_ITEM_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
@@ -8474,7 +8482,8 @@ int LuaScriptInterface::luaItemHasStat(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid item userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_ITEM_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
@@ -8496,7 +8505,8 @@ int LuaScriptInterface::luaItemGetStat(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid item userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_ITEM_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
@@ -8532,7 +8542,8 @@ int LuaScriptInterface::luaItemGetStats(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid item userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_ITEM_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
@@ -10378,20 +10389,23 @@ int LuaScriptInterface::luaCreatureGiveCustomSkill(lua_State* L)
 				pushBoolean(L, player->giveCustomSkill(skill_name, std::move(new_skill)));
 				return 1;
 			}
-			// creature isn't known type, error. Log place
+			BlackTek::Console::Script::Error("{}: creature is not a player, npc, or monster", __FUNCTION__);
+			reportErrorFunc(L, "creature is not a player, npc, or monster");
 			lua_pushnil(L);
 			return 1;
 		}
 		else
 		{
-			// first param is not a string, something is wrong, log it.
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			lua_pushnil(L);
 			return 1;
 		}
 	}
-	else 
+	else
 	{
-		// another log location
+		BlackTek::Console::Script::Warn("{}: invalid creature userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		lua_pushnil(L);
 	}
 	return 1;
@@ -10415,29 +10429,28 @@ int LuaScriptInterface::luaCreatureAddCustomSkill(lua_State* L)
 			}
 			else
 			{
-				// creature doesn't have that skill
-				// possible log?
+				BlackTek::Console::Script::Debug("{}: creature has no custom skill named '{}'", __FUNCTION__, skill_name);
 				pushBoolean(L, false);
 				return 1;
 			}
 		}
 		else if (not isString(L, 2))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else if (not isNumber(L, 3))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'levels' argument must be a number", __FUNCTION__);
+			reportErrorFunc(L, "levels argument must be a number");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else
 		{
-			// this should for sure be unreachable, log here
+			BlackTek::Console::Script::Error("{}: reached unreachable branch (string/number argument check invariant violated)", __FUNCTION__);
 			pushBoolean(L, false);
 		}
 
@@ -10463,29 +10476,28 @@ int LuaScriptInterface::luaCreatureSubtractCustomSkill(lua_State* L)
 			}
 			else
 			{
-				// creature doesn't have that skill
-				// possible log?
+				BlackTek::Console::Script::Debug("{}: creature has no custom skill named '{}'", __FUNCTION__, skill_name);
 				pushBoolean(L, false);
 				return 1;
 			}
 		}
 		else if (not isString(L, 2))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else if (not isNumber(L, 3))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'levels' argument must be a number", __FUNCTION__);
+			reportErrorFunc(L, "levels argument must be a number");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else
 		{
-			// this should for sure be unreachable, log here
+			BlackTek::Console::Script::Error("{}: reached unreachable branch (string/number argument check invariant violated)", __FUNCTION__);
 			pushBoolean(L, false);
 		}
 	}
@@ -10510,29 +10522,28 @@ int LuaScriptInterface::luaCreatureAddBonusCustomSkill(lua_State* L)
 			}
 			else
 			{
-				// creature doesn't have that skill
-				// possible log?
+				BlackTek::Console::Script::Debug("{}: creature has no custom skill named '{}'", __FUNCTION__, skill_name);
 				pushBoolean(L, false);
 				return 1;
 			}
 		}
 		else if (not isString(L, 2))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else if (not isNumber(L, 3))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'levels' argument must be a number", __FUNCTION__);
+			reportErrorFunc(L, "levels argument must be a number");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else
 		{
-			// this should for sure be unreachable, log here
+			BlackTek::Console::Script::Error("{}: reached unreachable branch (string/number argument check invariant violated)", __FUNCTION__);
 			pushBoolean(L, false);
 		}
 
@@ -10558,29 +10569,28 @@ int LuaScriptInterface::luaCreatureSubtractBonusSkill(lua_State* L)
 			}
 			else
 			{
-				// creature doesn't have that skill
-				// possible log?
+				BlackTek::Console::Script::Debug("{}: creature has no custom skill named '{}'", __FUNCTION__, skill_name);
 				pushBoolean(L, false);
 				return 1;
 			}
 		}
 		else if (not isString(L, 2))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else if (not isNumber(L, 3))
 		{
-			// todo send console error
-			// log location
+			BlackTek::Console::Script::Warn("{}: 'levels' argument must be a number", __FUNCTION__);
+			reportErrorFunc(L, "levels argument must be a number");
 			pushBoolean(L, false);
 			return 1;
 		}
 		else
 		{
-			// this should for sure be unreachable, log here
+			BlackTek::Console::Script::Error("{}: reached unreachable branch (string/number argument check invariant violated)", __FUNCTION__);
 			pushBoolean(L, false);
 		}
 	}
@@ -10605,15 +10615,15 @@ int LuaScriptInterface::luaCreatureClearBonusSkill(lua_State* L)
 			}
 			else
 			{
-				// creature doesn't have that skill
-				// possible log?
+				BlackTek::Console::Script::Debug("{}: creature has no custom skill named '{}'", __FUNCTION__, skill_name);
 				pushBoolean(L, false);
 				return 1;
 			}
 		}
 		else
 		{
-			// first param is not a string, something is wrong, log it.
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
@@ -10635,7 +10645,8 @@ int LuaScriptInterface::luaCreatureRemoveCustomSkill(lua_State* L)
 		}
 		else
 		{
-			// first param is not a string, something is wrong, log it.
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
@@ -10659,7 +10670,8 @@ int LuaScriptInterface::luaCreatureHasCustomSkill(lua_State* L)
 		}
 		else
 		{
-			// first param is not a string, something is wrong, log it.
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
@@ -10692,7 +10704,8 @@ int LuaScriptInterface::luaCreatureCanGainSkillLevels(lua_State* L)
 		}
 		else
 		{
-			// first param is not a string, something is wrong, log it.
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			pushBoolean(L, false);
 			return 1;
 		}
@@ -10725,7 +10738,8 @@ int LuaScriptInterface::luaCreatureGetCustomSkillLevel(lua_State* L)
 		}
 		else
 		{
-			// first param is not a string, something is wrong, log it.
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			lua_pushinteger(L, 0);
 			return 1;
 		}
@@ -10759,7 +10773,8 @@ int LuaScriptInterface::luaCreatureGetCustomSkillUserData(lua_State* L)
 		}
 		else
 		{
-			// first param is not a string, something is wrong, log it.
+			BlackTek::Console::Script::Warn("{}: 'skillName' argument must be a string", __FUNCTION__);
+			reportErrorFunc(L, "skillName argument must be a string");
 			lua_pushnil(L);
 			return 1;
 		}
@@ -10783,7 +10798,8 @@ int LuaScriptInterface::luaCreatureGiveStat(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid creature userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
@@ -10805,7 +10821,8 @@ int LuaScriptInterface::luaCreatureRemoveStat(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid creature userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
@@ -10827,7 +10844,8 @@ int LuaScriptInterface::luaCreatureIncreaseStat(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid creature userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
@@ -10849,7 +10867,8 @@ int LuaScriptInterface::luaCreatureDecreaseStat(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid creature userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
@@ -10870,7 +10889,8 @@ int LuaScriptInterface::luaCreatureHasStat(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid creature userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
@@ -10892,7 +10912,8 @@ int LuaScriptInterface::luaCreatureGetStat(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid creature userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
@@ -10928,7 +10949,8 @@ int LuaScriptInterface::luaCreatureGetStats(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid creature userdata", __FUNCTION__);
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
@@ -10956,11 +10978,12 @@ int LuaScriptInterface::luaStatCreate(lua_State* L)
 			const auto max_points = getNumber<uint32_t>(L, 3);
 			if (not max_points)
 			{
-				// todo: give error, details, and log it
+				BlackTek::Console::Script::Warn("{}: invalid or missing 'max_points' argument", __FUNCTION__);
+				reportErrorFunc(L, "Stat(): invalid or missing 'max_points' argument");
 				lua_pushnil(L);
 				return 1;
 			}
-			
+
 			if (const auto current_points = getNumber<uint32_t>(L, 4))
 			{
 				const bool scale = getBoolean(L, 4, true);
@@ -10971,7 +10994,8 @@ int LuaScriptInterface::luaStatCreate(lua_State* L)
 			}
 			else
 			{
-				// todo: give error, details, and log it
+				BlackTek::Console::Script::Warn("{}: invalid or missing 'current_points' argument", __FUNCTION__);
+				reportErrorFunc(L, "Stat(): invalid or missing 'current_points' argument");
 				lua_pushnil(L);
 				return 1;
 			}
@@ -10979,7 +11003,8 @@ int LuaScriptInterface::luaStatCreate(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid or missing 'id' argument", __FUNCTION__);
+		reportErrorFunc(L, "Stat(): invalid or missing 'id' argument");
 		lua_pushnil(L);
 		return 1;
 	}
@@ -11006,14 +11031,16 @@ int LuaScriptInterface::luaStatIncrease(lua_State* L)
 		}
 		else
 		{
-			// todo: give error, details, and log it
+			BlackTek::Console::Script::Warn("{}: invalid or missing 'amount' argument", __FUNCTION__);
+			reportErrorFunc(L, "Stat:increase(): invalid or missing 'amount' argument");
 			lua_pushnil(L);
 			return 1;
 		}
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid stat userdata", __FUNCTION__);
+		reportErrorFunc(L, "Stat:increase(): invalid stat userdata");
 		lua_pushnil(L);
 		return 1;
 	}
@@ -11032,14 +11059,16 @@ int LuaScriptInterface::luaStatDecrease(lua_State* L)
 		}
 		else
 		{
-			// todo: give error, details, and log it
+			BlackTek::Console::Script::Warn("{}: invalid or missing 'amount' argument", __FUNCTION__);
+			reportErrorFunc(L, "Stat:decrease(): invalid or missing 'amount' argument");
 			lua_pushnil(L);
 			return 1;
 		}
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid stat userdata", __FUNCTION__);
+		reportErrorFunc(L, "Stat:decrease(): invalid stat userdata");
 		lua_pushnil(L);
 		return 1;
 	}
@@ -11058,14 +11087,16 @@ int LuaScriptInterface::luaStatMaxIncrease(lua_State* L)
 		}
 		else
 		{
-			// todo: give error, details, and log it
+			BlackTek::Console::Script::Warn("{}: invalid or missing 'amount' argument", __FUNCTION__);
+			reportErrorFunc(L, "Stat:increaseMax(): invalid or missing 'amount' argument");
 			lua_pushnil(L);
 			return 1;
 		}
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid stat userdata", __FUNCTION__);
+		reportErrorFunc(L, "Stat:increaseMax(): invalid stat userdata");
 		lua_pushnil(L);
 		return 1;
 	}
@@ -11084,14 +11115,16 @@ int LuaScriptInterface::luaStatMaxDecrease(lua_State* L)
 		}
 		else
 		{
-			// todo: give error, details, and log it
+			BlackTek::Console::Script::Warn("{}: invalid or missing 'amount' argument", __FUNCTION__);
+			reportErrorFunc(L, "Stat:decreaseMax(): invalid or missing 'amount' argument");
 			lua_pushnil(L);
 			return 1;
 		}
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid stat userdata", __FUNCTION__);
+		reportErrorFunc(L, "Stat:decreaseMax(): invalid stat userdata");
 		lua_pushnil(L);
 		return 1;
 	}
@@ -11108,7 +11141,8 @@ int LuaScriptInterface::luaStatMax(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid stat userdata", __FUNCTION__);
+		reportErrorFunc(L, "Stat:max(): invalid stat userdata");
 		lua_pushnil(L);
 		return 1;
 	}
@@ -11125,7 +11159,8 @@ int LuaScriptInterface::luaStatValue(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid stat userdata", __FUNCTION__);
+		reportErrorFunc(L, "Stat:value(): invalid stat userdata");
 		lua_pushnil(L);
 		return 1;
 	}
@@ -11153,21 +11188,24 @@ int LuaScriptInterface::luaStatAddModifier(lua_State* L)
 			}
 			else
 			{
-				// todo: give error, details, and log it
+				BlackTek::Console::Script::Warn("{}: invalid or missing 'value' argument", __FUNCTION__);
+				reportErrorFunc(L, "Stat:addModifier(): invalid or missing 'value' argument");
 				lua_pushnil(L);
 				return 1;
 			}
 		}
 		else
 		{
-			// todo: give error, details, and log it
+			BlackTek::Console::Script::Warn("{}: expected a StatModifier or (type, value) pair", __FUNCTION__);
+			reportErrorFunc(L, "Stat:addModifier(): expected a StatModifier or (type, value) pair");
 			lua_pushnil(L);
 			return 1;
 		}
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid stat userdata", __FUNCTION__);
+		reportErrorFunc(L, "Stat:addModifier(): invalid stat userdata");
 		lua_pushnil(L);
 		return 1;
 	}
@@ -11194,7 +11232,8 @@ int LuaScriptInterface::luaStatRemoveModifier(lua_State* L)
 
 				if (not amount)
 				{
-					// todo: give error, details, and log it
+					BlackTek::Console::Script::Warn("{}: invalid or missing 'value' argument", __FUNCTION__);
+					reportErrorFunc(L, "Stat:removeModifier(): invalid or missing 'value' argument");
 					lua_pushnil(L);
 					return 1;
 				}
@@ -11203,14 +11242,16 @@ int LuaScriptInterface::luaStatRemoveModifier(lua_State* L)
 				return 1;
 			}
 
-			// todo: give error, details, and log it
+			BlackTek::Console::Script::Warn("{}: expected a StatModifier or (type, value) pair", __FUNCTION__);
+			reportErrorFunc(L, "Stat:removeModifier(): expected a StatModifier or (type, value) pair");
 			lua_pushnil(L);
 			return 1;
 		}
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid stat userdata", __FUNCTION__);
+		reportErrorFunc(L, "Stat:removeModifier(): invalid stat userdata");
 		lua_pushnil(L);
 		return 1;
 	}
@@ -11227,7 +11268,8 @@ int LuaScriptInterface::luaStatId(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid stat userdata", __FUNCTION__);
+		reportErrorFunc(L, "Stat:id(): invalid stat userdata");
 		lua_pushnil(L);
 		return 1;
 	}
@@ -11244,7 +11286,8 @@ int LuaScriptInterface::luaStatBaseMax(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid stat userdata", __FUNCTION__);
+		reportErrorFunc(L, "Stat:baseMax(): invalid stat userdata");
 		lua_pushnil(L);
 		return 1;
 	}
@@ -11263,13 +11306,15 @@ int LuaScriptInterface::luaStatModifierCreate(lua_State* L)
 			setMetatable(L, -1, "StatModifier");
 			return 1;
 		}
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid or missing 'value' argument", __FUNCTION__);
+		reportErrorFunc(L, "StatModifier(): invalid or missing 'value' argument");
 		lua_pushnil(L);
 		return 1;
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid or missing 'type' argument", __FUNCTION__);
+		reportErrorFunc(L, "StatModifier(): invalid or missing 'type' argument");
 		lua_pushnil(L);
 		return 1;
 	}
@@ -11296,13 +11341,15 @@ int LuaScriptInterface::luaStatModifierType(lua_State* L)
 			pushBoolean(L, true);
 			return 1;
 		}
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: missing 'type' argument", __FUNCTION__);
+		reportErrorFunc(L, "StatModifier:type(): missing 'type' argument");
 		lua_pushnil(L);
 		return 1;
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid statmodifier userdata", __FUNCTION__);
+		reportErrorFunc(L, "StatModifier:type(): invalid statmodifier userdata");
 		lua_pushnil(L);
 		return 1;
 	}
@@ -11324,7 +11371,8 @@ int LuaScriptInterface::luaStatModifierValue(lua_State* L)
 	}
 	else
 	{
-		// todo: give error, details, and log it
+		BlackTek::Console::Script::Warn("{}: invalid statmodifier userdata", __FUNCTION__);
+		reportErrorFunc(L, "StatModifier:value(): invalid statmodifier userdata");
 		lua_pushnil(L);
 		return 1;
 	}
@@ -18578,7 +18626,8 @@ int LuaScriptInterface::luaCustomSkillAddLevels(lua_State* L)
 			pushBoolean(L, skill->addLevels(levels));
 			return 1;
 		}
-		// this shouldn't be being called without a number, log it
+		BlackTek::Console::Script::Warn("{}: 'levels' argument must be a number", __FUNCTION__);
+		reportErrorFunc(L, "levels argument must be a number");
 		pushBoolean(L, false);
 		return 1;
 	}
@@ -18597,7 +18646,8 @@ int LuaScriptInterface::luaCustomSkillSubtractLevels(lua_State* L)
 			pushBoolean(L, skill->removeLevels(levels));
 			return 1;
 		}
-		// this shouldn't be being called without a number, log it
+		BlackTek::Console::Script::Warn("{}: 'levels' argument must be a number", __FUNCTION__);
+		reportErrorFunc(L, "levels argument must be a number");
 		pushBoolean(L, false);
 		return 1;
 	}
@@ -21882,7 +21932,8 @@ int LuaScriptInterface::luaCreateZone(lua_State* L)
 		} 
 		else
 		{
-			// can't use zone id 0, could send log or console error
+			BlackTek::Console::Script::Warn("{}: zone id 0 is reserved and cannot be used", __FUNCTION__);
+			reportErrorFunc(L, "Zone(): id 0 is reserved and cannot be used");
 			lua_pushnil(L);
 			return 1;
 		}

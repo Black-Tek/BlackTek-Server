@@ -7,6 +7,7 @@
 #include "configmanager.h"
 #include "game.h"
 #include "accountmanager.h"
+#include "console.h"
 
 #include <fmt/format.h>
 
@@ -277,7 +278,7 @@ SkillRegistry IOLoginData::deserializeCustomSkills(PropStream binary_stream)
 
 	if (!binary_stream.read<uint32_t>(skill_count))
 	{
-		// log location
+		BlackTek::Console::Database::Error("IOLoginData::deserializeCustomSkills: failed to read skill count from save data");
 		return skill_set;
 	}
 
@@ -292,7 +293,7 @@ SkillRegistry IOLoginData::deserializeCustomSkills(PropStream binary_stream)
 
 		if (not successName)
 		{
-			// log location
+			BlackTek::Console::Database::Error("IOLoginData::deserializeCustomSkills: failed to read skill name at index {}", i);
 			return skill_set;
 		}
 
@@ -305,7 +306,7 @@ SkillRegistry IOLoginData::deserializeCustomSkills(PropStream binary_stream)
 			or not binary_stream.read<uint16_t>(max_level)
 			or not binary_stream.read<uint8_t>(formula))
 		{
-			// log location
+			BlackTek::Console::Database::Error("IOLoginData::deserializeCustomSkills: failed to read skill data for '{}'", name);
 			return skill_set;
 		}
 
@@ -329,7 +330,7 @@ StatRegistry IOLoginData::deserializeCustomStats(PropStream binary_stream)
 
 	if (not binary_stream.read<uint32_t>(stat_count))
 	{
-		// log location
+		BlackTek::Console::Database::Error("IOLoginData::deserializeCustomStats: failed to read stat count from save data");
 		return stat_set;
 	}
 
@@ -345,7 +346,7 @@ StatRegistry IOLoginData::deserializeCustomStats(PropStream binary_stream)
 			or not binary_stream.read<uint32_t>(max_points)
 			or not binary_stream.read<uint32_t>(base_max))
 		{
-			// log location
+			BlackTek::Console::Database::Error("IOLoginData::deserializeCustomStats: failed to read stat data at index {}", i);
 			return stat_set;
 		}
 
@@ -362,7 +363,7 @@ StatRegistry IOLoginData::deserializeCustomStats(PropStream binary_stream)
 				if (not binary_stream.read<uint8_t>(modifier_type)
 					or not binary_stream.read<uint32_t>(modifier_value))
 				{
-					// log location
+					BlackTek::Console::Database::Error("IOLoginData::deserializeCustomStats: failed to read modifier {} for stat id {}", j, id);
 					break;
 				}
 				

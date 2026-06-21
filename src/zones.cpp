@@ -4,6 +4,7 @@
 #include "otpch.h"
 #include "zones.h"
 #include "configmanager.h"
+#include "console.h"
 
 #include <toml++/toml.hpp>
 
@@ -117,7 +118,7 @@ void Zones::load()
 
 									if (zoneId == 0)
 									{
-										// log / error id should not be 0;
+										BlackTek::Console::Map::Warn("Zones::load: zone id 0 is reserved, skipping entry in {}", file.path().string());
 										continue;
 									}
 									std::vector<Position> positions{};
@@ -140,18 +141,18 @@ void Zones::load()
 										continue;
 									}
 									// failed to register
-									// log
+									BlackTek::Console::Map::Warn("Zones::load: failed to register zone {} from {}", zoneId, file.path().string());
 								}
 							}
 						}
 					}
 					else
 					{
-						//log ("Invalid zone file: %s", filepath);
+						BlackTek::Console::Map::Warn("Zones::load: invalid zone file {} (missing or malformed 'zone' array)", file.path().string());
 					}
 				}
 				catch (const toml::parse_error& err) {
-					// log ("TOML parse error in file %s: %s", filepath, err.what());
+					BlackTek::Console::Map::Error("Zones::load: failed to parse {}: {}", file.path().string(), err.description());
 				}
 			}
 		}
@@ -161,8 +162,7 @@ void Zones::load()
 		std::error_code ec;
 		if (not std::filesystem::create_directories(folder, ec))
 		{
-			// log 
-			std::cout << "Failed to detect and failed to create zones folder... skipping zones! '" << folder << "': " << ec.message() << std::endl;
+			BlackTek::Console::Map::Error("Zones::load: failed to detect and failed to create zones folder '{}': {}", folder, ec.message());
 			return;
 		}
 	}

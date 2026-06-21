@@ -13,6 +13,7 @@
 
 #include "augments.h"
 #include "combat.h"
+#include "console.h"
 
 
 namespace BlackTek
@@ -133,10 +134,9 @@ namespace BlackTek
                         AddAugment(augment);
                     }
                 }
-                catch (const toml::parse_error& err) 
+                catch (const toml::parse_error& err)
                 {
-                    // todo handle through logger
-                    std::cerr << "Error parsing file " << entry.path() << ": " << err << "\n";
+                    Console::Error("Augments::loadAll: failed to parse file {}: {}", entry.path().string(), err.description());
                 }
             }
         }

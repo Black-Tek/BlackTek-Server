@@ -5,6 +5,7 @@
 
 #include "combat.h"
 #include "game.h"
+#include "console.h"
 #include "scheduler.h"
 #include "weapons.h"
 #include "configmanager.h"
@@ -826,8 +827,7 @@ namespace BlackTek
 			}
 					
 			default:[[unlikely]]
-				// todo: log here
-				//std::cerr << "Deflection area attempted to be generated from unknown direction!" << std::endl;
+				Console::Warn("Combat::generateDeflectArea: encountered direction outside expected enum range, deflect area not generated");
 				break;
 		}
 
@@ -1366,8 +1366,11 @@ namespace BlackTek
 
 				auto item = Item::CreateItem(itemId);
 
-				if (not item) [[unlikely]] // this situation should never ever occur but definitely needs a log if it does
+				if (not item) [[unlikely]]
+				{
+					Console::Error("Combat::apply_effects: Item::CreateItem returned null for item id {}", itemId);
 					continue;
+				}
 
 				item->setOwner(casterID);
 
@@ -1478,7 +1481,8 @@ namespace BlackTek
 			case Constant::Player_Vs_Monster:	return target(PlayerCast(attacker), MonsterCast(defender));
 			case Constant::Monster_Vs_Player:	return target(MonsterCast(attacker), PlayerCast(defender));
 			case Constant::Monster_Vs_Monster:	return target(MonsterCast(attacker), MonsterCast(defender));
-			default: [[unlikely]] // todo: log here
+			default: [[unlikely]]
+				Console::Warn("Combat::target: unrecognized creature sub-type combination (mask={:#x})", switch_mask);
 				break;
 		}
 		return TargetCode::UnknownFailure;
@@ -2276,7 +2280,7 @@ namespace BlackTek
 
 		if (apply_damage(caster, victim, currentDamage, spectators) == 0)
 		{
-			// some kind of log here ?
+			Console::Debug("Combat::strike_target(player,player): apply_damage returned 0 (caster={}, victim={}, damage={})", caster->getName(), victim->getName(), currentDamage);
 		}
 		else
 		{
@@ -2372,7 +2376,7 @@ namespace BlackTek
 
 		if (apply_damage(caster, victim, currentDamage, spectators) == 0)
 		{
-			// some kind of log here ?
+			Console::Debug("Combat::strike_target(player,monster): apply_damage returned 0 (caster={}, victim={}, damage={})", caster->getName(), victim->getName(), currentDamage);
 		}
 		else
 		{
@@ -2474,7 +2478,7 @@ namespace BlackTek
 
 		if (apply_damage(attacker, victim, currentDamage, spectators) == 0)
 		{
-			// some kind of log here ?
+			Console::Debug("Combat::strike_target(monster,player): apply_damage returned 0 (attacker={}, victim={}, damage={})", attacker->getName(), victim->getName(), currentDamage);
 		}
 		else
 		{
@@ -2535,7 +2539,7 @@ namespace BlackTek
 
 		if (apply_damage(attacker, victim, currentDamage, spectators) == 0)
 		{
-			// some kind of log here ?
+			Console::Debug("Combat::strike_target(monster,monster): apply_damage returned 0 (attacker={}, victim={}, damage={})", attacker->getName(), victim->getName(), currentDamage);
 		}
 		else
 		{
