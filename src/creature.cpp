@@ -688,13 +688,12 @@ void Creature::gainHealth(const CreaturePtr& healer, int32_t healthGain)
 
 void Creature::drainHealth(const CreaturePtr& attacker, int32_t damage)
 {
-	changeHealth(-damage, false);
-
-	if (attacker) {
+	if (attacker) 
 		attacker->onAttackedCreatureDrainHealth(std::static_pointer_cast<Creature>(shared_from_this()), damage);
-	} else {
+	else
 		lastHitCreatureId = 0;
-	}
+
+	changeHealth(-damage, false);
 }
 
 BlockType_t Creature::blockHit(const CreaturePtr& attacker, CombatType_t combatType, int32_t& damage,
