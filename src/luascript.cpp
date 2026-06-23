@@ -2102,6 +2102,7 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::DEFAULT_DESPAWNRADIUS);
 	registerEnumIn("configKeys", ConfigManager::DEFAULT_WALKTOSPAWNRADIUS);
 	registerEnumIn("configKeys", ConfigManager::REMOVE_ON_DESPAWN);
+	registerEnumIn("configKeys", ConfigManager::MONSTER_STARTUP_SPAWN_FORCE);
 	registerEnumIn("configKeys", ConfigManager::RATE_EXPERIENCE);
 	registerEnumIn("configKeys", ConfigManager::RATE_SKILL);
 	registerEnumIn("configKeys", ConfigManager::RATE_LOOT);

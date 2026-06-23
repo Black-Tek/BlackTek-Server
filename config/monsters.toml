@@ -15,3 +15,5 @@ summon_proximity       = 2
 # force_monstertype_load loads all monster types on startup to validate them.
 # Disable to save memory if no errors appear at startup.
 force_monstertype_load = true
+# Enable to enforce the monster spawn on startup (bypassing e.g. PZ tile rules etc.)
+startup_spawn_force = false
