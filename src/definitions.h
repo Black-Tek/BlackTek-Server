@@ -5,7 +5,7 @@
 #define FS_DEFINITIONS_H
 
 static constexpr auto STATUS_SERVER_NAME = "BlackTek Server";
-static constexpr auto STATUS_SERVER_VERSION = "2.0";
+static constexpr auto STATUS_SERVER_VERSION = "3.0 (WIP)";
 static constexpr auto STATUS_SERVER_DEVELOPERS = "github.com/Black-Tek";
 static constexpr auto STATUS_SERVER_MAINTAINER = "Codinablack@Github.com";
 static constexpr auto STATUS_SERVER_COMMUNITY_LINK = "discord.gg/dy5wXSzbPG";
