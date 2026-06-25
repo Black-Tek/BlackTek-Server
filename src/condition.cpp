@@ -7,6 +7,7 @@
 #include "game.h"
 #include "monster.h"
 #include "configmanager.h"
+#include "metrics.h"
 
 extern Game g_game;
 extern ConfigManager g_config;
@@ -20,7 +21,6 @@ namespace BlackTek
 	std::pmr::unsynchronized_pool_resource g_condition_pool{ std::pmr::new_delete_resource() };
 }
 
-// ── Condition pool operator new/delete ───────────────────────────────────────
 void* Condition::operator new(std::size_t size)
 {
 	return BlackTek::g_condition_pool.allocate(size, alignof(std::max_align_t));
@@ -31,7 +31,6 @@ void Condition::operator delete(void* ptr, std::size_t size) noexcept
 	BlackTek::g_condition_pool.deallocate(ptr, size, alignof(std::max_align_t));
 }
 
-// ── Intrusive pointer helpers ─────────────────────────────────────────────────
 void intrusive_ptr_add_ref(const Condition* p) noexcept
 {
 	++p->m_ref_count;
@@ -1285,6 +1284,62 @@ bool ConditionDamage::startCondition(const CreaturePtr creature)
 	return true;
 }
 
+namespace BlackTek
+{
+	[[nodiscard]] uint8_t ConditionMetricsVocationOf(const CreaturePtr& creature) noexcept
+	{
+		if (not creature or creature->getCreatureSubType() != CreatureSubType::Player)
+			return 0;
+		const auto* vocation = creature->getPlayer()->getVocation();
+		return vocation ? static_cast<uint8_t>(vocation->getId()) : 0;
+	}
+
+	// Bit values match Combat::Situation (combat.h) without requiring that header here.
+	[[nodiscard]] uint8_t ConditionMetricsSituationOf(const CreaturePtr& a, const CreaturePtr& b) noexcept
+	{
+		const bool aPlayer = a and a->getCreatureSubType() == CreatureSubType::Player;
+		const bool bPlayer = b and b->getCreatureSubType() == CreatureSubType::Player;
+
+		if (aPlayer)
+			return bPlayer ? 1u : 2u; // PlayerVsPlayer : PlayerVsMonster
+		return bPlayer ? 4u : 8u;     // MonsterVsPlayer : MonsterVsMonster
+	}
+
+	// tick_damage is the formula-resolved amount; actual HP loss is not available here
+	// since doDamage() is a stub that doesn't return it.
+	void EmitConditionTick(const CreaturePtr& creature, ConditionType_t type, int32_t tickDamage) noexcept
+	{
+		if constexpr (not Metrics::ENABLED or not Metrics::CAPTURE_CONDITIONS)
+			return;
+
+		const auto magnitude = static_cast<uint32_t>(std::abs(tickDamage));
+		const auto source = Metrics::AccumulateConditionTick(creature->getID(), static_cast<uint8_t>(type), magnitude);
+
+		if (not source)
+			return;
+
+		const auto applier = source->applier_id != 0 ? g_game.getCreatureByID(source->applier_id) : nullptr;
+
+		Metrics::ConditionRecord record{};
+		record.timestamp_ms = static_cast<uint64_t>(OTSYS_TIME());
+		record.instance_guid = source->instance_guid;
+		record.applier_id = source->applier_id;
+		record.target_id = creature->getID();
+		record.source_combat_id = source->source_combat_id;
+		record.record_type = std::to_underlying(Metrics::ConditionRecordType::Tick);
+		record.condition_type = static_cast<uint8_t>(type);
+		record.tick_number = source->tick_count;
+		record.tick_damage = magnitude;
+		record.running_total = source->running_total;
+		record.was_fatal = creature->getHealth() <= 0;
+		record.applier_vocation = ConditionMetricsVocationOf(applier);
+		record.target_vocation  = ConditionMetricsVocationOf(creature);
+		record.situation         = ConditionMetricsSituationOf(applier, creature);
+
+		Metrics::RecordCondition(record);
+	}
+}
+
 bool ConditionDamage::executeCondition(const CreaturePtr creature, int32_t interval)
 {
 	if (periodDamage != 0) {
@@ -1292,7 +1347,8 @@ bool ConditionDamage::executeCondition(const CreaturePtr creature, int32_t inter
 
 		if (periodDamageTick >= tickInterval) {
 			periodDamageTick = 0;
-			doDamage(creature, periodDamage);
+			if (doDamage(creature, periodDamage))
+				BlackTek::EmitConditionTick(creature, getType(), periodDamage);
 		}
 	} else if (damage_front < damageList.size()) {
 		IntervalInfo& damageInfo = damageList[damage_front];
@@ -1310,7 +1366,8 @@ bool ConditionDamage::executeCondition(const CreaturePtr creature, int32_t inter
 				damageInfo.timeLeft = damageInfo.interval;
 			}
 
-			doDamage(creature, damage);
+			if (doDamage(creature, damage))
+				BlackTek::EmitConditionTick(creature, getType(), damage);
 		}
 
 		if (!bRemove) {

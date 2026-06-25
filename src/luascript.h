@@ -1585,6 +1585,16 @@ class LuaScriptInterface
 		static int luaFormulaNodePow(lua_State* L);
 		static int luaFormulaNodeGC(lua_State* L);
 
+		// CombatMetrics — query/control surface over BlackTek::Metrics
+		static int luaCombatMetricsQuery(lua_State* L);
+		static int luaCombatMetricsQueryEvents(lua_State* L);
+		static int luaCombatMetricsQueryModifiers(lua_State* L);
+		static int luaCombatMetricsQueryConditions(lua_State* L);
+		static int luaCombatMetricsQueryConditionEvents(lua_State* L);
+		static int luaCombatMetricsQueryFormulaUsage(lua_State* L);
+		static int luaCombatMetricsReset(lua_State* L);
+		static int luaCombatMetricsExport(lua_State* L);
+
 		// Condition
 		static int luaConditionCreate(lua_State* L);
 		static int luaConditionDelete(lua_State* L);

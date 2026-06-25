@@ -24,6 +24,7 @@
 #include "augments.h"
 #include "zones.h"
 #include "console.h"
+#include "metrics.h"
 #include "simd_dispatch.h"
 #include <memory>
 
@@ -347,6 +348,8 @@ void mainLoader(int, char*[], ServiceManager* services)
 		startupErrorMessage("Unable to load configuration files from the config/ directory!");
 		return;
 	}
+
+	if constexpr (BlackTek::Metrics::ENABLED) BlackTek::Metrics::Initialize();
 
 	#ifdef _WIN32
 		const std::string& defaultPriority = g_config.GetString(ConfigManager::DEFAULT_PRIORITY);

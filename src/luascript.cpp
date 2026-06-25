@@ -6,6 +6,8 @@
 #include <boost/range/adaptor/reversed.hpp>
 #include <fmt/format.h>
 #include <fstream>
+#include <unordered_map>
+#include <algorithm>
 
 #include "matrixarea.h"
 #include "luascript.h"
@@ -32,6 +34,8 @@
 #include "augments.h"
 #include "damagemodifier.h"
 #include "zones.h"
+#include "metrics.h"
+#include "metrics_format.h"
 
 using BlackTek::DamageModifier;
 
@@ -2212,6 +2216,17 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Game", "saveAccountStorageValues", luaGameSaveAccountStorageValues);
 
 	registerMethod("Game", "sendDiscordMessage", luaGameSendDiscordWebhook);
+
+	registerTable("CombatMetrics");
+
+	registerMethod("CombatMetrics", "query", luaCombatMetricsQuery);
+	registerMethod("CombatMetrics", "query_events", luaCombatMetricsQueryEvents);
+	registerMethod("CombatMetrics", "query_modifiers", luaCombatMetricsQueryModifiers);
+	registerMethod("CombatMetrics", "query_conditions", luaCombatMetricsQueryConditions);
+	registerMethod("CombatMetrics", "query_condition_events", luaCombatMetricsQueryConditionEvents);
+	registerMethod("CombatMetrics", "query_formula_usage", luaCombatMetricsQueryFormulaUsage);
+	registerMethod("CombatMetrics", "reset", luaCombatMetricsReset);
+	registerMethod("CombatMetrics", "export", luaCombatMetricsExport);
 
 	// Variant
 	registerClass("Variant", "", luaVariantCreate);
@@ -16894,6 +16909,419 @@ int LuaScriptInterface::luaFormulaNodeGC(lua_State* L)
 	if (fn)
 		std::destroy_at(fn);
 	return 0;
+}
+
+namespace
+{
+	using namespace BlackTek::Metrics;
+
+	std::optional<uint8_t> MetricsParseSituation(const std::string& s)
+	{
+		if (s == "pvp") return 1;
+		if (s == "pvm") return 2;
+		if (s == "mvp") return 4;
+		if (s == "mvm") return 8;
+		return std::nullopt;
+	}
+
+	std::optional<uint8_t> MetricsParseOrigin(const std::string& s)
+	{
+		static const std::unordered_map<std::string, uint8_t> table{
+			{"none",0},{"condition",1},{"spell",2},{"melee",3},{"ranged",4},{"fist",5},{"sword",6},
+			{"axe",7},{"club",8},{"wand",9},{"rod",10},{"bow",11},{"crossbow",12},{"throwable",13},
+			{"augment",14},{"absorb",15},{"restore",16},{"replenish",17},{"revive",18},{"reflect",19},
+			{"deflect",20},{"ricochet",21},{"piercing",22},{"lifesteal",23},{"manasteal",24},
+			{"staminasteal",25},{"soulsteal",26}
+		};
+		const auto it = table.find(s);
+		return it == table.end() ? std::nullopt : std::optional<uint8_t>(it->second);
+	}
+
+	std::optional<uint16_t> MetricsParseDamageType(const std::string& s)
+	{
+		static const std::unordered_map<std::string, uint16_t> table{
+			{"physical",1u<<0},{"energy",1u<<1},{"earth",1u<<2},{"fire",1u<<3},{"undefined",1u<<4},
+			{"lifedrain",1u<<5},{"manadrain",1u<<6},{"healing",1u<<7},{"water",1u<<8},{"ice",1u<<9},
+			{"holy",1u<<10},{"death",1u<<11}
+		};
+		const auto it = table.find(s);
+		return it == table.end() ? std::nullopt : std::optional<uint16_t>(it->second);
+	}
+
+	std::optional<uint8_t> MetricsParseConditionType(const std::string& s)
+	{
+		if (s == "fire") return static_cast<uint8_t>(CONDITION_FIRE);
+		if (s == "energy") return static_cast<uint8_t>(CONDITION_ENERGY);
+		if (s == "poison") return static_cast<uint8_t>(CONDITION_POISON);
+		if (s == "drown") return static_cast<uint8_t>(CONDITION_DROWN);
+		if (s == "freezing") return static_cast<uint8_t>(CONDITION_FREEZING);
+		if (s == "dazzled") return static_cast<uint8_t>(CONDITION_DAZZLED);
+		if (s == "cursed") return static_cast<uint8_t>(CONDITION_CURSED);
+		if (s == "bleeding") return static_cast<uint8_t>(CONDITION_BLEEDING);
+		return std::nullopt;
+	}
+
+	std::vector<std::string> MetricsGetStringArray(lua_State* L, int32_t arg, const char* key)
+	{
+		std::vector<std::string> fieldStrings;
+		lua_getfield(L, arg, key);
+		if (lua_istable(L, -1))
+		{
+			const auto len = lua_rawlen(L, -1);
+			for (lua_Integer tableIndex = 1; tableIndex <= static_cast<lua_Integer>(len); ++tableIndex)
+			{
+				lua_rawgeti(L, -1, tableIndex);
+				if (lua_isstring(L, -1))
+					fieldStrings.emplace_back(lua_tostring(L, -1));
+				lua_pop(L, 1);
+			}
+		}
+		lua_pop(L, 1);
+		return fieldStrings;
+	}
+}
+
+int LuaScriptInterface::luaCombatMetricsQuery(lua_State* L)
+{
+	using namespace BlackTek::Metrics;
+
+	if (not isTable(L, 1))
+	{
+		lua_newtable(L);
+		return 1;
+	}
+
+	StrikeQueryOptions options{};
+	options.source = (getFieldString(L, 1, "source") == "window") ? QuerySource::Window : QuerySource::Session;
+
+	options.filter.situation = MetricsParseSituation(getFieldString(L, 1, "situation"));
+	options.filter.origin = MetricsParseOrigin(getFieldString(L, 1, "origin"));
+	options.filter.damage_type = MetricsParseDamageType(getFieldString(L, 1, "damage_type"));
+
+	lua_getfield(L, 1, "attacker_vocation");
+	if (isNumber(L, -1)) options.filter.attacker_vocation = getNumber<uint8_t>(L, -1);
+	lua_pop(L, 1);
+
+	lua_getfield(L, 1, "defender_vocation");
+	if (isNumber(L, -1)) options.filter.defender_vocation = getNumber<uint8_t>(L, -1);
+	lua_pop(L, 1);
+
+	lua_getfield(L, 1, "combat_id");
+	if (isNumber(L, -1)) options.filter.combat_id = getNumber<int64_t>(L, -1);
+	lua_pop(L, 1);
+
+	for (const auto& dim : MetricsGetStringArray(L, 1, "group_by"))
+	{
+		if (dim == "situation") options.group_by.push_back(StrikeGroupDim::Situation);
+		else if (dim == "attacker_vocation") options.group_by.push_back(StrikeGroupDim::AttackerVocation);
+		else if (dim == "defender_vocation") options.group_by.push_back(StrikeGroupDim::DefenderVocation);
+		else if (dim == "origin") options.group_by.push_back(StrikeGroupDim::Origin);
+		else if (dim == "damage_type") options.group_by.push_back(StrikeGroupDim::DamageType);
+		else if (dim == "combat_id") options.group_by.push_back(StrikeGroupDim::CombatId);
+	}
+
+	const auto requestedMetrics = MetricsGetStringArray(L, 1, "metrics");
+
+	const auto sortBy = getFieldString(L, 1, "sort_by");
+	if (not sortBy.empty()) options.sort_by = sortBy;
+	options.limit = getField<uint32_t>(L, 1, "limit", 50u);
+
+	const auto rows = Query(options);
+
+	const auto wants = [&](const char* name)
+	{
+		return requestedMetrics.empty() or std::ranges::find(requestedMetrics, name) != requestedMetrics.end();
+	};
+	const auto groupedBy = [&](StrikeGroupDim dim)
+	{
+		return std::ranges::find(options.group_by, dim) != options.group_by.end();
+	};
+
+	lua_createtable(L, static_cast<int>(rows.size()), 0);
+	int index = 0;
+	for (const auto& row : rows)
+	{
+		lua_newtable(L);
+		if (groupedBy(StrikeGroupDim::Situation)) setField(L, "situation", std::string(SituationName(row.situation)));
+		if (groupedBy(StrikeGroupDim::AttackerVocation)) setField(L, "attacker_vocation", static_cast<uint16_t>(row.attacker_vocation));
+		if (groupedBy(StrikeGroupDim::DefenderVocation)) setField(L, "defender_vocation", static_cast<uint16_t>(row.defender_vocation));
+		if (groupedBy(StrikeGroupDim::Origin)) setField(L, "origin", std::string(OriginName(row.origin)));
+		if (groupedBy(StrikeGroupDim::DamageType)) setField(L, "damage_type", row.damage_type);
+		if (groupedBy(StrikeGroupDim::CombatId)) setField(L, "combat_id", row.combat_id);
+
+		if (wants("total_strikes")) setField(L, "total_strikes", row.total_strikes);
+		if (wants("avg_damage")) setField(L, "avg_damage", row.avg_damage);
+		if (wants("avg_raw")) setField(L, "avg_raw", row.avg_raw);
+		if (wants("defense_mitigation_pct")) setField(L, "defense_mitigation_pct", row.defense_mitigation_pct);
+		if (wants("armor_mitigation_pct")) setField(L, "armor_mitigation_pct", row.armor_mitigation_pct);
+		if (wants("modifier_mitigation_pct")) setField(L, "modifier_mitigation_pct", row.modifier_mitigation_pct);
+		if (wants("overall_mitigation_pct")) setField(L, "overall_mitigation_pct", row.overall_mitigation_pct);
+		if (wants("block_rate")) setField(L, "block_rate", row.block_rate);
+		if (wants("crit_rate")) setField(L, "crit_rate", row.crit_rate);
+		if (wants("kill_rate")) setField(L, "kill_rate", row.kill_rate);
+		if (wants("leech_efficiency")) setField(L, "leech_efficiency", row.leech_efficiency);
+		if (wants("min_damage")) setField(L, "min_damage", row.min_damage);
+		if (wants("max_damage")) setField(L, "max_damage", row.max_damage);
+
+		lua_rawseti(L, -2, ++index);
+	}
+
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatMetricsQueryEvents(lua_State* L)
+{
+	using namespace BlackTek::Metrics;
+
+	EventFilter filter{};
+	uint32_t limit = 50;
+
+	if (isTable(L, 1))
+	{
+		const auto casterName = getFieldString(L, 1, "caster_name");
+		if (not casterName.empty())
+			if (const auto& creature = g_game.getCreatureByName(casterName)) filter.caster_id = creature->getID();
+
+		const auto targetName = getFieldString(L, 1, "target_name");
+		if (not targetName.empty())
+			if (const auto& creature = g_game.getCreatureByName(targetName)) filter.target_id = creature->getID();
+
+		filter.damage_type = MetricsParseDamageType(getFieldString(L, 1, "damage_type"));
+
+		lua_getfield(L, 1, "min_damage");
+		if (isNumber(L, -1)) filter.min_damage = getNumber<uint32_t>(L, -1);
+		lua_pop(L, 1);
+	}
+
+	if (isNumber(L, 2))
+		limit = getNumber<uint32_t>(L, 2);
+
+	const auto events = QueryEvents(filter, limit);
+
+	lua_createtable(L, static_cast<int>(events.size()), 0);
+	int index = 0;
+	for (const auto& strikeEvent : events)
+	{
+		lua_newtable(L);
+		setField(L, "timestamp_ms", strikeEvent.timestamp_ms);
+		setField(L, "combat_id", strikeEvent.combat_id);
+		setField(L, "caster_id", strikeEvent.caster_id);
+		setField(L, "target_id", strikeEvent.target_id);
+		if (const auto& creature = g_game.getCreatureByID(strikeEvent.caster_id)) setField(L, "caster_name", creature->getName());
+		if (const auto& creature = g_game.getCreatureByID(strikeEvent.target_id)) setField(L, "target_name", creature->getName());
+		setField(L, "raw_output", strikeEvent.raw_output);
+		setField(L, "defense_value", strikeEvent.defense_value);
+		setField(L, "armor_value", strikeEvent.armor_value);
+		setField(L, "post_defense", strikeEvent.post_defense);
+		setField(L, "post_armor", strikeEvent.post_armor);
+		setField(L, "final_damage", strikeEvent.final_damage);
+		setField(L, "was_critical", (strikeEvent.flags & static_cast<uint8_t>(StrikeFlag::WasCritical)) != 0);
+		setField(L, "was_fatal", (strikeEvent.flags & static_cast<uint8_t>(StrikeFlag::WasFatal)) != 0);
+		setField(L, "block_type_name", std::string(BlockTypeName(strikeEvent.block_type)));
+		setField(L, "output_preset_name", std::string(PresetName(strikeEvent.formula.output_preset)));
+		setField(L, "resolution_preset_name", std::string(PresetName(strikeEvent.formula.resolution_preset)));
+
+		lua_rawseti(L, -2, ++index);
+	}
+
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatMetricsQueryModifiers(lua_State* L)
+{
+	using namespace BlackTek::Metrics;
+
+	std::string sortBy = "total_procs";
+	uint32_t limit = 20;
+
+	if (isTable(L, 1))
+	{
+		const auto sortFieldString = getFieldString(L, 1, "sort_by");
+		if (not sortFieldString.empty()) sortBy = sortFieldString;
+		limit = getField<uint32_t>(L, 1, "limit", 20u);
+	}
+
+	const auto rows = QueryModifiers(sortBy, limit);
+
+	lua_createtable(L, static_cast<int>(rows.size()), 0);
+	int index = 0;
+	for (const auto& row : rows)
+	{
+		lua_newtable(L);
+		setField(L, "stance", std::string(row.stance == 1 ? "Defense" : "Attack"));
+		setField(L, "mod_type", std::string(ModTypeName(row.stance, row.mod_type)));
+		setField(L, "total_procs", row.total_procs);
+		setField(L, "avg_damage_delta_pct", row.avg_damage_delta_pct);
+		setField(L, "avg_secondary_amount", row.avg_secondary_amount);
+		lua_rawseti(L, -2, ++index);
+	}
+
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatMetricsQueryConditions(lua_State* L)
+{
+	using namespace BlackTek::Metrics;
+
+	ConditionQueryOptions options{};
+
+	if (isTable(L, 1))
+	{
+		options.source = (getFieldString(L, 1, "source") == "window") ? QuerySource::Window : QuerySource::Session;
+		options.filter.situation = MetricsParseSituation(getFieldString(L, 1, "situation"));
+		options.filter.condition_type = MetricsParseConditionType(getFieldString(L, 1, "condition_type"));
+
+		for (const auto& dim : MetricsGetStringArray(L, 1, "group_by"))
+		{
+			if (dim == "condition_type") options.group_by.push_back(ConditionGroupDim::ConditionType);
+			else if (dim == "applier_vocation") options.group_by.push_back(ConditionGroupDim::ApplierVocation);
+			else if (dim == "target_vocation") options.group_by.push_back(ConditionGroupDim::TargetVocation);
+			else if (dim == "situation") options.group_by.push_back(ConditionGroupDim::Situation);
+		}
+
+		const auto sortBy = getFieldString(L, 1, "sort_by");
+		if (not sortBy.empty()) options.sort_by = sortBy;
+		options.limit = getField<uint32_t>(L, 1, "limit", 30u);
+	}
+
+	const auto rows = QueryConditions(options);
+
+	lua_createtable(L, static_cast<int>(rows.size()), 0);
+	int index = 0;
+	for (const auto& row : rows)
+	{
+		lua_newtable(L);
+		setField(L, "condition_type", std::string(ConditionTypeName(row.condition_type)));
+		setField(L, "applier_vocation", static_cast<uint16_t>(row.applier_vocation));
+		setField(L, "target_vocation", static_cast<uint16_t>(row.target_vocation));
+		setField(L, "situation", std::string(SituationName(row.situation)));
+		setField(L, "total_applications", row.total_applications);
+		setField(L, "avg_damage_per_app", row.avg_damage_per_app);
+		setField(L, "avg_damage_per_tick", row.avg_damage_per_tick);
+		setField(L, "avg_ticks_per_app", row.avg_ticks_per_app);
+		setField(L, "completion_rate", row.completion_rate);
+		setField(L, "realised_pct", row.realised_pct);
+		setField(L, "fatal_tick_rate", row.fatal_tick_rate);
+		setField(L, "total_damage", row.total_damage);
+		lua_rawseti(L, -2, ++index);
+	}
+
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatMetricsQueryConditionEvents(lua_State* L)
+{
+	using namespace BlackTek::Metrics;
+
+	ConditionEventFilter filter{};
+	uint32_t limit = 100;
+
+	if (isTable(L, 1))
+	{
+		const auto targetName = getFieldString(L, 1, "target_name");
+		if (not targetName.empty())
+			if (const auto& creature = g_game.getCreatureByName(targetName)) filter.target_id = creature->getID();
+
+		filter.condition_type = MetricsParseConditionType(getFieldString(L, 1, "condition_type"));
+
+		const auto recordTypeStr = getFieldString(L, 1, "record_type");
+		if (recordTypeStr == "application") filter.record_type = 0;
+		else if (recordTypeStr == "tick") filter.record_type = 1;
+		else if (recordTypeStr == "expiry") filter.record_type = 2;
+		else if (recordTypeStr == "cancelled") filter.record_type = 3;
+	}
+
+	if (isNumber(L, 2))
+		limit = getNumber<uint32_t>(L, 2);
+
+	const auto events = QueryConditionEvents(filter, limit);
+
+	lua_createtable(L, static_cast<int>(events.size()), 0);
+	int index = 0;
+	for (const auto& conditionEvent : events)
+	{
+		lua_newtable(L);
+		setField(L, "instance_guid", conditionEvent.instance_guid);
+		setField(L, "applier_id", conditionEvent.applier_id);
+		setField(L, "target_id", conditionEvent.target_id);
+		setField(L, "source_combat_id", conditionEvent.source_combat_id);
+		setField(L, "condition_type", std::string(ConditionTypeName(conditionEvent.condition_type)));
+		setField(L, "record_type", static_cast<uint16_t>(conditionEvent.record_type));
+		setField(L, "tick_number", conditionEvent.tick_number);
+		setField(L, "tick_damage", conditionEvent.tick_damage);
+		setField(L, "running_total", conditionEvent.running_total);
+		setField(L, "was_fatal", conditionEvent.was_fatal);
+		lua_rawseti(L, -2, ++index);
+	}
+
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatMetricsQueryFormulaUsage(lua_State* L)
+{
+	using namespace BlackTek::Metrics;
+
+	uint32_t limit = 100;
+	if (isTable(L, 1))
+		limit = getField<uint32_t>(L, 1, "limit", 100u);
+
+	const auto rows = QueryFormulaUsage(limit);
+
+	lua_createtable(L, static_cast<int>(rows.size()), 0);
+	int index = 0;
+	for (const auto& row : rows)
+	{
+		lua_newtable(L);
+		setField(L, "combat_id", row.combat_id);
+		setField(L, "total_strikes", row.signature.total_strikes);
+		setField(L, "output_preset", std::string(PresetName(row.signature.output_preset)));
+		setField(L, "defense_preset", std::string(PresetName(row.signature.defense_preset)));
+		setField(L, "armor_preset", std::string(PresetName(row.signature.armor_preset)));
+		setField(L, "resolution_preset", std::string(PresetName(row.signature.resolution_preset)));
+		setField(L, "bind_key", std::string(BindKeyName(row.signature.bind_key)));
+		setField(L, "bind_source", std::string(BindSourceName(row.signature.bind_source)));
+		setField(L, "has_override", row.signature.has_per_combat_override);
+		setField(L, "has_lua", row.signature.has_lua_override);
+		setField(L, "inconsistency_count", row.signature.inconsistency_count);
+		setField(L, "is_anomaly", row.is_anomaly);
+		lua_rawseti(L, -2, ++index);
+	}
+
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatMetricsReset(lua_State* L)
+{
+	using namespace BlackTek::Metrics;
+
+	const std::string scope = getString(L, 1, "all");
+	ResetScope s = ResetScope::All;
+	if (scope == "session") s = ResetScope::Session;
+	else if (scope == "window") s = ResetScope::Window;
+	else if (scope == "formulas") s = ResetScope::Formulas;
+
+	Reset(s);
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaCombatMetricsExport(lua_State* L)
+{
+	using namespace BlackTek::Metrics;
+
+	const std::string path = getString(L, 1);
+	const std::string format = getString(L, 2, "csv");
+	bool includeRing = false;
+
+	if (isTable(L, 3))
+	{
+		lua_getfield(L, 3, "include_ring");
+		includeRing = getBoolean(L, -1, false);
+		lua_pop(L, 1);
+	}
+
+	pushBoolean(L, Export(path, format, includeRing));
+	return 1;
 }
 
 int LuaScriptInterface::luaCombatRegisterFormula(lua_State* L)
