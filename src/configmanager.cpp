@@ -88,6 +88,7 @@ bool ConfigManager::Load()
     auto ratesTbl    = SafeParseFile("config/rates.toml");
     auto monstersTbl = SafeParseFile("config/monsters.toml");
     auto scriptsTbl  = SafeParseFile("config/scripts.toml");
+    auto storeTbl    = SafeParseFile("config/store.toml");
 
     // -------------------------------------------------------------------------
     // One-time settings: only loaded on the first call to Load().
@@ -302,6 +303,10 @@ bool ConfigManager::Load()
     booleans[PLAYER_CONSOLE_LOGS]          = scriptsTbl["logging"]["player_in_console"].value_or(true);
     booleans[CHECK_DUPLICATE_STORAGE_KEYS] = scriptsTbl["validation"]["check_duplicate_storage_keys"].value_or(false);
     booleans[LUA_ITEM_DESC]                = scriptsTbl["validation"]["lua_item_desc"].value_or(false);
+
+    // Store
+    strings[STORE_IMAGES_URL]      = storeTbl["store"]["images_url"].value_or<std::string>("http://127.0.0.1/images/store/");
+    integers[STORE_COIN_PACKAGE_SIZE] = static_cast<int32_t>(storeTbl["store"]["coin_package_size"].value_or(int64_t{25}));
 
     // Experience stages
     expStages = LoadExperienceStages();

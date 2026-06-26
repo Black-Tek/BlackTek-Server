@@ -612,6 +612,12 @@ class Player final : public Creature, public Cylinder
 		void checkSkullTicks(int64_t ticks);
 		void addOutfit(uint16_t lookType, uint8_t addons);
 		void sendModalWindow(const ModalWindow& modalWindow);
+		void sendOpenStore(const PlayerPtr& self) const { if (client) client->sendOpenStore(self); }
+		void sendStoreHistory(uint32_t page, bool hasNextPage) const { if (client) client->sendStoreHistory(page, hasNextPage); }
+		void sendStorePurchaseResult(bool success, const std::string& message, uint32_t newCoins, uint32_t newTransferableCoins) const
+		{
+			if (client) client->sendStorePurchaseResult(success, message, newCoins, newTransferableCoins);
+		}
 		void sendAddContainerItem(const ContainerConstPtr& container, ItemPtr& item) const;
 		void sendUpdateContainerItem(const ContainerConstPtr& container, uint16_t slot, const ItemConstPtr& newItem) const;
 		void sendRemoveContainerItem(const ContainerConstPtr& container, uint16_t slot);

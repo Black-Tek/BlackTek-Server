@@ -101,6 +101,7 @@ public:
         ACCOUNT_MANAGER_AUTH,
         ASSETS_DAT_PATH,
         IPV6,
+        STORE_IMAGES_URL,
 
         LAST_STRING_CONFIG
     };
@@ -174,6 +175,8 @@ public:
         REPLENISH_EFFECT,
         REVIVE_EFFECT,
         MULTILEVEL_FLOOR_RANGE,
+        STORE_COIN_PACKAGE_SIZE,
+
         LAST_INTEGER_CONFIG
     };
 

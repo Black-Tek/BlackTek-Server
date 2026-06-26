@@ -36,6 +36,7 @@
 #include "zones.h"
 #include "metrics.h"
 #include "metrics_format.h"
+#include "storewindow.h"
 
 using BlackTek::DamageModifier;
 
@@ -2353,6 +2354,23 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("ModalWindow", "setPriority", luaModalWindowSetPriority);
 
 	registerMethod("ModalWindow", "sendToPlayer", luaModalWindowSendToPlayer);
+
+	// StoreWindow
+	registerClass("StoreWindow", "", luaStoreWindowCreate);
+	registerMetaMethod("StoreWindow", "__eq", luaUserdataCompare);
+	registerMethod("StoreWindow", "accountType",  luaStoreWindowAccountType);
+	registerMethod("StoreWindow", "coins",        luaStoreWindowCoins);
+	registerMethod("StoreWindow", "setCoins",     luaStoreWindowSetCoins);
+	registerMethod("StoreWindow", "onOpen",       luaStoreWindowOnOpen);
+	registerMethod("StoreWindow", "category",     luaStoreWindowCategory);
+	registerMethod("StoreWindow", "register",     luaStoreWindowRegister);
+
+	// StoreCategory (not directly constructable from Lua)
+	registerClass("StoreCategory", "", nullptr);
+	registerMetaMethod("StoreCategory", "__eq", luaUserdataCompare);
+	registerMethod("StoreCategory", "product",     luaStoreCategoryProduct);
+	registerMethod("StoreCategory", "onPurchase",  luaStoreCategoryOnPurchase);
+	registerMethod("StoreCategory", "canPurchase", luaStoreCategoryCanPurchase);
 
 	// Item
 	registerClass("Item", "", luaItemCreate);
@@ -7114,6 +7132,176 @@ int LuaScriptInterface::luaModalWindowSendToPlayer(lua_State* L)
 	} else {
 		lua_pushnil(L);
 	}
+	return 1;
+}
+
+// StoreWindow
+int LuaScriptInterface::luaStoreWindowCreate(lua_State* L)
+{
+	// StoreWindow(title)
+	auto title = getString(L, 2);
+	auto* window = new BlackTek::StoreWindow(std::string{ title });
+	window->fromLua = true;
+	pushUserdata<BlackTek::StoreWindow>(L, window);
+	setMetatable(L, -1, "StoreWindow");
+	return 1;
+}
+
+int LuaScriptInterface::luaStoreWindowAccountType(lua_State* L)
+{
+	// window:accountType(type)
+	auto* window = getUserdata<BlackTek::StoreWindow>(L, 1);
+	if (not window)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+	window->setAccountType(static_cast<AccountType_t>(getNumber<uint8_t>(L, 2)));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaStoreWindowCoins(lua_State* L)
+{
+	// window:coins(balance, transferable)
+	auto* window = getUserdata<BlackTek::StoreWindow>(L, 1);
+	if (not window)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+	window->setCoins(getNumber<uint32_t>(L, 2), getNumber<uint32_t>(L, 3));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaStoreWindowSetCoins(lua_State* L)
+{
+	// window:setCoins(balance, transferable)
+	auto* window = getUserdata<BlackTek::StoreWindow>(L, 1);
+	if (not window)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+	window->setCoins(getNumber<uint32_t>(L, 2), getNumber<uint32_t>(L, 3));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaStoreWindowOnOpen(lua_State* L)
+{
+	// window:onOpen(callback)
+	auto* window = getUserdata<BlackTek::StoreWindow>(L, 1);
+	if (not window)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+	auto* scriptInterface = getScriptEnv()->getScriptInterface();
+	int32_t id = scriptInterface->getEvent();
+	if (id == -1)
+	{
+		pushBoolean(L, false);
+		return 1;
+	}
+	window->onOpenScriptId = id;
+	window->scriptInterface = scriptInterface;
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaStoreWindowCategory(lua_State* L)
+{
+	// window:category(name, icon)
+	auto* window = getUserdata<BlackTek::StoreWindow>(L, 1);
+	if (not window)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+	auto name = std::string{ getString(L, 2) };
+	auto icon = std::string{ getString(L, 3) };
+	auto* category = window->addCategory(name, icon);
+	pushUserdata<BlackTek::StoreCategory>(L, category);
+	setMetatable(L, -1, "StoreCategory");
+	return 1;
+}
+
+int LuaScriptInterface::luaStoreWindowRegister(lua_State* L)
+{
+	// window:register()
+	auto* window = getUserdata<BlackTek::StoreWindow>(L, 1);
+	if (not window)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+	pushBoolean(L, g_storeManager.registerWindow(window));
+	return 1;
+}
+
+// StoreCategory
+int LuaScriptInterface::luaStoreCategoryProduct(lua_State* L)
+{
+	// category:product(id, name, price, icon[, description])
+	auto* category = getUserdata<BlackTek::StoreCategory>(L, 1);
+	if (not category)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+	auto id          = getNumber<uint32_t>(L, 2);
+	auto name        = std::string{ getString(L, 3) };
+	auto price       = getNumber<uint32_t>(L, 4);
+	auto icon        = std::string{ getString(L, 5) };
+	auto description = lua_gettop(L) >= 6 ? std::string{ getString(L, 6) } : std::string{};
+	category->addProduct(id, name, price, icon, description);
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaStoreCategoryOnPurchase(lua_State* L)
+{
+	// category:onPurchase(callback)
+	auto* category = getUserdata<BlackTek::StoreCategory>(L, 1);
+	if (not category)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+	auto* scriptInterface = getScriptEnv()->getScriptInterface();
+	int32_t id = scriptInterface->getEvent();
+	if (id == -1)
+	{
+		pushBoolean(L, false);
+		return 1;
+	}
+	category->onPurchaseScriptId = id;
+	category->scriptInterface    = scriptInterface;
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaStoreCategoryCanPurchase(lua_State* L)
+{
+	// category:canPurchase(callback)
+	auto* category = getUserdata<BlackTek::StoreCategory>(L, 1);
+	if (not category)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+	auto* scriptInterface = getScriptEnv()->getScriptInterface();
+	int32_t id = scriptInterface->getEvent();
+	if (id == -1)
+	{
+		pushBoolean(L, false);
+		return 1;
+	}
+	category->canPurchaseScriptId = id;
+	category->scriptInterface     = scriptInterface;
+	pushBoolean(L, true);
 	return 1;
 }
 

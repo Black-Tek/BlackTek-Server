@@ -6,6 +6,7 @@
 #include "pugicast.h"
 
 #include "actions.h"
+#include "storewindow.h"
 #include "bed.h"
 #include "configmanager.h"
 #include "console.h"
@@ -5872,6 +5873,89 @@ void Game::playerEnableSharedPartyExperience(const uint32_t playerId, bool share
 	}
 
 	party->setSharedExperience(player, sharedExpActive);
+}
+
+void Game::openPlayerStore(const uint32_t playerId)
+{
+	const auto player = getPlayerByID(playerId);
+	if (not player)
+	{
+		return;
+	}
+
+	player->sendOpenStore(player);
+}
+
+void Game::playerOpenStoreHistory(const uint32_t /* playerId */, const uint8_t /* entryType */)
+{
+}
+
+void Game::playerRequestStoreHistory(const uint32_t /* playerId */, const uint32_t /* page */)
+{
+}
+
+void Game::playerTransferCoins(const uint32_t playerId, const std::string& recipientName, const uint16_t amount)
+{
+	const auto player = getPlayerByID(playerId);
+	if (not player)
+	{
+		return;
+	}
+
+	auto* window = g_storeManager.getWindowForAccountType(player->getAccountType());
+	const uint32_t currentCoins             = window ? window->getCoins()             : 0;
+	const uint32_t currentTransferableCoins = window ? window->getTransferableCoins() : 0;
+	player->sendStorePurchaseResult(false, "Coin transfers are not currently available.", currentCoins, currentTransferableCoins);
+}
+
+void Game::playerPurchaseStoreOffer(
+    const uint32_t      playerId,
+    const uint32_t      offerId,
+    const uint8_t       offerType,
+    const std::string&  param)
+{
+	const auto player = getPlayerByID(playerId);
+	if (not player)
+	{
+		return;
+	}
+
+	auto* window = g_storeManager.getWindowForAccountType(player->getAccountType());
+	if (not window)
+	{
+		return;
+	}
+
+	for (const auto& category : window->getCategories())
+	{
+		const auto* product = category->getProductById(offerId);
+		if (not product)
+		{
+			continue;
+		}
+
+		if (not product->enabled)
+		{
+			player->sendStorePurchaseResult(false, "This offer is not available.", window->getCoins(), window->getTransferableCoins());
+			return;
+		}
+
+		std::string reason;
+		if (category->canPurchaseScriptId != -1 and not category->executeCanPurchase(player, offerId, reason))
+		{
+			player->sendStorePurchaseResult(false, reason, window->getCoins(), window->getTransferableCoins());
+			return;
+		}
+
+		bool purchased = true;
+		if (category->onPurchaseScriptId != -1)
+		{
+			purchased = category->executePurchase(player, offerId, offerType, param);
+		}
+
+		player->sendStorePurchaseResult(purchased, purchased ? "Purchase successful!" : "Purchase failed.", window->getCoins(), window->getTransferableCoins());
+		return;
+	}
 }
 
 void Game::sendGuildMotd(const uint32_t playerId)

@@ -474,6 +474,11 @@ class Game
 		void checkPlayersRecord();
 
 		void sendGuildMotd(uint32_t playerId);
+		void openPlayerStore(uint32_t playerId);
+		void playerPurchaseStoreOffer(uint32_t playerId, uint32_t offerId, uint8_t offerType, const std::string& param);
+		void playerOpenStoreHistory(uint32_t playerId, uint8_t entryType);
+		void playerRequestStoreHistory(uint32_t playerId, uint32_t page);
+		void playerTransferCoins(uint32_t playerId, const std::string& recipientName, uint16_t amount);
 		void kickPlayer(uint32_t playerId, bool displayEffect);
 		void playerReportBug(uint32_t playerId, const std::string& message, const Position& position, uint8_t category);
 		void playerDebugAssert(uint32_t playerId, const std::string& assertLine, const std::string& date, const std::string& description, const std::string& comment);
