@@ -289,6 +289,7 @@ bool ConfigManager::Load()
     // Monsters
     booleans[FORCE_MONSTERTYPE_LOAD] = monstersTbl["spawn"]["force_monstertype_load"].value_or(true);
     booleans[REMOVE_ON_DESPAWN]      = monstersTbl["despawn"]["remove_on_despawn"].value_or(true);
+    booleans[MONSTER_STARTUP_SPAWN_FORCE] = monstersTbl["spawn"]["startup_spawn_force"].value_or(false);
 
     integers[DEFAULT_DESPAWNRANGE]      = Monster::despawnRange  = static_cast<int32_t>(monstersTbl["despawn"]["range"].value_or(int64_t{2}));
     integers[DEFAULT_DESPAWNRADIUS]     = Monster::despawnRadius = static_cast<int32_t>(monstersTbl["despawn"]["radius"].value_or(int64_t{50}));
