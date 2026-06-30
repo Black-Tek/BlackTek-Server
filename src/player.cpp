@@ -3460,50 +3460,40 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 	{
 		destItem.reset();
 
-		ItemPtr item = thing ? thing->getItem() : nullptr;
+		const ItemPtr item = thing ? thing->getItem() : nullptr;
+
 		if (not item)
-		{
-			return this->getPlayer();
-		}
+			return getPlayer();
 
 		const bool autoStack = not (flags & FLAG_IGNOREAUTOSTACK);
 		const bool isStackable = item->isStackable();
 
-		std::vector<ContainerPtr> containers; // reserve to max slots, possibly also make thread_local
+		thread_local std::vector<ContainerPtr> containers;
+		containers.clear();
 
 		for (uint32_t slotIndex = CONST_SLOT_FIRST; slotIndex <= CONST_SLOT_LAST; ++slotIndex)
 		{
 			if (auto& inventoryItem = inventory[slotIndex])
 			{
 				if (inventoryItem == tradeItem or inventoryItem == item)
-				{
 					continue;
-				}
 
-				if (autoStack and isStackable)
+				if (autoStack and isStackable and queryAdd(slotIndex, item, item->getItemCount(), 0) == RETURNVALUE_NOERROR
+					and inventoryItem->equals(item) and inventoryItem->getItemCount() < 100) // here is a hardcoded "limit" of 100, it likely exists elsewhere, should be a config
 				{
-					// Try to find an already existing item to stack with
-					if (queryAdd(slotIndex, item, item->getItemCount(), 0) == RETURNVALUE_NOERROR)
-					{
-						if (inventoryItem->equals(item) and inventoryItem->getItemCount() < 100)
-						{
-							index = slotIndex;
-							destItem = inventoryItem;
-							return this->getPlayer();
-						}
-					}
+					index = slotIndex;
+					destItem = inventoryItem;
+					return getPlayer();
 				}
 
 				if (auto subContainer = inventoryItem->getContainer())
-				{
 					containers.push_back(subContainer);
-				}
 			}
 			else if (queryAdd(slotIndex, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
 			{
 				index = slotIndex;
 				destItem.reset();
-				return this->getPlayer();
+				return getPlayer();
 			}
 		}
 
@@ -3511,58 +3501,51 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 
 		while (i < containers.size())
 		{
-			auto tmpContainer = containers[i++];
+			const auto tmpContainer = containers[i++];
 
-			if (tmpContainer)
+			if (not autoStack or not isStackable)
 			{
-				if (not autoStack or not isStackable)
+				uint32_t n = tmpContainer->capacity() - std::min(tmpContainer->capacity(), static_cast<uint32_t>(tmpContainer->size()));
+				while (n)
 				{
-					uint32_t n = tmpContainer->capacity() - std::min(tmpContainer->capacity(), static_cast<uint32_t>(tmpContainer->size()));
-					while (n)
+					if (tmpContainer->queryAdd(tmpContainer->capacity() - n, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
 					{
-						if (tmpContainer->queryAdd(tmpContainer->capacity() - n, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
-						{
-							index = tmpContainer->capacity() - n;
-							destItem.reset();
-							return tmpContainer;
-						}
-						--n;
-					}
-				}
-
-				for (const auto& tmpContainerItem : tmpContainer->getItemList())
-				{
-					if (tmpContainerItem == tradeItem or tmpContainerItem == item)
-					{
-						continue;
-					}
-
-					if (autoStack and isStackable and tmpContainerItem->equals(item) and tmpContainerItem->getItemCount() < 100)
-					{
-						index = tmpContainer->size();
-						destItem = tmpContainerItem;
+						index = tmpContainer->capacity() - n;
+						destItem.reset();
 						return tmpContainer;
 					}
-
-					if (auto subContainer = tmpContainerItem->getContainer())
-					{
-						containers.push_back(subContainer);
-					}
+					--n;
 				}
+			}
 
-				if (tmpContainer->size() < tmpContainer->capacity() and tmpContainer->queryAdd(tmpContainer->size(), item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
+			for (const auto& tmpContainerItem : tmpContainer->getItemList())
+			{
+				if (tmpContainerItem == tradeItem or tmpContainerItem == item)
+					continue;
+
+				if (autoStack and isStackable and tmpContainerItem->equals(item) and tmpContainerItem->getItemCount() < 100) // here is a hardcoded "limit" of 100, it likely exists elsewhere, should be a config
 				{
 					index = tmpContainer->size();
-					destItem.reset();
+					destItem = tmpContainerItem;
 					return tmpContainer;
 				}
+
+				if (auto subContainer = tmpContainerItem->getContainer())
+					containers.push_back(subContainer);
+			}
+
+			if (tmpContainer->size() < tmpContainer->capacity() and tmpContainer->queryAdd(tmpContainer->size(), item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
+			{
+				index = tmpContainer->size();
+				destItem.reset();
+				return tmpContainer;
 			}
 		}
 
-		return this->getPlayer();
+		return getPlayer();
 	}
 
-	auto destThing = getThing(index);
+	const auto destThing = getThing(index);
 	if (destThing)
 	{
 		destItem = destThing->getItem();
@@ -3575,7 +3558,7 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 		}
 	}
 
-	return this->getPlayer();
+	return getPlayer();
 }
 
 void Player::addThing(int32_t index, ThingPtr thing)
