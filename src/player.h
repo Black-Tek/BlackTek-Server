@@ -936,6 +936,7 @@ class Player final : public Creature, public Cylinder
 		slots_t m_secondary_attack_slot = CONST_SLOT_LEFT;
 
 		ReturnValue queryAdd(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
+		[[nodiscard]] ReturnValue can_add_item(const int32_t index, const ItemPtr& item, const uint32_t count, const uint32_t flags) const noexcept;
 		ReturnValue queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t& maxQueryCount, uint32_t flags) override;
 		ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
 
