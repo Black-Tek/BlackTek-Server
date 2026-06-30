@@ -3461,28 +3461,14 @@ ReturnValue Player::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t
 
 ReturnValue Player::queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr /*= nullptr*/)
 {
-	int32_t index = getThingIndex(thing);
-	if (index == -1)
-	{
-		return RETURNVALUE_NOTPOSSIBLE;
-	}
-
+	const int32_t index = getThingIndex(thing);
 	const auto& item = thing->getItem();
 
-	if (item == nullptr)
-	{
+	if (index == -1 or item == nullptr or count == 0 or	(item->isStackable() and count > item->getItemCount()))
 		return RETURNVALUE_NOTPOSSIBLE;
-	}
-
-	if (count == 0 or (item->isStackable() and count > item->getItemCount()))
-	{
-		return RETURNVALUE_NOTPOSSIBLE;
-	}
 
 	if (not item->isMoveable() and not hasBitSet(FLAG_IGNORENOTMOVEABLE, flags))
-	{
 		return RETURNVALUE_NOTMOVEABLE;
-	}
 
 	return RETURNVALUE_NOERROR;
 }
