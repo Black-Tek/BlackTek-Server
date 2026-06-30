@@ -3375,7 +3375,7 @@ ReturnValue Player::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t
 {
 	const auto& item = thing->getItem();
 
-	if (item == nullptr)
+	if (not item)
 	{
 		maxQueryCount = 0;
 		return RETURNVALUE_NOTPOSSIBLE;
@@ -3384,6 +3384,7 @@ ReturnValue Player::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t
 	if (index == INDEX_WHEREEVER)
 	{
 		uint32_t n = 0;
+		const auto item_count = item->getItemCount();
 
 		for (int32_t slotIndex = CONST_SLOT_FIRST; slotIndex <= CONST_SLOT_LAST; ++slotIndex)
 		{
@@ -3392,7 +3393,7 @@ ReturnValue Player::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t
 				if (auto subContainer = inventoryItem->getContainer())
 				{
 					uint32_t queryCount = 0;
-					subContainer->queryMaxCount(INDEX_WHEREEVER, item, item->getItemCount(), queryCount, flags);
+					subContainer->queryMaxCount(INDEX_WHEREEVER, item, item_count, queryCount, flags);
 					n += queryCount;
 
 					// iterate through all items, including sub-containers (deep search)
@@ -3401,62 +3402,42 @@ ReturnValue Player::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t
 						if (auto tmpContainer = (*it)->getContainer())
 						{
 							queryCount = 0;
-							tmpContainer->queryMaxCount(INDEX_WHEREEVER, item, item->getItemCount(), queryCount, flags);
+							tmpContainer->queryMaxCount(INDEX_WHEREEVER, item, item_count, queryCount, flags);
 							n += queryCount;
 						}
 					}
 				}
-				else if (inventoryItem->isStackable() and item->equals(inventoryItem) and inventoryItem->getItemCount() < 100)
+				else if (inventoryItem->isStackable() and item->equals(inventoryItem) and inventoryItem->getItemCount() < 100) // here is a hardcoded "limit" of 100, it likely exists elsewhere, should be a config
 				{
-					const uint32_t remainder = (100 - inventoryItem->getItemCount());
+					const uint32_t remainder = (100 - inventoryItem->getItemCount()); // here is a hardcoded "limit" of 100, it likely exists elsewhere, should be a config
 
 					if (can_add_item(slotIndex, item, remainder, flags) == RETURNVALUE_NOERROR)
 						n += remainder;
 				}
 			}
 			
-			// empty slot
-			else if (can_add_item(slotIndex, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
-			{ 
-				if (item->isStackable())
-					n += 100;
-				else
-					++n;
-			}
+			else if (can_add_item(slotIndex, item, item_count, flags) == RETURNVALUE_NOERROR)
+				n += item->isStackable() ? 100 : 1; // here is a hardcoded "limit" of 100, it likely exists elsewhere, should be a config
 		}
 		maxQueryCount = n;
 	}
 	else
 	{
-		ItemPtr destItem = nullptr;
-
-		if (const auto& destThing = getThing(index))
-			destItem = destThing->getItem();
+		const auto& destThing = getThing(index);
+		const ItemPtr destItem = destThing ? destThing->getItem() : nullptr;
 
 		if (destItem)
 		{
-			if (destItem->isStackable() and item->equals(destItem) and destItem->getItemCount() < 100)
-				maxQueryCount = 100 - destItem->getItemCount();
-			else
-				maxQueryCount = 0;
+			maxQueryCount = (destItem->isStackable() and item->equals(destItem) and destItem->getItemCount() < 100) ? 100 - destItem->getItemCount() : 0;
 		}
-
-		// empty slot
 		else if (can_add_item(index, item, count, flags) == RETURNVALUE_NOERROR)
 		{
-			if (item->isStackable())
-				maxQueryCount = 100;
-			else
-				maxQueryCount = 1;
-
+			maxQueryCount = item->isStackable() ? 100 : 1; // here is a hardcoded "limit" of 100, it likely exists elsewhere, should be a config
 			return RETURNVALUE_NOERROR;
 		}
 	}
 
-	if (maxQueryCount < count)
-		return RETURNVALUE_NOTENOUGHROOM;
-	else
-		return RETURNVALUE_NOERROR;
+	return maxQueryCount < count ? RETURNVALUE_NOTENOUGHROOM : RETURNVALUE_NOERROR;
 }
 
 ReturnValue Player::queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr /*= nullptr*/)
