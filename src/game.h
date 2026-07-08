@@ -12,7 +12,7 @@
 #include "map.h"
 #include "position.h"
 #include "item.h"
-#include "container.h"
+#include "itemcontainer.h"
 #include "player.h"
 #include "raids.h"
 #include "npc.h"
@@ -221,7 +221,7 @@ class Game
 			return worldType;
 		}
 
-		CylinderPtr internalGetCylinder(const PlayerPtr& player, const Position& pos);
+		ThingPtr internalGetCylinder(const PlayerPtr& player, const Position& pos);
 		ThingPtr internalGetThing(const PlayerPtr& player, const Position& pos, int32_t index,
 		                        uint32_t spriteId, stackPosType_t type);
 		static void internalGetPosition(const ItemPtr& item, Position& pos, uint8_t& stackpos);
@@ -394,13 +394,13 @@ class Game
 		ReturnValue internalMoveCreature(CreaturePtr creature, Direction direction, uint32_t flags = 0);
 		ReturnValue internalMoveCreature(CreaturePtr creature, TilePtr toTile, uint32_t flags = 0);
 
-		ReturnValue internalMoveItem(CylinderPtr fromCylinder, CylinderPtr toCylinder, int32_t index,
+		ReturnValue internalMoveItem(ThingPtr fromThing, ThingPtr toThing, int32_t index,
 		                             ItemPtr item, uint32_t count, std::optional<std::reference_wrapper<ItemPtr>> _moveItem, uint32_t flags = 0, CreaturePtr actor = nullptr, ItemPtr tradeItem = nullptr, const Position* fromPos = nullptr, const Position* toPos = nullptr);
 							// another spot to use a ref wrapper and possibly optional for ItemPtr* above
 
-		ReturnValue internalAddItem(CylinderPtr toCylinder, ItemPtr item, int32_t index = INDEX_WHEREEVER,
+		ReturnValue internalAddItem(ThingPtr toThing, ItemPtr item, int32_t index = INDEX_WHEREEVER,
 		                            uint32_t flags = 0, bool test = false);
-		ReturnValue internalAddItem(CylinderPtr toCylinder, ItemPtr item, int32_t index,
+		ReturnValue internalAddItem(ThingPtr toThing, ItemPtr item, int32_t index,
 		                            uint32_t flags, bool test, uint32_t& remainderCount);
 		ReturnValue internalRemoveItem(ItemPtr item, int32_t count = -1, bool test = false, uint32_t flags = 0);
 
@@ -497,7 +497,7 @@ class Game
 		void playerMoveCreature(PlayerPtr& player, CreaturePtr& movingCreature, const Position& movingCreatureOrigPos, TilePtr& toTile);
 		void playerMoveItemByPlayerID(uint32_t playerId, const Position& fromPos, uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count);
 		void playerMoveItem(const PlayerPtr& player, const Position& fromPos,
-		                    uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count, ItemPtr item, CylinderPtr toCylinder);
+		                    uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count, ItemPtr item, ThingPtr toThing);
 		void playerEquipItem(uint32_t playerId, uint16_t spriteId);
 		void playerMove(uint32_t playerId, Direction direction);
 		void playerCreatePrivateChannel(uint32_t playerId);
@@ -661,6 +661,13 @@ class Game
 
 		bool reload(ReloadTypes_t reloadType);
 
+	private:
+		std::vector<std::byte> raw_game_block;
+		std::pmr::monotonic_buffer_resource game_block;
+
+		std::pmr::unsynchronized_pool_resource item_pool;
+
+	public:
 		Groups groups;
 		Map map;
 		Mounts mounts;
@@ -743,16 +750,13 @@ class Game
 		void internalDecayItem(const ItemPtr& item);
 
 		// Todo : the entire game class's memory layout needs rearranged
-		std::vector<std::byte> raw_game_block;
         std::vector<std::byte> raw_map_block;
-		std::pmr::monotonic_buffer_resource game_block;
         std::optional<std::pmr::monotonic_buffer_resource> map_block;
 		std::pmr::unsynchronized_pool_resource player_pool;
 		std::pmr::unsynchronized_pool_resource monster_pool;
 		std::pmr::unsynchronized_pool_resource npc_pool;
 		std::pmr::unsynchronized_pool_resource creature_pointer_pool;
 		std::pmr::unsynchronized_pool_resource item_pointer_pool;
-		std::pmr::unsynchronized_pool_resource item_pool;
 
 		std::unordered_map<uint32_t, Guild_ptr> guilds;
 

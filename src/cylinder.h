@@ -95,7 +95,7 @@ class Cylinder : virtual public Thing
 			* this method can modify the flags
 		  * \returns Cylinder returns the destination cylinder
 		  */
-		virtual CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, // maybe make optional here?
+		virtual ThingPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, // maybe make optional here?
 				uint32_t& flags) = 0;
 
 		/**
@@ -239,7 +239,7 @@ class VirtualCylinder final : public Cylinder
 			return RETURNVALUE_NOTPOSSIBLE;
 		}
 	
-		virtual CylinderPtr queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&) override {
+		virtual ThingPtr queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&) override {
 			return nullptr;
 		}
 

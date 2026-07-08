@@ -606,8 +606,14 @@ void LuaScriptInterface::pushThing(lua_State* L, const ThingPtr& thing)
 	}
 }
 
-void LuaScriptInterface::pushCylinder(lua_State* L, const CylinderPtr& cylinder)
+void LuaScriptInterface::pushCylinder(lua_State* L, const ThingPtr& cylinder)
 {
+	if (not cylinder)
+	{
+		lua_pushnil(L);
+		return;
+	}
+
 	if (auto creature = cylinder->getCreature()) {
 		pushSharedPtr(L, creature);
 		setCreatureMetatable(L, -1, creature);
@@ -847,10 +853,8 @@ ThingPtr LuaScriptInterface::getThing(lua_State* L, int32_t arg)
 		lua_rawgeti(L, -1, 't');
 		switch(getNumber<uint32_t>(L, -1)) {
 			case LuaData_Item:
-				thing = getSharedPtr<Item>(L, arg);
-				break;
 			case LuaData_Container:
-				thing = getSharedPtr<Container>(L, arg);
+				thing = getSharedPtr<Item>(L, arg);
 				break;
 			case LuaData_Teleport:
 				thing = getSharedPtr<Teleport>(L, arg);
@@ -2499,7 +2503,7 @@ void LuaScriptInterface::registerFunctions()
 	// Container
 	registerClass("Container", "Item", luaContainerCreate);
 	registerMetaMethod("Container", "__eq", luaUserdataCompare);
-	//registerMetaMethod("Container", "__gc", destroySharedUserData<Container>);
+	//registerMetaMethod("Container", "__gc", destroySharedUserData<ItemContainer>);
 
 	registerMethod("Container", "getSize", luaContainerGetSize);
 	registerMethod("Container", "getCapacity", luaContainerGetCapacity);
@@ -4302,7 +4306,7 @@ int LuaScriptInterface::luaIsDepot(lua_State* L)
 {
 	//isDepot(uid)
 	auto container = getScriptEnv()->getContainerByUID(getNumber<uint32_t>(L, -1));
-	pushBoolean(L, container && container->getDepotLocker());
+	pushBoolean(L, container and container->isDepotLocker());
 	return 1;
 }
 
@@ -4327,14 +4331,14 @@ int LuaScriptInterface::luaGetDepotId(lua_State* L)
 		return 1;
 	}
 
-	auto depotLocker = container->getDepotLocker();
-	if (!depotLocker) {
+	if (not container->isDepotLocker())
+	{
 		reportErrorFunc(L, "Depot not found");
 		pushBoolean(L, false);
 		return 1;
 	}
 
-	lua_pushinteger(L, depotLocker->getDepotId());
+	lua_pushinteger(L, container->getDepotId());
 	return 1;
 }
 
@@ -5361,8 +5365,9 @@ int LuaScriptInterface::luaGameCreateContainer(lua_State* L)
 		}
 	}
 
-	auto container = Item::CreateItemAsContainer(id, size);
-	if (!container) {
+	auto containerItem = Item::CreateContainerItem(id, size);
+	if (not containerItem)
+	{
 		lua_pushnil(L);
 		return 1;
 	}
@@ -5371,19 +5376,19 @@ int LuaScriptInterface::luaGameCreateContainer(lua_State* L)
 		const Position& position = getPosition(L, 3);
 		CylinderPtr tile = g_game.map.getTile(position);
 		if (!tile) {
-			container.reset();
+			containerItem.reset();
 			lua_pushnil(L);
 			return 1;
 		}
 
-		g_game.internalAddItem(tile, container, INDEX_WHEREEVER, FLAG_NOLIMIT);
+		g_game.internalAddItem(tile, containerItem, INDEX_WHEREEVER, FLAG_NOLIMIT);
 	} else {
-		getScriptEnv()->addTempItem(container);
-		container->setParent(VirtualCylinder::virtualCylinder);
+		getScriptEnv()->addTempItem(containerItem);
+		containerItem->setParent(VirtualCylinder::virtualCylinder);
 	}
 
-	pushSharedPtr(L, container);
-	setMetatable(L, -1, "Container");
+	pushSharedPtr(L, containerItem);
+	setItemMetatable(L, -1, containerItem);
 	return 1;
 }
 
@@ -7344,7 +7349,7 @@ int LuaScriptInterface::luaItemGetParent(lua_State* L)
 		return 1;
 	}
 
-	CylinderPtr parent = item->getParent();
+	ThingPtr parent = item->getImmediateParent();
 	if (!parent) {
 		lua_pushnil(L);
 		return 1;
@@ -7363,7 +7368,7 @@ int LuaScriptInterface::luaItemGetTopParent(lua_State* L)
 		return 1;
 	}
 
-	CylinderPtr topParent = item->getTopParent();
+	ThingPtr topParent = item->getTopParent();
 	if (!topParent) {
 		lua_pushnil(L);
 		return 1;
@@ -7848,32 +7853,36 @@ int LuaScriptInterface::luaItemMoveTo(lua_State* L)
 		return 1;
 	}
 
-	CylinderPtr toCylinder;
+	ThingPtr toThing;
 	if (isUserdata(L, 2)) {
 		switch (const LuaDataType type = getUserdataType(L, 2)) {
 			case LuaData_Container:
-				toCylinder = getSharedPtr<Container>(L, 2);
+				toThing = getSharedPtr<Item>(L, 2);
 				break;
 			case LuaData_Player:
-				toCylinder = getSharedPtr<Player>(L, 2);
+				toThing = getSharedPtr<Player>(L, 2);
 				break;
 			case LuaData_Tile:
-				toCylinder = getSharedPtr<Tile>(L, 2);
+				toThing = getSharedPtr<Tile>(L, 2);
 				break;
 			default:
-				toCylinder = nullptr;
+				toThing = nullptr;
 				break;
 		}
 	} else {
-		toCylinder = g_game.map.getTile(getPosition(L, 2));
+		toThing = g_game.map.getTile(getPosition(L, 2));
 	}
 
-	if (!toCylinder) {
+	if (not toThing)
+	{
 		lua_pushnil(L);
 		return 1;
 	}
 
-	if (item->getParent() == toCylinder) {
+	ThingPtr currentParent = item->getImmediateParent();
+
+	if (currentParent == toThing)
+	{
 		pushBoolean(L, true);
 		return 1;
 	}
@@ -7881,11 +7890,10 @@ int LuaScriptInterface::luaItemMoveTo(lua_State* L)
 	uint32_t flags = getNumber<uint32_t>(L, 3, FLAG_NOLIMIT | FLAG_IGNOREBLOCKITEM | FLAG_IGNOREBLOCKCREATURE | FLAG_IGNORENOTMOVEABLE);
 
 	if (item->getParent() == VirtualCylinder::virtualCylinder) {
-		pushBoolean(L, g_game.internalAddItem(toCylinder, item, INDEX_WHEREEVER, flags) == RETURNVALUE_NOERROR);
+		pushBoolean(L, g_game.internalAddItem(toThing, item, INDEX_WHEREEVER, flags) == RETURNVALUE_NOERROR);
 	} else {
 		ItemPtr moveItem = nullptr;
-		CylinderPtr i_parent = item->getParent();
-		ReturnValue ret = g_game.internalMoveItem(i_parent, toCylinder, INDEX_WHEREEVER, item, item->getItemCount(), std::ref(moveItem), flags);
+		ReturnValue ret = g_game.internalMoveItem(currentParent, toThing, INDEX_WHEREEVER, item, item->getItemCount(), std::ref(moveItem), flags);
 		if (moveItem) {
 			itemPtr = moveItem;
 		}
@@ -9203,8 +9211,9 @@ int LuaScriptInterface::luaContainerCreate(lua_State* L)
 	const uint32_t id = getNumber<uint32_t>(L, 2);
 
 	if (const auto container = getScriptEnv()->getContainerByUID(id)) {
-		pushSharedPtr(L, container);
-		setMetatable(L, -1, "Container");
+		const auto containerItem = container->getOwner();
+		pushSharedPtr(L, containerItem);
+		setItemMetatable(L, -1, containerItem);
 	} else {
 		lua_pushnil(L);
 	}
@@ -9213,8 +9222,9 @@ int LuaScriptInterface::luaContainerCreate(lua_State* L)
 
 int LuaScriptInterface::luaContainerDelete(lua_State* L)
 {
-	if (auto& container = getSharedPtr<Container>(L, 1)) {
-		container.reset();
+	if (auto& item = getSharedPtr<Item>(L, 1))
+	{
+		item.reset();
 	}
 	return 0;
 }
@@ -9222,9 +9232,13 @@ int LuaScriptInterface::luaContainerDelete(lua_State* L)
 int LuaScriptInterface::luaContainerGetSize(lua_State* L)
 {
 	// container:getSize()
-	if (const auto container = getSharedPtr<Container>(L, 1)) {
+	const auto item = getSharedPtr<Item>(L, 1);
+	if (const auto container = item ? item->getContainer() : nullptr)
+	{
 		lua_pushinteger(L, container->size());
-	} else {
+	}
+	else
+	{
 		lua_pushnil(L);
 	}
 	return 1;
@@ -9233,9 +9247,13 @@ int LuaScriptInterface::luaContainerGetSize(lua_State* L)
 int LuaScriptInterface::luaContainerGetCapacity(lua_State* L)
 {
 	// container:getCapacity()
-	if (const auto container = getSharedPtr<Container>(L, 1)) {
+	const auto item = getSharedPtr<Item>(L, 1);
+	if (const auto container = item ? item->getContainer() : nullptr)
+	{
 		lua_pushinteger(L, container->capacity());
-	} else {
+	}
+	else
+	{
 		lua_pushnil(L);
 	}
 	return 1;
@@ -9244,7 +9262,8 @@ int LuaScriptInterface::luaContainerGetCapacity(lua_State* L)
 int LuaScriptInterface::luaContainerGetEmptySlots(lua_State* L)
 {
 	// container:getEmptySlots([recursive = false])
-	const auto container = getSharedPtr<Container>(L, 1);
+	const auto selfItem = getSharedPtr<Item>(L, 1);
+	const auto container = selfItem ? selfItem->getContainer() : nullptr;
 	if (!container) {
 		lua_pushnil(L);
 		return 1;
@@ -9265,9 +9284,13 @@ int LuaScriptInterface::luaContainerGetEmptySlots(lua_State* L)
 int LuaScriptInterface::luaContainerGetItemHoldingCount(lua_State* L)
 {
 	// container:getItemHoldingCount()
-	if (const auto container = getSharedPtr<Container>(L, 1)) {
+	const auto item = getSharedPtr<Item>(L, 1);
+	if (const auto container = item ? item->getContainer() : nullptr)
+	{
 		lua_pushinteger(L, container->getItemHoldingCount());
-	} else {
+	}
+	else
+	{
 		lua_pushnil(L);
 	}
 	return 1;
@@ -9276,7 +9299,8 @@ int LuaScriptInterface::luaContainerGetItemHoldingCount(lua_State* L)
 int LuaScriptInterface::luaContainerGetItem(lua_State* L)
 {
 	// container:getItem(index)
-	const auto container = getSharedPtr<Container>(L, 1);
+	const auto selfItem = getSharedPtr<Item>(L, 1);
+	const auto container = selfItem ? selfItem->getContainer() : nullptr;
 	if (!container) {
 		lua_pushnil(L);
 		return 1;
@@ -9295,7 +9319,8 @@ int LuaScriptInterface::luaContainerGetItem(lua_State* L)
 int LuaScriptInterface::luaContainerHasItem(lua_State* L)
 {
 	// container:hasItem(item)
-	if (const auto container = getSharedPtr<Container>(L, 1);
+	const auto selfItem = getSharedPtr<Item>(L, 1);
+	if (const auto container = selfItem ? selfItem->getContainer() : nullptr;
 		const auto item = getSharedPtr<Item>(L, 2)) {
 		pushBoolean(L, container->isHoldingItem(item));
 	} else {
@@ -9307,7 +9332,8 @@ int LuaScriptInterface::luaContainerHasItem(lua_State* L)
 int LuaScriptInterface::luaContainerAddItem(lua_State* L)
 {
 	// container:addItem(itemId[, count/subType = 1[, index = INDEX_WHEREEVER[, flags = 0]]])
-	const auto container = getSharedPtr<Container>(L, 1);
+	const auto selfItem = getSharedPtr<Item>(L, 1);
+	const auto container = selfItem ? selfItem->getContainer() : nullptr;
 	if (!container) {
 		lua_pushnil(L);
 		return 1;
@@ -9363,7 +9389,7 @@ int LuaScriptInterface::luaContainerAddItem(lua_State* L)
 		if (it.stackable) {
 			subType -= stackCount;
 		}
-		CylinderPtr holder = container;
+		ItemPtr holder = container->getOwner();
 		ReturnValue ret = g_game.internalAddItem(holder, item, index, flags);
 		if (ret != RETURNVALUE_NOERROR) {
 			item.reset();
@@ -9395,7 +9421,8 @@ int LuaScriptInterface::luaContainerAddItemEx(lua_State* L)
 		return 1;
 	}
 
-	const auto container = getSharedPtr<Container>(L, 1);
+	const auto selfItem = getSharedPtr<Item>(L, 1);
+	const auto container = selfItem ? selfItem->getContainer() : nullptr;
 	if (!container) {
 		lua_pushnil(L);
 		return 1;
@@ -9409,7 +9436,7 @@ int LuaScriptInterface::luaContainerAddItemEx(lua_State* L)
 
 	int32_t index = getNumber<int32_t>(L, 3, INDEX_WHEREEVER);
 	uint32_t flags = getNumber<uint32_t>(L, 4, 0);
-	CylinderPtr holder = container;
+	ItemPtr holder = container->getOwner();
 	ReturnValue ret = g_game.internalAddItem(holder, item, index, flags);
 	if (ret == RETURNVALUE_NOERROR) {
 		ScriptEnvironment::removeTempItem(item);
@@ -9421,9 +9448,13 @@ int LuaScriptInterface::luaContainerAddItemEx(lua_State* L)
 int LuaScriptInterface::luaContainerGetCorpseOwner(lua_State* L)
 {
 	// container:getCorpseOwner()
-	if (const auto container = getSharedPtr<Container>(L, 1)) {
-		lua_pushinteger(L, container->getCorpseOwner());
-	} else {
+	const auto item = getSharedPtr<Item>(L, 1);
+	if (const auto container = item ? item->getContainer() : nullptr)
+	{
+		lua_pushinteger(L, container->getOwner()->getCorpseOwner());
+	}
+	else
+	{
 		lua_pushnil(L);
 	}
 	return 1;
@@ -9432,7 +9463,8 @@ int LuaScriptInterface::luaContainerGetCorpseOwner(lua_State* L)
 int LuaScriptInterface::luaContainerGetItemCountById(lua_State* L)
 {
 	// container:getItemCountById(itemId[, subType = -1])
-	const auto container = getSharedPtr<Container>(L, 1);
+	const auto selfItem = getSharedPtr<Item>(L, 1);
+	const auto container = selfItem ? selfItem->getContainer() : nullptr;
 	if (!container) {
 		lua_pushnil(L);
 		return 1;
@@ -9457,9 +9489,13 @@ int LuaScriptInterface::luaContainerGetItemCountById(lua_State* L)
 int LuaScriptInterface::luaContainerGetContentDescription(lua_State* L)
 {
 	// container:getContentDescription()
-	if (const auto container = getSharedPtr<Container>(L, 1)) {
+	const auto item = getSharedPtr<Item>(L, 1);
+	if (const auto container = item ? item->getContainer() : nullptr)
+	{
 		pushString(L, container->getContentDescription());
-	} else {
+	}
+	else
+	{
 		lua_pushnil(L);
 	}
 	return 1;
@@ -9468,7 +9504,8 @@ int LuaScriptInterface::luaContainerGetContentDescription(lua_State* L)
 int LuaScriptInterface::luaContainerGetItems(lua_State* L)
 {
 	// container:getItems([recursive = false])
-	const auto container = getSharedPtr<Container>(L, 1);
+	const auto selfItem = getSharedPtr<Item>(L, 1);
+	const auto container = selfItem ? selfItem->getContainer() : nullptr;
 	if (!container) {
 		lua_pushnil(L);
 		return 1;
@@ -11773,8 +11810,9 @@ int LuaScriptInterface::luaPlayerGetDepotChest(lua_State* L)
 	const bool autoCreate = getBoolean(L, 3, true);
 
 	if (const auto depotChest = player->getDepotChest(depotId, autoCreate)) {
-		pushSharedPtr(L, depotChest);
-		setItemMetatable(L, -1, depotChest);
+		const auto depotChestItem = depotChest->getOwner();
+		pushSharedPtr(L, depotChestItem);
+		setItemMetatable(L, -1, depotChestItem);
 	} else {
 		pushBoolean(L, false);
 	}
@@ -11791,8 +11829,9 @@ int LuaScriptInterface::luaPlayerGetInbox(lua_State* L)
 	}
 
 	if (const auto inbox = player->getInbox()) {
-		pushSharedPtr(L, inbox);
-		setItemMetatable(L, -1, inbox);
+		const auto inboxItem = inbox->getOwner();
+		pushSharedPtr(L, inboxItem);
+		setItemMetatable(L, -1, inboxItem);
 	} else {
 		pushBoolean(L, false);
 	}
@@ -11809,8 +11848,9 @@ int LuaScriptInterface::luaPlayerGetRewardChest(lua_State* L)
 	}
 
 	if (const auto rewardChest = player->getRewardChest()) {
-		pushSharedPtr(L, rewardChest);
-		setItemMetatable(L, -1, rewardChest);
+		const auto rewardChestItem = rewardChest->getOwner();
+		pushSharedPtr(L, rewardChestItem);
+		setItemMetatable(L, -1, rewardChestItem);
 	}
 	else {
 		pushBoolean(L, false);
@@ -13599,9 +13639,13 @@ int LuaScriptInterface::luaPlayerGetContainerId(lua_State* L)
 		return 1;
 	}
 
-	if (const auto container = getSharedPtr<Container>(L, 2)) {
+	const auto containerItem = getSharedPtr<Item>(L, 2);
+	if (const auto container = containerItem ? containerItem->getContainer() : nullptr)
+	{
 		lua_pushinteger(L, player->getContainerID(container));
-	} else {
+	}
+	else
+	{
 		lua_pushnil(L);
 	}
 	return 1;
@@ -13617,8 +13661,9 @@ int LuaScriptInterface::luaPlayerGetContainerById(lua_State* L)
 	}
 
 	if (const auto container = player->getContainerByID(getNumber<uint8_t>(L, 2))) {
-		pushSharedPtr(L, container);
-		setMetatable(L, -1, "Container");
+		const auto containerItem = container->getOwner();
+		pushSharedPtr(L, containerItem);
+		setItemMetatable(L, -1, containerItem);
 	} else {
 		lua_pushnil(L);
 	}
@@ -13723,8 +13768,9 @@ int LuaScriptInterface::luaPlayerGetStoreInbox(lua_State* L)
 		return 1;
 	}
 
-	pushSharedPtr(L, storeInbox);
-	setMetatable(L, -1, "Container");
+	const auto storeInboxItem = storeInbox->getOwner();
+	pushSharedPtr(L, storeInboxItem);
+	setItemMetatable(L, -1, storeInboxItem);
 	return 1;
 }
 
@@ -15181,7 +15227,7 @@ int LuaScriptInterface::luaHouseStartTrade(lua_State* L)
 		lua_pushinteger(L, RETURNVALUE_YOUCANNOTTRADETHISHOUSE);
 		return 1;
 	}
-	transferItem->getParent()->setParent(player);
+	transferItem->getContainerParent()->setParent(player);
 	if (!g_game.internalStartTrade(player, tradePartner, transferItem)) {
 		house->resetTransferItem();
 	}

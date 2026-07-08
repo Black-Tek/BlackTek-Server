@@ -262,7 +262,7 @@ class LuaScriptInterface
 		static void pushVariant(lua_State* L, const LuaVariant& var);
 		static void pushString(lua_State* L, std::string_view value);
 		static void pushCallback(lua_State* L, int32_t callback);
-		static void pushCylinder(lua_State* L, const CylinderPtr& cylinder);
+		static void pushCylinder(lua_State* L, const ThingPtr& cylinder);
 
 		static std::string popString(lua_State* L);
 		static int32_t popCallback(lua_State* L);

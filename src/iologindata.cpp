@@ -1003,7 +1003,7 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 	{
 		for (const auto& container_data : *player->openContainers)
 		{
-			container_data.second.container->setIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER, static_cast<int64_t>(container_data.first) + 1);
+			container_data.second.container->getOwner()->setIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER, static_cast<int64_t>(container_data.first) + 1);
 		}
 	}
 	
@@ -1135,7 +1135,7 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 	{
 		for (const auto& container_data : *player->openContainers)
 		{
-			container_data.second.container->setIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER, 0);
+			container_data.second.container->getOwner()->setIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER, 0);
 		}
 	}
 

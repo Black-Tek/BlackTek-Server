@@ -15,7 +15,6 @@
 #include "movement.h"
 #include "scheduler.h"
 #include "weapons.h"
-#include "rewardchest.h"
 #include "player.h"
 #include "spells.h"
 #include "accountmanager.h"
@@ -698,8 +697,22 @@ static std::vector<uint32_t> GetDiaganolDeflectArea(uint32_t targets) {
 }
 
 
+namespace {
+
+ContainerPtr CreateSystemContainer(uint16_t itemId, uint16_t size, bool unlocked, bool pagination, ContainerSubType subtype)
+{
+	std::pmr::polymorphic_allocator<Item> allocator(&g_game.getItemPool());
+	auto item = std::allocate_shared<Item>(allocator, itemId);
+	item->attachContainer(size, unlocked, pagination, subtype);
+	return item->getContainer();
+}
+
+}
+
 Player::Player(ProtocolGame_ptr p) :
-	lastPing(OTSYS_TIME()), lastPong(lastPing), client(std::move(p)), inbox(std::make_shared<Inbox>(ITEM_INBOX)), storeInbox(std::make_shared<StoreInbox>(ITEM_STORE_INBOX))
+	lastPing(OTSYS_TIME()), lastPong(lastPing), client(std::move(p)),
+	inbox(CreateSystemContainer(ITEM_INBOX, 30, false, true, ContainerSubType::Inbox)),
+	storeInbox(CreateSystemContainer(ITEM_STORE_INBOX, 20, true, true, ContainerSubType::StoreInbox))
 {
 	thing_subtype = ThingSubType::Player;
 	creature_subtype = CreatureSubType::Player;
@@ -715,10 +728,10 @@ Player::~Player()
 	}
 
 	if (depotLocker) {
-		depotLocker->removeInbox(inbox);
+		depotLocker->removeInbox(inbox->getOwner());
 	}
-	
-	storeInbox->clearParent();
+
+	storeInbox->getOwner()->clearParent();
 
 	setWriteItem(nullptr);
 	setEditHouse(nullptr);
@@ -887,7 +900,8 @@ ItemPtr Player::getWeapon(const slots_t slot, const bool ignoreAmmo) const
 			if (!ammoItem || ammoItem->getAmmoType() != itemType.ammoType) {
 				// no ammo item was found, search for quiver instead
 				const auto& quiver = inventory[CONST_SLOT_RIGHT] ? inventory[CONST_SLOT_RIGHT]->getContainer() : nullptr;
-				if (!quiver || quiver->getItem()->getWeaponType() != WEAPON_QUIVER) {
+				if (not quiver or quiver->getOwner()->getWeaponType() != WEAPON_QUIVER)
+				{
 					// no quiver equipped
 					return nullptr;
 				}
@@ -1126,7 +1140,7 @@ void Player::updateInventoryWeight()
 	}
 
 	if (const auto& storeInbox = getStoreInbox()) {
-		inventoryWeight += storeInbox->getWeight();
+		inventoryWeight += storeInbox->getOwner()->getWeight();
 	}
 }
 
@@ -1385,7 +1399,7 @@ void Player::autoOpenContainers()
     {
         addContainer(it.first - 1, it.second);
         onSendContainer(it.second);
-        it.second->setIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER, 0);
+        it.second->getOwner()->setIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER, 0);
     }
 }
 
@@ -1559,7 +1573,7 @@ bool Player::isNearDepotBox() const
 	return false;
 }
 
-DepotChestPtr Player::getDepotChest(uint32_t depotId, const bool autoCreate)
+ContainerPtr Player::getDepotChest(uint32_t depotId, const bool autoCreate)
 {
 	if (depotChests)
 	{
@@ -1577,26 +1591,28 @@ DepotChestPtr Player::getDepotChest(uint32_t depotId, const bool autoCreate)
 	if (depotItemId == 0)
 		return nullptr;
 
-	auto it = getDepotChests().emplace(depotId, std::make_shared<DepotChest>(depotItemId)).first;
+	auto it = getDepotChests().emplace(depotId, CreateSystemContainer(depotItemId, Item::items[depotItemId].maxItems, true, true, ContainerSubType::DepotChest)).first;
 	it->second->setMaxDepotItems(getMaxDepotItems());
 	return it->second;
 }
 
-DepotLockerPtr& Player::getDepotLocker()
+ContainerPtr& Player::getDepotLocker()
 {
 	if (!depotLocker) {
-		depotLocker = std::make_shared<DepotLocker>(ITEM_LOCKER1);
+		depotLocker = CreateSystemContainer(ITEM_LOCKER1, Item::items[ITEM_LOCKER1].maxItems, true, false, ContainerSubType::DepotLocker);
 		depotLocker->internalAddThing(Item::CreateItem(ITEM_MARKET));
-		depotLocker->internalAddThing(inbox);
-		if (const DepotChestPtr depotChest = std::make_shared<DepotChest>(ITEM_DEPOT, false)) {
+		depotLocker->internalAddThing(inbox->getOwner());
+		if (const ContainerPtr depotChest = CreateSystemContainer(ITEM_DEPOT, Item::items[ITEM_DEPOT].maxItems, true, false, ContainerSubType::DepotChest))
+		{
 			// adding in reverse to align them from first to last
 			for (int16_t depotId = depotChest->capacity(); depotId >= 0; --depotId) {
-				if (DepotChestPtr box = getDepotChest(depotId, true)) {
-					depotChest->internalAddThing(box);
+				if (ContainerPtr box = getDepotChest(depotId, true))
+				{
+					depotChest->internalAddThing(box->getOwner());
 				}
 			}
 
-			depotLocker->internalAddThing(depotChest);
+			depotLocker->internalAddThing(depotChest->getOwner());
 		}
 	}
 	return depotLocker;
@@ -1625,10 +1641,10 @@ uint32_t Player::getDepotItemCount()
 	return counter;
 }
 
-RewardChestPtr& Player::getRewardChest()
+ContainerPtr& Player::getRewardChest()
 {
 	if (!rewardChest) {
-		rewardChest = std::make_shared<RewardChest>(ITEM_REWARD_CHEST);
+		rewardChest = CreateSystemContainer(ITEM_REWARD_CHEST, Item::items[ITEM_REWARD_CHEST].maxItems, true, true, ContainerSubType::RewardChest);
 	}
 	return rewardChest;
 }
@@ -1749,7 +1765,7 @@ void Player::sendAddContainerItem(const ContainerConstPtr& container, ItemPtr& i
 
 		uint16_t slot = openContainer.index;
 
-		if (container->getItem()->getID() == ITEM_BROWSEFIELD)
+		if (container->getOwner()->getID() == ITEM_BROWSEFIELD)
 		{
 			uint16_t containerSize = container->size() - 1;
 			uint16_t pageEnd = openContainer.index + container->capacity() - 1;
@@ -2167,13 +2183,17 @@ void Player::onUpdateContainerItem(ContainerPtr container, ItemPtr oldItem, Item
 
 void Player::onRemoveContainerItem(ContainerPtr container, ItemPtr item)
 {
-	if (tradeState != TRADE_TRANSFER) {
+	if (tradeState != TRADE_TRANSFER)
+	{
 		checkTradeState(item);
 
-		if (tradeItem) {
-			if (tradeItem->getParent() != container && container->isHoldingItem(tradeItem)) {
-				g_game.internalCloseTrade(this->getPlayer());
-			}
+		if (tradeItem)
+		{
+			const auto containerParentItem = tradeItem->getContainerParent();
+			const auto parent_container = containerParentItem ? containerParentItem->getContainer() : nullptr;
+
+			if (parent_container and parent_container != container and container->isHoldingItem(tradeItem))
+				g_game.internalCloseTrade(getPlayer());
 		}
 	}
 }
@@ -2249,17 +2269,17 @@ void Player::checkTradeState(const ItemPtr& item)
 	}
 	else
 	{
-		auto container = item->getParent()->getContainer();
+		auto containerItem = item->getContainerParent();
 
-		while (container)
+		while (containerItem)
 		{
-			if (container == tradeItem)
+			if (containerItem == tradeItem)
 			{
 				g_game.internalCloseTrade(this->getPlayer());
 				break;
 			}
 
-			container = container->getParent()->getContainer();
+			containerItem = containerItem->getContainerParent();
 		}
 	}
 }
@@ -3132,13 +3152,14 @@ void Player::autoCloseContainers(const ContainerPtr container)
 
 		while (tmpContainer)
 		{
-			if (tmpContainer->isRemoved() or tmpContainer == container)
+			if (tmpContainer->getOwner()->isRemoved() or tmpContainer == container)
 			{
 				closeList.push_back(it.first);
 				break;
 			}
 
-			tmpContainer = tmpContainer->getParent()->getContainer();
+			auto outerItem = tmpContainer->getOwner()->getContainerParent();
+			tmpContainer = outerItem ? outerItem->getContainer() : nullptr;
 		}
 	}
 
@@ -3454,7 +3475,7 @@ ReturnValue Player::queryRemove(const ThingPtr& thing, uint32_t count, uint32_t 
 	return RETURNVALUE_NOERROR;
 }
 
-CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags)
+ThingPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags)
 {
 	if (index == 0 /*drop to capacity window*/ or index == INDEX_WHEREEVER)
 	{
@@ -3512,7 +3533,7 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 					{
 						index = tmpContainer->capacity() - n;
 						destItem.reset();
-						return tmpContainer;
+						return tmpContainer->getOwner();
 					}
 					--n;
 				}
@@ -3527,7 +3548,7 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 				{
 					index = tmpContainer->size();
 					destItem = tmpContainerItem;
-					return tmpContainer;
+					return tmpContainer->getOwner();
 				}
 
 				if (auto subContainer = tmpContainerItem->getContainer())
@@ -3538,7 +3559,7 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 			{
 				index = tmpContainer->size();
 				destItem.reset();
-				return tmpContainer;
+				return tmpContainer->getOwner();
 			}
 		}
 
@@ -3550,11 +3571,11 @@ CylinderPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, Item
 	{
 		destItem = destThing->getItem();
 
-		if (auto subCylinder = destThing->getCylinder())
+		if (auto subContainer = destThing->getContainer())
 		{
 			index = INDEX_WHEREEVER;
 			destItem.reset();
-			return subCylinder;
+			return subContainer->getOwner();
 		}
 	}
 
@@ -3573,6 +3594,10 @@ void Player::addThing(int32_t index, ThingPtr thing)
 	}
 
 	item->setParent(getPlayer());
+	if (auto itemContainer = item->getContainer())
+	{
+		itemContainer->setHoldingCreature(getPlayer());
+	}
 	inventory[index] = item;
 
 	//send to client
@@ -3623,6 +3648,10 @@ void Player::replaceThing(uint32_t index, ThingPtr thing)
 	//event methods
 	onUpdateInventoryItem(oldItem, item);
 	item->setParent(getPlayer());
+	if (auto itemContainer = item->getContainer())
+	{
+		itemContainer->setHoldingCreature(getPlayer());
+	}
 
 	inventory[index] = item;
 }
@@ -3647,6 +3676,10 @@ void Player::removeThing(ThingPtr thing, uint32_t count)
 			//event methods
 			onRemoveInventoryItem(item);
 
+			if (auto itemContainer = item->getContainer())
+			{
+				itemContainer->setHoldingCreature(nullptr);
+			}
 			item->clearParent();
 			inventory[index] = nullptr;
 		} else {
@@ -3665,6 +3698,10 @@ void Player::removeThing(ThingPtr thing, uint32_t count)
 
 		//event methods
 		onRemoveInventoryItem(item);
+		if (auto itemContainer = item->getContainer())
+		{
+			itemContainer->setHoldingCreature(nullptr);
+		}
 		item->clearParent();
 		inventory[index] = nullptr;
 	}
@@ -3829,7 +3866,7 @@ void Player::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t 
 		assert(i ? i->getContainer() != nullptr : true);
 
 		if (i)
-			requireListUpdate = std::static_pointer_cast<Container>(i)->getHoldingPlayer() != getPlayer();
+			requireListUpdate = i->getHoldingPlayer() != getPlayer();
 		else
 			requireListUpdate = oldParent != getPlayer();
 
@@ -3858,7 +3895,7 @@ void Player::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t 
 			{
 				for (auto& val : *openContainers | std::views::values)
 				{
-					if (not Position::areInRange<1, 1, 0>(val.container->getPosition(), getPosition()))
+					if (not Position::areInRange<1, 1, 0>(val.container->getOwner()->getPosition(), getPosition()))
 					{
 						containers.push_back(val.container);
 					}
@@ -3908,9 +3945,9 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 		assert(i ? i->getContainer() != nullptr : true);
 
 		if (i)
-			requireListUpdate = i->getContainer()->getHoldingPlayer() != getPlayer();
+			requireListUpdate = i->getHoldingPlayer() != getPlayer();
 		else
-			requireListUpdate = newParent != getPlayer(); 
+			requireListUpdate = newParent != getPlayer();
 		
 		updateInventoryWeight();
 		updateItemsLight();
@@ -3921,19 +3958,19 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 	{
 		if (auto container = item->getContainer())
 		{
-			if (container->isRemoved() or not Position::areInRange<1, 1, 0>(getPosition(), container->getPosition()))
+			if (container->getOwner()->isRemoved() or not Position::areInRange<1, 1, 0>(getPosition(), container->getOwner()->getPosition()))
 			{
 				autoCloseContainers(container);
 			}
-			else if (container->getItem()->getTopParent() == this->getPlayer())
+			else if (container->getOwner()->getTopParent() == this->getPlayer())
 			{
 				onSendContainer(container);
 			}
-			else if (auto topContainer = std::dynamic_pointer_cast<Container>(container->getItem()->getTopParent()))
+			else if (auto topContainer = container->getOwner()->getTopParent()->getContainer())
 			{
 				if (topContainer->getContainerSubType() == ContainerSubType::DepotChest)
 				{
-					const auto depotChest = std::static_pointer_cast<DepotChest>(topContainer);
+					const auto& depotChest = topContainer;
 					bool isOwner = false;
 
 					if (depotChests)
@@ -3954,7 +3991,7 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 				}
 				else if (topContainer->getContainerSubType() == ContainerSubType::Inbox)
 				{
-					const auto inboxContainer = std::static_pointer_cast<Inbox>(topContainer);
+					const auto& inboxContainer = topContainer;
 
 					if (inboxContainer == inbox)
 					{
@@ -4055,6 +4092,10 @@ void Player::internalAddThing(uint32_t index, ThingPtr thing)
 
 		inventory[index] = item;
 		item->setParent(getPlayer());
+		if (auto itemContainer = item->getContainer())
+		{
+			itemContainer->setHoldingCreature(getPlayer());
+		}
 	}
 }
 

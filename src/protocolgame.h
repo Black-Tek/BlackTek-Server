@@ -14,7 +14,7 @@ class NetworkMessage;
 class Player;
 class Game;
 class House;
-class Container;
+class ItemContainer;
 class Tile;
 class Connection;
 class Quest;

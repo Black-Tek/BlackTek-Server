@@ -28,9 +28,9 @@ ReturnValue Mailbox::queryRemove(const ThingPtr&, uint32_t, uint32_t, CreaturePt
 	return RETURNVALUE_NOTPOSSIBLE;
 }
 
-CylinderPtr Mailbox::queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&)
+ThingPtr Mailbox::queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&)
 {
-	return CylinderPtr(this);
+	return getCylinder();
 }
 
 void Mailbox::addThing(ThingPtr thing)
@@ -84,8 +84,8 @@ bool Mailbox::sendItem(const ItemPtr& item) const
 	}
 
 	if (const auto player = g_game.getPlayerByName(receiver)) {
-		CylinderPtr newParent = CylinderPtr(item->getParent());
-		CylinderPtr inbox = CylinderPtr(player->getInbox());
+		ThingPtr newParent = item->getImmediateParent();
+		ItemPtr inbox = player->getInbox()->getOwner();
 		if (g_game.internalMoveItem(newParent, inbox, INDEX_WHEREEVER,
 		                            item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT) == RETURNVALUE_NOERROR) {
 			g_game.transformItem(item, item->getID() + 1);
@@ -97,8 +97,8 @@ bool Mailbox::sendItem(const ItemPtr& item) const
 		if (!IOLoginData::loadPlayerByName(tmpPlayer, receiver)) {
 			return false;
 		}
-		CylinderPtr newParent = CylinderPtr(item->getParent());
-		CylinderPtr inbox = CylinderPtr(tmpPlayer->getInbox());
+		ThingPtr newParent = item->getImmediateParent();
+		ItemPtr inbox = tmpPlayer->getInbox()->getOwner();
 		if (g_game.internalMoveItem(newParent, inbox, INDEX_WHEREEVER,
 		                            item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT) == RETURNVALUE_NOERROR) {
 			g_game.transformItem(item, item->getID() + 1);

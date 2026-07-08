@@ -16,7 +16,12 @@
 extern ConfigManager g_config;
 extern Game g_game;
 
-House::House(const uint32_t houseId) : id(houseId) {}
+House::House(const uint32_t houseId) : id(houseId)
+{
+	std::pmr::polymorphic_allocator<Item> allocator(&g_game.getItemPool());
+	transferContainerItem = std::allocate_shared<Item>(allocator, ITEM_LOCKER1);
+	transferContainerItem->attachContainer(Item::items[ITEM_LOCKER1].maxItems, true, false, ContainerSubType::None);
+}
 
 void House::addTile(const TilePtr& tile)
 {
@@ -232,10 +237,9 @@ bool House::transferToDepot(const PlayerPtr& player) const
 		}
 	}
 	
-	CylinderPtr inbox = player->getInbox();
+	ItemPtr inbox = player->getInbox()->getOwner();
 	for (const auto item : moveItemList) {
-		CylinderPtr parent = item->getParent();
-		g_game.internalMoveItem(parent, inbox, INDEX_WHEREEVER, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT);
+		g_game.internalMoveItem(item->getImmediateParent(), inbox, INDEX_WHEREEVER, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT);
 	}
 	return true;
 }
@@ -323,9 +327,8 @@ HouseTransferItemPtr House::getTransferItem()
 		return nullptr;
 	}
 
-	transfer_container.clearParent();
 	transferItem = HouseTransferItem::createHouseTransferItem(this);
-	transfer_container.addThing(transferItem);
+	transferContainerItem->getContainer()->addThing(transferItem);
 	return transferItem;
 }
 
@@ -334,9 +337,7 @@ void House::resetTransferItem()
 	if (transferItem) {
 		ItemPtr tmpItem = transferItem;
 		transferItem = nullptr;
-		transfer_container.clearParent();
-
-		transfer_container.removeThing(tmpItem, tmpItem->getItemCount());
+		transferContainerItem->getContainer()->removeThing(tmpItem, tmpItem->getItemCount());
 		// g_game.ReleaseItem(tmpItem);
 	}
 }
@@ -700,7 +701,7 @@ void Houses::payHouses(const RentPeriod_t rentPeriod) const
 				}
 
 				letter->setText(fmt::format("Warning! \nThe {:s} rent of {:d} gold for your house \"{:s}\" is payable. Have it within {:d} days or you will lose this house.", period, house->getRent(), house->getName(), daysLeft));
-				CylinderPtr inbox = player->getInbox();
+				ItemPtr inbox = player->getInbox()->getOwner();
 				g_game.internalAddItem(inbox, letter, INDEX_WHEREEVER, FLAG_NOLIMIT);
 				house->setPayRentWarnings(house->getPayRentWarnings() + 1);
 			} else {

@@ -1878,14 +1878,14 @@ void ProtocolGame::sendContainer(uint8_t cid, const ContainerConstPtr& container
 
 	msg.addByte(cid);
 
-	if (container->getID() == ITEM_BROWSEFIELD)
+	if (container->getOwner()->getID() == ITEM_BROWSEFIELD)
 	{
 		msg.addItem(ITEM_BAG, 1);
 		msg.addString("Browse Field");
 	}
 	else
 	{
-		msg.addItem(container);
+		msg.addItem(container->getOwner());
 		msg.addString(container->getName());
 	}
 
@@ -3168,7 +3168,7 @@ void ProtocolGame::sendAddCreature(const CreatureConstPtr& creature, const Posit
 		sendInventoryItem(static_cast<slots_t>(i), player->getInventoryItem(static_cast<slots_t>(i)));
 	}
 
-	sendInventoryItem(CONST_SLOT_STORE_INBOX, player->getStoreInbox()->getItem());
+	sendInventoryItem(CONST_SLOT_STORE_INBOX, player->getStoreInbox()->getOwner());
 
 	const bool open = g_config.GetBoolean(ConfigManager::AUTO_OPEN_CONTAINERS);
     if (open)

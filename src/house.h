@@ -8,7 +8,7 @@
 #include <set>
 #include <unordered_set>
 
-#include "container.h"
+#include "itemcontainer.h"
 #include "position.h"
 
 class House;
@@ -233,7 +233,7 @@ class House
 		AccessList guestList;
 		AccessList subOwnerList;
 
-		Container transfer_container{ITEM_LOCKER1};
+		ItemPtr transferContainerItem;
 
 		HouseTileList houseTiles;
 		std::set<DoorPtr> doorSet;

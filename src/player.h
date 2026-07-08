@@ -5,22 +5,17 @@
 #define FS_PLAYER_H
 
 #include "creature.h"
-#include "container.h"
+#include "itemcontainer.h"
 #include "cylinder.h"
 #include "outfit.h"
 #include "enums.h"
 #include "vocation.h"
 #include "protocolgame.h"
 #include "party.h"
-#include "inbox.h"
-#include "depotchest.h"
-#include "depotlocker.h"
 #include "guild.h"
 #include "groups.h"
 #include "town.h"
 #include "mounts.h"
-#include "storeinbox.h"
-#include "rewardchest.h"
 #include "augments.h"
 #include "accountmanager.h"
 
@@ -184,9 +179,9 @@ class Player final : public Creature, public Cylinder
 		ContainerPtr		getContainerByID(uint8_t cid);
 		ItemPtr				getInventoryItem(slots_t slot) const;
 		ItemPtr				getInventoryItem(uint32_t slot) const;
-		DepotChestPtr		getDepotChest(uint32_t depotId, bool autoCreate);
-		DepotLockerPtr&		getDepotLocker();
-		RewardChestPtr&		getRewardChest();
+		ContainerPtr		getDepotChest(uint32_t depotId, bool autoCreate);
+		ContainerPtr&		getDepotLocker();
+		ContainerPtr&		getRewardChest();
 		ItemPtr				getWeapon(slots_t slot, bool ignoreAmmo) const;
 		ItemPtr				getWeapon(bool ignoreAmmo = false) const;
 		ItemPtr				getWriteItem(uint32_t& windowTextId, uint16_t& maxWriteLen);
@@ -198,8 +193,8 @@ class Player final : public Creature, public Cylinder
 		CylinderConstPtr	getCylinder() const override final	{ return static_shared_this<const Player>(); }
 		Guild_ptr			getGuild() const					{ return guild; }
 		GuildRank_ptr		getGuildRank() const				{ return guildRank; }
-		InboxPtr			getInbox() const					{ return inbox; }
-		StoreInboxPtr		getStoreInbox() const				{ return storeInbox; }
+		ContainerPtr		getInbox() const					{ return inbox; }
+		ContainerPtr		getStoreInbox() const				{ return storeInbox; }
 		PartyPtr			getParty() const					{ return (party == 0) ? nullptr : Party::get(party); }
 		BedItemPtr			getBedItem()						{ return bedItem; }
 		ItemPtr				getTradeItem()						{ return tradeItem; }
@@ -903,12 +898,12 @@ class Player final : public Creature, public Cylinder
 		std::string tempAccountName;
 		std::string tempPassword;
 
-		StoreInboxPtr storeInbox = nullptr;
-		RewardChestPtr rewardChest = nullptr;
-		DepotLockerPtr depotLocker = nullptr;
+		ContainerPtr storeInbox = nullptr;
+		ContainerPtr rewardChest = nullptr;
+		ContainerPtr depotLocker = nullptr;
 		NpcPtr shopOwner = nullptr;
 		PlayerPtr tradePartner = nullptr;
-		InboxPtr inbox;
+		ContainerPtr inbox;
 		ItemPtr tradeItem = nullptr;
 		ItemPtr writeItem = nullptr;
 		BedItemPtr bedItem = nullptr;
@@ -919,7 +914,7 @@ class Player final : public Creature, public Cylinder
 
 		ItemPtr		getCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr& mostDamageCreature) override;
 		ThingPtr	getThing(size_t index) override;
-		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags) override; // another optional ref wrapper
+		ThingPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags) override; // another optional ref wrapper
 
 		Group* group = nullptr;
 		House* editHouse = nullptr;
@@ -1043,7 +1038,7 @@ class Player final : public Creature, public Cylinder
 		std::unique_ptr<std::unordered_set<uint32_t>> attackedSet;
 		std::unique_ptr<std::unordered_set<uint32_t>> VIPList;
 		std::unique_ptr<std::map<uint8_t, OpenContainer>> openContainers;
-		std::unique_ptr<std::map<uint32_t, DepotChestPtr>> depotChests;
+		std::unique_ptr<std::map<uint32_t, ContainerPtr>> depotChests;
 		std::unique_ptr<std::vector<std::shared_ptr<BlackTek::Augment>>> augments;
 		std::unique_ptr<std::vector<OutfitEntry>> outfits;
 		ItemPtr inventory[CONST_SLOT_LAST + 1] = {};
@@ -1077,10 +1072,10 @@ class Player final : public Creature, public Cylinder
 			return *openContainers;
 		}
 
-		std::map<uint32_t, DepotChestPtr>& getDepotChests()
+		std::map<uint32_t, ContainerPtr>& getDepotChests()
 		{
 			if (not depotChests)
-				depotChests = std::make_unique<std::map<uint32_t, DepotChestPtr>>();
+				depotChests = std::make_unique<std::map<uint32_t, ContainerPtr>>();
 			return *depotChests;
 		}
 

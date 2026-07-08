@@ -1,5 +1,4 @@
-#ifndef BT_DECLARATIONS_H
-#define BT_DECLARATIONS_H
+#pragma once
 #include <memory>
 #include <vector>
 
@@ -38,10 +37,11 @@ using CylinderWeakPtr = std::weak_ptr<Cylinder>;
 class Item;
 using ItemPtr = std::shared_ptr<Item>;
 using ItemConstPtr = std::shared_ptr<const Item>;
+using ItemWeakPtr = std::weak_ptr<Item>;
 
-class Container;
-using ContainerPtr = std::shared_ptr<Container>;
-using ContainerConstPtr = std::shared_ptr<const Container>;
+class ItemContainer;
+using ContainerPtr = std::shared_ptr<ItemContainer>;
+using ContainerConstPtr = std::shared_ptr<const ItemContainer>;
 
 class Depot;
 using DepotPtr = std::shared_ptr<Depot>;
@@ -76,18 +76,6 @@ class HouseTile;
 using HouseTilePtr = std::shared_ptr<Tile>;
 using HouseTileConstPtr = std::shared_ptr<const Tile>;
 
-class DepotLocker;
-using DepotLockerPtr = std::shared_ptr<DepotLocker>;
-using DepotLockerConstPtr = std::shared_ptr<const DepotLocker>;
-
-class StoreInbox;
-using StoreInboxPtr = std::shared_ptr<StoreInbox>;
-using StoreInboxConstPtr = std::shared_ptr<const StoreInbox>;
-
-class RewardChest;
-using RewardChestPtr = std::shared_ptr<RewardChest>;
-using RewardChestConstPtr = std::shared_ptr<const RewardChest>;
-
 /// Object Containers
 class TileItemVector;
 using CreatureVector = std::vector<CreaturePtr>;
@@ -96,6 +84,3 @@ using TileItemsPtr = std::shared_ptr<TileItemVector>;
 using TileItemsConstPtr = std::shared_ptr<const TileItemVector>;
 using TileCreaturesPtr = std::shared_ptr<CreatureVector>;
 using TileCreaturesConstPtr = std::shared_ptr<const CreatureVector>;
-
-
-#endif
