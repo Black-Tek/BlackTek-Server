@@ -97,8 +97,8 @@ bool IOMapSerialize::saveHouseItems()
 bool IOMapSerialize::loadContainer(PropStream& propStream, const ContainerPtr& container)
 {
 	while (container->serializationCount > 0) {
-		if (!loadItem(propStream, container)) {
-			std::cout << "[Warning - IOMapSerialize::loadContainer] Unserialization error for container item: " << container->getID() << std::endl;
+		if (not loadItem(propStream, container->getOwner())) {
+			std::cout << "[Warning - IOMapSerialize::loadContainer] Unserialization error for container item: " << container->getOwner()->getID() << std::endl;
 			return false;
 		}
 		container->serializationCount--;
@@ -106,21 +106,24 @@ bool IOMapSerialize::loadContainer(PropStream& propStream, const ContainerPtr& c
 
 	uint8_t endAttr;
 	if (!propStream.read<uint8_t>(endAttr) || endAttr != 0) {
-		std::cout << "[Warning - IOMapSerialize::loadContainer] Unserialization error for container item: " << container->getID() << std::endl;
+		std::cout << "[Warning - IOMapSerialize::loadContainer] Unserialization error for container item: " << container->getOwner()->getID() << std::endl;
 		return false;
 	}
 	return true;
 }
 
-bool IOMapSerialize::loadItem(PropStream& propStream, const CylinderPtr& parent)
+bool IOMapSerialize::loadItem(PropStream& propStream, const ThingPtr& parent)
 {
 	uint16_t id;
 	if (!propStream.read<uint16_t>(id)) {
 		return false;
 	}
 
+	auto parentCylinder = parent->getCylinder();
+	auto parentContainer = parent->getContainer();
+
 	TilePtr tile = nullptr;
-	if (parent->getParent() == nullptr) {
+	if (not parentContainer) {
 		tile = parent->getTile();
 	}
 
@@ -134,7 +137,14 @@ bool IOMapSerialize::loadItem(PropStream& propStream, const CylinderPtr& parent)
 					return false;
 				}
 
-				parent->internalAddThing(item);
+				if (parentCylinder)
+				{
+					parentCylinder->internalAddThing(item);
+				}
+				else if (parentContainer)
+				{
+					parentContainer->internalAddThing(item);
+				}
 				item->startDecaying();
 			} else {
 				std::cout << "WARNING: Unserialization error in IOMapSerialize::loadItem()" << id << std::endl;
@@ -179,7 +189,8 @@ bool IOMapSerialize::loadItem(PropStream& propStream, const CylinderPtr& parent)
 					if (!loadContainer(propStream, container)) {
 						return false;
 					}
-				} else if (auto bedItem = std::dynamic_pointer_cast<BedItem>(dummy)) {
+				} else if (dummy->getItemSubType() == ItemSubType::BedItem) {
+				auto bedItem = std::static_pointer_cast<BedItem>(dummy);
 					uint32_t sleeperGUID = bedItem->getSleeper();
 					if (sleeperGUID != 0) {
 						g_game.removeBedSleeper(sleeperGUID);

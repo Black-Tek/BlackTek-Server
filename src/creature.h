@@ -16,7 +16,7 @@
 #include "pointbasedstat.h"
 
 class Map;
-using ConditionList = std::list<Condition*>;
+using ConditionList = std::list<ConditionHandle>;
 using CreatureEventList = std::list<CreatureEvent*>;
 using namespace Components::Skills;
 using namespace Components::Stats;
@@ -53,6 +53,14 @@ static constexpr int32_t EVENT_CREATURE_THINK_INTERVAL = 1000;
 static constexpr int32_t EVENT_CORO_TIMER_CYCLE = 50;
 static constexpr int32_t EVENT_CHECK_CREATURE_INTERVAL = 100;
 
+enum class CreatureSubType : uint8_t
+{
+	None,
+	Player,
+	Monster,
+	Npc
+};
+
 class FrozenPathingConditionCall
 {
 	public:
@@ -63,6 +71,8 @@ class FrozenPathingConditionCall
 
 		bool isInRange(const Position& startPos, const Position& testPos,
 		               const FindPathParams& fpp) const;
+
+		const Position& getTargetPos() const { return targetPos; }
 
 	private:
 		Position targetPos;
@@ -116,6 +126,10 @@ class Creature : virtual public Thing, public SharedObject
 	
 		virtual MonsterConstPtr getMonster() const {
 			return nullptr;
+		}
+
+		CreatureSubType getCreatureSubType() const {
+			return creature_subtype;
 		}
 
 		virtual const std::string& getRegisteredName() const = 0;
@@ -193,10 +207,6 @@ class Creature : virtual public Thing, public SharedObject
 		virtual bool canSeeGhostMode(const CreatureConstPtr&) const {
 			return false;
 		}
-
-		inline virtual bool isPlayer() const = 0;
-		inline virtual bool isMonster() const = 0;
-		inline virtual bool isNpc() const = 0;
 
 		int32_t getWalkDelay(Direction dir) const;
 		int32_t getWalkDelay() const;
@@ -357,7 +367,7 @@ class Creature : virtual public Thing, public SharedObject
 			return nullptr;
 		}
 
-		const std::list<CreaturePtr>& getSummons() const {
+		const gtl::flat_hash_set<CreaturePtr>& getSummons() const {
 			return summons;
 		}
 
@@ -381,11 +391,11 @@ class Creature : virtual public Thing, public SharedObject
 			return SPEECHBUBBLE_NONE;
 		}
 
-		bool addCondition(Condition* condition, bool force = false);
-		bool addCombatCondition(Condition* condition);
+		bool addCondition(ConditionHandle condition, bool force = false);
+		bool addCombatCondition(ConditionHandle condition);
 		void removeCondition(ConditionType_t type, ConditionId_t conditionId, bool force = false);
 		void removeCondition(ConditionType_t type, bool force = false);
-		void removeCondition(Condition* condition, bool force = false);
+		void removeCondition(const Condition* condition, bool force = false);
 		void removeCombatCondition(ConditionType_t type);
 		Condition* getCondition(ConditionType_t type) const;
 		Condition* getCondition(ConditionType_t type, ConditionId_t conditionId, uint32_t subId = 0) const;
@@ -421,6 +431,7 @@ class Creature : virtual public Thing, public SharedObject
 		}
 
 		CreatureVector getKillers() const;
+		size_t getKillerCount() const;
 		void onDeath();
 		virtual uint64_t getGainedExperience(const CreaturePtr& attacker) const;
 		void addDamagePoints(const CreaturePtr& attacker, int32_t damagePoints);
@@ -439,7 +450,7 @@ class Creature : virtual public Thing, public SharedObject
 		virtual bool onKilledCreature(const CreaturePtr& target, bool lastHit = true);
 		virtual void onGainExperience(uint64_t gainExp, const CreaturePtr& target);
 		virtual void onAttackedCreatureBlockHit(BlockType_t) {}
-		virtual void onBlockHit() {}
+		void onBlockHit() {}
 		virtual void onChangeZone(ZoneType_t zone);
 		virtual void onAttackedCreatureChangeZone(ZoneType_t zone);
 		virtual void onIdleStatus();
@@ -622,8 +633,6 @@ class Creature : virtual public Thing, public SharedObject
 			[[unlikely]] return nullptr;
 		}
 
-		int32_t getWalkCache(const Position& pos) const;
-
 		const Position& getLastPosition() const {
 			return lastPosition;
 		}
@@ -638,28 +647,36 @@ class Creature : virtual public Thing, public SharedObject
 
 		bool getPathTo(const Position& targetPos, std::vector<Direction>& dirList, const FindPathParams& fpp);
 		bool getPathTo(const Position& targetPos, std::vector<Direction>& dirList, int32_t minTargetDist, int32_t maxTargetDist, bool fullPathSearch = true, bool clearSight = true, int32_t maxSearchDist = 0);
+		CreatureEventList getCreatureEvents(CreatureEventType_t type) const;
+
+		[[nodiscard]] uint32_t get_defense_charges() const noexcept { return defense_charges; }
+		void set_defense_charges(uint32_t count) noexcept { defense_charges = count; }
+
+		[[nodiscard]] uint32_t get_armor_charges() const noexcept { return armor_charges; }
+		void set_armor_charges(uint32_t count) noexcept { armor_charges = count; }
+
+		[[nodiscard]] virtual uint32_t get_defense_charge_interval() const noexcept;
+
+		[[nodiscard]] virtual uint32_t get_defense_charges_cap() const noexcept;
+		[[nodiscard]] virtual uint32_t get_armor_charges_cap() const noexcept;
+
+		[[nodiscard]] virtual float get_defense_charge_cost_multiplier() const noexcept { return 1.0f; }
+		[[nodiscard]] virtual float get_armor_charge_cost_multiplier() const noexcept { return 1.0f; }
+
+		[[nodiscard]] bool can_use_defense() const noexcept { return canUseDefense; }
 
 	protected:
-		virtual bool useCacheMap() const {
-			return false;
-		}
-
 		struct CountBlock_t {
 			int32_t total;
 			int64_t ticks;
 		};
-
-		static constexpr int32_t mapWalkWidth = Map::maxViewportX * 2 + 1;
-		static constexpr int32_t mapWalkHeight = Map::maxViewportY * 2 + 1;
-		static constexpr int32_t maxWalkCacheWidth = (mapWalkWidth - 1) / 2;
-		static constexpr int32_t maxWalkCacheHeight = (mapWalkHeight - 1) / 2;
 
 		Position position;
 
 		using CountMap = std::map<uint32_t, CountBlock_t>;
 		CountMap damageMap;
 
-		std::list<CreaturePtr> summons;
+		gtl::flat_hash_set<CreaturePtr> summons;
 		CreatureEventList eventsList;
 		ConditionList conditions;
 
@@ -678,7 +695,8 @@ class Creature : virtual public Thing, public SharedObject
 		uint32_t eventWalk = 0;
 		uint32_t walkUpdateTicks = 0;
 		uint32_t lastHitCreatureId = 0;
-		uint32_t blockCount = 0;
+		uint32_t defense_charges = 0;
+		uint32_t armor_charges = 0;
 		uint32_t blockTicks = 0;
 		uint32_t lastStepCost = 1;
 		uint32_t baseSpeed = 220;
@@ -687,6 +705,7 @@ class Creature : virtual public Thing, public SharedObject
 		int32_t healthMax = 1000;
 		uint8_t drunkenness = 0;
 		uint8_t dodgeChance = 0;
+		CreatureSubType creature_subtype = CreatureSubType::None;
 
 		Outfit_t currentOutfit;
 		Outfit_t defaultOutfit;
@@ -697,9 +716,7 @@ class Creature : virtual public Thing, public SharedObject
 		Direction direction = DIRECTION_SOUTH;
 		Skulls_t skull = SKULL_NONE;
 
-		bool localMapCache[mapWalkHeight][mapWalkWidth] = {{ false }};
 		bool isInternalRemoved = false;
-		bool isMapLoaded = false;
 		bool isUpdatingPath = false;
 		bool creatureCheck = false;
 		bool inCheckCreaturesVector = false;
@@ -716,12 +733,7 @@ class Creature : virtual public Thing, public SharedObject
 		bool hasEventRegistered(CreatureEventType_t event) const {
 			return (0 != (scriptEventsBitField & (static_cast<uint32_t>(1) << event)));
 		}
-	
-		CreatureEventList getCreatureEvents(CreatureEventType_t type) const;
 
-		void updateMapCache();
-		void updateTileCache(TilePtr tile, int32_t dx, int32_t dy);
-		void updateTileCache(TilePtr tile, const Position& pos);
 		void onCreatureDisappear(const CreatureConstPtr& creature, bool isLogout);
 		virtual void doAttacking(uint32_t) {}
 	

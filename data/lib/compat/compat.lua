@@ -23,7 +23,7 @@ THING_TYPE_PLAYER = CREATURETYPE_PLAYER + 1
 THING_TYPE_MONSTER = CREATURETYPE_MONSTER + 1
 THING_TYPE_NPC = CREATURETYPE_NPC + 1
 
-COMBAT_POISONDAMAGE = COMBAT_EARTHDAMAGE
+COMBAT_POISONDAMAGE = Combat.DamageType.Earth
 CONDITION_EXHAUST = CONDITION_EXHAUST_WEAPON
 TALKTYPE_ORANGE_1 = TALKTYPE_MONSTER_SAY
 TALKTYPE_ORANGE_2 = TALKTYPE_MONSTER_YELL
@@ -301,8 +301,6 @@ end
 createCombatObject = Combat
 addCombatCondition = Combat.addCondition
 setCombatArea = Combat.setArea
-setCombatCallback = Combat.setCallback
-setCombatFormula = Combat.setFormula
 setCombatParam = Combat.setParameter
 
 Combat.setCondition = function(...)
@@ -318,9 +316,9 @@ end
 function doTargetCombatHealth(...) return doTargetCombat(...) end
 function doAreaCombatHealth(...) return doAreaCombat(...) end
 doCombatAreaHealth = doAreaCombatHealth
-function doTargetCombatMana(cid, target, min, max, effect) return doTargetCombat(cid, target, COMBAT_MANADRAIN, min, max, effect) end
+function doTargetCombatMana(cid, target, min, max, effect) return doTargetCombat(cid, target, Combat.DamageType.ManaDrain, min, max, effect) end
 doCombatAreaMana = doTargetCombatMana
-function doAreaCombatMana(cid, pos, area, min, max, effect) return doAreaCombat(cid, COMBAT_MANADRAIN, pos, area, min, max, effect) end
+function doAreaCombatMana(cid, pos, area, min, max, effect) return doAreaCombat(cid, Combat.DamageType.ManaDrain, pos, area, min, max, effect) end
 
 createConditionObject = Condition
 setConditionParam = Condition.setParameter
@@ -1441,18 +1439,18 @@ function getExperienceForLevel(level) return Game.getExperienceForLevel(level) e
 
 do
 	local combats = {
-		[COMBAT_PHYSICALDAMAGE] = 'physical',
-		[COMBAT_ENERGYDAMAGE] = 'energy',
-		[COMBAT_EARTHDAMAGE] = 'earth',
-		[COMBAT_FIREDAMAGE] = 'fire',
-		[COMBAT_UNDEFINEDDAMAGE] = 'undefined',
-		[COMBAT_LIFEDRAIN] = 'lifedrain',
-		[COMBAT_MANADRAIN] = 'manadrain',
-		[COMBAT_HEALING] = 'healing',
-		[COMBAT_DROWNDAMAGE] = 'drown',
-		[COMBAT_ICEDAMAGE] = 'ice',
-		[COMBAT_HOLYDAMAGE] = 'holy',
-		[COMBAT_DEATHDAMAGE] = 'death'
+		[Combat.DamageType.Physical] = 'physical',
+		[Combat.DamageType.Energy] = 'energy',
+		[Combat.DamageType.Earth] = 'earth',
+		[Combat.DamageType.Fire] = 'fire',
+		[Combat.DamageType.Undefined] = 'undefined',
+		[Combat.DamageType.LifeDrain] = 'lifedrain',
+		[Combat.DamageType.ManaDrain] = 'manadrain',
+		[Combat.DamageType.Healing] = 'healing',
+		[Combat.DamageType.Drown] = 'drown',
+		[Combat.DamageType.Ice] = 'ice',
+		[Combat.DamageType.Holy] = 'holy',
+		[Combat.DamageType.Death] = 'death'
 	}
 
 	function getCombatName(combat)

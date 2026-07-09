@@ -1,84 +1,84 @@
 local items = {
 	equipment = {
 		[2147] = { -- small ruby
-			[COMBAT_FIREDAMAGE] = {id = 2343, targetId = 2147} -- helmet of the ancients (enchanted)
+			[Combat.DamageType.Fire] = {id = 2343, targetId = 2147} -- helmet of the ancients (enchanted)
 		},
 		[2383] = { -- spike sword
-			[COMBAT_FIREDAMAGE] = {id = 7744}, [COMBAT_ICEDAMAGE] = {id = 7763},
-			[COMBAT_EARTHDAMAGE] = {id = 7854}, [COMBAT_ENERGYDAMAGE] = {id = 7869}
+			[Combat.DamageType.Fire] = {id = 7744}, [Combat.DamageType.Ice] = {id = 7763},
+			[Combat.DamageType.Earth] = {id = 7854}, [Combat.DamageType.Energy] = {id = 7869}
 		},
 		[2391] = { -- war hammer
-			[COMBAT_FIREDAMAGE] = {id = 7758}, [COMBAT_ICEDAMAGE] = {id = 7777},
-			[COMBAT_EARTHDAMAGE] = {id = 7868}, [COMBAT_ENERGYDAMAGE] = {id = 7883}
+			[Combat.DamageType.Fire] = {id = 7758}, [Combat.DamageType.Ice] = {id = 7777},
+			[Combat.DamageType.Earth] = {id = 7868}, [Combat.DamageType.Energy] = {id = 7883}
 		},
 		[2423] = { -- clerical mace
-			[COMBAT_FIREDAMAGE] = {id = 7754}, [COMBAT_ICEDAMAGE] = {id = 7773},
-			[COMBAT_EARTHDAMAGE] = {id = 7864}, [COMBAT_ENERGYDAMAGE] = {id = 7879}
+			[Combat.DamageType.Fire] = {id = 7754}, [Combat.DamageType.Ice] = {id = 7773},
+			[Combat.DamageType.Earth] = {id = 7864}, [Combat.DamageType.Energy] = {id = 7879}
 		},
 		[2429] = { -- barbarian axe
-			[COMBAT_FIREDAMAGE] = {id = 7749}, [COMBAT_ICEDAMAGE] = {id = 7768},
-			[COMBAT_EARTHDAMAGE] = {id = 7859}, [COMBAT_ENERGYDAMAGE] = {id = 7874}
+			[Combat.DamageType.Fire] = {id = 7749}, [Combat.DamageType.Ice] = {id = 7768},
+			[Combat.DamageType.Earth] = {id = 7859}, [Combat.DamageType.Energy] = {id = 7874}
 		},
 		[2430] = { -- knight axe
-			[COMBAT_FIREDAMAGE] = {id = 7750}, [COMBAT_ICEDAMAGE] = {id = 7769},
-			[COMBAT_EARTHDAMAGE] = {id = 7860}, [COMBAT_ENERGYDAMAGE] = {id = 7875}
+			[Combat.DamageType.Fire] = {id = 7750}, [Combat.DamageType.Ice] = {id = 7769},
+			[Combat.DamageType.Earth] = {id = 7860}, [Combat.DamageType.Energy] = {id = 7875}
 		},
 		[2445] = { -- crystal mace
-			[COMBAT_FIREDAMAGE] = {id = 7755}, [COMBAT_ICEDAMAGE] = {id = 7774},
-			[COMBAT_EARTHDAMAGE] = {id = 7865}, [COMBAT_ENERGYDAMAGE] = {id = 7880}
+			[Combat.DamageType.Fire] = {id = 7755}, [Combat.DamageType.Ice] = {id = 7774},
+			[Combat.DamageType.Earth] = {id = 7865}, [Combat.DamageType.Energy] = {id = 7880}
 		},
 		[2454] = { -- war axe
-			[COMBAT_FIREDAMAGE] = {id = 7753}, [COMBAT_ICEDAMAGE] = {id = 7772},
-			[COMBAT_EARTHDAMAGE] = {id = 7863}, [COMBAT_ENERGYDAMAGE] = {id = 7878}
+			[Combat.DamageType.Fire] = {id = 7753}, [Combat.DamageType.Ice] = {id = 7772},
+			[Combat.DamageType.Earth] = {id = 7863}, [Combat.DamageType.Energy] = {id = 7878}
 		},
 		[7380] = { -- headchopper
-			[COMBAT_FIREDAMAGE] = {id = 7752}, [COMBAT_ICEDAMAGE] = {id = 7771},
-			[COMBAT_EARTHDAMAGE] = {id = 7862}, [COMBAT_ENERGYDAMAGE] = {id = 7877}
+			[Combat.DamageType.Fire] = {id = 7752}, [Combat.DamageType.Ice] = {id = 7771},
+			[Combat.DamageType.Earth] = {id = 7862}, [Combat.DamageType.Energy] = {id = 7877}
 		},
 		[7383] = { -- relic sword
-			[COMBAT_FIREDAMAGE] = {id = 7745}, [COMBAT_ICEDAMAGE] = {id = 7764},
-			[COMBAT_EARTHDAMAGE] = {id = 7855}, [COMBAT_ENERGYDAMAGE] = {id = 7870}
+			[Combat.DamageType.Fire] = {id = 7745}, [Combat.DamageType.Ice] = {id = 7764},
+			[Combat.DamageType.Earth] = {id = 7855}, [Combat.DamageType.Energy] = {id = 7870}
 		},
 		[7384] = { -- mystic blade
-			[COMBAT_FIREDAMAGE] = {id = 7746}, [COMBAT_ICEDAMAGE] = {id = 7765},
-			[COMBAT_EARTHDAMAGE] = {id = 7856}, [COMBAT_ENERGYDAMAGE] = {id = 7871}
+			[Combat.DamageType.Fire] = {id = 7746}, [Combat.DamageType.Ice] = {id = 7765},
+			[Combat.DamageType.Earth] = {id = 7856}, [Combat.DamageType.Energy] = {id = 7871}
 		},
 		[7389] = { -- heroic axe
-			[COMBAT_FIREDAMAGE] = {id = 7751}, [COMBAT_ICEDAMAGE] = {id = 7770},
-			[COMBAT_EARTHDAMAGE] = {id = 7861}, [COMBAT_ENERGYDAMAGE] = {id = 7876}
+			[Combat.DamageType.Fire] = {id = 7751}, [Combat.DamageType.Ice] = {id = 7770},
+			[Combat.DamageType.Earth] = {id = 7861}, [Combat.DamageType.Energy] = {id = 7876}
 		},
 		[7392] = { -- orcish maul
-			[COMBAT_FIREDAMAGE] = {id = 7757}, [COMBAT_ICEDAMAGE] = {id = 7776},
-			[COMBAT_EARTHDAMAGE] = {id = 7867}, [COMBAT_ENERGYDAMAGE] = {id = 7882}
+			[Combat.DamageType.Fire] = {id = 7757}, [Combat.DamageType.Ice] = {id = 7776},
+			[Combat.DamageType.Earth] = {id = 7867}, [Combat.DamageType.Energy] = {id = 7882}
 		},
 		[7402] = { -- dragon slayer
-			[COMBAT_FIREDAMAGE] = {id = 7748}, [COMBAT_ICEDAMAGE] = {id = 7767},
-			[COMBAT_EARTHDAMAGE] = {id = 7858}, [COMBAT_ENERGYDAMAGE] = {id = 7873}
+			[Combat.DamageType.Fire] = {id = 7748}, [Combat.DamageType.Ice] = {id = 7767},
+			[Combat.DamageType.Earth] = {id = 7858}, [Combat.DamageType.Energy] = {id = 7873}
 		},
 		[7406] = { -- blacksteel sword
-			[COMBAT_FIREDAMAGE] = {id = 7747}, [COMBAT_ICEDAMAGE] = {id = 7766},
-			[COMBAT_EARTHDAMAGE] = {id = 7857}, [COMBAT_ENERGYDAMAGE] = {id = 7872}
+			[Combat.DamageType.Fire] = {id = 7747}, [Combat.DamageType.Ice] = {id = 7766},
+			[Combat.DamageType.Earth] = {id = 7857}, [Combat.DamageType.Energy] = {id = 7872}
 		},
 		[7415] = { -- cranial basher
-			[COMBAT_FIREDAMAGE] = {id = 7756}, [COMBAT_ICEDAMAGE] = {id = 7775},
-			[COMBAT_EARTHDAMAGE] = {id = 7866}, [COMBAT_ENERGYDAMAGE] = {id = 7881}
+			[Combat.DamageType.Fire] = {id = 7756}, [Combat.DamageType.Ice] = {id = 7775},
+			[Combat.DamageType.Earth] = {id = 7866}, [Combat.DamageType.Energy] = {id = 7881}
 		},
 		[8905] = { -- rainbow shield
-			[COMBAT_FIREDAMAGE] = {id = 8906}, [COMBAT_ICEDAMAGE] = {id = 8907},
-			[COMBAT_EARTHDAMAGE] = {id = 8909}, [COMBAT_ENERGYDAMAGE] = {id = 8908}
+			[Combat.DamageType.Fire] = {id = 8906}, [Combat.DamageType.Ice] = {id = 8907},
+			[Combat.DamageType.Earth] = {id = 8909}, [Combat.DamageType.Energy] = {id = 8908}
 		},
 		[9949] = { -- dracoyle statue
-			[COMBAT_EARTHDAMAGE] = {id = 9948} -- dracoyle statue (enchanted)
+			[Combat.DamageType.Earth] = {id = 9948} -- dracoyle statue (enchanted)
 		},
 		[9954] = { -- dracoyle statue
-			[COMBAT_EARTHDAMAGE] = {id = 9953} -- dracoyle statue (enchanted)
+			[Combat.DamageType.Earth] = {id = 9953} -- dracoyle statue (enchanted)
 		},
 		[10022] = { -- worn firewalker boots
-			[COMBAT_FIREDAMAGE] = {id = 9933, say = {text = "Take the boots off first."}},
+			[Combat.DamageType.Fire] = {id = 9933, say = {text = "Take the boots off first."}},
 			slot = {type = CONST_SLOT_FEET, check = true}
 		},
 		[24716] = { -- werewolf amulet
-			[COMBAT_NONE] = {
+			[Combat.DamageType.None] = {
 				id = 24717,
 				effects = {failure = CONST_ME_POFF, success = CONST_ME_THUNDER},
 				message = {text = "The amulet cannot be enchanted while worn."}
@@ -86,7 +86,7 @@ local items = {
 			slot = {type = CONST_SLOT_NECKLACE, check = true}
 		},
 		[24718] = { -- werewolf helmet
-			[COMBAT_NONE] = {
+			[Combat.DamageType.None] = {
 				id = {
 					[SKILL_CLUB] = {id = 24783},
 					[SKILL_SWORD] = {id = 24783},
@@ -111,12 +111,12 @@ local items = {
 		soul = 2, mana = 300, effect = CONST_ME_HOLYDAMAGE
 	},
 
-	[2342] = {combatType = COMBAT_FIREDAMAGE, targetId = 2147}, -- helmet of the ancients
-	[7759] = {combatType = COMBAT_ICEDAMAGE}, -- small enchanted sapphire
-	[7760] = {combatType = COMBAT_FIREDAMAGE}, -- small enchanted ruby
-	[7761] = {combatType = COMBAT_EARTHDAMAGE}, -- small enchanted emerald
-	[7762] = {combatType = COMBAT_ENERGYDAMAGE}, -- small enchanted amethyst
-	[24739] = {combatType = COMBAT_NONE} -- moonlight crystals
+	[2342] = {combatType = Combat.DamageType.Fire, targetId = 2147}, -- helmet of the ancients
+	[7759] = {combatType = Combat.DamageType.Ice}, -- small enchanted sapphire
+	[7760] = {combatType = Combat.DamageType.Fire}, -- small enchanted ruby
+	[7761] = {combatType = Combat.DamageType.Earth}, -- small enchanted emerald
+	[7762] = {combatType = Combat.DamageType.Energy}, -- small enchanted amethyst
+	[24739] = {combatType = Combat.DamageType.None} -- moonlight crystals
 }
 
 function onUse(player, item, fromPosition, target, toPosition, isHotkey)

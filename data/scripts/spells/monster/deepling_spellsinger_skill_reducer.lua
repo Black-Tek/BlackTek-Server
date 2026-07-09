@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_STUN)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_EXPLOSION)
-combat:setArea(createCombatArea(AREA_BEAM1))
+local combat = Combat(MonsterCombats.DeeplingSpellsingerSkillReducer)
 
 local parameters = {
 	{key = CONDITION_PARAM_TICKS, value = 8 * 1000},

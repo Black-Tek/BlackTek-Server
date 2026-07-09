@@ -151,7 +151,6 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_BLOCKING,
 	ITEM_PARSE_ALLOWDISTREAD,
 	ITEM_PARSE_STOREITEM,
-	ITEM_PARSE_IMBUEMENT_SLOT,
 	ITEM_PARSE_WORTH,
 	ITEM_PARSE_AUGMENT,
 	ITEM_PARSE_RESUMABLE
@@ -356,7 +355,6 @@ class ItemType
 		uint16_t equipSlot = SLOTP_HAND;
 		uint16_t speed = 0;
 		uint16_t wareId = 0;
-		uint16_t imbuementslots = 0;
 
 		MagicEffectClasses magicEffect = CONST_ME_NONE;
 		Direction bedPartnerDir = DIRECTION_NONE;

@@ -1,0 +1,50 @@
+[logging]
+log_dir          = "logs"
+timestamp_format = "%Y-%m-%d %H:%M:%S"
+retention_days   = 7
+dedup_window_ms  = 1000
+
+[logging.channels.system]
+enabled     = true
+min_level   = "info"
+print_level = "info"
+
+[logging.channels.network]
+enabled     = true
+min_level   = "warning"
+print_level = "error"
+
+[logging.channels.database]
+enabled     = true
+min_level   = "warning"
+print_level = "error"
+
+[logging.channels.combat]
+enabled     = true
+min_level   = "info"
+print_level = "warning"
+
+[logging.channels.script]
+enabled     = true
+min_level   = "debug"
+print_level = "error"
+
+[logging.channels.map]
+enabled     = true
+min_level   = "info"
+print_level = "warning"
+
+[logging.channels.player]
+enabled     = true
+min_level   = "info"
+print_level = "warning"
+
+[logging.channels.admin]
+enabled     = true
+min_level   = "info"
+print_level = "info"
+
+[logging.channels.security]
+enabled     = true
+min_level   = "warning"
+print_level = "warning"

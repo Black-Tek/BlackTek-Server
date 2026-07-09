@@ -10,6 +10,8 @@
 #include "spectators.h"
 #include "declarations.h"
 
+#include <optional>
+
 enum tileflags_t : uint32_t {
 	TILESTATE_NONE = 0,
 
@@ -139,12 +141,16 @@ class Tile : public Cylinder, public SharedObject
 		Tile(uint16_t x, uint16_t y, uint8_t z) : tilePos(x, y, z) {
 			items = std::make_shared<TileItemVector>();
 			creatures = std::make_shared<CreatureVector>();
+			thing_subtype = ThingSubType::Tile;
+			cylinder_subtype = CylinderSubType::Tile;
 		}
 
 		Tile(uint16_t x, uint16_t y, uint8_t z, House* house) : tilePos(x, y, z) {
 			items = std::make_shared<TileItemVector>();
 			creatures = std::make_shared<CreatureVector>();
 			this->house = house;
+			thing_subtype = ThingSubType::Tile;
+			cylinder_subtype = CylinderSubType::Tile;
 		}
 
 		~Tile() {
@@ -214,7 +220,10 @@ class Tile : public Cylinder, public SharedObject
 		uint32_t getTopItemCount() const;
 		uint32_t getDownItemCount() const;
 
-		bool hasProperty(ITEMPROPERTY prop) const;
+		bool hasProperty(ITEMPROPERTY prop) const {
+			return (itemProperties >> static_cast<uint32_t>(prop)) & 1u;
+		}
+
 		bool hasProperty(const ItemPtr& exclude, ITEMPROPERTY prop) const;
 
 		bool hasFlag(uint32_t flag) const {
@@ -260,9 +269,8 @@ class Tile : public Cylinder, public SharedObject
 		ReturnValue queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count,
 				uint32_t& maxQueryCount, uint32_t flags) override final;
 		ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
-		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags) override; // another optional wrap ref
+		ThingPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags) override; // another optional wrap ref
 
-		ReturnValue queryAdd(CreaturePtr creature, uint32_t flags);
 		ReturnValue queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover);
 		ReturnValue queryAdd(PlayerPtr player, uint32_t flags);
 		ReturnValue queryAdd(MonsterPtr monster, uint32_t flags);
@@ -312,6 +320,14 @@ class Tile : public Cylinder, public SharedObject
 			return static_shared_this<Tile>();
 		}
 
+		CylinderPtr getCylinder() override final {
+			return static_shared_this<Tile>();
+		}
+
+		CylinderConstPtr getCylinder() const override final {
+			return static_shared_this<const Tile>();
+		}
+
 		TileConstPtr getTile() const final {
 			return static_shared_this<Tile>();
 		}
@@ -323,10 +339,14 @@ class Tile : public Cylinder, public SharedObject
 		void updateHouse(const ItemPtr& item);
 
 	private:
+        std::optional<ReturnValue> queryAddRestrictions(uint32_t flags) const;
+
 		void onAddTileItem(ItemPtr& item);
 		void onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType);
 		void onRemoveTileItem(const SpectatorVec& spectators, const std::vector<int32_t>& oldStackPosVector, const ItemPtr& item);
 		void onUpdateTile(const SpectatorVec& spectators);
+		void applyItemProperties(const ItemConstPtr& item);
+		void recalculateItemProperties();
 		void setTileFlags(const ItemConstPtr& item);
 		void resetTileFlags(const ItemPtr& item);
 
@@ -334,6 +354,7 @@ class Tile : public Cylinder, public SharedObject
 		ItemPtr ground = nullptr;
 		Position tilePos;
 		uint32_t flags = 0;
+		uint32_t itemProperties = 0;
 		TileItemsPtr items;
 		TileCreaturesPtr creatures;
 };

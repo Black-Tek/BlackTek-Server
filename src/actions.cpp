@@ -6,11 +6,10 @@
 #include "actions.h"
 #include "bed.h"
 #include "configmanager.h"
-#include "container.h"
+#include "itemcontainer.h"
 #include "game.h"
 #include "pugicast.h"
 #include "spells.h"
-#include "rewardchest.h"
 #include <fmt/format.h>
 
 extern Game g_game;
@@ -332,7 +331,7 @@ ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint
 
 		if (bed->trySleep(player)) {
 			player->setBedItem(bed);
-			if (g_config.getBoolean(ConfigManager::BED_OFFLINE_TRAINING)) {
+			if (g_config.GetBoolean(ConfigManager::BED_OFFLINE_TRAINING)) {
 				g_game.sendOfflineTrainingDialog(player);
 			}
 			else {
@@ -350,15 +349,15 @@ ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint
 		ContainerPtr openContainer;
 
 		//depot container
-		if (auto depot = container->getDepotLocker()) {
-			DepotLockerPtr& myDepotLocker = player->getDepotLocker();
-			myDepotLocker->setParent(depot->getParent());
+		if (container->isDepotLocker()) {
+			ContainerPtr& myDepotLocker = player->getDepotLocker();
+			myDepotLocker->getOwner()->setParent(container->getOwner()->getParent());
 			openContainer = myDepotLocker;
 		} else {
 			openContainer = container;
 		}
 
-		uint32_t corpseOwner = container->getCorpseOwner();
+		uint32_t corpseOwner = container->getOwner()->getCorpseOwner();
 		if (container->isRewardCorpse()) {
 			auto& myRewardChest = player->getRewardChest();
 
@@ -385,9 +384,9 @@ ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint
 		}
 
 		// Reward chest
-		if (auto rewardchest = container->getRewardChest()) {
+		if (container->isRewardChest()) {
 			auto& myRewardChest = player->getRewardChest();
-			myRewardChest->setParent(rewardchest->getParent());
+			myRewardChest->getOwner()->setParent(container->getOwner()->getParent());
 
 			if (myRewardChest->getItemList().empty()) {
 				return RETURNVALUE_REWARDCHESTEMPTY;
@@ -397,20 +396,20 @@ ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint
 				if (rewardItem->getID() == ITEM_REWARD_CONTAINER) {
 					auto rewardContainer = rewardItem->getContainer();
 					if (rewardContainer) {
-						rewardContainer->setParent(myRewardChest);
+						rewardContainer->getOwner()->setContainerParent(myRewardChest->getOwner());
 					}
 				}
 			}
 			openContainer = myRewardChest;
 		}
-		else if (item->getID() == ITEM_REWARD_CONTAINER)  {				
+		else if (item->getID() == ITEM_REWARD_CONTAINER)  {
 			auto& myRewardChest = player->getRewardChest();
 			int64_t rewardDate = item->getIntAttr(ITEM_ATTRIBUTE_DATE);
 
 			for (auto rewardItem : myRewardChest->getItemList()) {
 				if (rewardItem->getID() == ITEM_REWARD_CONTAINER && rewardItem->getIntAttr(ITEM_ATTRIBUTE_DATE) == rewardDate && rewardItem->getIntAttr(ITEM_ATTRIBUTE_REWARDID) == item->getIntAttr(ITEM_ATTRIBUTE_REWARDID)) {
 					if (const auto rewardContainer = rewardItem->getContainer()) {
-						rewardContainer->setParent(container->getRealParent());
+						rewardContainer->getOwner()->setContainerParent(myRewardChest->getOwner());
 						openContainer = rewardContainer;
 					}
 					break;
@@ -419,7 +418,7 @@ ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint
 		}
 
 		//open/close container
-		int32_t oldContainerId = player->getContainerID(std::static_pointer_cast<const Container>(openContainer));
+		int32_t oldContainerId = player->getContainerID(std::static_pointer_cast<const ItemContainer>(openContainer));
 		if (oldContainerId == -1) {
 			player->addContainer(index, openContainer);
 			player->onSendContainer(openContainer);
@@ -462,7 +461,7 @@ static void showUseHotkeyMessage(const PlayerPtr& player, const ItemConstPtr& it
 
 bool Actions::useItem(PlayerPtr player, const Position& pos, uint8_t index, const ItemPtr& item, bool isHotkey)
 {
-	player->setNextAction(OTSYS_TIME() + g_config.getNumber(ConfigManager::ACTIONS_DELAY_INTERVAL));
+	player->setNextAction(OTSYS_TIME() + g_config.GetNumber(ConfigManager::ACTIONS_DELAY_INTERVAL));
 
 	if (!item) {
 		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
@@ -474,7 +473,7 @@ bool Actions::useItem(PlayerPtr player, const Position& pos, uint8_t index, cons
 		showUseHotkeyMessage(player, item, player->getItemTypeCount(item->getID(), subType != item->getItemCount() ? subType : -1));
 	}
 
-	if (g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
+	if (g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
 		if (auto ground_tile = item->getTile(); ground_tile && ground_tile->isHouseTile()) {
 			auto topParent = item->getTopParent();
 			if (!topParent || (!topParent->getCreature() && !ground_tile->getHouse()->isInvited(player))) {
@@ -501,7 +500,7 @@ bool Actions::useItem(PlayerPtr player, const Position& pos, uint8_t index, cons
 bool Actions::useItemEx(const PlayerPtr& player, const Position& fromPos, const Position& toPos,
                         uint8_t toStackPos, const ItemPtr& item, bool isHotkey, const CreaturePtr& creature/* = nullptr*/)
 {
-	player->setNextAction(OTSYS_TIME() + g_config.getNumber(ConfigManager::EX_ACTIONS_DELAY_INTERVAL));
+	player->setNextAction(OTSYS_TIME() + g_config.GetNumber(ConfigManager::EX_ACTIONS_DELAY_INTERVAL));
 
 	Action* action = getAction(item);
 	if (!action) {
@@ -520,7 +519,7 @@ bool Actions::useItemEx(const PlayerPtr& player, const Position& fromPos, const 
 		showUseHotkeyMessage(player, item, player->getItemTypeCount(item->getID(), subType != item->getItemCount() ? subType : -1));
 	}
 
-	if (g_config.getBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
+	if (g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
 		if (item->getTile()->isHouseTile()) {
 			if (!item->getTopParent()->getCreature() && !item->getTile()->getHouse()->isInvited(player)) {
 				player->sendCancelMessage(RETURNVALUE_PLAYERISNOTINVITED);

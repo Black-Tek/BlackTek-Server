@@ -29,6 +29,23 @@ enum cylinderlink_t {
 	LINK_NEAR,
 };
 
+enum class CylinderSubType : uint8_t
+{
+	None,
+	Virtual,
+	Tile,
+	Container,
+	DepotChest,
+	DepotLocker,
+	Inbox,
+	StoreInbox,
+	RewardChest,
+	Player,
+	Teleport,
+	TrashHolder,
+	Mailbox,
+};
+
 class Cylinder : virtual public Thing
 {
 	public:
@@ -78,7 +95,7 @@ class Cylinder : virtual public Thing
 			* this method can modify the flags
 		  * \returns Cylinder returns the destination cylinder
 		  */
-		virtual CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, // maybe make optional here?
+		virtual ThingPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, // maybe make optional here?
 				uint32_t& flags) = 0;
 
 		/**
@@ -186,6 +203,13 @@ class Cylinder : virtual public Thing
 		virtual void internalAddThing(uint32_t index, ThingPtr thing);
 
 		virtual void startDecaying();
+
+	CylinderSubType getCylinderSubType() const {
+		return cylinder_subtype;
+	}
+
+	protected:
+		CylinderSubType cylinder_subtype = CylinderSubType::None;
 };
 
 class VirtualCylinder;
@@ -196,6 +220,12 @@ class VirtualCylinder final : public Cylinder
 {
 	public:
 		static VirtualCylinderPtr virtualCylinder;
+
+		VirtualCylinder()
+		{
+			thing_subtype = ThingSubType::Virtual;
+			cylinder_subtype = CylinderSubType::Virtual;
+		}
 
 		virtual ReturnValue queryAdd(int32_t, const ThingPtr&, uint32_t, uint32_t, CreaturePtr = nullptr) override {
 			return RETURNVALUE_NOTPOSSIBLE;
@@ -209,7 +239,7 @@ class VirtualCylinder final : public Cylinder
 			return RETURNVALUE_NOTPOSSIBLE;
 		}
 	
-		virtual CylinderPtr queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&) override {
+		virtual ThingPtr queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&) override {
 			return nullptr;
 		}
 

@@ -14,7 +14,7 @@ project "Black-Tek-Server"
     objdir "build/%{cfg.buildcfg}/obj"
     location ""
     files { "src/**.cpp", "src/**.h" }
-    flags { "MultiProcessorCompile" }
+    multiprocessorcompile "On"
     enableunitybuild "On"
     intrinsics "On"
     editandcontinue "Off"
@@ -66,13 +66,15 @@ project "Black-Tek-Server"
     filter "configurations:Debug"
         defines { "DEBUG" }
         runtime "Debug"
+        staticruntime "Off"
         symbols "On"
         optimize "Debug"
-        flags { "NoIncrementalLink" }
+        incrementallink "Off"
 
     filter "configurations:Release"
         defines { "NDEBUG" }
         runtime "Release"
+        staticruntime "On"
         symbols "Off"
         optimize "Full"
 
@@ -100,6 +102,16 @@ project "Black-Tek-Server"
         vsprops { VcpkgEnableManifest = "true" }
         files {"resources.rc", "blackteklogo.ico"}
         symbolspath "$(OutDir)$(TargetName).pdb"
+        pchheader "otpch.h"
+        pchsource "src/otpch.cpp"
+        enablepch "On"
+
+    filter { "system:windows", "configurations:Release" }
+        vsprops { VcpkgTriplet = "x64-windows-static" }
+        links { "Crypt32", "Secur32", "Iphlpapi", "Shlwapi" }
+
+    filter { "system:windows", "configurations:Debug" }
+        vsprops { VcpkgTriplet = "x64-windows" }
 
     -- Architecture-specific settings
     filter "architecture:x86_64"

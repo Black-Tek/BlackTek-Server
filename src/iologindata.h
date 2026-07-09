@@ -26,9 +26,9 @@ class IOLoginData
 		static void updateOnlineStatus(uint32_t guid, bool login);
 		static bool preloadPlayer(const PlayerPtr& player);
 
-		static bool loadPlayerById(const PlayerPtr& player, uint32_t id);
+		static bool loadPlayerById(const PlayerPtr& player, uint32_t id, std::vector<ConditionHandle>* outConditions = nullptr);
 		static bool loadPlayerByName(const PlayerPtr& player, const std::string& name);
-		static bool loadPlayer(const PlayerPtr& player, DBResult_ptr result);
+		static bool loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::vector<ConditionHandle>* outConditions = nullptr);
 		static bool savePlayer(const PlayerPtr& player);
 		static uint32_t getGuidByName(const std::string& name);
 		static bool getGuidByNameEx(uint32_t& guid, bool& specialVip, std::string& name);
@@ -54,7 +54,7 @@ class IOLoginData
 		static void loadItems(ItemMap& itemMap, const DBResult_ptr& result);
 		static bool saveItems(const PlayerConstPtr& player, const ItemBlockList& itemList, DBInsert& query_insert, PropWriteStream& propWriteStream);
 		static bool saveAugments(const PlayerConstPtr& player, DBInsert& query_insert, PropWriteStream& augmentStream);
-		static void loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augmentList, const DBResult_ptr& result);
+		static void loadPlayerAugments(std::vector<std::shared_ptr<BlackTek::Augment>>& augmentList, const DBResult_ptr& result);
 		static void serializeCustomSkills(const PlayerConstPtr player, DBInsert query, PropWriteStream& binary_stream);
 		static void serializeCustomStats(PlayerPtr player, DBInsert query, PropWriteStream& binary_stream);
 		static void serializeCustomStats(ItemPtr item, DBInsert query, PropWriteStream& binary_stream);

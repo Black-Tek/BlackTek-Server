@@ -2,14 +2,18 @@ local ATTACK_MOD = 1
 local DEFENSE_MOD = 2
 
 local attackModifierNames = {
-	[ATTACK_MODIFIER_NONE] = "none",
-	[ATTACK_MODIFIER_LIFESTEAL] = "lifesteal",
-	[ATTACK_MODIFIER_MANASTEAL] = "manasteal",
+	[ATTACK_MODIFIER_NONE]         = "none",
+	[ATTACK_MODIFIER_LIFESTEAL]    = "lifesteal",
+	[ATTACK_MODIFIER_MANASTEAL]    = "manasteal",
 	[ATTACK_MODIFIER_STAMINASTEAL] = "staminasteal",
-	[ATTACK_MODIFIER_SOULSTEAL] = "soulsteal",
-	[ATTACK_MODIFIER_CRITICAL] = "critical hit",
-	[ATTACK_MODIFIER_PIERCING] = "piercing",
-	[ATTACK_MODIFIER_CONVERSION] = "damage conversion"
+	[ATTACK_MODIFIER_SOULSTEAL]    = "soulsteal",
+	[ATTACK_MODIFIER_CRITICAL]     = "critical hit",
+	[ATTACK_MODIFIER_PIERCING]     = "piercing",
+	[ATTACK_MODIFIER_CONVERSION]   = "damage conversion",
+	[ATTACK_MODIFIER_REGENERATION]  = "regeneration",
+	[ATTACK_MODIFIER_ATTUNEMENT]    = "attunement",
+	[ATTACK_MODIFIER_VIGOR]         = "vigor",
+	[ATTACK_MODIFIER_TRANSCENDENCE] = "transcendence"
 }
 
 local defenseModifierNames = {
@@ -27,27 +31,49 @@ local defenseModifierNames = {
 }
 
 local combatTypeNames = {
-	[COMBAT_NONE] = "all",
-	[COMBAT_PHYSICALDAMAGE] = "physical",
-	[COMBAT_ENERGYDAMAGE] = "energy",
-	[COMBAT_EARTHDAMAGE] = "earth",
-	[COMBAT_FIREDAMAGE] = "fire",
-	[COMBAT_UNDEFINEDDAMAGE] = "undefined",
-	[COMBAT_LIFEDRAIN] = "lifedrain",
-	[COMBAT_MANADRAIN] = "manadrain",
-	[COMBAT_HEALING] = "healing",
-	[COMBAT_DROWNDAMAGE] = "drown",
-	[COMBAT_ICEDAMAGE] = "ice",
-	[COMBAT_HOLYDAMAGE] = "holy",
-	[COMBAT_DEATHDAMAGE] = "death"
+	[Combat.DamageType.None] = "all",
+	[Combat.DamageType.Physical] = "physical",
+	[Combat.DamageType.Energy] = "energy",
+	[Combat.DamageType.Earth] = "earth",
+	[Combat.DamageType.Fire] = "fire",
+	[Combat.DamageType.Undefined] = "undefined",
+	[Combat.DamageType.LifeDrain] = "lifedrain",
+	[Combat.DamageType.ManaDrain] = "manadrain",
+	[Combat.DamageType.Healing] = "healing",
+	[Combat.DamageType.Drown] = "drown",
+	[Combat.DamageType.Ice] = "ice",
+	[Combat.DamageType.Holy] = "holy",
+	[Combat.DamageType.Death] = "death"
 }
 
 local originTypeNames = {
-	[ORIGIN_NONE] = "all",
-	[ORIGIN_CONDITION] = "conditions",
-	[ORIGIN_SPELL] = "spells",
-	[ORIGIN_MELEE] = "melee",
-	[ORIGIN_RANGED] = "ranged"
+	[Combat.Origin.None]         = "all",
+	[Combat.Origin.Condition]    = "conditions",
+	[Combat.Origin.Spell]        = "spells",
+	[Combat.Origin.Melee]        = "melee",
+	[Combat.Origin.Ranged]       = "ranged",
+	[Combat.Origin.Fist]         = "fist",
+	[Combat.Origin.Sword]        = "sword",
+	[Combat.Origin.Axe]          = "axe",
+	[Combat.Origin.Club]         = "club",
+	[Combat.Origin.Wand]         = "wand",
+	[Combat.Origin.Rod]          = "rod",
+	[Combat.Origin.Bow]          = "bow",
+	[Combat.Origin.Crossbow]     = "crossbow",
+	[Combat.Origin.Throwable]    = "throwable",
+	[Combat.Origin.Augment]      = "augment",
+	[Combat.Origin.Absorb]       = "absorb",
+	[Combat.Origin.Restore]      = "restore",
+	[Combat.Origin.Replenish]    = "replenish",
+	[Combat.Origin.Revive]       = "revive",
+	[Combat.Origin.Reflect]      = "reflect",
+	[Combat.Origin.Deflect]      = "deflect",
+	[Combat.Origin.Ricochet]     = "ricochet",
+	[Combat.Origin.Piercing]     = "piercing",
+	[Combat.Origin.LifeSteal]    = "lifesteal",
+	[Combat.Origin.ManaSteal]    = "manasteal",
+	[Combat.Origin.StaminaSteal] = "staminasteal",
+	[Combat.Origin.SoulSteal]    = "soulsteal"
 }
 
 local function getModifierGroupKey(modifier)
@@ -145,7 +171,7 @@ local function buildGroupedModifierLines(modifiers, stance)
 			table.insert(parts, string.format("[%d%% chance]", chance))
 		end
 
-		if originType ~= ORIGIN_NONE then
+		if originType ~= Combat.Origin.None then
 			local originName = originTypeNames[originType] or "unknown"
 			table.insert(parts, string.format("from %s", originName))
 		end
@@ -156,7 +182,7 @@ local function buildGroupedModifierLines(modifiers, stance)
 
 		if modType == ATTACK_MODIFIER_CONVERSION or modType == DEFENSE_MODIFIER_REFORM then
 			local conversionType = modifier:getConversion()
-			if conversionType and conversionType ~= COMBAT_NONE then
+			if conversionType and conversionType ~= Combat.DamageType.None then
 				local conversionName = combatTypeNames[conversionType] or "unknown"
 				table.insert(parts, string.format("to %s", conversionName))
 			end

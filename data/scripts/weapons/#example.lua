@@ -70,9 +70,9 @@ local area = createCombatArea({
 })
 
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_PHYSICALDAMAGE)
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_EXPLOSIONAREA)
-combat:setParameter(COMBAT_PARAM_BLOCKARMOR, true)
+combat:setDamageType(Combat.DamageType.Physical)
+combat:setImpactEffect(CONST_ME_EXPLOSIONAREA)
+combat:setBlockedByArmor(true)
 combat:setFormula(COMBAT_FORMULA_SKILL, 0, 0, 1, 0)
 combat:setArea(area)
 
@@ -122,7 +122,7 @@ local eba = Weapon(WEAPON_AXE)
 eba:id(7859)
 eba:attack(23)
 eba:defense(18, 1)
-eba:extraElement(5, COMBAT_EARTHDAMAGE)
+eba:extraElement(5, Combat.DamageType.Earth)
 eba:charges(1000, true) -- showCharges = true
 eba:action("removecharge")
 eba:decayTo(2429)

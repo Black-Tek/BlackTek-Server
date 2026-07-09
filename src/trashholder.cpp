@@ -24,9 +24,9 @@ ReturnValue TrashHolder::queryRemove(const ThingPtr&, uint32_t, uint32_t, Creatu
 	return RETURNVALUE_NOTPOSSIBLE;
 }
 
-CylinderPtr TrashHolder::queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&)
+ThingPtr TrashHolder::queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&)
 {
-	return CylinderPtr(this);
+	return getCylinder();
 }
 
 void TrashHolder::addThing(ThingPtr thing)
@@ -47,7 +47,7 @@ void TrashHolder::addThing(int32_t, ThingPtr thing)
 
 	const ItemType& it = Item::items[id];
 	if (item->isHangable() && it.isGroundTile()) {
-		const auto& tile = std::dynamic_pointer_cast<Tile>(getParent());
+		const auto& tile = getParent() ? getParent()->getTile() : nullptr;
 		if (tile && tile->hasFlag(TILESTATE_SUPPORTS_HANGABLE)) {
 			return;
 		}

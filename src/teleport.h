@@ -9,10 +9,23 @@
 class Teleport final : public Item, public Cylinder
 {
 	public:
-		explicit Teleport(uint16_t type) : Item(type) {};
+		explicit Teleport(uint16_t type) : Item(type)
+		{
+			thing_subtype = ThingSubType::Teleport;
+			item_subtype = ItemSubType::Teleport;
+			cylinder_subtype = CylinderSubType::Teleport;
+		}
 
 		TeleportPtr getTeleport() override {
 			return static_shared_this<Teleport>();
+		}
+
+		CylinderPtr getCylinder() override final {
+			return static_shared_this<Teleport>();
+		}
+
+		CylinderConstPtr getCylinder() const override final {
+			return static_shared_this<const Teleport>();
 		}
 	
 		TeleportConstPtr getTeleport() const override {
@@ -37,7 +50,7 @@ class Teleport final : public Item, public Cylinder
 		ReturnValue queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count,
 				uint32_t& maxQueryCount, uint32_t flags) override;
 		ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
-		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem,
+		ThingPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem,
 				uint32_t& flags) override; // again optional ref wrapper
 
 		void addThing(ThingPtr thing) override;

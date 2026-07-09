@@ -68,8 +68,6 @@ ec.onRemovePlayerAugment = {}
 ec.onDropLoot = {}
 ec.onSpawn = {}
 -- Item
-ec.onImbue = {}
-ec.onRemoveImbue = {}
 ec.onAttack = {}
 ec.onDefend = {}
 ec.onItemAugment = {}

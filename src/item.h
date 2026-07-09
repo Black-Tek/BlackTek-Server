@@ -9,25 +9,26 @@
 #include "items.h"
 #include "luascript.h"
 #include "tools.h"
-#include "imbuement.h"
 #include "augments.h"
 #include "declarations.h"
 #include "pointbasedstat.h"
+#include "console.h"
 
 #include <typeinfo>
 #include <boost/variant.hpp>
+#include <bitset>
 #include <deque>
 #include <gtl/phmap.hpp>
 
 class Creature;
 class Player;
-class Container;
+class ItemContainer;
 class Depot;
 class Teleport;
 class TrashHolder;
 class Mailbox;
 class Door;
-class MagicField;
+class BlackTek::MagicField;
 class BedItem;
 
 using namespace Components::Stats;
@@ -101,8 +102,8 @@ enum AttrTypes_t {
 	ATTR_PLACE_HOLDERTOO = 40,
 	ATTR_CLASSIFICATION = 41,
 	ATTR_TIER = 42,
-	ATTR_IMBUESLOTS = 43,
-	ATTR_IMBUEMENTS = 44,
+	ATTR_IMBUESLOTS = 43,  // legacy — values are skipped during load for backward compat
+	ATTR_IMBUEMENTS = 44,  // legacy — values are skipped during load for backward compat
 	ATTR_REWARDID = 45,
 	ATTR_OPENCONTAINER = 46
 };
@@ -560,12 +561,84 @@ class ItemAttributes
 	friend class Item;
 };
 
+enum class ItemSubType : uint8_t
+{
+	None,
+	Container,
+	DepotChest,
+	DepotLocker,
+	Inbox,
+	StoreInbox,
+	RewardChest,
+	Teleport,
+	TrashHolder,
+	Mailbox,
+	Door,
+	MagicField,
+	BedItem,
+	HouseTransferItem,
+};
+
+enum class ContainerSubType : uint8_t
+{
+	None,
+	DepotChest,
+	DepotLocker,
+	Inbox,
+	StoreInbox,
+	RewardChest,
+};
+
+namespace BlackTek::Containers
+{
+	// Composable behavior flags for ItemContainer, keyed off ContainerSubType via
+	// ConfigFor() in itemcontainer.cpp. See container_properties.md for the full
+	// audit and rationale behind each flag.
+	enum class ContainerProperty : uint8_t
+	{
+		Removable,							// the container-item itself can be removed from its parent
+		NeverAcceptsDirectInsert,			// queryAdd always rejects; pure routing node (DepotLocker)
+		RequiresNoLimitFlagToAccept,		// queryAdd requires FLAG_NOLIMIT on the call, else CONTAINERNOTENOUGHROOM; on pass, still validates item/self/pickupable
+		RejectsPlayerInitiatedInserts,		// queryAdd requires actor == nullptr, else NOTPOSSIBLE; on pass, accepts unconditionally
+		RequiresStoreItem,					// queryAdd requires item->isStoreItem() unless FLAG_NOLIMIT
+		AcceptsStoreItemsDirectly,			// exempt from the generic "store items can't move here" rejection
+		BlocksNestedInsertWithoutNoLimit,	// ancestor-side: if ANY ancestor in the full chain has this set, queryAddGeneric rejects (CONTAINERNOTENOUGHROOM) unless the whole operation carries FLAG_NOLIMIT
+		BlocksInsertIntoStoreChild,			// ancestor-side: if the IMMEDIATE ancestor (one hop, post skip-adjustment) has this set and ownerItem->isStoreItem(), queryAddGeneric unconditionally rejects (message varies by whether the moved item is itself a store item)
+		EnforcesItemCountLimit,				// maxDepotItems cap via getItemHoldingCount(), in addition to slot capacity
+		SkipsOwnNodeInChain,				// parent-chain walks (getParent, ancestor-walk, "move up") pass through this node
+		NotifiesViaParentWalk,				// postAdd/RemoveNotification goes via getParent() (the possibly-transparent walk), LINK_PARENT
+		NotifiesViaOwnerParent,				// postAdd/RemoveNotification goes via getOwner()->getParent() directly
+		NotifyLinkIsTopParent,				// when NotifiesViaOwnerParent is set, use LINK_TOPPARENT instead of LINK_PARENT
+		Count								// sentinel for bitset sizing
+	};
+
+	class ContainerConfig
+	{
+		public:
+			constexpr ContainerConfig() = default;
+
+			constexpr ContainerConfig& Set(ContainerProperty property)
+			{
+				bits.set(static_cast<size_t>(property));
+				return *this;
+			}
+
+			constexpr bool Has(ContainerProperty property) const
+			{
+				return bits.test(static_cast<size_t>(property));
+			}
+
+		private:
+			std::bitset<static_cast<size_t>(ContainerProperty::Count)> bits;
+	};
+}
+
 class Item : virtual public Thing, public SharedObject
 {
 	public:
 		//Factory member to create item of right type based on type
 		static ItemPtr CreateItem(const uint16_t type, uint16_t count = 0);
-		static ContainerPtr CreateItemAsContainer(const uint16_t type, uint16_t size);
+		static ItemPtr CreateContainerItem(const uint16_t type, uint16_t size);
 		bool giveCustomSkill(std::string_view name, uint16_t level);
 		bool giveCustomSkill(std::string_view name, std::shared_ptr<CustomSkill> new_skill);
 		bool removeCustomSkill(std::string_view name);
@@ -594,7 +667,7 @@ class Item : virtual public Thing, public SharedObject
 		Item(const Item& i);
 		virtual ItemPtr clone() const;
 
-		~Item() = default;
+		~Item() override;
 
 		// non-assignable
 		Item& operator=(const Item&) = delete;
@@ -608,7 +681,11 @@ class Item : virtual public Thing, public SharedObject
 		ItemConstPtr getItem() const override final {
 			return static_shared_this<const Item>();
 		}
-	
+
+		ItemSubType getItemSubType() const {
+			return item_subtype;
+		}
+
 		virtual TeleportPtr getTeleport() {
 			return nullptr;
 		}
@@ -890,7 +967,6 @@ class Item : virtual public Thing, public SharedObject
 		}
 
 		const bool isEquipped();
-		void decayImbuements(bool infight);
 
 		static std::string getDescription(const ItemType& it, int32_t lookDistance, const ItemPtr& item = nullptr, int32_t subType = -1, bool addArticle = true);
 		static std::string getNameDescription(const ItemType& it, const ItemConstPtr& item = nullptr, int32_t subType = -1, bool addArticle = true);
@@ -1134,9 +1210,7 @@ class Item : virtual public Thing, public SharedObject
 	
 		bool canDecay();
 
-		virtual bool canRemove() const {
-			return true;
-		}
+		virtual bool canRemove() const;
 	
 		virtual bool canTransform() const {
 			return true;
@@ -1169,37 +1243,69 @@ class Item : virtual public Thing, public SharedObject
 		}
 	
 		CylinderPtr getParent() override {
+			if (containerParent.lock()) {
+				return nullptr;
+			}
 			auto lockedParent = parent.lock();
 			if (!lockedParent) {
-				// todo add logger here
+				BlackTek::Console::Map::Trace("Item::getParent: weak_ptr expired for item id {}", getID());
 			}
 			return lockedParent;
 		}
 
 		CylinderConstPtr getParent() const override {
+			if (containerParent.lock()) {
+				return nullptr;
+			}
 			auto lockedParent = parent.lock();
 			if (!lockedParent) {
-				// todo add logger here
+				BlackTek::Console::Map::Trace("Item::getParent: weak_ptr expired for item id {}", getID());
 			}
 			return lockedParent;
 		}
 
-	
 		void setParent(std::weak_ptr<Cylinder> cylinder) override {
 			parent = cylinder;
+			containerParent.reset();
 		}
 
 		void clearParent() override
 		{
 			parent.reset();
+			containerParent.reset();
 		};
-	
-		CylinderPtr getTopParent();
-		CylinderConstPtr getTopParent() const;
+
+		ItemPtr getContainerParent() const {
+			return containerParent.lock();
+		}
+
+		ThingPtr getImmediateParent() {
+			if (auto containerParentItem = getContainerParent()) {
+				return containerParentItem;
+			}
+			return getParent();
+		}
+
+		void setContainerParent(const ItemPtr& containerOwner) {
+			containerParent = containerOwner;
+			parent.reset();
+		}
+
+		ContainerPtr getContainer() override;
+		ContainerConstPtr getContainer() const override;
+
+		void attachContainer(uint16_t size, bool unlocked, bool pagination, ContainerSubType subtype = ContainerSubType::None);
+
+		ThingPtr getTopParent();
+		ThingConstPtr getTopParent() const;
 		TilePtr getTile() override;
 		std::shared_ptr<const Tile> getTile() const override;
-	
+
 		bool isRemoved() const override {
+			if (auto containerOwner = containerParent.lock()) {
+				return containerOwner->isRemoved();
+			}
+
 			auto parentLock = parent.lock();
 
 			if (!parentLock) {
@@ -1209,40 +1315,26 @@ class Item : virtual public Thing, public SharedObject
 			return parentLock->isRemoved();
 		}
 
-		uint16_t getImbuementSlots() const;
-		uint16_t getFreeImbuementSlots() const;
-		bool canImbue();
-		bool addImbuementSlots(const uint16_t amount);
-		bool removeImbuementSlots(const uint16_t amount, const bool destroyImbues = false);
-		bool hasImbuementType(const ImbuementType imbuetype) const;
-		bool hasImbuement(const std::shared_ptr<Imbuement>& imbuement) const;
-		bool hasImbuements() const; /// change to isImbued();
-		bool addImbuement(std::shared_ptr<Imbuement> imbuement, bool created = true);
-		bool removeImbuement(const std::shared_ptr<Imbuement>& imbuement, bool decayed = false);
-		std::unique_ptr<std::vector<std::shared_ptr<Imbuement>>>& getImbuements() 
-		{
-            if (not imbuements.get()) 
-			{
-				imbuements = std::move(std::make_unique<std::vector<std::shared_ptr<Imbuement>>>());
-            }
-			return imbuements;
-		}
-
 		const bool addAugment(std::string_view augmentName);
-		const bool addAugment(const std::shared_ptr<Augment>& augment);
+		const bool addAugment(const std::shared_ptr<BlackTek::Augment>& augment);
 		
 		const bool removeAugment(std::string_view name);
-		const bool removeAugment(std::shared_ptr<Augment>& augment);
+		const bool removeAugment(std::shared_ptr<BlackTek::Augment>& augment);
 
 		bool isAugmented() const;
 		bool hasAugment(std::string_view name) const;
-		bool hasAugment(const std::shared_ptr<Augment>& augment) const;
+		bool hasAugment(const std::shared_ptr<BlackTek::Augment>& augment) const;
 
-		std::unique_ptr<std::vector<std::shared_ptr<Augment>>>& getAugments()
+		[[nodiscard]] uint32_t getAttackModifierCount() const noexcept { return attack_modifier_count; }
+		[[nodiscard]] uint32_t getDefenseModifierCount() const noexcept { return defense_modifier_count; }
+		[[nodiscard]] uint32_t getConversionModifierCount() const noexcept { return conversion_modifier_count; }
+		[[nodiscard]] uint32_t getReformModifierCount() const noexcept { return reform_modifier_count; }
+
+		std::unique_ptr<std::vector<std::shared_ptr<BlackTek::Augment>>>& getAugments()
 		{
 			if (not augments.get())
 			{
-				augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+				augments = std::make_unique<std::vector<std::shared_ptr<BlackTek::Augment>>>();
 			}
 
 			return augments;
@@ -1337,16 +1429,28 @@ class Item : virtual public Thing, public SharedObject
 		std::unique_ptr<StatRegistry> c_stats;
 	protected:
 		std::weak_ptr<Cylinder> parent;
+		ItemWeakPtr containerParent;
+		std::unique_ptr<ItemContainer> container;
+		ContainerPtr containerAlias;
 
 	private:
         std::unique_ptr<ItemAttributes> attributes;
-		std::unique_ptr<std::vector<std::shared_ptr<Imbuement>>> imbuements;
-		std::unique_ptr<std::vector<std::shared_ptr<Augment>>> augments;
+		std::unique_ptr<std::vector<std::shared_ptr<BlackTek::Augment>>> augments;
+		uint32_t attack_modifier_count = 0;
+		uint32_t defense_modifier_count = 0;
+		uint32_t conversion_modifier_count = 0;
+		uint32_t reform_modifier_count = 0;
+		uint32_t named_modifiers_count = 0;
+		uint32_t damage_modifiers_count = 0;
+		uint32_t origin_modifiers_count = 0;
+		uint32_t creature_modifiers_count = 0;
+		uint32_t race_modifiers_count = 0;
+
 	protected:
 		uint16_t id; // the same id as in ItemType
+		ItemSubType item_subtype = ItemSubType::None;
 
 	private:
-		uint16_t imbuementSlots = 0;
 		uint8_t count = 1; // number of stacked items
 		bool loadedFromMap = false;
         std::string getWeightDescription(uint32_t weight) const;

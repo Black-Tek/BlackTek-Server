@@ -12,14 +12,16 @@
 #include "map.h"
 #include "position.h"
 #include "item.h"
-#include "container.h"
+#include "itemcontainer.h"
 #include "player.h"
 #include "raids.h"
 #include "npc.h"
 #include "wildcardtree.h"
 #include "quests.h"
+#include "console.h"
 
 #include <gtl/phmap.hpp>
+#include <memory_resource>
 
 class ServiceManager;
 class Creature;
@@ -78,6 +80,8 @@ static constexpr uint32_t EquipmentDecayMaxInterval = 100;
 static constexpr uint32_t MapDecayMaxInterval = 250;
 static constexpr size_t MaxCreatureThinkSlots = 20;
 
+#include "objectpoolconfig.h"
+
 #include <coroutine>
 #include <chrono>
 
@@ -99,7 +103,7 @@ struct CoroTask
 // only excluding possible things that can benefit to being offloaded from main loop
 struct TimerQueue 
 {
-    using Clock = std::chrono::system_clock;
+    using Clock = std::chrono::steady_clock;
     using TimePoint = Clock::time_point;
 
     struct Entry 
@@ -196,7 +200,7 @@ class Game
 
 		void start(ServiceManager* manager);
 
-		void forceAddCondition(uint32_t creatureId, Condition* condition);
+		void forceAddCondition(uint32_t creatureId, ConditionHandle condition);
 		void forceRemoveCondition(uint32_t creatureId, ConditionType_t type);
 
 		bool loadMainMap(const std::string& filename);
@@ -217,7 +221,7 @@ class Game
 			return worldType;
 		}
 
-		CylinderPtr internalGetCylinder(const PlayerPtr& player, const Position& pos);
+		ThingPtr internalGetCylinder(const PlayerPtr& player, const Position& pos);
 		ThingPtr internalGetThing(const PlayerPtr& player, const Position& pos, int32_t index,
 		                        uint32_t spriteId, stackPosType_t type);
 		static void internalGetPosition(const ItemPtr& item, Position& pos, uint8_t& stackpos);
@@ -390,13 +394,13 @@ class Game
 		ReturnValue internalMoveCreature(CreaturePtr creature, Direction direction, uint32_t flags = 0);
 		ReturnValue internalMoveCreature(CreaturePtr creature, TilePtr toTile, uint32_t flags = 0);
 
-		ReturnValue internalMoveItem(CylinderPtr fromCylinder, CylinderPtr toCylinder, int32_t index,
+		ReturnValue internalMoveItem(ThingPtr fromThing, ThingPtr toThing, int32_t index,
 		                             ItemPtr item, uint32_t count, std::optional<std::reference_wrapper<ItemPtr>> _moveItem, uint32_t flags = 0, CreaturePtr actor = nullptr, ItemPtr tradeItem = nullptr, const Position* fromPos = nullptr, const Position* toPos = nullptr);
 							// another spot to use a ref wrapper and possibly optional for ItemPtr* above
 
-		ReturnValue internalAddItem(CylinderPtr toCylinder, ItemPtr item, int32_t index = INDEX_WHEREEVER,
+		ReturnValue internalAddItem(ThingPtr toThing, ItemPtr item, int32_t index = INDEX_WHEREEVER,
 		                            uint32_t flags = 0, bool test = false);
-		ReturnValue internalAddItem(CylinderPtr toCylinder, ItemPtr item, int32_t index,
+		ReturnValue internalAddItem(ThingPtr toThing, ItemPtr item, int32_t index,
 		                            uint32_t flags, bool test, uint32_t& remainderCount);
 		ReturnValue internalRemoveItem(ItemPtr item, int32_t count = -1, bool test = false, uint32_t flags = 0);
 
@@ -470,6 +474,11 @@ class Game
 		void checkPlayersRecord();
 
 		void sendGuildMotd(uint32_t playerId);
+		void openPlayerStore(uint32_t playerId);
+		void playerPurchaseStoreOffer(uint32_t playerId, uint32_t offerId, uint8_t offerType, const std::string& param);
+		void playerOpenStoreHistory(uint32_t playerId, uint8_t entryType);
+		void playerRequestStoreHistory(uint32_t playerId, uint32_t page);
+		void playerTransferCoins(uint32_t playerId, const std::string& recipientName, uint16_t amount);
 		void kickPlayer(uint32_t playerId, bool displayEffect);
 		void playerReportBug(uint32_t playerId, const std::string& message, const Position& position, uint8_t category);
 		void playerDebugAssert(uint32_t playerId, const std::string& assertLine, const std::string& date, const std::string& description, const std::string& comment);
@@ -488,7 +497,7 @@ class Game
 		void playerMoveCreature(PlayerPtr& player, CreaturePtr& movingCreature, const Position& movingCreatureOrigPos, TilePtr& toTile);
 		void playerMoveItemByPlayerID(uint32_t playerId, const Position& fromPos, uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count);
 		void playerMoveItem(const PlayerPtr& player, const Position& fromPos,
-		                    uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count, ItemPtr item, CylinderPtr toCylinder);
+		                    uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count, ItemPtr item, ThingPtr toThing);
 		void playerEquipItem(uint32_t playerId, uint16_t spriteId);
 		void playerMove(uint32_t playerId, Direction direction);
 		void playerCreatePrivateChannel(uint32_t playerId);
@@ -594,18 +603,14 @@ class Game
 		void checkCreatureWalk(uint32_t creatureId) noexcept;
 		void updateCreatureWalk(uint32_t creatureId) noexcept;
 		void checkCreatureAttack(uint32_t creatureId) noexcept;
+		void playerSecondaryAttack(uint32_t playerId, uint32_t targetId) noexcept;
+		void playerParryCounter(uint32_t playerId, uint32_t attackerId) noexcept;
 		void checkLight();
-
-		bool combatBlockHit(CombatDamage& damage, const CreaturePtr& attacker, const CreaturePtr& target, bool checkDefense, bool checkArmor, bool field, bool ignoreResistances = false);
-
-		void combatGetTypeInfo(CombatType_t combatType, const CreaturePtr& target, TextColor_t& color, uint8_t& effect);
-
-		bool combatChangeHealth(const CreaturePtr& attacker, const CreaturePtr& target, CombatDamage& damage, bool showMessages = true);
-		bool combatChangeMana(const CreaturePtr& attacker, const CreaturePtr& target, CombatDamage& damage, bool showMessages = true);
 
 		//animation help functions
 		void addCreatureHealth(const CreatureConstPtr& target);
 		static void addCreatureHealth(const SpectatorVec& spectators, const CreatureConstPtr& target);
+		void addMagicEffect(const Position& pos, const uint8_t effect, std::span<const CreaturePtr> pre_cache);
 		void addMagicEffect(const Position& pos, uint8_t effect);
 		static void addMagicEffect(const SpectatorVec& spectators, const Position& pos, uint8_t effect);
 		void addDistanceEffect(const Position& fromPos, const Position& toPos, uint8_t effect);
@@ -629,9 +634,9 @@ class Game
 
 		void sendOfflineTrainingDialog(const PlayerPtr& player) const;
 
-		const gtl::node_hash_map<uint32_t, PlayerPtr>& getPlayers() const { return players; }
-		const std::map<uint32_t, NpcPtr>& getNpcs() const { return npcs; }
-		const std::map<uint32_t, MonsterPtr>& getMonsters() const { return monsters; }
+		const std::pmr::unordered_map<uint32_t, PlayerPtr>& getPlayers() const { return players; }
+		const std::pmr::map<uint32_t, NpcPtr>& getNpcs() const  { return npcs; }
+		const std::pmr::map<uint32_t, MonsterPtr>& getMonsters() const { return monsters; }
 
 		void addPlayer(PlayerPtr player);
 		void removePlayer(const PlayerPtr& player);
@@ -656,6 +661,13 @@ class Game
 
 		bool reload(ReloadTypes_t reloadType);
 
+	private:
+		std::vector<std::byte> raw_game_block;
+		std::pmr::monotonic_buffer_resource game_block;
+
+		std::pmr::unsynchronized_pool_resource item_pool;
+
+	public:
 		Groups groups;
 		Map map;
 		Mounts mounts;
@@ -699,7 +711,7 @@ class Game
 					return option;
 				}
 			}
-			// log here
+			BlackTek::Console::Warn("Game::getOptionById: no character option found for id {}", id);
 			[[unlikely]]
 			return CharacterOption();
 		}
@@ -721,6 +733,14 @@ class Game
 		CURL* curl;
 		std::unordered_set<Expirable> decaying_eq;
 
+		PlayerPtr MakePlayer(ProtocolGame_ptr client);
+		MonsterPtr MakeMonster(const std::string& name);
+		NpcPtr MakeNpc(const std::string& name);
+
+        std::vector<std::byte>& getRawMapBlock() { return raw_map_block; }
+        std::optional<std::pmr::monotonic_buffer_resource>& getMapBlock() { return map_block; }
+        std::pmr::unsynchronized_pool_resource& getItemPool() { return item_pool; }
+
 	private:
 		bool playerSaySpell(const PlayerPtr& player, SpeakClasses type, const std::string& text);
 		void playerWhisper(const PlayerPtr& player, const std::string& text);
@@ -729,11 +749,20 @@ class Game
 		void playerSpeakToNpc(const PlayerPtr& player, const std::string& text);
 		void internalDecayItem(const ItemPtr& item);
 
+		// Todo : the entire game class's memory layout needs rearranged
+        std::vector<std::byte> raw_map_block;
+        std::optional<std::pmr::monotonic_buffer_resource> map_block;
+		std::pmr::unsynchronized_pool_resource player_pool;
+		std::pmr::unsynchronized_pool_resource monster_pool;
+		std::pmr::unsynchronized_pool_resource npc_pool;
+		std::pmr::unsynchronized_pool_resource creature_pointer_pool;
+		std::pmr::unsynchronized_pool_resource item_pointer_pool;
+
 		std::unordered_map<uint32_t, Guild_ptr> guilds;
 
-		gtl::node_hash_map<uint32_t, PlayerPtr> players;
+		std::pmr::unordered_map<uint32_t, PlayerPtr> players;
 		gtl::node_hash_map<std::string, PlayerPtr> mappedPlayerNames;
-		gtl::node_hash_map<uint32_t, PlayerPtr> mappedPlayerGuids;
+		std::pmr::unordered_map<uint32_t, PlayerPtr> mappedPlayerGuids;
 
 		gtl::node_hash_map<uint16_t, ItemPtr> uniqueItems;
 		gtl::node_hash_map<uint32_t, gtl::flat_hash_map<uint32_t, int32_t>> accountStorageMap;
@@ -755,8 +784,8 @@ class Game
 
 		WildcardTreeNode wildcardTree { false };
 
-		std::map<uint32_t, NpcPtr> npcs;
-		std::map<uint32_t, MonsterPtr> monsters;
+		std::pmr::map<uint32_t, MonsterPtr> monsters;
+		std::pmr::map<uint32_t, NpcPtr> npcs;
 
 		//list of items that are in trading state, mapped to the player
 		std::map<ItemPtr, uint32_t> tradeItems;

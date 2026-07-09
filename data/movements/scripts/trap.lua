@@ -13,11 +13,11 @@ local traps = {
 	[4208] = { -- jungle maw
 		transformTo = 4209,
 		damage = {-30, -30},
-		type = COMBAT_EARTHDAMAGE
+		type = Combat.DamageType.Earth
 	},
 	[25331] = { -- lava (walkable)
 		damage = {-500, -500},
-		type = COMBAT_FIREDAMAGE
+		type = Combat.DamageType.Fire
 	}
 }
 
@@ -28,7 +28,7 @@ function onStepIn(creature, item, position, fromPosition)
 	end
 
 	if creature:isMonster() or creature:isPlayer() then
-		doTargetCombat(0, creature, trap.type or COMBAT_PHYSICALDAMAGE, trap.damage[1], trap.damage[2], CONST_ME_NONE, true, false, false)
+		doTargetCombat(0, creature, trap.type or Combat.DamageType.Physical, trap.damage[1], trap.damage[2], CONST_ME_NONE, true, false, false)
 	end
 
 	if trap.transformTo then

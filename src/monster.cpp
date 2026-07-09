@@ -5,6 +5,7 @@
 
 #include "monster.h"
 #include "game.h"
+#include "console.h"
 #include "spells.h"
 #include "events.h"
 #include "configmanager.h"
@@ -41,6 +42,8 @@ Monster::Monster(MonsterType* mType) :
 	baseSpeed = mType->info.baseSpeed;
 	internalLight = mType->info.light;
 	hiddenHealth = mType->info.hiddenHealth;
+	thing_subtype = ThingSubType::Monster;
+	creature_subtype = CreatureSubType::Monster;
 	targetList.reserve(24);
 
 	// register creature events
@@ -125,6 +128,22 @@ void Monster::onCreatureAppear(const CreaturePtr& creature, const bool isLogin)
 {
 	Creature::onCreatureAppear(creature, isLogin);
 
+	if (creature == getCreature())
+	{
+		if (useCacheMap())
+		{
+			isMapLoaded = true;
+			updateMapCache();
+		}
+	}
+	else if (isMapLoaded)
+	{
+		if (creature->getPosition().z == getPosition().z)
+		{
+			updateTileCache(creature->getTile(), creature->getPosition());
+		}
+	}
+
 	if (mType->info.creatureAppearEvent != -1) {
 		// onCreatureAppear(self, creature)
 		LuaScriptInterface* scriptInterface = mType->info.scriptInterface;
@@ -167,6 +186,14 @@ void Monster::onRemoveCreature(const CreaturePtr& creature, const bool isLogout)
 {
 	Creature::onRemoveCreature(creature, isLogout);
 
+	if (creature != getCreature() and isMapLoaded)
+	{
+		if (creature->getPosition().z == getPosition().z)
+		{
+			updateTileCache(creature->getTile(), creature->getPosition());
+		}
+	}
+
 	if (mType->info.creatureDisappearEvent != -1) {
 		// onCreatureDisappear(self, creature)
 		LuaScriptInterface* scriptInterface = mType->info.scriptInterface;
@@ -206,6 +233,117 @@ void Monster::onRemoveCreature(const CreaturePtr& creature, const bool isLogout)
 void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos,
                              const TilePtr& oldTile, const Position& oldPos, bool teleport)
 {
+	if (isMapLoaded)
+	{
+		const bool isSelf = (creature == this->getCreature());
+		const int32_t dx = newPos.x - oldPos.x;
+		const int32_t dy = newPos.y - oldPos.y;
+		const int32_t dz = newPos.z - oldPos.z;
+
+		if (isSelf)
+		{
+			if (teleport or dz != 0)
+			{
+				updateMapCache();
+			}
+			else
+			{
+				const Position& myPos = getPosition();
+				const MonsterPtr& self = getMonster();
+
+				if (dy < 0) // north
+				{
+					localMapCache <<= mapWalkWidth;
+					for (int32_t x = -maxWalkCacheWidth; x <= maxWalkCacheWidth; ++x)
+					{
+						const auto cacheTile = g_game.map.getTile(myPos.getX() + x, myPos.getY() - maxWalkCacheHeight, myPos.z);
+						updateTileCache(cacheTile, x, -maxWalkCacheHeight, self);
+					}
+				}
+				else if (dy > 0) // south
+				{
+					localMapCache >>= mapWalkWidth;
+					for (int32_t x = -maxWalkCacheWidth; x <= maxWalkCacheWidth; ++x)
+					{
+						const auto cacheTile = g_game.map.getTile(myPos.getX() + x, myPos.getY() + maxWalkCacheHeight, myPos.z);
+						updateTileCache(cacheTile, x, maxWalkCacheHeight, self);
+					}
+				}
+
+				if (dx > 0) // east
+				{
+					int32_t starty = 0;
+					int32_t endy = mapWalkHeight - 1;
+
+					if (dy < 0)
+					{
+						endy += dy;
+					}
+					else if (dy > 0)
+					{
+						starty = dy;
+					}
+
+					for (int32_t y = starty; y <= endy; ++y)
+					{
+						const int32_t rowBase = y * mapWalkWidth;
+						for (int32_t x = 0; x < mapWalkWidth - 1; ++x)
+						{
+							localMapCache[rowBase + x] = localMapCache[rowBase + x + 1];
+						}
+					}
+					for (int32_t y = -maxWalkCacheHeight; y <= maxWalkCacheHeight; ++y)
+					{
+						const auto cacheTile = g_game.map.getTile(myPos.x + maxWalkCacheWidth, myPos.y + y, myPos.z);
+						updateTileCache(cacheTile, maxWalkCacheWidth, y, self);
+					}
+				}
+				else if (dx < 0) // west
+				{
+					int32_t starty = 0;
+					int32_t endy = mapWalkHeight - 1;
+
+					if (dy < 0)
+					{
+						endy += dy;
+					}
+					else if (dy > 0)
+					{
+						starty = dy;
+					}
+
+					for (int32_t y = starty; y <= endy; ++y)
+					{
+						const int32_t rowBase = y * mapWalkWidth;
+						for (int32_t x = mapWalkWidth - 2; x >= 0; --x)
+						{
+							localMapCache[rowBase + x + 1] = localMapCache[rowBase + x];
+						}
+					}
+					for (int32_t y = -maxWalkCacheHeight; y <= maxWalkCacheHeight; ++y)
+					{
+						const auto cacheTile = g_game.map.getTile(myPos.x - maxWalkCacheWidth, myPos.y + y, myPos.z);
+						updateTileCache(cacheTile, -maxWalkCacheWidth, y, self);
+					}
+				}
+
+				updateTileCache(oldTile, oldPos);
+			}
+		}
+		else
+		{
+			const Position& myPos = getPosition();
+			if (newPos.z == myPos.z)
+			{
+				updateTileCache(newTile, newPos);
+			}
+			if (oldPos.z == myPos.z)
+			{
+				updateTileCache(oldTile, oldPos);
+			}
+		}
+	}
+
 	Creature::onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
 
 	if (mType->info.creatureMoveEvent != -1) {
@@ -313,17 +451,10 @@ void Monster::addTarget(const CreaturePtr& creature, bool pushFront /* = false *
 {
 	assert(creature != this->getCreature());
 
-	// Ensure the creature is not already in targetList
-	auto it = std::ranges::find_if(targetList, [&](const CreatureWeakPtr& weakTarget) {
-		auto target = weakTarget.lock();
-		return target && target == creature;
-		});
-
-	if (it == targetList.end()) {
+	if (targetSet.insert(creature).second) {
 		if (pushFront) {
 			targetList.insert(targetList.begin(), creature);
-		}
-		else {
+		} else {
 			targetList.push_back(creature);
 		}
 	}
@@ -331,13 +462,15 @@ void Monster::addTarget(const CreaturePtr& creature, bool pushFront /* = false *
 
 void Monster::removeTarget(const CreaturePtr& creature)
 {
-	auto it = std::ranges::find_if(targetList, [&](const CreatureWeakPtr& weakTarget) {
-		auto target = weakTarget.lock();
-		return target && target == creature;
+	if (targetSet.erase(creature)) {
+		auto it = std::ranges::find_if(targetList, [&](const CreatureWeakPtr& weakTarget) {
+			auto target = weakTarget.lock();
+			return target && target == creature;
 		});
 
-	if (it != targetList.end()) {
-		targetList.erase(it);
+		if (it != targetList.end()) {
+			targetList.erase(it);
+		}
 	}
 }
 
@@ -360,9 +493,11 @@ void Monster::updateTargetList()
 	while (targetIterator != targetList.end()) {
 		CreaturePtr creature = targetIterator->lock();
 		if (!creature || creature->getHealth() <= 0 || !canSee(creature->getPosition())) {
-			targetIterator = targetList.erase(targetIterator); // Remove expired/null entries
-		}
-		else {
+			if (creature) {
+				targetSet.erase(creature);
+			}
+			targetIterator = targetList.erase(targetIterator);
+		} else {
 			++targetIterator;
 		}
 	}
@@ -379,6 +514,7 @@ void Monster::updateTargetList()
 void Monster::clearTargetList()
 {
 	targetList.clear();
+	targetSet.clear();
 }
 
 void Monster::clearFriendList()
@@ -486,7 +622,7 @@ void Monster::onCreatureLeave(const CreaturePtr& creature)
 		updateIdleStatus();
 
 		if (!isSummon() && targetList.empty()) {
-			int32_t walkToSpawnRadius = g_config.getNumber(ConfigManager::DEFAULT_WALKTOSPAWNRADIUS);
+			int32_t walkToSpawnRadius = g_config.GetNumber(ConfigManager::DEFAULT_WALKTOSPAWNRADIUS);
 			if (walkToSpawnRadius > 0 && !Position::areInRange(position, masterPos, walkToSpawnRadius, walkToSpawnRadius)) {
 				walkToSpawn();
 			}
@@ -536,7 +672,7 @@ bool Monster::searchTarget(TargetSearchType_t searchType /*= TARGETSEARCH_DEFAUL
 			}
 		} while (valid = false);
 	}
-	// shouldn't be able to make it here, if so log it
+	BlackTek::Console::Warn("Monster::searchTarget: random target selection fell through without a valid target ({})", getName());
 	return false;
 }
 
@@ -618,7 +754,7 @@ bool Monster::selectTarget(const CreaturePtr& creature)
 
 	if (isHostile() || isSummon()) {
 		if (setAttackedCreature(creature) && !isSummon()) {
-			g_dispatcher.addTask(createTask([id = getID()]() { g_game.checkCreatureAttack(id); }));
+			g_game.checkCreatureAttack(getID());
 		}
 	}
 
@@ -649,7 +785,7 @@ void Monster::updateIdleStatus()
 	bool idle = false;
 	if (!isSummon() && targetList.empty()) {
 		// check if there are aggressive conditions
-		idle = std::ranges::find_if(conditions, [](const Condition* condition) {
+		idle = std::ranges::find_if(conditions, [](const ConditionHandle& condition) {
 			return condition->isAggressive();
 		}) == conditions.end();
 	}
@@ -684,7 +820,7 @@ void Monster::onThink(const uint32_t interval)
 	{
 		g_game.addMagicEffect(getPosition(), CONST_ME_POFF);
 
-		if (g_config.getBoolean(ConfigManager::REMOVE_ON_DESPAWN)) 
+		if (g_config.GetBoolean(ConfigManager::REMOVE_ON_DESPAWN)) 
 		{
 			g_game.removeCreature(self, false);
 		} 
@@ -966,7 +1102,7 @@ void Monster::onThinkDefense(const uint32_t interval)
 				continue;
 			}
 
-			if (MonsterPtr summon = Monster::createMonster(summonBlock.name)) {
+			if (MonsterPtr summon = g_game.MakeMonster(summonBlock.name)) {
 				if (g_game.placeCreature(summon, getPosition(), false, summonBlock.force, summonBlock.effect)) {
 					summon->setDropLoot(false);
 					summon->setSkillLoss(false);
@@ -1058,7 +1194,7 @@ bool Monster::pushItem(const ItemPtr& item)
 		Position tryPos(centerPos.x + it.first, centerPos.y + it.second, centerPos.z);
 		const auto& tile = g_game.map.getTile(tryPos);
 		if (tile && g_game.canThrowObjectTo(centerPos, tryPos, true, true)) {
-			CylinderPtr n_parent = item->getParent();
+			ThingPtr n_parent = item->getImmediateParent();
 			CylinderPtr t_parent = tile;
 			if (g_game.internalMoveItem(n_parent, t_parent, INDEX_WHEREEVER, item, item->getItemCount(), std::nullopt) == RETURNVALUE_NOERROR) {
 				return true;
@@ -1160,6 +1296,7 @@ bool Monster::getNextStep(Direction& direction, uint32_t& flags)
 	if (!walkingToSpawn && (!getFollowCreature() || !hasFollowPath) && (!isSummon() || !isMasterInRange)) {
 		if (getTimeSinceLastMove() >= 1000) {
 			randomStepping = true;
+			isMapLoaded = false;
 			// choose a random direction
 			result = getRandomStep(getPosition(), direction);
 		}
@@ -1167,10 +1304,16 @@ bool Monster::getNextStep(Direction& direction, uint32_t& flags)
 	else if ((isSummon() && isMasterInRange) || getFollowCreature() || walkingToSpawn) {
 		if (!hasFollowPath && getMaster() && !getMaster()->getPlayer()) {
 			randomStepping = true;
+			isMapLoaded = false;
 			result = getRandomStep(getPosition(), direction);
 		}
 		else {
 			randomStepping = false;
+			if (not isMapLoaded)
+			{
+				isMapLoaded = true;
+				updateMapCache();
+			}
 			result = Creature::getNextStep(direction, flags);
 			if (result) {
 				flags |= FLAG_PATHFINDING;
@@ -1572,6 +1715,99 @@ bool Monster::followTargetFromDistance(const Position& target_position, Directio
     return false;
 }
 
+void Monster::updateMapCache()
+{
+	const Position& myPos = getPosition();
+	Position pos(0, 0, myPos.z);
+
+	for (int32_t y = -maxWalkCacheHeight; y <= maxWalkCacheHeight; ++y)
+	{
+		for (int32_t x = -maxWalkCacheWidth; x <= maxWalkCacheWidth; ++x)
+		{
+			pos.x = myPos.getX() + x;
+			pos.y = myPos.getY() + y;
+			TilePtr tile = g_game.map.getTile(pos);
+			updateTileCache(tile, pos);
+		}
+	}
+}
+
+void Monster::updateTileCache(TilePtr tile, int32_t dx, int32_t dy)
+{
+	if (std::abs(dx) <= maxWalkCacheWidth and std::abs(dy) <= maxWalkCacheHeight)
+	{
+		constexpr uint32_t flags = FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE;
+		bool canAdd = false;
+		if (tile)
+		{
+			canAdd = tile->queryAdd(getMonster(), flags) == RETURNVALUE_NOERROR;
+		}
+		localMapCache[(maxWalkCacheHeight + dy) * mapWalkWidth + (maxWalkCacheWidth + dx)] = canAdd;
+	}
+}
+
+void Monster::updateTileCache(const TilePtr& tile, int32_t dx, int32_t dy, const MonsterPtr& self)
+{
+	auto entry = localMapCache[(maxWalkCacheHeight + dy) * mapWalkWidth + (maxWalkCacheWidth + dx)];
+	if (not tile or tile->hasFlag(TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT | TILESTATE_BLOCKSOLID))
+	{
+		entry = false;
+		return;
+	}
+	constexpr uint32_t flags = FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE;
+	entry = tile->queryAdd(self, flags) == RETURNVALUE_NOERROR;
+}
+
+void Monster::updateTileCache(TilePtr tile, const Position& pos)
+{
+	const Position& myPos = getPosition();
+	if (pos.z == myPos.z)
+	{
+		int32_t dx = Position::getOffsetX(pos, myPos);
+		int32_t dy = Position::getOffsetY(pos, myPos);
+		updateTileCache(tile, dx, dy);
+	}
+}
+
+int32_t Monster::getWalkCache(const Position& pos) const
+{
+	if (not useCacheMap())
+	{
+		return 2;
+	}
+
+	const Position& myPos = getPosition();
+	if (myPos.z != pos.z)
+	{
+		return 0;
+	}
+
+	if (pos == myPos)
+	{
+		return 1;
+	}
+
+	int32_t dx = Position::getOffsetX(pos, myPos);
+	if (std::abs(dx) <= maxWalkCacheWidth)
+	{
+		int32_t dy = Position::getOffsetY(pos, myPos);
+		if (std::abs(dy) <= maxWalkCacheHeight)
+		{
+			if (localMapCache[(maxWalkCacheHeight + dy) * mapWalkWidth + (maxWalkCacheWidth + dx)])
+			{
+				return 1;
+			}
+			else
+			{
+				return 0;
+			}
+		}
+	}
+
+	//out of range
+	return 2;
+}
+
 bool Monster::canWalkTo(Position pos, const Direction direction)
 {
 	pos = getNextPosition(direction, pos);
@@ -1625,17 +1861,17 @@ void Monster::death(const CreaturePtr&)
 			for (const auto& [playerId, score] : bossScoreTable.playerScoreTable) {
 
 				const auto contributionScore =
-					(score.damageDone * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE))
-					+ (score.damageTaken * g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN))
-					+ (score.healingDone * (g_config.getFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE)));
+					(score.damageDone * g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE))
+					+ (score.damageTaken * g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_TAKEN))
+					+ (score.healingDone * (g_config.GetFloat(ConfigManager::REWARD_RATE_DAMAGE_DONE)));
 				// we should never see 0's here, but better safe than sorry.
 				const float expectedScore = (contributionScore) ? (totalScore / (contributors * 3.0)) : 0;
-				const int32_t lootRate = std::max<int32_t>(g_config.getFloat(ConfigManager::REWARD_BASE_RATE), 1.0);
+				const int32_t lootRate = std::max<int32_t>(g_config.GetFloat(ConfigManager::REWARD_BASE_RATE), 1.0);
 				
 				const auto& player = g_game.getPlayerByGUID(playerId);
 				const auto& rewardContainer = Item::CreateItem(ITEM_REWARD_CONTAINER)->getContainer();
-				rewardContainer->getItem()->setIntAttr(ITEM_ATTRIBUTE_DATE, time_limit);
-				rewardContainer->getItem()->setIntAttr(ITEM_ATTRIBUTE_REWARDID, getMonster()->getID());
+				rewardContainer->getOwner()->setIntAttr(ITEM_ATTRIBUTE_DATE, time_limit);
+				rewardContainer->getOwner()->setIntAttr(ITEM_ATTRIBUTE_REWARDID, getMonster()->getID());
 
 				bool hasLoot = false;
 				auto isTopPlayer = (playerId == topContributerId) ? true : false;
@@ -1651,10 +1887,10 @@ void Monster::death(const CreaturePtr&)
 							
 							if (chance <= adjustedChance) {
 								auto lootItem = Item::CreateItem(lootBlock.id, count);
-								CylinderPtr holder = rewardContainer;
-								if (g_game.internalAddItem(holder, lootItem) == RETURNVALUE_NOERROR) {
+								if (g_game.internalAddItem(rewardContainer->getOwner(), lootItem) == RETURNVALUE_NOERROR)
+								{
 									hasLoot = true;
-								} 
+								}
 							}
 						}
 					}
@@ -1666,8 +1902,10 @@ void Monster::death(const CreaturePtr&)
 				}
 				if (hasLoot) {
 					if (player) {
-						CylinderPtr holder = player->getRewardChest()->getContainer();
-						if (g_game.internalAddItem(holder, rewardContainer->getItem()) == RETURNVALUE_NOERROR) {
+						auto rewardChestContainer = player->getRewardChest();
+						auto rewardContainerItem = rewardContainer->getOwner();
+						if (g_game.internalAddItem(rewardChestContainer->getOwner(), rewardContainerItem) == RETURNVALUE_NOERROR)
+						{
 							player->sendTextMessage(MESSAGE_LOOT, "The following items dropped by " + getMonster()->getName() + " are available in your reward chest: " + rewardContainer->getContentDescription() + ".");
 						}
 					} else {
@@ -1824,7 +2062,7 @@ void Monster::drainHealth(const CreaturePtr& attacker, const int32_t damage)
 {
 	Creature::drainHealth(attacker, damage);
 
-	if (damage > 0 && randomStepping) {
+	if (damage > 0 && randomStepping && !ignoreFieldDamage) {
 		ignoreFieldDamage = true;
 		updateMapCache();
 	}
@@ -1869,7 +2107,7 @@ void Monster::getPathSearchParams(const CreatureConstPtr& creature, FindPathPara
 
 	if (isSummon()) {
 		if (getMaster() == creature) {
-			fpp.maxTargetDist = g_config.getNumber(ConfigManager::SUMMON_PROXIMITY);
+			fpp.maxTargetDist = g_config.GetNumber(ConfigManager::SUMMON_PROXIMITY);
 			fpp.fullPathSearch = true;
 		} else if (mType->info.targetDistance <= 1) {
 			fpp.fullPathSearch = true;
@@ -1921,9 +2159,11 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
         if (caller == owner)
             return CREATURETYPE_SUMMON_OWN;
 
-        if (auto calling_player = caller->getPlayer(); calling_player)
+		auto caller_type = caller->getCreatureSubType();
+
+        if (auto isPlayer = caller_type == CreatureSubType::Player; auto calling_player = std::static_pointer_cast<Player>(caller))
         {
-            if (auto player = std::dynamic_pointer_cast<Player>(owner); player)
+            if (auto alsoPlayer = owner->getCreatureSubType() == CreatureSubType::Player; auto player = std::static_pointer_cast<Player>(owner))
             {
                 // Todo : we could set priority in config for party of guild, or allow as aditional param
                 auto owner_guild = player->getGuild();
@@ -1941,7 +2181,7 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
                 return CREATURETYPE_SUMMON_OTHER;
             }
 
-            if (auto monster = owner->getMonster(); monster)
+			if (auto isMonster = owner->getCreatureSubType() == CreatureSubType::Monster; auto monster = std::static_pointer_cast<Monster>(owner))
             {
                 for (const auto& weakPtr : monster->getTargetList())
                 {
@@ -1951,9 +2191,9 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
             }
         }
 
-        if (auto calling_monster = std::dynamic_pointer_cast<Monster>(caller); calling_monster)
+        if (auto isMonster = caller_type == CreatureSubType::Monster; auto calling_monster = std::static_pointer_cast<Monster>(caller))
         {
-            if (auto player = std::dynamic_pointer_cast<Player>(owner); player)
+            if (auto player = owner->getPlayer(); player)
             {
                 for (const auto& weakPtr : calling_monster->getTargetList())
                 {
@@ -1963,7 +2203,7 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
                 }
             }
 
-            if (owner->isMonster()) // remember we already checked if owner == caller
+            if (owner->is_monster()) // remember we already checked if owner == caller
             {
                 // Todo : Extend this logic here and for non summons to account for monster "friends"
                 return CREATURETYPE_SUMMON_MONSTER_FRIEND;
@@ -1974,4 +2214,35 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
     // Todo : part of the above, here we need to handle different scenarios for monster's
     // we could do friendly monsters, prey, non-threat, ect... will help with our "temperaments" we create later on.
     return CREATURETYPE_MONSTER;
+}
+
+uint32_t Monster::get_defense_charge_interval() const noexcept
+{
+	if (mType->info.defense_charge_interval > 0)
+		return mType->info.defense_charge_interval;
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MONSTER_DEFENSE_CHARGE_INTERVAL));
+}
+
+uint32_t Monster::get_defense_charges_cap() const noexcept
+{
+	if (mType->info.defense_charges_cap > 0)
+		return mType->info.defense_charges_cap;
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MONSTER_DEFENSE_CHARGES_CAP));
+}
+
+uint32_t Monster::get_armor_charges_cap() const noexcept
+{
+	if (mType->info.armor_charges_cap > 0)
+		return mType->info.armor_charges_cap;
+	return static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MONSTER_ARMOR_CHARGES_CAP));
+}
+
+float Monster::get_defense_charge_cost_multiplier() const noexcept
+{
+	return mType->info.defense_charge_cost_multiplier;
+}
+
+float Monster::get_armor_charge_cost_multiplier() const noexcept
+{
+	return mType->info.armor_charge_cost_multiplier;
 }

@@ -1,0 +1,32 @@
+# Combat metrics system runtime configuration.
+# Compile-time flags in src/metrics_config.h must also be true for each section to function.
+
+[metrics]
+# Runtime master enable. Can disable collection without recompiling.
+enabled              = true
+capture_pipeline     = true    # intermediate pipeline stages per strike
+capture_formulas     = true    # formula type + bind key per strike
+capture_modifiers    = true    # per-effect attack/defense modifier records
+capture_healing      = true    # heal_target() events
+capture_conditions   = true    # condition application + tick events
+
+# Live logging: appends every captured record to a structured log file in real
+# time. Writing is handled by the existing Console worker thread; the dispatcher
+# thread that runs combat is never blocked.
+[metrics.live_log]
+enabled        = true
+directory      = "logs/combat/metrics"
+format         = "csv"     # "csv" | "jsonl" ("both" currently falls back to jsonl)
+max_file_mb    = 100        # rotate to a new file after this many megabytes
+daily_rotation = true       # always start a new file at midnight server time
+
+# Rolling dump: periodically snapshots the ring buffers to a timestamped archive
+# file. The dump is a point-in-time copy of the ring window, not the session
+# aggregates.
+[metrics.rolling_dump]
+enabled            = true
+interval_hours     = 4      # how often to write a dump (fractions allowed: 0.5 = 30 min)
+directory          = "logs/combat/metrics/dumps"
+format             = "json"
+reset_after_dump   = false  # if true, live, in memory, metrics are cleared after each dump
+keep_dump_count    = 24     # oldest dumps are deleted once this count is exceeded (0 = unlimited)

@@ -4,6 +4,7 @@
 #include "otpch.h"
 
 #include "configmanager.h"
+#include "console.h"
 #include "database.h"
 
 #include <mysql/errmsg.h>
@@ -22,7 +23,7 @@ bool Database::connect()
 	// connection handle initialization
 	handle = mysql_init(nullptr);
 	if (!handle) {
-		std::cout << std::endl << "Failed to initialize MySQL connection handle." << std::endl;
+		BlackTek::Console::Database::Error("Failed to initialize MySQL connection handle.");
 		return false;
 	}
 
@@ -31,8 +32,8 @@ bool Database::connect()
 	mysql_options(handle, MYSQL_OPT_RECONNECT, &reconnect);
 
 	// connects to database
-	if (!mysql_real_connect(handle, g_config.getString(ConfigManager::MYSQL_HOST).c_str(), g_config.getString(ConfigManager::MYSQL_USER).c_str(), g_config.getString(ConfigManager::MYSQL_PASS).c_str(), g_config.getString(ConfigManager::MYSQL_DB).c_str(), g_config.getNumber(ConfigManager::SQL_PORT), g_config.getString(ConfigManager::MYSQL_SOCK).c_str(), 0)) {
-		std::cout << std::endl << "MySQL Error Message: " << mysql_error(handle) << std::endl;
+	if (!mysql_real_connect(handle, g_config.GetString(ConfigManager::MYSQL_HOST).c_str(), g_config.GetString(ConfigManager::MYSQL_USER).c_str(), g_config.GetString(ConfigManager::MYSQL_PASS).c_str(), g_config.GetString(ConfigManager::MYSQL_DB).c_str(), g_config.GetNumber(ConfigManager::SQL_PORT), g_config.GetString(ConfigManager::MYSQL_SOCK).c_str(), 0)) {
+		BlackTek::Console::Database::Error("MySQL Error Message: {}", mysql_error(handle));
 		return false;
 	}
 

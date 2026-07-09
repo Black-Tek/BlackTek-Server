@@ -2,6 +2,7 @@
 #include <toml++/toml.hpp>
 #include "otpch.h"
 #include "game.h"
+#include "console.h"
 
 void AccountManager::initialize()
 {
@@ -65,7 +66,11 @@ void AccountManager::initialize()
 					option.startingPos = { x, y, z };
 					option.needsPosition = false;
 				}
-			} // todo else { // log warning / error}
+			}
+			else
+			{
+				BlackTek::Console::Warn("AccountManager::initialize: character option '{}' needs a starting position but defines neither 'towns' nor 'spawn'", index.str());
+			}
 
 			// todo -- Need to properly validate outfit exists for the specified gender/sex.
 			if (const auto& outfit_data = option_data["outfit"].as_table()) 
@@ -79,7 +84,11 @@ void AccountManager::initialize()
 				option.outfit[5] = outfit["legs"].value_or(0);
 				option.outfit[6] = outfit["feet"].value_or(0);
 				option.outfit[7] = outfit["addons"].value_or(0);
-			} // todo else { // log warning / error}
+			}
+			else
+			{
+				BlackTek::Console::Warn("AccountManager::initialize: character option '{}' has no 'outfit' table", index.str());
+			}
 
 			if (const auto& skill_data = option_data["skills"].as_table()) 
 			{
@@ -92,7 +101,11 @@ void AccountManager::initialize()
 				option.skills[5] = skill["shield"].value_or(1);
 				option.skills[6] = skill["fishing"].value_or(1);
 				option.magiclevel = skill["magiclevel"].value_or(0);
-			} // todo else { // log warning / error}
+			}
+			else
+			{
+				BlackTek::Console::Warn("AccountManager::initialize: character option '{}' has no 'skills' table", index.str());
+			}
 
 			option.name = std::string(index.str());
 			option.id = option_id;

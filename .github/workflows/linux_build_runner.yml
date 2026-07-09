@@ -33,13 +33,15 @@ jobs:
     - name: Set up Git
       uses: actions/checkout@v4
 
-    - name: Install GCC 14
+    - name: Install GCC 15
       run: |
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         sudo apt-get update
-        sudo apt-get install -y gcc-14 g++-14
-        echo "CC=gcc-14" >> $GITHUB_ENV
-        echo "CXX=g++-14" >> $GITHUB_ENV
+        sudo apt-get install -y gcc-15 g++-15 libstdc++-15-dev
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-15 100 --slave /usr/bin/g++ g++ /usr/bin/g++-15
+        sudo update-alternatives --set gcc /usr/bin/gcc-15
+        echo "CC=gcc-15" >> $GITHUB_ENV
+        echo "CXX=g++-15" >> $GITHUB_ENV
     
     - name: Restore vcpkg cache
       uses: actions/cache@v3
@@ -49,9 +51,9 @@ jobs:
           /usr/local/share/vcpkg/downloads
           /usr/local/share/vcpkg/buildtrees
           ${{ github.workspace }}/vcpkg_installed
-        key: vcpkg-ubuntu-24.04-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-v2
+        key: vcpkg-ubuntu-24.04-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-v3
         restore-keys: |
-          vcpkg-ubuntu-24.04-v2-
+          vcpkg-ubuntu-24.04-v3-
     
     - name: Install Uuid
       run: |
@@ -69,7 +71,7 @@ jobs:
         cd premake-core
         make -f Bootstrap.mak linux
         cd ..
-        ./premake-core/bin/release/premake5 gmake2
+        ./premake-core/bin/release/premake5 gmake
     
     - name: Setup vcpkg environment
       env:
@@ -96,7 +98,7 @@ jobs:
         
         while [ $attempt -le $max_attempts ]; do
           echo "Installation attempt $attempt of $max_attempts"
-          
+
           if vcpkg install; then
             echo "Installation successful!"
             exit 0
@@ -116,12 +118,12 @@ jobs:
     
     - name: Compile Release 64
       run: |
-        make -j $(nproc) config=release_64
+        make -j $(nproc) config=release_64 CC=gcc-15 CXX=g++-15
         cp Black-Tek-Server BlackTek-Server-Release
-    
+
     - name: Compile Debug 64
       run: |
-        make -j $(nproc) config=debug_64
+        make -j $(nproc) config=debug_64 CC=gcc-15 CXX=g++-15
         cp Black-Tek-Server BlackTek-Server-Debug
         rm Black-Tek-Server
     

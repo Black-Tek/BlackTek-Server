@@ -10,7 +10,7 @@
 
 using TaskFunc = std::function<void(void)>;
 const int DISPATCHER_TASK_EXPIRATION = 2000;
-const auto SYSTEM_TIME_ZERO = std::chrono::system_clock::time_point(std::chrono::milliseconds(0));
+const auto TASK_TIME_ZERO = std::chrono::steady_clock::time_point(std::chrono::milliseconds(0));
 
 class Task
 {
@@ -18,7 +18,7 @@ class Task
 		// DO NOT allocate this class on the stack
 		explicit Task(TaskFunc&& f) : func(std::move(f)) {}
 		Task(uint32_t ms, TaskFunc&& f) :
-			expiration(std::chrono::system_clock::now() + std::chrono::milliseconds(ms)), func(std::move(f)) {}
+			expiration(std::chrono::steady_clock::now() + std::chrono::milliseconds(ms)), func(std::move(f)) {}
 
 		virtual ~Task() = default;
 		void operator()() const
@@ -27,18 +27,18 @@ class Task
 		}
 
 		void setDontExpire() {
-			expiration = SYSTEM_TIME_ZERO;
+			expiration = TASK_TIME_ZERO;
 		}
 
 		bool hasExpired() const {
-			if (expiration == SYSTEM_TIME_ZERO) {
+			if (expiration == TASK_TIME_ZERO) {
 				return false;
 			}
-			return expiration < std::chrono::system_clock::now();
+			return expiration < std::chrono::steady_clock::now();
 		}
 
 	protected:
-		std::chrono::system_clock::time_point expiration = SYSTEM_TIME_ZERO;
+		std::chrono::steady_clock::time_point expiration = TASK_TIME_ZERO;
 
 	private:
 		// Expiration has another meaning for scheduler tasks,

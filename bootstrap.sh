@@ -197,9 +197,29 @@ if ! ${premake_cmd} gmake2 ${premake_args}; then
 fi
 
 if [ ! $skip_vcpkg ]; then
-	if ! $VCPKG_ROOT/vcpkg install; then
-		echo -e "${RED}=== An error occured while executing vcpkg. Configuration is not complete. ===${END}"
-		exit 1
+	if [ "$build_arch" == "64" ]; then
+		if ! $VCPKG_ROOT/vcpkg install --triplet x64-linux; then
+			echo -e "${RED}=== An error occured while executing vcpkg. Configuration is not complete. ===${END}"
+			exit 1
+		fi
+		if ! $VCPKG_ROOT/vcpkg install --triplet x64-linux-static; then
+			echo -e "${RED}=== An error occured while executing vcpkg. Configuration is not complete. ===${END}"
+			exit 1
+		fi
+	elif [ "$build_arch" == "arm64" ]; then
+		if ! $VCPKG_ROOT/vcpkg install --triplet arm64-linux; then
+			echo -e "${RED}=== An error occured while executing vcpkg. Configuration is not complete. ===${END}"
+			exit 1
+		fi
+		if ! $VCPKG_ROOT/vcpkg install --triplet arm64-linux-static; then
+			echo -e "${RED}=== An error occured while executing vcpkg. Configuration is not complete. ===${END}"
+			exit 1
+		fi
+	else
+		if ! $VCPKG_ROOT/vcpkg install; then
+			echo -e "${RED}=== An error occured while executing vcpkg. Configuration is not complete. ===${END}"
+			exit 1
+		fi
 	fi
 fi
 

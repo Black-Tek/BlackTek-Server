@@ -1,0 +1,17 @@
+# Experience rates and reward system configuration
+
+[rates]
+# rateExp is ignored when experience stages are enabled in config/stages.toml
+experience = 5
+skill      = 3
+loot       = 2
+magic      = 3
+spawn      = 1
+
+[reward]
+# Reward boss system: players meeting their share of expectedScore receive loot
+# according to base_rate. Contribution is measured by damage/healing ratios.
+base_rate    = 1.0
+damage_done  = 1.0
+damage_taken = 1.0
+healing_done = 1.0

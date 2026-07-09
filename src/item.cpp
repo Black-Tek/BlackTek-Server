@@ -4,7 +4,7 @@
 #include "otpch.h"
 
 #include "item.h"
-#include "container.h"
+#include "itemcontainer.h"
 #include "teleport.h"
 #include "trashholder.h"
 #include "mailbox.h"
@@ -15,7 +15,6 @@
 #include "actions.h"
 #include "spells.h"
 #include "events.h"
-#include "rewardchest.h"
 
 extern Game g_game;
 extern Spells* g_spells;
@@ -48,36 +47,40 @@ ItemPtr Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
 	ItemPtr item;
 
 	bool allowAugments = false;
+	std::pmr::polymorphic_allocator<Item> allocator(&g_game.getItemPool());
 
 	if (it.isDepot()) {
-		item = std::make_shared<DepotLocker>(type);
+		item = std::allocate_shared<Item>(allocator, type, count);
+		item->attachContainer(it.maxItems, true, false, ContainerSubType::DepotLocker);
 	} else if (it.isRewardChest()) {
-		item = std::make_shared<RewardChest>(type);
+		item = std::allocate_shared<Item>(allocator, type, count);
+		item->attachContainer(it.maxItems, true, true, ContainerSubType::RewardChest);
 	} else if (it.isContainer()) {
-		item = std::make_shared<Container>(type);
+		item = std::allocate_shared<Item>(allocator, type, count);
+		item->attachContainer(it.maxItems, true, false, ContainerSubType::None);
 		if (it.slotPosition & SLOTP_BACKPACK) {
 			allowAugments = true;
 		}
 	} else if (it.isTeleport()) {
-		item = std::make_shared<Teleport>(type);
+		item = std::allocate_shared<Teleport>(allocator, type);
 	} else if (it.isMagicField()) {
-		item = std::make_shared<MagicField>(type);
+		item = std::allocate_shared<MagicField>(allocator, type);
 	} else if (it.isDoor()) {
-		item = std::make_shared<Door>(type);
+		item = std::allocate_shared<Door>(allocator, type);
 	} else if (it.isTrashHolder()) {
-		item = std::make_shared<TrashHolder>(type);
+		item = std::allocate_shared<TrashHolder>(allocator, type);
 	} else if (it.isMailbox()) {
-		item = std::make_shared<Mailbox>(type);
+		item = std::allocate_shared<Mailbox>(allocator, type);
 	} else if (it.isBed()) {
-		item = std::make_shared<BedItem>(type);
+		item = std::allocate_shared<BedItem>(allocator, type);
 	} else {
-		item = std::make_shared<Item>(type, count);
+		item = std::allocate_shared<Item>(allocator, type, count);
 		allowAugments = true;
 	}
 
 	if (allowAugments and item) {
 		for (const auto& augName : it.augments) {
-			auto augment = Augments::GetAugment(augName);
+			auto augment = BlackTek::Augments::GetAugment(augName);
 			if (augment) {
 				item->addAugment(augment);
 			}
@@ -86,14 +89,16 @@ ItemPtr Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
 	return item;
 }
 
-ContainerPtr Item::CreateItemAsContainer(const uint16_t type, uint16_t size)
+ItemPtr Item::CreateContainerItem(const uint16_t type, uint16_t size)
 {
 	const ItemType& it = Item::items[type];
 	if (it.getID() == 0 || it.group == ITEM_GROUP_DEPRECATED || it.stackable || it.useable || it.moveable || it.pickupable || it.isDepot() || it.isSplash() || it.isDoor()) {
 		return nullptr;
 	}
 
-	auto newItem = std::make_shared<Container>(type, size);
+	std::pmr::polymorphic_allocator<Item> allocator(&g_game.getItemPool());
+	auto newItem = std::allocate_shared<Item>(allocator, type, 0);
+	newItem->attachContainer(size, true, false, ContainerSubType::None);
 	return newItem;
 }
 
@@ -169,6 +174,7 @@ ItemPtr Item::CreateItem(PropStream& propStream)
 Item::Item(const uint16_t type, uint16_t count /*= 0*/) :
 	id(type)
 {
+	thing_subtype = ThingSubType::Item;
 	const ItemType& it = items[id];
 
 	if (it.isFluidContainer() || it.isSplash()) {
@@ -187,9 +193,6 @@ Item::Item(const uint16_t type, uint16_t count /*= 0*/) :
 		}
 	}
 
-	if (it.imbuementslots != 0) {
-		addImbuementSlots(it.imbuementslots);
-	}
 	setDefaultDuration();
 }
 
@@ -201,10 +204,63 @@ Item::Item(const Item& i) :
 	}
 }
 
+Item::~Item()
+{
+	if (not container)
+	{
+		return;
+	}
+
+	if (getID() == ITEM_BROWSEFIELD)
+	{
+		if (auto directParent = parent.lock())
+		{
+			g_game.browseFields.erase(directParent->getTile());
+		}
+		for (const auto& child : container->getItemList())
+		{
+			child->setParent(parent);
+		}
+	}
+	else
+	{
+		for (const auto& child : container->getItemList())
+		{
+			child->clearParent();
+		}
+	}
+}
+
+void Item::attachContainer(uint16_t size, bool unlocked, bool pagination, ContainerSubType subtype /*= ContainerSubType::None*/)
+{
+	container = std::make_unique<ItemContainer>(size, unlocked, pagination, subtype);
+	container->owner = static_shared_this<Item>();
+	containerAlias = ContainerPtr(static_shared_this<Item>(), container.get());
+}
+
+bool Item::canRemove() const
+{
+	return not container or container->canRemove();
+}
+
+ContainerPtr Item::getContainer()
+{
+	return containerAlias;
+}
+
+ContainerConstPtr Item::getContainer() const
+{
+	return containerAlias;
+}
+
 ItemPtr Item::clone() const
 {
 	auto item = Item::CreateItem(id, count);
-	if (attributes) 
+	if (container)
+	{
+		container->cloneInto(*item->container);
+	}
+	if (attributes)
 	{
 		item->attributes.reset(new ItemAttributes(*attributes));
 		if (item->getDuration() > 0) 
@@ -234,7 +290,6 @@ bool Item::equals(const ItemConstPtr& otherItem) const
 	if (!otherItem || id != otherItem->id) {
 		return false;
 	}
-
 	const auto& otherAttributes = otherItem->attributes;
 	if (!attributes) {
 		return !otherAttributes || (otherAttributes->attributeBits == 0);
@@ -289,7 +344,7 @@ void Item::setDefaultSubtype()
 
 void Item::onRemoved()
 {
-	ScriptEnvironment::removeTempItem(std::dynamic_pointer_cast<Item>(shared_from_this()));
+	ScriptEnvironment::removeTempItem(std::static_pointer_cast<Item>(shared_from_this()));
 
 	if (hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)) {
 		g_game.removeUniqueItem(getUniqueId());	
@@ -329,65 +384,66 @@ void Item::setID(uint16_t newid)
 	}
 }
 
-CylinderPtr Item::getTopParent() {
-	CylinderPtr aux = getParent();
-	CylinderPtr prevaux;
+ThingPtr Item::getTopParent()
+{
+	ItemPtr current = static_shared_this<Item>();
+	bool hopped = false;
 
-	if (auto self = weak_from_this().lock()) {
-		prevaux = std::dynamic_pointer_cast<Cylinder>(self);
+	while (auto owner = current->getContainerParent())
+	{
+		current = owner;
+		hopped = true;
 	}
 
-	if (!aux) {
-		return prevaux;
+	if (hopped)
+	{
+		return current;
 	}
-
-	while (aux->getParent() != nullptr) {
-		prevaux = aux;
-		aux = aux->getParent();
-	}
-
-	return prevaux ? prevaux : aux;
+	return current->parent.lock();
 }
 
+ThingConstPtr Item::getTopParent() const
+{
+	ItemConstPtr current = static_shared_this<const Item>();
+	bool hopped = false;
 
-CylinderConstPtr Item::getTopParent() const {
-	CylinderConstPtr aux = getParent();
-	CylinderConstPtr prevaux;
-
-	if (auto self = weak_from_this().lock()) {
-		prevaux = std::dynamic_pointer_cast<const Cylinder>(self);
+	while (auto owner = current->getContainerParent())
+	{
+		current = owner;
+		hopped = true;
 	}
 
-	if (!aux) {
-		return prevaux;
+	if (hopped)
+	{
+		return current;
 	}
-
-	while (aux->getParent() != nullptr) {
-		prevaux = aux;
-		aux = aux->getParent();
-	}
-
-	return prevaux ? prevaux : aux;
+	return current->parent.lock();
 }
 
 TilePtr Item::getTile()
 {
-	auto cylinder = getTopParent();
-	//get root cylinder
-	if (cylinder && cylinder->getParent()) {
-		cylinder = cylinder->getParent();
-	}
-	return std::dynamic_pointer_cast<Tile>(cylinder);
+	auto topParent = getTopParent();
+
+	if (not topParent)
+		return nullptr;
+
+	if (auto realParent = topParent->getParent())
+		return realParent->getTile();
+
+	return topParent->getTile();
 }
 
 TileConstPtr Item::getTile() const
 {
-	auto cylinder = getTopParent();
-	//get root cylinder
-	if (cylinder && cylinder->getParent()) {
-		cylinder = cylinder->getParent();
-	}
-	return std::dynamic_pointer_cast<const Tile>(cylinder);
+	auto topParent = getTopParent();
+
+	if (not topParent)
+		return nullptr;
+
+	if (auto realParent = topParent->getParent())
+		return realParent->getTile();
+
+	return topParent->getTile();
 }
 
 uint16_t Item::getSubType() const
@@ -405,6 +461,12 @@ uint16_t Item::getSubType() const
 
 PlayerPtr Item::getHoldingPlayer()
 {
+	if (auto containerParentItem = getContainerParent())
+	{
+		auto holder = containerParentItem->getContainer()->getHoldingCreature();
+		return holder ? holder->getPlayer() : nullptr;
+	}
+
 	CylinderPtr p = getParent();
 	while (p) {
 		if (p->getCreature()) {
@@ -432,6 +494,11 @@ void Item::setSubType(uint16_t n)
 
 Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 {
+	if ((attr == ATTR_CONTAINER_ITEMS or attr == ATTR_DEPOT_ID) and container)
+	{
+		return container->readAttr(attr, propStream);
+	}
+
 	switch (attr) {
 		case ATTR_COUNT:
 		case ATTR_RUNE_CHARGES: {
@@ -804,37 +871,30 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 		}
 
 		case ATTR_IMBUESLOTS: {
+			// Legacy imbuement slot count — discard for backward compat.
 			uint16_t slots;
 			if (!propStream.read<uint16_t>(slots)) {
-				std::cout << "Failed to read : Imbuement Slots \n";
 				return ATTR_READ_ERROR;
 			}
-
-			imbuementSlots = slots;
 			break;
 		}
 
 		case ATTR_IMBUEMENTS: {
+			// Legacy imbuement data — skip all bytes for backward compat.
+			// Each serialized imbuement is: type(u8) + value(u32) + duration(u32) + decaytype(u8) = 10 bytes.
 			uint32_t size;
 			if (!propStream.read<uint32_t>(size)) {
-				std::cout << "Failed to read : Imbuement's Size \n";
 				return ATTR_READ_ERROR;
 			}
-
-			if (not imbuements.get()) 
-			{
-				imbuements = std::move(std::make_unique<std::vector<std::shared_ptr<Imbuement>>>(size));
-            }
-
 			for (uint32_t i = 0; i < size; ++i) {
-				std::shared_ptr<Imbuement> imb = std::make_shared<Imbuement>();
-				if (not imb->unserialize(propStream)) 
-				{
-					std::cout << "Failed to read : Imbuement Data \n";
+				uint8_t dummy8;
+				uint32_t dummy32;
+				if (!propStream.read<uint8_t>(dummy8)  ||
+				    !propStream.read<uint32_t>(dummy32) ||
+				    !propStream.read<uint32_t>(dummy32) ||
+				    !propStream.read<uint8_t>(dummy8)) {
 					return ATTR_READ_ERROR;
 				}
-
-				addImbuement(imb, false);
 			}
 			break;
 		}
@@ -892,31 +952,38 @@ bool Item::unserializeAugments(PropStream& propStream)
     
     if (not isAugmented() and augmentCount > 0)
     {
-        augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+        augments = std::make_unique<std::vector<std::shared_ptr<BlackTek::Augment>>>();
         augments->reserve(augmentCount);
     }
     
     for (uint32_t i = 0; i < augmentCount; ++i) 
     {
-        auto augment = std::make_shared<Augment>();
-        bool result = augment->unserialize(propStream);
-        if (not result) 
+        auto augment_optional = BlackTek::Augment::deserialize(propStream);
+		if (not augment_optional or not (*augment_optional))
         {
-            return result;
+            return false;
         }
 
-        if (not hasAugment(augment))
+        if (not hasAugment(*augment_optional))
         {
-            addAugment(augment);
+            addAugment(*augment_optional);
         }
     }
 
     return true;
 }
 
-bool Item::unserializeItemNode(OTB::Loader&, const OTB::Node&, PropStream& propStream)
+bool Item::unserializeItemNode(OTB::Loader& loader, const OTB::Node& node, PropStream& propStream)
 {
-	return unserializeAttr(propStream);
+	if (not unserializeAttr(propStream))
+	{
+		return false;
+	}
+	if (container)
+	{
+		return container->unserializeItemNode(loader, node, propStream);
+	}
+	return true;
 }
 
 void Item::serializeAttr(PropWriteStream& propWriteStream) const
@@ -1066,21 +1133,6 @@ void Item::serializeAttr(PropWriteStream& propWriteStream) const
 		propWriteStream.writeString(getStrAttr(ITEM_ATTRIBUTE_TIER));
 	}
 
-	if (getImbuementSlots() > 0) {
-		propWriteStream.write<uint8_t>(ATTR_IMBUESLOTS);
-		propWriteStream.write<uint16_t>(imbuementSlots);
-	}
-
-	if (hasImbuements()) 
-	{
-		propWriteStream.write<uint8_t>(ATTR_IMBUEMENTS);
-		propWriteStream.write<uint32_t>(imbuements->size());
-		for (const auto& entry : *imbuements) 
-		{
-			entry->serialize(propWriteStream);
-		}
-	}
-
 	if (hasAttribute(ITEM_ATTRIBUTE_REWARDID)) {
 		propWriteStream.write<uint8_t>(ATTR_REWARDID);
 		propWriteStream.write<uint32_t>(getIntAttr(ITEM_ATTRIBUTE_REWARDID));
@@ -1120,7 +1172,11 @@ uint32_t Item::getWeight() const
 {
 	uint32_t weight = getBaseWeight();
 	if (isStackable()) {
-		return weight * std::max<uint32_t>(1, getItemCount());
+		weight *= std::max<uint32_t>(1, getItemCount());
+	}
+	if (container)
+	{
+		weight += container->getChildWeight();
 	}
 	return weight;
 }
@@ -1315,7 +1371,9 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 			// methods I used here, with const versions for those missing it, so that I can reimplement the const
 			// but we also need to handle checking if this item is actually equipped, a better way than this loop.
 			uint32_t duration = item->getDuration() / 1000;
-			if (const auto& player = dynamic_pointer_cast<Player>(item->getParent()))
+			const auto itemParent = item->getParent();
+			const auto itemParentCreature = itemParent ? itemParent->getCreature() : nullptr;
+			if (const auto& player = itemParentCreature ? itemParentCreature->getPlayer() : nullptr)
 			{
 				const auto slot = item->getEquipSlot();
 
@@ -1686,6 +1744,13 @@ ItemAttributes::Attribute& ItemAttributes::getAttr(itemAttrTypes type)
 void Item::startDecaying()
 {
 	g_game.startDecay(getItem());
+	if (container)
+	{
+		for (const auto& child : container->getItemList())
+		{
+			child->startDecaying();
+		}
+	}
 }
 
 bool Item::hasMarketAttributes() const
@@ -1760,193 +1825,26 @@ const bool Item::isEquipped() {
 	return false;
 }
 
-uint16_t Item::getImbuementSlots() const
-{
-    if (not imbuements.get()) 
-	{
-        return 0;
-    }
-	// item:getImbuementSlots() -- returns how many total slots
-	return imbuementSlots;
-}
-
-uint16_t Item::getFreeImbuementSlots() const
-{
-    // item:getFreeImbuementSLots() -- returns how many slots are available for use
-    if (imbuements.get() and imbuements->size() > 0) 
-	{
-        return imbuementSlots - imbuements->size();
-    }
-    return 0;
-}
-
-bool Item::canImbue()
-{
-    if (not imbuements.get() or isStackable() or canDecay() or not canTransform() or getCharges() or not hasProperty(CONST_PROP_MOVEABLE)) 
-	{
-        return false;
-    }
-	return imbuements.get() and ((imbuementSlots > 0 and imbuementSlots > imbuements->size()) ? true : false);
-}
-
-bool Item::addImbuementSlots(const uint16_t amount)
-{
-    // item:addImbuementSlots(amount) -- tries to add imbuement slot, returns true if successful
-    if (not hasImbuements()) 
-	{
-        imbuements = std::move(std::make_unique<std::vector<std::shared_ptr<Imbuement>>>(0));
-    }
-
-	constexpr uint16_t limit = std::numeric_limits<uint16_t>::max(); // uint16_t size limit
-	const uint16_t currentSlots = static_cast<uint16_t>(imbuements->size());
-
-	if ((currentSlots + amount) >= limit)
-	{
-		std::cout << "Warning in call to Item:addImbuementSlots(). Total added would be more than supported memory limit!" << std::endl;
-		return false;
-	}
-
-	imbuementSlots += amount;
-	return true;
-}
-
-bool Item::removeImbuementSlots(const uint16_t amount, const bool destroyImbues)
-{
-	// item:removeImbuementSlots(amount, destroy) -- tries to remove imbuement slot(s), returns true if successful
-    if (not hasImbuements())
-	{
-        return false;
-	}
-	constexpr uint16_t limit = std::numeric_limits<uint16_t>::max(); // uint16_t size limit
-	const uint16_t currentSlots = static_cast<uint16_t>(imbuements->size());
-
-	if (currentSlots <= 0)
-	{
-		std::cout << "Warning in call to Item:removeImbuementSlots(). Item has no slots to remove!" << std::endl;
-		return false;
-	}
-
-	if ((amount + currentSlots) > limit)
-	{
-		std::cout << "Warning in call to Item:removeImbuementSlots(). Amount is bigger than supported memory limit!" << std::endl;
-		return false;
-	}
-
-	const uint16_t freeSlots = getFreeImbuementSlots();
-	const uint16_t difference = amount - currentSlots;
-
-	if (difference >= imbuementSlots or difference >= limit)
-	{
-		std::cout << "Warning in call to Item:removeImbuementSlots(). You are trying to remove too many slots!" << std::endl;
-		return false;
-	}
-
-	if (destroyImbues)
-	{
-		if (difference < currentSlots)
-		{
-			imbuements->erase(imbuements->begin(), imbuements->begin() + amount);
-		}
-	} 
-	else 
-	{
-		if (freeSlots < currentSlots) 
-		{
-			return false;
-		}
-	}
-
-	imbuementSlots -= amount;
-	return true;
-}
-
-bool Item::hasImbuementType(const ImbuementType imbuetype) const
-{
-	// item:hasImbuementType(type)
-    if (not hasImbuements()) 
-	{
-        return false;
-    }
-
-	return std::any_of(imbuements->begin(), imbuements->end(), [imbuetype](const std::shared_ptr<Imbuement>& elem) 
-	{
-		return elem->imbuetype == imbuetype;
-	});
-}
-
-bool Item::hasImbuement(const std::shared_ptr<Imbuement>& imbuement) const
-{
-	// item:hasImbuement(imbuement)
-    if (not hasImbuements()) 
-	{
-        return false;
-    }
-	return std::any_of(imbuements->begin(), imbuements->end(), [&imbuement](const std::shared_ptr<Imbuement>& elem) 
-	{
-		return elem == imbuement;
-	});
-}
-
-
-bool Item::hasImbuements() const
-{
-	// item:hasImbuements() -- returns true if item has any imbuements
-	return imbuements.get() and not imbuements->empty();
-}
-
-bool Item::addImbuement(std::shared_ptr<Imbuement>  imbuement, bool created)
-{
-	// item:addImbuement(imbuement) -- returns true if it successfully adds the imbuement
-	if (canImbue() and g_events->eventItemOnImbue(getItem(), imbuement, created))
-	{
-		imbuements->push_back(imbuement);
-        
-        if (auto player = getHoldingPlayer(); player and isEquipped()) 
-		{
-			player->addImbuementEffect(imbuement);
-        }
-		return true;
-	}
-	return false;
-}
-
-bool Item::removeImbuement(const std::shared_ptr<Imbuement>& imbuement, bool decayed)
-{
-	if (not hasImbuements())
-	{
-        return false;
-	}
-
-    for (auto it = imbuements->begin(); it != imbuements->end(); ++it)
-    {
-        if (*it == imbuement)
-        {
-            auto player = getHoldingPlayer();
-
-            if (player and isEquipped())
-            {
-                player->removeImbuementEffect(*it);
-            }
-
-            g_events->eventItemOnRemoveImbue(getItem(), imbuement->imbuetype, decayed);
-            imbuements->erase(it);
-            return true;
-        }
-    }
-    return false;
-}
-
-const bool Item::addAugment(const std::shared_ptr<Augment>& augment)
+const bool Item::addAugment(const std::shared_ptr<BlackTek::Augment>& augment)
 {
 	if (not isAugmented())
 	{
-        augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+        augments = std::make_unique<std::vector<std::shared_ptr<BlackTek::Augment>>>();
+		attack_modifier_count += augment->attack_mod_count();
+		defense_modifier_count += augment->defense_mod_count();
+		conversion_modifier_count += augment->conversion_count();
+		reform_modifier_count += augment->reform_count();
+		damage_modifiers_count += augment->damage_triggers();
+		origin_modifiers_count += augment->origin_triggers();
+		creature_modifiers_count += augment->creature_triggers();
+		race_modifiers_count += augment->race_triggers();
+		named_modifiers_count += augment->name_count();
 		augments->push_back(augment);
-		g_events->eventItemOnAugment(getItem(), augment);
+		//g_events->eventItemOnAugment(getItem(), augment);
 		return true;
 	}
 
-	for (const auto& aug : *augments) 
+	for (const auto& aug : *augments)
     {
         bool same_pointer = (aug.get() == augment.get());
         bool same_name = (*aug == *augment);
@@ -1954,8 +1852,17 @@ const bool Item::addAugment(const std::shared_ptr<Augment>& augment)
 			return false;
     }
 
+	attack_modifier_count += augment->attack_mod_count();
+	defense_modifier_count += augment->defense_mod_count();
+	conversion_modifier_count += augment->conversion_count();
+	reform_modifier_count += augment->reform_count();
+	damage_modifiers_count += augment->damage_triggers();
+	origin_modifiers_count += augment->origin_triggers();
+	creature_modifiers_count += augment->creature_triggers();
+	race_modifiers_count += augment->race_triggers();
+	named_modifiers_count += augment->name_count();
 	augments->push_back(augment);
-    g_events->eventItemOnAugment(getItem(), augment);
+    //g_events->eventItemOnAugment(getItem(), augment);
     return true;
 }
 
@@ -1963,32 +1870,49 @@ const bool Item::addAugment(std::string_view augmentName)
 {
 	if (not isAugmented())
 	{
-        augments = std::make_unique<std::vector<std::shared_ptr<Augment>>>();
+        augments = std::make_unique<std::vector<std::shared_ptr<BlackTek::Augment>>>();
 	}
-	if (auto augment = Augments::GetAugment(augmentName); augment) 
+	if (auto augment = BlackTek::Augments::GetAugment(augmentName); augment)
 	{
-        if (std::ranges::find(*augments, augment) != augments->end()) 
+        if (std::ranges::find(*augments, augment) != augments->end())
 		{
             return false;
         }
 		augments->emplace_back(augment);
-		g_events->eventItemOnAugment(std::static_pointer_cast<Item>(shared_from_this()), augment);
+		attack_modifier_count += augment->attack_mod_count();
+		defense_modifier_count += augment->defense_mod_count();
+		conversion_modifier_count += augment->conversion_count();
+		reform_modifier_count += augment->reform_count();
+		damage_modifiers_count += augment->damage_triggers();
+		origin_modifiers_count += augment->origin_triggers();
+		creature_modifiers_count += augment->creature_triggers();
+		race_modifiers_count += augment->race_triggers();
+		named_modifiers_count += augment->name_count();
+		//g_events->eventItemOnAugment(std::static_pointer_cast<Item>(shared_from_this()), augment);
 		return true;
 	}
 	return false;
 }
 
-const bool Item::removeAugment(std::shared_ptr<Augment>& augment)
+const bool Item::removeAugment(std::shared_ptr<BlackTek::Augment>& augment)
 {
-    if (not isAugmented()) 
-	{
+    if (not isAugmented())
         return false;
-    }
 
 	const auto removedCount = std::erase(*augments, augment);
     const bool removed = removedCount > 0;
-	if (removed) 
+
+	if (removed)
 	{
+		attack_modifier_count -= augment->attack_mod_count();
+		defense_modifier_count -= augment->defense_mod_count();
+		conversion_modifier_count -= augment->conversion_count();
+		reform_modifier_count -= augment->reform_count();
+		damage_modifiers_count -= augment->damage_triggers();
+		origin_modifiers_count -= augment->origin_triggers();
+		creature_modifiers_count -= augment->creature_triggers();
+		race_modifiers_count -= augment->race_triggers();
+		named_modifiers_count -= augment->name_count();
 		g_events->eventItemOnRemoveAugment(std::static_pointer_cast<Item>(shared_from_this()), augment);
 	}
 	return removed;
@@ -2004,11 +1928,20 @@ const bool Item::removeAugment(std::string_view name)
 	auto originalSize = augments->size();
     
 	std::erase_if(*augments,
-    [this, &name](const std::shared_ptr<Augment>& augment) 
+    [this, &name](const std::shared_ptr<BlackTek::Augment>& augment)
 	{
         const auto match = augment->getName() == name;
-        if (match) 
+        if (match)
 		{
+			attack_modifier_count -= augment->attack_mod_count();
+			defense_modifier_count -= augment->defense_mod_count();
+			conversion_modifier_count -= augment->conversion_count();
+			reform_modifier_count -= augment->reform_count();
+			damage_modifiers_count -= augment->damage_triggers();
+			origin_modifiers_count -= augment->origin_triggers();
+			creature_modifiers_count -= augment->creature_triggers();
+			race_modifiers_count -= augment->race_triggers();
+			named_modifiers_count -= augment->name_count();
 	        g_events->eventItemOnRemoveAugment(std::static_pointer_cast<Item>(shared_from_this()), augment);
         }
         return match;
@@ -2044,7 +1977,7 @@ bool Item::hasAugment(std::string_view name) const
 	return false;
 }
 
-bool Item::hasAugment(const std::shared_ptr<Augment>& augment) const
+bool Item::hasAugment(const std::shared_ptr<BlackTek::Augment>& augment) const
 {
     if (not isAugmented()) 
     {
@@ -2060,34 +1993,6 @@ bool Item::hasAugment(const std::shared_ptr<Augment>& augment) const
     }
     
     return false;
-}
-
-void Item::decayImbuements(bool infight) {
-    if (not hasImbuements()) 
-	{
-        return;
-    }
-
-	for (auto& imbue : *imbuements) {
-		if (imbue->isEquipDecay()) 
-		{
-			imbue->duration -= 1;
-			if (imbue->duration <= 0) 
-			{
-				removeImbuement(imbue, true);
-				return;
-			}
-		}
-		if (imbue->isInfightDecay() and infight) 
-		{
-			imbue->duration -= 1;
-			if (imbue->duration <= 0) 
-			{
-				removeImbuement(imbue, true);
-				return;
-			}
-		}
-	}
 }
 
 void handleRuneDescription(std::ostringstream& s, const ItemType& it, const ItemConstPtr& item, int32_t& subType) {

@@ -7,6 +7,7 @@
 #include "pugicast.h"
 
 #include <mysql/mysql.h>
+#include <span>
 
 class DBResult;
 using DBResult_ptr = std::shared_ptr<DBResult>;
@@ -78,6 +79,9 @@ class Database
 		 * @return quoted string
 		 */
 		std::string escapeBlob(const char* s, uint32_t length) const;
+		std::string escapeBlob(std::span<const std::byte> data) const {
+			return escapeBlob(reinterpret_cast<const char*>(data.data()), static_cast<uint32_t>(data.size()));
+		}
 
 		/**
 		 * Retrieve id of last inserted row

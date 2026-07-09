@@ -1,16 +1,9 @@
-local combat = Combat()
-combat:setParameter(COMBAT_PARAM_AGGRESSIVE, false)
-combat:setArea(createCombatArea(AREA_CIRCLE3X3))
-
-local condition = Condition(CONDITION_ATTRIBUTES)
-condition:setParameter(CONDITION_PARAM_TICKS, 2 * 60 * 1000)
-condition:setParameter(CONDITION_PARAM_STAT_MAGICPOINTS, 1)
-condition:setParameter(CONDITION_PARAM_BUFF_SPELL, true)
+local combat = Combat(PartyCombats.EnchantParty)
 
 local spell = Spell(SPELL_INSTANT)
 
 function spell.onCastSpell(creature, variant)
-	return creature:addPartyCondition(combat, variant, condition, 120)
+	return creature:addPartyCondition(combat, variant, PartyCombats.EnchantPartyCondition, 120)
 end
 
 spell:group("support")

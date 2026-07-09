@@ -1,66 +1,93 @@
-#include "otpch.h"
+// Copyright 2024 Black Tek Server Authors. All rights reserved.
+// Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
+#include "otpch.h"
 #include "matrixarea.h"
 
-MatrixArea MatrixArea::rotate90() const
+namespace BlackTek
 {
-	Container newArr(arr.size());
-	for (uint32_t i = 0; i < rows; ++i) {
-		// assign rows, top to bottom, to the current cols, right to left
-		newArr[std::slice(i, cols, rows)] = arr[std::slice((rows - i - 1) * cols, cols, 1)];
-	}
-	auto &&[centerX, centerY] = center;
-	return {{rows - centerY - 1, centerX}, cols, rows, std::move(newArr)};
-}
 
-MatrixArea MatrixArea::rotate180() const
-{
-	Container newArr(arr.size());
-	std::ranges::reverse_copy(arr, std::begin(newArr));
-	auto &&[centerX, centerY] = center;
-	return {{cols - centerX - 1, rows - centerY - 1}, rows, cols, std::move(newArr)};
-}
+    MatrixArea MatrixArea::Rotate90() const
+    {
+        Storage newStorage(storage.size(), 0);
+        View dst{newStorage.data(), cols, rows};
+        auto src = GetView();
 
-MatrixArea MatrixArea::rotate270() const
-{
-	Container newArr(arr.size());
-	for (uint32_t i = 0; i < cols; ++i) {
-		// assign cols, left to right, to the current rows, bottom to top
-		newArr[std::slice(i * rows, rows, 1)] = arr[std::slice(cols - i - 1, rows, cols)];
-	}
-	auto &&[centerX, centerY] = center;
-	return {{centerY, cols - centerX - 1}, cols, rows, std::move(newArr)};
-}
+        for (uint32_t i = 0; i < rows; ++i)
+        {
+            for (uint32_t j = 0; j < cols; ++j)
+            {
+                dst[j, rows - 1 - i] = src[i, j];
+            }
+        }
 
-MatrixArea createArea(const std::vector<uint32_t> &vec, const uint32_t rows)
-{
-	uint32_t cols;
-	if (rows == 0) {
-		cols = 0;
-	} else {
-		cols = vec.size() / rows;
-	}
+        const auto [cx, cy] = center;
+        return {{rows - cy - 1, cx}, cols, rows, std::move(newStorage)};
+    }
 
-	MatrixArea area{rows, cols};
+    MatrixArea MatrixArea::Rotate180() const
+    {
+        Storage newStorage(storage.size());
+        std::ranges::reverse_copy(storage, newStorage.begin());
 
-	uint32_t x = 0;
-	uint32_t y = 0;
+        const auto [cx, cy] = center;
+        return {{cols - cx - 1, rows - cy - 1}, rows, cols, std::move(newStorage)};
+    }
 
-	for (const uint32_t& value : vec) {
-		if (value == 1 || value == 3) {
-			area(y, x) = true;
-		}
+    MatrixArea MatrixArea::Rotate270() const
+    {
+        // Clockwise 270°: dst[i, j] = src[j, cols-1-i]
+        // Produces a (cols × rows) matrix from a (rows × cols) source.
+        Storage newStorage(storage.size(), 0);
+        View dst{newStorage.data(), cols, rows};
+        auto src = GetView();
 
-		if (value == 2 || value == 3) {
-			area.setCenter(y, x);
-		}
+        for (uint32_t i = 0; i < cols; ++i)
+        {
+            for (uint32_t j = 0; j < rows; ++j)
+            {
+                dst[i, j] = src[j, cols - 1 - i];
+            }
+        }
 
-		++x;
+        const auto [cx, cy] = center;
+        return {{cy, cols - cx - 1}, cols, rows, std::move(newStorage)};
+    }
 
-		if (cols == x) {
-			x = 0;
-			++y;
-		}
-	}
-	return area;
+    MatrixArea CreateArea(const std::vector<uint32_t>& vec, const uint32_t rows)
+    {
+        if (rows == 0 or vec.empty())
+        {
+            return MatrixArea{};
+        }
+
+        const uint32_t cols = static_cast<uint32_t>(vec.size() / rows);
+        if (cols == 0)
+        {
+            return MatrixArea{};
+        }
+
+        MatrixArea area{rows, cols};
+
+        for (uint32_t idx = 0; const uint32_t value : vec)
+        {
+            const uint32_t y = idx / cols;
+            const uint32_t x = idx % cols;
+
+            if (value == 1 or value == 3)
+            {
+                area(y, x) = 1;
+            }
+
+            if (value == 2 or value == 3)
+            {
+                area.SetCenter(y, x);
+            }
+
+            ++idx;
+        }
+
+        return area;
+    }
+
 }

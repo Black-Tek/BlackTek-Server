@@ -11,10 +11,23 @@
 class TrashHolder final : public Item, public Cylinder
 {
 	public:
-		explicit TrashHolder(uint16_t itemId) : Item(itemId) {}
+		explicit TrashHolder(uint16_t itemId) : Item(itemId)
+		{
+			thing_subtype = ThingSubType::TrashHolder;
+			item_subtype = ItemSubType::TrashHolder;
+			cylinder_subtype = CylinderSubType::TrashHolder;
+		}
 
 		TrashHolderPtr getTrashHolder() override {
 			return static_shared_this<TrashHolder>();
+		}
+
+		CylinderPtr getCylinder() override final {
+			return static_shared_this<TrashHolder>();
+		}
+
+		CylinderConstPtr getCylinder() const override final {
+			return static_shared_this<const TrashHolder>();
 		}
 	
 		TrashHolderConstPtr getTrashHolder() const override {
@@ -25,7 +38,7 @@ class TrashHolder final : public Item, public Cylinder
 		ReturnValue queryAdd(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
 		ReturnValue queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t& maxQueryCount, uint32_t flags) override;
 		ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
-		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags) override; // another place to put a ref wrapper or optional or both
+		ThingPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags) override; // another place to put a ref wrapper or optional or both
 
 		void addThing(ThingPtr thing) override;
 		void addThing(int32_t index, ThingPtr thing) override;

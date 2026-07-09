@@ -89,19 +89,42 @@ const Node& Loader::parseTree()
 
 bool Loader::getProps(const Node& node, PropStream& props)
 {
-	auto size = std::distance(node.propsBegin, node.propsEnd);
-	if (size == 0) {
-		return false;
-	}
-	propBuffer.resize(size);
-	bool lastEscaped = false;
+    const auto* src = node.propsBegin;
+    const auto* srcEnd = node.propsEnd;
+    const ptrdiff_t size = srcEnd - src;
 
-	auto escapedPropEnd = std::copy_if(node.propsBegin, node.propsEnd, propBuffer.begin(), [&lastEscaped](const char& byte) {
-		lastEscaped = byte == static_cast<char>(Node::ESCAPE) && !lastEscaped;
-		return !lastEscaped;
-	});
-	props.init(&propBuffer[0], std::distance(propBuffer.begin(), escapedPropEnd));
-	return true;
+    if (size <= 0) [[unlikely]]
+    {
+        return false;
+    }
+
+    if (static_cast<ptrdiff_t>(propBuffer.capacity()) < size)
+    {
+        propBuffer.reserve(static_cast<size_t>(size));
+    }
+
+    propBuffer.clear();
+    auto* dst = propBuffer.data();
+
+    while (src < srcEnd)
+    {
+        if (*src == static_cast<char>(Node::ESCAPE)) [[unlikely]]
+        {
+            ++src;
+
+            if (src < srcEnd)
+            {
+                *dst++ = *src++;
+            }
+        }
+        else
+        {
+            *dst++ = *src++;
+        }
+    }
+
+    props.init(propBuffer.data(), static_cast<size_t>(dst - propBuffer.data()));
+    return true;
 }
 
 } //namespace OTB

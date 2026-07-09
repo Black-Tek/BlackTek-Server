@@ -1,6 +1,4 @@
-local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_HOLYAREA)
-combat:setArea(createCombatArea(AREA_CIRCLE3X3))
+local combat = Combat(MonsterCombats.DipthrahSkillReducer)
 
 local parameters = {
 	{key = CONDITION_PARAM_TICKS, value = 4 * 1000},

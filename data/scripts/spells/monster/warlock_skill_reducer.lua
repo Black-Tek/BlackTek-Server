@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_ICEAREA)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_ICE)
-combat:setArea(createCombatArea(AREA_BEAM1))
+local combat = Combat(MonsterCombats.WarlockSkillReducer)
 
 local parameters = {
 	{key = CONDITION_PARAM_TICKS, value = 5 * 1000},

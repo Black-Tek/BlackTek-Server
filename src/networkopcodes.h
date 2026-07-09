@@ -120,7 +120,14 @@ namespace BlackTek {
             MarketAcceptOffer = 0xF8,
 
             // Modal Window
-            ModalWindowAnswer = 0xf9
+            ModalWindowAnswer = 0xF9,
+
+            // Game Store
+            GameStoreRequest    = 0xFA,
+            StoreSelectCategory = 0xFB,
+            StoreBuyOffer       = 0xFC,
+            StoreOpenHistory    = 0xFD,
+            StoreRequestHistory = 0xFE
         };
 
         // Again, for clarity, the server codes are the
@@ -246,6 +253,12 @@ namespace BlackTek {
 
             // Modal Window
             ModalWindow = 0xFA,
+
+            // Game Store
+            StoreCategories     = 0xFB,
+            StoreOffers         = 0xFC,
+            StoreHistory        = 0xFD,
+            StorePurchaseResult = 0xFE,
 
             // Special Messages
             LoginSuccess = 0x17,

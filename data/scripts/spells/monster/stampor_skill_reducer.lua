@@ -1,7 +1,4 @@
-local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_SMALLPLANTS)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_SMALLEARTH)
-combat:setArea(createCombatArea(AREA_BEAM1))
+local combat = Combat(MonsterCombats.StamporSkillReducer)
 
 local parameters = {
 	{key = CONDITION_PARAM_TICKS, value = 4 * 1000},

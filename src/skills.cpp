@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include "otpch.h"
 #pragma once
 #include <concepts>
 #include <limits>
@@ -33,6 +34,7 @@
 #include <array>
 #include "skills.h"
 #include <gtl/phmap.hpp>
+#include "console.h"
 
 namespace Components {
     namespace Skills {
@@ -60,7 +62,7 @@ namespace Components {
                     return value;
                 }
             }
-            // should probably log this
+            BlackTek::Console::Warn("Components::Skills::ParseFormula: unrecognized formula name '{}', defaulting to exponential", modName);
             [[unlikely]]
             return FormulaType::EXPONENTIAL;
         }
@@ -84,7 +86,7 @@ namespace Components {
                             std::string name = skill_data["name"].value_or("unknown");
                             if (name == "unknown")
                             {
-                                // log skipped skill for lack of name
+                                BlackTek::Console::Warn("Components::Skills::load: skipping skill entry in {} with no 'name' field", file.path().string());
                                 continue;
                             }
                             

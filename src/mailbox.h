@@ -10,10 +10,23 @@
 class Mailbox final : public Item, public Cylinder
 {
 	public:
-		explicit Mailbox(const uint16_t itemId) : Item(itemId) {}
+		explicit Mailbox(const uint16_t itemId) : Item(itemId)
+		{
+			thing_subtype = ThingSubType::Mailbox;
+			item_subtype = ItemSubType::Mailbox;
+			cylinder_subtype = CylinderSubType::Mailbox;
+		}
 
 		MailboxPtr getMailbox() override {
 			return static_shared_this<Mailbox>();
+		}
+
+		CylinderPtr getCylinder() override final {
+			return static_shared_this<Mailbox>();
+		}
+
+		CylinderConstPtr getCylinder() const override final {
+			return static_shared_this<const Mailbox>();
 		}
 	
 		MailboxConstPtr getMailbox() const override {
@@ -26,7 +39,7 @@ class Mailbox final : public Item, public Cylinder
 		ReturnValue queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count,
 				uint32_t& maxQueryCount, uint32_t flags) override;
 		ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
-		CylinderPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem,
+		ThingPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem,
 				uint32_t& flags) override; // another optional ref wrapper
 
 		void addThing(ThingPtr thing) override;

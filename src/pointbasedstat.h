@@ -34,6 +34,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <gtl/phmap.hpp>
+#include "console.h"
 
 #pragma once
 
@@ -84,7 +85,7 @@ namespace Components
             {
                 if (value == 0)
                 {
-                    // log::invalid_argument("0 being passed to Modifier constructor");
+                    BlackTek::Console::Warn("Modifier: constructed with value 0 (type={})", std::to_underlying(type_));
                     switch (type_)
                     {
 
@@ -106,19 +107,17 @@ namespace Components
                     {
                         // zero is actually ok here, and we don't want to ruin a person's
                         // design on some sort of system by changing it so we will allow
-                        // I would recommend logging here as well.
                         break;
                     }
 
                     case StatModifierType::Subtract:
                     {
-                        // another place you probably want to log. 
                         break;
                     }
 
                     default:
                     {
-                        // log::error("Type safety broken for Modifier");
+                        BlackTek::Console::Error("Modifier: constructed with unrecognized StatModifierType ({}), type safety violated", std::to_underlying(type_));
                         break;
                     }
                     }
@@ -162,7 +161,7 @@ namespace Components
                 // Here you might rather just throw or set the max to initial
                 // I can probably add "policies" for such things.. later..
                 if (initial > max) {
-                    // log::invalid_argument("PointStat initial value set higher than max value during construction");
+                    BlackTek::Console::Warn("PointStat: initial value ({}) exceeds max ({}) during construction, clamping to max", initial, max);
                     current_ = max;
                 }
             }

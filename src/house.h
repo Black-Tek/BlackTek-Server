@@ -8,7 +8,7 @@
 #include <set>
 #include <unordered_set>
 
-#include "container.h"
+#include "itemcontainer.h"
 #include "position.h"
 
 class House;
@@ -106,7 +106,11 @@ class HouseTransferItem final : public Item
 	public:
 		static HouseTransferItemPtr createHouseTransferItem(House* house);
 
-		explicit HouseTransferItem(House* house) : Item(0), house(house) {}
+		explicit HouseTransferItem(House* house) : Item(0), house(house)
+		{
+			thing_subtype = ThingSubType::HouseTransferItem;
+			item_subtype = ItemSubType::HouseTransferItem;
+		}
 
 		void onTradeEvent(TradeEvents_t event, const PlayerPtr& owner) override;
 		bool canTransform() const override {
@@ -229,7 +233,7 @@ class House
 		AccessList guestList;
 		AccessList subOwnerList;
 
-		Container transfer_container{ITEM_LOCKER1};
+		ItemPtr transferContainerItem;
 
 		HouseTileList houseTiles;
 		std::set<DoorPtr> doorSet;

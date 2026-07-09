@@ -25,9 +25,8 @@ bool Scripts::loadScripts(const std::string& folderName, bool isLib, bool reload
 	namespace fs = std::filesystem;
 
 	const auto dir = fs::current_path() / "data" / folderName;
-	if(!fs::exists(dir) || !fs::is_directory(dir)) {
-		std::cout << "[Warning - Scripts::loadScripts] Can not load folder '" << folderName << "'." << std::endl;
-		return false;
+	if (!fs::exists(dir) || !fs::is_directory(dir)) {
+		return true;
 	}
 
 	fs::recursive_directory_iterator endit;
@@ -41,7 +40,7 @@ bool Scripts::loadScripts(const std::string& folderName, bool isLib, bool reload
 		if(fs::is_regular_file(*it) && it->path().extension() == ".lua") {
 			size_t found = it->path().filename().string().find(disable);
 			if (found != std::string::npos) {
-				if (g_config.getBoolean(ConfigManager::SCRIPTS_CONSOLE_LOGS)) {
+				if (g_config.GetBoolean(ConfigManager::SCRIPTS_CONSOLE_LOGS)) {
 					std::cout << "> " << it->path().filename().string() << " [disabled]" << std::endl;
 				}
 				continue;
@@ -56,7 +55,7 @@ bool Scripts::loadScripts(const std::string& folderName, bool isLib, bool reload
 		if (!isLib) {
 			if (redir.empty() || redir != it->parent_path().string()) {
 				auto p = fs::path(it->relative_path());
-				if (g_config.getBoolean(ConfigManager::SCRIPTS_CONSOLE_LOGS)) {
+				if (g_config.GetBoolean(ConfigManager::SCRIPTS_CONSOLE_LOGS)) {
 					std::cout << ">> [" << p.parent_path().filename() << "]" << std::endl;
 				}
 				redir = it->parent_path().string();
@@ -69,7 +68,7 @@ bool Scripts::loadScripts(const std::string& folderName, bool isLib, bool reload
 			continue;
 		}
 
-		if (g_config.getBoolean(ConfigManager::SCRIPTS_CONSOLE_LOGS)) {
+		if (g_config.GetBoolean(ConfigManager::SCRIPTS_CONSOLE_LOGS)) {
 			if (!reload) {
 				std::cout << "> " << it->filename().string() << " [loaded]" << std::endl;
 			} else {

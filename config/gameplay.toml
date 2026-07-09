@@ -1,0 +1,85 @@
+# Gameplay mechanics configuration
+
+[houses]
+# -1 disables the in-game buy house functionality
+price_per_sqm               = 1000
+# Valid values: "daily", "weekly", "monthly", "yearly" — any other value disables rent
+rent_period                 = "never"
+owned_by_account            = false
+door_show_price             = true
+only_invited_can_move_items = true
+
+[market]
+# Duration in seconds (default: 30 days)
+offer_duration             = 2592000
+premium_required           = true
+check_expired_each_minutes = 60
+max_offers_per_player      = 100
+
+[deaths]
+# -1 uses the default formula. 10 = old formula. 0 = no loss.
+lose_percent = -1
+
+[items]
+time_between_actions    = 200
+time_between_ex_actions = 1000
+
+[stamina]
+enabled              = true
+bed_offline_training = true
+
+[server_save]
+# notify_duration is in minutes
+notify_message  = true
+notify_duration = 5
+clean_map       = false
+close           = false
+shutdown        = true
+
+[chat]
+yell_allow_premium            = false
+yell_minimum_level            = 2
+premium_to_send_private       = false
+minimum_level_to_send_private = 1
+max_message_buffer            = 4
+
+[limits]
+# Per-group limits can be customized in data/XML/groups.xml
+vip_free      = 20
+vip_premium   = 100
+depot_free    = 2000
+depot_premium = 10000
+
+[player]
+kick_after_minutes = 15
+change_outfit      = true
+emote_spells       = false
+# Most clients display speed at half its actual value (e.g. 1500 shows as 750).
+# WARNING: Setting min_speed too low can cause desync and client issues.
+speed_per_level    = 2
+max_speed          = 1500
+min_speed          = 120
+
+[party]
+exp_share_range      = 30
+exp_share_floors     = 1
+maximum_size         = 10
+maximum_invite_count = 20
+
+[world]
+# If default_world_light = false, use setWorldLight(level, color) from scripts instead
+default_world_light    = true
+clean_protection_zones = false
+
+[augments]
+slot_protection    = true
+stamina_rule       = false
+critical_animation = true
+
+[notifications]
+health_regen         = false
+mana_regen           = false
+auto_open_containers = true
+
+[npc]
+pz_walkthrough = false

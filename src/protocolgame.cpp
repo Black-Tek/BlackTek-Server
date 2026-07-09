@@ -14,6 +14,7 @@
 #include "accountmanager.h"
 
 #include "configmanager.h"
+#include "console.h"
 #include "actions.h"
 #include "game.h"
 #include "iologindata.h"
@@ -30,10 +31,10 @@ extern CreatureEvents* g_creatureEvents;
 extern Chat* g_chat;
 
 using namespace BlackTek::Network;
+using namespace BlackTek::Store;
 
-namespace 
+namespace
 {
-
 	std::deque<std::pair<int64_t, uint32_t>> waitList; // (timeout, player guid)
 	auto priorityEnd = waitList.end();
 
@@ -88,7 +89,7 @@ namespace
 			return 0;
 		}
 
-		uint32_t maxPlayers = static_cast<uint32_t>(g_config.getNumber(ConfigManager::MAX_PLAYERS));
+		uint32_t maxPlayers = static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MAX_PLAYERS));
 
 		if (maxPlayers == 0 or (waitList.empty() and g_game.getPlayersOnline() < maxPlayers)) 
 		{
@@ -137,6 +138,7 @@ namespace
 		return waitList.size();
 	}
 
+
 }
 
 void ProtocolGame::release()
@@ -156,11 +158,11 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 {
 	//dispatcher thread
 	const auto& foundPlayer = g_game.getPlayerByGUID(characterId);
-	const auto managerEnabled = g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER);
+	const auto managerEnabled = g_config.GetBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER);
 	const auto isAccountManager = characterId == AccountManager::ID and managerEnabled;
-	if (not foundPlayer or g_config.getBoolean(ConfigManager::ALLOW_CLONES) or isAccountManager)
+	if (not foundPlayer or g_config.GetBoolean(ConfigManager::ALLOW_CLONES) or isAccountManager)
 	{
-		player = Player::makePlayer(getThis());
+		player = g_game.MakePlayer(getThis());
 		
 		player->setID();
 		player->setGUID(characterId);
@@ -189,7 +191,7 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			return;
 		}
 
-		if (g_config.getBoolean(ConfigManager::ONE_PLAYER_ON_ACCOUNT) 
+		if (g_config.GetBoolean(ConfigManager::ONE_PLAYER_ON_ACCOUNT) 
 			and characterId != AccountManager::ID 
 			and player->getAccountType() < ACCOUNT_TYPE_GAMEMASTER 
 			and g_game.getPlayerByAccount(player->getAccount()))
@@ -232,8 +234,11 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			return;
 		}
 
-		if (not IOLoginData::loadPlayerById(player, player->getGUID()))
+		std::vector<ConditionHandle> initialConditions;
+
+		if (not IOLoginData::loadPlayerById(player, player->getGUID(), &initialConditions))
 		{
+			// initialConditions auto-releases via ConditionHandle destructors
 			disconnectClient("Your character could not be loaded.");
 			return;
 		}
@@ -243,13 +248,15 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 		// Todo : add back position spawn determined by config.lua
 		if (isAccountManager)
 		{
+			// initialConditions auto-releases; account managers don't restore conditions
+
 			player->accountNumber = accountId;
 			// sync premium time from player account
 			const auto account = IOLoginData::loadAccount(accountId);
 			player->premiumEndsAt = account.premiumEndsAt;
-			auto x = static_cast<uint16_t>(g_config.getNumber(ConfigManager::ACCOUNT_MANAGER_POS_X));
-			auto y = static_cast<uint16_t>(g_config.getNumber(ConfigManager::ACCOUNT_MANAGER_POS_Y));
-			auto z = static_cast<uint8_t>(g_config.getNumber(ConfigManager::ACCOUNT_MANAGER_POS_Z));
+			auto x = static_cast<uint16_t>(g_config.GetNumber(ConfigManager::ACCOUNT_MANAGER_POS_X));
+			auto y = static_cast<uint16_t>(g_config.GetNumber(ConfigManager::ACCOUNT_MANAGER_POS_Y));
+			auto z = static_cast<uint8_t>(g_config.GetNumber(ConfigManager::ACCOUNT_MANAGER_POS_Z));
 			if (not g_game.placeCreature(player, Position{ x, y, z }))
 			{
 				if (not g_game.placeCreature(player, player->getTemplePosition(), false, true))
@@ -266,10 +273,14 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 			{
 				if (not g_game.placeCreature(player, player->getTemplePosition(), false, true))
 				{
+					// initialConditions auto-releases
 					disconnectClient("Temple position is wrong. Contact the administrator.");
 					return;
 				}
 			}
+
+			for (auto& c : initialConditions)
+				player->addCondition(std::move(c));
 		}
 
 		if (operatingSystem >= CLIENTOS_OTCLIENT_LINUX)
@@ -283,7 +294,7 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 	} 
 	else
 	{
-		if (eventConnect != 0 or not g_config.getBoolean(ConfigManager::REPLACE_KICK_ON_LOGIN))
+		if (eventConnect != 0 or not g_config.GetBoolean(ConfigManager::REPLACE_KICK_ON_LOGIN))
 		{
 			//Already trying to connect
 			disconnectClient("You are already logged in.");
@@ -469,11 +480,11 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 
 	if (accountName.empty()
 		and password.empty()
-		and g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER)
-		and g_config.getBoolean(ConfigManager::ENABLE_NO_PASS_LOGIN))
+		and g_config.GetBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER)
+		and g_config.GetBoolean(ConfigManager::ENABLE_NO_PASS_LOGIN))
 	{
-		accountName = g_config.getString(ConfigManager::ACCOUNT_MANAGER_AUTH);
-		password = g_config.getString(ConfigManager::ACCOUNT_MANAGER_AUTH);
+		accountName = g_config.GetString(ConfigManager::ACCOUNT_MANAGER_AUTH);
+		password = g_config.GetString(ConfigManager::ACCOUNT_MANAGER_AUTH);
 	} 
 
 	if (g_game.getGameState() == GAME_STATE_STARTUP)
@@ -702,7 +713,12 @@ void ProtocolGame::parsePacket(NetworkMessage& msg)
 		case ClientCode::MarketCreateOffer: parseMarketCreateOffer(msg); break;
 		case ClientCode::MarketCancelOffer: parseMarketCancelOffer(msg); break;
 		case ClientCode::MarketAcceptOffer: parseMarketAcceptOffer(msg); break;
-		case ClientCode::ModalWindowAnswer: parseModalWindowAnswer(msg); break;
+		case ClientCode::ModalWindowAnswer:   parseModalWindowAnswer(msg); break;
+		case ClientCode::GameStoreRequest:    parseGameStoreRequest(msg); break;
+		case ClientCode::StoreSelectCategory: parseStoreSelectCategory(msg); break;
+		case ClientCode::StoreBuyOffer:       parseStoreBuyOffer(msg); break;
+		case ClientCode::StoreOpenHistory:    parseStoreOpenHistory(msg); break;
+		case ClientCode::StoreRequestHistory: parseStoreRequestHistory(msg); break;
 
 		default:
 			 //std::cout << "Player: " << player->getName() << " sent an unknown packet header: 0x" << std::hex << static_cast<uint16_t>(recvbyte) << std::dec << "!" << std::endl;
@@ -1445,6 +1461,66 @@ void ProtocolGame::parseModalWindowAnswer(NetworkMessage& msg)
 	addGameTask([=, playerID = player->getID()]() { g_game.playerAnswerModalWindow(playerID, id, button, choice); });
 }
 
+void ProtocolGame::parseGameStoreRequest(NetworkMessage& /*msg*/)
+{
+	addGameTask([playerID = player->getID()]() { g_game.openPlayerStore(playerID); });
+}
+
+void ProtocolGame::parseStoreSelectCategory(NetworkMessage& msg)
+{
+	msg.getByte(); // reserved byte
+	auto categoryName = std::string{ msg.getString() };
+
+	auto* window = g_storeManager.getWindowForAccountType(player->getAccountType());
+	if (not window)
+	{
+		return;
+	}
+
+	auto* category = window->getCategoryByName(categoryName);
+	if (category)
+	{
+		sendStoreOffers(*category);
+	}
+}
+
+void ProtocolGame::parseStoreBuyOffer(NetworkMessage& msg)
+{
+	auto offerId   = msg.get<uint32_t>();
+	auto offerType = static_cast<uint8_t>(msg.getByte());
+	std::string param;
+	if (static_cast<OfferType>(offerType) == OfferType::NameChange)
+	{
+		param = msg.getString();
+	}
+	addGameTask([=, playerID = player->getID(), paramCopy = std::string{ param }]() {
+		g_game.playerPurchaseStoreOffer(playerID, offerId, offerType, paramCopy);
+	});
+}
+
+void ProtocolGame::parseStoreOpenHistory(NetworkMessage& /*msg*/)
+{
+	addGameTask([playerID = player->getID()]() {
+		g_game.playerOpenStoreHistory(playerID, 0);
+	});
+}
+
+void ProtocolGame::parseStoreRequestHistory(NetworkMessage& /*msg*/)
+{
+	addGameTask([playerID = player->getID()]() {
+		g_game.playerRequestStoreHistory(playerID, 0);
+	});
+}
+
+void ProtocolGame::parseTransferCoins(NetworkMessage& msg)
+{
+	auto recipientName = std::string{ msg.getString() };
+	auto amount        = msg.get<uint16_t>();
+	addGameTask([=, playerID = player->getID()]() {
+		g_game.playerTransferCoins(playerID, recipientName, amount);
+	});
+}
+
 void ProtocolGame::parseBrowseField(NetworkMessage& msg)
 {
 	Position pos = msg.getPosition();
@@ -1637,7 +1713,7 @@ void ProtocolGame::sendBasicData()
 	if (player->isPremium())
 	{
 		msg.add(CommonCode::True);
-		msg.add<uint32_t>(g_config.getBoolean(ConfigManager::FREE_PREMIUM) ? 0 : player->premiumEndsAt);
+		msg.add<uint32_t>(g_config.GetBoolean(ConfigManager::FREE_PREMIUM) ? 0 : player->premiumEndsAt);
 	} 
 	else
 	{
@@ -1646,6 +1722,10 @@ void ProtocolGame::sendBasicData()
 	}
 
 	msg.addByte(player->getVocation()->getClientId());
+	if (version >= 1100)
+	{
+		msg.addByte(player->getVocation()->getId() != VOCATION_NONE ? 0x01 : 0x00);
+	}
 	msg.add<uint16_t>(255); // number of known spells
 
 	// todo: figure out why the hell we send every last spell id
@@ -1656,6 +1736,7 @@ void ProtocolGame::sendBasicData()
 	writeToOutputBuffer(msg);
 }
 
+// to reduce the size of text message, we can and should make a separate method for handling "channel messages"
 void ProtocolGame::sendTextMessage(const TextMessage& message)
 {
 	NetworkMessage msg;
@@ -1797,14 +1878,14 @@ void ProtocolGame::sendContainer(uint8_t cid, const ContainerConstPtr& container
 
 	msg.addByte(cid);
 
-	if (container->getID() == ITEM_BROWSEFIELD)
+	if (container->getOwner()->getID() == ITEM_BROWSEFIELD)
 	{
 		msg.addItem(ITEM_BAG, 1);
 		msg.addString("Browse Field");
 	}
 	else
 	{
-		msg.addItem(container);
+		msg.addItem(container->getOwner());
 		msg.addString(container->getName());
 	}
 
@@ -1973,11 +2054,12 @@ void ProtocolGame::sendMarketEnter()
 	std::map<uint16_t, uint32_t> depotItems;
 	std::forward_list<ContainerPtr> containerList{ player->getInbox() };
 
-	for (const auto& chest : player->depotChests)
+	if (player->depotChests)
 	{
-		if (not chest.second->empty())
+		for (const auto& chest : *player->depotChests)
 		{
-			containerList.push_front(chest.second);
+			if (not chest.second->empty())
+				containerList.push_front(chest.second);
 		}
 	}
 
@@ -2449,7 +2531,7 @@ void ProtocolGame::sendUnjustifiedStats()
 	NetworkMessage msg;
 	msg.add(ServerCode::UnjustifiedStats);
 
-	int64_t fragTime = g_config.getNumber(ConfigManager::FRAG_TIME); // returned in seconds
+	int64_t fragTime = g_config.GetNumber(ConfigManager::FRAG_TIME); // returned in seconds
 	if (fragTime <= 0)
 	{
 		fragTime = 24 * 60 * 60; // Default 24 hours
@@ -2469,8 +2551,8 @@ void ProtocolGame::sendUnjustifiedStats()
 		killsMonth = static_cast<uint8_t>(std::min<int64_t>(totalKills, 255));
 	}
 
-	uint8_t killsToRed = static_cast<uint8_t>(g_config.getNumber(ConfigManager::KILLS_TO_RED));
-	uint8_t killsToBlack = static_cast<uint8_t>(g_config.getNumber(ConfigManager::KILLS_TO_BLACK));
+	uint8_t killsToRed = static_cast<uint8_t>(g_config.GetNumber(ConfigManager::KILLS_TO_RED));
+	uint8_t killsToBlack = static_cast<uint8_t>(g_config.GetNumber(ConfigManager::KILLS_TO_BLACK));
 	
 	// Calculate progress percentages (0-100)
 	uint8_t dayProgress = killsDay > 0 ? static_cast<uint8_t>(std::min<int64_t>((killsDay * 100) / killsToRed, 100)) : 0;
@@ -2506,7 +2588,7 @@ void ProtocolGame::sendPvpSituations()
 	msg.add(ServerCode::PvpSituations);  // 0xB8
 	
 	// Open PvP situations - number of players you've attacked recently
-	uint8_t openPvpSituations = static_cast<uint8_t>(std::min<size_t>(player->attackedSet.size(), 255));
+	uint8_t openPvpSituations = static_cast<uint8_t>(std::min<size_t>(player->attackedSet ? player->attackedSet->size() : 0, 255));
 	
 	msg.addByte(openPvpSituations);
 	writeToOutputBuffer(msg);
@@ -2854,13 +2936,22 @@ void ProtocolGame::sendMapDescription(const Position& pos)
 	writeToOutputBuffer(msg);
 }
 
+void ProtocolGame::refreshWorldView()
+{
+	if (!player) {
+		return;
+	}
+
+	knownCreatureSet.clear();
+	sendMapDescription(player->getPosition());
+}
+
 void ProtocolGame::sendAddTileItem(const Position& pos, uint32_t stackpos, const ItemConstPtr& item)
 {
 	if (not canSee(pos))
 	{
 		return;
 	}
-
 	NetworkMessage msg;
 	msg.add(ServerCode::AddTileThing);
 	msg.addPosition(pos);
@@ -2875,7 +2966,6 @@ void ProtocolGame::sendUpdateTileItem(const Position& pos, uint32_t stackpos, co
 	{
 		return;
 	}
-
 	NetworkMessage msg;
 	msg.add(ServerCode::UpdateTileThing);
 	msg.addPosition(pos);
@@ -3059,8 +3149,8 @@ void ProtocolGame::sendAddCreature(const CreatureConstPtr& creature, const Posit
 	msg.add(CommonCode::Zero); // can change pvp framing option
 	msg.add(CommonCode::Zero); // expert mode button enabled
 
-	msg.add<uint16_t>(0x00); // URL (string) to ingame store images
-	msg.add<uint16_t>(25); // premium coin package size -- this should probably be a config option
+	msg.addString(g_config.GetString(ConfigManager::STORE_IMAGES_URL));
+	msg.add<uint16_t>(static_cast<uint16_t>(g_config.GetNumber(ConfigManager::STORE_COIN_PACKAGE_SIZE)));
 
 	writeToOutputBuffer(msg);
 
@@ -3078,9 +3168,9 @@ void ProtocolGame::sendAddCreature(const CreatureConstPtr& creature, const Posit
 		sendInventoryItem(static_cast<slots_t>(i), player->getInventoryItem(static_cast<slots_t>(i)));
 	}
 
-	sendInventoryItem(CONST_SLOT_STORE_INBOX, player->getStoreInbox()->getItem());
+	sendInventoryItem(CONST_SLOT_STORE_INBOX, player->getStoreInbox()->getOwner());
 
-	const bool open = g_config.getBoolean(ConfigManager::AUTO_OPEN_CONTAINERS);
+	const bool open = g_config.GetBoolean(ConfigManager::AUTO_OPEN_CONTAINERS);
     if (open)
 		player->autoOpenContainers();
 
@@ -3671,9 +3761,27 @@ void ProtocolGame::AddPlayerSkills(NetworkMessage& msg) const
 		msg.addByte(player->getSkillPercent(i));
 	}
 
+	using AT = BlackTek::DamageModifier::AttackType;
+	const auto& during = player->getMainAttackModSums();
+	const auto& post   = player->getMainAttackModPostSums();
+
+	const auto critIdx = std::to_underlying(AT::Critical);
+	const auto lifeIdx = std::to_underlying(AT::Lifesteal);
+	const auto manaIdx = std::to_underlying(AT::Manasteal);
+
+	const std::array<uint32_t, SPECIALSKILL_LAST + 1> cache_bonus = {
+		during[critIdx].percent,  // SPECIALSKILL_CRITICALHITCHANCE
+		during[critIdx].flat,     // SPECIALSKILL_CRITICALHITAMOUNT
+		post[lifeIdx].percent,    // SPECIALSKILL_LIFELEECHCHANCE
+		post[lifeIdx].flat,       // SPECIALSKILL_LIFELEECHAMOUNT
+		post[manaIdx].percent,    // SPECIALSKILL_MANALEECHCHANCE
+		post[manaIdx].flat,       // SPECIALSKILL_MANALEECHAMOUNT
+	};
+
 	for (uint8_t i = SPECIALSKILL_FIRST; i <= SPECIALSKILL_LAST; ++i)
 	{
-		msg.add<uint16_t>(std::min<uint16_t>(player->varSpecialSkills[i], 100));
+		const uint32_t total = static_cast<uint32_t>(std::max<int32_t>(0, player->varSpecialSkills[i])) + cache_bonus[i];
+		msg.add<uint16_t>(static_cast<uint16_t>(std::min<uint32_t>(total, 100u)));
 		msg.add<SpecialCode>(SpecialCode::Zero);
 	}
 }
@@ -3868,4 +3976,90 @@ void ProtocolGame::parseExtendedOpcode(NetworkMessage& msg)
 
 	// process additional opcodes via lua script event
 	addGameTask([=, playerID = player->getID(), buffer = std::string{ buffer }]() { g_game.parsePlayerExtendedOpcode(playerID, opcode, buffer); });
+}
+
+void ProtocolGame::sendOpenStore(const PlayerPtr& storePlayer)
+{
+	auto* window = g_storeManager.getWindowForAccountType(player->getAccountType());
+	if (not window)
+	{
+		BlackTek::Console::Error("[Store] No store window for account type {} - ensure store.lua loaded without errors and called store:register().",
+		    static_cast<uint32_t>(player->getAccountType()));
+		return;
+	}
+
+	window->executeOnOpen(storePlayer);
+	sendStore(*window);
+}
+
+void ProtocolGame::sendStore(const BlackTek::StoreWindow& window)
+{
+	NetworkMessage msg;
+	msg.add(ServerCode::StoreCategories);
+	msg.add(CommonCode::True);
+	msg.add<uint32_t>(window.getCoins());
+	msg.add<uint32_t>(window.getTransferableCoins());
+
+	const auto& categories = window.getCategories();
+	msg.add<uint16_t>(static_cast<uint16_t>(categories.size()));
+	for (const auto& category : categories)
+	{
+		msg.addString(category->name);
+		msg.addString(category->parentName);
+		msg.add(category->highlighted ? CommonCode::True : CommonCode::False);
+		msg.addByte(1);
+		msg.addString(category->icon);
+		msg.add<uint16_t>(0);
+	}
+
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendStoreOffers(const BlackTek::StoreCategory& category)
+{
+	NetworkMessage msg;
+	msg.add(ServerCode::StoreOffers);
+	msg.addString(category.name);
+	msg.add<uint16_t>(static_cast<uint16_t>(category.products.size()));
+	for (const auto& product : category.products)
+	{
+		msg.add<uint32_t>(product.id);
+		msg.addString(product.name);
+		msg.addString(product.description);
+		msg.add<uint32_t>(product.price);
+		msg.addByte(product.state);
+		msg.add(product.enabled ? CommonCode::False : CommonCode::True);
+		msg.addByte(static_cast<uint8_t>(product.icons.size()));
+		for (const auto& icon : product.icons)
+		{
+			msg.addString(icon);
+		}
+		msg.add<uint16_t>(0); // no children
+	}
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendStorePurchaseResult(
+    bool               success,
+    const std::string& message,
+    uint32_t           newCoins,
+    uint32_t           newTransferableCoins)
+{
+	NetworkMessage msg;
+	msg.add(ServerCode::StorePurchaseResult);
+	msg.addByte(success ? 0x00 : 0x01);
+	msg.addString(message);
+	msg.add<uint32_t>(newCoins);
+	msg.add<uint32_t>(newTransferableCoins);
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendStoreHistory(const uint32_t page, const bool hasNextPage)
+{
+	NetworkMessage msg;
+	msg.add(ServerCode::StoreHistory);
+	msg.add<uint32_t>(page);
+	msg.addByte(hasNextPage ? 0x01 : 0x00);
+	msg.add<uint32_t>(0); // entry count
+	writeToOutputBuffer(msg);
 }

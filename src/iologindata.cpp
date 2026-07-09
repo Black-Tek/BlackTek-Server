@@ -7,6 +7,7 @@
 #include "configmanager.h"
 #include "game.h"
 #include "accountmanager.h"
+#include "console.h"
 
 #include <fmt/format.h>
 
@@ -85,7 +86,7 @@ bool IOLoginData::loginserverAuthentication(const std::string& name, const std::
 	account.accountType = static_cast<AccountType_t>(result->getNumber<int32_t>("type"));
 	account.premiumEndsAt = result->getNumber<time_t>("premium_ends_at");
 
-	if (g_config.getBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER) and account.id != AccountManager::ID) {
+	if (g_config.GetBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER) and account.id != AccountManager::ID) {
 		account.characters.push_back(AccountManager::NAME);
 	}
 
@@ -131,7 +132,7 @@ std::pair<uint32_t, uint32_t> IOLoginData::gameworldAuthentication(std::string_v
 	return std::make_pair(accountId, characterId);
 }
 
-void IOLoginData::loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augmentList, const DBResult_ptr& result) {
+void IOLoginData::loadPlayerAugments(std::vector<std::shared_ptr<BlackTek::Augment>>& augmentList, const DBResult_ptr& result) {
 	try {
 		if (!result) {
 			std::cout << "ERROR: Null result in loadPlayerAugments" << std::endl;
@@ -163,18 +164,17 @@ void IOLoginData::loadPlayerAugments(std::vector<std::shared_ptr<Augment>>& augm
 		augmentList.reserve(augmentCount);
 
 		for (uint32_t i = 0; i < augmentCount; ++i) {
-			auto augment = std::make_shared<Augment>();
-
 			try {
-				if (!augment->unserialize(augmentStream)) {
-					std::cout << "WARNING: Failed to unserialize augment " << i
+				auto result = BlackTek::Augment::deserialize(augmentStream);
+				if (not result.has_value()) {
+					std::cout << "WARNING: Failed to deserialize augment " << i
 						<< " for player " << playerID << std::endl;
 					return;
 				}
-				augmentList.emplace_back(augment);
+				augmentList.emplace_back(std::move(*result));
 			}
 			catch (const std::exception& e) {
-				std::cout << "ERROR: Exception while unserializing augment " << i
+				std::cout << "ERROR: Exception while deserializing augment " << i
 					<< " for player " << playerID << ": " << e.what() << std::endl;
 				return;
 			}
@@ -278,7 +278,7 @@ SkillRegistry IOLoginData::deserializeCustomSkills(PropStream binary_stream)
 
 	if (!binary_stream.read<uint32_t>(skill_count))
 	{
-		// log location
+		BlackTek::Console::Database::Error("IOLoginData::deserializeCustomSkills: failed to read skill count from save data");
 		return skill_set;
 	}
 
@@ -293,7 +293,7 @@ SkillRegistry IOLoginData::deserializeCustomSkills(PropStream binary_stream)
 
 		if (not successName)
 		{
-			// log location
+			BlackTek::Console::Database::Error("IOLoginData::deserializeCustomSkills: failed to read skill name at index {}", i);
 			return skill_set;
 		}
 
@@ -306,7 +306,7 @@ SkillRegistry IOLoginData::deserializeCustomSkills(PropStream binary_stream)
 			or not binary_stream.read<uint16_t>(max_level)
 			or not binary_stream.read<uint8_t>(formula))
 		{
-			// log location
+			BlackTek::Console::Database::Error("IOLoginData::deserializeCustomSkills: failed to read skill data for '{}'", name);
 			return skill_set;
 		}
 
@@ -330,7 +330,7 @@ StatRegistry IOLoginData::deserializeCustomStats(PropStream binary_stream)
 
 	if (not binary_stream.read<uint32_t>(stat_count))
 	{
-		// log location
+		BlackTek::Console::Database::Error("IOLoginData::deserializeCustomStats: failed to read stat count from save data");
 		return stat_set;
 	}
 
@@ -346,7 +346,7 @@ StatRegistry IOLoginData::deserializeCustomStats(PropStream binary_stream)
 			or not binary_stream.read<uint32_t>(max_points)
 			or not binary_stream.read<uint32_t>(base_max))
 		{
-			// log location
+			BlackTek::Console::Database::Error("IOLoginData::deserializeCustomStats: failed to read stat data at index {}", i);
 			return stat_set;
 		}
 
@@ -363,7 +363,7 @@ StatRegistry IOLoginData::deserializeCustomStats(PropStream binary_stream)
 				if (not binary_stream.read<uint8_t>(modifier_type)
 					or not binary_stream.read<uint32_t>(modifier_value))
 				{
-					// log location
+					BlackTek::Console::Database::Error("IOLoginData::deserializeCustomStats: failed to read modifier {} for stat id {}", j, id);
 					break;
 				}
 				
@@ -483,7 +483,7 @@ std::pair<uint32_t, uint32_t> IOLoginData::getAccountIdByAccountName(std::string
 
 void IOLoginData::updateOnlineStatus(uint32_t guid, bool login)
 {
-	if (g_config.getBoolean(ConfigManager::ALLOW_CLONES)) {
+	if (g_config.GetBoolean(ConfigManager::ALLOW_CLONES)) {
 		return;
 	}
 
@@ -516,10 +516,10 @@ bool IOLoginData::preloadPlayer(const PlayerPtr& player)
 	return true;
 }
 
-bool IOLoginData::loadPlayerById(const PlayerPtr& player, uint32_t id)
+bool IOLoginData::loadPlayerById(const PlayerPtr& player, uint32_t id, std::vector<ConditionHandle>* outConditions)
 {
 	Database& db = Database::getInstance();
-	return loadPlayer(player, db.storeQuery(fmt::format("SELECT `id`, `name`, `account_id`, `group_id`, `sex`, `vocation`, `experience`, `level`, `maglevel`, `health`, `healthmax`, `blessings`, `mana`, `manamax`, `manaspent`, `soul`, `lookbody`, `lookfeet`, `lookhead`, `looklegs`, `looktype`, `lookaddons`, `posx`, `posy`, `posz`, `cap`, `lastlogin`, `lastlogout`, `lastip`, `conditions`, `skulltime`, `skull`, `town_id`, `balance`, `offlinetraining_time`, `offlinetraining_skill`, `stamina`, `skill_fist`, `skill_fist_tries`, `skill_club`, `skill_club_tries`, `skill_sword`, `skill_sword_tries`, `skill_axe`, `skill_axe_tries`, `skill_dist`, `skill_dist_tries`, `skill_shielding`, `skill_shielding_tries`, `skill_fishing`, `skill_fishing_tries`, `direction` FROM `players` WHERE `id` = {:d}", id)));
+	return loadPlayer(player, db.storeQuery(fmt::format("SELECT `id`, `name`, `account_id`, `group_id`, `sex`, `vocation`, `experience`, `level`, `maglevel`, `health`, `healthmax`, `blessings`, `mana`, `manamax`, `manaspent`, `soul`, `lookbody`, `lookfeet`, `lookhead`, `looklegs`, `looktype`, `lookaddons`, `posx`, `posy`, `posz`, `cap`, `lastlogin`, `lastlogout`, `lastip`, `conditions`, `skulltime`, `skull`, `town_id`, `balance`, `offlinetraining_time`, `offlinetraining_skill`, `stamina`, `skill_fist`, `skill_fist_tries`, `skill_club`, `skill_club_tries`, `skill_sword`, `skill_sword_tries`, `skill_axe`, `skill_axe_tries`, `skill_dist`, `skill_dist_tries`, `skill_shielding`, `skill_shielding_tries`, `skill_fishing`, `skill_fishing_tries`, `direction` FROM `players` WHERE `id` = {:d}", id)), outConditions);
 }
 
 bool IOLoginData::loadPlayerByName(const PlayerPtr& player, const std::string& name)
@@ -528,7 +528,7 @@ bool IOLoginData::loadPlayerByName(const PlayerPtr& player, const std::string& n
 	return loadPlayer(player, db.storeQuery(fmt::format("SELECT `id`, `name`, `account_id`, `group_id`, `sex`, `vocation`, `experience`, `level`, `maglevel`, `health`, `healthmax`, `blessings`, `mana`, `manamax`, `manaspent`, `soul`, `lookbody`, `lookfeet`, `lookhead`, `looklegs`, `looktype`, `lookaddons`, `posx`, `posy`, `posz`, `cap`, `lastlogin`, `lastlogout`, `lastip`, `conditions`, `skulltime`, `skull`, `town_id`, `balance`, `offlinetraining_time`, `offlinetraining_skill`, `stamina`, `skill_fist`, `skill_fist_tries`, `skill_club`, `skill_club_tries`, `skill_sword`, `skill_sword_tries`, `skill_axe`, `skill_axe_tries`, `skill_dist`, `skill_dist_tries`, `skill_shielding`, `skill_shielding_tries`, `skill_fishing`, `skill_fishing_tries`, `direction` FROM `players` WHERE `name` = {:s}", db.escapeString(name))));
 }
 
-bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
+bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::vector<ConditionHandle>* outConditions)
 {
 	if (!result) {
 		return false;
@@ -583,14 +583,15 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 	PropStream propStream;
 	propStream.init(conditions.data(), conditions.size());
 
-	Condition* condition = Condition::createCondition(propStream);
-	while (condition) {
-		if (condition->unserialize(propStream)) {
-			player->storedConditionList.push_front(condition);
-		} else {
-			delete condition;
+	for (auto condition = Condition::createCondition(propStream); condition; condition = Condition::createCondition(propStream))
+	{
+		if (condition->unserialize(propStream))
+		{
+			if (outConditions)
+				outConditions->push_back(std::move(condition));
+			// else: condition falls out of scope and auto-releases
 		}
-		condition = Condition::createCondition(propStream);
+		// on unserialize failure: condition falls out of scope and auto-releases
 	}
 
 	if (!player->setVocation(result->getNumber<uint16_t>("vocation"))) {
@@ -888,7 +889,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result)
 
 	if ((result = db.storeQuery(fmt::format("SELECT `player_id`, `augments` FROM `player_augments` WHERE `player_id` = {:d}", player->getGUID())))) {
 		try {
-			std::vector<std::shared_ptr<Augment>> augments;
+			std::vector<std::shared_ptr<BlackTek::Augment>> augments;
 			IOLoginData::loadPlayerAugments(augments, result);
 
 			if (!augments.empty()) {
@@ -994,16 +995,15 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 {
 	using ContainerBlock = std::pair<ContainerPtr, int32_t>;
 	std::vector<ContainerBlock> containers;
-	const auto& open_containers = player->openContainers;
 	containers.reserve(32);
 
 	int32_t runningId = 100;
 
-	if (not open_containers.empty())
+	if (player->openContainers)
 	{
-		for (const auto& container_data : open_containers)
+		for (const auto& container_data : *player->openContainers)
 		{
-			container_data.second.container->setIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER, static_cast<int64_t>(container_data.first) + 1);
+			container_data.second.container->getOwner()->setIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER, static_cast<int64_t>(container_data.first) + 1);
 		}
 	}
 	
@@ -1131,11 +1131,11 @@ bool IOLoginData::saveItems(const PlayerConstPtr& player, const ItemBlockList& i
 	// we reset here because player not be logging out,
 	// and so if they are being saved without logging out,
 	// we must make sure we clear the attribute.
-	if (not open_containers.empty())
+	if (player->openContainers)
 	{
-		for (const auto& container_data : open_containers)
+		for (const auto& container_data : *player->openContainers)
 		{
-			container_data.second.container->setIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER, 0);
+			container_data.second.container->getOwner()->setIntAttr(ITEM_ATTRIBUTE_OPENCONTAINER, 0);
 		}
 	}
 
@@ -1464,9 +1464,12 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 	DBInsert depotQuery("INSERT INTO `player_depotitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`, `augments`, `skills`, `stats`) VALUES ");
 	itemList.clear();
 
-	for (const auto& it : player->depotChests) {
-		for (auto item : it.second->getItemList()) {
-			itemList.emplace_back(it.first, item);
+	if (player->depotChests)
+	{
+		for (const auto& it : *player->depotChests)
+		{
+			for (auto& item : it.second->getItemList())
+				itemList.emplace_back(it.first, item);
 		}
 	}
 
