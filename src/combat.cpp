@@ -12,6 +12,8 @@
 #include "events.h"
 #include "monster.h"
 #include "spells.h"
+#include "metrics.h"
+#include "metrics_format.h"
 
 #include <optional>
 #include <immintrin.h>
@@ -311,7 +313,7 @@ namespace BlackTek
 		size_t                   index       = 0;
 		bool                     active      = false;
 	};
-	thread_local BatchStrikeContext g_batch_ctx;
+	thread_local BatchStrikeContext g_batch_context;
 
 	template<typename T>
 	concept ByteLike = std::is_integral_v<T> or std::is_enum_v<T>;
@@ -1901,6 +1903,109 @@ namespace BlackTek
 		return currentDamage;
 	}
 
+	[[nodiscard]] uint8_t MetricsVocationOf(const CreaturePtr& creature) noexcept
+	{
+		if (not creature or creature->getCreatureSubType() != CreatureSubType::Player)
+			return 0;
+		const auto* vocation = creature->getPlayer()->getVocation();
+		return vocation ? static_cast<uint8_t>(vocation->getId()) : 0;
+	}
+
+	[[nodiscard]] uint8_t MetricsSituationOf(const CreaturePtr& a, const CreaturePtr& b) noexcept
+	{
+		const bool aPlayer = a and a->getCreatureSubType() == CreatureSubType::Player;
+		const bool bPlayer = b and b->getCreatureSubType() == CreatureSubType::Player;
+
+		if (aPlayer)
+			return bPlayer ? Combat::Situation::PlayerVsPlayer : Combat::Situation::PlayerVsMonster;
+		return bPlayer ? Combat::Situation::MonsterVsPlayer : Combat::Situation::MonsterVsMonster;
+	}
+
+	[[nodiscard]] uint16_t MetricsLevelOf(const CreaturePtr& creature) noexcept
+	{
+		if (not creature or creature->getCreatureSubType() != CreatureSubType::Player)
+			return 0;
+		return static_cast<uint16_t>(creature->getPlayer()->getLevel());
+	}
+
+	void Combat::ApplyConditions(const CreaturePtr& target) noexcept
+	{
+		for (const auto& cond : *condition_list)
+			target->addCondition(cond->clone());
+	}
+
+	void Combat::TrackConditionApplications(const CreaturePtr& applier, const CreaturePtr& target) noexcept
+	{
+		for (const auto& cond : *condition_list)
+		{
+			if (const auto* asDamage = dynamic_cast<const ConditionDamage*>(cond.Get()))
+			{
+				Metrics::ConditionRecord record{};
+				record.timestamp_ms = static_cast<uint64_t>(OTSYS_TIME());
+				record.instance_guid = DamageModifier::generateGUID();
+				record.applier_id = applier ? applier->getID() : 0;
+				record.target_id = target->getID();
+				record.source_combat_id = combat_id;
+				record.record_type = std::to_underlying(Metrics::ConditionRecordType::Application);
+				record.condition_type = static_cast<uint8_t>(asDamage->getType());
+				record.combat_type = damage_type;
+
+				const uint16_t expectedTicks = asDamage->getExpectedTicks();
+				record.expected_ticks = expectedTicks;
+				record.total_expected_dmg = static_cast<uint32_t>(asDamage->getTotalDamage());
+				record.per_tick_amount = (expectedTicks > 0)
+					? record.total_expected_dmg / std::max<uint16_t>(expectedTicks, 1)
+					: asDamage->getPeriodDamage();
+
+				record.applier_vocation = MetricsVocationOf(applier);
+				record.target_vocation  = MetricsVocationOf(target);
+				record.situation        = MetricsSituationOf(applier, target);
+
+				Metrics::RecordCondition(record);
+				Metrics::RegisterConditionSource(target->getID(), record.condition_type,
+					{ record.applier_id, record.source_combat_id, record.instance_guid });
+			}
+		}
+	}
+
+	void Combat::CommitStrike(const CreaturePtr& attacker, const CreaturePtr& victim, uint32_t damageDealt, bool wasFatal) noexcept
+	{
+		if constexpr (not Metrics::ENABLED)
+			return;
+
+		Metrics::StrikeRecord record{};
+		record.timestamp_ms    = static_cast<uint64_t>(OTSYS_TIME());
+		record.caster_id       = attacker ? attacker->getID() : 0;
+		record.target_id       = victim->getID();
+		record.combat_id       = combat_id;
+		record.situation       = MetricsSituationOf(attacker, victim);
+		record.origin          = origin;
+		record.damage_type     = damage_type;
+		record.caster_vocation = MetricsVocationOf(attacker);
+		record.target_vocation = MetricsVocationOf(victim);
+		record.caster_level    = MetricsLevelOf(attacker);
+		record.target_level    = MetricsLevelOf(victim);
+		record.raw_output      = metrics_cap.raw_output;
+		record.defense_value   = metrics_cap.defense_value;
+		record.armor_value     = metrics_cap.armor_value;
+		record.post_defense    = metrics_cap.post_defense;
+		record.post_armor      = metrics_cap.post_armor;
+		record.formula         = metrics_cap.formula;
+		record.block_type      = metrics_cap.block_type;
+		record.flags           = metrics_cap.flags;
+
+		const bool isManaDrain = (damage_type == DamageType::ManaDrain);
+		record.final_damage   = isManaDrain ? 0 : damageDealt;
+		record.mana_drained   = isManaDrain ? damageDealt : 0;
+		record.modifier_delta = static_cast<int32_t>(damageDealt) - static_cast<int32_t>(metrics_cap.post_armor);
+
+		if (wasFatal)
+			record.flags |= static_cast<uint8_t>(Metrics::StrikeFlag::WasFatal);
+
+		Metrics::RecordStrike(record, metrics_cap.modifier_procs,
+			attacker ? attacker->getName() : "", victim->getName());
+	}
+
 	// We use the TrueDamage config for all defensive modifiers in order to set the exact damage
 	// which is used for the new combats.. in other words, so it's not affected by the formula's
 	// which normally dictate how damage is generated and reduced, or calculated
@@ -1916,6 +2021,27 @@ namespace BlackTek
 		const auto attacker_type = attacker->getType();
 		const auto attacker_race = attacker->getRace();
 		const auto& attacker_name = attacker->getName();
+
+		auto emitDefenseMod = [&](DamageModifier::DefenseType type, uint32_t before, uint32_t after, uint32_t secondary)
+		{
+			Metrics::ModifierRecord record{};
+			record.timestamp_ms = static_cast<uint64_t>(OTSYS_TIME());
+			record.caster_id = attacker ? attacker->getID() : 0;
+			record.target_id = victim->getID();
+			record.stance = std::to_underlying(DamageModifier::Stance::Defense);
+			record.mod_type = std::to_underlying(type);
+			record.damage_type = damage_type;
+			record.damage_before = before;
+			record.damage_after = after;
+			record.secondary_amount = secondary;
+			Metrics::RecordModifier(record);
+
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_MODIFIERS)
+			{
+				++metrics_cap.modifier_procs;
+				metrics_cap.flags |= static_cast<uint8_t>(Metrics::StrikeFlag::HadAugmentMods);
+			}
+		};
 
 		auto applied = [&](const auto& modifier)
 		{
@@ -1980,6 +2106,8 @@ namespace BlackTek
 				accumulate(modifier);
 		}
 
+		uint32_t before = currentDamage;
+
 		if (percent_weak)
 		{
 			const uint64_t added = (uint64_t)currentDamage * percent_weak / 100;
@@ -1988,6 +2116,14 @@ namespace BlackTek
 
 		if (flat_weak)
 			currentDamage += flat_weak;
+
+		if (percent_weak or flat_weak)
+		{
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_MODIFIERS)
+				emitDefenseMod(DamageModifier::DefenseType::Weakness, before, currentDamage, 0);
+		}
+
+		before = currentDamage;
 
 		if (percent_resist)
 		{
@@ -1998,8 +2134,15 @@ namespace BlackTek
 		if (flat_resist)
 			currentDamage = (flat_resist >= currentDamage) ? 0 : currentDamage - flat_resist;
 
+		if (percent_resist or flat_resist)
+		{
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_MODIFIERS)
+				emitDefenseMod(DamageModifier::DefenseType::Resist, before, currentDamage, 0);
+		}
+
 		if (percent_absorb or flat_absorb)
 		{
+			before = currentDamage;
 			const uint32_t absorbed = static_cast<uint32_t>(std::min<uint64_t>((percent_absorb ? (uint64_t)currentDamage * percent_absorb / 100 : 0) + flat_absorb, currentDamage));
 			currentDamage -= absorbed;
 
@@ -2009,10 +2152,14 @@ namespace BlackTek
 			heal->config.set(Config::HealthTarget);
 			heal->config.set(Config::DefenseModified);
 			heal->heal_target(victim, victim, true, spectators);
+
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_MODIFIERS)
+				emitDefenseMod(DamageModifier::DefenseType::Absorb, before, currentDamage, absorbed);
 		}
 
 		if (percent_restore or flat_restore)
 		{
+			before = currentDamage;
 			const uint32_t restored = static_cast<uint32_t>(std::min<uint64_t>((percent_restore ? (uint64_t)currentDamage * percent_restore / 100 : 0) + flat_restore, currentDamage));
 			currentDamage -= restored;
 
@@ -2022,10 +2169,14 @@ namespace BlackTek
 			mana->config.set(Config::ManaTarget);
 			mana->config.set(Config::DefenseModified);
 			mana->heal_target(victim, victim, true, spectators);
+
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_MODIFIERS)
+				emitDefenseMod(DamageModifier::DefenseType::Restore, before, currentDamage, restored);
 		}
 
 		if (percent_replenish or flat_replenish)
 		{
+			before = currentDamage;
 			const uint32_t replenished = static_cast<uint32_t>(std::min<uint64_t>((percent_replenish ? (uint64_t)currentDamage * percent_replenish / 100 : 0) + flat_replenish, currentDamage));
 			currentDamage -= replenished;
 
@@ -2035,10 +2186,14 @@ namespace BlackTek
 			stamina->config.set(Config::StaminaTarget);
 			stamina->config.set(Config::DefenseModified);
 			stamina->heal_target(victim, victim, true, spectators);
+
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_MODIFIERS)
+				emitDefenseMod(DamageModifier::DefenseType::Replenish, before, currentDamage, replenished);
 		}
 
 		if (percent_revive or flat_revive)
 		{
+			before = currentDamage;
 			const uint32_t revived = static_cast<uint32_t>(std::min<uint64_t>((percent_revive ? (uint64_t)currentDamage * percent_revive / 100 : 0) + flat_revive, currentDamage));
 			currentDamage -= revived;
 
@@ -2048,12 +2203,16 @@ namespace BlackTek
 			soul->config.set(Config::SoulTarget);
 			soul->config.set(Config::DefenseModified);
 			soul->heal_target(victim, victim, true, spectators);
+
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_MODIFIERS)
+				emitDefenseMod(DamageModifier::DefenseType::Revive, before, currentDamage, revived);
 		}
 
 		const bool is_bounce = config.test(Config::IsReflect) or config.test(Config::IsDeflect) or config.test(Config::IsRicochet);
 
 		if (not is_bounce and (percent_reflect or flat_reflect) and attacker)
 		{
+			before = currentDamage;
 			const uint32_t reflected = static_cast<uint32_t>(std::min<uint64_t>((percent_reflect ? (uint64_t)currentDamage * percent_reflect / 100 : 0) + flat_reflect, currentDamage));
 			currentDamage -= reflected;
 
@@ -2065,19 +2224,39 @@ namespace BlackTek
 			reflect->config.set(Config::AttackModified);
 			reflect->config.set(Config::DefenseModified);
 			reflect->strike_target(victim, attacker, true);
+
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_MODIFIERS)
+			{
+				emitDefenseMod(DamageModifier::DefenseType::Reflect, before, currentDamage, reflected);
+				metrics_cap.flags |= static_cast<uint8_t>(Metrics::StrikeFlag::HadBounce);
+			}
 		}
 
 		if (not is_bounce and (percent_deflect or flat_deflect))
 		{
+			before = currentDamage;
 			const uint32_t deflected = static_cast<uint32_t>(std::min<uint64_t>((percent_deflect ? (uint64_t)currentDamage * percent_deflect / 100 : 0) + flat_deflect, currentDamage));
 			currentDamage -= deflected;
 			deflect_damage(attacker, victim, deflected, damage_type, distanceEffect, impactEffect);
+
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_MODIFIERS)
+			{
+				emitDefenseMod(DamageModifier::DefenseType::Deflect, before, currentDamage, deflected);
+				metrics_cap.flags |= static_cast<uint8_t>(Metrics::StrikeFlag::HadBounce);
+			}
 		}
 
 		if (not is_bounce and (percent_ricochet or flat_ricochet))
 		{
-			const uint32_t ricocheted = static_cast<uint32_t>(std::min<uint64_t>((percent_ricochet ? (uint64_t)currentDamage * percent_ricochet / 100 : 0) + flat_ricochet, currentDamage));
-			currentDamage -= ricochetDamage(victim, ricocheted, damage_type, distanceEffect, impactEffect);
+			before = currentDamage;
+			const uint32_t ricocheted_dmg = ricochetDamage(victim, static_cast<uint32_t>(std::min<uint64_t>((percent_ricochet ? (uint64_t)currentDamage * percent_ricochet / 100 : 0) + flat_ricochet, currentDamage)), damage_type, distanceEffect, impactEffect);
+			currentDamage -= ricocheted_dmg;
+
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_MODIFIERS)
+			{
+				emitDefenseMod(DamageModifier::DefenseType::Ricochet, before, currentDamage, ricocheted_dmg);
+				metrics_cap.flags |= static_cast<uint8_t>(Metrics::StrikeFlag::HadBounce);
+			}
 		}
 
 		return currentDamage;
@@ -2086,6 +2265,28 @@ namespace BlackTek
 	template <typename VictimT>
 	void Combat::accumulate_attack_mods(const PlayerPtr& caster, const VictimT& victim, uint32_t& currentDamage, LeechData& leech_data, LeechData& steal_data, const std::optional<std::span<const CreaturePtr>>& spectators) noexcept
 	{
+		auto emitAttackMod = [&](DamageModifier::AttackType type, uint32_t before, uint32_t after)
+		{
+			Metrics::ModifierRecord record{};
+			record.timestamp_ms = static_cast<uint64_t>(OTSYS_TIME());
+			record.caster_id = caster->getID();
+			record.target_id = victim->getID();
+			record.stance = std::to_underlying(DamageModifier::Stance::Attack);
+			record.mod_type = std::to_underlying(type);
+			record.damage_type = damage_type;
+			record.damage_before = before;
+			record.damage_after = after;
+			Metrics::RecordModifier(record);
+
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_MODIFIERS)
+			{
+				++metrics_cap.modifier_procs;
+				metrics_cap.flags |= static_cast<uint8_t>(Metrics::StrikeFlag::HadAugmentMods);
+				if (type == DamageModifier::AttackType::Critical)
+					metrics_cap.flags |= static_cast<uint8_t>(Metrics::StrikeFlag::WasCritical);
+			}
+		};
+
 		if (not caster->hasAttackModifiers() or config.test(Config::AttackModified))
 			return;
 
@@ -2185,13 +2386,21 @@ namespace BlackTek
 
 		if (not config.test(Config::TrueDamage) and (percent_pierce or flat_pierce))
 		{
+			const uint32_t before = currentDamage;
 			auto [trueHandle, remaining] = penetrateDamage(currentDamage, percent_pierce, flat_pierce);
 			trueHandle->strike_target(caster, victim, true, spectators);
 			currentDamage = remaining;
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_MODIFIERS)
+				emitAttackMod(DamageModifier::AttackType::Piercing, before, currentDamage);
 		}
 
 		if (percent_crit or flat_crit)
+		{
+			const uint32_t before = currentDamage;
 			currentDamage = applyCrit(currentDamage, percent_crit, flat_crit);
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_MODIFIERS)
+				emitAttackMod(DamageModifier::AttackType::Critical, before, currentDamage);
+		}
 	}
 
 	template void Combat::accumulate_attack_mods<PlayerPtr>(const PlayerPtr&, const PlayerPtr&, uint32_t&, LeechData&, LeechData&, const std::optional<std::span<const CreaturePtr>>&);
@@ -2201,12 +2410,15 @@ namespace BlackTek
 	{
 		const bool config_has_condition = config.test(Config::HasCondition);
 
+		if constexpr (Metrics::ENABLED) metrics_cap = {};
+
 		if (damage_type == DamageType::Unknown)
 		{
 			if (config_has_condition)
 			{
-				for (const auto& cond : *condition_list)
-					victim->addCondition(cond->clone());
+				if constexpr (Metrics::ENABLED and Metrics::CAPTURE_CONDITIONS)
+					TrackConditionApplications(caster, victim);
+				ApplyConditions(victim);
 				if (impactEffect != CONST_ME_NONE)
 					g_game.addMagicEffect(victim->getPosition(), impactEffect);
 			}
@@ -2244,6 +2456,7 @@ namespace BlackTek
 					defense_block_effect(victim->getPosition());
 				else if (blocked == BlockType::Armor)
 					armor_block_effect(victim->getPosition());
+				if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, 0, false);
 				return;
 			}
 			currentDamage = blockResult.value();
@@ -2254,7 +2467,10 @@ namespace BlackTek
 
 		accumulate_attack_mods(caster, victim, currentDamage, leech_data, steal_data, spectators);
 		if (currentDamage == 0)
+		{
+			if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, 0, false);
 			return;
+		}
 
 		if (victim->hasDefenseModifiers() and not config.test(Config::DefenseModified))
 		{
@@ -2272,43 +2488,46 @@ namespace BlackTek
 					currentDamage = reform_augment(caster, victim, currentDamage);
 
 				if (victim->defense_mod_count() > reform_count)
-					currentDamage = defense_augment(caster, victim, currentDamage);
+					currentDamage = defense_augment(caster, victim, currentDamage, std::nullopt);
 			}
 		}
 
 		currentDamage = process_steal(caster, victim, steal_data, currentDamage);
 
-		if (apply_damage(caster, victim, currentDamage, spectators) == 0)
+		const uint32_t damageDealt = apply_damage(caster, victim, currentDamage, spectators);
+		if (damageDealt == 0)
 		{
 			Console::Debug("Combat::strike_target(player,player): apply_damage returned 0 (caster={}, victim={}, damage={})", caster->getName(), victim->getName(), currentDamage);
+			if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, 0, false);
 		}
 		else
 		{
 			post_damage(caster, victim, currentDamage, std::move(leech_data));
-			if (config_has_condition)
-			{
-				for (const auto& cond : *condition_list)
-					victim->addCondition(cond->clone());
-			}
+			if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, damageDealt, victim->getHealth() <= 0);
+		}
 
-			if (config.test(Config::UseCharges))
+		if (config_has_condition)
+		{
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_CONDITIONS)
+				TrackConditionApplications(caster, victim);
+
+			ApplyConditions(victim);
+		}
+
+		if (config.test(Config::UseCharges))
+		{
+			if (const auto& weaponItem = caster->getWeapon(CONST_SLOT_RIGHT, false))
 			{
-				if (const auto& weaponItem = caster->getWeapon(CONST_SLOT_RIGHT, false))
-				{
-					const uint16_t charges = weaponItem->getCharges();
-					if (charges != 0 and g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_CHARGES))
-					{
-						g_game.transformItem(weaponItem, weaponItem->getID(), charges - 1);
-					}
-					else if (weaponItem->getItemCount() > 1)
-					{
-						g_game.transformItem(weaponItem, weaponItem->getID(), weaponItem->getItemCount() - 1);
-					}
-					else
-					{
-						g_game.internalRemoveItem(weaponItem);
-					}
-				}
+				const uint16_t charges = weaponItem->getCharges();
+
+				if (charges != 0 and g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_CHARGES))
+					g_game.transformItem(weaponItem, weaponItem->getID(), charges - 1);
+
+				else if (weaponItem->getItemCount() > 1)
+					g_game.transformItem(weaponItem, weaponItem->getID(), weaponItem->getItemCount() - 1);
+
+				else
+					g_game.internalRemoveItem(weaponItem);
 			}
 		}
 	}
@@ -2317,12 +2536,15 @@ namespace BlackTek
 	{
 		const bool config_has_condition = config.test(Config::HasCondition);
 
+		if constexpr (Metrics::ENABLED) metrics_cap = {};
+
 		if (damage_type == DamageType::Unknown)
 		{
 			if (config_has_condition)
 			{
-				for (const auto& cond : *condition_list)
-					victim->addCondition(cond->clone());
+				if constexpr (Metrics::ENABLED and Metrics::CAPTURE_CONDITIONS)
+					TrackConditionApplications(caster, victim);
+				ApplyConditions(victim);
 				if (impactEffect != CONST_ME_NONE)
 					g_game.addMagicEffect(victim->getPosition(), impactEffect);
 			}
@@ -2356,10 +2578,14 @@ namespace BlackTek
 			if (not blockResult)
 			{
 				const auto blocked = blockResult.error();
+
 				if (blocked == BlockType::Defensive)
 					defense_block_effect(victim->getPosition());
+
 				else if (blocked == BlockType::Armor)
 					armor_block_effect(victim->getPosition());
+
+				if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, 0, false);
 				return;
 			}
 			currentDamage = blockResult.value();
@@ -2370,41 +2596,47 @@ namespace BlackTek
 
 		accumulate_attack_mods(caster, victim, currentDamage, leech_data, steal_data, spectators);
 		if (currentDamage == 0)
+		{
+			if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, 0, false);
 			return;
+		}
 
 		currentDamage = process_steal(caster, victim, steal_data, currentDamage);
 
-		if (apply_damage(caster, victim, currentDamage, spectators) == 0)
+		const uint32_t damageDealt = apply_damage(caster, victim, currentDamage, spectators);
+		if (damageDealt == 0)
 		{
 			Console::Debug("Combat::strike_target(player,monster): apply_damage returned 0 (caster={}, victim={}, damage={})", caster->getName(), victim->getName(), currentDamage);
+			if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, 0, false);
 		}
 		else
 		{
 			post_damage(caster, victim, currentDamage, std::move(leech_data));
-			if (config_has_condition)
-			{
-				for (const auto& cond : *condition_list)
-					victim->addCondition(cond->clone());
-			}
+			if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, damageDealt, victim->getHealth() <= 0);
+		}
 
-			if (config.test(Config::UseCharges))
+		if (config_has_condition)
+		{
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_CONDITIONS)
+				TrackConditionApplications(caster, victim);
+
+			ApplyConditions(victim);
+		}
+
+		if (config.test(Config::UseCharges))
+		{
+			if (const auto& weaponItem = caster->getWeapon(CONST_SLOT_RIGHT, false))
 			{
-				if (const auto& weaponItem = caster->getWeapon(CONST_SLOT_RIGHT, false))
-				{
-					const uint16_t charges = weaponItem->getCharges();
-					if (charges != 0 and g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_CHARGES))
-					{
-						g_game.transformItem(weaponItem, weaponItem->getID(), charges - 1);
-					}
-					else if (weaponItem->getItemCount() > 1)
-					{
-						g_game.transformItem(weaponItem, weaponItem->getID(), weaponItem->getItemCount() - 1);
-					}
-					else
-					{
-						g_game.internalRemoveItem(weaponItem);
-					}
-				}
+				const uint16_t charges = weaponItem->getCharges();
+
+				if (charges != 0 and g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_CHARGES))
+					g_game.transformItem(weaponItem, weaponItem->getID(), charges - 1);
+
+				else if (weaponItem->getItemCount() > 1)
+					g_game.transformItem(weaponItem, weaponItem->getID(), weaponItem->getItemCount() - 1);
+
+				else
+					g_game.internalRemoveItem(weaponItem);
 			}
 		}
 	}
@@ -2413,12 +2645,17 @@ namespace BlackTek
 	{
 		const bool config_has_condition = config.test(Config::HasCondition);
 
+		if constexpr (Metrics::ENABLED) metrics_cap = {};
+
 		if (damage_type == DamageType::Unknown)
 		{
 			if (config_has_condition)
 			{
-				for (const auto& cond : *condition_list)
-					victim->addCondition(cond->clone());
+				if constexpr (Metrics::ENABLED and Metrics::CAPTURE_CONDITIONS)
+					TrackConditionApplications(attacker, victim);
+
+				ApplyConditions(victim);
+
 				if (impactEffect != CONST_ME_NONE)
 					g_game.addMagicEffect(victim->getPosition(), impactEffect);
 			}
@@ -2444,13 +2681,19 @@ namespace BlackTek
 		if (not config.test(Config::TrueDamage))
 		{
 			const auto blockResult = block(attacker, victim);
+
 			if (not blockResult)
 			{
 				const auto blocked = blockResult.error();
+
 				if (blocked == BlockType::Defensive)
 					defense_block_effect(victim->getPosition());
+
 				else if (blocked == BlockType::Armor)
 					armor_block_effect(victim->getPosition());
+
+				if constexpr (Metrics::ENABLED) CommitStrike(attacker, victim, 0, false);
+
 				return;
 			}
 			currentDamage = blockResult.value();
@@ -2472,21 +2715,28 @@ namespace BlackTek
 					currentDamage = reform_augment(attacker, victim, currentDamage);
 
 				if (victim->defense_mod_count() > reform_count)
-					currentDamage = defense_augment(attacker, victim, currentDamage);
+					currentDamage = defense_augment(attacker, victim, currentDamage, std::nullopt);
 			}
 		}
 
-		if (apply_damage(attacker, victim, currentDamage, spectators) == 0)
+		const uint32_t damageDealt = apply_damage(attacker, victim, currentDamage, spectators);
+
+		if (damageDealt == 0)
 		{
 			Console::Debug("Combat::strike_target(monster,player): apply_damage returned 0 (attacker={}, victim={}, damage={})", attacker->getName(), victim->getName(), currentDamage);
+			if constexpr (Metrics::ENABLED) CommitStrike(attacker, victim, 0, false);
 		}
 		else
 		{
-			if (config_has_condition)
-			{
-				for (const auto& cond : *condition_list)
-					victim->addCondition(cond->clone());
-			}
+			if constexpr (Metrics::ENABLED) CommitStrike(attacker, victim, damageDealt, victim->getHealth() <= 0);
+		}
+
+		if (config_has_condition)
+		{
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_CONDITIONS)
+				TrackConditionApplications(attacker, victim);
+
+			ApplyConditions(victim);
 		}
 	}
 
@@ -2494,12 +2744,17 @@ namespace BlackTek
 	{
 		const bool config_has_condition = config.test(Config::HasCondition);
 
+		if constexpr (Metrics::ENABLED) metrics_cap = {};
+
 		if (damage_type == DamageType::Unknown)
 		{
 			if (config_has_condition)
 			{
-				for (const auto& cond : *condition_list)
-					victim->addCondition(cond->clone());
+				if constexpr (Metrics::ENABLED and Metrics::CAPTURE_CONDITIONS)
+					TrackConditionApplications(attacker, victim);
+
+				ApplyConditions(victim);
+
 				if (impactEffect != CONST_ME_NONE)
 					g_game.addMagicEffect(victim->getPosition(), impactEffect);
 			}
@@ -2525,30 +2780,44 @@ namespace BlackTek
 		if (not config.test(Config::TrueDamage))
 		{
 			const auto blockResult = block(attacker, victim);
+
 			if (not blockResult)
 			{
 				const auto blocked = blockResult.error();
+
 				if (blocked == BlockType::Defensive)
 					defense_block_effect(victim->getPosition());
+
 				else if (blocked == BlockType::Armor)
 					armor_block_effect(victim->getPosition());
+
+				if constexpr (Metrics::ENABLED) CommitStrike(attacker, victim, 0, false);
+
 				return;
 			}
 			currentDamage = blockResult.value();
 		}
 
-		if (apply_damage(attacker, victim, currentDamage, spectators) == 0)
+		const uint32_t damageDealt = apply_damage(attacker, victim, currentDamage, spectators);
+
+		if (damageDealt == 0)
 		{
 			Console::Debug("Combat::strike_target(monster,monster): apply_damage returned 0 (attacker={}, victim={}, damage={})", attacker->getName(), victim->getName(), currentDamage);
+			if constexpr (Metrics::ENABLED) CommitStrike(attacker, victim, 0, false);
 		}
 		else
 		{
-			if (config_has_condition)
-			{
-				for (const auto& cond : *condition_list)
-					victim->addCondition(cond->clone());
-			}
+			if constexpr (Metrics::ENABLED) CommitStrike(attacker, victim, damageDealt, victim->getHealth() <= 0);
 		}
+
+		if (config_has_condition)
+		{
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_CONDITIONS)
+				TrackConditionApplications(attacker, victim);
+
+			ApplyConditions(victim);
+		}
+
 	}
 
 	void Combat::strike_target(const CreaturePtr& attacker, const CreaturePtr& defender, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
@@ -2662,6 +2931,26 @@ namespace BlackTek
 		if (heal_amount == 0)
 			return;
 
+		auto commitHeal = [&](const CreaturePtr& healedCreature, uint8_t statTarget, uint32_t healed) noexcept
+		{
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_HEALING)
+			{
+				Metrics::HealRecord record{};
+				record.timestamp_ms = static_cast<uint64_t>(OTSYS_TIME());
+				record.caster_id = caster ? caster->getID() : 0;
+				record.target_id = healedCreature->getID();
+				record.combat_id = combat_id;
+				record.origin = origin;
+				record.stat_target = statTarget;
+				record.amount_requested = heal_amount;
+				record.amount_healed = healed;
+				record.caster_vocation = MetricsVocationOf(caster);
+				record.target_vocation = MetricsVocationOf(healedCreature);
+				record.situation = MetricsSituationOf(caster, healedCreature);
+				Metrics::RecordHeal(record);
+			}
+		};
+
 		if (config.test(Config::HealthTarget))
 		{
 			const int32_t maxHeal = target->getMaxHealth() - target->getHealth();
@@ -2669,6 +2958,7 @@ namespace BlackTek
 			if (maxHeal <= 0)
 			{
 				g_game.addCreatureHealth(target);
+				commitHeal(target, 0, 0);
 				return;
 			}
 
@@ -2678,6 +2968,7 @@ namespace BlackTek
 			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(maxHeal));
 			target->changeHealth(healed);
 			heal_notification(caster, target, healed, spectators);
+			commitHeal(target, 0, healed);
 		}
 		else if (config.test(Config::ManaTarget))
 		{
@@ -2689,7 +2980,10 @@ namespace BlackTek
 			const int32_t maxMana = player->getMaxMana() - player->getMana();
 
 			if (maxMana <= 0)
+			{
+				commitHeal(player, 1, 0);
 				return;
+			}
 
 			if (caster->is_player())
 				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player);
@@ -2697,6 +2991,7 @@ namespace BlackTek
 			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(maxMana));
 			player->changeMana(static_cast<int32_t>(healed));
 			heal_notification(caster, player, healed, spectators);
+			commitHeal(player, 1, healed);
 		}
 		else if (config.test(Config::StaminaTarget))
 		{
@@ -2709,7 +3004,10 @@ namespace BlackTek
 			const int32_t remaining = maxStaminaMinutes - static_cast<int32_t>(player->getStaminaMinutes());
 
 			if (remaining <= 0)
+			{
+				commitHeal(player, 3, 0);
 				return;
+			}
 
 			if (caster->is_player())
 				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player);
@@ -2717,6 +3015,7 @@ namespace BlackTek
 			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(remaining));
 			player->changeStamina(static_cast<int32_t>(healed));
 			heal_notification(caster, player, healed, spectators);
+			commitHeal(player, 3, healed);
 		}
 		else if (config.test(Config::SoulTarget))
 		{
@@ -2728,7 +3027,10 @@ namespace BlackTek
 			const int32_t maxSoul = static_cast<int32_t>(player->getVocation()->getSoulMax()) - static_cast<int32_t>(player->getSoul());
 
 			if (maxSoul <= 0)
+			{
+				commitHeal(player, 2, 0);
 				return;
+			}
 
 			if (caster->is_player())
 				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player);
@@ -2736,6 +3038,7 @@ namespace BlackTek
 			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(maxSoul));
 			player->changeSoul(static_cast<int32_t>(healed));
 			heal_notification(caster, player, healed, spectators);
+			commitHeal(player, 2, healed);
 		}
 	}
 
@@ -2989,16 +3292,16 @@ namespace BlackTek
 				{ batch_damage_scratch.data(), strike_n },
 				{ batch_block_type_scratch.data(), strike_n });
 
-			g_batch_ctx.damages     = batch_damage_scratch.data();
-			g_batch_ctx.block_types = batch_block_type_scratch.data();
-			g_batch_ctx.index       = 0;
-			g_batch_ctx.active      = true;
+			g_batch_context.damages     = batch_damage_scratch.data();
+			g_batch_context.block_types = batch_block_type_scratch.data();
+			g_batch_context.index       = 0;
+			g_batch_context.active      = true;
 		}
 
 		for (const auto& target_creature : toDamageCreatures)
 			strike_target(caster, target_creature, true, spectators_span);
 
-		g_batch_ctx.active = false;
+		g_batch_context.active = false;
 	}
 
 	void AreaCombat::setupArea(const std::vector<uint32_t>& area_data, uint32_t rows)
@@ -3148,6 +3451,100 @@ namespace BlackTek
 		}
 	}
 
+	// Compares factors against the named presets declared in combat.h. ScaledOutput
+	// and BalancedOutput (likewise ScaledResistance/BalancedResistance) hold identical
+	// values, so this cannot distinguish Scaled from Balanced for the output/defense/
+	// armor stages — both report as "Scaled" (index 1). DetectResolutionPreset is the
+	// only stage where every named preset has a distinct fingerprint.
+	[[nodiscard]] std::optional<uint8_t> DetectOutputPreset(const OutputFactors& f) noexcept
+	{
+		auto eq = [&](const OutputFactors& p) noexcept
+		{
+			return f.formula_type == p.formula_type and f.scaling == p.scaling and f.base == p.base
+				and f.min_scale == p.min_scale and f.min_base == p.min_base
+				and f.max_scale == p.max_scale and f.max_base == p.max_base
+				and f.min_value == p.min_value and f.max_value == p.max_value
+				and f.exponent == p.exponent;
+		};
+
+		if (eq(Combat::ClassicOutput))     return 0;
+		if (eq(Combat::ScaledOutput))      return 1; // also matches BalancedOutput
+		if (eq(Combat::AbsorptionOutput))  return 3;
+		if (eq(Combat::TabletopOutput))    return 4;
+		if (eq(Combat::ExponentialOutput)) return 5;
+		return std::nullopt; // Custom
+	}
+
+	[[nodiscard]] std::optional<uint8_t> DetectResistancePreset(const ResistanceFactors& f, bool isArmor) noexcept
+	{
+		auto eq = [&](const ResistanceFactors& p) noexcept
+		{
+			return f.formula_type == p.formula_type and f.min_scale == p.min_scale and f.max_scale == p.max_scale
+				and f.min_base == p.min_base and f.max_base == p.max_base and f.threshold == p.threshold
+				and f.flat_amount == p.flat_amount and f.constant == p.constant and f.parity_offset == p.parity_offset;
+		};
+
+		if (isArmor)
+		{
+			// ApplyArmorPreset() only ever assigns Classic or Absorption (combat.cpp ~line
+			// 269) — Scaled/Balanced are not valid armor presets, so they aren't checked here.
+			if (eq(Combat::ClassicArmor))        return 0;
+			if (eq(Combat::AbsorptionResistance)) return 3;
+			return std::nullopt;
+		}
+
+		if (eq(Combat::ClassicDefense))       return 0;
+		if (eq(Combat::ScaledResistance))     return 1; // also matches BalancedResistance
+		if (eq(Combat::AbsorptionResistance)) return 3;
+		return std::nullopt;
+	}
+
+	[[nodiscard]] std::optional<uint8_t> DetectResolutionPreset(const ResolutionFactors& f) noexcept
+	{
+		auto eq = [&](const ResolutionFactors& p) noexcept
+		{
+			return f.formula_type == p.formula_type and f.constant == p.constant and f.multiplier == p.multiplier
+				and f.addend == p.addend and f.flat_reduction == p.flat_reduction and f.floor == p.floor;
+		};
+
+		if (eq(Combat::ClassicResolution))      return 0;
+		if (eq(Combat::ScaledResolution))       return 1;
+		if (eq(Combat::BalancedResolution))     return 2;
+		if (eq(Combat::AbsorptionResolution))   return 3;
+		if (eq(Combat::ProportionalResolution)) return 6;
+		if (eq(Combat::GradualResolution))      return 7;
+		return std::nullopt;
+	}
+
+	// Builds the per-strike formula fingerprint used by StrikeRecord/FormulaSignature.
+	// `used_compiled` is true when a Lua-compiled closure (rather than the factor-based
+	// formula) produced the output/defense/armor/resolution value for this strike.
+	[[nodiscard]] Metrics::FormulaSnapshot BuildFormulaSnapshot(const Combat& combat, const SituationFormulas& formulas, uint8_t situation_index, bool used_compiled) noexcept
+	{
+		Metrics::FormulaSnapshot snap{};
+		snap.output_formula     = std::to_underlying(formulas.output.formula_type);
+		snap.defense_formula    = std::to_underlying(formulas.defense.formula_type);
+		snap.armor_formula      = std::to_underlying(formulas.armor.formula_type);
+		snap.resolution_formula = std::to_underlying(formulas.resolution.formula_type);
+
+		// 0xFF ("Custom") when no named preset matches — see DetectOutputPreset's comment.
+		snap.output_preset     = DetectOutputPreset(formulas.output).value_or(0xFF);
+		snap.defense_preset    = DetectResistancePreset(formulas.defense, false).value_or(0xFF);
+		snap.armor_preset      = DetectResistancePreset(formulas.armor, true).value_or(0xFF);
+		snap.resolution_preset = DetectResolutionPreset(formulas.resolution).value_or(0xFF);
+
+		if (const auto bind = Metrics::LookupFormulaBind(combat.id(), situation_index))
+		{
+			snap.bind_key    = bind->first;
+			snap.bind_source = bind->second;
+		}
+
+		snap.has_per_combat_override = combat.GetConfig(Combat::Config::HasFormulaCache);
+		snap.has_lua_override        = used_compiled;
+
+		return snap;
+	}
+
 	std::expected<uint32_t, Combat::BlockType> Combat::block(const CreaturePtr& attacker, const PlayerPtr& target) noexcept
 	{
 		BlockType blockType = BlockType::NoBlock;
@@ -3167,12 +3564,12 @@ namespace BlackTek
 
 		uint32_t computed_damage = damage;
 
-		if (g_batch_ctx.active)
+		if (g_batch_context.active)
 		{
 			// Batch path: formula already computed by block_batch; apply charges + side-effects
-			computed_damage = g_batch_ctx.damages[g_batch_ctx.index];
-			blockType       = g_batch_ctx.block_types[g_batch_ctx.index];
-			++g_batch_ctx.index;
+			computed_damage = g_batch_context.damages[g_batch_context.index];
+			blockType       = g_batch_context.block_types[g_batch_context.index];
+			++g_batch_context.index;
 
 			if (apply_defense_reduction and target->can_use_defense()
 			    and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
@@ -3244,6 +3641,19 @@ namespace BlackTek
 				}
 			}
 
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_PIPELINE)
+			{
+				metrics_cap.raw_output    = computed_damage;
+				metrics_cap.post_defense  = computed_damage;
+				metrics_cap.post_armor    = computed_damage;
+			}
+
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_FORMULAS)
+			{
+				metrics_cap.formula = BuildFormulaSnapshot(*this, formulas, situation_index, compiled != nullptr);
+				Metrics::RecordFormulaUsage(combat_id, metrics_cap.formula, static_cast<uint64_t>(OTSYS_TIME()));
+			}
+
 			if (apply_defense_reduction and target->can_use_defense()
 			    and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
 			{
@@ -3270,6 +3680,13 @@ namespace BlackTek
 				else
 				{
 					computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), defense_value));
+				}
+
+				if constexpr (Metrics::ENABLED and Metrics::CAPTURE_PIPELINE)
+				{
+					metrics_cap.defense_value = static_cast<uint32_t>(std::max(defense_value, 0));
+					metrics_cap.post_defense  = computed_damage;
+					metrics_cap.post_armor    = computed_damage;
 				}
 
 				if (computed_damage == 0)
@@ -3325,9 +3742,22 @@ namespace BlackTek
 					computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), armor_value));
 				}
 
+				if constexpr (Metrics::ENABLED and Metrics::CAPTURE_PIPELINE)
+				{
+					metrics_cap.armor_value = static_cast<uint32_t>(std::max(armor_value, 0));
+					metrics_cap.post_armor  = computed_damage;
+				}
+
 				if (computed_damage == 0)
 					blockType = BlockType::Armor;
 			}
+		}
+
+		if constexpr (Metrics::ENABLED)
+		{
+			metrics_cap.block_type = static_cast<uint8_t>(blockType);
+			if (g_batch_context.active)
+				metrics_cap.flags |= static_cast<uint8_t>(Metrics::StrikeFlag::WasBatched);
 		}
 
 		if (attacker and damage_type != DamageType::Healing)
@@ -3369,12 +3799,12 @@ namespace BlackTek
 
 		uint32_t computed_damage = damage;
 
-		if (g_batch_ctx.active)
+		if (g_batch_context.active)
 		{
 			// Batch path: formula already computed by block_batch; apply charges + side-effects
-			computed_damage = g_batch_ctx.damages[g_batch_ctx.index];
-			blockType       = g_batch_ctx.block_types[g_batch_ctx.index];
-			++g_batch_ctx.index;
+			computed_damage = g_batch_context.damages[g_batch_context.index];
+			blockType       = g_batch_context.block_types[g_batch_context.index];
+			++g_batch_context.index;
 
 			if (apply_defense_reduction and target->can_use_defense()
 			    and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
@@ -3426,6 +3856,19 @@ namespace BlackTek
 				}
 			}
 
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_PIPELINE)
+			{
+				metrics_cap.raw_output   = computed_damage;
+				metrics_cap.post_defense = computed_damage;
+				metrics_cap.post_armor   = computed_damage;
+			}
+
+			if constexpr (Metrics::ENABLED and Metrics::CAPTURE_FORMULAS)
+			{
+				metrics_cap.formula = BuildFormulaSnapshot(*this, formulas, situation_index, compiled != nullptr);
+				Metrics::RecordFormulaUsage(combat_id, metrics_cap.formula, static_cast<uint64_t>(OTSYS_TIME()));
+			}
+
 			if (apply_defense_reduction and target->can_use_defense()
 				and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
 			{
@@ -3452,6 +3895,13 @@ namespace BlackTek
 				else
 				{
 					computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), defense_value));
+				}
+
+				if constexpr (Metrics::ENABLED and Metrics::CAPTURE_PIPELINE)
+				{
+					metrics_cap.defense_value = static_cast<uint32_t>(std::max(defense_value, 0));
+					metrics_cap.post_defense  = computed_damage;
+					metrics_cap.post_armor    = computed_damage;
 				}
 
 				if (computed_damage == 0)
@@ -3488,9 +3938,22 @@ namespace BlackTek
 					computed_damage = static_cast<uint32_t>(calculate_resolution(formulas.resolution, static_cast<int32_t>(computed_damage), armor_value));
 				}
 
+				if constexpr (Metrics::ENABLED and Metrics::CAPTURE_PIPELINE)
+				{
+					metrics_cap.armor_value = static_cast<uint32_t>(std::max(armor_value, 0));
+					metrics_cap.post_armor  = computed_damage;
+				}
+
 				if (computed_damage == 0)
 					blockType = BlockType::Armor;
 			}
+		}
+
+		if constexpr (Metrics::ENABLED)
+		{
+			metrics_cap.block_type = static_cast<uint8_t>(blockType);
+			if (g_batch_context.active)
+				metrics_cap.flags |= static_cast<uint8_t>(Metrics::StrikeFlag::WasBatched);
 		}
 
 		if (attacker and damage_type != DamageType::Healing)
@@ -3529,8 +3992,8 @@ namespace BlackTek
 		// CompiledFormula scalar fallback: std::function is not vectorizable
 		if (config.test(Config::HasCompiledFormula))
 		{
-			const bool prev_active = g_batch_ctx.active;
-			g_batch_ctx.active = false;
+			const bool prev_active = g_batch_context.active;
+			g_batch_context.active = false;
 			for (size_t k = 0; k < n; ++k)
 			{
 				const auto& tc      = targets[k];
@@ -3551,7 +4014,7 @@ namespace BlackTek
 					out_block_types[k] = result.error();
 				}
 			}
-			g_batch_ctx.active = prev_active;
+			g_batch_context.active = prev_active;
 			return;
 		}
 

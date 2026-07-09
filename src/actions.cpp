@@ -6,11 +6,10 @@
 #include "actions.h"
 #include "bed.h"
 #include "configmanager.h"
-#include "container.h"
+#include "itemcontainer.h"
 #include "game.h"
 #include "pugicast.h"
 #include "spells.h"
-#include "rewardchest.h"
 #include <fmt/format.h>
 
 extern Game g_game;
@@ -350,15 +349,15 @@ ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint
 		ContainerPtr openContainer;
 
 		//depot container
-		if (auto depot = container->getDepotLocker()) {
-			DepotLockerPtr& myDepotLocker = player->getDepotLocker();
-			myDepotLocker->setParent(depot->getParent());
+		if (container->isDepotLocker()) {
+			ContainerPtr& myDepotLocker = player->getDepotLocker();
+			myDepotLocker->getOwner()->setParent(container->getOwner()->getParent());
 			openContainer = myDepotLocker;
 		} else {
 			openContainer = container;
 		}
 
-		uint32_t corpseOwner = container->getCorpseOwner();
+		uint32_t corpseOwner = container->getOwner()->getCorpseOwner();
 		if (container->isRewardCorpse()) {
 			auto& myRewardChest = player->getRewardChest();
 
@@ -385,9 +384,9 @@ ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint
 		}
 
 		// Reward chest
-		if (auto rewardchest = container->getRewardChest()) {
+		if (container->isRewardChest()) {
 			auto& myRewardChest = player->getRewardChest();
-			myRewardChest->setParent(rewardchest->getParent());
+			myRewardChest->getOwner()->setParent(container->getOwner()->getParent());
 
 			if (myRewardChest->getItemList().empty()) {
 				return RETURNVALUE_REWARDCHESTEMPTY;
@@ -397,20 +396,20 @@ ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint
 				if (rewardItem->getID() == ITEM_REWARD_CONTAINER) {
 					auto rewardContainer = rewardItem->getContainer();
 					if (rewardContainer) {
-						rewardContainer->setParent(myRewardChest);
+						rewardContainer->getOwner()->setContainerParent(myRewardChest->getOwner());
 					}
 				}
 			}
 			openContainer = myRewardChest;
 		}
-		else if (item->getID() == ITEM_REWARD_CONTAINER)  {				
+		else if (item->getID() == ITEM_REWARD_CONTAINER)  {
 			auto& myRewardChest = player->getRewardChest();
 			int64_t rewardDate = item->getIntAttr(ITEM_ATTRIBUTE_DATE);
 
 			for (auto rewardItem : myRewardChest->getItemList()) {
 				if (rewardItem->getID() == ITEM_REWARD_CONTAINER && rewardItem->getIntAttr(ITEM_ATTRIBUTE_DATE) == rewardDate && rewardItem->getIntAttr(ITEM_ATTRIBUTE_REWARDID) == item->getIntAttr(ITEM_ATTRIBUTE_REWARDID)) {
 					if (const auto rewardContainer = rewardItem->getContainer()) {
-						rewardContainer->setParent(container->getRealParent());
+						rewardContainer->getOwner()->setContainerParent(myRewardChest->getOwner());
 						openContainer = rewardContainer;
 					}
 					break;
@@ -419,7 +418,7 @@ ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint
 		}
 
 		//open/close container
-		int32_t oldContainerId = player->getContainerID(std::static_pointer_cast<const Container>(openContainer));
+		int32_t oldContainerId = player->getContainerID(std::static_pointer_cast<const ItemContainer>(openContainer));
 		if (oldContainerId == -1) {
 			player->addContainer(index, openContainer);
 			player->onSendContainer(openContainer);

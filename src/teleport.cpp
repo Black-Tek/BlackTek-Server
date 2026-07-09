@@ -44,7 +44,7 @@ ReturnValue Teleport::queryRemove(const ThingPtr&, uint32_t, uint32_t, CreatureP
 	return RETURNVALUE_NOERROR;
 }
 
-CylinderPtr Teleport::queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&)
+ThingPtr Teleport::queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_t&)
 {
 	return this->getTile();
 }

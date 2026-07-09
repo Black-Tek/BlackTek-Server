@@ -19,6 +19,11 @@ enabled     = true
 min_level   = "warning"
 print_level = "error"
 
+[logging.channels.combat]
+enabled     = true
+min_level   = "info"
+print_level = "warning"
+
 [logging.channels.script]
 enabled     = true
 min_level   = "debug"

@@ -342,7 +342,7 @@ void Tile::onAddTileItem(ItemPtr& item)
 	if (item->hasProperty(CONST_PROP_MOVEABLE) || item->getContainer()) {
 		if (const auto it = g_game.browseFields.find(getTile()); it != g_game.browseFields.end()) {
 			it->second->addItemBack(item);
-			item->setParent(it->second);
+			item->setContainerParent(it->second->getOwner());
 		}
 	}
 
@@ -373,7 +373,7 @@ void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, con
 		if (const auto it = g_game.browseFields.find(getTile()); it != g_game.browseFields.end()) {
 			if (int32_t index = it->second->getThingIndex(oldItem); index != -1) {
 				it->second->replaceThing(index, newItem);
-				newItem->setParent(it->second);
+				newItem->setContainerParent(it->second->getOwner());
 			}
 		}
 	} else if (oldItem->hasProperty(CONST_PROP_MOVEABLE) || oldItem->getContainer()) {
@@ -792,7 +792,7 @@ ReturnValue Tile::queryRemove(const ThingPtr& thing, const uint32_t count, uint3
 	return RETURNVALUE_NOERROR;
 }
 
-CylinderPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, ItemPtr& destItem, uint32_t& flags)
+ThingPtr Tile::queryDestination(int32_t& someInt, const ThingPtr& thingPtr, ItemPtr& destItem, uint32_t& flags)
 {
 	TilePtr destTile;
 
@@ -914,6 +914,10 @@ void Tile::addThing(int32_t, ThingPtr thing)
 			return /*RETURNVALUE_NOTPOSSIBLE*/;
 		}
 		item->setParent(getTile());
+		if (auto itemContainer = item->getContainer())
+		{
+			itemContainer->setHoldingCreature(nullptr);
+		}
 
 		updateHouse(item);
 
@@ -1473,6 +1477,10 @@ void Tile::internalAddThing(uint32_t, ThingPtr thing)
 		if (item == nullptr) {
 			return;
 		}
+		if (auto itemContainer = item->getContainer())
+		{
+			itemContainer->setHoldingCreature(nullptr);
+		}
 		updateHouse(item);
 		const ItemType& itemType = Item::items[item->getID()];
 		if (itemType.isGroundTile()) {
@@ -1561,7 +1569,7 @@ void Tile::setTileFlags(const ItemConstPtr& item)
 	}
 
 	const auto& container = item->getContainer();
-	if (container && container->getDepotLocker()) {
+	if (container and container->isDepotLocker()) {
 		setFlag(TILESTATE_DEPOT);
 	}
 
@@ -1622,7 +1630,7 @@ void Tile::resetTileFlags(const ItemPtr& item)
 		resetFlag(TILESTATE_BED);
 	}
 
-	if (const auto& container = item->getContainer(); container && container->getDepotLocker()) {
+	if (const auto& container = item->getContainer(); container and container->isDepotLocker()) {
 		resetFlag(TILESTATE_DEPOT);
 	}
 

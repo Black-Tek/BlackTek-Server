@@ -4,7 +4,7 @@
 #include "otpch.h"
 
 #include "item.h"
-#include "container.h"
+#include "itemcontainer.h"
 #include "teleport.h"
 #include "trashholder.h"
 #include "mailbox.h"
@@ -15,7 +15,6 @@
 #include "actions.h"
 #include "spells.h"
 #include "events.h"
-#include "rewardchest.h"
 
 extern Game g_game;
 extern Spells* g_spells;
@@ -51,11 +50,14 @@ ItemPtr Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
 	std::pmr::polymorphic_allocator<Item> allocator(&g_game.getItemPool());
 
 	if (it.isDepot()) {
-		item = std::allocate_shared<DepotLocker>(allocator, type);
+		item = std::allocate_shared<Item>(allocator, type, count);
+		item->attachContainer(it.maxItems, true, false, ContainerSubType::DepotLocker);
 	} else if (it.isRewardChest()) {
-		item = std::allocate_shared<RewardChest>(allocator, type);
+		item = std::allocate_shared<Item>(allocator, type, count);
+		item->attachContainer(it.maxItems, true, true, ContainerSubType::RewardChest);
 	} else if (it.isContainer()) {
-		item = std::allocate_shared<Container>(allocator, type);
+		item = std::allocate_shared<Item>(allocator, type, count);
+		item->attachContainer(it.maxItems, true, false, ContainerSubType::None);
 		if (it.slotPosition & SLOTP_BACKPACK) {
 			allowAugments = true;
 		}
@@ -87,7 +89,7 @@ ItemPtr Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
 	return item;
 }
 
-ContainerPtr Item::CreateItemAsContainer(const uint16_t type, uint16_t size)
+ItemPtr Item::CreateContainerItem(const uint16_t type, uint16_t size)
 {
 	const ItemType& it = Item::items[type];
 	if (it.getID() == 0 || it.group == ITEM_GROUP_DEPRECATED || it.stackable || it.useable || it.moveable || it.pickupable || it.isDepot() || it.isSplash() || it.isDoor()) {
@@ -95,7 +97,8 @@ ContainerPtr Item::CreateItemAsContainer(const uint16_t type, uint16_t size)
 	}
 
 	std::pmr::polymorphic_allocator<Item> allocator(&g_game.getItemPool());
-	auto newItem = std::allocate_shared<Container>(allocator, type, size);
+	auto newItem = std::allocate_shared<Item>(allocator, type, 0);
+	newItem->attachContainer(size, true, false, ContainerSubType::None);
 	return newItem;
 }
 
@@ -201,10 +204,63 @@ Item::Item(const Item& i) :
 	}
 }
 
+Item::~Item()
+{
+	if (not container)
+	{
+		return;
+	}
+
+	if (getID() == ITEM_BROWSEFIELD)
+	{
+		if (auto directParent = parent.lock())
+		{
+			g_game.browseFields.erase(directParent->getTile());
+		}
+		for (const auto& child : container->getItemList())
+		{
+			child->setParent(parent);
+		}
+	}
+	else
+	{
+		for (const auto& child : container->getItemList())
+		{
+			child->clearParent();
+		}
+	}
+}
+
+void Item::attachContainer(uint16_t size, bool unlocked, bool pagination, ContainerSubType subtype /*= ContainerSubType::None*/)
+{
+	container = std::make_unique<ItemContainer>(size, unlocked, pagination, subtype);
+	container->owner = static_shared_this<Item>();
+	containerAlias = ContainerPtr(static_shared_this<Item>(), container.get());
+}
+
+bool Item::canRemove() const
+{
+	return not container or container->canRemove();
+}
+
+ContainerPtr Item::getContainer()
+{
+	return containerAlias;
+}
+
+ContainerConstPtr Item::getContainer() const
+{
+	return containerAlias;
+}
+
 ItemPtr Item::clone() const
 {
 	auto item = Item::CreateItem(id, count);
-	if (attributes) 
+	if (container)
+	{
+		container->cloneInto(*item->container);
+	}
+	if (attributes)
 	{
 		item->attributes.reset(new ItemAttributes(*attributes));
 		if (item->getDuration() > 0) 
@@ -328,67 +384,66 @@ void Item::setID(uint16_t newid)
 	}
 }
 
-CylinderPtr Item::getTopParent() {
-	CylinderPtr aux = getParent();
-	CylinderPtr prevaux = getCylinder();
+ThingPtr Item::getTopParent()
+{
+	ItemPtr current = static_shared_this<Item>();
+	bool hopped = false;
 
-	if (!aux) {
-		return prevaux;
+	while (auto owner = current->getContainerParent())
+	{
+		current = owner;
+		hopped = true;
 	}
 
-	while (aux->getParent() != nullptr) {
-		prevaux = aux;
-		aux = aux->getParent();
+	if (hopped)
+	{
+		return current;
 	}
-
-	return prevaux ? prevaux : aux;
+	return current->parent.lock();
 }
 
+ThingConstPtr Item::getTopParent() const
+{
+	ItemConstPtr current = static_shared_this<const Item>();
+	bool hopped = false;
 
-CylinderConstPtr Item::getTopParent() const {
-	CylinderConstPtr aux = getParent();
-	CylinderConstPtr prevaux = getCylinder();
-
-	if (!aux) {
-		return prevaux;
+	while (auto owner = current->getContainerParent())
+	{
+		current = owner;
+		hopped = true;
 	}
 
-	while (aux->getParent() != nullptr) {
-		prevaux = aux;
-		aux = aux->getParent();
+	if (hopped)
+	{
+		return current;
 	}
-
-	return prevaux ? prevaux : aux;
+	return current->parent.lock();
 }
 
 TilePtr Item::getTile()
 {
-	auto cylinder = getTopParent();
+	auto topParent = getTopParent();
 
-	if (not cylinder)
+	if (not topParent)
 		return nullptr;
 
-	if (cylinder->getParent())
-		cylinder = cylinder->getParent();
+	if (auto realParent = topParent->getParent())
+		return realParent->getTile();
 
-	else if (cylinder == getCylinder()) // container item without parent
-		return nullptr;
-
-	return cylinder ? cylinder->getTile() : nullptr;
+	return topParent->getTile();
 }
 
 TileConstPtr Item::getTile() const
 {
-	auto cylinder = getTopParent();
-	if (!cylinder) {
+	auto topParent = getTopParent();
+
+	if (not topParent)
 		return nullptr;
-	}
-	if (cylinder->getParent()) {
-		cylinder = cylinder->getParent();
-	} else if (cylinder == getCylinder()) {
-		return nullptr;
-	}
-	return cylinder ? cylinder->getTile() : nullptr;
+
+	if (auto realParent = topParent->getParent())
+		return realParent->getTile();
+
+	return topParent->getTile();
 }
 
 uint16_t Item::getSubType() const
@@ -406,6 +461,12 @@ uint16_t Item::getSubType() const
 
 PlayerPtr Item::getHoldingPlayer()
 {
+	if (auto containerParentItem = getContainerParent())
+	{
+		auto holder = containerParentItem->getContainer()->getHoldingCreature();
+		return holder ? holder->getPlayer() : nullptr;
+	}
+
 	CylinderPtr p = getParent();
 	while (p) {
 		if (p->getCreature()) {
@@ -433,6 +494,11 @@ void Item::setSubType(uint16_t n)
 
 Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 {
+	if ((attr == ATTR_CONTAINER_ITEMS or attr == ATTR_DEPOT_ID) and container)
+	{
+		return container->readAttr(attr, propStream);
+	}
+
 	switch (attr) {
 		case ATTR_COUNT:
 		case ATTR_RUNE_CHARGES: {
@@ -907,9 +973,17 @@ bool Item::unserializeAugments(PropStream& propStream)
     return true;
 }
 
-bool Item::unserializeItemNode(OTB::Loader&, const OTB::Node&, PropStream& propStream)
+bool Item::unserializeItemNode(OTB::Loader& loader, const OTB::Node& node, PropStream& propStream)
 {
-	return unserializeAttr(propStream);
+	if (not unserializeAttr(propStream))
+	{
+		return false;
+	}
+	if (container)
+	{
+		return container->unserializeItemNode(loader, node, propStream);
+	}
+	return true;
 }
 
 void Item::serializeAttr(PropWriteStream& propWriteStream) const
@@ -1098,7 +1172,11 @@ uint32_t Item::getWeight() const
 {
 	uint32_t weight = getBaseWeight();
 	if (isStackable()) {
-		return weight * std::max<uint32_t>(1, getItemCount());
+		weight *= std::max<uint32_t>(1, getItemCount());
+	}
+	if (container)
+	{
+		weight += container->getChildWeight();
 	}
 	return weight;
 }
@@ -1665,6 +1743,13 @@ ItemAttributes::Attribute& ItemAttributes::getAttr(itemAttrTypes type)
 void Item::startDecaying()
 {
 	g_game.startDecay(getItem());
+	if (container)
+	{
+		for (const auto& child : container->getItemList())
+		{
+			child->startDecaying();
+		}
+	}
 }
 
 bool Item::hasMarketAttributes() const

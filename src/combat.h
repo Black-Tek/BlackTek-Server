@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "metrics_types.h"
 #include "thing.h"
 #include "condition.h"
 #include "map.h"
@@ -27,7 +28,7 @@ class Condition;
 class Item;
 struct Position;
 
-namespace BlackTek 
+namespace BlackTek
 {
 	PlayerPtr PlayerCast(auto creature)
 	{
@@ -112,6 +113,8 @@ namespace BlackTek
 	struct FormulaContext;
 	struct CompiledFormulaSlots;
 	struct CombatFormulaCache;
+
+	namespace Metrics { struct StrikeRecord; }
 
 	class Combat;
 	using CombatHandle = intrusive_ptr<Combat>;
@@ -722,6 +725,11 @@ namespace BlackTek
 		template <typename VictimT>
 		void accumulate_attack_mods(const PlayerPtr& caster, const VictimT& victim, uint32_t& currentDamage, LeechData& leech_data, LeechData& steal_data, const std::optional<std::span<const CreaturePtr>>& spectators) noexcept;
 
+		void CommitStrike(const CreaturePtr& attacker, const CreaturePtr& victim, uint32_t damageDealt, bool wasFatal) noexcept;
+
+		void ApplyConditions(const CreaturePtr& target) noexcept;
+		void TrackConditionApplications(const CreaturePtr& applier, const CreaturePtr& target) noexcept;
+
 		static constexpr Config k_formula_flags[4] = { Config::HasPvPFormula, Config::HasPvMFormula, Config::HasMvPFormula, Config::HasMvMFormula };
 
 		int64_t combat_id = -1;
@@ -739,10 +747,14 @@ namespace BlackTek
 		uint16_t attack_modifier_charge_cost = 0;
 		uint16_t itemId = 0;
 		uint16_t damage_type = DamageType::Unknown;
+
+		static inline Metrics::StrikeCapture metrics_cap{};
 		uint8_t blockType = BlockType::NoBlock;
 		uint8_t origin = Origin::None;
 		uint8_t impactEffect = CONST_ME_NONE;
 		uint8_t distanceEffect = CONST_ANI_NONE;
+
+		
 
 		[[nodiscard]] static bool IsAreaTileClear(uint16_t x, uint16_t y, uint8_t z) noexcept;
 		[[nodiscard]] static bool CheckSteepLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t z) noexcept;

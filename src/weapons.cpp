@@ -504,7 +504,7 @@ void Weapon::onUsedWeapon(const PlayerPtr& player, const ItemPtr& item, const Ti
 		return;
 	}
 
-	CylinderPtr f_holder = item->getParent();
+	ThingPtr f_holder = item->getImmediateParent();
 	CylinderPtr t_holder = destTile->getTile();
 	switch (action) {
 		case WEAPONACTION_REMOVECOUNT:

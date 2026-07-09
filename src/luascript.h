@@ -262,7 +262,7 @@ class LuaScriptInterface
 		static void pushVariant(lua_State* L, const LuaVariant& var);
 		static void pushString(lua_State* L, std::string_view value);
 		static void pushCallback(lua_State* L, int32_t callback);
-		static void pushCylinder(lua_State* L, const CylinderPtr& cylinder);
+		static void pushCylinder(lua_State* L, const ThingPtr& cylinder);
 
 		static std::string popString(lua_State* L);
 		static int32_t popCallback(lua_State* L);
@@ -1585,6 +1585,16 @@ class LuaScriptInterface
 		static int luaFormulaNodePow(lua_State* L);
 		static int luaFormulaNodeGC(lua_State* L);
 
+		// CombatMetrics — query/control surface over BlackTek::Metrics
+		static int luaCombatMetricsQuery(lua_State* L);
+		static int luaCombatMetricsQueryEvents(lua_State* L);
+		static int luaCombatMetricsQueryModifiers(lua_State* L);
+		static int luaCombatMetricsQueryConditions(lua_State* L);
+		static int luaCombatMetricsQueryConditionEvents(lua_State* L);
+		static int luaCombatMetricsQueryFormulaUsage(lua_State* L);
+		static int luaCombatMetricsReset(lua_State* L);
+		static int luaCombatMetricsExport(lua_State* L);
+
 		// Condition
 		static int luaConditionCreate(lua_State* L);
 		static int luaConditionDelete(lua_State* L);
@@ -1837,6 +1847,20 @@ class LuaScriptInterface
 		static int luaTalkactionSeparator(lua_State* L);
 		static int luaTalkactionAccess(lua_State* L);
 		static int luaTalkactionAccountType(lua_State* L);
+
+		// StoreWindow
+		static int luaStoreWindowCreate(lua_State* L);
+		static int luaStoreWindowAccountType(lua_State* L);
+		static int luaStoreWindowCoins(lua_State* L);
+		static int luaStoreWindowSetCoins(lua_State* L);
+		static int luaStoreWindowOnOpen(lua_State* L);
+		static int luaStoreWindowCategory(lua_State* L);
+		static int luaStoreWindowRegister(lua_State* L);
+
+		// StoreCategory
+		static int luaStoreCategoryProduct(lua_State* L);
+		static int luaStoreCategoryOnPurchase(lua_State* L);
+		static int luaStoreCategoryCanPurchase(lua_State* L);
 
 		// CreatureEvents
 		static int luaCreateCreatureEvent(lua_State* L);

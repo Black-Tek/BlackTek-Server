@@ -24,6 +24,7 @@
 #include "augments.h"
 #include "zones.h"
 #include "console.h"
+#include "metrics.h"
 #include "simd_dispatch.h"
 #include <memory>
 
@@ -218,6 +219,12 @@ namespace Console {
 void startupErrorMessage(const std::string& errorStr)
 {
 	Console::printError(errorStr);
+
+	if (auto logPath = BlackTek::Console::GetChannelLogPath(BlackTek::Console::ChannelType::System))
+	{
+		Console::printWarning("Full details logged to " + *logPath);
+	}
+
 	g_loaderSignal.notify_all();
 }
 
@@ -269,6 +276,13 @@ int main(int argc, char* argv[])
 		g_utility_boss.shutdown();
 
 		BlackTek::Console::Shutdown();
+
+		// A console window opened by double-clicking the exe closes the instant main()
+		// returns, so any errors printed before this would otherwise vanish before being read.
+		// todo: Implement a more sophisticated way of handling this, considering users who might
+		// be piping the output through CI/CL or using local scripts
+		puts("Press Enter to exit...");
+		getchar();
 	}
 
 	g_scheduler.join();
@@ -334,6 +348,8 @@ void mainLoader(int, char*[], ServiceManager* services)
 		startupErrorMessage("Unable to load configuration files from the config/ directory!");
 		return;
 	}
+
+	if constexpr (BlackTek::Metrics::ENABLED) BlackTek::Metrics::Initialize();
 
 	#ifdef _WIN32
 		const std::string& defaultPriority = g_config.GetString(ConfigManager::DEFAULT_PRIORITY);

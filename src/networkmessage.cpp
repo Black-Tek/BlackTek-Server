@@ -5,7 +5,7 @@
 
 #include "networkmessage.h"
 
-#include "container.h"
+#include "itemcontainer.h"
 #include "creature.h"
 
 std::string_view NetworkMessage::getString(uint16_t stringLen /* = 0*/)

@@ -127,7 +127,7 @@ void IOMarket::processExpiredOffers(const DBResult_ptr& result, bool)
 				while (tmpAmount > 0) {
 					uint16_t stackCount = std::min<uint16_t>(100, tmpAmount);
 					auto item = Item::CreateItem(itemType.getID(), stackCount);
-					if (CylinderPtr inbox = player->getInbox(); g_game.internalAddItem(inbox, item, INDEX_WHEREEVER, FLAG_NOLIMIT) != RETURNVALUE_NOERROR) {
+					if (ItemPtr inbox = player->getInbox()->getOwner(); g_game.internalAddItem(inbox, item, INDEX_WHEREEVER, FLAG_NOLIMIT) != RETURNVALUE_NOERROR) {
 						break;
 					}
 
@@ -143,7 +143,7 @@ void IOMarket::processExpiredOffers(const DBResult_ptr& result, bool)
 
 				for (uint16_t i = 0; i < amount; ++i) {
 					auto item = Item::CreateItem(itemType.getID(), subType);
-					if (CylinderPtr inbox = player->getInbox(); g_game.internalAddItem(inbox, item, INDEX_WHEREEVER, FLAG_NOLIMIT) != RETURNVALUE_NOERROR) {
+					if (ItemPtr inbox = player->getInbox()->getOwner(); g_game.internalAddItem(inbox, item, INDEX_WHEREEVER, FLAG_NOLIMIT) != RETURNVALUE_NOERROR) {
 						break;
 					}
 				}

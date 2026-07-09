@@ -1,0 +1,7 @@
+[store]
+# Base URL the client uses to load store images.
+# Must end with a trailing slash.
+images_url = "http://127.0.0.1/images/store/"
+
+# Number of coins in the premium coin package shown in the client UI.
+coin_package_size = 25

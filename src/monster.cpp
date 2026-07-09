@@ -1194,7 +1194,7 @@ bool Monster::pushItem(const ItemPtr& item)
 		Position tryPos(centerPos.x + it.first, centerPos.y + it.second, centerPos.z);
 		const auto& tile = g_game.map.getTile(tryPos);
 		if (tile && g_game.canThrowObjectTo(centerPos, tryPos, true, true)) {
-			CylinderPtr n_parent = item->getParent();
+			ThingPtr n_parent = item->getImmediateParent();
 			CylinderPtr t_parent = tile;
 			if (g_game.internalMoveItem(n_parent, t_parent, INDEX_WHEREEVER, item, item->getItemCount(), std::nullopt) == RETURNVALUE_NOERROR) {
 				return true;
@@ -1870,8 +1870,8 @@ void Monster::death(const CreaturePtr&)
 				
 				const auto& player = g_game.getPlayerByGUID(playerId);
 				const auto& rewardContainer = Item::CreateItem(ITEM_REWARD_CONTAINER)->getContainer();
-				rewardContainer->getItem()->setIntAttr(ITEM_ATTRIBUTE_DATE, time_limit);
-				rewardContainer->getItem()->setIntAttr(ITEM_ATTRIBUTE_REWARDID, getMonster()->getID());
+				rewardContainer->getOwner()->setIntAttr(ITEM_ATTRIBUTE_DATE, time_limit);
+				rewardContainer->getOwner()->setIntAttr(ITEM_ATTRIBUTE_REWARDID, getMonster()->getID());
 
 				bool hasLoot = false;
 				auto isTopPlayer = (playerId == topContributerId) ? true : false;
@@ -1887,10 +1887,10 @@ void Monster::death(const CreaturePtr&)
 							
 							if (chance <= adjustedChance) {
 								auto lootItem = Item::CreateItem(lootBlock.id, count);
-								CylinderPtr holder = rewardContainer;
-								if (g_game.internalAddItem(holder, lootItem) == RETURNVALUE_NOERROR) {
+								if (g_game.internalAddItem(rewardContainer->getOwner(), lootItem) == RETURNVALUE_NOERROR)
+								{
 									hasLoot = true;
-								} 
+								}
 							}
 						}
 					}
@@ -1902,8 +1902,10 @@ void Monster::death(const CreaturePtr&)
 				}
 				if (hasLoot) {
 					if (player) {
-						CylinderPtr holder = player->getRewardChest()->getContainer();
-						if (g_game.internalAddItem(holder, rewardContainer->getItem()) == RETURNVALUE_NOERROR) {
+						auto rewardChestContainer = player->getRewardChest();
+						auto rewardContainerItem = rewardContainer->getOwner();
+						if (g_game.internalAddItem(rewardChestContainer->getOwner(), rewardContainerItem) == RETURNVALUE_NOERROR)
+						{
 							player->sendTextMessage(MESSAGE_LOOT, "The following items dropped by " + getMonster()->getName() + " are available in your reward chest: " + rewardContainer->getContentDescription() + ".");
 						}
 					} else {

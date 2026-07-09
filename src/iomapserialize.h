@@ -23,7 +23,7 @@ class IOMapSerialize
 		static void saveTile(PropWriteStream& stream, const TilePtr& tile);
 
 		static bool loadContainer(PropStream& propStream, const ContainerPtr& container);
-		static bool loadItem(PropStream& propStream, const CylinderPtr& parent);
+		static bool loadItem(PropStream& propStream, const ThingPtr& parent);
 };
 
 #endif

@@ -44,9 +44,6 @@ namespace BlackTek::Console
         Fatal
     };
 
-    // Combat is a reserved placeholder: the registry slot exists so the future
-    // combat metrics system can wire it up without renumbering other channels,
-    // but it has no sub-namespace yet and stays disabled by default.
     enum class ChannelType : uint8_t
     {
         System,
@@ -96,6 +93,11 @@ namespace BlackTek::Console
 
         bool styled { false };
         bool linebreak { true };
+
+        // Set only by the metrics system. When non-null, the Worker writes straight to
+        // *target_file and skips WriteToChannel()'s per-channel flood-guard/rotation —
+        // metrics files have their own rotation policy (see OpenMetricsChannels below).
+        std::ofstream* target_file = nullptr;
 
         Message() = default;
         Message(std::string_view msg_data, MessageType message_type, bool l_break = true, bool style = false) : text(msg_data), msg_type(message_type), linebreak(l_break), styled(style) {}
@@ -350,7 +352,7 @@ namespace BlackTek::Console
         { true,  LogLevel::Info,    LogLevel::Info },    // System
         { true,  LogLevel::Warning, LogLevel::Error },   // Network
         { true,  LogLevel::Warning, LogLevel::Error },   // Database
-        { false, LogLevel::Info,    LogLevel::Warning }, // Combat
+        { true,  LogLevel::Info,    LogLevel::Warning }, // Combat
         { true,  LogLevel::Debug,   LogLevel::Error },   // Script
         { true,  LogLevel::Info,    LogLevel::Warning }, // Map
         { true,  LogLevel::Info,    LogLevel::Warning }, // Player
@@ -533,6 +535,130 @@ namespace BlackTek::Console
             channel.Rotate(log_dir, current_date, retention_days);
     }
 
+    // --- Metrics live-log channels ------------------------------------------
+    // Owned directly by the Console namespace rather than by the ChannelType/
+    // LogChannel system above: metrics rows are raw CSV/JSONL data, not formatted
+    // log lines, and rotate by size as well as by day. Opened by Metrics::Initialize()
+    // via OpenMetricsChannels(), not by Console::Initialize().
+
+    inline std::ofstream metrics_strikes_file;
+    inline std::ofstream metrics_modifiers_file;
+    inline std::ofstream metrics_heals_file;
+    inline std::ofstream metrics_conditions_file;
+    inline std::ofstream metrics_anomalies_file;
+
+    inline constexpr size_t METRICS_CHANNEL_COUNT = 5;
+
+    struct MetricsChannelState
+    {
+        std::string directory;
+        std::string extension; // "csv" | "jsonl"
+        std::string current_date;
+        std::array<uint32_t, METRICS_CHANNEL_COUNT> rotation_index{};
+        std::array<std::string, METRICS_CHANNEL_COUNT> headers{}; // csv only; written by OpenMetricsChannel on every fresh file, including post-rotation
+        uint32_t max_file_mb = 100;
+    };
+    inline MetricsChannelState metrics_state;
+
+    // Called once from Metrics::Initialize() per channel so every file OpenMetricsChannel
+    // creates afterwards — including ones opened by daily/size rotation — gets a header.
+    inline void SetMetricsChannelHeader(size_t index, std::string header)
+    {
+        metrics_state.headers[index] = std::move(header);
+    }
+
+    inline constexpr std::array<std::string_view, METRICS_CHANNEL_COUNT> METRICS_CHANNEL_NAMES
+    {{ "strikes", "modifiers", "heals", "conditions", "formula_anomalies" }};
+
+    inline std::ofstream& GetMetricsChannelFile(size_t index)
+    {
+        switch (index)
+        {
+            case 0:  return metrics_strikes_file;
+            case 1:  return metrics_modifiers_file;
+            case 2:  return metrics_heals_file;
+            case 3:  return metrics_conditions_file;
+            default: return metrics_anomalies_file;
+        }
+    }
+
+    inline void OpenMetricsChannel(size_t index)
+    {
+        auto& file = GetMetricsChannelFile(index);
+        if (file.is_open())
+            file.close();
+
+        std::filesystem::create_directories(metrics_state.directory);
+
+        std::string path = metrics_state.directory + "/" + std::string(METRICS_CHANNEL_NAMES[index])
+            + "_" + metrics_state.current_date;
+        if (metrics_state.rotation_index[index] > 0)
+            path += fmt::format("_{:03d}", metrics_state.rotation_index[index]);
+        path += "." + metrics_state.extension;
+
+        file.open(path, std::ios::out | std::ios::app);
+
+        if (file.is_open() and metrics_state.extension == "csv" and not metrics_state.headers[index].empty()
+            and static_cast<uint64_t>(file.tellp()) == 0)
+        {
+            file << metrics_state.headers[index] << '\n';
+        }
+    }
+
+    inline void OpenMetricsChannels(const std::string& directory, const std::string& format, uint32_t maxFileMb = 100)
+    {
+        metrics_state.directory = directory;
+        metrics_state.extension = (format == "jsonl") ? "jsonl" : "csv";
+        metrics_state.current_date = CurrentDateString();
+        metrics_state.max_file_mb = maxFileMb;
+        metrics_state.rotation_index.fill(0);
+
+        for (size_t i = 0; i < METRICS_CHANNEL_COUNT; ++i)
+            OpenMetricsChannel(i);
+    }
+
+    // Returns the current size of the given metrics file (0 for a freshly-opened
+    // file) so the caller can decide whether to write a CSV header line.
+    inline uint64_t GetMetricsChannelSize(size_t index)
+    {
+        auto& file = GetMetricsChannelFile(index);
+        return file.is_open() ? static_cast<uint64_t>(file.tellp()) : 0;
+    }
+
+    inline void RotateMetricsChannelIfNeeded(size_t index)
+    {
+        auto& file = GetMetricsChannelFile(index);
+
+        const std::string today = CurrentDateString();
+        const bool day_changed = today != metrics_state.current_date;
+        const bool size_exceeded = file.is_open()
+            and static_cast<uint64_t>(file.tellp()) >= static_cast<uint64_t>(metrics_state.max_file_mb) * 1024 * 1024;
+
+        if (not day_changed and not size_exceeded)
+            return;
+
+        if (day_changed)
+        {
+            metrics_state.current_date = today;
+            metrics_state.rotation_index.fill(0);
+        }
+        else
+        {
+            ++metrics_state.rotation_index[index];
+        }
+
+        OpenMetricsChannel(index);
+    }
+
+    inline void RotateMetricsChannelsIfNeeded()
+    {
+        if (metrics_state.directory.empty())
+            return;
+
+        for (size_t i = 0; i < METRICS_CHANNEL_COUNT; ++i)
+            RotateMetricsChannelIfNeeded(i);
+    }
+
     inline void Worker(std::stop_token stop)
     {
         Message msg;
@@ -556,6 +682,12 @@ namespace BlackTek::Console
 
         const auto logToFile = [&]()
         {
+            if (msg.target_file)
+            {
+                if (msg.target_file->is_open())
+                    *msg.target_file << msg.text << '\n';
+                return;
+            }
             WriteToChannel(channels[static_cast<size_t>(msg.channel)], msg);
         };
 
@@ -603,6 +735,7 @@ namespace BlackTek::Console
         while (not stop.stop_requested())
         {
             CheckRotation();
+            RotateMetricsChannelsIfNeeded();
 
             while (queue.Pop(msg))
                 processMessage();
@@ -911,6 +1044,33 @@ namespace BlackTek::Console
         template <typename... Args>
         inline void Fatal(fmt::format_string<Args...> fmtStr, Args&&... args)
         { FatalDispatch(ChannelType::Script, fmtStr, std::forward<Args>(args)...); }
+    }
+
+    namespace Combat
+    {
+        template <typename... Args>
+        inline void Info(fmt::format_string<Args...> fmtStr, Args&&... args)
+        { Dispatch(ChannelType::Combat, LogLevel::Info, fmtStr, std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        inline void Warn(fmt::format_string<Args...> fmtStr, Args&&... args)
+        { Dispatch(ChannelType::Combat, LogLevel::Warning, fmtStr, std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        inline void Error(fmt::format_string<Args...> fmtStr, Args&&... args)
+        { Dispatch(ChannelType::Combat, LogLevel::Error, fmtStr, std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        inline void Debug(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
+        { DebugDispatch<Args...>(ChannelType::Combat, fmtStr, std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        inline void Trace(SourceFormat<std::type_identity_t<Args>...> fmtStr, Args&&... args)
+        { TraceDispatch<Args...>(ChannelType::Combat, fmtStr, std::forward<Args>(args)...); }
+
+        template <typename... Args>
+        inline void Fatal(fmt::format_string<Args...> fmtStr, Args&&... args)
+        { FatalDispatch(ChannelType::Combat, fmtStr, std::forward<Args>(args)...); }
     }
 
     namespace Map

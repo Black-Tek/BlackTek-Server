@@ -322,6 +322,19 @@ class ConditionDamage final : public Condition
 	
 		int32_t getTotalDamage() const;
 
+		// Metrics-only accessors (see metrics.cpp's condition-application capture):
+		// remaining ticks/per-tick amount from the current damage_front position.
+		// 0 expected ticks means "unbounded" (the periodDamage continuous-tick mode).
+		[[nodiscard]] uint16_t getExpectedTicks() const noexcept
+		{
+			return (periodDamage != 0) ? 0 : static_cast<uint16_t>(damageList.size() - damage_front);
+		}
+
+		[[nodiscard]] uint32_t getPeriodDamage() const noexcept
+		{
+			return static_cast<uint32_t>(std::abs(periodDamage));
+		}
+
 		void setInitDamage(int32_t initDamage) {
 			this->initDamage = initDamage;
 		}

@@ -10,6 +10,7 @@
 #include "scheduler.h"
 #include "events.h"
 #include "party.h"
+#include "metrics.h"
 
 double Creature::speedA = 857.36;
 double Creature::speedB = 261.29;
@@ -688,13 +689,12 @@ void Creature::gainHealth(const CreaturePtr& healer, int32_t healthGain)
 
 void Creature::drainHealth(const CreaturePtr& attacker, int32_t damage)
 {
-	changeHealth(-damage, false);
-
-	if (attacker) {
+	if (attacker) 
 		attacker->onAttackedCreatureDrainHealth(std::static_pointer_cast<Creature>(shared_from_this()), damage);
-	} else {
+	else
 		lastHitCreatureId = 0;
-	}
+
+	changeHealth(-damage, false);
 }
 
 BlockType_t Creature::blockHit(const CreaturePtr& attacker, CombatType_t combatType, int32_t& damage,
@@ -1097,6 +1097,34 @@ bool Creature::addCombatCondition(ConditionHandle condition)
 	return true;
 }
 
+namespace BlackTek
+{
+	// Emits a ConditionRecord{Expiry|Cancelled} if the condition was tracked by metrics,
+	// then clears its provenance entry.
+	void EmitConditionEnd(const CreaturePtr& target, ConditionType_t type, Metrics::ConditionRecordType recordType) noexcept
+	{
+		if constexpr (not Metrics::ENABLED or not Metrics::CAPTURE_CONDITIONS)
+			return;
+
+		const auto source = Metrics::LookupConditionSource(target->getID(), static_cast<uint8_t>(type));
+		if (not source)
+			return;
+
+		Metrics::ConditionRecord record{};
+		record.timestamp_ms = static_cast<uint64_t>(OTSYS_TIME());
+		record.instance_guid = source->instance_guid;
+		record.applier_id = source->applier_id;
+		record.target_id = target->getID();
+		record.source_combat_id = source->source_combat_id;
+		record.record_type = std::to_underlying(recordType);
+		record.condition_type = static_cast<uint8_t>(type);
+		record.running_total = source->running_total;
+		Metrics::RecordCondition(record);
+
+		Metrics::ClearConditionSource(target->getID(), static_cast<uint8_t>(type));
+	}
+}
+
 void Creature::removeCondition(ConditionType_t type, bool force/* = false*/)
 {
 	const auto self = std::static_pointer_cast<Creature>(shared_from_this());
@@ -1119,6 +1147,7 @@ void Creature::removeCondition(ConditionType_t type, bool force/* = false*/)
 		it = conditions.erase(it);
 		cond->endCondition(self);
 		onEndCondition(type);
+		BlackTek::EmitConditionEnd(self, type, BlackTek::Metrics::ConditionRecordType::Cancelled);
 	}
 }
 
@@ -1144,6 +1173,7 @@ void Creature::removeCondition(ConditionType_t type, ConditionId_t conditionId, 
 		it = conditions.erase(it);
 		cond->endCondition(self);
 		onEndCondition(type);
+		BlackTek::EmitConditionEnd(self, type, BlackTek::Metrics::ConditionRecordType::Cancelled);
 	}
 }
 
@@ -1181,6 +1211,7 @@ void Creature::removeCondition(const Condition* condition, bool force/* = false*
 	conditions.erase(it);
 	cond->endCondition(self);
 	onEndCondition(condType);
+	BlackTek::EmitConditionEnd(self, condType, BlackTek::Metrics::ConditionRecordType::Cancelled);
 }
 
 Condition* Creature::getCondition(ConditionType_t type) const
@@ -1222,6 +1253,7 @@ void Creature::executeConditions(uint32_t interval)
 				conditions.erase(it);
 				cond->endCondition(self);
 				onEndCondition(condType);
+				BlackTek::EmitConditionEnd(self, condType, BlackTek::Metrics::ConditionRecordType::Expiry);
 			}
 		}
 	}
