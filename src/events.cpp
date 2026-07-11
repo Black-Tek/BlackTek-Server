@@ -1329,8 +1329,9 @@ void Events::eventMonsterOnDropLoot(const MonsterPtr& monster, const ContainerPt
 	LuaScriptInterface::pushSharedPtr(L, monster);
 	LuaScriptInterface::setMetatable(L, -1, "Monster");
 
-	LuaScriptInterface::pushSharedPtr(L, corpse);
-	LuaScriptInterface::setMetatable(L, -1, "Container");
+	const auto corpseItem = corpse->getOwner();
+	LuaScriptInterface::pushSharedPtr(L, corpseItem);
+	LuaScriptInterface::setItemMetatable(L, -1, corpseItem);
 
 	scriptInterface.callVoidFunction(2);
 }
