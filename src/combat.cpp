@@ -5,6 +5,7 @@
 
 #include "combat.h"
 #include "game.h"
+#include "creaturecontainer.h"
 #include "console.h"
 #include "scheduler.h"
 #include "weapons.h"
@@ -3245,7 +3246,7 @@ namespace BlackTek
 
 			valid_tile_list.push_back(tile);
 
-			const auto& creaturesOnTile = tile->getCreatures();
+			const auto creaturesOnTile = tile->getCreatures();
 
 			if (not creaturesOnTile)
 				continue;
@@ -3254,7 +3255,7 @@ namespace BlackTek
 
 			const CreaturePtr topCreature =	config_top_target_only	? tile->getTopCreature() : nullptr;
 
-			for (const auto& creature : *creaturesOnTile)
+			for (const auto& creature : creaturesOnTile->getList())
 			{
 				if (isStrikeable(creature, topCreature, onCasterTile))
 					area_creature_buffer.push_back(creature);

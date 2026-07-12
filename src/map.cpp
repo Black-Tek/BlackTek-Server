@@ -7,6 +7,7 @@
 #include "iomapserialize.h"
 #include "combat.h"
 #include "creature.h"
+#include "creaturecontainer.h"
 #include "game.h"
 #include "monster.h"
 
@@ -153,10 +154,11 @@ void Map::removeTile(const uint16_t x, const uint16_t y, const uint8_t z) const
 	if (const auto& tile = floor->tiles[x & FLOOR_MASK][y & FLOOR_MASK]) {
 		if (const auto& creatures = tile->getCreatures()) {
 			for (int32_t i = creatures->size(); --i >= 0;) {
-				if (const auto& player = (*creatures)[i]->getPlayer()) {
+				if (const auto& player = creatures->getList()[i]->getPlayer())
+				{
 					g_game.internalTeleport(player, player->getTown()->getTemplePosition(), false, FLAG_NOLIMIT);
 				} else {
-					g_game.removeCreature((*creatures)[i]);
+					g_game.removeCreature(creatures->getList()[i]);
 				}
 			}
 		}
@@ -266,13 +268,11 @@ bool Map::placeCreature(const Position& centerPos, CreaturePtr creature, bool ex
 		}
 	}
 
-	int32_t index = 0;
 	uint32_t flags = 0;
-	ItemPtr toItem = nullptr;
-	auto toCylinder = tile->queryDestination(index, creature, toItem, flags)->getCylinder();
-	toCylinder->internalAddThing(creature);
+	TilePtr destTile = tile->queryCreatureDestination(creature, flags);
+	destTile->ensureCreatures().internalAddCreature(creature);
 
-	const Position& dest = toCylinder->getPosition();
+	const Position& dest = destTile->getPosition();
 	getQTNode(dest.x, dest.y)->addCreature(creature);
 	return true;
 }
@@ -315,7 +315,10 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 	}
 
 	//remove the creature
-	oldTile->removeThing(creature, 0);
+	if (const auto creatures = oldTile->getCreatures())
+	{
+		creatures->removeCreature(creature);
+	}
 
 	const auto& leaf = getQTNode(oldPos.x, oldPos.y);
 	const auto& new_leaf = getQTNode(newPos.x, newPos.y);
@@ -327,7 +330,7 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 	}
 
 	//add the creature
-	newTile->addThing(creature);
+	newTile->ensureCreatures().addCreature(creature);
 
 	if (!teleport) {
 		if (oldPos.y > newPos.y) {
@@ -365,8 +368,8 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 	for (const auto& spectator : spectators)
 		spectator->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
 
-	oldTile->postRemoveNotification(creature, newTile, 0);
-	newTile->postAddNotification(creature, oldTile, 0);
+	oldTile->postRemoveCreatureNotification(creature, newTile, spectators);
+	newTile->postAddCreatureNotification(creature, oldTile, spectators);
 }
 
 void Map::getSpectatorsInternal(SpectatorVec& spectators, const Position& centerPos, const int32_t minRangeX, const int32_t maxRangeX, const int32_t minRangeY, const int32_t maxRangeY, const int32_t minRangeZ, const int32_t maxRangeZ, const bool onlyPlayers) const

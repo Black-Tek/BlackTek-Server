@@ -55,6 +55,7 @@ class Teleport final : public Item, public Cylinder
 
 		void addThing(ThingPtr thing) override;
 		void addThing(int32_t index, ThingPtr thing) override;
+		void teleportCreature(const CreaturePtr& creature);
 
 		void updateThing(ThingPtr thing, uint16_t itemId, uint32_t count) override;
 		void replaceThing(uint32_t index, ThingPtr thing) override;
@@ -65,6 +66,8 @@ class Teleport final : public Item, public Cylinder
 		void postRemoveNotification(ThingPtr thing,  CylinderPtr newParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
 
 	private:
+		TilePtr resolveDestinationTile();
+
 		Position destPos;
 };
 

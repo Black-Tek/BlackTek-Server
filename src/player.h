@@ -169,6 +169,14 @@ class Player final : public Creature, public Cylinder
 
 		std::string getDescription(int32_t lookDistance) override; // todo, fix overload restriction blocking this from being const
 
+		int32_t getThrowRange() const override { return Creature::getThrowRange(); }
+		bool isRemoved() const override { return Creature::isRemoved(); }
+		const Position& getPosition() const override { return Creature::getPosition(); }
+		TilePtr getTile() override { return Creature::getTile(); }
+		TileConstPtr getTile() const override { return Creature::getTile(); }
+		CreaturePtr getCreature() override { return Creature::getCreature(); }
+		CreatureConstPtr getCreature() const override { return Creature::getCreature(); }
+
 		const std::string&	getRegisteredName() const override { return getName(); }
 		const std::string&	getName() const override { return name; }
 		const std::string&	getNameDescription() const override { return name; }
@@ -639,6 +647,7 @@ class Player final : public Creature, public Cylinder
 		void onThink(uint32_t interval) override;
 		void postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
 		void postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
+		void onNearbyCreatureMoved(const CreaturePtr& creature);
 
 		void sendFYIBox(const std::string& message) const					{ if (client) client->sendFYIBox(message); }
 		void setGUID(const uint32_t guid)									{ this->guid = guid; }

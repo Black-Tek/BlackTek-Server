@@ -440,11 +440,11 @@ class RuneSpell final : public Action, public Spell
 			return true;
 		}
 	
-		ThingPtr getTarget(const PlayerPtr&, const CreaturePtr& targetCreature, const Position&, uint8_t) const override {
-			return targetCreature; // implicit upcasts are handled automatically
+		StackposResolution getTarget(const PlayerPtr&, const CreaturePtr& targetCreature, const Position&, uint8_t) const override {
+			return StackposResolution{targetCreature, nullptr};
 		}
 
-		bool executeUse(const PlayerPtr& player, const ItemPtr& item, const Position& fromPosition, const ThingPtr& target, const Position& toPosition, bool isHotkey) override;
+		bool executeUse(const PlayerPtr& player, const ItemPtr& item, const Position& fromPosition, const StackposResolution& target, const Position& toPosition, bool isHotkey) override;
 
 		bool castSpell(const CreaturePtr& creature) override;
 		bool castSpell(const CreaturePtr& creature, const CreaturePtr& target) override;

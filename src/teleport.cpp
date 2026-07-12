@@ -49,16 +49,11 @@ ThingPtr Teleport::queryDestination(int32_t&, const ThingPtr&, ItemPtr&, uint32_
 	return this->getTile();
 }
 
-void Teleport::addThing(ThingPtr thing)
-{
-	return addThing(0, thing);
-}
-
-void Teleport::addThing(int32_t, ThingPtr thing)
+TilePtr Teleport::resolveDestinationTile()
 {
 	const auto destTile = g_game.map.getTile(destPos);
 	if (!destTile) {
-		return;
+		return nullptr;
 	}
 
 	// Prevent infinite loop
@@ -69,7 +64,7 @@ void Teleport::addThing(int32_t, ThingPtr thing)
 			const Position& nextPos = destTeleport->getDestPos();
 			if (std::ranges::find(lastPositions, nextPos) != lastPositions.end()) {
 				std::cout << "Warning: possible infinite loop teleport. " << nextPos << std::endl;
-				return;
+				return nullptr;
 			}
 
 			const auto& tile = g_game.map.getTile(nextPos);
@@ -86,25 +81,58 @@ void Teleport::addThing(int32_t, ThingPtr thing)
 		}
 	}
 
+	return destTile;
+}
+
+void Teleport::teleportCreature(const CreaturePtr& creature)
+{
+	const auto destTile = resolveDestinationTile();
+	if (not destTile)
+	{
+		return;
+	}
+
 	const MagicEffectClasses effect = Item::items[id].magicEffect;
 
-	if (auto creature = thing->getCreature()) {
-		Position origPos = creature->getPosition();
-		g_game.internalCreatureTurn(creature, origPos.x > destPos.x ? DIRECTION_WEST : DIRECTION_EAST);
-		g_game.map.moveCreature(creature, destTile);
-		if (effect != CONST_ME_NONE) {
-			g_game.addMagicEffect(origPos, effect);
-			g_game.addMagicEffect(destTile->getPosition(), effect);
-		}
-	} else if (const auto& item = thing->getItem()) {
-		if (effect != CONST_ME_NONE) {
-			g_game.addMagicEffect(destTile->getPosition(), effect);
-			g_game.addMagicEffect(item->getPosition(), effect);
-		}
-		CylinderPtr f_cylinder = getTile();
-		CylinderPtr t_cylinder = destTile;
-		g_game.internalMoveItem(f_cylinder, t_cylinder, INDEX_WHEREEVER, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT);
+	Position origPos = creature->getPosition();
+	g_game.internalCreatureTurn(creature, origPos.x > destPos.x ? DIRECTION_WEST : DIRECTION_EAST);
+	auto movingCreature = creature;
+	g_game.map.moveCreature(movingCreature, destTile);
+	if (effect != CONST_ME_NONE)
+	{
+		g_game.addMagicEffect(origPos, effect);
+		g_game.addMagicEffect(destTile->getPosition(), effect);
 	}
+}
+
+void Teleport::addThing(ThingPtr thing)
+{
+	return addThing(0, thing);
+}
+
+void Teleport::addThing(int32_t, ThingPtr thing)
+{
+	const auto& item = thing->getItem();
+	if (not item)
+	{
+		return;
+	}
+
+	const auto destTile = resolveDestinationTile();
+	if (not destTile)
+	{
+		return;
+	}
+
+	const MagicEffectClasses effect = Item::items[id].magicEffect;
+	if (effect != CONST_ME_NONE)
+	{
+		g_game.addMagicEffect(destTile->getPosition(), effect);
+		g_game.addMagicEffect(item->getPosition(), effect);
+	}
+	CylinderPtr f_cylinder = getTile();
+	CylinderPtr t_cylinder = destTile;
+	g_game.internalMoveItem(f_cylinder, t_cylinder, INDEX_WHEREEVER, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT);
 }
 
 void Teleport::updateThing(ThingPtr, uint16_t, uint32_t)

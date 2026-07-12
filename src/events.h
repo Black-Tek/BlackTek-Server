@@ -8,6 +8,7 @@
 #include "const.h"
 #include "creature.h"
 #include "party.h"
+#include "stackposresolution.h"
 
 class ItemType;
 class Tile;
@@ -105,7 +106,7 @@ class Events
 
 		// Player
 		bool eventPlayerOnBrowseField(const PlayerPtr& player, const Position& position);
-		void eventPlayerOnLook(const PlayerPtr& player, const Position& position, const ThingPtr& thing, uint8_t stackpos, int32_t lookDistance);
+		void eventPlayerOnLook(const PlayerPtr& player, const Position& position, const StackposResolution& thing, uint8_t stackpos, int32_t lookDistance);
 		void eventPlayerOnLookInBattleList(const PlayerPtr& player, const CreaturePtr& creature, int32_t lookDistance);
 		void eventPlayerOnLookInTrade(const PlayerPtr& player, const PlayerPtr& partner, const ItemPtr& item, int32_t lookDistance);
 		bool eventPlayerOnLookInShop(const PlayerPtr& player, const ItemType* itemType, uint8_t count, const std::string& description);

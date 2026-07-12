@@ -7,10 +7,11 @@
 #include "baseevents.h"
 #include "enums.h"
 #include "luascript.h"
+#include "stackposresolution.h"
 
 class Action;
 using Action_ptr = std::unique_ptr<Action>;
-using ActionFunction = std::function<bool(PlayerPtr player, ItemPtr item, const Position& fromPosition, ThingPtr target, const Position& toPosition, bool isHotkey)>;
+using ActionFunction = std::function<bool(PlayerPtr player, ItemPtr item, const Position& fromPosition, StackposResolution target, const Position& toPosition, bool isHotkey)>;
 
 class Action : public Event
 {
@@ -22,7 +23,7 @@ class Action : public Event
 
 		//scripting
 		virtual bool executeUse(const PlayerPtr& player, const ItemPtr& item, const Position& fromPosition,
-			const ThingPtr& target, const Position& toPosition, bool isHotkey);
+			const StackposResolution& target, const Position& toPosition, bool isHotkey);
 
 		bool getAllowFarUse() const {
 			return allowFarUse;
@@ -90,7 +91,7 @@ class Action : public Event
 			return false;
 		}
 	
-		virtual ThingPtr getTarget(const PlayerPtr& player, const CreaturePtr& targetCreature, const Position& toPosition, uint8_t toStackPos) const;
+		virtual StackposResolution getTarget(const PlayerPtr& player, const CreaturePtr& targetCreature, const Position& toPosition, uint8_t toStackPos) const;
 
 		ActionFunction function;
 

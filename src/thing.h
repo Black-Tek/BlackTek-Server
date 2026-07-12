@@ -33,11 +33,6 @@ enum class ThingSubType : uint8_t
 	MagicField,
 	BedItem,
 	HouseTransferItem,
-	// Creature + Cylinder
-	Player,
-	// Creature-only
-	Monster,
-	Npc,
 };
 
 class Thing
@@ -101,23 +96,11 @@ class Thing
         virtual ItemConstPtr getItem() const {
             return nullptr;
         }
-    
-        virtual CreaturePtr getCreature() {
-            return nullptr;
-        }
-    
-        virtual CreatureConstPtr getCreature() const {
-            return nullptr;
-        }
 
         virtual bool isRemoved() const {
             return true;
         }
 
-        bool is_player() const { return thing_subtype == ThingSubType::Player; }
-        bool is_monster() const { return thing_subtype == ThingSubType::Monster; }
-        bool is_npc() const { return thing_subtype == ThingSubType::Npc; }
-        bool is_creature() const { return is_player() or is_monster() or is_npc(); }
         bool is_item() const { return thing_subtype == ThingSubType::Item; }
         bool is_door() const { return thing_subtype == ThingSubType::Door; }
         bool is_magic_field() const { return thing_subtype == ThingSubType::MagicField; }

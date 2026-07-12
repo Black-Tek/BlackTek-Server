@@ -36,6 +36,15 @@ Creature::~Creature()
 	conditions.clear();
 }
 
+void Creature::setCurrentTile(const TilePtr& newTile)
+{
+	tile = newTile;
+	if (newTile)
+	{
+		position = newTile->getPosition();
+	}
+}
+
 bool Creature::canSee(const Position& myPos, const Position& pos, int32_t viewRangeX, int32_t viewRangeY)
 {
 	if (myPos.z <= 7) {

@@ -28,6 +28,7 @@
 #include "luavariant.h"
 #include <fmt/format.h>
 #include "declarations.h"
+#include "stackposresolution.h"
 #include <gtl/phmap.hpp>
 
 #include "intrusive.h"
@@ -138,7 +139,7 @@ class ScriptEnvironment
 
 		void addTempItem(const ItemPtr& item);
 		static void removeTempItem(const ItemPtr& item);
-		uint32_t addThing(const ThingPtr& thing);
+		uint32_t addThing(const ItemPtr& item);
 		void insertItem(uint32_t uid, const ItemPtr& item);
 
 		static DBResult_ptr getResultByID(uint32_t id);
@@ -153,7 +154,7 @@ class ScriptEnvironment
 			return curNpc;
 		}
 
-		ThingPtr getThingByUID(uint32_t uid);
+		StackposResolution getThingByUID(uint32_t uid);
 		ItemPtr getItemByUID(uint32_t uid);
 		ContainerPtr getContainerByUID(uint32_t uid);
 		void removeItemByUID(uint32_t uid);
@@ -259,6 +260,7 @@ class LuaScriptInterface
 
 		//push/pop common structures
 		static void pushThing(lua_State* L, const ThingPtr& thing);
+		static void pushThing(lua_State* L, const StackposResolution& thing);
 		static void pushVariant(lua_State* L, const LuaVariant& var);
 		static void pushString(lua_State* L, std::string_view value);
 		static void pushCallback(lua_State* L, int32_t callback);
@@ -440,7 +442,7 @@ class LuaScriptInterface
 	
 		static InstantSpell* getInstantSpell(lua_State* L, int32_t arg);
 
-		static ThingPtr getThing(lua_State* L, int32_t arg);
+		static StackposResolution getThing(lua_State* L, int32_t arg);
 		static CreaturePtr getCreature(lua_State* L, int32_t arg);
 		static PlayerPtr getPlayer(lua_State* L, int32_t arg);
 

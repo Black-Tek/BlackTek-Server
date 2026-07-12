@@ -8,6 +8,7 @@
 #include "house.h"
 #include "iologindata.h"
 #include "game.h"
+#include "creaturecontainer.h"
 #include "configmanager.h"
 #include "bed.h"
 
@@ -53,7 +54,7 @@ void House::setOwner(uint32_t guid, bool updateDatabase/* = true*/, const Player
 		for (const auto tile : houseTiles) {
 			if (const auto creatures = tile->getCreatures()) {
 				for (int32_t i = creatures->size(); --i >= 0;) {
-					kickPlayer(nullptr, (*creatures)[i]->getPlayer());
+					kickPlayer(nullptr, creatures->getList()[i]->getPlayer());
 				}
 			}
 		}
@@ -185,7 +186,7 @@ void House::setAccessList(const uint32_t listId, const std::string_view textlist
 	for (const auto tile : houseTiles) {
 		if (const auto creatures = tile->getCreatures()) {
 			for (int32_t i = creatures->size(); --i >= 0;) {
-				const auto player = (*creatures)[i]->getPlayer();
+				const auto player = creatures->getList()[i]->getPlayer();
 				if (player && !isInvited(player)) {
 					kickPlayer(nullptr, player);
 				}

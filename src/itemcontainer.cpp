@@ -578,7 +578,9 @@ ReturnValue ItemContainer::queryAddGeneric(int32_t index, const ThingPtr& thing,
 	{
 		if (topParent->getTile()->isHouseTile())
 		{
-			if (not topParent->getCreature() and not topParent->getTile()->getHouse()->isInvited(actor->getPlayer()))
+			const auto topCylinder = topParent->getCylinder();
+			const bool topParentIsPlayer = topCylinder and topCylinder->getCylinderSubType() == CylinderSubType::Player;
+			if (not topParentIsPlayer and not topParent->getTile()->getHouse()->isInvited(actor->getPlayer()))
 				return RETURNVALUE_PLAYERISNOTINVITED;
 		}
 	}
@@ -683,7 +685,9 @@ ReturnValue ItemContainer::queryRemove(const ThingPtr& thing, uint32_t count, ui
 
 			if (const auto player = actor->getPlayer())
 			{
-				if (not topParent or (not topParent->getCreature() and not ground_tile->getHouse()->isInvited(player)))
+				const auto topCylinder = topParent ? topParent->getCylinder() : nullptr;
+				const bool topParentIsPlayer = topCylinder and topCylinder->getCylinderSubType() == CylinderSubType::Player;
+				if (not topParent or (not topParentIsPlayer and not ground_tile->getHouse()->isInvited(player)))
 					return RETURNVALUE_PLAYERISNOTINVITED;
 			}
 		}
@@ -974,7 +978,7 @@ void ItemContainer::postAddNotificationDefault(ThingPtr thing, CylinderPtr oldPa
 	}
 	else if (auto realParent = topParent->getCylinder())
 	{
-		auto link = realParent->getCreature() ? LINK_TOPPARENT : LINK_NEAR;
+		auto link = realParent->getCylinderSubType() == CylinderSubType::Player ? LINK_TOPPARENT : LINK_NEAR;
 		realParent->postAddNotification(thing, oldParent, index, link);
 	}
 }
@@ -1017,7 +1021,7 @@ void ItemContainer::postRemoveNotificationDefault(ThingPtr thing, CylinderPtr ne
 	}
 	else if (auto realParent = topParent->getCylinder())
 	{
-		auto link = realParent->getCreature() ? LINK_TOPPARENT : LINK_NEAR;
+		auto link = realParent->getCylinderSubType() == CylinderSubType::Player ? LINK_TOPPARENT : LINK_NEAR;
 		realParent->postRemoveNotification(thing, newParent, index, link);
 	}
 }

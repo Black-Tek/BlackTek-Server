@@ -5,6 +5,7 @@
 
 #include "monster.h"
 #include "game.h"
+#include "creaturecontainer.h"
 #include "console.h"
 #include "spells.h"
 #include "events.h"
@@ -42,7 +43,6 @@ Monster::Monster(MonsterType* mType) :
 	baseSpeed = mType->info.baseSpeed;
 	internalLight = mType->info.light;
 	hiddenHealth = mType->info.hiddenHealth;
-	thing_subtype = ThingSubType::Monster;
 	creature_subtype = CreatureSubType::Monster;
 	targetList.reserve(24);
 
@@ -1261,7 +1261,7 @@ void Monster::pushCreatures(const TilePtr& tile)
 		MonsterPtr lastPushedMonster = nullptr;
 
 		for (size_t i = 0; i < creatures->size();) {
-			const auto& monster = creatures->at(i)->getMonster();
+			const auto& monster = creatures->getList().at(i)->getMonster();
 			if (monster && monster->isPushable()) {
 				if (monster != lastPushedMonster && Monster::pushCreature(monster)) {
 					lastPushedMonster = monster;

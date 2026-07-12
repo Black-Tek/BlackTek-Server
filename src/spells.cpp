@@ -852,7 +852,7 @@ ReturnValue RuneSpell::canExecuteAction(const PlayerConstPtr& player, const Posi
 	return RETURNVALUE_NOERROR;
 }
 
-bool RuneSpell::executeUse(const PlayerPtr& player, const ItemPtr& item, const Position&, const ThingPtr& target, const Position& toPosition, bool isHotkey)
+bool RuneSpell::executeUse(const PlayerPtr& player, const ItemPtr& item, const Position&, const StackposResolution& target, const Position& toPosition, bool isHotkey)
 {
 	if (!playerRuneSpellCheck(player, toPosition)) {
 		return false;
@@ -866,14 +866,15 @@ bool RuneSpell::executeUse(const PlayerPtr& player, const ItemPtr& item, const P
 
 	if (needTarget) {
 
-		if (target == nullptr) {
+		if (not target)
+		{
 			if (const auto& toTile = g_game.map.getTile(toPosition)) {
 				if (const auto& visibleCreature = toTile->getBottomVisibleCreature(player)) {
 					var.setNumber(visibleCreature->getID());
 				}
 			}
 		} else {
-			var.setNumber(target->getCreature()->getID());
+			var.setNumber(target.creature->getID());
 		}
 	} else {
 		var.setPosition(toPosition);

@@ -77,7 +77,6 @@ Npc::Npc(const std::string& name) :
 	masterRadius(-1),
 	loaded(false)
 {
-	thing_subtype = ThingSubType::Npc;
 	creature_subtype = CreatureSubType::Npc;
 	reset();
 }
@@ -924,7 +923,7 @@ int NpcScriptInterface::luagetDistanceTo(lua_State* L)
 		return 1;
 	}
 
-	const Position& thingPos = thing->getPosition();
+	const Position& thingPos = thing.creature ? thing.creature->getPosition() : thing.item->getPosition();
 	const Position& npcPos = npc->getPosition();
 
 	if (npcPos.z != thingPos.z)

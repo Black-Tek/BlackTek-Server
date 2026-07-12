@@ -305,14 +305,17 @@ ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint
 	auto action = getAction(item);
 	if (action) {
 		if (action->isScripted()) {
-			if (action->executeUse(player, item, pos, nullptr, pos, isHotkey)) {
+			if (action->executeUse(player, item, pos, {}, pos, isHotkey))
+			{
 				return RETURNVALUE_NOERROR;
 			}
 
 			if (item->isRemoved()) {
 				return RETURNVALUE_CANNOTUSETHISOBJECT;
 			}
-		} else if (action->function && action->function(player, item, pos, nullptr, pos, isHotkey)) {
+		}
+		else if (action->function and action->function(player, item, pos, {}, pos, isHotkey))
+		{
 			return RETURNVALUE_NOERROR;
 		}
 	}
@@ -476,7 +479,10 @@ bool Actions::useItem(PlayerPtr player, const Position& pos, uint8_t index, cons
 	if (g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
 		if (auto ground_tile = item->getTile(); ground_tile && ground_tile->isHouseTile()) {
 			auto topParent = item->getTopParent();
-			if (!topParent || (!topParent->getCreature() && !ground_tile->getHouse()->isInvited(player))) {
+			const auto topCylinder = topParent ? topParent->getCylinder() : nullptr;
+			const bool topParentIsPlayer = topCylinder and topCylinder->getCylinderSubType() == CylinderSubType::Player;
+			if (not topParent or (not topParentIsPlayer and not ground_tile->getHouse()->isInvited(player)))
+			{
 				player->sendCancelMessage(RETURNVALUE_PLAYERISNOTINVITED);
 				return false;
 			}
@@ -521,7 +527,10 @@ bool Actions::useItemEx(const PlayerPtr& player, const Position& fromPos, const 
 
 	if (g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
 		if (item->getTile()->isHouseTile()) {
-			if (!item->getTopParent()->getCreature() && !item->getTile()->getHouse()->isInvited(player)) {
+			const auto topParentCylinder = item->getTopParent()->getCylinder();
+			const bool topParentIsPlayer = topParentCylinder and topParentCylinder->getCylinderSubType() == CylinderSubType::Player;
+			if (not topParentIsPlayer and not item->getTile()->getHouse()->isInvited(player))
+			{
 				player->sendCancelMessage(RETURNVALUE_PLAYERISNOTINVITED);
 				return false;
 			}
@@ -564,7 +573,7 @@ bool Action::configureEvent(const pugi::xml_node& node)
 
 namespace {
 
-bool enterMarket(const PlayerPtr& player, ItemPtr, const Position&, ThingPtr, const Position&, bool)
+bool enterMarket(const PlayerPtr& player, ItemPtr, const Position&, StackposResolution, const Position&, bool)
 {
 	player->sendMarketEnter();
 	return true;
@@ -598,15 +607,32 @@ ReturnValue Action::canExecuteAction(const PlayerConstPtr& player, const Positio
 	return g_actions->canUse(player, toPos);
 }
 
-ThingPtr Action::getTarget(const PlayerPtr& player, const CreaturePtr& targetCreature, const Position& toPosition, uint8_t toStackPos) const
+StackposResolution Action::getTarget(const PlayerPtr& player, const CreaturePtr& targetCreature, const Position& toPosition, uint8_t toStackPos) const
 {
 	if (targetCreature) {
-		return targetCreature;
+		return { targetCreature, nullptr };
 	}
-	return g_game.internalGetThing(player, toPosition, toStackPos, 0, STACKPOS_USETARGET);
+
+	if (toPosition.x == 0xFFFF)
+	{
+		return { nullptr, g_game.internalGetItem(player, toPosition, toStackPos, 0, STACKPOS_USETARGET) };
+	}
+
+	auto tile = g_game.map.getTile(toPosition);
+	if (not tile)
+	{
+		return {};
+	}
+
+	if (auto creature = tile->getTopVisibleCreature(player))
+	{
+		return { creature, nullptr };
+	}
+
+	return { nullptr, g_game.filterHangableItem(player, tile, tile->getUseItem(toStackPos)) };
 }
 
-bool Action::executeUse(const PlayerPtr& player, const ItemPtr& item, const Position& fromPosition, const ThingPtr& target, const Position& toPosition, bool isHotkey)
+bool Action::executeUse(const PlayerPtr& player, const ItemPtr& item, const Position& fromPosition, const StackposResolution& target, const Position& toPosition, bool isHotkey)
 {
 	//onUse(player, item, fromPosition, target, toPosition, isHotkey)
 	if (!scriptInterface->reserveScriptEnv()) {

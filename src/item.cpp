@@ -469,8 +469,9 @@ PlayerPtr Item::getHoldingPlayer()
 
 	CylinderPtr p = getParent();
 	while (p) {
-		if (p->getCreature()) {
-			return p->getCreature()->getPlayer();
+		if (p->getCylinderSubType() == CylinderSubType::Player)
+		{
+			return std::static_pointer_cast<Player>(p);
 		}
 
 		p = p->getParent();
@@ -1372,8 +1373,8 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 			// but we also need to handle checking if this item is actually equipped, a better way than this loop.
 			uint32_t duration = item->getDuration() / 1000;
 			const auto itemParent = item->getParent();
-			const auto itemParentCreature = itemParent ? itemParent->getCreature() : nullptr;
-			if (const auto& player = itemParentCreature ? itemParentCreature->getPlayer() : nullptr)
+			const bool itemParentIsPlayer = itemParent and itemParent->getCylinderSubType() == CylinderSubType::Player;
+			if (const auto& player = itemParentIsPlayer ? std::static_pointer_cast<Player>(itemParent) : nullptr)
 			{
 				const auto slot = item->getEquipSlot();
 

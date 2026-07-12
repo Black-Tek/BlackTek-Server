@@ -615,7 +615,7 @@ bool Events::eventPlayerOnBrowseField(const PlayerPtr& player, const Position& p
 	return scriptInterface.callFunction(2);
 }
 
-void Events::eventPlayerOnLook(const PlayerPtr& player, const Position& position, const ThingPtr& thing, uint8_t stackpos, int32_t lookDistance)
+void Events::eventPlayerOnLook(const PlayerPtr& player, const Position& position, const StackposResolution& thing, uint8_t stackpos, int32_t lookDistance)
 {
 	// Player:onLook(thing, position, distance) or Player.onLook(self, thing, position, distance)
 	if (info.playerOnLook == -1) {
@@ -636,12 +636,15 @@ void Events::eventPlayerOnLook(const PlayerPtr& player, const Position& position
 	LuaScriptInterface::pushSharedPtr(L, player);
 	LuaScriptInterface::setMetatable(L, -1, "Player");
 
-	if (auto creature = thing->getCreature()) {
-		LuaScriptInterface::pushSharedPtr(L, creature);
-		LuaScriptInterface::setCreatureMetatable(L, -1, creature);
-	} else if (auto item = thing->getItem()) {
-		LuaScriptInterface::pushSharedPtr(L, item);
-		LuaScriptInterface::setItemMetatable(L, -1, item);
+	if (thing.creature)
+	{
+		LuaScriptInterface::pushSharedPtr(L, thing.creature);
+		LuaScriptInterface::setCreatureMetatable(L, -1, thing.creature);
+	}
+	else if (thing.item)
+	{
+		LuaScriptInterface::pushSharedPtr(L, thing.item);
+		LuaScriptInterface::setItemMetatable(L, -1, thing.item);
 	} else {
 		lua_pushnil(L);
 	}

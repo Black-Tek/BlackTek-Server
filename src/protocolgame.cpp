@@ -10,6 +10,7 @@
 #include "outputmessage.h"
 
 #include "player.h"
+#include "creaturecontainer.h"
 
 #include "accountmanager.h"
 
@@ -762,7 +763,7 @@ void ProtocolGame::GetTileDescription(const TileConstPtr& tile, NetworkMessage& 
 
 	if (const auto& creatures = tile->getCreatures())
 	{
-		for (const auto& creature : boost::adaptors::reverse(*creatures))
+		for (const auto& creature : boost::adaptors::reverse(creatures->getList()))
 		{
 			if (not player->canSeeCreature(creature) or count >= 10)
 			{

@@ -82,7 +82,7 @@ class FrozenPathingConditionCall
 // Defines the Base class for all creatures and base functions which
 // every creature has
 
-class Creature : virtual public Thing, public SharedObject
+class Creature : public SharedObject
 {
 	protected:
 		Creature();
@@ -96,11 +96,11 @@ class Creature : virtual public Thing, public SharedObject
 		Creature(const Creature&) = delete;
 		Creature& operator=(const Creature&) = delete;
 
-		CreaturePtr getCreature() override final {
+		virtual CreaturePtr getCreature() {
 			return static_shared_this<Creature>();
 		}
-	
-		CreatureConstPtr getCreature() const override final {
+
+		virtual CreatureConstPtr getCreature() const {
 			return static_shared_this<Creature>();
 		}
 	
@@ -131,6 +131,12 @@ class Creature : virtual public Thing, public SharedObject
 		CreatureSubType getCreatureSubType() const {
 			return creature_subtype;
 		}
+
+		bool is_player() const { return creature_subtype == CreatureSubType::Player; }
+		bool is_monster() const { return creature_subtype == CreatureSubType::Monster; }
+		bool is_npc() const { return creature_subtype == CreatureSubType::Npc; }
+
+		virtual std::string getDescription(int32_t lookDistance) = 0;
 
 		virtual const std::string& getRegisteredName() const = 0;
 
@@ -184,15 +190,15 @@ class Creature : virtual public Thing, public SharedObject
 			hiddenHealth = b;
 		}
 
-		int32_t getThrowRange() const override final {
+		virtual int32_t getThrowRange() const {
 			return 1;
 		}
-	
-		bool isPushable() const override {
+
+		virtual bool isPushable() const {
 			return getWalkDelay() <= 0;
 		}
-	
-		bool isRemoved() const override final {
+
+		virtual bool isRemoved() const {
 			return isInternalRemoved;
 		}
 	
@@ -589,43 +595,21 @@ class Creature : virtual public Thing, public SharedObject
 		bool registerCreatureEvent(const std::string& name);
 		bool unregisterCreatureEvent(const std::string& name);
 
-		CylinderPtr getParent() override final {
-			[[likely]] if (auto shared_ptr = tile.lock())
-			{
-				return shared_ptr;
-			}
-			[[unlikely]] return nullptr;
-		}
+		void setCurrentTile(const TilePtr& newTile);
 
-		CylinderConstPtr getParent() const override final {
-			[[likely]] if (auto shared_ptr = tile.lock())
-			{
-				return shared_ptr;
-			}
-			[[unlikely]] return nullptr;
-		}
-	
-		void setParent(std::weak_ptr<Cylinder> cylinder) override final {
-			if (const auto shared_ptr = cylinder.lock())
-			{
-				tile = shared_ptr->getTile();
-				position = shared_ptr->getPosition();
-			}
-		}
-
-		const Position& getPosition() const override final {
+		virtual const Position& getPosition() const {
 			return position;
 		}
 
-		TilePtr getTile() override final {
+		virtual TilePtr getTile() {
 			[[likely]] if (auto shared_ptr = tile.lock())
 			{
 				return shared_ptr;
 			}
 			[[unlikely]] return nullptr;
 		}
-	
-		TileConstPtr getTile() const override final {
+
+		virtual TileConstPtr getTile() const {
 			[[likely]] if (auto shared_ptr = tile.lock())
 			{
 				return shared_ptr;

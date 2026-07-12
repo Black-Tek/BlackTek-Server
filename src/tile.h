@@ -9,6 +9,7 @@
 #include "tools.h"
 #include "spectators.h"
 #include "declarations.h"
+#include "stackposresolution.h"
 
 #include <optional>
 
@@ -134,28 +135,15 @@ class TileItemVector : public ItemVector
 };
 
 class House;
+class CreatureContainer;
 
 class Tile : public Cylinder, public SharedObject
 {
 	public:
-		Tile(uint16_t x, uint16_t y, uint8_t z) : tilePos(x, y, z) {
-			items = std::make_shared<TileItemVector>();
-			creatures = std::make_shared<CreatureVector>();
-			thing_subtype = ThingSubType::Tile;
-			cylinder_subtype = CylinderSubType::Tile;
-		}
+		Tile(uint16_t x, uint16_t y, uint8_t z);
+		Tile(uint16_t x, uint16_t y, uint8_t z, House* house);
 
-		Tile(uint16_t x, uint16_t y, uint8_t z, House* house) : tilePos(x, y, z) {
-			items = std::make_shared<TileItemVector>();
-			creatures = std::make_shared<CreatureVector>();
-			this->house = house;
-			thing_subtype = ThingSubType::Tile;
-			cylinder_subtype = CylinderSubType::Tile;
-		}
-
-		~Tile() {
-			ground.reset();
-		};
+		~Tile();
 
 		// non-copyable
 		Tile(const Tile&) = delete;
@@ -169,14 +157,15 @@ class Tile : public Cylinder, public SharedObject
 			return items;
 		}
 
-		TileCreaturesPtr getCreatures() {
-			return creatures;
+		CreatureContainer* getCreatures() {
+			return creatures.get();
 		}
 
-
-		TileCreaturesConstPtr getCreatures() const {
-			return creatures;
+		const CreatureContainer* getCreatures() const {
+			return creatures.get();
 		}
+
+		CreatureContainer& ensureCreatures();
 
 		House* getHouse() const {
 			return house;
@@ -203,7 +192,7 @@ class Tile : public Cylinder, public SharedObject
 		ItemPtr getTopTopItem() const;
 		ItemPtr getTopDownItem() const;
 		bool isMoveableBlocking() const;
-		ThingPtr getTopVisibleThing(const CreaturePtr creature);
+		StackposResolution getTopVisibleThing(const CreaturePtr& creature);
 		ItemPtr getItemByTopOrder(int32_t topOrder);
 
 		size_t getThingCount() const {
@@ -270,6 +259,7 @@ class Tile : public Cylinder, public SharedObject
 				uint32_t& maxQueryCount, uint32_t flags) override final;
 		ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
 		ThingPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags) override; // another optional wrap ref
+		TilePtr queryCreatureDestination(const CreaturePtr& creature, uint32_t& flags);
 
 		ReturnValue queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover);
 		ReturnValue queryAdd(PlayerPtr player, uint32_t flags);
@@ -287,13 +277,20 @@ class Tile : public Cylinder, public SharedObject
 		void removeCreature(CreaturePtr& creature);
 
 		int32_t getThingIndex(ThingPtr thing) override final;
+		int32_t getCreatureStackIndex(const CreatureConstPtr& creature) const;
 		size_t getFirstIndex() const override final;
 		size_t getLastIndex() const override final;
 		uint32_t getItemTypeCount(uint16_t itemId, int32_t subType = -1) const override final;
 		ThingPtr getThing(size_t index) override final;
+		StackposResolution getThingAt(size_t index);
 
 		void postAddNotification(ThingPtr thing,  CylinderPtr oldParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
 		void postRemoveNotification(ThingPtr thing,  CylinderPtr newParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
+
+		void postAddCreatureNotification(const CreaturePtr& creature, const TilePtr& oldTile);
+		void postAddCreatureNotification(const CreaturePtr& creature, const TilePtr& oldTile, const SpectatorVec& spectators);
+		void postRemoveCreatureNotification(const CreaturePtr& creature, const TilePtr& newTile);
+		void postRemoveCreatureNotification(const CreaturePtr& creature, const TilePtr& newTile, const SpectatorVec& spectators);
 
 		void internalAddThing(ThingPtr thing) override final;
 		void internalAddThing(uint32_t index, ThingPtr thing) override;
@@ -339,7 +336,7 @@ class Tile : public Cylinder, public SharedObject
 		void updateHouse(const ItemPtr& item);
 
 	private:
-        std::optional<ReturnValue> queryAddRestrictions(uint32_t flags) const;
+        TilePtr resolveFloorChangeDestination(uint32_t& flags);
 
 		void onAddTileItem(ItemPtr& item);
 		void onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType);
@@ -356,6 +353,6 @@ class Tile : public Cylinder, public SharedObject
 		uint32_t flags = 0;
 		uint32_t itemProperties = 0;
 		TileItemsPtr items;
-		TileCreaturesPtr creatures;
+		std::unique_ptr<CreatureContainer> creatures;
 };
 #endif

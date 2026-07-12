@@ -29,6 +29,8 @@ using TilePtr = std::shared_ptr<Tile>;
 using TileConstPtr = std::shared_ptr<const Tile>;
 using TileWeakPtr = std::weak_ptr<Tile>;
 
+class CreatureContainer;
+
 class Cylinder;
 using CylinderPtr = std::shared_ptr<Cylinder>;
 using CylinderConstPtr = std::shared_ptr<const Cylinder>;
@@ -82,5 +84,3 @@ using CreatureVector = std::vector<CreaturePtr>;
 using ItemVector = std::vector<ItemPtr>;
 using TileItemsPtr = std::shared_ptr<TileItemVector>;
 using TileItemsConstPtr = std::shared_ptr<const TileItemVector>;
-using TileCreaturesPtr = std::shared_ptr<CreatureVector>;
-using TileCreaturesConstPtr = std::shared_ptr<const CreatureVector>;

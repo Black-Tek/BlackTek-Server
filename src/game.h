@@ -222,8 +222,9 @@ class Game
 		}
 
 		ThingPtr internalGetCylinder(const PlayerPtr& player, const Position& pos);
-		ThingPtr internalGetThing(const PlayerPtr& player, const Position& pos, int32_t index,
+		ItemPtr internalGetItem(const PlayerPtr& player, const Position& pos, int32_t index,
 		                        uint32_t spriteId, stackPosType_t type);
+		ItemPtr filterHangableItem(const PlayerPtr& player, const TilePtr& tile, ItemPtr item) const;
 		static void internalGetPosition(const ItemPtr& item, Position& pos, uint8_t& stackpos);
 
 		static std::string getTradeErrorDescription(ReturnValue ret, const ItemPtr& item);
@@ -444,15 +445,9 @@ class Game
 		  */
 		ItemPtr transformItem(const ItemPtr& item, uint16_t newId, int32_t newCount = -1);
 
-		/**
-		  * Teleports an object to another position
-		  * \param thing is the object to teleport
-		  * \param newPos is the new position
-		  * \param pushMove force teleport if false
-		  * \param flags optional flags to modify default behavior
-		  * \returns true if the teleportation was successful
-		  */
-		ReturnValue internalTeleport(const ThingPtr& thing, const Position& newPos, bool pushMove = true, uint32_t flags = 0);
+		ReturnValue internalTeleport(const CreaturePtr& creature, const Position& newPos, bool pushMove = true, uint32_t flags = 0);
+
+		ReturnValue internalTeleport(const ItemPtr& item, const Position& newPos, bool pushMove = true, uint32_t flags = 0);
 
 		/**
 		  * Turn a creature to a different direction.

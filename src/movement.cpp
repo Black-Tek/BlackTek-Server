@@ -8,6 +8,7 @@
 #include "pugicast.h"
 
 #include "movement.h"
+#include "creaturecontainer.h"
 
 extern Game g_game;
 extern Vocations g_vocations;
@@ -656,7 +657,8 @@ uint32_t MoveEvent::AddItemField(const ItemPtr& item, const ItemPtr&, const Posi
 	if (const auto& field = item->getMagicField()) {
 		const auto& tile = item->getTile();
 		if (const auto& creatures = tile->getCreatures()) {
-			for (const auto& creature : *creatures) {
+			for (const auto& creature : creatures->getList())
+			{
 				field->onStepInField(creature);
 			}
 		}

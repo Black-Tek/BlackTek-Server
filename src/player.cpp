@@ -714,7 +714,6 @@ Player::Player(ProtocolGame_ptr p) :
 	inbox(CreateSystemContainer(ITEM_INBOX, 30, false, true, ContainerSubType::Inbox)),
 	storeInbox(CreateSystemContainer(ITEM_STORE_INBOX, 20, true, true, ContainerSubType::StoreInbox))
 {
-	thing_subtype = ThingSubType::Player;
 	creature_subtype = CreatureSubType::Player;
 	cylinder_subtype = CylinderSubType::Player;
 }
@@ -3380,10 +3379,10 @@ ReturnValue Player::can_add_item(const int32_t index, const ItemPtr& item, const
 
 		const auto& cylinder = item->getTopParent();
 		const auto& container = cylinder ? cylinder->getContainer() : nullptr;
-		const auto& creature = cylinder ? cylinder->getCreature() : nullptr;
+		const auto cylinderPtr = cylinder ? cylinder->getCylinder() : nullptr;
 
 		const bool isDepotOrPlayer = cylinder and ((container and container->getContainerSubType() == ContainerSubType::DepotChest)
-			or (creature and creature->getCreatureSubType() == CreatureSubType::Player));
+			or (cylinderPtr and cylinderPtr->getCylinderSubType() == CylinderSubType::Player));
 
 		return isDepotOrPlayer ? RETURNVALUE_NEEDEXCHANGE : RETURNVALUE_NOTENOUGHROOM;
 	}
@@ -3884,27 +3883,28 @@ void Player::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t 
 			updateSaleShopList(item);
 
 	}
-	else if (auto creature = thing->getCreature())
-	{
-		if (creature == getCreature())
-		{
-			//check containers
-			std::vector<ContainerPtr> containers;
+}
 
-			if (openContainers)
+void Player::onNearbyCreatureMoved(const CreaturePtr& creature)
+{
+	if (creature == getCreature())
+	{
+		//check containers
+		std::vector<ContainerPtr> containers;
+
+		if (openContainers)
+		{
+			for (auto& val : *openContainers | std::views::values)
 			{
-				for (auto& val : *openContainers | std::views::values)
+				if (not Position::areInRange<1, 1, 0>(val.container->getOwner()->getPosition(), getPosition()))
 				{
-					if (not Position::areInRange<1, 1, 0>(val.container->getOwner()->getPosition(), getPosition()))
-					{
-						containers.push_back(val.container);
-					}
+					containers.push_back(val.container);
 				}
 			}
-
-			for (auto& container : containers)
-				autoCloseContainers(container);
 		}
+
+		for (auto& container : containers)
+			autoCloseContainers(container);
 	}
 }
 
