@@ -13,6 +13,12 @@
 
 extern Game g_game;
 
+namespace
+{
+    // Shared sentinel so tile lookups can return by const reference without refcount traffic on misses.
+    const TilePtr null_tile = nullptr;
+}
+
 bool Map::loadMap(const std::string& identifier, bool loadHouses)
 {
 	IOMap loader;
@@ -64,22 +70,25 @@ bool Map::save()
 	return saved;
 }
 
-TilePtr Map::getTile(const uint16_t x, const uint16_t y, const uint8_t z)
+const TilePtr& Map::getTile(const uint16_t x, const uint16_t y, const uint8_t z) const
 {
-	if (z >= MAP_MAX_LAYERS) {
-		return nullptr;
-	}
+    if (z >= MAP_MAX_LAYERS)
+    {
+        return null_tile;
+    }
 
-	auto leaf = QTreeNode::getLeafStatic< QTreeLeafNode*, QTreeNode*>(&root, x, y);
-	if (!leaf) {
-		return nullptr;
-	}
+    const auto leaf = QTreeNode::getLeafStatic<const QTreeLeafNode*, const QTreeNode*>(&root, x, y);
+    if (not leaf)
+    {
+        return null_tile;
+    }
 
-	auto floor = leaf->getFloor(z);
-	if (!floor) {
-		return nullptr;
-	}
-	return floor->tiles[x & FLOOR_MASK][y & FLOOR_MASK];
+    const auto floor = leaf->getFloor(z);
+    if (not floor)
+    {
+        return null_tile;
+    }
+    return floor->tiles[x & FLOOR_MASK][y & FLOOR_MASK];
 }
 
 void Map::setTile(const uint16_t x, const uint16_t y, const uint8_t z, TilePtr& newTile)
@@ -548,16 +557,18 @@ bool Map::canThrowObjectTo(const Position& fromPos, const Position& toPos, const
 
 bool Map::isTileClear(const uint16_t x, const uint16_t y, const uint8_t z, const bool blockFloor /*= false*/)
 {
-	auto tile = getTile(x, y, z);
-	if (!tile) {
-		return true;
-	}
+    const auto& tile = getTile(x, y, z);
+    if (not tile)
+    {
+        return true;
+    }
 
-	if (blockFloor && tile->getGround()) {
-		return false;
-	}
+    if (blockFloor and tile->getGround())
+    {
+        return false;
+    }
 
-	return !tile->hasProperty(CONST_PROP_BLOCKPROJECTILE);
+    return not tile->hasProperty(CONST_PROP_BLOCKPROJECTILE);
 }
 
 namespace {
@@ -692,26 +703,32 @@ bool Map::isSightClear(const Position& fromPos, const Position& toPos, const boo
 	return checkSightLine(fromPos.x, fromPos.y, toPos.x, toPos.y, fromPos.z);
 }
 
-TilePtr Map::canWalkTo(CreaturePtr& creature, const Position& pos)
+const TilePtr& Map::canWalkTo(CreaturePtr& creature, const Position& pos)
 {
-	int32_t walkCache = 2;
-	if (creature->getCreatureSubType() == CreatureSubType::Monster)
-	{
-		walkCache = std::static_pointer_cast<Monster>(creature)->getWalkCache(pos);
-	}
+    int32_t walkCache = 2;
+    if (creature->getCreatureSubType() == CreatureSubType::Monster)
+    {
+        walkCache = std::static_pointer_cast<Monster>(creature)->getWalkCache(pos);
+    }
 
-	if (walkCache == 0) {
-		return nullptr;
-	} else if (walkCache == 1) {
-		return getTile(pos.x, pos.y, pos.z);
-	}
+    if (walkCache == 0)
+    {
+        return null_tile;
+    }
 
-	//used for non-cached tiles
-	const auto& tile = getTile(pos.x, pos.y, pos.z);
-	if (creature->getTile() != tile) {
-		if (!tile) {
-			return nullptr;
-		}
+    if (walkCache == 1)
+    {
+        return getTile(pos.x, pos.y, pos.z);
+    }
+
+    // used for non-cached tiles
+    const auto& tile = getTile(pos.x, pos.y, pos.z);
+    if (creature->getTile() != tile)
+    {
+        if (not tile)
+        {
+            return null_tile;
+        }
 
         uint32_t flags = FLAG_PATHFINDING;
         const auto subtype = creature->getCreatureSubType();
@@ -736,10 +753,10 @@ TilePtr Map::canWalkTo(CreaturePtr& creature, const Position& pos)
 
         if (ret != RETURNVALUE_NOERROR)
         {
-            return nullptr;
+            return null_tile;
         }
-	}
-	return tile;
+    }
+    return tile;
 }
 
 namespace
@@ -888,7 +905,7 @@ bool Map::getPathMatching(CreaturePtr& creature, std::vector<Direction>& dirList
             }
 
             auto* neighbor_node = nodes.GetNodeByPosition(position.x, position.y);
-            TilePtr tile = neighbor_node ? getTile(position.x, position.y, position.z) : canWalkTo(creature, position);
+            const TilePtr& tile = neighbor_node ? getTile(position.x, position.y, position.z) : canWalkTo(creature, position);
 
             if (not tile)
             {
@@ -1218,7 +1235,7 @@ int_fast32_t AStarNodes::GetMapWalkCost(const AStarNode* node, const Position& n
     return MAP_NORMALWALKCOST;
 }
 
-int_fast32_t AStarNodes::GetTileWalkCost(const CreaturePtr creature, const TileConstPtr& tile)
+int_fast32_t AStarNodes::GetTileWalkCost(const CreaturePtr& creature, const TileConstPtr& tile)
 {
     int_fast32_t cost = 0;
 

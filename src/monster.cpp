@@ -1817,7 +1817,7 @@ bool Monster::canWalkTo(Position pos, const Direction direction)
 			return false;
 		}
 
-		if (auto tile = g_game.map.getTile(pos); tile and tile->canEnter(getMonster(), FLAG_PATHFINDING) == RETURNVALUE_NOERROR)
+		if (const auto& tile = g_game.map.getTile(pos); tile and tile->canEnter(getMonster(), FLAG_PATHFINDING) == RETURNVALUE_NOERROR)
 		{
 			return true;
 		}

@@ -53,7 +53,7 @@ class AStarNodes
         AStarNode* GetNodeByPosition(uint32_t x, uint32_t y);
 
         static int_fast32_t GetMapWalkCost(const AStarNode* node, const Position& neighborPos);
-        static int_fast32_t GetTileWalkCost(const CreaturePtr creature, const TileConstPtr& tile);
+        static int_fast32_t GetTileWalkCost(const CreaturePtr& creature, const TileConstPtr& tile);
 
     private:
         void SiftUp(uint16_t pos);
@@ -193,11 +193,12 @@ class Map
 
 		/**
 		  * Get a single tile.
-		  * \returns A pointer to that tile.
+		  * \returns A reference to the tile slot; references a shared null tile when no tile exists.
 		  */
-		TilePtr getTile(uint16_t x, uint16_t y, uint8_t z);
-	
-		TilePtr getTile(const Position& pos) {
+		const TilePtr& getTile(uint16_t x, uint16_t y, uint8_t z) const;
+
+		const TilePtr& getTile(const Position& pos) const
+		{
 			return getTile(pos.x, pos.y, pos.z);
 		}
 
@@ -267,7 +268,7 @@ class Map
 		bool isSightClear(const Position& fromPos, const Position& toPos, bool sameFloor = false);
 		static bool checkSightLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t z);
 
-		TilePtr canWalkTo(CreaturePtr& creature, const Position& pos);
+		const TilePtr& canWalkTo(CreaturePtr& creature, const Position& pos);
 
 		bool getPathMatching(CreaturePtr& creature, std::vector<Direction>& dirList,
 		                     const FrozenPathingConditionCall& pathCondition, const FindPathParams& fpp);
