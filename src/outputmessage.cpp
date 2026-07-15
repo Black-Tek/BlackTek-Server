@@ -30,7 +30,8 @@ void sendAll(const std::vector<Protocol_ptr>& bufferedProtocols);
 
 void scheduleSendAll(const std::vector<Protocol_ptr>& bufferedProtocols)
 {
-	g_scheduler.addEvent(createSchedulerTask(OUTPUTMESSAGE_AUTOSEND_DELAY.count(), [&]() { sendAll(bufferedProtocols); }));
+	static auto nextTick = std::chrono::steady_clock::now();
+	g_scheduler.addEvent(createSchedulerTask(BlackTek::NextResyncDelay(nextTick, static_cast<int32_t>(OUTPUTMESSAGE_AUTOSEND_DELAY.count())), [&]() { sendAll(bufferedProtocols); }));
 }
 
 void sendAll(const std::vector<Protocol_ptr>& bufferedProtocols)

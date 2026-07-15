@@ -6526,7 +6526,8 @@ CoroTask Game::item_decay_cycle() noexcept
 
 void Game::checkLight()
 {
-	g_scheduler.addEvent(createSchedulerTask(EVENT_LIGHTINTERVAL, [=, this]() { checkLight(); }));
+	static auto next_tick = std::chrono::steady_clock::now();
+	g_scheduler.addEvent(createSchedulerTask(BlackTek::NextResyncDelay(next_tick, EVENT_LIGHTINTERVAL), [=, this]() { checkLight(); }));
 	uint8_t previousLightLevel = lightLevel;
 	updateWorldLightLevel();
 	
@@ -6554,7 +6555,8 @@ void Game::updateWorldLightLevel()
 
 void Game::updateWorldTime()
 {
-	g_scheduler.addEvent(createSchedulerTask(EVENT_WORLDTIMEINTERVAL, [=, this]() { updateWorldTime(); }));
+	static auto next_tick = std::chrono::steady_clock::now();
+	g_scheduler.addEvent(createSchedulerTask(BlackTek::NextResyncDelay(next_tick, EVENT_WORLDTIMEINTERVAL), [=, this]() { updateWorldTime(); }));
 	const time_t osTime = time(nullptr);
 	const auto timeInfo = localtime(&osTime);
 	worldTime = (timeInfo->tm_sec + (timeInfo->tm_min * 60)) / 2.5f;
@@ -6607,7 +6609,9 @@ void Game::shutdown()
 
 void Game::coro_timer_cycle()
 {
-	g_scheduler.addEvent(createSchedulerTask(EVENT_CORO_TIMER_CYCLE, [this]() { coro_timer_cycle(); }));
+	static auto next_tick = std::chrono::steady_clock::now();
+	g_scheduler.addEvent(createSchedulerTask(BlackTek::NextResyncDelay(next_tick, EVENT_CORO_TIMER_CYCLE), [this]() { coro_timer_cycle(); }));
+
     creature_think_cycle();
 	g_timer_queue.tick();
 }
@@ -6626,7 +6630,9 @@ void Game::decay_clean_cycle()
 
 	equipped_decay_precache.clear();
     map_decay_precache.clear();
-	g_scheduler.addEvent(createSchedulerTask(EVENT_DUMP_DECAY, [this]() { decay_clean_cycle(); }));
+
+	static auto next_tick = std::chrono::steady_clock::now();
+	g_scheduler.addEvent(createSchedulerTask(BlackTek::NextResyncDelay(next_tick, EVENT_DUMP_DECAY), [this]() { decay_clean_cycle(); }));
 }
 
 void Game::broadcastMessage(const std::string& text, const MessageClasses type) const

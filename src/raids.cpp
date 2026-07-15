@@ -150,7 +150,8 @@ void Raids::checkRaids()
 		}
 	}
 
-	checkRaidsEvent = g_scheduler.addEvent(createSchedulerTask(CHECK_RAIDS_INTERVAL * 1000, [this]() { checkRaids(); }));
+	static auto nextTick = std::chrono::steady_clock::now();
+	checkRaidsEvent = g_scheduler.addEvent(createSchedulerTask(BlackTek::NextResyncDelay(nextTick, CHECK_RAIDS_INTERVAL * 1000), [this]() { checkRaids(); }));
 }
 
 void Raids::clear()
