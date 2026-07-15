@@ -4,6 +4,7 @@
 #include "otpch.h"
 
 #include <boost/range/adaptor/reversed.hpp>
+#include <ranges>
 
 #include "tile.h"
 
@@ -1136,6 +1137,35 @@ int32_t Tile::getClientIndexOfCreature(const PlayerConstPtr& player, const Creat
 		}
 	}
 	return -1;
+}
+
+Tile::UniformStackIndex Tile::getUniformClientIndexOfCreature(const CreatureConstPtr& creature) const
+{
+	UniformStackIndex result;
+	result.index = ground ? 1 : 0;
+
+	if (const auto& items = getItemList())
+	{
+		for (auto it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it)
+			++result.index;
+	}
+
+	if (const auto creatures = getCreatures())
+	{
+		for (const auto& c : creatures->getList() | std::views::reverse)
+		{
+			if (c == creature)
+				return result;
+
+			if (c->isInvisible() or c->isInGhostMode())
+				result.uniform = false;
+
+			++result.index;
+		}
+	}
+
+	result.index = -1;
+	return result;
 }
 
 int32_t Tile::getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr& item) const

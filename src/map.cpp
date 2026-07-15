@@ -312,15 +312,21 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 		spectators.addSpectators(newPosSpectators);
 	}
 
-	std::vector<int32_t> oldStackPosVector;
+	const Tile::UniformStackIndex oldStackIndex = oldTile->getUniformClientIndexOfCreature(creature);
+
+	thread_local std::vector<int32_t> oldStackPosVector;
+	oldStackPosVector.clear();
 	for (const auto& c : spectators.players())
     {
 		const auto& tmpPlayer = std::static_pointer_cast<Player>(c);
 
-		if (tmpPlayer->canSeeCreature(creature))
-			oldStackPosVector.push_back(oldTile->getClientIndexOfCreature(tmpPlayer, creature));
-		else
+		if (not tmpPlayer->canSeeCreature(creature))
+		{
 			oldStackPosVector.push_back(-1);
+			continue;
+		}
+
+		oldStackPosVector.push_back(oldStackIndex.uniform ? oldStackIndex.index : oldTile->getClientIndexOfCreature(tmpPlayer, creature));
 	}
 
 	//remove the creature
@@ -355,6 +361,8 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 		}
 	}
 
+	const Tile::UniformStackIndex newStackIndex = newTile->getUniformClientIndexOfCreature(creature);
+
 	// send to client
 	size_t i = 0;
 	for (const auto& c : spectators.players())
@@ -363,7 +371,10 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 
 		// Use the correct stackpos
 		if (const int32_t& stackpos = oldStackPosVector[i++]; stackpos != -1)
-			tmpPlayer->sendCreatureMove(creature, newPos, newTile->getClientIndexOfCreature(tmpPlayer, creature), oldPos, stackpos, teleport);
+		{
+			const int32_t newStackpos = newStackIndex.uniform ? newStackIndex.index : newTile->getClientIndexOfCreature(tmpPlayer, creature);
+			tmpPlayer->sendCreatureMove(creature, newPos, newStackpos, oldPos, stackpos, teleport);
+		}
 	}
 
     if (creature->getCreatureSubType() == CreatureSubType::Player

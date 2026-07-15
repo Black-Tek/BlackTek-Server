@@ -256,6 +256,14 @@ class Tile : public SharedObject
 		int32_t getClientIndexOfCreature(const PlayerConstPtr& player, const CreatureConstPtr& creature) const;
 		int32_t getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr& item) const;
 
+		struct UniformStackIndex
+		{
+			int32_t index = -1;
+			bool uniform = true;
+		};
+
+		UniformStackIndex getUniformClientIndexOfCreature(const CreatureConstPtr& creature) const;
+
 		TilePtr resolveCreatureDestination(const CreaturePtr& creature, uint32_t& flags);
 
 		ReturnValue canAddItem(const ItemPtr& item, uint32_t flags, const CreaturePtr& mover);
