@@ -87,8 +87,6 @@ Game::Game()
 	, item_pointer_pool(MakePoolOptions(ObjectPools::Config::Get().ItemNodePool()), &game_block)
 	, players(&creature_pointer_pool)
 	, mappedPlayerGuids(&creature_pointer_pool)
-	, monsters(&creature_pointer_pool)
-	, npcs(&creature_pointer_pool)
 {
 	offlineTrainingWindow.defaultEnterButton = 0;
 	offlineTrainingWindow.defaultEscapeButton = 1;

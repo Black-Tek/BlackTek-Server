@@ -628,8 +628,8 @@ class Game
 		void sendOfflineTrainingDialog(const PlayerPtr& player) const;
 
 		const std::pmr::unordered_map<uint32_t, PlayerPtr>& getPlayers() const { return players; }
-		const std::pmr::map<uint32_t, NpcPtr>& getNpcs() const  { return npcs; }
-		const std::pmr::map<uint32_t, MonsterPtr>& getMonsters() const { return monsters; }
+		const gtl::flat_hash_map<uint32_t, NpcPtr>& getNpcs() const  { return npcs; }
+		const gtl::flat_hash_map<uint32_t, MonsterPtr>& getMonsters() const { return monsters; }
 
 		void addPlayer(PlayerPtr player);
 		void removePlayer(const PlayerPtr& player);
@@ -777,8 +777,8 @@ class Game
 
 		WildcardTreeNode wildcardTree { false };
 
-		std::pmr::map<uint32_t, MonsterPtr> monsters;
-		std::pmr::map<uint32_t, NpcPtr> npcs;
+		gtl::flat_hash_map<uint32_t, MonsterPtr> monsters;
+		gtl::flat_hash_map<uint32_t, NpcPtr> npcs;
 
 		//list of items that are in trading state, mapped to the player
 		std::map<ItemPtr, uint32_t> tradeItems;
