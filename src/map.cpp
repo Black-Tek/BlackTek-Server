@@ -407,11 +407,19 @@ void Map::getSpectatorsInternal(SpectatorVec& spectators, const Position& center
     const int32_t base_xMin = min_x + minoffset;
     const int32_t base_xMax = max_x + maxoffset;
 
-    // Precompute XY bounds for every valid Z level so the inner loop does
-    // a table lookup instead of 4 additions per creature.
+    // Precompute XY bounds for every Z level so the inner loop does a single
+    // table-driven bounds test per creature. Floors outside [minRangeZ, maxRangeZ]
+    // get inverted (min > max) bounds, so the same test also rejects on Z with
+    // no separate range check. Creatures on the map always have z < MAP_MAX_LAYERS.
     struct ZBounds { int32_t yMin, yMax, xMin, xMax; };
     ZBounds zbounds[MAP_MAX_LAYERS];
-    for (int32_t z = minRangeZ; z <= maxRangeZ; ++z) {
+    for (int32_t z = 0; z < MAP_MAX_LAYERS; ++z)
+    {
+        if (z < minRangeZ or z > maxRangeZ)
+        {
+            zbounds[z] = { 1, 0, 1, 0 };
+            continue;
+        }
         const int32_t off = static_cast<int32_t>(centerPos.getZ()) - z;
         zbounds[z] = { base_yMin + off, base_yMax + off, base_xMin + off, base_xMax + off };
     }
@@ -424,31 +432,38 @@ void Map::getSpectatorsInternal(SpectatorVec& spectators, const Position& center
     const auto& startLeaf = QTreeNode::getLeafStatic<const QTreeLeafNode*, const QTreeNode*>(&root, startx1, starty1);
     auto leafS = startLeaf;
 
-    for (int_fast32_t ny = starty1; ny <= endy2; ny += FLOOR_SIZE) {
+    for (int_fast32_t ny = starty1; ny <= endy2; ny += FLOOR_SIZE)
+    {
         const QTreeLeafNode* leafE = leafS;
-        for (int_fast32_t nx = startx1; nx <= endx2; nx += FLOOR_SIZE) {
-            if (leafE) {
+        for (int_fast32_t nx = startx1; nx <= endx2; nx += FLOOR_SIZE)
+        {
+            if (leafE)
+            {
                 const auto& node_list = (onlyPlayers ? leafE->player_list : leafE->creature_list);
-                for (const CreaturePtr& creature : node_list) {
+                for (const CreaturePtr& creature : node_list)
+                {
                     const Position& cpos = creature->getPosition();
-                    if (minRangeZ > cpos.z || maxRangeZ < cpos.z) {
-                        continue;
-                    }
                     const auto& b = zbounds[cpos.z];
-                    if (b.yMin > cpos.y || b.yMax < cpos.y || b.xMin > cpos.x || b.xMax < cpos.x) {
+                    if (b.yMin > cpos.y or b.yMax < cpos.y or b.xMin > cpos.x or b.xMax < cpos.x)
+                    {
                         continue;
                     }
                     spectators.emplace_back(creature);
                 }
                 leafE = leafE->leafE;
-            } else {
+            }
+            else
+            {
                 leafE = QTreeNode::getLeafStatic<const QTreeLeafNode*, const QTreeNode*>(&root, nx + FLOOR_SIZE, ny);
             }
         }
 
-        if (leafS) {
+        if (leafS)
+        {
             leafS = leafS->leafS;
-        } else {
+        }
+        else
+        {
             leafS = QTreeNode::getLeafStatic<const QTreeLeafNode*, const QTreeNode*>(&root, startx1, ny + FLOOR_SIZE);
         }
     }
@@ -463,99 +478,52 @@ void Map::getSpectatorsInternal(SpectatorVec& spectators, const Position& center
     }
 }
 
-void Map::getSpectators(SpectatorVec& spectators, const Position& centerPos, const bool multifloor /*= false*/, bool onlyPlayers /*= false*/, int32_t minRangeX /*= 0*/, int32_t maxRangeX /*= 0*/, int32_t minRangeY /*= 0*/, int32_t maxRangeY /*= 0*/)
+void Map::getSpectators(SpectatorVec& spectators, const Position& centerPos, const bool multifloor /*= false*/, const bool onlyPlayers /*= false*/, int32_t minRangeX /*= 0*/, int32_t maxRangeX /*= 0*/, int32_t minRangeY /*= 0*/, int32_t maxRangeY /*= 0*/)
 {
-    if (centerPos.z >= MAP_MAX_LAYERS) {
+    if (centerPos.z >= MAP_MAX_LAYERS)
+    {
         return;
     }
-
-    bool foundCache = false;
-    bool cacheResult = false;
 
     minRangeX = (minRangeX == 0 ? -maxViewportX : -minRangeX);
     maxRangeX = (maxRangeX == 0 ? maxViewportX : maxRangeX);
     minRangeY = (minRangeY == 0 ? -maxViewportY : -minRangeY);
     maxRangeY = (maxRangeY == 0 ? maxViewportY : maxRangeY);
 
-    chunkKey.minRangeX = minRangeX;
-	chunkKey.maxRangeX = maxRangeX;
-	chunkKey.minRangeY = minRangeY;
-	chunkKey.maxRangeY = maxRangeY;
-	chunkKey.x = centerPos.x;
-	chunkKey.y = centerPos.y;
-	chunkKey.z = centerPos.z;
-	chunkKey.multifloor = multifloor;
-	chunkKey.onlyPlayers = onlyPlayers;
+    int32_t minRangeZ;
+    int32_t maxRangeZ;
 
-    if (const auto it = chunksSpectatorCache.find(chunkKey); it != chunksSpectatorCache.end()) {
-		if (!spectators.empty()) {
-			spectators.addSpectators(it->second);
-		} else {
-			spectators = it->second;
-		}
-		foundCache = true;
-	} else {
-		cacheResult = true;
-	}
-
-    if (minRangeX == -maxViewportX && maxRangeX == maxViewportX && minRangeY == -maxViewportY && maxRangeY == maxViewportY && multifloor) {
-        if (onlyPlayers) {
-	        if (const auto it = playersSpectatorCache.find(centerPos); it != playersSpectatorCache.end()) {
-                spectators.addSpectators(it->second);
-                foundCache = true;
-            }
+    if (multifloor)
+    {
+        if (centerPos.z > 7)
+        {
+            // underground (8->15)
+            minRangeZ = std::max<int32_t>(centerPos.getZ() - 2, 0);
+            maxRangeZ = std::min<int32_t>(centerPos.getZ() + 2, MAP_MAX_LAYERS - 1);
         }
-
-        if (!foundCache) {
-	        if (const auto it = spectatorCache.find(centerPos); it != spectatorCache.end()) {
-                if (!onlyPlayers) {
-                    const SpectatorVec& cachedSpectators = it->second;
-                    spectators.addSpectators(cachedSpectators);
-                } else {
-                    for (const auto& spectator : it->second) {
-                        if (spectator->getPlayer()) {
-                            spectators.emplace_back(spectator);
-                        }
-                    }
-                    spectators.setPlayersOnlyMode();
-                }
-                foundCache = true;
-            } else {
-                cacheResult = true;
-            }
+        else if (centerPos.z == 6)
+        {
+            minRangeZ = 0;
+            maxRangeZ = 8;
+        }
+        else if (centerPos.z == 7)
+        {
+            minRangeZ = 0;
+            maxRangeZ = 9;
+        }
+        else
+        {
+            minRangeZ = 0;
+            maxRangeZ = 7;
         }
     }
-
-    if (!foundCache) {
-        int32_t minRangeZ;
-        int32_t maxRangeZ;
-
-        if (multifloor) {
-            if (centerPos.z > 7) {
-                //underground (8->15)
-                minRangeZ = std::max<int32_t>(centerPos.getZ() - 2, 0);
-                maxRangeZ = std::min<int32_t>(centerPos.getZ() + 2, MAP_MAX_LAYERS - 1);
-            } else if (centerPos.z == 6) {
-                minRangeZ = 0;
-                maxRangeZ = 8;
-            } else if (centerPos.z == 7) {
-                minRangeZ = 0;
-                maxRangeZ = 9;
-            } else {
-                minRangeZ = 0;
-                maxRangeZ = 7;
-            }
-        } else {
-            minRangeZ = centerPos.z;
-            maxRangeZ = centerPos.z;
-        }
-
-        getSpectatorsInternal(spectators, centerPos, minRangeX, maxRangeX, minRangeY, maxRangeY, minRangeZ, maxRangeZ, onlyPlayers);
-
-        if (cacheResult) {
-            chunksSpectatorCache.emplace(chunkKey, spectators);
-        }
+    else
+    {
+        minRangeZ = centerPos.z;
+        maxRangeZ = centerPos.z;
     }
+
+    getSpectatorsInternal(spectators, centerPos, minRangeX, maxRangeX, minRangeY, maxRangeY, minRangeZ, maxRangeZ, onlyPlayers);
 }
 
 // Todo: Handroll this implementation out, building custom constructors for the spectators if we must, which will allow us to utilize the 
@@ -566,16 +534,6 @@ SpectatorVec Map::fetchSpectators(const Position& centerPos, const bool multiflo
     SpectatorVec spectators;
     getSpectators(spectators, centerPos, multifloor, onlyPlayers, minRangeX, maxRangeX, minRangeY, maxRangeY);
     return spectators;
-}
-
-void Map::clearSpectatorCache()
-{
-	spectatorCache.clear();
-}
-
-void Map::clearPlayersSpectatorCache()
-{
-	playersSpectatorCache.clear();
 }
 
 bool Map::canThrowObjectTo(const Position& fromPos, const Position& toPos, const bool checkLineOfSight /*= true*/, const bool sameFloor /*= false*/,

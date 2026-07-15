@@ -14,8 +14,6 @@
 #include "house.h"
 #include "spawn.h"
 
-#include <gtl/phmap.hpp>
-
 class Creature;
 class Player;
 class Game;
@@ -36,48 +34,6 @@ static constexpr int32_t MAX_NODES = 512;
 
 static constexpr int32_t MAP_NORMALWALKCOST = 10;
 static constexpr int32_t MAP_DIAGONALWALKCOST = 25;
-
-struct alignas(16) ChunkKey {
-	int32_t minRangeX, maxRangeX, minRangeY, maxRangeY;
-	uint16_t x, y;
-	uint8_t z;
-	bool multifloor, onlyPlayers;
-
-	bool operator==(const ChunkKey& other) const noexcept {
-		return std::memcmp(this, &other, sizeof(ChunkKey)) == 0;
-	}
-};
-
-static ChunkKey chunkKey;
-
-struct ChunkKeyHash {
-	[[nodiscard]]
-	std::size_t operator()(const ChunkKey& key) const noexcept {
-		std::size_t hash = 0;
-		hash_combine(hash, key.minRangeX, key.maxRangeX, key.minRangeY, key.maxRangeY,
-					 key.x, key.y, key.z, key.multifloor, key.onlyPlayers);
-		return hash;
-	}
-
-private:
-	template <typename... Args>
-	static void hash_combine(std::size_t& seed, Args&&... args) {
-		(hash_combine_impl(seed, std::forward<Args>(args)), ...);
-	}
-
-	template <typename T>
-	static void hash_combine_impl(std::size_t& seed, const T& v) {
-		seed ^= std::hash<T>{}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-	}
-};
-
-struct ChunkKeyEqual {
-	bool operator()(const ChunkKey& lhs, const ChunkKey& rhs) const noexcept {
-		return std::memcmp(&lhs, &rhs, sizeof(ChunkKey)) == 0;
-	}
-};
-
-using ChunkCache = gtl::node_hash_map<ChunkKey, SpectatorVec, ChunkKeyHash, ChunkKeyEqual>;
 
 class AStarNodes
 {
@@ -109,8 +65,6 @@ class AStarNodes
         uint16_t current_node;
         int_fast32_t closed_nodes;
 };
-
-using SpectatorCache = std::map<Position, SpectatorVec>;
 
 static constexpr int32_t FLOOR_BITS = 3;
 static constexpr int32_t FLOOR_SIZE = (1 << FLOOR_BITS);
@@ -230,11 +184,6 @@ class Map
 		  * \returns true if the map was loaded successfully
 		  */
 		bool loadMap(const std::string& identifier, bool loadHouses);
-	
-		void clearChunkSpectatorCache()	{
-			playersSpectatorCache.clear();
-			chunksSpectatorCache.clear();
-		}
 
 		/**
 		  * Save a map.
@@ -287,9 +236,6 @@ class Map
 
 		[[nodiscard]] SpectatorVec fetchSpectators(const Position& centerPos, bool multifloor = false, bool onlyPlayers = false, int32_t minRangeX = 0, int32_t maxRangeX = 0, int32_t minRangeY = 0, int32_t maxRangeY = 0);
 
-		void clearSpectatorCache();
-		void clearPlayersSpectatorCache();
-
 		/**
 		  * Checks if you can throw an object to that position
 		  *	\param fromPos from Source point
@@ -337,9 +283,6 @@ class Map
 		Houses houses;
 
 	private:
-		SpectatorCache spectatorCache;
-		SpectatorCache playersSpectatorCache;
-		ChunkCache chunksSpectatorCache;
 		QTreeNode root;
 
 		std::filesystem::path spawnfile;

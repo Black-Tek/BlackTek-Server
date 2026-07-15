@@ -13,7 +13,6 @@
 #include "game.h"
 #include "configmanager.h"
 
-extern Game g_game;
 extern ConfigManager g_config;
 
 bool CreatureContainer::hasCreature(const CreatureConstPtr& creature) const
@@ -293,14 +292,12 @@ ReturnValue CreatureContainer::canEnter(const NpcPtr& npc, uint32_t flags) const
 
 void CreatureContainer::addCreature(const CreaturePtr& creature)
 {
-    g_game.map.clearChunkSpectatorCache();
     creature->setCurrentTile(getOwner());
     creatureList.insert(creatureList.begin(), creature);
 }
 
 void CreatureContainer::addCreatureSilently(const CreaturePtr& creature)
 {
-    g_game.map.clearChunkSpectatorCache();
     creature->setCurrentTile(getOwner());
     creatureList.insert(creatureList.begin(), creature);
 }
@@ -309,7 +306,6 @@ void CreatureContainer::removeCreature(const CreaturePtr& creature)
 {
     if (const auto it = std::ranges::find(creatureList, creature); it != creatureList.end())
     {
-        g_game.map.clearChunkSpectatorCache();
         creatureList.erase(it);
     }
 }
