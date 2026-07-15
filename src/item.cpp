@@ -5,16 +5,17 @@
 
 #include "item.h"
 #include "itemcontainer.h"
-#include "teleport.h"
-#include "trashholder.h"
-#include "mailbox.h"
 #include "house.h"
+#include "combat.h"
 #include "game.h"
-#include "bed.h"
 #include "scheduler.h"
+#include "iologindata.h"
 #include "actions.h"
 #include "spells.h"
 #include "events.h"
+
+#include <fmt/format.h>
+#include <cassert>
 
 extern Game g_game;
 extern Spells* g_spells;
@@ -62,17 +63,25 @@ ItemPtr Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
 			allowAugments = true;
 		}
 	} else if (it.isTeleport()) {
-		item = std::allocate_shared<Teleport>(allocator, type);
+		item = std::allocate_shared<Item>(allocator, type);
+		item->item_subtype = ItemSubType::Teleport;
 	} else if (it.isMagicField()) {
-		item = std::allocate_shared<MagicField>(allocator, type);
+		item = std::allocate_shared<Item>(allocator, type);
+		item->item_subtype = ItemSubType::MagicField;
+		item->magicFieldCreateTime = OTSYS_TIME();
 	} else if (it.isDoor()) {
-		item = std::allocate_shared<Door>(allocator, type);
+		item = std::allocate_shared<Item>(allocator, type);
+		item->item_subtype = ItemSubType::Door;
 	} else if (it.isTrashHolder()) {
-		item = std::allocate_shared<TrashHolder>(allocator, type);
+		item = std::allocate_shared<Item>(allocator, type);
+		item->item_subtype = ItemSubType::TrashHolder;
 	} else if (it.isMailbox()) {
-		item = std::allocate_shared<Mailbox>(allocator, type);
+		item = std::allocate_shared<Item>(allocator, type);
+		item->item_subtype = ItemSubType::Mailbox;
 	} else if (it.isBed()) {
-		item = std::allocate_shared<BedItem>(allocator, type);
+		item = std::allocate_shared<Item>(allocator, type);
+		item->item_subtype = ItemSubType::BedItem;
+		item->internalRemoveSleeper();
 	} else {
 		item = std::allocate_shared<Item>(allocator, type, count);
 		allowAugments = true;
@@ -174,7 +183,6 @@ ItemPtr Item::CreateItem(PropStream& propStream)
 Item::Item(const uint16_t type, uint16_t count /*= 0*/) :
 	id(type)
 {
-	thing_subtype = ThingSubType::Item;
 	const ItemType& it = items[id];
 
 	if (it.isFluidContainer() || it.isSplash()) {
@@ -197,8 +205,10 @@ Item::Item(const uint16_t type, uint16_t count /*= 0*/) :
 }
 
 Item::Item(const Item& i) :
-	Thing(), id(i.id), count(i.count), loadedFromMap(i.loadedFromMap)
+	id(i.id), count(i.count), loadedFromMap(i.loadedFromMap)
 {
+	assert(i.item_subtype == ItemSubType::None);
+
 	if (i.attributes) {
 		attributes.reset(new ItemAttributes(*i.attributes));
 	}
@@ -213,13 +223,13 @@ Item::~Item()
 
 	if (getID() == ITEM_BROWSEFIELD)
 	{
-		if (auto directParent = parent.lock())
+		if (auto directParent = tileParent.lock())
 		{
-			g_game.browseFields.erase(directParent->getTile());
+			g_game.browseFields.erase(directParent);
 		}
 		for (const auto& child : container->getItemList())
 		{
-			child->setParent(parent);
+			child->setTileParent(tileParent);
 		}
 	}
 	else
@@ -240,7 +250,20 @@ void Item::attachContainer(uint16_t size, bool unlocked, bool pagination, Contai
 
 bool Item::canRemove() const
 {
+	if (item_subtype == ItemSubType::BedItem)
+	{
+		return canBedBeRemoved();
+	}
 	return not container or container->canRemove();
+}
+
+bool Item::canTransform() const
+{
+	if (item_subtype == ItemSubType::HouseTransferItem)
+	{
+		return false;
+	}
+	return true;
 }
 
 ContainerPtr Item::getContainer()
@@ -251,6 +274,66 @@ ContainerPtr Item::getContainer()
 ContainerConstPtr Item::getContainer() const
 {
 	return containerAlias;
+}
+
+TeleportPtr Item::getTeleport()
+{
+	return getAsSubType<ItemSubType::Teleport>();
+}
+
+TeleportConstPtr Item::getTeleport() const
+{
+	return getAsSubType<ItemSubType::Teleport>();
+}
+
+TrashHolderPtr Item::getTrashHolder()
+{
+	return getAsSubType<ItemSubType::TrashHolder>();
+}
+
+TrashHolderConstPtr Item::getTrashHolder() const
+{
+	return getAsSubType<ItemSubType::TrashHolder>();
+}
+
+MailboxPtr Item::getMailbox()
+{
+	return getAsSubType<ItemSubType::Mailbox>();
+}
+
+MailboxConstPtr Item::getMailbox() const
+{
+	return getAsSubType<ItemSubType::Mailbox>();
+}
+
+DoorPtr Item::getDoor()
+{
+	return getAsSubType<ItemSubType::Door>();
+}
+
+DoorConstPtr Item::getDoor() const
+{
+	return getAsSubType<ItemSubType::Door>();
+}
+
+MagicFieldPtr Item::getMagicField()
+{
+	return getAsSubType<ItemSubType::MagicField>();
+}
+
+MagicFieldConstPtr Item::getMagicField() const
+{
+	return getAsSubType<ItemSubType::MagicField>();
+}
+
+BedItemPtr Item::getBed()
+{
+	return getAsSubType<ItemSubType::BedItem>();
+}
+
+BedItemConstPtr Item::getBed() const
+{
+	return getAsSubType<ItemSubType::BedItem>();
 }
 
 ItemPtr Item::clone() const
@@ -346,9 +429,604 @@ void Item::onRemoved()
 {
 	ScriptEnvironment::removeTempItem(std::static_pointer_cast<Item>(shared_from_this()));
 
-	if (hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)) {
-		g_game.removeUniqueItem(getUniqueId());	
+	if (hasAttribute(ITEM_ATTRIBUTE_UNIQUEID))
+		g_game.removeUniqueItem(getUniqueId());
+
+	if (item_subtype == ItemSubType::Door)
+		onDoorRemoved();
+}
+
+void Item::onTradeEvent(TradeEvents_t event, const PlayerPtr& owner)
+{
+	if (item_subtype != ItemSubType::HouseTransferItem)
+		return;
+
+	if (event == ON_TRADE_TRANSFER)
+	{
+		const auto self = static_shared_this<Item>();
+
+		if (house)
+			house->executeTransfer(self, owner);
+
+		g_game.internalRemoveItem(self, 1);
 	}
+	else if (event == ON_TRADE_CANCEL)
+	{
+		if (house)
+			house->resetTransferItem();
+	}
+}
+
+Attr_ReadValue Item::readTeleportAttr(AttrTypes_t attr, PropStream& propStream)
+{
+	if (attr == ATTR_TELE_DEST)
+	{
+		if (not propStream.read<uint16_t>(teleportDestPos.x) or not propStream.read<uint16_t>(teleportDestPos.y) or not propStream.read<uint8_t>(teleportDestPos.z))
+			return ATTR_READ_ERROR;
+
+		return ATTR_READ_CONTINUE;
+	}
+	return readGenericAttr(attr, propStream);
+}
+
+void Item::serializeTeleportAttr(PropWriteStream& propWriteStream) const
+{
+	serializeGenericAttr(propWriteStream);
+
+	propWriteStream.write<uint8_t>(ATTR_TELE_DEST);
+	propWriteStream.write<uint16_t>(teleportDestPos.x);
+	propWriteStream.write<uint16_t>(teleportDestPos.y);
+	propWriteStream.write<uint8_t>(teleportDestPos.z);
+}
+
+TilePtr Item::resolveDestinationTile()
+{
+	const auto destTile = g_game.map.getTile(teleportDestPos);
+
+	if (not destTile)
+		return nullptr;
+
+	if (auto destTeleport = destTile->getTeleportItem())
+	{
+		std::vector<Position> lastPositions = { getPosition() };
+
+		while (true)
+		{
+			const Position& nextPos = destTeleport->getDestPos();
+
+			if (std::ranges::find(lastPositions, nextPos) != lastPositions.end())
+			{
+				std::cout << "Warning: possible infinite loop teleport. " << nextPos << std::endl;
+				return nullptr;
+			}
+
+			const auto& tile = g_game.map.getTile(nextPos);
+
+			if (not tile)
+				break;
+
+			destTeleport = tile->getTeleportItem();
+
+			if (not destTeleport)
+				break;
+
+			lastPositions.push_back(nextPos);
+		}
+	}
+
+	return destTile;
+}
+
+void Item::teleportCreature(const CreaturePtr& creature)
+{
+	const auto destTile = resolveDestinationTile();
+
+	if (not destTile)
+		return;
+
+	const MagicEffectClasses effect = Item::items[id].magicEffect;
+
+	Position origPos = creature->getPosition();
+	g_game.internalCreatureTurn(creature, origPos.x > teleportDestPos.x ? DIRECTION_WEST : DIRECTION_EAST);
+	auto movingCreature = creature;
+	g_game.map.moveCreature(movingCreature, destTile);
+
+	if (effect != CONST_ME_NONE)
+	{
+		g_game.addMagicEffect(origPos, effect);
+		g_game.addMagicEffect(destTile->getPosition(), effect);
+	}
+}
+
+void Item::teleportItem(const ItemPtr& item)
+{
+	if (not item)
+		return;
+
+	const auto destTile = resolveDestinationTile();
+
+	if (not destTile)
+		return;
+
+	const MagicEffectClasses effect = Item::items[id].magicEffect;
+
+	if (effect != CONST_ME_NONE)
+	{
+		g_game.addMagicEffect(destTile->getPosition(), effect);
+		g_game.addMagicEffect(item->getPosition(), effect);
+	}
+
+	g_game.internalMoveItem({ .tile = getTile() }, { .tile = destTile }, INDEX_ANYWHERE, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT);
+}
+
+void Item::consumeItem(const ItemPtr& item)
+{
+	if (not item)
+		return;
+
+	if (item == this->getItem() or not item->hasProperty(CONST_PROP_MOVEABLE))
+		return;
+
+	const ItemType& it = Item::items[id];
+
+	if (item->isHangable() and it.isGroundTile())
+	{
+		const auto location = getLocation();
+		const auto& tile = location.tile ? location.tile : (location.player ? location.player->getTile() : nullptr);
+
+		if (tile and tile->hasFlag(TILESTATE_SUPPORTS_HANGABLE))
+			return;
+	}
+
+	g_game.internalRemoveItem(item);
+
+	if (it.magicEffect != CONST_ME_NONE)
+		g_game.addMagicEffect(getPosition(), it.magicEffect);
+}
+
+void Item::deliverItem(const ItemPtr& item)
+{
+	if (item and Item::canSend(item))
+		sendItem(item);
+}
+
+bool Item::sendItem(const ItemPtr& item) const
+{
+	std::string receiver;
+
+	if (not getReceiver(item, receiver))
+		return false;
+
+	if (receiver.empty())
+		return false;
+
+	if (const auto player = g_game.getPlayerByName(receiver))
+	{
+		ItemPtr inbox = player->getInbox()->getOwner();
+
+		if (g_game.internalMoveItem(item->getLocation(), { .containerItem = inbox }, INDEX_ANYWHERE, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT) == RETURNVALUE_NOERROR)
+		{
+			g_game.transformItem(item, item->getID() + 1);
+			player->onReceiveMail();
+			return true;
+		}
+	}
+	else
+	{
+		PlayerPtr tmpPlayer = std::make_shared<Player>(nullptr);
+
+		if (not IOLoginData::loadPlayerByName(tmpPlayer, receiver))
+			return false;
+
+		ItemPtr inbox = tmpPlayer->getInbox()->getOwner();
+
+		if (g_game.internalMoveItem(item->getLocation(), { .containerItem = inbox }, INDEX_ANYWHERE, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT) == RETURNVALUE_NOERROR)
+		{
+			g_game.transformItem(item, item->getID() + 1);
+			IOLoginData::savePlayer(tmpPlayer);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Item::getReceiver(const ItemPtr& item, std::string& name) const
+{
+	if (const auto& container = item->getContainer())
+	{
+		for (const auto& containerItem : container->getItemList())
+			if (containerItem->getID() == ITEM_LABEL and getReceiver(containerItem, name))
+				return true;
+
+		return false;
+	}
+
+	const std::string& text = item->getText();
+
+	if (text.empty())
+		return false;
+
+	name = getFirstLine(text);
+	trimString(name);
+	return true;
+}
+
+bool Item::canSend(const ItemConstPtr& item)
+{
+	return item->getID() == ITEM_PARCEL or item->getID() == ITEM_LETTER;
+}
+
+Attr_ReadValue Item::readDoorAttr(AttrTypes_t attr, PropStream& propStream)
+{
+	if (attr == ATTR_HOUSEDOORID)
+	{
+		uint8_t doorId;
+
+		if (not propStream.read<uint8_t>(doorId))
+			return ATTR_READ_ERROR;
+
+		setDoorId(doorId);
+		return ATTR_READ_CONTINUE;
+	}
+	return readGenericAttr(attr, propStream);
+}
+
+bool Item::canDoorBeUsed(const PlayerConstPtr& player) const
+{
+	if (not house)
+		return true;
+
+	if (house->getHouseAccessLevel(player) >= HOUSE_SUBOWNER)
+		return true;
+
+	return accessList->isInList(player);
+}
+
+void Item::setAccessList(std::string_view textlist)
+{
+	if (not accessList)
+		accessList.reset(new AccessList());
+
+	accessList->parseList(textlist);
+}
+
+bool Item::getAccessList(std::string& list) const
+{
+	if (not house)
+		return false;
+
+	accessList->getList(list);
+	return true;
+}
+
+void Item::onDoorRemoved()
+{
+	if (house)
+		house->removeDoor(static_shared_this<Item>());
+}
+
+void Item::setHouse(House* newHouse)
+{
+	if (item_subtype == ItemSubType::Door)
+	{
+		if (house != nullptr)
+			return;
+
+		house = newHouse;
+
+		if (not accessList)
+			accessList.reset(new AccessList());
+
+		return;
+	}
+
+	house = newHouse;
+}
+
+ItemPtr Item::createHouseTransferItem(House* house)
+{
+	auto transferItem = std::make_shared<Item>(0);
+	transferItem->item_subtype = ItemSubType::HouseTransferItem;
+	transferItem->house = house;
+	transferItem->setID(ITEM_DOCUMENT_RO);
+	transferItem->setSubType(1);
+	transferItem->setSpecialDescription(fmt::format("It is a house transfer document for '{:s}'.", house->getName()));
+	return transferItem;
+}
+
+Attr_ReadValue Item::readBedAttr(AttrTypes_t attr, PropStream& propStream)
+{
+	switch (attr)
+	{
+		case ATTR_SLEEPERGUID:
+		{
+			uint32_t guid;
+
+			if (not propStream.read<uint32_t>(guid))
+				return ATTR_READ_ERROR;
+
+			if (guid != 0)
+			{
+				std::string name = IOLoginData::getNameByGuid(guid);
+
+				if (not name.empty())
+				{
+					setSpecialDescription(name + " is sleeping there.");
+					g_game.setBedSleeper(getBed(), guid);
+					sleeperGUID = guid;
+				}
+			}
+			return ATTR_READ_CONTINUE;
+		}
+
+		case ATTR_SLEEPSTART:
+		{
+			uint32_t sleep_start;
+
+			if (not propStream.read<uint32_t>(sleep_start))
+				return ATTR_READ_ERROR;
+
+			sleepStart = static_cast<uint64_t>(sleep_start);
+			return ATTR_READ_CONTINUE;
+		}
+
+		default:
+			break;
+	}
+	return readGenericAttr(attr, propStream);
+}
+
+void Item::serializeBedAttr(PropWriteStream& propWriteStream) const
+{
+	if (sleeperGUID != 0)
+	{
+		propWriteStream.write<uint8_t>(ATTR_SLEEPERGUID);
+		propWriteStream.write<uint32_t>(sleeperGUID);
+	}
+
+	if (sleepStart != 0)
+	{
+		propWriteStream.write<uint8_t>(ATTR_SLEEPSTART);
+		propWriteStream.write<uint32_t>(static_cast<uint32_t>(sleepStart));
+	}
+}
+
+BedItemPtr Item::getNextBedItem() const
+{
+	Direction dir = Item::items[id].bedPartnerDir;
+	Position targetPos = getNextPosition(dir, getPosition());
+
+	auto tile = g_game.map.getTile(targetPos);
+
+	if (not tile)
+		return nullptr;
+
+	return tile->getBedItem();
+}
+
+void Item::updateHouse()
+{
+	const TilePtr tile = getTile();
+
+	if (not tile or not tile->isHouseTile())
+		return;
+
+	House* h = tile->getHouse();
+
+	if (h)
+		setHouse(h);
+}
+
+bool Item::canBedBeUsed(const PlayerConstPtr& player) const
+{
+	if (not house)
+		const_cast<Item*>(this)->updateHouse();
+
+	if (not player or not house or not player->isPremium() or player->getZone() != ZONE_PROTECTION)
+		return false;
+
+	if (sleeperGUID == 0)
+		return true;
+
+	if (house->getHouseAccessLevel(player) == HOUSE_OWNER)
+		return true;
+
+	PlayerPtr sleeper(nullptr);
+
+	if (not IOLoginData::loadPlayerById(sleeper, sleeperGUID))
+		return false;
+
+	if (house->getHouseAccessLevel(sleeper) > house->getHouseAccessLevel(player))
+		return false;
+
+	return true;
+}
+
+bool Item::trySleep(const PlayerPtr& player)
+{
+	if (not house or player->isRemoved())
+		return false;
+
+	if (sleeperGUID != 0)
+	{
+		if (Item::items[id].transformToFree != 0 and house->getOwner() == player->getGUID())
+			wakeUp(nullptr);
+
+		g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF);
+		return false;
+	}
+	return true;
+}
+
+bool Item::sleep(const PlayerPtr& player)
+{
+	if (not house)
+		return false;
+
+	if (sleeperGUID != 0)
+		return false;
+
+	auto nextBedItem = getNextBedItem();
+
+	internalSetSleeper(player);
+
+	if (nextBedItem)
+		nextBedItem->internalSetSleeper(player);
+
+	g_game.setBedSleeper(getBed(), player->getGUID());
+
+	auto creature = player->getCreature();
+	auto tile = getTile();
+	g_game.map.moveCreature(creature, tile);
+
+	g_game.addMagicEffect(player->getPosition(), CONST_ME_SLEEP);
+
+	g_scheduler.addEvent(createSchedulerTask(SCHEDULER_MINTICKS, [playerID = player->getID()]() { g_game.kickPlayer(playerID, false); }));
+	updateAppearance(player);
+
+	if (nextBedItem)
+		nextBedItem->updateAppearance(player);
+
+	return true;
+}
+
+void Item::wakeUp(const PlayerPtr& player)
+{
+	if (not house)
+		return;
+
+	if (sleeperGUID != 0)
+	{
+		if (not player)
+		{
+			PlayerPtr regenPlayer(nullptr);
+
+			if (IOLoginData::loadPlayerById(regenPlayer, sleeperGUID))
+			{
+				regeneratePlayer(regenPlayer);
+				IOLoginData::savePlayer(regenPlayer);
+			}
+		}
+		else
+		{
+			regeneratePlayer(player);
+			g_game.addCreatureHealth(player);
+		}
+	}
+
+	g_game.removeBedSleeper(sleeperGUID);
+
+	BedItemPtr nextBedItem = getNextBedItem();
+
+	internalRemoveSleeper();
+
+	if (nextBedItem)
+		nextBedItem->internalRemoveSleeper();
+
+	updateAppearance(nullptr);
+
+	if (nextBedItem)
+		nextBedItem->updateAppearance(nullptr);
+}
+
+void Item::regeneratePlayer(const PlayerPtr& player) const
+{
+	const uint32_t sleptTime = time(nullptr) - sleepStart;
+	auto condition = player->getCondition(CONDITION_REGENERATION, CONDITIONID_DEFAULT);
+
+	if (condition)
+	{
+		uint32_t regen;
+
+		if (condition->getTicks() != -1)
+		{
+			regen = std::min<int32_t>((condition->getTicks() / 1000), sleptTime) / 30;
+			const int32_t newRegenTicks = condition->getTicks() - (regen * 30000);
+
+			if (newRegenTicks <= 0)
+				player->removeCondition(condition);
+
+			else
+				condition->setTicks(newRegenTicks);
+		}
+		else
+		{
+			regen = sleptTime / 30;
+		}
+
+		auto hpRegen = BlackTek::g_combat_registry.Create(static_cast<uint16_t>(BlackTek::Combat::DamageType::Healing), regen);
+		hpRegen->SetConfig(BlackTek::Combat::Config::HealthTarget);
+		hpRegen->SetConfig(BlackTek::Combat::Config::TrueDamage);
+		hpRegen->heal_target(player, player, true);
+
+		auto manaRegen = BlackTek::g_combat_registry.Create(static_cast<uint16_t>(BlackTek::Combat::DamageType::Healing), regen);
+		manaRegen->SetConfig(BlackTek::Combat::Config::ManaTarget);
+		manaRegen->SetConfig(BlackTek::Combat::Config::TrueDamage);
+		manaRegen->heal_target(player, player, true);
+	}
+
+	const int32_t soulRegen = sleptTime / (60 * 15);
+	player->changeSoul(soulRegen);
+}
+
+void Item::updateAppearance(const PlayerConstPtr& player)
+{
+	const ItemType& it = Item::items[id];
+
+	if (it.type == ITEM_TYPE_BED)
+	{
+		if (player and it.transformToOnUse[player->getSex()] != 0)
+		{
+			const ItemType& newType = Item::items[it.transformToOnUse[player->getSex()]];
+
+			if (newType.type == ITEM_TYPE_BED)
+				g_game.transformItem(getItem(), it.transformToOnUse[player->getSex()]);
+		}
+		else if (it.transformToFree != 0)
+		{
+			const ItemType& newType = Item::items[it.transformToFree];
+
+			if (newType.type == ITEM_TYPE_BED)
+				g_game.transformItem(getItem(), it.transformToFree);
+		}
+	}
+}
+
+void Item::internalSetSleeper(const PlayerConstPtr& player)
+{
+	std::string desc_str = player->getName() + " is sleeping there.";
+
+	sleeperGUID = player->getGUID();
+	sleepStart = time(nullptr);
+	setSpecialDescription(desc_str);
+}
+
+void Item::internalRemoveSleeper()
+{
+	sleeperGUID = 0;
+	sleepStart = 0;
+	setSpecialDescription("Nobody is sleeping there.");
+}
+
+bool Item::canUse(const PlayerConstPtr& player) const
+{
+	if (item_subtype == ItemSubType::Door)
+		return canDoorBeUsed(player);
+
+	if (item_subtype == ItemSubType::BedItem)
+		return canBedBeUsed(player);
+	
+	return true;
+}
+
+int32_t Item::getDamage() const
+{
+	const ItemType& it = items[getID()];
+
+	if (it.conditionDamage)
+		return it.conditionDamage->getTotalDamage();
+	
+	return 0;
 }
 
 void Item::setID(uint16_t newid)
@@ -369,7 +1047,7 @@ void Item::setID(uint16_t newid)
 
 	removeAttribute(ITEM_ATTRIBUTE_CORPSEOWNER);
 
-	 auto fake_proxy = Expirable(getItem(), 0, 0);
+	auto fake_proxy = Expirable(getItem(), 0, 0);
     if (auto it = g_game.decaying_eq.find(fake_proxy); it != g_game.decaying_eq.end() and getDecaying()) {
         const uint32_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         const uint32_t diff = it->expiration - now;
@@ -384,66 +1062,76 @@ void Item::setID(uint16_t newid)
 	}
 }
 
-ThingPtr Item::getTopParent()
+const Position& Item::getPosition() const
 {
-	ItemPtr current = static_shared_this<Item>();
-	bool hopped = false;
+	if (auto tile = getTile())
+		return tile->getPosition();
 
-	while (auto owner = current->getContainerParent())
-	{
-		current = owner;
-		hopped = true;
-	}
-
-	if (hopped)
-	{
-		return current;
-	}
-	return current->parent.lock();
+	static Position null_position(0xFFFF, 0xFFFF, 0xFF);
+	return null_position;
 }
 
-ThingConstPtr Item::getTopParent() const
+BlackTek::ItemLocation Item::getLocation()
 {
-	ItemConstPtr current = static_shared_this<const Item>();
-	bool hopped = false;
+	if (auto containerParentItem = getContainerParent())
+		return { .containerItem = containerParentItem };
 
-	while (auto owner = current->getContainerParent())
-	{
-		current = owner;
-		hopped = true;
-	}
+	if (auto tile = tileParent.lock())
+		return { .tile = tile };
 
-	if (hopped)
-	{
-		return current;
-	}
-	return current->parent.lock();
+	if (auto player = inventoryOwner.lock())
+		return { .player = player };
+
+	return {};
 }
 
 TilePtr Item::getTile()
 {
-	auto topParent = getTopParent();
+	ItemPtr current = static_shared_this<Item>();
 
-	if (not topParent)
-		return nullptr;
+	while (auto owner = current->getContainerParent())
+		current = owner;
 
-	if (auto realParent = topParent->getParent())
-		return realParent->getTile();
+	if (auto tile = current->tileParent.lock())
+		return tile;
 
-	return topParent->getTile();
+	if (auto player = current->inventoryOwner.lock())
+		return player->getTile();
+
+	return nullptr;
 }
 
 TileConstPtr Item::getTile() const
 {
-	auto topParent = getTopParent();
+	ItemConstPtr current = static_shared_this<const Item>();
 
-	if (not topParent)
-		return nullptr;
+	while (auto owner = current->getContainerParent())
+		current = owner;
 
-	if (auto realParent = topParent->getParent())
-		return realParent->getTile();
+	if (auto tile = current->tileParent.lock())
+		return tile;
 
-	return topParent->getTile();
+	if (auto player = current->inventoryOwner.lock())
+		return player->getTile();
+
+	return nullptr;
+}
+
+bool Item::isRemoved() const
+{
+	if (auto containerOwner = containerParent.lock())
+		return containerOwner->isRemoved();
+
+	if (scriptDetached)
+		return false;
+
+	if (auto tile = tileParent.lock())
+		return tile->isRemoved();
+
+	if (auto player = inventoryOwner.lock())
+		return player->isRemoved();
+
+	return true;
 }
 
 uint16_t Item::getSubType() const
@@ -467,16 +1155,7 @@ PlayerPtr Item::getHoldingPlayer()
 		return holder ? holder->getPlayer() : nullptr;
 	}
 
-	CylinderPtr p = getParent();
-	while (p) {
-		if (p->getCylinderSubType() == CylinderSubType::Player)
-		{
-			return std::static_pointer_cast<Player>(p);
-		}
-
-		p = p->getParent();
-	}
-	return nullptr;
+	return inventoryOwner.lock();
 }
 
 void Item::setSubType(uint16_t n)
@@ -494,6 +1173,20 @@ void Item::setSubType(uint16_t n)
 }
 
 Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
+{
+	if (item_subtype == ItemSubType::Teleport)
+		return readTeleportAttr(attr, propStream);
+
+	if (item_subtype == ItemSubType::Door)
+		return readDoorAttr(attr, propStream);
+	
+	if (item_subtype == ItemSubType::BedItem)
+		return readBedAttr(attr, propStream);
+	
+	return readGenericAttr(attr, propStream);
+}
+
+Attr_ReadValue Item::readGenericAttr(AttrTypes_t attr, PropStream& propStream)
 {
 	if ((attr == ATTR_CONTAINER_ITEMS or attr == ATTR_DEPOT_ID) and container)
 	{
@@ -989,6 +1682,25 @@ bool Item::unserializeItemNode(OTB::Loader& loader, const OTB::Node& node, PropS
 
 void Item::serializeAttr(PropWriteStream& propWriteStream) const
 {
+	if (item_subtype == ItemSubType::Teleport)
+	{
+		serializeTeleportAttr(propWriteStream);
+		return;
+	}
+	if (item_subtype == ItemSubType::Door)
+	{
+		return;
+	}
+	if (item_subtype == ItemSubType::BedItem)
+	{
+		serializeBedAttr(propWriteStream);
+		return;
+	}
+	serializeGenericAttr(propWriteStream);
+}
+
+void Item::serializeGenericAttr(PropWriteStream& propWriteStream) const
+{
 	const ItemType& it = items[id];
 	if (it.stackable || it.isFluidContainer() || it.isSplash()) {
 		propWriteStream.write<uint8_t>(ATTR_COUNT);
@@ -1372,9 +2084,7 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 			// methods I used here, with const versions for those missing it, so that I can reimplement the const
 			// but we also need to handle checking if this item is actually equipped, a better way than this loop.
 			uint32_t duration = item->getDuration() / 1000;
-			const auto itemParent = item->getParent();
-			const bool itemParentIsPlayer = itemParent and itemParent->getCylinderSubType() == CylinderSubType::Player;
-			if (const auto& player = itemParentIsPlayer ? std::static_pointer_cast<Player>(itemParent) : nullptr)
+			if (const auto& player = item->getLocation().player)
 			{
 				const auto slot = item->getEquipSlot();
 

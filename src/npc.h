@@ -101,17 +101,7 @@ class Npc final : public Creature
 		Npc(const Npc&) = delete;
 		Npc& operator=(const Npc&) = delete;
 
-		NpcPtr getNpc() override
-		{
-			return static_shared_this<Npc>();
-		}
-	
-		NpcConstPtr getNpc() const override
-		{
-			return static_shared_this<Npc>();
-		}
-
-		bool isPushable() const override
+		bool isPushable() const
 		{
 			return pushable and walkTicks != 0;
 		}
@@ -213,18 +203,14 @@ class Npc final : public Creature
 
 		void turnToCreature(const CreaturePtr& creature);
 		void setCreatureFocus(const CreaturePtr& creature);
-
+		void onCreatureAppear(const CreaturePtr& creature, bool isLogin);
+		void onRemoveCreature(const CreaturePtr& creature, bool isLogout);
+		void onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos, const TilePtr& oldTile, const Position& oldPos, bool teleport);
 		auto& getScriptInterface() const { return npcEventHandler->scriptInterface; }
 
 		static uint32_t npcAutoID;
 
 	private:
-		
-
-		void onCreatureAppear(const CreaturePtr& creature, bool isLogin) override;
-		void onRemoveCreature(const CreaturePtr& creature, bool isLogout) override;
-		void onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos,
-		                            const TilePtr& oldTile, const Position& oldPos, bool teleport) override;
 
 		void onCreatureSay(const CreaturePtr& creature, SpeakClasses type, const std::string& text) override;
 		void onThink(uint32_t interval) override;

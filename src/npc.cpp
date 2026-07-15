@@ -606,7 +606,7 @@ bool Npc::canWalkTo(const Position& fromPos, Direction dir)
 	}
 	const auto& tile = g_game.map.getTile(toPos);
 
-	if (not tile or tile->queryAdd(this->getNpc(), 0) != RETURNVALUE_NOERROR)
+	if (not tile or tile->canEnter(this->getNpc(), 0) != RETURNVALUE_NOERROR)
 	{
 		return false;
 	}
@@ -908,17 +908,17 @@ int NpcScriptInterface::luagetDistanceTo(lua_State* L)
 	const auto& npc = env->getNpc();
 	if (not npc)
 	{
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_THING_NOT_FOUND));
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_GAME_MODEL_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
 
 	const uint32_t uid = getNumber<uint32_t>(L, -1);
 
-	const auto& thing = env->getThingByUID(uid);
+	const auto& thing = env->getGameModelByUID(uid);
 	if (not thing)
 	{
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_THING_NOT_FOUND));
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_GAME_MODEL_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}

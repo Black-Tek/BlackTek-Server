@@ -4,12 +4,13 @@
 #ifndef FS_TILE_H
 #define FS_TILE_H
 
-#include "cylinder.h"
+#include "enums.h"
 #include "item.h"
 #include "tools.h"
 #include "spectators.h"
 #include "declarations.h"
-#include "stackposresolution.h"
+#include "gamemodel.h"
+#include "itemlocation.h"
 
 #include <optional>
 
@@ -137,7 +138,7 @@ class TileItemVector : public ItemVector
 class House;
 class CreatureContainer;
 
-class Tile : public Cylinder, public SharedObject
+class Tile : public SharedObject
 {
 	public:
 		Tile(uint16_t x, uint16_t y, uint8_t z);
@@ -171,11 +172,13 @@ class Tile : public Cylinder, public SharedObject
 			return house;
 		}
 
-		int32_t getThrowRange() const override final {
+		int32_t getThrowRange() const
+		{
 			return 0;
 		}
-	
-		bool isPushable() const override final {
+
+		bool isPushable() const
+		{
 			return false;
 		}
 
@@ -192,10 +195,11 @@ class Tile : public Cylinder, public SharedObject
 		ItemPtr getTopTopItem() const;
 		ItemPtr getTopDownItem() const;
 		bool isMoveableBlocking() const;
-		StackposResolution getTopVisibleThing(const CreaturePtr& creature);
+		BlackTek::GameModel getTopVisibleGameModel(const CreaturePtr& creature);
 		ItemPtr getItemByTopOrder(int32_t topOrder);
 
-		size_t getThingCount() const {
+		size_t getStackSize() const
+		{
 			size_t thingCount = getCreatureCount() + getItemCount();
 			if (ground) {
 				thingCount++;
@@ -247,59 +251,51 @@ class Tile : public Cylinder, public SharedObject
 
 		bool hasHeight(uint32_t n) const;
 
-		std::string getDescription(int32_t lookDistance) override final;
+		std::string getDescription(int32_t lookDistance);
 
 		int32_t getClientIndexOfCreature(const PlayerConstPtr& player, const CreatureConstPtr& creature) const;
 		int32_t getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr& item) const;
 
-		//cylinder implementations
-		ReturnValue queryAdd(int32_t index, const ThingPtr& thing, uint32_t count,
-		                     uint32_t flags, CreaturePtr actor = nullptr) override;
-		ReturnValue queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count,
-				uint32_t& maxQueryCount, uint32_t flags) override final;
-		ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
-		ThingPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags) override; // another optional wrap ref
-		TilePtr queryCreatureDestination(const CreaturePtr& creature, uint32_t& flags);
+		TilePtr resolveCreatureDestination(const CreaturePtr& creature, uint32_t& flags);
 
-		ReturnValue queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover);
-		ReturnValue queryAdd(PlayerPtr player, uint32_t flags);
-		ReturnValue queryAdd(MonsterPtr monster, uint32_t flags);
-		ReturnValue queryAdd(NpcPtr npc, uint32_t flags);
+		ReturnValue canAddItem(const ItemPtr& item, uint32_t flags, const CreaturePtr& mover);
+		ReturnValue checkAddCapacity(int32_t index, const ItemPtr& item, uint32_t count, uint32_t& acceptedCount, uint32_t flags);
+		ReturnValue canRemoveItem(const ItemPtr& item, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr);
+		TilePtr resolveItemDestination(ItemPtr& destItem, uint32_t& flags);
+		ReturnValue canEnter(PlayerPtr player, uint32_t flags);
+		ReturnValue canEnter(MonsterPtr monster, uint32_t flags);
+		ReturnValue canEnter(NpcPtr npc, uint32_t flags);
 
-		void addThing(ThingPtr thing) override final;
-		void addThing(int32_t index, ThingPtr thing) override;
+		void addItem(const ItemPtr& item);
+		void addItemSilently(const ItemPtr& item);
 
-		void updateThing(ThingPtr thing, uint16_t itemId, uint32_t count) override final;
-		void replaceThing(uint32_t index, ThingPtr thing) override final;
+		void updateItem(const ItemPtr& item, uint16_t itemId, uint32_t count);
+		void replaceItem(uint32_t index, const ItemPtr& item);
 
-		void removeThing(ThingPtr thing, uint32_t count) override final;
+		void removeItem(const ItemPtr& item, uint32_t count);
 		bool hasCreature(CreaturePtr& creature);
 		void removeCreature(CreaturePtr& creature);
 
-		int32_t getThingIndex(ThingPtr thing) override final;
+		int32_t getItemStackIndex(const ItemConstPtr& item);
 		int32_t getCreatureStackIndex(const CreatureConstPtr& creature) const;
-		size_t getFirstIndex() const override final;
-		size_t getLastIndex() const override final;
-		uint32_t getItemTypeCount(uint16_t itemId, int32_t subType = -1) const override final;
-		ThingPtr getThing(size_t index) override final;
-		StackposResolution getThingAt(size_t index);
+		uint32_t getItemTypeCount(uint16_t itemId, int32_t subType = -1) const;
+		BlackTek::GameModel getGameModelAt(size_t index);
 
-		void postAddNotification(ThingPtr thing,  CylinderPtr oldParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
-		void postRemoveNotification(ThingPtr thing,  CylinderPtr newParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
+		void notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, NotifyLink link = LINK_OWNER);
+		void notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, NotifyLink link = LINK_OWNER);
 
-		void postAddCreatureNotification(const CreaturePtr& creature, const TilePtr& oldTile);
-		void postAddCreatureNotification(const CreaturePtr& creature, const TilePtr& oldTile, const SpectatorVec& spectators);
-		void postRemoveCreatureNotification(const CreaturePtr& creature, const TilePtr& newTile);
-		void postRemoveCreatureNotification(const CreaturePtr& creature, const TilePtr& newTile, const SpectatorVec& spectators);
+		void notifyCreatureAdded(const CreaturePtr& creature, const TilePtr& oldTile);
+		void notifyCreatureAdded(const CreaturePtr& creature, const TilePtr& oldTile, const SpectatorVec& spectators);
+		void notifyCreatureRemoved(const CreaturePtr& creature, const TilePtr& newTile);
+		void notifyCreatureRemoved(const CreaturePtr& creature, const TilePtr& newTile, const SpectatorVec& spectators);
 
-		void internalAddThing(ThingPtr thing) override final;
-		void internalAddThing(uint32_t index, ThingPtr thing) override;
-
-		const Position& getPosition() const override final {
+		const Position& getPosition() const
+		{
 			return tilePos;
 		}
 
-		bool isRemoved() const override final {
+		bool isRemoved() const
+		{
 			return false;
 		}
 
@@ -313,19 +309,13 @@ class Tile : public Cylinder, public SharedObject
 			return ground;
 		}
 
-		TilePtr getTile() final {
+		TilePtr getTile()
+		{
 			return static_shared_this<Tile>();
 		}
 
-		CylinderPtr getCylinder() override final {
-			return static_shared_this<Tile>();
-		}
-
-		CylinderConstPtr getCylinder() const override final {
-			return static_shared_this<const Tile>();
-		}
-
-		TileConstPtr getTile() const final {
+		TileConstPtr getTile() const
+		{
 			return static_shared_this<Tile>();
 		}
 	
@@ -338,7 +328,7 @@ class Tile : public Cylinder, public SharedObject
 	private:
         TilePtr resolveFloorChangeDestination(uint32_t& flags);
 
-		void onAddTileItem(ItemPtr& item);
+		void onAddTileItem(const ItemPtr& item);
 		void onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType);
 		void onRemoveTileItem(const SpectatorVec& spectators, const std::vector<int32_t>& oldStackPosVector, const ItemPtr& item);
 		void onUpdateTile(const SpectatorVec& spectators);

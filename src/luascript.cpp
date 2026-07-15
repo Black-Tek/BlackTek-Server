@@ -20,9 +20,7 @@
 #include "iologindata.h"
 #include "iomapserialize.h"
 #include "configmanager.h"
-#include "teleport.h"
 #include "databasemanager.h"
-#include "bed.h"
 #include "monster.h"
 #include "scheduler.h"
 #include "databasetasks.h"
@@ -40,6 +38,7 @@
 #include "storewindow.h"
 
 using BlackTek::DamageModifier;
+using BlackTek::GameModel;
 
 extern Chat* g_chat;
 extern Game g_game;
@@ -86,7 +85,8 @@ void ScriptEnvironment::resetEnv()
 	auto it = pair.first;
 	while (it != pair.second) {
 		auto item = it->second;
-		if (item && item->getParent() == VirtualCylinder::virtualCylinder) {
+		if (item and item->isScriptDetached())
+		{
 			// g_game.ReleaseItem(item);
 		}
 		it = tempItems.erase(it);
@@ -116,7 +116,7 @@ void ScriptEnvironment::getEventInfo(int32_t& scriptId, LuaScriptInterface*& scr
 	timerEvent = this->timerEvent;
 }
 
-uint32_t ScriptEnvironment::addThing(const ItemPtr& item)
+uint32_t ScriptEnvironment::addItem(const ItemPtr& item)
 {
 	if (not item or item->isRemoved())
 	{
@@ -142,20 +142,20 @@ void ScriptEnvironment::insertItem(uint32_t uid, const ItemPtr& item)
 {
 	auto result = localMap.emplace(uid, item);
 	if (!result.second) {
-		std::cout << std::endl << "Lua Script Error: Thing uid already taken.";
+		std::cout << std::endl << "Lua Script Error: uid already taken.";
 	}
 }
 
-StackposResolution ScriptEnvironment::getThingByUID(const uint32_t uid)
+GameModel ScriptEnvironment::getGameModelByUID(const uint32_t uid)
 {
 	if (uid >= 0x10000000) {
-		return StackposResolution{g_game.getCreatureByID(uid), nullptr};
+		return GameModel{g_game.getCreatureByID(uid), nullptr};
 	}
 
 	if (uid <= std::numeric_limits<uint16_t>::max()) {
 		auto item = g_game.getUniqueItem(uid);
 		if (item && !item->isRemoved()) {
-			return StackposResolution{nullptr, item};
+			return GameModel{nullptr, item};
 		}
 		return {};
 	}
@@ -163,7 +163,7 @@ StackposResolution ScriptEnvironment::getThingByUID(const uint32_t uid)
 	if (const auto it = localMap.find(uid); it != localMap.end()) {
 		auto item = it->second;
 		if (!item->isRemoved()) {
-			return StackposResolution{nullptr, item};
+			return GameModel{nullptr, item};
 		}
 	}
 	return {};
@@ -171,13 +171,37 @@ StackposResolution ScriptEnvironment::getThingByUID(const uint32_t uid)
 
 ItemPtr ScriptEnvironment::getItemByUID(const uint32_t uid)
 {
-	return getThingByUID(uid).item;
+	if (uid >= 0x10000000)
+	{
+		return nullptr;
+	}
+
+	if (uid <= std::numeric_limits<uint16_t>::max())
+	{
+		auto item = g_game.getUniqueItem(uid);
+		if (item and not item->isRemoved())
+		{
+			return item;
+		}
+		return nullptr;
+	}
+
+	if (const auto it = localMap.find(uid); it != localMap.end())
+	{
+		auto item = it->second;
+		if (not item->isRemoved())
+		{
+			return item;
+		}
+	}
+	return nullptr;
 }
 
 ContainerPtr ScriptEnvironment::getContainerByUID(const uint32_t uid)
 {
 	const auto item = getItemByUID(uid);
-	if (!item) {
+	if (not item)
+	{
 		return nullptr;
 	}
 	return item->getContainer();
@@ -242,7 +266,7 @@ std::string LuaScriptInterface::getErrorDesc(ErrorCode_t code)
 		case LUA_ERROR_PLAYER_NOT_FOUND: return "Player not found";
 		case LUA_ERROR_CREATURE_NOT_FOUND: return "Creature not found";
 		case LUA_ERROR_ITEM_NOT_FOUND: return "Item not found";
-		case LUA_ERROR_THING_NOT_FOUND: return "Thing not found";
+		case LUA_ERROR_GAME_MODEL_NOT_FOUND: return "Game object not found";
 		case LUA_ERROR_TILE_NOT_FOUND: return "Tile not found";
 		case LUA_ERROR_HOUSE_NOT_FOUND: return "House not found";
 		case LUA_ERROR_COMBAT_NOT_FOUND: return "Combat not found";
@@ -578,9 +602,10 @@ void LuaScriptInterface::pushVariant(lua_State* L, const LuaVariant& var)
 	setMetatable(L, -1, "Variant");
 }
 
-void LuaScriptInterface::pushThing(lua_State* L, const ThingPtr& thing)
+void LuaScriptInterface::pushItem(lua_State* L, const ItemPtr& item)
 {
-	if (!thing) {
+	if (not item)
+	{
 		lua_createtable(L, 0, 4);
 		setField(L, "uid", 0);
 		setField(L, "itemid", 0);
@@ -589,15 +614,11 @@ void LuaScriptInterface::pushThing(lua_State* L, const ThingPtr& thing)
 		return;
 	}
 
-	if (auto item = thing->getItem()) {
-		pushSharedPtr(L, item);
-		setItemMetatable(L, -1, item);
-	} else {
-		lua_pushnil(L);
-	}
+	pushSharedPtr(L, item);
+	setItemMetatable(L, -1, item);
 }
 
-void LuaScriptInterface::pushThing(lua_State* L, const StackposResolution& thing)
+void LuaScriptInterface::pushGameModel(lua_State* L, const GameModel& thing)
 {
 	if (thing.creature)
 	{
@@ -619,28 +640,29 @@ void LuaScriptInterface::pushThing(lua_State* L, const StackposResolution& thing
 	}
 }
 
-void LuaScriptInterface::pushCylinder(lua_State* L, const ThingPtr& cylinder)
+void LuaScriptInterface::pushItemLocation(lua_State* L, const BlackTek::ItemLocation& location, const ItemPtr& locationOwner)
 {
-	if (not cylinder)
+	if (locationOwner and locationOwner->isScriptDetached())
 	{
-		lua_pushnil(L);
-		return;
-	}
-
-	if (auto cylinderPtr = cylinder->getCylinder(); cylinderPtr and cylinderPtr->getCylinderSubType() == CylinderSubType::Player)
-	{
-		auto player = std::static_pointer_cast<Player>(cylinderPtr);
-		pushSharedPtr(L, player);
-		setCreatureMetatable(L, -1, player);
-	} else if (auto parentItem = cylinder->getItem()) {
-		pushSharedPtr(L, parentItem);
-		setItemMetatable(L, -1, parentItem);
-	} else if (auto tile = cylinder->getTile()) {
-		pushSharedPtr(L, tile);
-		setMetatable(L, -1, "Tile");
-	} else if (cylinder == VirtualCylinder::virtualCylinder) {
 		pushBoolean(L, true);
-	} else {
+	}
+	else if (location.player)
+	{
+		pushSharedPtr(L, location.player);
+		setCreatureMetatable(L, -1, location.player);
+	}
+	else if (location.containerItem)
+	{
+		pushSharedPtr(L, location.containerItem);
+		setItemMetatable(L, -1, location.containerItem);
+	}
+	else if (location.tile)
+	{
+		pushSharedPtr(L, location.tile);
+		setMetatable(L, -1, "Tile");
+	}
+	else
+	{
 		lua_pushnil(L);
 	}
 }
@@ -861,9 +883,9 @@ InstantSpell* LuaScriptInterface::getInstantSpell(lua_State* L, int32_t arg)
 	return spell;
 }
 
-StackposResolution LuaScriptInterface::getThing(lua_State* L, int32_t arg)
+GameModel LuaScriptInterface::getGameModel(lua_State* L, int32_t arg)
 {
-	StackposResolution thing;
+	GameModel thing;
 	if (lua_getmetatable(L, arg) != 0) {
 		lua_rawgeti(L, -1, 't');
 		switch(getNumber<uint32_t>(L, -1)) {
@@ -872,7 +894,7 @@ StackposResolution LuaScriptInterface::getThing(lua_State* L, int32_t arg)
 				thing.item = getSharedPtr<Item>(L, arg);
 				break;
 			case LuaData_Teleport:
-				thing.item = getSharedPtr<Teleport>(L, arg);
+				thing.item = getSharedPtr<Item>(L, arg);
 				break;
 			case LuaData_Player:
 				thing.creature = getSharedPtr<Player>(L, arg);
@@ -888,7 +910,7 @@ StackposResolution LuaScriptInterface::getThing(lua_State* L, int32_t arg)
 		}
 		lua_pop(L, 2);
 	} else {
-		thing = getScriptEnv()->getThingByUID(getNumber<uint32_t>(L, arg));
+		thing = getScriptEnv()->getGameModelByUID(getNumber<uint32_t>(L, arg));
 	}
 	return thing;
 }
@@ -2050,7 +2072,7 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumClass(Components::Stats::StatModifierType::Multiply)
 
 	// _G
-	registerGlobalVariable("INDEX_WHEREEVER", INDEX_WHEREEVER);
+	registerGlobalVariable("INDEX_ANYWHERE", INDEX_ANYWHERE);
 	registerGlobalBoolean("VIRTUAL_PARENT", true);
 
 	registerGlobalMethod("isType", LuaScriptInterface::luaIsType);
@@ -2536,7 +2558,6 @@ void LuaScriptInterface::registerFunctions()
 	// Teleport
 	registerClass("Teleport", "Item", luaTeleportCreate);
 	registerMetaMethod("Teleport", "__eq", luaUserdataCompare);
-	//registerMetaMethod("Teleport", "__gc", destroySharedUserData<Teleport>);
 
 	registerMethod("Teleport", "getDestination", luaTeleportGetDestination);
 	registerMethod("Teleport", "setDestination", luaTeleportSetDestination);
@@ -3973,8 +3994,10 @@ int LuaScriptInterface::luaDoPlayerAddItem(lua_State* L)
 		}
 
 		if (--itemCount == 0) {
-			if (newItem->getParent()) {
-				uint32_t uid = getScriptEnv()->addThing(newItem);
+			const auto newItemLocation = newItem->getLocation();
+			if (newItemLocation.tile or newItemLocation.player)
+			{
+				uint32_t uid = getScriptEnv()->addItem(newItem);
 				lua_pushinteger(L, uid);
 				return 1;
 			} else {
@@ -4312,7 +4335,7 @@ int LuaScriptInterface::luaDoChallengeCreature(lua_State* L)
 int LuaScriptInterface::luaIsValidUID(lua_State* L)
 {
 	//isValidUID(uid)
-	pushBoolean(L, static_cast<bool>(getScriptEnv()->getThingByUID(getNumber<uint32_t>(L, -1))));
+	pushBoolean(L, static_cast<bool>(getScriptEnv()->getGameModelByUID(getNumber<uint32_t>(L, -1))));
 	return 1;
 }
 
@@ -4328,8 +4351,28 @@ int LuaScriptInterface::luaIsMoveable(lua_State* L)
 {
 	//isMoveable(uid)
 	//isMovable(uid)
-	auto thing = getScriptEnv()->getThingByUID(getNumber<uint32_t>(L, -1));
-	pushBoolean(L, (thing.creature and thing.creature->isPushable()) or (thing.item and thing.item->isPushable()));
+	auto thing = getScriptEnv()->getGameModelByUID(getNumber<uint32_t>(L, -1));
+
+	bool creatureIsPushable = false;
+	if (thing.creature)
+	{
+		switch (thing.creature->getCreatureSubType())
+		{
+			case CreatureSubType::Player:
+				creatureIsPushable = std::static_pointer_cast<Player>(thing.creature)->isPushable();
+				break;
+			case CreatureSubType::Monster:
+				creatureIsPushable = std::static_pointer_cast<Monster>(thing.creature)->isPushable();
+				break;
+			case CreatureSubType::Npc:
+				creatureIsPushable = std::static_pointer_cast<Npc>(thing.creature)->isPushable();
+				break;
+			default:
+				break;
+		}
+	}
+
+	pushBoolean(L, creatureIsPushable or (thing.item and thing.item->isPushable()));
 	return 1;
 }
 
@@ -5346,17 +5389,17 @@ int LuaScriptInterface::luaGameCreateItem(lua_State* L)
 
 	if (lua_gettop(L) >= 3) {
 		const Position& position = getPosition(L, 3);
-		CylinderPtr tile = g_game.map.getTile(position);
+		TilePtr tile = g_game.map.getTile(position);
 		if (!tile) {
 			item.reset();
 			lua_pushnil(L);
 			return 1;
 		}
 
-		g_game.internalAddItem(tile, item, INDEX_WHEREEVER, FLAG_NOLIMIT);
+		g_game.internalAddItem({ .tile = tile }, item, INDEX_ANYWHERE, FLAG_NOLIMIT);
 	} else {
 		getScriptEnv()->addTempItem(item);
-		item->setParent(VirtualCylinder::virtualCylinder);
+		item->setScriptDetached();
 	}
 
 	pushSharedPtr(L, item);
@@ -5388,17 +5431,17 @@ int LuaScriptInterface::luaGameCreateContainer(lua_State* L)
 
 	if (lua_gettop(L) >= 3) {
 		const Position& position = getPosition(L, 3);
-		CylinderPtr tile = g_game.map.getTile(position);
+		TilePtr tile = g_game.map.getTile(position);
 		if (!tile) {
 			containerItem.reset();
 			lua_pushnil(L);
 			return 1;
 		}
 
-		g_game.internalAddItem(tile, containerItem, INDEX_WHEREEVER, FLAG_NOLIMIT);
+		g_game.internalAddItem({ .tile = tile }, containerItem, INDEX_ANYWHERE, FLAG_NOLIMIT);
 	} else {
 		getScriptEnv()->addTempItem(containerItem);
-		containerItem->setParent(VirtualCylinder::virtualCylinder);
+		containerItem->setScriptDetached();
 	}
 
 	pushSharedPtr(L, containerItem);
@@ -5688,7 +5731,8 @@ int LuaScriptInterface::luaVariantCreate(lua_State* L)
 	// Variant(number or string or position or thing)
 	LuaVariant variant;
 	if (isUserdata(L, 2)) {
-		if (auto thing = getThing(L, 2)) {
+		if (auto thing = getGameModel(L, 2))
+		{
 			variant.setTargetPosition(thing.creature ? thing.creature->getPosition() : thing.item->getPosition());
 		}
 	} else if (isTable(L, 2)) {
@@ -6012,7 +6056,7 @@ int LuaScriptInterface::luaTileGetThing(lua_State* L)
 		return 1;
 	}
 
-	const auto thing = tile->getThingAt(index);
+	const auto thing = tile->getGameModelAt(index);
 	if (!thing) {
 		lua_pushnil(L);
 		return 1;
@@ -6037,7 +6081,7 @@ int LuaScriptInterface::luaTileGetThingCount(lua_State* L)
 {
 	// tile:getThingCount()
 	if (const auto tile = getSharedPtr<Tile>(L, 1)) {
-		lua_pushinteger(L, tile->getThingCount());
+		lua_pushinteger(L, tile->getStackSize());
 	} else {
 		lua_pushnil(L);
 	}
@@ -6054,7 +6098,7 @@ int LuaScriptInterface::luaTileGetTopVisibleThing(lua_State* L)
 		return 1;
 	}
 
-	const auto thing = tile->getTopVisibleThing(creature);
+	const auto thing = tile->getTopVisibleGameModel(creature);
 	if (!thing) {
 		lua_pushnil(L);
 		return 1;
@@ -6150,7 +6194,8 @@ int LuaScriptInterface::luaTileGetItemById(lua_State* L)
 	}
 	int32_t subType = getNumber<int32_t>(L, 3, -1);
 
-	if (const auto item = g_game.findItemOfType(tile, itemId, false, subType)) {
+	if (const auto item = g_game.findItemOfType({ .tile = tile }, itemId, false, subType))
+	{
 		pushSharedPtr(L, item);
 		setItemMetatable(L, -1, item);
 	} else {
@@ -6498,14 +6543,14 @@ int LuaScriptInterface::luaTileGetThingIndex(lua_State* L)
 		return 1;
 	}
 
-	const auto thing = getThing(L, 2);
+	const auto thing = getGameModel(L, 2);
 	if (thing.creature)
 	{
 		lua_pushinteger(L, tile->getCreatureStackIndex(thing.creature));
 	}
 	else if (thing.item)
 	{
-		lua_pushinteger(L, tile->getThingIndex(thing.item));
+		lua_pushinteger(L, tile->getItemStackIndex(thing.item));
 	} else {
 		lua_pushnil(L);
 	}
@@ -6553,8 +6598,7 @@ int LuaScriptInterface::luaTileAddItem(lua_State* L)
 	}
 
 	uint32_t flags = getNumber<uint32_t>(L, 4, 0);
-	CylinderPtr holder = tile;
-	ReturnValue ret = g_game.internalAddItem(holder, item, INDEX_WHEREEVER, flags);
+	ReturnValue ret = g_game.internalAddItem({ .tile = tile }, item, INDEX_ANYWHERE, flags);
 	if (ret == RETURNVALUE_NOERROR) {
 		pushSharedPtr(L, item);
 		setItemMetatable(L, -1, item);
@@ -6580,15 +6624,15 @@ int LuaScriptInterface::luaTileAddItemEx(lua_State* L)
 		return 1;
 	}
 
-	if (item->getParent() != VirtualCylinder::virtualCylinder) {
+	if (not item->isScriptDetached())
+	{
 		reportErrorFunc(L, "Item already has a parent");
 		lua_pushnil(L);
 		return 1;
 	}
 
 	uint32_t flags = getNumber<uint32_t>(L, 3, 0);
-	CylinderPtr holder = tile;
-	ReturnValue ret = g_game.internalAddItem(holder, item, INDEX_WHEREEVER, flags);
+	ReturnValue ret = g_game.internalAddItem({ .tile = tile }, item, INDEX_ANYWHERE, flags);
 	if (ret == RETURNVALUE_NOERROR) {
 		ScriptEnvironment::removeTempItem(item);
 	}
@@ -7371,18 +7415,39 @@ int LuaScriptInterface::luaItemGetParent(lua_State* L)
 {
 	// item:getParent()
 	const auto item = getSharedPtr<Item>(L, 1);
-	if (!item) {
+	if (not item)
+	{
 		lua_pushnil(L);
 		return 1;
 	}
 
-	ThingPtr parent = item->getImmediateParent();
-	if (!parent) {
-		lua_pushnil(L);
+	if (item->isScriptDetached())
+	{
+		pushBoolean(L, true);
 		return 1;
 	}
 
-	pushCylinder(L, parent);
+	const auto location = item->getLocation();
+
+	if (location.player)
+	{
+		pushSharedPtr(L, location.player);
+		setCreatureMetatable(L, -1, location.player);
+	}
+	else if (location.containerItem)
+	{
+		pushSharedPtr(L, location.containerItem);
+		setItemMetatable(L, -1, location.containerItem);
+	}
+	else if (location.tile)
+	{
+		pushSharedPtr(L, location.tile);
+		setMetatable(L, -1, "Tile");
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
 	return 1;
 }
 
@@ -7390,18 +7455,45 @@ int LuaScriptInterface::luaItemGetTopParent(lua_State* L)
 {
 	// item:getTopParent()
 	const auto item = getSharedPtr<Item>(L, 1);
-	if (!item) {
+	if (not item)
+	{
 		lua_pushnil(L);
 		return 1;
 	}
 
-	ThingPtr topParent = item->getTopParent();
-	if (!topParent) {
-		lua_pushnil(L);
-		return 1;
+	ItemPtr topContainerItem = item;
+
+	while (auto owner = topContainerItem->getContainerParent())
+	{
+		topContainerItem = owner;
 	}
 
-	pushCylinder(L, topParent);
+	const bool nested = (topContainerItem != item);
+	const auto topLocation = nested ? BlackTek::ItemLocation{} : topContainerItem->getLocation();
+
+	if (topLocation.player)
+	{
+		pushSharedPtr(L, topLocation.player);
+		setCreatureMetatable(L, -1, topLocation.player);
+	}
+	else if (nested)
+	{
+		pushSharedPtr(L, topContainerItem);
+		setItemMetatable(L, -1, topContainerItem);
+	}
+	else if (topLocation.tile)
+	{
+		pushSharedPtr(L, topLocation.tile);
+		setMetatable(L, -1, "Tile");
+	}
+	else if (topContainerItem->isScriptDetached())
+	{
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
 	return 1;
 }
 
@@ -7432,7 +7524,7 @@ int LuaScriptInterface::luaItemClone(lua_State* L)
 	}
 
 	getScriptEnv()->addTempItem(clone);
-	clone->setParent(VirtualCylinder::virtualCylinder);
+	clone->setScriptDetached();
 
 	pushSharedPtr(L, clone);
 	setItemMetatable(L, -1, clone);
@@ -7466,7 +7558,7 @@ int LuaScriptInterface::luaItemSplit(lua_State* L)
 	splitItem->setItemCount(count);
 
 	ScriptEnvironment* env = getScriptEnv();
-	uint32_t uid = env->addThing(item);
+	uint32_t uid = env->addItem(item);
 
 	ItemPtr newItem = g_game.transformItem(item, item->getID(), diff);
 	if (item->isRemoved()) {
@@ -7479,7 +7571,7 @@ int LuaScriptInterface::luaItemSplit(lua_State* L)
 
 	itemPtr.reset(newItem.get());
 	
-	splitItem->setParent(VirtualCylinder::virtualCylinder);
+	splitItem->setScriptDetached();
 	env->addTempItem(splitItem);
 
 	pushSharedPtr(L, splitItem);
@@ -7506,7 +7598,7 @@ int LuaScriptInterface::luaItemGetUniqueId(lua_State* L)
 	if (const auto item = getSharedPtr<Item>(L, 1)) {
 		uint32_t uniqueId = item->getUniqueId();
 		if (uniqueId == 0) {
-			uniqueId = getScriptEnv()->addThing(item);
+			uniqueId = getScriptEnv()->addItem(item);
 		}
 		lua_pushinteger(L, uniqueId);
 	} else {
@@ -7869,46 +7961,49 @@ int LuaScriptInterface::luaItemMoveTo(lua_State* L)
 {
 	// item:moveTo(position or cylinder[, flags])
 	auto& itemPtr = getSharedPtr<Item>(L, 1);
-	if (!itemPtr) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	ItemPtr item = itemPtr;
-	if (!item || item->isRemoved()) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	ThingPtr toThing;
-	if (isUserdata(L, 2)) {
-		switch (const LuaDataType type = getUserdataType(L, 2)) {
-			case LuaData_Container:
-				toThing = getSharedPtr<Item>(L, 2);
-				break;
-			case LuaData_Player:
-				toThing = getSharedPtr<Player>(L, 2);
-				break;
-			case LuaData_Tile:
-				toThing = getSharedPtr<Tile>(L, 2);
-				break;
-			default:
-				toThing = nullptr;
-				break;
-		}
-	} else {
-		toThing = g_game.map.getTile(getPosition(L, 2));
-	}
-
-	if (not toThing)
+	if (not itemPtr)
 	{
 		lua_pushnil(L);
 		return 1;
 	}
 
-	ThingPtr currentParent = item->getImmediateParent();
+	ItemPtr item = itemPtr;
+	if (not item or item->isRemoved())
+	{
+		lua_pushnil(L);
+		return 1;
+	}
 
-	if (currentParent == toThing)
+	BlackTek::ItemLocation toLocation;
+	if (isUserdata(L, 2))
+	{
+		switch (const LuaDataType type = getUserdataType(L, 2))
+		{
+			case LuaData_Container:
+				toLocation.containerItem = getSharedPtr<Item>(L, 2);
+				break;
+			case LuaData_Player:
+				toLocation.player = getSharedPtr<Player>(L, 2);
+				break;
+			case LuaData_Tile:
+				toLocation.tile = getSharedPtr<Tile>(L, 2);
+				break;
+			default:
+				break;
+		}
+	}
+	else
+	{
+		toLocation.tile = g_game.map.getTile(getPosition(L, 2));
+	}
+
+	if (not toLocation)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (item->getLocation() == toLocation)
 	{
 		pushBoolean(L, true);
 		return 1;
@@ -7916,12 +8011,16 @@ int LuaScriptInterface::luaItemMoveTo(lua_State* L)
 
 	uint32_t flags = getNumber<uint32_t>(L, 3, FLAG_NOLIMIT | FLAG_IGNOREBLOCKITEM | FLAG_IGNOREBLOCKCREATURE | FLAG_IGNORENOTMOVEABLE);
 
-	if (item->getParent() == VirtualCylinder::virtualCylinder) {
-		pushBoolean(L, g_game.internalAddItem(toThing, item, INDEX_WHEREEVER, flags) == RETURNVALUE_NOERROR);
-	} else {
+	if (item->isScriptDetached())
+	{
+		pushBoolean(L, g_game.internalAddItem(toLocation, item, INDEX_ANYWHERE, flags) == RETURNVALUE_NOERROR);
+	}
+	else
+	{
 		ItemPtr moveItem = nullptr;
-		ReturnValue ret = g_game.internalMoveItem(currentParent, toThing, INDEX_WHEREEVER, item, item->getItemCount(), std::ref(moveItem), flags);
-		if (moveItem) {
+		ReturnValue ret = g_game.internalMoveItem(item->getLocation(), toLocation, INDEX_ANYWHERE, item, item->getItemCount(), std::ref(moveItem), flags);
+		if (moveItem)
+		{
 			itemPtr = moveItem;
 		}
 		pushBoolean(L, ret == RETURNVALUE_NOERROR);
@@ -7972,7 +8071,7 @@ int LuaScriptInterface::luaItemTransform(lua_State* L)
 	}
 
 	ScriptEnvironment* env = getScriptEnv();
-	uint32_t uid = env->addThing(item);
+	uint32_t uid = env->addItem(item);
 
 	const auto newItem = g_game.transformItem(item, itemId, subType);
 
@@ -9358,7 +9457,6 @@ int LuaScriptInterface::luaContainerHasItem(lua_State* L)
 
 int LuaScriptInterface::luaContainerAddItem(lua_State* L)
 {
-	// container:addItem(itemId[, count/subType = 1[, index = INDEX_WHEREEVER[, flags = 0]]])
 	const auto selfItem = getSharedPtr<Item>(L, 1);
 	const auto container = selfItem ? selfItem->getContainer() : nullptr;
 	if (!container) {
@@ -9399,7 +9497,7 @@ int LuaScriptInterface::luaContainerAddItem(lua_State* L)
 		return 1;
 	}
 
-	int32_t index = getNumber<int32_t>(L, 4, INDEX_WHEREEVER);
+	int32_t index = getNumber<int32_t>(L, 4, INDEX_ANYWHERE);
 	uint32_t flags = getNumber<uint32_t>(L, 5, 0);
 
 	for (int32_t i = 1; i <= itemCount; ++i) {
@@ -9416,8 +9514,7 @@ int LuaScriptInterface::luaContainerAddItem(lua_State* L)
 		if (it.stackable) {
 			subType -= stackCount;
 		}
-		ItemPtr holder = container->getOwner();
-		ReturnValue ret = g_game.internalAddItem(holder, item, index, flags);
+		ReturnValue ret = g_game.internalAddItem({ .containerItem = container->getOwner() }, item, index, flags);
 		if (ret != RETURNVALUE_NOERROR) {
 			item.reset();
 			if (!hasTable) {
@@ -9441,7 +9538,6 @@ int LuaScriptInterface::luaContainerAddItem(lua_State* L)
 
 int LuaScriptInterface::luaContainerAddItemEx(lua_State* L)
 {
-	// container:addItemEx(item[, index = INDEX_WHEREEVER[, flags = 0]])
 	const auto item = getSharedPtr<Item>(L, 2);
 	if (!item) {
 		lua_pushnil(L);
@@ -9455,16 +9551,16 @@ int LuaScriptInterface::luaContainerAddItemEx(lua_State* L)
 		return 1;
 	}
 
-	if (item->getParent() != VirtualCylinder::virtualCylinder) {
+	if (not item->isScriptDetached())
+	{
 		reportErrorFunc(L, "Item already has a parent");
 		lua_pushnil(L);
 		return 1;
 	}
 
-	int32_t index = getNumber<int32_t>(L, 3, INDEX_WHEREEVER);
+	int32_t index = getNumber<int32_t>(L, 3, INDEX_ANYWHERE);
 	uint32_t flags = getNumber<uint32_t>(L, 4, 0);
-	ItemPtr holder = container->getOwner();
-	ReturnValue ret = g_game.internalAddItem(holder, item, index, flags);
+	ReturnValue ret = g_game.internalAddItem({ .containerItem = container->getOwner() }, item, index, flags);
 	if (ret == RETURNVALUE_NOERROR) {
 		ScriptEnvironment::removeTempItem(item);
 	}
@@ -9578,7 +9674,8 @@ int LuaScriptInterface::luaTeleportCreate(lua_State* L)
 
 int LuaScriptInterface::luaTeleportDelete(lua_State* L)
 {
-	if (auto& teleport = getSharedPtr<Teleport>(L, 1)) {
+	if (auto& teleport = getSharedPtr<Item>(L, 1))
+	{
 		teleport.reset();
 	}
 	return 0;
@@ -9587,7 +9684,8 @@ int LuaScriptInterface::luaTeleportDelete(lua_State* L)
 int LuaScriptInterface::luaTeleportGetDestination(lua_State* L)
 {
 	// teleport:getDestination()
-	if (const auto teleport = getSharedPtr<Teleport>(L, 1)) {
+	if (const auto teleport = getSharedPtr<Item>(L, 1))
+	{
 		pushPosition(L, teleport->getDestPos());
 	} else {
 		lua_pushnil(L);
@@ -9598,7 +9696,8 @@ int LuaScriptInterface::luaTeleportGetDestination(lua_State* L)
 int LuaScriptInterface::luaTeleportSetDestination(lua_State* L)
 {
 	// teleport:setDestination(position)
-	if (const auto teleport = getSharedPtr<Teleport>(L, 1)) {
+	if (const auto teleport = getSharedPtr<Item>(L, 1))
+	{
 		teleport->setDestPos(getPosition(L, 2));
 		pushBoolean(L, true);
 	} else {
@@ -9807,13 +9906,15 @@ int LuaScriptInterface::luaCreatureGetParent(lua_State* L)
 		return 1;
 	}
 
-	CylinderPtr parent = creature->getTile();
-	if (!parent) {
+	TilePtr tile = creature->getTile();
+	if (not tile)
+	{
 		lua_pushnil(L);
 		return 1;
 	}
 
-	pushCylinder(L, parent);
+	pushSharedPtr(L, tile);
+	setMetatable(L, -1, "Tile");
 	return 1;
 }
 
@@ -12359,7 +12460,8 @@ int LuaScriptInterface::luaPlayerGetItemById(lua_State* L)
 	const bool deepSearch = getBoolean(L, 3);
 	const int32_t subType = getNumber<int32_t>(L, 4, -1);
 
-	if (const auto item = g_game.findItemOfType(player, itemId, deepSearch, subType)) {
+	if (const auto item = g_game.findItemOfType({ .player = player }, itemId, deepSearch, subType))
+	{
 		pushSharedPtr(L, item);
 		setItemMetatable(L, -1, item);
 	} else {
@@ -12803,7 +12905,6 @@ int LuaScriptInterface::luaPlayerAddItem(lua_State* L)
 
 int LuaScriptInterface::luaPlayerAddItemEx(lua_State* L)
 {
-	// player:addItemEx(item[, canDropOnMap = false[, index = INDEX_WHEREEVER[, flags = 0]]])
 	// player:addItemEx(item[, canDropOnMap = true[, slot = CONST_SLOT_WHEREEVER]])
 	const auto item = getSharedPtr<Item>(L, 2);
 	if (!item) {
@@ -12818,7 +12919,8 @@ int LuaScriptInterface::luaPlayerAddItemEx(lua_State* L)
 		return 1;
 	}
 
-	if (item->getParent() != VirtualCylinder::virtualCylinder) {
+	if (not item->isScriptDetached())
+	{
 		reportErrorFunc(L, "Item already has a parent");
 		pushBoolean(L, false);
 		return 1;
@@ -12830,10 +12932,9 @@ int LuaScriptInterface::luaPlayerAddItemEx(lua_State* L)
 		const auto slot = getNumber<slots_t>(L, 4, CONST_SLOT_WHEREEVER);
 		returnValue = g_game.internalPlayerAddItem(player, item, true, slot);
 	} else {
-		int32_t index = getNumber<int32_t>(L, 4, INDEX_WHEREEVER);
+		int32_t index = getNumber<int32_t>(L, 4, INDEX_ANYWHERE);
 		uint32_t flags = getNumber<uint32_t>(L, 5, 0);
-		CylinderPtr holder = player;
-		returnValue = g_game.internalAddItem(holder, item, index, flags);
+		returnValue = g_game.internalAddItem({ .player = player }, item, index, flags);
 	}
 
 	if (returnValue == RETURNVALUE_NOERROR) {
@@ -12886,8 +12987,7 @@ int LuaScriptInterface::luaPlayerAddMoney(lua_State* L)
 	// player:addMoney(money)
 	uint64_t money = getNumber<uint64_t>(L, 2);
 	if (const auto player = getSharedPtr<Player>(L, 1)) {
-		CylinderPtr holder = player;
-		g_game.addMoney(holder, money);
+		g_game.addMoney({ .player = player }, money);
 		pushBoolean(L, true);
 	} else {
 		lua_pushnil(L);
@@ -12900,8 +13000,7 @@ int LuaScriptInterface::luaPlayerRemoveMoney(lua_State* L)
 	// player:removeMoney(money)
 	if (const auto player = getSharedPtr<Player>(L, 1)) {
 		const uint64_t money = getNumber<uint64_t>(L, 2);
-		CylinderPtr holder = player;
-		pushBoolean(L, g_game.removeMoney(holder, money));
+		pushBoolean(L, g_game.removeMoney({ .player = player }, money));
 	} else {
 		lua_pushnil(L);
 	}
@@ -12956,7 +13055,7 @@ int LuaScriptInterface::luaPlayerShowTextDialog(lua_State* L)
 		item->setText(text);
 		length = std::max<int32_t>(text.size(), length);
 	}
-	item->setParent(player);
+	item->setInventoryOwner(player);
 	player->windowTextId++;
 	player->writeItem = item;
 	player->maxWriteLen = length;
@@ -13091,22 +13190,20 @@ int LuaScriptInterface::luaPlayerGetSlotItem(lua_State* L)
 {
 	// player:getSlotItem(slot)
 	auto player = getSharedPtr<Player>(L, 1);
-	if (!player) {
+	if (not player)
+	{
 		lua_pushnil(L);
 		return 1;
 	}
 
 	const uint32_t slot = getNumber<uint32_t>(L, 2);
-	auto thing = player->getThing(slot);
-	if (!thing) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	if (const auto item = thing->getItem()) {
+	if (const auto item = player->getInventoryItem(slot))
+	{
 		pushSharedPtr(L, item);
 		setItemMetatable(L, -1, item);
-	} else {
+	}
+	else
+	{
 		lua_pushnil(L);
 	}
 	return 1;
@@ -15254,7 +15351,7 @@ int LuaScriptInterface::luaHouseStartTrade(lua_State* L)
 		lua_pushinteger(L, RETURNVALUE_YOUCANNOTTRADETHISHOUSE);
 		return 1;
 	}
-	transferItem->getContainerParent()->setParent(player);
+	transferItem->getContainerParent()->setInventoryOwner(player);
 	if (!g_game.internalStartTrade(player, tradePartner, transferItem)) {
 		house->resetTransferItem();
 	}

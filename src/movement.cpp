@@ -418,23 +418,22 @@ uint32_t MoveEvents::onCreatureMove(const CreaturePtr& creature, const TilePtr& 
 	uint32_t ret = 1;
 
 	MoveEvent* moveEvent = getEvent(tile, eventType);
-	if (moveEvent) {
+	if (moveEvent)
+	{
 		ret &= moveEvent->fireStepEvent(creature, nullptr, pos);
 	}
 
-	for (size_t i = tile->getFirstIndex(), j = tile->getLastIndex(); i < j; ++i) {
-		auto thing = tile->getThing(i);
-		if (!thing) {
-			continue;
-		}
-
-		const auto& tileItem = thing->getItem();
-		if (!tileItem) {
+	for (size_t i = 0, j = tile->getStackSize(); i < j; ++i)
+	{
+		const auto& tileItem = tile->getGameModelAt(i).item;
+		if (not tileItem)
+		{
 			continue;
 		}
 
 		moveEvent = getEvent(tileItem, eventType);
-		if (moveEvent) {
+		if (moveEvent)
+		{
 			ret &= moveEvent->fireStepEvent(creature, tileItem, pos);
 		}
 	}
@@ -465,38 +464,41 @@ ReturnValue MoveEvents::onPlayerDeEquip(const PlayerPtr& player, const ItemPtr& 
 uint32_t MoveEvents::onItemMove(const ItemPtr& item, const TilePtr& tile, bool isAdd)
 {
 	MoveEvent_t eventType1, eventType2;
-	if (isAdd) {
+	if (isAdd)
+	{
 		eventType1 = MOVE_EVENT_ADD_ITEM;
 		eventType2 = MOVE_EVENT_ADD_ITEM_ITEMTILE;
-	} else {
+	}
+	else
+	{
 		eventType1 = MOVE_EVENT_REMOVE_ITEM;
 		eventType2 = MOVE_EVENT_REMOVE_ITEM_ITEMTILE;
 	}
 
 	uint32_t ret = 1;
 	MoveEvent* moveEvent = getEvent(tile, eventType1);
-	if (moveEvent) {
+	if (moveEvent)
+	{
 		ret &= moveEvent->fireAddRemItem(item, nullptr, tile->getPosition());
 	}
 
 	moveEvent = getEvent(item, eventType1);
-	if (moveEvent) {
+	if (moveEvent)
+	{
 		ret &= moveEvent->fireAddRemItem(item, nullptr, tile->getPosition());
 	}
 
-	for (size_t i = tile->getFirstIndex(), j = tile->getLastIndex(); i < j; ++i) {
-		const auto& thing = tile->getThing(i);
-		if (!thing) {
-			continue;
-		}
-
-		const auto& tileItem = thing->getItem();
-		if (!tileItem || tileItem == item) {
+	for (size_t i = 0, j = tile->getStackSize(); i < j; ++i)
+	{
+		const auto& tileItem = tile->getGameModelAt(i).item;
+		if (not tileItem or tileItem == item)
+		{
 			continue;
 		}
 
 		moveEvent = getEvent(tileItem, eventType2);
-		if (moveEvent) {
+		if (moveEvent)
+		{
 			ret &= moveEvent->fireAddRemItem(item, tileItem, tile->getPosition());
 		}
 	}
@@ -944,7 +946,7 @@ bool MoveEvent::executeStep(const CreaturePtr& creature, const ItemPtr& item, co
 	scriptInterface->pushFunction(scriptId);
 	LuaScriptInterface::pushSharedPtr(L, creature);
 	LuaScriptInterface::setCreatureMetatable(L, -1, creature);
-	LuaScriptInterface::pushThing(L, item);
+	LuaScriptInterface::pushItem(L, item);
 	LuaScriptInterface::pushPosition(L, pos);
 	LuaScriptInterface::pushPosition(L, creature->getLastPosition());
 
@@ -981,7 +983,7 @@ bool MoveEvent::executeEquip(const PlayerPtr& player, const ItemPtr& item, slots
 	scriptInterface->pushFunction(scriptId);
 	LuaScriptInterface::pushSharedPtr(L, player);
 	LuaScriptInterface::setMetatable(L, -1, "Player");
-	LuaScriptInterface::pushThing(L, item);
+	LuaScriptInterface::pushItem(L, item);
 	lua_pushinteger(L, slot);
 	LuaScriptInterface::pushBoolean(L, isCheck);
 
@@ -1012,8 +1014,8 @@ bool MoveEvent::executeAddRemItem(const ItemPtr& item, const ItemPtr& tileItem, 
 	lua_State* L = scriptInterface->getLuaState();
 
 	scriptInterface->pushFunction(scriptId);
-	LuaScriptInterface::pushThing(L, item);
-	LuaScriptInterface::pushThing(L, tileItem);
+	LuaScriptInterface::pushItem(L, item);
+	LuaScriptInterface::pushItem(L, tileItem);
 	LuaScriptInterface::pushPosition(L, pos);
 
 	return scriptInterface->callFunction(3);

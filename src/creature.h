@@ -96,37 +96,24 @@ class Creature : public SharedObject
 		Creature(const Creature&) = delete;
 		Creature& operator=(const Creature&) = delete;
 
-		virtual CreaturePtr getCreature() {
+		CreaturePtr getCreature()
+		{
 			return static_shared_this<Creature>();
 		}
 
-		virtual CreatureConstPtr getCreature() const {
+		CreatureConstPtr getCreature() const
+		{
 			return static_shared_this<Creature>();
 		}
 	
-		virtual PlayerPtr getPlayer() {
-			return nullptr;
-		}
-	
-		virtual PlayerConstPtr getPlayer() const {
-			return nullptr;
-		}
-	
-		virtual NpcPtr getNpc() {
-			return nullptr;
-		}
-	
-		virtual NpcConstPtr getNpc() const {
-			return nullptr;
-		}
-	
-		virtual MonsterPtr getMonster() {
-			return nullptr;
-		}
-	
-		virtual MonsterConstPtr getMonster() const {
-			return nullptr;
-		}
+		PlayerPtr getPlayer();
+		PlayerConstPtr getPlayer() const;
+
+		NpcPtr getNpc();
+		NpcConstPtr getNpc() const;
+
+		MonsterPtr getMonster();
+		MonsterConstPtr getMonster() const;
 
 		CreatureSubType getCreatureSubType() const {
 			return creature_subtype;
@@ -190,15 +177,18 @@ class Creature : public SharedObject
 			hiddenHealth = b;
 		}
 
-		virtual int32_t getThrowRange() const {
+		int32_t getThrowRange() const
+		{
 			return 1;
 		}
 
-		virtual bool isPushable() const {
+		bool isPushable() const
+		{
 			return getWalkDelay() <= 0;
 		}
 
-		virtual bool isRemoved() const {
+		bool isRemoved() const
+		{
 			return isInternalRemoved;
 		}
 	
@@ -471,15 +461,11 @@ class Creature : public SharedObject
 		virtual bool getNextStep(Direction& dir, uint32_t& flags);
 
 		void onAddTileItem(TilePtr tile, const Position& pos);
-		virtual void onUpdateTileItem(const TilePtr& tile, const Position& pos, const ItemPtr& oldItem,
-		                              const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType);
-		virtual void onRemoveTileItem(const TilePtr& tile, const Position& pos, const ItemType& iType,
-		                              const ItemPtr& item);
 
-		virtual void onCreatureAppear(const CreaturePtr& creature, bool isLogin);
-		virtual void onRemoveCreature(const CreaturePtr& creature, bool isLogout);
-		virtual void onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos,
-		                            const TilePtr& oldTile, const Position& oldPos, bool teleport);
+		void onCreatureAppear(const CreaturePtr& creature, bool isLogin);
+		void onRemoveCreature(const CreaturePtr& creature, bool isLogout);
+		void onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos,
+		                    const TilePtr& oldTile, const Position& oldPos, bool teleport);
 
 		virtual void onAttackedCreatureDisappear(bool) {}
 		virtual void onFollowCreatureDisappear(bool) {}
@@ -597,11 +583,13 @@ class Creature : public SharedObject
 
 		void setCurrentTile(const TilePtr& newTile);
 
-		virtual const Position& getPosition() const {
+		const Position& getPosition() const
+		{
 			return position;
 		}
 
-		virtual TilePtr getTile() {
+		TilePtr getTile()
+		{
 			[[likely]] if (auto shared_ptr = tile.lock())
 			{
 				return shared_ptr;
@@ -609,7 +597,8 @@ class Creature : public SharedObject
 			[[unlikely]] return nullptr;
 		}
 
-		virtual TileConstPtr getTile() const {
+		TileConstPtr getTile() const
+		{
 			[[likely]] if (auto shared_ptr = tile.lock())
 			{
 				return shared_ptr;
@@ -729,16 +718,14 @@ class Creature : public SharedObject
 			return 0;
 		}
 	
-		virtual void dropLoot(const ContainerPtr& corpse, const CreaturePtr& lastHitKiller) {}
-	
 		virtual uint16_t getLookCorpse() const {
 			return 0;
 		}
-	
+
 		virtual void getPathSearchParams(const CreatureConstPtr& creature, FindPathParams& fpp) const;
 		virtual void death(const CreaturePtr&) {}
 		virtual bool dropCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr& mostDamageCreature, bool lastHitUnjustified, bool mostDamageUnjustified);
-		virtual ItemPtr getCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr& mostDamageCreature);
+		ItemPtr getCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr& mostDamageCreature);
 
 		friend class Game;
 		friend class Map;

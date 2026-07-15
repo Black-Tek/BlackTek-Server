@@ -1194,9 +1194,8 @@ bool Monster::pushItem(const ItemPtr& item)
 		Position tryPos(centerPos.x + it.first, centerPos.y + it.second, centerPos.z);
 		const auto& tile = g_game.map.getTile(tryPos);
 		if (tile && g_game.canThrowObjectTo(centerPos, tryPos, true, true)) {
-			ThingPtr n_parent = item->getImmediateParent();
-			CylinderPtr t_parent = tile;
-			if (g_game.internalMoveItem(n_parent, t_parent, INDEX_WHEREEVER, item, item->getItemCount(), std::nullopt) == RETURNVALUE_NOERROR) {
+			if (g_game.internalMoveItem(item->getLocation(), { .tile = tile }, INDEX_ANYWHERE, item, item->getItemCount(), std::nullopt) == RETURNVALUE_NOERROR)
+			{
 				return true;
 			}
 		}
@@ -1740,7 +1739,7 @@ void Monster::updateTileCache(TilePtr tile, int32_t dx, int32_t dy)
 		bool canAdd = false;
 		if (tile)
 		{
-			canAdd = tile->queryAdd(getMonster(), flags) == RETURNVALUE_NOERROR;
+			canAdd = tile->canEnter(getMonster(), flags) == RETURNVALUE_NOERROR;
 		}
 		localMapCache[(maxWalkCacheHeight + dy) * mapWalkWidth + (maxWalkCacheWidth + dx)] = canAdd;
 	}
@@ -1755,7 +1754,7 @@ void Monster::updateTileCache(const TilePtr& tile, int32_t dx, int32_t dy, const
 		return;
 	}
 	constexpr uint32_t flags = FLAG_PATHFINDING | FLAG_IGNOREFIELDDAMAGE;
-	entry = tile->queryAdd(self, flags) == RETURNVALUE_NOERROR;
+	entry = tile->canEnter(self, flags) == RETURNVALUE_NOERROR;
 }
 
 void Monster::updateTileCache(TilePtr tile, const Position& pos)
@@ -1818,7 +1817,7 @@ bool Monster::canWalkTo(Position pos, const Direction direction)
 			return false;
 		}
 
-		if (auto tile = g_game.map.getTile(pos); tile and tile->queryAdd(getMonster(), FLAG_PATHFINDING) == RETURNVALUE_NOERROR) 
+		if (auto tile = g_game.map.getTile(pos); tile and tile->canEnter(getMonster(), FLAG_PATHFINDING) == RETURNVALUE_NOERROR)
 		{
 			return true;
 		}
@@ -1887,7 +1886,7 @@ void Monster::death(const CreaturePtr&)
 							
 							if (chance <= adjustedChance) {
 								auto lootItem = Item::CreateItem(lootBlock.id, count);
-								if (g_game.internalAddItem(rewardContainer->getOwner(), lootItem) == RETURNVALUE_NOERROR)
+								if (g_game.internalAddItem({ .containerItem = rewardContainer->getOwner() }, lootItem) == RETURNVALUE_NOERROR)
 								{
 									hasLoot = true;
 								}
@@ -1904,7 +1903,7 @@ void Monster::death(const CreaturePtr&)
 					if (player) {
 						auto rewardChestContainer = player->getRewardChest();
 						auto rewardContainerItem = rewardContainer->getOwner();
-						if (g_game.internalAddItem(rewardChestContainer->getOwner(), rewardContainerItem) == RETURNVALUE_NOERROR)
+						if (g_game.internalAddItem({ .containerItem = rewardChestContainer->getOwner() }, rewardContainerItem) == RETURNVALUE_NOERROR)
 						{
 							player->sendTextMessage(MESSAGE_LOOT, "The following items dropped by " + getMonster()->getName() + " are available in your reward chest: " + rewardContainer->getContentDescription() + ".");
 						}
@@ -2046,7 +2045,7 @@ void Monster::dropLoot(const ContainerPtr& corpse, const CreaturePtr&)
         rewardContainer->setIntAttr(ITEM_ATTRIBUTE_DATE, time_limit);
         rewardContainer->setIntAttr(ITEM_ATTRIBUTE_REWARDID, getMonster()->getID());
 
-        corpse->internalAddThing(rewardContainer);
+        corpse->addItemSilently(rewardContainer);
     }
     else if (corpse && lootDrop) {
         g_events->eventMonsterOnDropLoot(this->getMonster(), corpse);

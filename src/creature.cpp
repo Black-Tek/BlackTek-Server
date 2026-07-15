@@ -5,7 +5,9 @@
 
 #include "creature.h"
 #include "game.h"
+#include "player.h"
 #include "monster.h"
+#include "npc.h"
 #include "configmanager.h"
 #include "scheduler.h"
 #include "events.h"
@@ -34,6 +36,48 @@ Creature::~Creature()
 	}
 
 	conditions.clear();
+}
+
+PlayerPtr Creature::getPlayer()
+{
+	return creature_subtype == CreatureSubType::Player
+		? static_shared_this<Player>()
+		: nullptr;
+}
+
+PlayerConstPtr Creature::getPlayer() const
+{
+	return creature_subtype == CreatureSubType::Player
+		? static_shared_this<const Player>()
+		: nullptr;
+}
+
+MonsterPtr Creature::getMonster()
+{
+	return creature_subtype == CreatureSubType::Monster
+		? static_shared_this<Monster>()
+		: nullptr;
+}
+
+MonsterConstPtr Creature::getMonster() const
+{
+	return creature_subtype == CreatureSubType::Monster
+		? static_shared_this<const Monster>()
+		: nullptr;
+}
+
+NpcPtr Creature::getNpc()
+{
+	return creature_subtype == CreatureSubType::Npc
+		? static_shared_this<Npc>()
+		: nullptr;
+}
+
+NpcConstPtr Creature::getNpc() const
+{
+	return creature_subtype == CreatureSubType::Npc
+		? static_shared_this<const Npc>()
+		: nullptr;
 }
 
 void Creature::setCurrentTile(const TilePtr& newTile)
@@ -342,19 +386,6 @@ void Creature::onAddTileItem(TilePtr, const Position&)
 {
 }
 
-void Creature::onUpdateTileItem(const TilePtr&,
-								const Position&,
-								const ItemPtr&,
-                                const ItemType&,
-                                const ItemPtr&,
-                                const ItemType&)
-{
-}
-
-void Creature::onRemoveTileItem(const TilePtr&, const Position&, const ItemType&, const ItemPtr&)
-{
-}
-
 void Creature::onCreatureAppear(const CreaturePtr& creature, bool isLogin)
 {
 	if (creature == shared_from_this())
@@ -631,15 +662,26 @@ bool Creature::dropCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr&
 		}
 
 		TilePtr tile = getTile();
-		CylinderPtr c_tile = tile;
 		if (splash) {
-			g_game.internalAddItem(c_tile, splash, INDEX_WHEREEVER, FLAG_NOLIMIT);
+			g_game.internalAddItem({ .tile = tile }, splash, INDEX_ANYWHERE, FLAG_NOLIMIT);
 			g_game.startDecay(splash);
 		}
 
-		ItemPtr corpse = getCorpse(lastHitCreature, mostDamageCreature);
+		ItemPtr corpse;
+		switch (creature_subtype)
+		{
+			case CreatureSubType::Player:
+				corpse = static_shared_this<Player>()->getCorpse(lastHitCreature, mostDamageCreature);
+				break;
+			case CreatureSubType::Monster:
+				corpse = static_shared_this<Monster>()->getCorpse(lastHitCreature, mostDamageCreature);
+				break;
+			default:
+				corpse = getCorpse(lastHitCreature, mostDamageCreature);
+				break;
+		}
 		if (corpse) {
-			g_game.internalAddItem(c_tile, corpse, INDEX_WHEREEVER, FLAG_NOLIMIT);
+			g_game.internalAddItem({ .tile = tile }, corpse, INDEX_ANYWHERE, FLAG_NOLIMIT);
 			g_game.startDecay(corpse);
 		}
 
@@ -648,8 +690,9 @@ bool Creature::dropCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr&
 			deathEvent->executeOnDeath(getCreature(), corpse, lastHitCreature, mostDamageCreature, lastHitUnjustified, mostDamageUnjustified);
 		}
 
-		if (corpse) {
-			dropLoot(corpse->getContainer(), lastHitCreature);
+		if (corpse and creature_subtype == CreatureSubType::Monster)
+		{
+			static_shared_this<Monster>()->dropLoot(corpse->getContainer(), lastHitCreature);
 		}
 	}
 

@@ -121,13 +121,13 @@ void Map::setTile(const uint16_t x, const uint16_t y, const uint8_t z, TilePtr& 
 	if (auto& tile = floor->tiles[offsetX][offsetY]) {
 		if (const auto& items = newTile->getItemList()) {
 			for (auto it = items->rbegin(), end = items->rend(); it != end; ++it) {
-				tile->addThing(*it);
+				tile->addItem(*it);
 			}
 			items->clear();
 		}
 
 		if (const auto& ground = newTile->getGround()) {
-			tile->addThing(ground);
+			tile->addItem(ground);
 			newTile->setGround(nullptr);
 		}
 	} else {
@@ -193,15 +193,15 @@ bool Map::placeCreature(const Position& centerPos, CreaturePtr creature, bool ex
         ReturnValue ret = RETURNVALUE_NOERROR;
         if (creature->getCreatureSubType() == CreatureSubType::Player)
         {
-            ret = tile->queryAdd(std::static_pointer_cast<Player>(creature), FLAG_IGNOREBLOCKITEM);
+            ret = tile->canEnter(std::static_pointer_cast<Player>(creature), FLAG_IGNOREBLOCKITEM);
         }
         else if (creature->getCreatureSubType() == CreatureSubType::Monster)
         {
-            ret = tile->queryAdd(std::static_pointer_cast<Monster>(creature), FLAG_IGNOREBLOCKITEM);
+            ret = tile->canEnter(std::static_pointer_cast<Monster>(creature), FLAG_IGNOREBLOCKITEM);
         }
         else if (creature->getCreatureSubType() == CreatureSubType::Npc)
         {
-            ret = tile->queryAdd(std::static_pointer_cast<Npc>(creature), FLAG_IGNOREBLOCKITEM);
+            ret = tile->canEnter(std::static_pointer_cast<Npc>(creature), FLAG_IGNOREBLOCKITEM);
         }
 		foundTile = forceLogin || ret == RETURNVALUE_NOERROR || ret == RETURNVALUE_PLAYERISNOTINVITED;
 	} else {
@@ -244,15 +244,15 @@ bool Map::placeCreature(const Position& centerPos, CreaturePtr creature, bool ex
             ReturnValue ret = RETURNVALUE_NOERROR;
             if (creature->getCreatureSubType() == CreatureSubType::Player)
             {
-                ret = tile->queryAdd(std::static_pointer_cast<Player>(creature), 0);
+                ret = tile->canEnter(std::static_pointer_cast<Player>(creature), 0);
             }
             else if (creature->getCreatureSubType() == CreatureSubType::Monster)
             {
-                ret = tile->queryAdd(std::static_pointer_cast<Monster>(creature), 0);
+                ret = tile->canEnter(std::static_pointer_cast<Monster>(creature), 0);
             }
             else if (creature->getCreatureSubType() == CreatureSubType::Npc)
             {
-                ret = tile->queryAdd(std::static_pointer_cast<Npc>(creature), 0);
+                ret = tile->canEnter(std::static_pointer_cast<Npc>(creature), 0);
             }
 
 			if (ret == RETURNVALUE_NOERROR) {
@@ -269,8 +269,8 @@ bool Map::placeCreature(const Position& centerPos, CreaturePtr creature, bool ex
 	}
 
 	uint32_t flags = 0;
-	TilePtr destTile = tile->queryCreatureDestination(creature, flags);
-	destTile->ensureCreatures().internalAddCreature(creature);
+	TilePtr destTile = tile->resolveCreatureDestination(creature, flags);
+	destTile->ensureCreatures().addCreatureSilently(creature);
 
 	const Position& dest = destTile->getPosition();
 	getQTNode(dest.x, dest.y)->addCreature(creature);
@@ -366,10 +366,25 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 
     // event method
 	for (const auto& spectator : spectators)
-		spectator->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
+	{
+		switch (spectator->getCreatureSubType())
+		{
+			case CreatureSubType::Player:
+				static_cast<Player*>(spectator.get())->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
+				break;
+			case CreatureSubType::Monster:
+				static_cast<Monster*>(spectator.get())->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
+				break;
+			case CreatureSubType::Npc:
+				static_cast<Npc*>(spectator.get())->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
+				break;
+			default:
+				break;
+		}
+	}
 
-	oldTile->postRemoveCreatureNotification(creature, newTile, spectators);
-	newTile->postAddCreatureNotification(creature, oldTile, spectators);
+	oldTile->notifyCreatureRemoved(creature, newTile, spectators);
+	newTile->notifyCreatureAdded(creature, oldTile, spectators);
 }
 
 void Map::getSpectatorsInternal(SpectatorVec& spectators, const Position& centerPos, const int32_t minRangeX, const int32_t maxRangeX, const int32_t minRangeY, const int32_t maxRangeY, const int32_t minRangeZ, const int32_t maxRangeZ, const bool onlyPlayers) const
@@ -750,15 +765,15 @@ TilePtr Map::canWalkTo(CreaturePtr& creature, const Position& pos)
         ReturnValue ret = RETURNVALUE_NOERROR;
         if (subtype == CreatureSubType::Player)
         {
-            ret = tile->queryAdd(std::static_pointer_cast<Player>(creature), flags);
+            ret = tile->canEnter(std::static_pointer_cast<Player>(creature), flags);
         }
         else if (subtype == CreatureSubType::Monster)
         {
-            ret = tile->queryAdd(std::static_pointer_cast<Monster>(creature), flags);
+            ret = tile->canEnter(std::static_pointer_cast<Monster>(creature), flags);
         }
         else if (subtype == CreatureSubType::Npc)
         {
-            ret = tile->queryAdd(std::static_pointer_cast<Npc>(creature), flags);
+            ret = tile->canEnter(std::static_pointer_cast<Npc>(creature), flags);
         }
 
         if (ret != RETURNVALUE_NOERROR)

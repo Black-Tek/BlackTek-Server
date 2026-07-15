@@ -600,4 +600,24 @@ enum MonstersEvent_t : uint8_t {
 	MONSTERS_EVENT_SAY = 5,
 };
 
+static constexpr int32_t INDEX_ANYWHERE = -1;
+
+enum PlacementFlags {
+	FLAG_NOLIMIT = 1 << 0,
+	FLAG_IGNOREBLOCKITEM = 1 << 1,
+	FLAG_IGNOREBLOCKCREATURE = 1 << 2,
+	FLAG_CHILDISOWNER = 1 << 3,
+	FLAG_PATHFINDING = 1 << 4,
+	FLAG_IGNOREFIELDDAMAGE = 1 << 5,
+	FLAG_IGNORENOTMOVEABLE = 1 << 6,
+	FLAG_IGNOREAUTOSTACK = 1 << 7,
+};
+
+enum NotifyLink {
+	LINK_OWNER,
+	LINK_PARENT,
+	LINK_TOPPARENT,
+	LINK_NEAR,
+};
+
 #endif // FS_ENUMS_H_

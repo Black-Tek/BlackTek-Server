@@ -359,7 +359,7 @@ bool CreatureEvent::executeOnDeath(const CreaturePtr& creature, const ItemPtr& c
 	LuaScriptInterface::pushSharedPtr(L, creature);
 	LuaScriptInterface::setCreatureMetatable(L, -1, creature);
 
-	LuaScriptInterface::pushThing(L, corpse);
+	LuaScriptInterface::pushItem(L, corpse);
 
 	if (killer) {
 		LuaScriptInterface::pushSharedPtr(L, killer);
@@ -467,7 +467,7 @@ bool CreatureEvent::executeTextEdit(const PlayerPtr& player, const ItemPtr& item
 	LuaScriptInterface::pushSharedPtr(L, player);
 	LuaScriptInterface::setMetatable(L, -1, "Player");
 
-	LuaScriptInterface::pushThing(L, item);
+	LuaScriptInterface::pushItem(L, item);
 	LuaScriptInterface::pushString(L, text);
 
 	return scriptInterface->callFunction(3);

@@ -1105,7 +1105,7 @@ void ProtocolGame::parseThrow(NetworkMessage& msg)
 	{
 		addGameTaskTimed(DISPATCHER_TASK_EXPIRATION, [=, playerID = player->getID()]()
 		{
-			g_game.playerMoveThing(playerID, fromPos, spriteId, fromStackpos, toPos, count);
+			g_game.playerMoveRequest(playerID, fromPos, spriteId, fromStackpos, toPos, count);
 		});
 	}
 }

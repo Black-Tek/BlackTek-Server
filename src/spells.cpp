@@ -19,6 +19,8 @@ extern ConfigManager g_config;
 extern LuaEnvironment g_luaEnvironment;
 extern Events* g_events;
 
+using BlackTek::GameModel;
+
 Spells::Spells()
 {
 	scriptInterface.initState();
@@ -852,7 +854,7 @@ ReturnValue RuneSpell::canExecuteAction(const PlayerConstPtr& player, const Posi
 	return RETURNVALUE_NOERROR;
 }
 
-bool RuneSpell::executeUse(const PlayerPtr& player, const ItemPtr& item, const Position&, const StackposResolution& target, const Position& toPosition, bool isHotkey)
+bool RuneSpell::executeUse(const PlayerPtr& player, const ItemPtr& item, const Position&, const GameModel& target, const Position& toPosition, bool isHotkey)
 {
 	if (!playerRuneSpellCheck(player, toPosition)) {
 		return false;

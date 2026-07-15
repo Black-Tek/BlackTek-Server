@@ -4,7 +4,6 @@
 #include "otpch.h"
 
 #include "actions.h"
-#include "bed.h"
 #include "configmanager.h"
 #include "itemcontainer.h"
 #include "game.h"
@@ -16,6 +15,8 @@ extern Game g_game;
 extern Spells* g_spells;
 extern Actions* g_actions;
 extern ConfigManager g_config;
+
+using BlackTek::GameModel;
 
 Actions::Actions() :
 	scriptInterface("Action Interface")
@@ -354,7 +355,19 @@ ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint
 		//depot container
 		if (container->isDepotLocker()) {
 			ContainerPtr& myDepotLocker = player->getDepotLocker();
-			myDepotLocker->getOwner()->setParent(container->getOwner()->getParent());
+			auto sourceLocation = container->getOwner()->getLocation();
+			if (sourceLocation.tile)
+			{
+				myDepotLocker->getOwner()->setTileParent(sourceLocation.tile);
+			}
+			else if (sourceLocation.player)
+			{
+				myDepotLocker->getOwner()->setInventoryOwner(sourceLocation.player);
+			}
+			else
+			{
+				myDepotLocker->getOwner()->clearParent();
+			}
 			openContainer = myDepotLocker;
 		} else {
 			openContainer = container;
@@ -389,7 +402,19 @@ ReturnValue Actions::internalUseItem(PlayerPtr player, const Position& pos, uint
 		// Reward chest
 		if (container->isRewardChest()) {
 			auto& myRewardChest = player->getRewardChest();
-			myRewardChest->getOwner()->setParent(container->getOwner()->getParent());
+			auto sourceLocation = container->getOwner()->getLocation();
+			if (sourceLocation.tile)
+			{
+				myRewardChest->getOwner()->setTileParent(sourceLocation.tile);
+			}
+			else if (sourceLocation.player)
+			{
+				myRewardChest->getOwner()->setInventoryOwner(sourceLocation.player);
+			}
+			else
+			{
+				myRewardChest->getOwner()->clearParent();
+			}
 
 			if (myRewardChest->getItemList().empty()) {
 				return RETURNVALUE_REWARDCHESTEMPTY;
@@ -478,10 +503,15 @@ bool Actions::useItem(PlayerPtr player, const Position& pos, uint8_t index, cons
 
 	if (g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
 		if (auto ground_tile = item->getTile(); ground_tile && ground_tile->isHouseTile()) {
-			auto topParent = item->getTopParent();
-			const auto topCylinder = topParent ? topParent->getCylinder() : nullptr;
-			const bool topParentIsPlayer = topCylinder and topCylinder->getCylinderSubType() == CylinderSubType::Player;
-			if (not topParent or (not topParentIsPlayer and not ground_tile->getHouse()->isInvited(player)))
+			ItemPtr topContainerItem = item;
+			while (auto containerOwner = topContainerItem->getContainerParent())
+			{
+				topContainerItem = containerOwner;
+			}
+
+			const bool nested = (topContainerItem != item);
+			const bool topParentIsPlayer = (not nested) and static_cast<bool>(topContainerItem->getLocation().player);
+			if (not topParentIsPlayer and not ground_tile->getHouse()->isInvited(player))
 			{
 				player->sendCancelMessage(RETURNVALUE_PLAYERISNOTINVITED);
 				return false;
@@ -527,8 +557,14 @@ bool Actions::useItemEx(const PlayerPtr& player, const Position& fromPos, const 
 
 	if (g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS)) {
 		if (item->getTile()->isHouseTile()) {
-			const auto topParentCylinder = item->getTopParent()->getCylinder();
-			const bool topParentIsPlayer = topParentCylinder and topParentCylinder->getCylinderSubType() == CylinderSubType::Player;
+			ItemPtr topContainerItem = item;
+			while (auto containerOwner = topContainerItem->getContainerParent())
+			{
+				topContainerItem = containerOwner;
+			}
+
+			const bool nested = (topContainerItem != item);
+			const bool topParentIsPlayer = (not nested) and static_cast<bool>(topContainerItem->getLocation().player);
 			if (not topParentIsPlayer and not item->getTile()->getHouse()->isInvited(player))
 			{
 				player->sendCancelMessage(RETURNVALUE_PLAYERISNOTINVITED);
@@ -573,7 +609,7 @@ bool Action::configureEvent(const pugi::xml_node& node)
 
 namespace {
 
-bool enterMarket(const PlayerPtr& player, ItemPtr, const Position&, StackposResolution, const Position&, bool)
+bool enterMarket(const PlayerPtr& player, ItemPtr, const Position&, GameModel, const Position&, bool)
 {
 	player->sendMarketEnter();
 	return true;
@@ -607,7 +643,7 @@ ReturnValue Action::canExecuteAction(const PlayerConstPtr& player, const Positio
 	return g_actions->canUse(player, toPos);
 }
 
-StackposResolution Action::getTarget(const PlayerPtr& player, const CreaturePtr& targetCreature, const Position& toPosition, uint8_t toStackPos) const
+GameModel Action::getTarget(const PlayerPtr& player, const CreaturePtr& targetCreature, const Position& toPosition, uint8_t toStackPos) const
 {
 	if (targetCreature) {
 		return { targetCreature, nullptr };
@@ -615,7 +651,7 @@ StackposResolution Action::getTarget(const PlayerPtr& player, const CreaturePtr&
 
 	if (toPosition.x == 0xFFFF)
 	{
-		return { nullptr, g_game.internalGetItem(player, toPosition, toStackPos, 0, STACKPOS_USETARGET) };
+		return { nullptr, g_game.resolveItem(player, toPosition, toStackPos, 0, STACKPOS_USETARGET) };
 	}
 
 	auto tile = g_game.map.getTile(toPosition);
@@ -632,7 +668,7 @@ StackposResolution Action::getTarget(const PlayerPtr& player, const CreaturePtr&
 	return { nullptr, g_game.filterHangableItem(player, tile, tile->getUseItem(toStackPos)) };
 }
 
-bool Action::executeUse(const PlayerPtr& player, const ItemPtr& item, const Position& fromPosition, const StackposResolution& target, const Position& toPosition, bool isHotkey)
+bool Action::executeUse(const PlayerPtr& player, const ItemPtr& item, const Position& fromPosition, const GameModel& target, const Position& toPosition, bool isHotkey)
 {
 	//onUse(player, item, fromPosition, target, toPosition, isHotkey)
 	if (!scriptInterface->reserveScriptEnv()) {
@@ -650,10 +686,10 @@ bool Action::executeUse(const PlayerPtr& player, const ItemPtr& item, const Posi
 	LuaScriptInterface::pushSharedPtr(L, player);
 	LuaScriptInterface::setMetatable(L, -1, "Player");
 
-	LuaScriptInterface::pushThing(L, item);
+	LuaScriptInterface::pushItem(L, item);
 	LuaScriptInterface::pushPosition(L, fromPosition);
 
-	LuaScriptInterface::pushThing(L, target);
+	LuaScriptInterface::pushGameModel(L, target);
 	LuaScriptInterface::pushPosition(L, toPosition);
 
 	LuaScriptInterface::pushBoolean(L, isHotkey);

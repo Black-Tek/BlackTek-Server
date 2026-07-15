@@ -28,7 +28,8 @@
 #include "luavariant.h"
 #include <fmt/format.h>
 #include "declarations.h"
-#include "stackposresolution.h"
+#include "gamemodel.h"
+#include "itemlocation.h"
 #include <gtl/phmap.hpp>
 
 #include "intrusive.h"
@@ -139,7 +140,7 @@ class ScriptEnvironment
 
 		void addTempItem(const ItemPtr& item);
 		static void removeTempItem(const ItemPtr& item);
-		uint32_t addThing(const ItemPtr& item);
+		uint32_t addItem(const ItemPtr& item);
 		void insertItem(uint32_t uid, const ItemPtr& item);
 
 		static DBResult_ptr getResultByID(uint32_t id);
@@ -154,7 +155,7 @@ class ScriptEnvironment
 			return curNpc;
 		}
 
-		StackposResolution getThingByUID(uint32_t uid);
+		BlackTek::GameModel getGameModelByUID(uint32_t uid);
 		ItemPtr getItemByUID(uint32_t uid);
 		ContainerPtr getContainerByUID(uint32_t uid);
 		void removeItemByUID(uint32_t uid);
@@ -192,7 +193,7 @@ enum ErrorCode_t {
 	LUA_ERROR_PLAYER_NOT_FOUND,
 	LUA_ERROR_CREATURE_NOT_FOUND,
 	LUA_ERROR_ITEM_NOT_FOUND,
-	LUA_ERROR_THING_NOT_FOUND,
+	LUA_ERROR_GAME_MODEL_NOT_FOUND,
 	LUA_ERROR_TILE_NOT_FOUND,
 	LUA_ERROR_HOUSE_NOT_FOUND,
 	LUA_ERROR_COMBAT_NOT_FOUND,
@@ -259,12 +260,12 @@ class LuaScriptInterface
 		void callVoidFunction(int params) const;
 
 		//push/pop common structures
-		static void pushThing(lua_State* L, const ThingPtr& thing);
-		static void pushThing(lua_State* L, const StackposResolution& thing);
+		static void pushItem(lua_State* L, const ItemPtr& item);
+		static void pushGameModel(lua_State* L, const BlackTek::GameModel& thing);
 		static void pushVariant(lua_State* L, const LuaVariant& var);
 		static void pushString(lua_State* L, std::string_view value);
 		static void pushCallback(lua_State* L, int32_t callback);
-		static void pushCylinder(lua_State* L, const ThingPtr& cylinder);
+		static void pushItemLocation(lua_State* L, const BlackTek::ItemLocation& location, const ItemPtr& locationOwner);
 
 		static std::string popString(lua_State* L);
 		static int32_t popCallback(lua_State* L);
@@ -442,7 +443,7 @@ class LuaScriptInterface
 	
 		static InstantSpell* getInstantSpell(lua_State* L, int32_t arg);
 
-		static StackposResolution getThing(lua_State* L, int32_t arg);
+		static BlackTek::GameModel getGameModel(lua_State* L, int32_t arg);
 		static CreaturePtr getCreature(lua_State* L, int32_t arg);
 		static PlayerPtr getPlayer(lua_State* L, int32_t arg);
 

@@ -96,7 +96,7 @@ CreatureConstPtr CreatureContainer::getBottomVisibleCreature(const CreatureConst
     return nullptr;
 }
 
-std::optional<ReturnValue> CreatureContainer::queryAddRestrictions(uint32_t flags) const
+std::optional<ReturnValue> CreatureContainer::checkEntryRestrictions(uint32_t flags) const
 {
     const auto tile = getOwner();
 
@@ -137,9 +137,9 @@ std::optional<ReturnValue> CreatureContainer::queryAddRestrictions(uint32_t flag
     return std::nullopt;
 }
 
-ReturnValue CreatureContainer::queryAdd(PlayerPtr player, uint32_t flags) const
+ReturnValue CreatureContainer::canEnter(const PlayerPtr& player, uint32_t flags) const
 {
-    if (const auto restriction = queryAddRestrictions(flags))
+    if (const auto restriction = checkEntryRestrictions(flags))
         return *restriction;
 
     const auto tile = getOwner();
@@ -192,9 +192,9 @@ ReturnValue CreatureContainer::queryAdd(PlayerPtr player, uint32_t flags) const
     return RETURNVALUE_NOERROR;
 }
 
-ReturnValue CreatureContainer::queryAdd(MonsterPtr monster, uint32_t flags) const
+ReturnValue CreatureContainer::canEnter(const MonsterPtr& monster, uint32_t flags) const
 {
-    if (const auto restriction = queryAddRestrictions(flags))
+    if (const auto restriction = checkEntryRestrictions(flags))
         return *restriction;
 
     const auto tile = getOwner();
@@ -240,7 +240,7 @@ ReturnValue CreatureContainer::queryAdd(MonsterPtr monster, uint32_t flags) cons
                 // the creature is a monster this monster can't push.
                 const auto creatureMonster = tileCreature->getMonster();
 
-                if (not creatureMonster or not tileCreature->isPushable() or (creatureMonster->isSummon() and creatureMonster->getMaster()->getPlayer()))
+                if (not creatureMonster or not creatureMonster->isPushable() or (creatureMonster->isSummon() and creatureMonster->getMaster()->getPlayer()))
                     return RETURNVALUE_NOTPOSSIBLE;
             }
         }
@@ -268,9 +268,9 @@ ReturnValue CreatureContainer::queryAdd(MonsterPtr monster, uint32_t flags) cons
     return RETURNVALUE_NOERROR;
 }
 
-ReturnValue CreatureContainer::queryAdd(NpcPtr npc, uint32_t flags) const
+ReturnValue CreatureContainer::canEnter(const NpcPtr& npc, uint32_t flags) const
 {
-    if (const auto restriction = queryAddRestrictions(flags))
+    if (const auto restriction = checkEntryRestrictions(flags))
         return *restriction;
 
     const auto tile = getOwner();
@@ -298,7 +298,7 @@ void CreatureContainer::addCreature(const CreaturePtr& creature)
     creatureList.insert(creatureList.begin(), creature);
 }
 
-void CreatureContainer::internalAddCreature(const CreaturePtr& creature)
+void CreatureContainer::addCreatureSilently(const CreaturePtr& creature)
 {
     g_game.map.clearChunkSpectatorCache();
     creature->setCurrentTile(getOwner());

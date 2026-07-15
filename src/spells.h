@@ -440,11 +440,12 @@ class RuneSpell final : public Action, public Spell
 			return true;
 		}
 	
-		StackposResolution getTarget(const PlayerPtr&, const CreaturePtr& targetCreature, const Position&, uint8_t) const override {
-			return StackposResolution{targetCreature, nullptr};
+		BlackTek::GameModel getTarget(const PlayerPtr&, const CreaturePtr& targetCreature, const Position&, uint8_t) const override
+		{
+			return BlackTek::GameModel{targetCreature, nullptr};
 		}
 
-		bool executeUse(const PlayerPtr& player, const ItemPtr& item, const Position& fromPosition, const StackposResolution& target, const Position& toPosition, bool isHotkey) override;
+		bool executeUse(const PlayerPtr& player, const ItemPtr& item, const Position& fromPosition, const BlackTek::GameModel& target, const Position& toPosition, bool isHotkey) override;
 
 		bool castSpell(const CreaturePtr& creature) override;
 		bool castSpell(const CreaturePtr& creature, const CreaturePtr& target) override;

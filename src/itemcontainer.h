@@ -5,8 +5,9 @@
 
 #include <queue>
 
-#include "cylinder.h"
+#include "enums.h"
 #include "item.h"
+#include "itemlocation.h"
 
 class ContainerIterator
 {
@@ -34,7 +35,7 @@ class ItemContainer final
 
 		ContainerIterator iterator() const;
 		ItemPtr getItemByIndex(size_t index) const;
-		CylinderPtr getParent() const;
+		BlackTek::ItemLocation getParent() const;
 
 		[[nodiscard]] ItemPtr getOwner()						const { return owner.lock(); }
 		[[nodiscard]] CreaturePtr getHoldingCreature()			const { return holdingCreature.lock(); }
@@ -49,16 +50,14 @@ class ItemContainer final
 		void setParentToTileItems(const TilePtr& tile);
 		void setHoldingCreature(const CreaturePtr& creature);
 		void removeInbox(const ItemPtr& inbox);
-		void addThing(ThingPtr thing);
-		void addThing(int32_t index, ThingPtr thing);
+		void addItemAt(int32_t index, const ItemPtr& item);
 		void addItemBack(ItemPtr& item);
-		void updateThing(ThingPtr thing, uint16_t itemId, uint32_t count);
-		void replaceThing(uint32_t index, ThingPtr thing);
-		void removeThing(ThingPtr thing, uint32_t count);
-		void postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t index, cylinderlink_t link = LINK_OWNER);
-		void postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t index, cylinderlink_t link = LINK_OWNER);
-		void internalAddThing(ThingPtr thing);
-		void internalAddThing(uint32_t index, ThingPtr thing);
+		void updateItem(const ItemPtr& item, uint16_t itemId, uint32_t count);
+		void replaceItem(uint32_t index, const ItemPtr& item);
+		void removeItem(const ItemPtr& item, uint32_t count);
+		void notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, NotifyLink link = LINK_OWNER);
+		void notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, NotifyLink link = LINK_OWNER);
+		void addItemSilently(const ItemPtr& item);
 		void startDecaying();
 
 		void setDepotId(uint16_t newDepotId)		{ depotId = newDepotId; }
@@ -79,7 +78,7 @@ class ItemContainer final
 		[[nodiscard]] bool isUnlocked()		const noexcept { return unlocked; }
 		[[nodiscard]] bool hasPagination()	const noexcept { return pagination; }
 
-		[[nodiscard]] int32_t getThingIndex(ThingPtr thing);
+		[[nodiscard]] int32_t getItemIndex(const ItemConstPtr& item) const;
 		[[nodiscard]] uint32_t getItemHoldingCount() const;
 		[[nodiscard]] uint32_t getItemTypeCount(uint16_t itemId, int32_t subType = -1) const;
 
@@ -97,12 +96,11 @@ class ItemContainer final
 		[[nodiscard]] size_t getLastIndex()		const;
 		[[nodiscard]] size_t size()				const { return itemlist.size(); }
 
-		[[nodiscard]] ReturnValue queryAdd(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr);
-		[[nodiscard]] ReturnValue queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t& maxQueryCount, uint32_t flags);
-		[[nodiscard]] ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr);
-		[[nodiscard]] ThingPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags);
-		[[nodiscard]] ThingPtr getThing(size_t index);
-		
+		[[nodiscard]] ReturnValue canAddItem(int32_t index, const ItemPtr& item, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr);
+		[[nodiscard]] ReturnValue checkAddCapacity(int32_t index, const ItemPtr& item, uint32_t count, uint32_t& acceptedCount, uint32_t flags);
+		[[nodiscard]] ReturnValue canRemoveItem(const ItemPtr& item, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr);
+		[[nodiscard]] BlackTek::ItemLocation resolveItemDestination(int32_t& index, const ItemPtr& item, ItemPtr& destItem, uint32_t& flags);
+
 		[[nodiscard]] gtl::btree_map<uint32_t, uint32_t>& getAllItemTypeCount(gtl::btree_map<uint32_t, uint32_t>& countMap) const;
 
 	private:
@@ -133,14 +131,14 @@ class ItemContainer final
 		bool isGenuinelyPlaced(const ItemPtr& ownerItem) const;
 		void propagateHoldingCreatureTo(const ItemPtr& item) const;
 
-		ReturnValue queryAddGeneric(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor);
-		ReturnValue queryAddDepotChest(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor);
-		ReturnValue queryAddInbox(const ThingPtr& thing, uint32_t flags) const;
-		ReturnValue queryAddStoreInbox(const ThingPtr& thing, uint32_t flags) const;
-		ReturnValue queryAddValidateItem(const ThingPtr& thing, ItemPtr& outItem) const;
+		ReturnValue canAddItemStandard(int32_t index, const ItemPtr& item, uint32_t count, uint32_t flags, CreaturePtr actor);
+		ReturnValue canAddItemDepotChest(int32_t index, const ItemPtr& item, uint32_t count, uint32_t flags, CreaturePtr actor);
+		ReturnValue canAddItemInbox(const ItemPtr& item, uint32_t flags) const;
+		ReturnValue canAddItemStoreInbox(const ItemPtr& item, uint32_t flags) const;
+		ReturnValue validateAddItem(const ItemPtr& item) const;
 
-		void postAddNotificationDefault(ThingPtr thing, CylinderPtr oldParent, int32_t index);
-		void postRemoveNotificationDefault(ThingPtr thing, CylinderPtr newParent, int32_t index);
+		void notifyItemAddedDefault(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index);
+		void notifyItemRemovedDefault(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index);
 
 		friend class ContainerIterator;
 		friend class IOMapSerialize;

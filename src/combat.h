@@ -4,7 +4,7 @@
 #pragma once
 
 #include "metrics_types.h"
-#include "thing.h"
+#include "item.h"
 #include "condition.h"
 #include "map.h"
 #include "tools.h"
@@ -888,48 +888,4 @@ namespace BlackTek
 	// Used by FormulaNode closures built in Lua to read creature stats at combat time.
 	int32_t resolve_bind_key(Combat::BindKey key, const CreaturePtr& creature) noexcept;
 
-	class MagicField final : public Item
-	{
-	public:
-		explicit MagicField(uint16_t type) : Item(type), createTime(OTSYS_TIME())
-		{
-			thing_subtype = ThingSubType::MagicField;
-			item_subtype = ItemSubType::MagicField;
-		}
-
-		MagicFieldPtr getMagicField() override
-		{
-			return static_shared_this<MagicField>();
-		}
-
-		MagicFieldConstPtr getMagicField() const override
-		{
-			return static_shared_this<MagicField>();
-		}
-
-		bool isReplaceable() const
-		{
-			return Item::items[getID()].replaceable;
-		}
-
-		CombatType_t getCombatType() const
-		{
-			const ItemType& it = items[getID()];
-			return it.combatType;
-		}
-
-		int32_t getDamage() const
-		{
-			const ItemType& it = items[getID()];
-			if (it.conditionDamage)
-			{
-				return it.conditionDamage->getTotalDamage();
-			}
-			return 0;
-		}
-		void onStepInField(const CreaturePtr& creature);
-
-	private:
-		int64_t createTime;
-	};
 }

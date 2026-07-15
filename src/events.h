@@ -8,7 +8,8 @@
 #include "const.h"
 #include "creature.h"
 #include "party.h"
-#include "stackposresolution.h"
+#include "gamemodel.h"
+#include "itemlocation.h"
 
 class ItemType;
 class Tile;
@@ -106,12 +107,12 @@ class Events
 
 		// Player
 		bool eventPlayerOnBrowseField(const PlayerPtr& player, const Position& position);
-		void eventPlayerOnLook(const PlayerPtr& player, const Position& position, const StackposResolution& thing, uint8_t stackpos, int32_t lookDistance);
+		void eventPlayerOnLook(const PlayerPtr& player, const Position& position, const BlackTek::GameModel& thing, uint8_t stackpos, int32_t lookDistance);
 		void eventPlayerOnLookInBattleList(const PlayerPtr& player, const CreaturePtr& creature, int32_t lookDistance);
 		void eventPlayerOnLookInTrade(const PlayerPtr& player, const PlayerPtr& partner, const ItemPtr& item, int32_t lookDistance);
 		bool eventPlayerOnLookInShop(const PlayerPtr& player, const ItemType* itemType, uint8_t count, const std::string& description);
-		ReturnValue eventPlayerOnMoveItem(const PlayerPtr& player, const ItemPtr& item, uint16_t count, const Position& fromPosition, const Position& toPosition, const CylinderPtr& fromCylinder, const CylinderPtr& toCylinder);
-		void eventPlayerOnItemMoved(const PlayerPtr& player, const ItemPtr& item, uint16_t count, const Position& fromPosition, const Position& toPosition, const CylinderPtr& fromCylinder, const CylinderPtr& toCylinder);
+		ReturnValue eventPlayerOnMoveItem(const PlayerPtr& player, const ItemPtr& item, uint16_t count, const Position& fromPosition, const Position& toPosition, const BlackTek::ItemLocation& fromLocation, const BlackTek::ItemLocation& toLocation);
+		void eventPlayerOnItemMoved(const PlayerPtr& player, const ItemPtr& item, uint16_t count, const Position& fromPosition, const Position& toPosition, const BlackTek::ItemLocation& fromLocation, const BlackTek::ItemLocation& toLocation);
 		bool eventPlayerOnMoveCreature(const PlayerPtr& player, const CreaturePtr& creature, const Position& fromPosition, const Position& toPosition);
 		void eventPlayerOnReportRuleViolation(const PlayerPtr& player, const std::string& targetName, uint8_t reportType, uint8_t reportReason, const std::string& comment, const std::string& translation);
 		bool eventPlayerOnReportBug(const PlayerPtr& player, const std::string& message, const Position& position, uint8_t category);

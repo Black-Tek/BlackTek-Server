@@ -8,6 +8,7 @@
 
 #include "account.h"
 #include "combat.h"
+#include "itemlocation.h"
 #include "groups.h"
 #include "map.h"
 #include "position.h"
@@ -221,8 +222,8 @@ class Game
 			return worldType;
 		}
 
-		ThingPtr internalGetCylinder(const PlayerPtr& player, const Position& pos);
-		ItemPtr internalGetItem(const PlayerPtr& player, const Position& pos, int32_t index,
+		BlackTek::ItemLocation resolveItemLocation(const PlayerPtr& player, const Position& pos);
+		ItemPtr resolveItem(const PlayerPtr& player, const Position& pos, int32_t index,
 		                        uint32_t spriteId, stackPosType_t type);
 		ItemPtr filterHangableItem(const PlayerPtr& player, const TilePtr& tile, ItemPtr item) const;
 		static void internalGetPosition(const ItemPtr& item, Position& pos, uint8_t& stackpos);
@@ -395,13 +396,13 @@ class Game
 		ReturnValue internalMoveCreature(CreaturePtr creature, Direction direction, uint32_t flags = 0);
 		ReturnValue internalMoveCreature(CreaturePtr creature, TilePtr toTile, uint32_t flags = 0);
 
-		ReturnValue internalMoveItem(ThingPtr fromThing, ThingPtr toThing, int32_t index,
+		ReturnValue internalMoveItem(BlackTek::ItemLocation fromLocation, BlackTek::ItemLocation toLocation, int32_t index,
 		                             ItemPtr item, uint32_t count, std::optional<std::reference_wrapper<ItemPtr>> _moveItem, uint32_t flags = 0, CreaturePtr actor = nullptr, ItemPtr tradeItem = nullptr, const Position* fromPos = nullptr, const Position* toPos = nullptr);
 							// another spot to use a ref wrapper and possibly optional for ItemPtr* above
 
-		ReturnValue internalAddItem(ThingPtr toThing, ItemPtr item, int32_t index = INDEX_WHEREEVER,
+		ReturnValue internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr item, int32_t index = INDEX_ANYWHERE,
 		                            uint32_t flags = 0, bool test = false);
-		ReturnValue internalAddItem(ThingPtr toThing, ItemPtr item, int32_t index,
+		ReturnValue internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr item, int32_t index,
 		                            uint32_t flags, bool test, uint32_t& remainderCount);
 		ReturnValue internalRemoveItem(ItemPtr item, int32_t count = -1, bool test = false, uint32_t flags = 0);
 
@@ -409,32 +410,29 @@ class Game
 
 		/**
 		  * Find an item of a certain type
-		  * \param cylinder to search the item
 		  * \param itemId is the item to remove
 		  * \param subType is the extra type an item can have such as charges/fluidtype, default is -1
 			* meaning it's not used
 		  * \param depthSearch if true it will check child containers aswell
 		  * \returns A pointer to the item to an item and nullptr if not found
 		  */
-		ItemPtr findItemOfType(const CylinderPtr& cylinder, uint16_t itemId,
+		ItemPtr findItemOfType(const BlackTek::ItemLocation& location, uint16_t itemId,
 		                     bool depthSearch = true, int32_t subType = -1) const;
 
 		/**
 		  * Remove/Add item(s) with a monetary value
-		  * \param cylinder to remove the money from
 		  * \param money is the amount to remove
 		  * \param flags optional flags to modify the default behavior
 		  * \returns true if the removal was successful
 		  */
-		bool removeMoney(CylinderPtr& cylinder, uint64_t money, uint32_t flags = 0);
+		bool removeMoney(const BlackTek::ItemLocation& location, uint64_t money, uint32_t flags = 0);
 
 		/**
 		  * Add item(s) with monetary value
-		  * \param cylinder which will receive money
 		  * \param money the amount to give
 		  * \param flags optional flags to modify default behavior
 		  */
-		void addMoney( CylinderPtr& cylinder, uint64_t money, uint32_t flags = 0);
+		void addMoney(const BlackTek::ItemLocation& location, uint64_t money, uint32_t flags = 0);
 
 		/**
 		  * Transform one item to another type/count
@@ -486,13 +484,13 @@ class Game
 		void broadcastMessage(const std::string& text, MessageClasses type) const;
 
 		//Implementation of player invoked events
-		void playerMoveThing(uint32_t playerId, const Position& fromPos, uint16_t spriteId, uint8_t fromStackPos,
+		void playerMoveRequest(uint32_t playerId, const Position& fromPos, uint16_t spriteId, uint8_t fromStackPos,
 		                     const Position& toPos, uint8_t count);
 		void playerMoveCreatureByID(uint32_t playerId, uint32_t movingCreatureId, const Position& movingCreatureOrigPos, const Position& toPos);
 		void playerMoveCreature(PlayerPtr& player, CreaturePtr& movingCreature, const Position& movingCreatureOrigPos, TilePtr& toTile);
 		void playerMoveItemByPlayerID(uint32_t playerId, const Position& fromPos, uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count);
 		void playerMoveItem(const PlayerPtr& player, const Position& fromPos,
-		                    uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count, ItemPtr item, ThingPtr toThing);
+		                    uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count, ItemPtr item, BlackTek::ItemLocation toLocation);
 		void playerEquipItem(uint32_t playerId, uint16_t spriteId);
 		void playerMove(uint32_t playerId, Direction direction);
 		void playerCreatePrivateChannel(uint32_t playerId);

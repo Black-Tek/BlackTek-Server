@@ -4,9 +4,10 @@
 #include <memory>
 #include "declarations.h"
 
-template <typename T>
-concept GameObject = std::is_base_of_v<Thing, T>&& std::is_class_v<T>;
+class SharedObject;
 
+template <typename T>
+concept GameObject = std::is_base_of_v<SharedObject, T> and std::is_class_v<T>;
 
 class SharedObject : public std::enable_shared_from_this<SharedObject>
 {

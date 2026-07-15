@@ -2,11 +2,6 @@
 #include <memory>
 #include <vector>
 
-
-class Thing;
-using ThingPtr = std::shared_ptr<class Thing>;
-using ThingConstPtr = std::shared_ptr<const Thing>;
-
 class Creature;
 using CreaturePtr = std::shared_ptr<Creature>;
 using CreatureConstPtr = std::shared_ptr<const Creature>;
@@ -15,6 +10,7 @@ using CreatureWeakPtr = std::weak_ptr<Creature>;
 class Player;
 using PlayerPtr = std::shared_ptr<Player>;
 using PlayerConstPtr = std::shared_ptr<const Player>;
+using PlayerWeakPtr = std::weak_ptr<Player>;
 
 class Monster;
 using MonsterPtr = std::shared_ptr<Monster>;
@@ -31,11 +27,6 @@ using TileWeakPtr = std::weak_ptr<Tile>;
 
 class CreatureContainer;
 
-class Cylinder;
-using CylinderPtr = std::shared_ptr<Cylinder>;
-using CylinderConstPtr = std::shared_ptr<const Cylinder>;
-using CylinderWeakPtr = std::weak_ptr<Cylinder>;
-
 class Item;
 using ItemPtr = std::shared_ptr<Item>;
 using ItemConstPtr = std::shared_ptr<const Item>;
@@ -49,30 +40,23 @@ class Depot;
 using DepotPtr = std::shared_ptr<Depot>;
 using DepotConstPtr = std::shared_ptr<const Depot>;
 
-class Teleport;
-using TeleportPtr = std::shared_ptr<Teleport>;
-using TeleportConstPtr = std::shared_ptr<const Teleport>;
+using TeleportPtr = ItemPtr;
+using TeleportConstPtr = ItemConstPtr;
 
-class TrashHolder;
-using TrashHolderPtr = std::shared_ptr<TrashHolder>;
-using TrashHolderConstPtr = std::shared_ptr<const TrashHolder>;
+using TrashHolderPtr = ItemPtr;
+using TrashHolderConstPtr = ItemConstPtr;
 
-class Mailbox;
-using MailboxPtr = std::shared_ptr<Mailbox>;
-using MailboxConstPtr = std::shared_ptr<const Mailbox>;
+using MailboxPtr = ItemPtr;
+using MailboxConstPtr = ItemConstPtr;
 
-class Door;
-using DoorPtr = std::shared_ptr<Door>;
-using DoorConstPtr = std::shared_ptr<const Door>;
+using DoorPtr = ItemPtr;
+using DoorConstPtr = ItemConstPtr;
 
-namespace BlackTek { class MagicField; }
-using MagicField = BlackTek::MagicField;
-using MagicFieldPtr = std::shared_ptr<MagicField>;
-using MagicFieldConstPtr = std::shared_ptr<const MagicField>;
+using MagicFieldPtr = ItemPtr;
+using MagicFieldConstPtr = ItemConstPtr;
 
-class BedItem;
-using BedItemPtr = std::shared_ptr<BedItem>;
-using BedItemConstPtr = std::shared_ptr<const BedItem>;
+using BedItemPtr = ItemPtr;
+using BedItemConstPtr = ItemConstPtr;
 
 class HouseTile;
 using HouseTilePtr = std::shared_ptr<Tile>;

@@ -10,6 +10,8 @@
 
 #include <set>
 
+using BlackTek::GameModel;
+
 Events::Events() :
 	scriptInterface("Event Interface")
 {
@@ -615,7 +617,7 @@ bool Events::eventPlayerOnBrowseField(const PlayerPtr& player, const Position& p
 	return scriptInterface.callFunction(2);
 }
 
-void Events::eventPlayerOnLook(const PlayerPtr& player, const Position& position, const StackposResolution& thing, uint8_t stackpos, int32_t lookDistance)
+void Events::eventPlayerOnLook(const PlayerPtr& player, const Position& position, const GameModel& thing, uint8_t stackpos, int32_t lookDistance)
 {
 	// Player:onLook(thing, position, distance) or Player.onLook(self, thing, position, distance)
 	if (info.playerOnLook == -1) {
@@ -746,9 +748,8 @@ bool Events::eventPlayerOnLookInShop(const PlayerPtr& player, const ItemType* it
 	return scriptInterface.callFunction(4);
 }
 
-ReturnValue Events::eventPlayerOnMoveItem(const PlayerPtr& player, const ItemPtr& item, uint16_t count, const Position& fromPosition, const Position& toPosition, const CylinderPtr& fromCylinder, const CylinderPtr& toCylinder)
+ReturnValue Events::eventPlayerOnMoveItem(const PlayerPtr& player, const ItemPtr& item, uint16_t count, const Position& fromPosition, const Position& toPosition, const BlackTek::ItemLocation& fromLocation, const BlackTek::ItemLocation& toLocation)
 {
-	// Player:onMoveItem(item, count, fromPosition, toPosition) or Player.onMoveItem(self, item, count, fromPosition, toPosition, fromCylinder, toCylinder)
 	if (info.playerOnMoveItem == -1) {
 		return RETURNVALUE_NOERROR;
 	}
@@ -774,8 +775,8 @@ ReturnValue Events::eventPlayerOnMoveItem(const PlayerPtr& player, const ItemPtr
 	LuaScriptInterface::pushPosition(L, fromPosition);
 	LuaScriptInterface::pushPosition(L, toPosition);
 
-	LuaScriptInterface::pushCylinder(L, fromCylinder);
-	LuaScriptInterface::pushCylinder(L, toCylinder);
+	LuaScriptInterface::pushItemLocation(L, fromLocation, item);
+	LuaScriptInterface::pushItemLocation(L, toLocation, item);
 
 	ReturnValue returnValue;
 	if (scriptInterface.protectedCall(L, 7, 1) != 0) {
@@ -790,9 +791,8 @@ ReturnValue Events::eventPlayerOnMoveItem(const PlayerPtr& player, const ItemPtr
 	return returnValue;
 }
 
-void Events::eventPlayerOnItemMoved(const PlayerPtr& player, const ItemPtr& item, uint16_t count, const Position& fromPosition, const Position& toPosition, const CylinderPtr& fromCylinder, const CylinderPtr& toCylinder)
+void Events::eventPlayerOnItemMoved(const PlayerPtr& player, const ItemPtr& item, uint16_t count, const Position& fromPosition, const Position& toPosition, const BlackTek::ItemLocation& fromLocation, const BlackTek::ItemLocation& toLocation)
 {
-	// Player:onItemMoved(item, count, fromPosition, toPosition) or Player.onItemMoved(self, item, count, fromPosition, toPosition, fromCylinder, toCylinder)
 	if (info.playerOnItemMoved == -1) {
 		return;
 	}
@@ -818,8 +818,8 @@ void Events::eventPlayerOnItemMoved(const PlayerPtr& player, const ItemPtr& item
 	LuaScriptInterface::pushPosition(L, fromPosition);
 	LuaScriptInterface::pushPosition(L, toPosition);
 
-	LuaScriptInterface::pushCylinder(L, fromCylinder);
-	LuaScriptInterface::pushCylinder(L, toCylinder);
+	LuaScriptInterface::pushItemLocation(L, fromLocation, item);
+	LuaScriptInterface::pushItemLocation(L, toLocation, item);
 
 	scriptInterface.callVoidFunction(7);
 }

@@ -41,13 +41,12 @@ class Monster final : public Creature
 		static uint32_t monsterAutoID;
 		static MonsterPtr createMonster(const std::string& name);
 
+		ItemPtr getCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr& mostDamageCreature);
+
 		const std::string&	getName() const override;
 		const std::string&	getNameDescription() const override;
 		const std::string&	getRegisteredName() const override	{ return mType->registeredName; };
 		std::string			getDescription(int32_t) override	{ return nameDescription + '.'; }
-
-		MonsterPtr			getMonster() override				{ return static_shared_this<Monster>(); }
-		MonsterConstPtr		getMonster() const override			{ return static_shared_this<const Monster>(); }
 
 		CreatureType_t		getType(CreaturePtr caller = nullptr) const override;
 		BlockType_t			blockHit(const CreaturePtr& attacker, CombatType_t combatType, int32_t& damage, bool checkDefense = false, bool checkArmor = false, bool field = false, bool ignoreResistances = false) override;
@@ -85,7 +84,7 @@ class Monster final : public Creature
 		[[nodiscard]] bool followTargetFromDistance(const Position& targetPos, Direction& direction) noexcept;
 
 		[[nodiscard]] bool isBoss(bool countReward = true) const	{ return mType->info.isBoss or ( countReward and mType->info.isRewardBoss); }
-		[[nodiscard]] bool isPushable() const override				{ return mType->info.pushable and baseSpeed != 0; }
+		[[nodiscard]] bool isPushable() const				{ return mType->info.pushable and baseSpeed != 0; }
 		[[nodiscard]] bool isAttackable() const override			{ return mType->info.isAttackable; }
 		[[nodiscard]] bool canPushCreatures() const					{ return mType->info.canPushCreatures; }
 		[[nodiscard]] bool isHostile() const						{ return mType->info.isHostile; }
@@ -102,9 +101,9 @@ class Monster final : public Creature
 		void setName(const std::string& name);
 
 		void onAttackedCreatureDisappear(bool isLogout) override;
-		void onCreatureAppear(const CreaturePtr& creature, bool isLogin) override;
-		void onRemoveCreature(const CreaturePtr& creature, bool isLogout) override;
-		void onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos, const TilePtr& oldTile, const Position& oldPos, bool teleport) override;
+		void onCreatureAppear(const CreaturePtr& creature, bool isLogin);
+		void onRemoveCreature(const CreaturePtr& creature, bool isLogout);
+		void onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos, const TilePtr& oldTile, const Position& oldPos, bool teleport);
 		void onCreatureSay(const CreaturePtr& creature, SpeakClasses type, const std::string& text) override;
 
 		void drainHealth(const CreaturePtr& attacker, int32_t damage) override;
@@ -113,6 +112,7 @@ class Monster final : public Creature
 		void onWalk() override;
 		void onWalkComplete() override;
 		void onFollowCreatureComplete(const CreatureConstPtr& creature) override;
+		void dropLoot(const ContainerPtr& corpse, const CreaturePtr& lastHitCreature);
 
 		void onThink(uint32_t interval) override;
 		void setNormalCreatureLight() override;
@@ -140,8 +140,6 @@ class Monster final : public Creature
 
 		std::string name;
 		std::string nameDescription;
-
-		ItemPtr getCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr& mostDamageCreature) override;
 
 		MonsterType* mType;
 		Spawn* spawn = nullptr;
@@ -221,8 +219,6 @@ class Monster final : public Creature
 		void onThinkTarget(uint32_t interval);
 		void onThinkYell(uint32_t interval);
 		void onThinkDefense(uint32_t interval);
-
-		void dropLoot(const ContainerPtr& corpse, const CreaturePtr& lastHitCreature) override;
 		void getPathSearchParams(const CreatureConstPtr& creature, FindPathParams& fpp) const override;
 
 		friend class LuaScriptInterface;

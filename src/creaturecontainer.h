@@ -31,16 +31,16 @@ class CreatureContainer final
         [[nodiscard]] CreaturePtr getTopVisibleCreature(const CreaturePtr& creature) const;
         [[nodiscard]] CreatureConstPtr getBottomVisibleCreature(const CreatureConstPtr& creature) const;
 
-        [[nodiscard]] ReturnValue queryAdd(PlayerPtr player, uint32_t flags) const;
-        [[nodiscard]] ReturnValue queryAdd(MonsterPtr monster, uint32_t flags) const;
-        [[nodiscard]] ReturnValue queryAdd(NpcPtr npc, uint32_t flags) const;
+        [[nodiscard]] ReturnValue canEnter(const PlayerPtr& player, uint32_t flags) const;
+        [[nodiscard]] ReturnValue canEnter(const MonsterPtr& monster, uint32_t flags) const;
+        [[nodiscard]] ReturnValue canEnter(const NpcPtr& npc, uint32_t flags) const;
 
         void addCreature(const CreaturePtr& creature);
-        void internalAddCreature(const CreaturePtr& creature);
+        void addCreatureSilently(const CreaturePtr& creature);
         void removeCreature(const CreaturePtr& creature);
 
     private:
-        std::optional<ReturnValue> queryAddRestrictions(uint32_t flags) const;
+        std::optional<ReturnValue> checkEntryRestrictions(uint32_t flags) const;
 
         CreatureVector creatureList;
         TileWeakPtr owner;

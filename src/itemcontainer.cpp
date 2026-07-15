@@ -6,8 +6,10 @@
 #include "itemcontainer.h"
 #include "iomap.h"
 #include "game.h"
+#include "movement.h"
 
 extern Game g_game;
+extern MoveEvents* g_moveEvents;
 
 using BlackTek::Containers::ContainerConfig;
 using BlackTek::Containers::ContainerProperty;
@@ -121,15 +123,15 @@ bool ItemContainer::hasParent() const noexcept
 	}
 
 	auto realParent = getParent();
-	return ownerItem->getID() != ITEM_BROWSEFIELD and not (realParent and realParent->getCylinderSubType() == CylinderSubType::Player);
+	return ownerItem->getID() != ITEM_BROWSEFIELD and not realParent.player;
 }
 
-CylinderPtr ItemContainer::getParent() const
+BlackTek::ItemLocation ItemContainer::getParent() const
 {
 	auto current = getOwner();
 
 	if (not current)
-		return nullptr;
+		return {};
 
 	while (auto currentContainer = current->getContainer())
 	{
@@ -144,7 +146,7 @@ CylinderPtr ItemContainer::getParent() const
 		current = next;
 	}
 
-	return current->getParent();
+	return current->getLocation();
 }
 
 void ItemContainer::addItem(const ItemPtr& item)
@@ -234,8 +236,7 @@ bool ItemContainer::isGenuinelyPlaced(const ItemPtr& ownerItem) const
 	if (ownerItem->getContainerParent())
 		return true;
 
-	auto realParent = ownerItem->getParent();
-	return realParent and realParent != VirtualCylinder::virtualCylinder;
+	return static_cast<bool>(ownerItem->getLocation());
 }
 
 std::string ItemContainer::getContentDescription() const
@@ -382,30 +383,28 @@ void ItemContainer::onRemoveContainerItem(const ItemPtr& ownerItem, uint32_t ind
 	}
 }
 
-ReturnValue ItemContainer::queryAdd(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor/* = nullptr*/)
+ReturnValue ItemContainer::canAddItem(int32_t index, const ItemPtr& item, uint32_t count, uint32_t flags, CreaturePtr actor/* = nullptr*/)
 {
 	if (config.Has(ContainerProperty::NeverAcceptsDirectInsert))
 		return RETURNVALUE_NOTENOUGHROOM;
 
 	if (config.Has(ContainerProperty::RequiresNoLimitFlagToAccept))
-		return queryAddInbox(thing, flags);
+		return canAddItemInbox(item, flags);
 
 	if (config.Has(ContainerProperty::RejectsPlayerInitiatedInserts))
 		return actor ? RETURNVALUE_NOTPOSSIBLE : RETURNVALUE_NOERROR;
 
 	if (config.Has(ContainerProperty::RequiresStoreItem))
-		return queryAddStoreInbox(thing, flags);
+		return canAddItemStoreInbox(item, flags);
 
 	if (config.Has(ContainerProperty::EnforcesItemCountLimit))
-		return queryAddDepotChest(index, thing, count, flags, actor);
+		return canAddItemDepotChest(index, item, count, flags, actor);
 
-	return queryAddGeneric(index, thing, count, flags, actor);
+	return canAddItemStandard(index, item, count, flags, actor);
 }
 
-ReturnValue ItemContainer::queryAddDepotChest(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor)
+ReturnValue ItemContainer::canAddItemDepotChest(int32_t index, const ItemPtr& item, uint32_t count, uint32_t flags, CreaturePtr actor)
 {
-	auto item = thing->getItem();
-
 	if (item == nullptr)
 		return RETURNVALUE_NOTPOSSIBLE;
 
@@ -418,7 +417,19 @@ ReturnValue ItemContainer::queryAddDepotChest(int32_t index, const ThingPtr& thi
 		if ((item->isStackable() and item->getItemCount() != count))
 			addCount = 1;
 
-		if (item->getTopParent().get() != getOwner().get())
+		bool sameOwnerChain = false;
+
+		if (auto topOfChain = item->getContainerParent())
+		{
+			while (auto owner = topOfChain->getContainerParent())
+			{
+				topOfChain = owner;
+			}
+
+			sameOwnerChain = (topOfChain == getOwner());
+		}
+
+		if (not sameOwnerChain)
 		{
 			if (const auto container = item->getContainer())
 				addCount = container->getItemHoldingCount() + 1;
@@ -430,38 +441,34 @@ ReturnValue ItemContainer::queryAddDepotChest(int32_t index, const ThingPtr& thi
 			return RETURNVALUE_DEPOTISFULL;
 	}
 
-	return queryAddGeneric(index, thing, count, flags, actor);
+	return canAddItemStandard(index, item, count, flags, actor);
 }
 
-ReturnValue ItemContainer::queryAddValidateItem(const ThingPtr& thing, ItemPtr& outItem) const
+ReturnValue ItemContainer::validateAddItem(const ItemPtr& item) const
 {
-	outItem = thing->getItem();
-
-	if (not outItem)
+	if (not item)
 		return RETURNVALUE_NOTPOSSIBLE;
 
-	if (outItem == getOwner())
+	if (item == getOwner())
 		return RETURNVALUE_THISISIMPOSSIBLE;
 
-	if (not outItem->isPickupable())
+	if (not item->isPickupable())
 		return RETURNVALUE_CANNOTPICKUP;
 
 	return RETURNVALUE_NOERROR;
 }
 
-ReturnValue ItemContainer::queryAddInbox(const ThingPtr& thing, uint32_t flags) const
+ReturnValue ItemContainer::canAddItemInbox(const ItemPtr& item, uint32_t flags) const
 {
 	if (not hasBitSet(FLAG_NOLIMIT, flags))
 		return RETURNVALUE_CONTAINERNOTENOUGHROOM;
 
-	ItemPtr item;
-	return queryAddValidateItem(thing, item);
+	return validateAddItem(item);
 }
 
-ReturnValue ItemContainer::queryAddStoreInbox(const ThingPtr& thing, uint32_t flags) const
+ReturnValue ItemContainer::canAddItemStoreInbox(const ItemPtr& item, uint32_t flags) const
 {
-	ItemPtr item;
-	if (auto ret = queryAddValidateItem(thing, item); ret != RETURNVALUE_NOERROR)
+	if (auto ret = validateAddItem(item); ret != RETURNVALUE_NOERROR)
 		return ret;
 
 	if (not hasBitSet(FLAG_NOLIMIT, flags))
@@ -476,7 +483,7 @@ ReturnValue ItemContainer::queryAddStoreInbox(const ThingPtr& thing, uint32_t fl
 	return RETURNVALUE_NOERROR;
 }
 
-ReturnValue ItemContainer::queryAddGeneric(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor)
+ReturnValue ItemContainer::canAddItemStandard(int32_t index, const ItemPtr& item, uint32_t count, uint32_t flags, CreaturePtr actor)
 {
 	bool childIsOwner = hasBitSet(FLAG_CHILDISOWNER, flags);
 
@@ -489,7 +496,6 @@ ReturnValue ItemContainer::queryAddGeneric(int32_t index, const ThingPtr& thing,
 		return RETURNVALUE_NOTPOSSIBLE;
 
 	const auto ownerItem = getOwner();
-	const auto item = thing->getItem();
 
 	if (item == nullptr)
 		return RETURNVALUE_NOTPOSSIBLE;
@@ -507,19 +513,19 @@ ReturnValue ItemContainer::queryAddGeneric(int32_t index, const ThingPtr& thing,
 		return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
 
 	ItemPtr ancestorItem = ownerItem->getContainerParent();
-	CylinderPtr ancestorCylinder = ancestorItem ? nullptr : ownerItem->getParent();
+	BlackTek::ItemLocation ancestorLocation = ancestorItem ? BlackTek::ItemLocation{} : ownerItem->getLocation();
 
-	auto advanceAncestor = [&ancestorItem, &ancestorCylinder]()
+	auto advanceAncestor = [&ancestorItem, &ancestorLocation]()
 	{
 		if (ancestorItem)
 		{
 			auto next = ancestorItem->getContainerParent();
-			ancestorCylinder = next ? nullptr : ancestorItem->getParent();
+			ancestorLocation = next ? BlackTek::ItemLocation{} : ancestorItem->getLocation();
 			ancestorItem = next;
 		}
-		else if (ancestorCylinder)
+		else if (ancestorLocation)
 		{
-			ancestorCylinder = ancestorCylinder->getParent();
+			ancestorLocation = {};
 		}
 	};
 
@@ -539,16 +545,16 @@ ReturnValue ItemContainer::queryAddGeneric(int32_t index, const ThingPtr& thing,
 		return ret;
 	}
 
-	auto atEnd = [&ancestorItem, &ancestorCylinder]()
+	auto atEnd = [&ancestorItem, &ancestorLocation]()
 	{
-		return not ancestorItem and not ancestorCylinder;
+		return not ancestorItem and not ancestorLocation;
 	};
 
 	if (not hasBitSet(FLAG_NOLIMIT, flags))
 	{
 		while (not atEnd())
 		{
-			if ((ancestorItem and ancestorItem == thing) or (ancestorCylinder and ancestorCylinder == thing))
+			if (ancestorItem and ancestorItem == item)
 				return RETURNVALUE_THISISIMPOSSIBLE;
 
 			auto currentContainer = ancestorItem ? ancestorItem->getContainer() : nullptr;
@@ -558,59 +564,76 @@ ReturnValue ItemContainer::queryAddGeneric(int32_t index, const ThingPtr& thing,
 			advanceAncestor();
 		}
 
-		if (index == INDEX_WHEREEVER and size() >= capacity() and not hasPagination())
+		if (index == INDEX_ANYWHERE and size() >= capacity() and not hasPagination())
 			return RETURNVALUE_CONTAINERNOTENOUGHROOM;
 	}
 	else
 	{
 		while (not atEnd())
 		{
-			if ((ancestorItem and ancestorItem == thing) or (ancestorCylinder and ancestorCylinder == thing))
+			if (ancestorItem and ancestorItem == item)
 				return RETURNVALUE_THISISIMPOSSIBLE;
 
 			advanceAncestor();
 		}
 	}
 
-	const auto topParent = ownerItem->getTopParent();
+	ItemPtr topContainerItem = ownerItem;
+
+	while (auto containerOwner = topContainerItem->getContainerParent())
+	{
+		topContainerItem = containerOwner;
+	}
+
+	const bool nested = (topContainerItem != ownerItem);
 
 	if (actor and g_config.GetBoolean(ConfigManager::ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS))
 	{
-		if (topParent->getTile()->isHouseTile())
+		if (topContainerItem->getTile()->isHouseTile())
 		{
-			const auto topCylinder = topParent->getCylinder();
-			const bool topParentIsPlayer = topCylinder and topCylinder->getCylinderSubType() == CylinderSubType::Player;
-			if (not topParentIsPlayer and not topParent->getTile()->getHouse()->isInvited(actor->getPlayer()))
+			const bool topParentIsPlayer = (not nested) and static_cast<bool>(topContainerItem->getLocation().player);
+			if (not topParentIsPlayer and not topContainerItem->getTile()->getHouse()->isInvited(actor->getPlayer()))
 				return RETURNVALUE_PLAYERISNOTINVITED;
 		}
 	}
 
-	if (topParent.get() != ownerItem.get())
+	if (nested)
 	{
-		if (auto topContainer = topParent->getContainer())
-			return topContainer->queryAdd(INDEX_WHEREEVER, item, count, flags | FLAG_CHILDISOWNER, actor);
-
-		if (auto topCylinder = topParent->getCylinder())
-			return topCylinder->queryAdd(INDEX_WHEREEVER, item, count, flags | FLAG_CHILDISOWNER, actor);
+		if (auto topContainer = topContainerItem->getContainer())
+			return topContainer->canAddItem(INDEX_ANYWHERE, item, count, flags | FLAG_CHILDISOWNER, actor);
 
 		return RETURNVALUE_NOERROR;
 	}
+
+	const auto topLocation = topContainerItem->getLocation();
+
+	if (topLocation.player)
+	{
+		ReturnValue ret = topLocation.player->canAddItem(INDEX_ANYWHERE, item, count, flags | FLAG_CHILDISOWNER, actor);
+
+		if (ret == RETURNVALUE_NOERROR)
+			ret = g_moveEvents->onPlayerEquip(topLocation.player, item, static_cast<slots_t>(INDEX_ANYWHERE), true);
+
+		return ret;
+	}
+
+	if (topLocation.tile)
+		return topLocation.tile->canAddItem(item, flags | FLAG_CHILDISOWNER, actor);
+
 	return RETURNVALUE_NOERROR;
 }
 
-ReturnValue ItemContainer::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t& maxQueryCount, uint32_t flags)
+ReturnValue ItemContainer::checkAddCapacity(int32_t index, const ItemPtr& item, uint32_t count, uint32_t& acceptedCount, uint32_t flags)
 {
-	auto item = thing->getItem();
-
 	if (item == nullptr)
 	{
-		maxQueryCount = 0;
+		acceptedCount = 0;
 		return RETURNVALUE_NOTPOSSIBLE;
 	}
 
 	if (hasBitSet(FLAG_NOLIMIT, flags) or hasPagination())
 	{
-		maxQueryCount = std::max<uint32_t>(1, count);
+		acceptedCount = std::max<uint32_t>(1, count);
 		return RETURNVALUE_NOERROR;
 	}
 
@@ -620,7 +643,7 @@ ReturnValue ItemContainer::queryMaxCount(int32_t index, const ThingPtr& thing, u
 	{
 		uint32_t n = 0;
 
-		if (index == INDEX_WHEREEVER)
+		if (index == INDEX_ANYWHERE)
 		{
 			uint32_t slotIndex = 0;
 
@@ -628,7 +651,7 @@ ReturnValue ItemContainer::queryMaxCount(int32_t index, const ThingPtr& thing, u
 			{
 				if (containerItem != item and containerItem->equals(item) and containerItem->getItemCount() < 100)
 				{
-					if (queryAdd(slotIndex++, item, count, flags) == RETURNVALUE_NOERROR)
+					if (canAddItem(slotIndex++, item, count, flags) == RETURNVALUE_NOERROR)
 						n += 100 - containerItem->getItemCount();
 				}
 			}
@@ -639,34 +662,32 @@ ReturnValue ItemContainer::queryMaxCount(int32_t index, const ThingPtr& thing, u
 
 			if (item->equals(destItem) and destItem->getItemCount() < 100)
 			{
-				if (queryAdd(index, item, count, flags) == RETURNVALUE_NOERROR)
+				if (canAddItem(index, item, count, flags) == RETURNVALUE_NOERROR)
 					n = 100 - destItem->getItemCount();
 			}
 		}
 
-		maxQueryCount = freeSlots * 100 + n;
+		acceptedCount = freeSlots * 100 + n;
 
-		if (maxQueryCount < count)
+		if (acceptedCount < count)
 			return RETURNVALUE_CONTAINERNOTENOUGHROOM;
 	}
 	else
 	{
-		maxQueryCount = freeSlots;
+		acceptedCount = freeSlots;
 
-		if (maxQueryCount == 0)
+		if (acceptedCount == 0)
 			return RETURNVALUE_CONTAINERNOTENOUGHROOM;
 	}
 	return RETURNVALUE_NOERROR;
 }
 
-ReturnValue ItemContainer::queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor /*= nullptr */)
+ReturnValue ItemContainer::canRemoveItem(const ItemPtr& item, uint32_t count, uint32_t flags, CreaturePtr actor /*= nullptr */)
 {
-	int32_t index = getThingIndex(thing);
+	int32_t index = getItemIndex(item);
 
 	if (index == -1)
 		return RETURNVALUE_NOTPOSSIBLE;
-
-	const auto item = thing->getItem();
 
 	if (item == nullptr)
 		return RETURNVALUE_NOTPOSSIBLE;
@@ -681,13 +702,17 @@ ReturnValue ItemContainer::queryRemove(const ThingPtr& thing, uint32_t count, ui
 	{
 		if (auto ground_tile = item->getTile(); ground_tile and ground_tile->isHouseTile())
 		{
-			const auto topParent = item->getTopParent();
-
 			if (const auto player = actor->getPlayer())
 			{
-				const auto topCylinder = topParent ? topParent->getCylinder() : nullptr;
-				const bool topParentIsPlayer = topCylinder and topCylinder->getCylinderSubType() == CylinderSubType::Player;
-				if (not topParent or (not topParentIsPlayer and not ground_tile->getHouse()->isInvited(player)))
+				ItemPtr topContainerItem = item;
+				while (auto containerOwner = topContainerItem->getContainerParent())
+				{
+					topContainerItem = containerOwner;
+				}
+
+				const bool nested = (topContainerItem != item);
+				const bool topParentIsPlayer = (not nested) and static_cast<bool>(topContainerItem->getLocation().player);
+				if (not topParentIsPlayer and not ground_tile->getHouse()->isInvited(player))
 					return RETURNVALUE_PLAYERISNOTINVITED;
 			}
 		}
@@ -696,46 +721,41 @@ ReturnValue ItemContainer::queryRemove(const ThingPtr& thing, uint32_t count, ui
 	return RETURNVALUE_NOERROR;
 }
 
-ThingPtr ItemContainer::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags)
+BlackTek::ItemLocation ItemContainer::resolveItemDestination(int32_t& index, const ItemPtr& item, ItemPtr& destItem, uint32_t& flags)
 {
 	auto ownerItem = getOwner();
 
 	if (not unlocked)
-		return ownerItem;
+		return { .containerItem = ownerItem };
 
 	if (index == 254 /*move up*/)
 	{
-		index = INDEX_WHEREEVER;
+		index = INDEX_ANYWHERE;
 
 		if (config.Has(ContainerProperty::SkipsOwnNodeInChain))
-			return ownerItem;
+			return { .containerItem = ownerItem };
 
-		if (auto parentContainerItem = ownerItem->getContainerParent())
-			return parentContainerItem;
+		if (auto parentLocation = ownerItem->getLocation())
+			return parentLocation;
 
-		if (auto realParent = ownerItem->getParent())
-			return realParent;
-
-		return ownerItem;
+		return { .containerItem = ownerItem };
 	}
 
 	if (index == 255 /*add wherever*/ or index >= static_cast<int32_t>(capacity()))
-		index = INDEX_WHEREEVER;
-
-	ItemPtr item = thing ? thing->getItem() : nullptr;
+		index = INDEX_ANYWHERE;
 
 	if (not item)
-		return ownerItem;
+		return { .containerItem = ownerItem };
 
-	if (index != INDEX_WHEREEVER)
+	if (index != INDEX_ANYWHERE)
 	{
 		if (auto itemFromIndex = getItemByIndex(index))
 			destItem = itemFromIndex;
 
 		if (destItem and destItem->getContainer())
 		{
-			index = INDEX_WHEREEVER;
-			return destItem;
+			index = INDEX_ANYWHERE;
+			return { .containerItem = destItem };
 		}
 	}
 
@@ -744,7 +764,7 @@ ThingPtr ItemContainer::queryDestination(int32_t& index, const ThingPtr& thing, 
 	if (autoStack and item->isStackable() and item->getContainerParent() != ownerItem)
 	{
 		if (destItem and destItem->equals(item) and destItem->getItemCount() < 100)
-			return ownerItem;
+			return { .containerItem = ownerItem };
 
 		uint32_t n = 0;
 
@@ -754,26 +774,19 @@ ThingPtr ItemContainer::queryDestination(int32_t& index, const ThingPtr& thing, 
 			{
 				destItem = listItem;
 				index = n;
-				return ownerItem;
+				return { .containerItem = ownerItem };
 			}
 			++n;
 		}
 	}
-	return ownerItem;
+	return { .containerItem = ownerItem };
 }
 
 
-void ItemContainer::addThing(ThingPtr thing)
-{
-	return addThing(0, thing);
-}
-
-void ItemContainer::addThing(int32_t index, ThingPtr thing)
+void ItemContainer::addItemAt(int32_t index, const ItemPtr& item)
 {
 	if (index >= static_cast<int32_t>(capacity()))
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
-
-	ItemPtr item = thing->getItem();
 
 	if (item == nullptr)
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
@@ -786,7 +799,10 @@ void ItemContainer::addThing(int32_t index, ThingPtr thing)
 	ammoCount += item->getItemCount();
 
 	if (isGenuinelyPlaced(ownerItem))
-		onAddContainerItem(ownerItem, item);
+	{
+		ItemPtr addedItem = item;
+		onAddContainerItem(ownerItem, addedItem);
+	}
 }
 
 void ItemContainer::addItemBack(ItemPtr& item)
@@ -800,14 +816,12 @@ void ItemContainer::addItemBack(ItemPtr& item)
 		onAddContainerItem(ownerItem, item);
 }
 
-void ItemContainer::updateThing(ThingPtr thing, uint16_t itemId, uint32_t count)
+void ItemContainer::updateItem(const ItemPtr& item, uint16_t itemId, uint32_t count)
 {
-	int32_t index = getThingIndex(thing);
+	int32_t index = getItemIndex(item);
 
 	if (index == -1)
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
-
-	const auto item = thing->getItem();
 
 	if (item == nullptr)
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
@@ -825,10 +839,8 @@ void ItemContainer::updateThing(ThingPtr thing, uint16_t itemId, uint32_t count)
 		onUpdateContainerItem(ownerItem, index, item, item);
 }
 
-void ItemContainer::replaceThing(uint32_t index, ThingPtr thing)
+void ItemContainer::replaceItem(uint32_t index, const ItemPtr& item)
 {
-	const auto item = thing->getItem();
-
 	if (not item)
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
 
@@ -851,15 +863,14 @@ void ItemContainer::replaceThing(uint32_t index, ThingPtr thing)
 	replacedItem->clearParent();
 }
 
-void ItemContainer::removeThing(ThingPtr thing, uint32_t count)
+void ItemContainer::removeItem(const ItemPtr& item, uint32_t count)
 {
-	auto item = thing->getItem();
 	if (item == nullptr)
 	{
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
 	}
 
-	int32_t index = getThingIndex(thing);
+	int32_t index = getItemIndex(item);
 	if (index == -1)
 	{
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
@@ -891,13 +902,13 @@ void ItemContainer::removeThing(ThingPtr thing, uint32_t count)
 	}
 }
 
-int32_t ItemContainer::getThingIndex(ThingPtr thing)
+int32_t ItemContainer::getItemIndex(const ItemConstPtr& item) const
 {
 	int32_t index = 0;
 
-	for (const auto& item : itemlist)
+	for (const auto& listItem : itemlist)
 	{
-		if (item == thing)
+		if (listItem == item)
 			return index;
 
 		++index;
@@ -935,106 +946,128 @@ gtl::btree_map<uint32_t, uint32_t>& ItemContainer::getAllItemTypeCount(gtl::btre
 	return countMap;
 }
 
-ThingPtr ItemContainer::getThing(size_t index)
-{
-	return getItemByIndex(index);
-}
-
-void ItemContainer::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t index, cylinderlink_t)
+void ItemContainer::notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, NotifyLink)
 {
 	if (config.Has(ContainerProperty::NotifiesViaOwnerParent))
 	{
-		if (auto realParent = getOwner()->getParent())
-		{
-			auto link = config.Has(ContainerProperty::NotifyLinkIsTopParent) ? LINK_TOPPARENT : LINK_PARENT;
-			realParent->postAddNotification(thing, oldParent, index, link);
-		}
+		auto realParent = getOwner()->getLocation();
+		auto link = config.Has(ContainerProperty::NotifyLinkIsTopParent) ? LINK_TOPPARENT : LINK_PARENT;
+
+		if (realParent.tile)
+			realParent.tile->notifyItemAdded(item, oldLocation, index, link);
+		else if (realParent.player)
+			realParent.player->notifyItemAdded(item, oldLocation, index, link);
+
 		return;
 	}
 
 	if (config.Has(ContainerProperty::NotifiesViaParentWalk))
 	{
-		if (auto realParent = getParent())
-			realParent->postAddNotification(thing, oldParent, index, LINK_PARENT);
+		auto realParent = getParent();
+
+		if (realParent.tile)
+			realParent.tile->notifyItemAdded(item, oldLocation, index, LINK_PARENT);
+		else if (realParent.player)
+			realParent.player->notifyItemAdded(item, oldLocation, index, LINK_PARENT);
 
 		return;
 	}
 
-	postAddNotificationDefault(thing, oldParent, index);
+	notifyItemAddedDefault(item, oldLocation, index);
 }
 
-void ItemContainer::postAddNotificationDefault(ThingPtr thing, CylinderPtr oldParent, int32_t index)
+void ItemContainer::notifyItemAddedDefault(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index)
 {
 	auto ownerItem = getOwner();
 
 	if (not ownerItem)
 		return;
 
-	auto topParent = ownerItem->getTopParent();
+	ItemPtr topContainerItem = ownerItem;
 
-	if (auto outerContainer = topParent->getContainer())
+	while (auto containerOwner = topContainerItem->getContainerParent())
 	{
-		outerContainer->postAddNotification(thing, oldParent, index, LINK_PARENT);
+		topContainerItem = containerOwner;
 	}
-	else if (auto realParent = topParent->getCylinder())
+
+	if (topContainerItem != ownerItem)
 	{
-		auto link = realParent->getCylinderSubType() == CylinderSubType::Player ? LINK_TOPPARENT : LINK_NEAR;
-		realParent->postAddNotification(thing, oldParent, index, link);
+		if (auto outerContainer = topContainerItem->getContainer())
+			outerContainer->notifyItemAdded(item, oldLocation, index, LINK_PARENT);
+
+		return;
 	}
+
+	const auto topLocation = topContainerItem->getLocation();
+
+	if (topLocation.player)
+		topLocation.player->notifyItemAdded(item, oldLocation, index, LINK_TOPPARENT);
+	else if (topLocation.tile)
+		topLocation.tile->notifyItemAdded(item, oldLocation, index, LINK_NEAR);
 }
 
-void ItemContainer::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t index, cylinderlink_t)
+void ItemContainer::notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, NotifyLink)
 {
 	if (config.Has(ContainerProperty::NotifiesViaOwnerParent))
 	{
-		if (auto realParent = getOwner()->getParent())
-		{
-			auto link = config.Has(ContainerProperty::NotifyLinkIsTopParent) ? LINK_TOPPARENT : LINK_PARENT;
-			realParent->postRemoveNotification(thing, newParent, index, link);
-		}
+		auto realParent = getOwner()->getLocation();
+		auto link = config.Has(ContainerProperty::NotifyLinkIsTopParent) ? LINK_TOPPARENT : LINK_PARENT;
+
+		if (realParent.tile)
+			realParent.tile->notifyItemRemoved(item, newLocation, index, link);
+		else if (realParent.player)
+			realParent.player->notifyItemRemoved(item, newLocation, index, link);
+
 		return;
 	}
 
 	if (config.Has(ContainerProperty::NotifiesViaParentWalk))
 	{
-		if (auto realParent = getParent())
-			realParent->postRemoveNotification(thing, newParent, index, LINK_PARENT);
+		auto realParent = getParent();
+
+		if (realParent.tile)
+			realParent.tile->notifyItemRemoved(item, newLocation, index, LINK_PARENT);
+		else if (realParent.player)
+			realParent.player->notifyItemRemoved(item, newLocation, index, LINK_PARENT);
 
 		return;
 	}
 
-	postRemoveNotificationDefault(thing, newParent, index);
+	notifyItemRemovedDefault(item, newLocation, index);
 }
 
-void ItemContainer::postRemoveNotificationDefault(ThingPtr thing, CylinderPtr newParent, int32_t index)
+void ItemContainer::notifyItemRemovedDefault(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index)
 {
 	auto ownerItem = getOwner();
 
 	if (not ownerItem)
 		return;
 
-	auto topParent = ownerItem->getTopParent();
+	ItemPtr topContainerItem = ownerItem;
 
-	if (auto outerContainer = topParent->getContainer())
+	while (auto containerOwner = topContainerItem->getContainerParent())
 	{
-		outerContainer->postRemoveNotification(thing, newParent, index, LINK_PARENT);
+		topContainerItem = containerOwner;
 	}
-	else if (auto realParent = topParent->getCylinder())
+
+	if (topContainerItem != ownerItem)
 	{
-		auto link = realParent->getCylinderSubType() == CylinderSubType::Player ? LINK_TOPPARENT : LINK_NEAR;
-		realParent->postRemoveNotification(thing, newParent, index, link);
+		if (auto outerContainer = topContainerItem->getContainer())
+			outerContainer->notifyItemRemoved(item, newLocation, index, LINK_PARENT);
+
+		return;
 	}
+
+	const auto topLocation = topContainerItem->getLocation();
+
+	if (topLocation.player)
+		topLocation.player->notifyItemRemoved(item, newLocation, index, LINK_TOPPARENT);
+	else if (topLocation.tile)
+		topLocation.tile->notifyItemRemoved(item, newLocation, index, LINK_NEAR);
 }
 
-void ItemContainer::internalAddThing(ThingPtr thing)
+void ItemContainer::addItemSilently(const ItemPtr& item)
 {
-	internalAddThing(0, thing);
-}
-
-void ItemContainer::internalAddThing(uint32_t, ThingPtr thing)
-{
-	auto item = thing->getItem();
-
 	if (item == nullptr)
 	{
 		return;

@@ -3,7 +3,6 @@
 
 #include "otpch.h"
 #include "iomap.h"
-#include "bed.h"
 #include "console.h"
 #include <fmt/format.h>
 
@@ -37,7 +36,7 @@ TilePtr IOMap::createTile(std::pmr::polymorphic_allocator<Tile>& allocator, Item
 		return std::allocate_shared<Tile>(allocator, x, y, z);
 
 	auto tile = std::allocate_shared<Tile>(allocator, x, y, z);
-	tile->internalAddThing(ground);
+	tile->addItemSilently(ground);
 	ground->startDecaying();
 	return tile;
 }
@@ -345,7 +344,7 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 
 						if (tile)
 						{
-							tile->internalAddThing(item);
+							tile->addItemSilently(item);
 							item->startDecaying();
 							item->setLoadedFromMap(true);
 						}
@@ -356,7 +355,7 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 						else
 						{
                             tile = createTile(allocator, ground_item, x, y, z);
-							tile->internalAddThing(item);
+							tile->addItemSilently(item);
 							item->startDecaying();
 							item->setLoadedFromMap(true);
 						}
@@ -411,7 +410,7 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 
 				if (tile)
 				{
-					tile->internalAddThing(item);
+					tile->addItemSilently(item);
 					item->startDecaying();
 					item->setLoadedFromMap(true);
 				}
@@ -422,7 +421,7 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 				else
 				{
 					tile = createTile(allocator, ground_item, x, y, z);
-					tile->internalAddThing(item);
+					tile->addItemSilently(item);
 					item->startDecaying();
 					item->setLoadedFromMap(true);
 				}

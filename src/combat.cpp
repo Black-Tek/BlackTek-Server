@@ -1377,8 +1377,7 @@ namespace BlackTek
 
 				item->setOwner(casterID);
 
-				CylinderPtr holder = tile;
-				ReturnValue return_value = g_game.internalAddItem(holder, item);
+				ReturnValue return_value = g_game.internalAddItem({ .tile = tile }, item);
 				auto decay = (return_value == RETURNVALUE_NOERROR) and item->canDecay();
 
 				if (decay) [[likely]]
@@ -4616,12 +4615,11 @@ namespace BlackTek
 		if (notice.fluid != FLUID_NONE)
 		{
 			TilePtr tile		= g_game.map.getTile(defender_position);
-			CylinderPtr c_tile	= tile;
 			auto fluid			= Item::CreateItem(ITEM_SMALLSPLASH, notice.fluid);
 
 			if (fluid) [[likely]]
 			{
-				g_game.internalAddItem(c_tile, fluid, INDEX_WHEREEVER, FLAG_NOLIMIT);
+				g_game.internalAddItem({ .tile = tile }, fluid, INDEX_ANYWHERE, FLAG_NOLIMIT);
 				g_game.startDecay(fluid);
 			}
 		}
@@ -4714,7 +4712,8 @@ namespace BlackTek
 	}
 }
 
-void BlackTek::MagicField::onStepInField(const CreaturePtr& creature)
+
+void Item::onStepInField(const CreaturePtr& creature)
 {
 	//remove magic walls/wild growth
 	if (id == ITEM_MAGICWALL or id == ITEM_WILDGROWTH or id == ITEM_MAGICWALL_SAFE or id == ITEM_WILDGROWTH_SAFE or isBlocking())
@@ -4761,14 +4760,14 @@ void BlackTek::MagicField::onStepInField(const CreaturePtr& creature)
 			{
 				if (const auto& attackerPlayer = g_game.getPlayerByID(ownerId))
 				{
-					if (Combat::isProtected(attackerPlayer, targetPlayer))
+					if (BlackTek::Combat::isProtected(attackerPlayer, targetPlayer))
 					{
 						harmfulField = false;
 					}
 				}
 			}
 
-			if (not harmfulField or (OTSYS_TIME() - createTime <= 5000) or creature->hasBeenAttacked(ownerId))
+			if (not harmfulField or (OTSYS_TIME() - magicFieldCreateTime <= 5000) or creature->hasBeenAttacked(ownerId))
 			{
 				conditionCopy->setParam(CONDITION_PARAM_OWNER, ownerId);
 			}

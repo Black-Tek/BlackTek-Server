@@ -504,8 +504,6 @@ void Weapon::onUsedWeapon(const PlayerPtr& player, const ItemPtr& item, const Ti
 		return;
 	}
 
-	ThingPtr f_holder = item->getImmediateParent();
-	CylinderPtr t_holder = destTile->getTile();
 	switch (action) {
 		case WEAPONACTION_REMOVECOUNT:
 			if (g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_AMMO)) {
@@ -522,7 +520,7 @@ void Weapon::onUsedWeapon(const PlayerPtr& player, const ItemPtr& item, const Ti
 		}
 
 		case WEAPONACTION_MOVE:
-			g_game.internalMoveItem(f_holder, t_holder, INDEX_WHEREEVER, item, 1, std::nullopt, FLAG_NOLIMIT);
+			g_game.internalMoveItem(item->getLocation(), { .tile = destTile }, INDEX_ANYWHERE, item, 1, std::nullopt, FLAG_NOLIMIT);
 			break;
 
 		default:

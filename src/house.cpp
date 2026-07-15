@@ -10,7 +10,6 @@
 #include "game.h"
 #include "creaturecontainer.h"
 #include "configmanager.h"
-#include "bed.h"
 
 #include <fmt/format.h>
 
@@ -240,7 +239,7 @@ bool House::transferToDepot(const PlayerPtr& player) const
 	
 	ItemPtr inbox = player->getInbox()->getOwner();
 	for (const auto item : moveItemList) {
-		g_game.internalMoveItem(item->getImmediateParent(), inbox, INDEX_WHEREEVER, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT);
+		g_game.internalMoveItem(item->getLocation(), { .containerItem = inbox }, INDEX_ANYWHERE, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT);
 	}
 	return true;
 }
@@ -328,8 +327,8 @@ HouseTransferItemPtr House::getTransferItem()
 		return nullptr;
 	}
 
-	transferItem = HouseTransferItem::createHouseTransferItem(this);
-	transferContainerItem->getContainer()->addThing(transferItem);
+	transferItem = Item::createHouseTransferItem(this);
+	transferContainerItem->getContainer()->addItemAt(0, transferItem);
 	return transferItem;
 }
 
@@ -338,32 +337,8 @@ void House::resetTransferItem()
 	if (transferItem) {
 		ItemPtr tmpItem = transferItem;
 		transferItem = nullptr;
-		transferContainerItem->getContainer()->removeThing(tmpItem, tmpItem->getItemCount());
+		transferContainerItem->getContainer()->removeItem(tmpItem, tmpItem->getItemCount());
 		// g_game.ReleaseItem(tmpItem);
-	}
-}
-
-HouseTransferItemPtr HouseTransferItem::createHouseTransferItem(House* house)
-{
-	HouseTransferItemPtr transferItem = std::make_shared<HouseTransferItem>(house);
-	transferItem->setID(ITEM_DOCUMENT_RO);
-	transferItem->setSubType(1);
-	transferItem->setSpecialDescription(fmt::format("It is a house transfer document for '{:s}'.", house->getName()));
-	return transferItem;
-}
-
-void HouseTransferItem::onTradeEvent(const TradeEvents_t event, const PlayerPtr& owner)
-{
-	if (event == ON_TRADE_TRANSFER) {
-		if (house) {
-			house->executeTransfer(static_cast<HouseTransferItemPtr>(this), owner);
-		}
-
-		g_game.internalRemoveItem(static_cast<ItemPtr>(this), 1);
-	} else if (event == ON_TRADE_CANCEL) {
-		if (house) {
-			house->resetTransferItem();
-		}
 	}
 }
 
@@ -489,80 +464,6 @@ bool AccessList::isInList(const PlayerConstPtr& player) const
 void AccessList::getList(std::string& list) const
 {
 	list = this->list;
-}
-
-Door::Door(const uint16_t type) : Item(type)
-{
-	thing_subtype = ThingSubType::Door;
-	item_subtype = ItemSubType::Door;
-}
-
-Attr_ReadValue Door::readAttr(const AttrTypes_t attr, PropStream& propStream)
-{
-	if (attr == ATTR_HOUSEDOORID) {
-		uint8_t doorId;
-		if (!propStream.read<uint8_t>(doorId)) {
-			return ATTR_READ_ERROR;
-		}
-
-		setDoorId(doorId);
-		return ATTR_READ_CONTINUE;
-	}
-	return Item::readAttr(attr, propStream);
-}
-
-void Door::setHouse(House* house)
-{
-	if (this->house != nullptr) {
-		return;
-	}
-
-	this->house = house;
-
-	if (!accessList) {
-		accessList.reset(new AccessList());
-	}
-}
-
-bool Door::canUse(const PlayerConstPtr& player) const
-{
-	if (!house) {
-		return true;
-	}
-
-	if (house->getHouseAccessLevel(player) >= HOUSE_SUBOWNER) {
-		return true;
-	}
-
-	return accessList->isInList(player);
-}
-
-void Door::setAccessList(const std::string_view textlist)
-{
-	if (!accessList) {
-		accessList.reset(new AccessList());
-	}
-
-	accessList->parseList(textlist);
-}
-
-bool Door::getAccessList(std::string& list) const
-{
-	if (!house) {
-		return false;
-	}
-
-	accessList->getList(list);
-	return true;
-}
-
-void Door::onRemoved()
-{
-	Item::onRemoved();
-
-	if (house) {
-		house->removeDoor(static_cast<DoorPtr>(this));
-	}
 }
 
 House* Houses::getHouseByPlayerId(const uint32_t playerId) const
@@ -703,7 +604,7 @@ void Houses::payHouses(const RentPeriod_t rentPeriod) const
 
 				letter->setText(fmt::format("Warning! \nThe {:s} rent of {:d} gold for your house \"{:s}\" is payable. Have it within {:d} days or you will lose this house.", period, house->getRent(), house->getName(), daysLeft));
 				ItemPtr inbox = player->getInbox()->getOwner();
-				g_game.internalAddItem(inbox, letter, INDEX_WHEREEVER, FLAG_NOLIMIT);
+				g_game.internalAddItem({ .containerItem = inbox }, letter, INDEX_ANYWHERE, FLAG_NOLIMIT);
 				house->setPayRentWarnings(house->getPayRentWarnings() + 1);
 			} else {
 				house->setOwner(0, true, player);

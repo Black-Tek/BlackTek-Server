@@ -5,10 +5,13 @@
 
 #include "declarations.h"
 
-struct StackposResolution
+namespace BlackTek
 {
-    CreaturePtr creature;
-    ItemPtr item;
+    struct GameModel
+    {
+        CreaturePtr creature;
+        ItemPtr item;
 
-    [[nodiscard]] explicit operator bool() const noexcept { return creature or item; }
-};
+        [[nodiscard]] explicit operator bool() const noexcept { return creature or item; }
+    };
+}

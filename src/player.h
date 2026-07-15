@@ -6,7 +6,7 @@
 
 #include "creature.h"
 #include "itemcontainer.h"
-#include "cylinder.h"
+#include "itemlocation.h"
 #include "outfit.h"
 #include "enums.h"
 #include "vocation.h"
@@ -147,7 +147,7 @@ namespace BlackTek
 	};
 }
 
-class Player final : public Creature, public Cylinder
+class Player final : public Creature
 {
 	public:
 		explicit Player(ProtocolGame_ptr protocol);
@@ -169,14 +169,6 @@ class Player final : public Creature, public Cylinder
 
 		std::string getDescription(int32_t lookDistance) override; // todo, fix overload restriction blocking this from being const
 
-		int32_t getThrowRange() const override { return Creature::getThrowRange(); }
-		bool isRemoved() const override { return Creature::isRemoved(); }
-		const Position& getPosition() const override { return Creature::getPosition(); }
-		TilePtr getTile() override { return Creature::getTile(); }
-		TileConstPtr getTile() const override { return Creature::getTile(); }
-		CreaturePtr getCreature() override { return Creature::getCreature(); }
-		CreatureConstPtr getCreature() const override { return Creature::getCreature(); }
-
 		const std::string&	getRegisteredName() const override { return getName(); }
 		const std::string&	getName() const override { return name; }
 		const std::string&	getNameDescription() const override { return name; }
@@ -193,12 +185,9 @@ class Player final : public Creature, public Cylinder
 		ItemPtr				getWeapon(slots_t slot, bool ignoreAmmo) const;
 		ItemPtr				getWeapon(bool ignoreAmmo = false) const;
 		ItemPtr				getWriteItem(uint32_t& windowTextId, uint16_t& maxWriteLen);
+		ItemPtr				getCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr& mostDamageCreature);
 		std::unique_ptr<BlackTek::AreaCombat> generateDeflectArea(std::optional<CreaturePtr> attacker, int32_t targetCount) const;
 
-		PlayerPtr			getPlayer() override				{ return static_shared_this<Player>(); }
-		PlayerConstPtr		getPlayer() const override			{ return static_shared_this<const Player>(); }
-		CylinderPtr			getCylinder() override final		{ return static_shared_this<Player>(); }
-		CylinderConstPtr	getCylinder() const override final	{ return static_shared_this<const Player>(); }
 		Guild_ptr			getGuild() const					{ return guild; }
 		GuildRank_ptr		getGuildRank() const				{ return guildRank; }
 		ContainerPtr		getInbox() const					{ return inbox; }
@@ -295,6 +284,7 @@ class Player final : public Creature, public Cylinder
 		{
 			if (hasFlag(PlayerFlag_CannotPickupItem))
 				return 0;
+
 			else if (hasFlag(PlayerFlag_HasInfiniteCapacity))
 				return std::numeric_limits<uint32_t>::max();
 
@@ -306,8 +296,10 @@ class Player final : public Creature, public Cylinder
 		{
 			if (hasFlag(PlayerFlag_CannotPickupItem))
 				return 0;
+
 			else if (hasFlag(PlayerFlag_HasInfiniteCapacity))
 				return std::numeric_limits<uint32_t>::max(); // this should be max - current
+			
 			else
 				return std::max<int32_t>(0, capacity - inventoryWeight);
 		}
@@ -454,7 +446,7 @@ class Player final : public Creature, public Cylinder
 		// todo make all these nodiscard
 		bool				isPremium() const;
 		bool				hasModalWindowOpen(uint32_t modalWindowId) const;
-		bool				isPushable() const override;
+		bool				isPushable() const;
 		bool				removeItemOfType(uint16_t itemId, uint32_t amount, int32_t subType, bool ignoreEquipped = false) const;
 		bool				canSee(const Position& pos) const override;
 		bool				canSeeCreature(const CreatureConstPtr& creature) const override;
@@ -630,11 +622,11 @@ class Player final : public Creature, public Cylinder
 		void onCloseContainer(ContainerPtr container);
 		void onSendContainer(ContainerPtr container);
 		void autoCloseContainers(ContainerPtr container);
-		void onUpdateTileItem(const TilePtr& tile, const Position& pos, const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType) override;
-		void onRemoveTileItem(const TilePtr& tile, const Position& pos, const ItemType& iType, const ItemPtr& item) override;
-		void onCreatureAppear(const CreaturePtr& creature, bool isLogin) override;
-		void onRemoveCreature(const CreaturePtr& creature, bool isLogout) override;
-		void onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos, const TilePtr& oldTile, const Position& oldPos, bool teleport) override;
+		void onUpdateTileItem(const TilePtr& tile, const Position& pos, const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType);
+		void onRemoveTileItem(const TilePtr& tile, const Position& pos, const ItemType& iType, const ItemPtr& item);
+		void onCreatureAppear(const CreaturePtr& creature, bool isLogin);
+		void onRemoveCreature(const CreaturePtr& creature, bool isLogout);
+		void onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos, const TilePtr& oldTile, const Position& oldPos, bool teleport);
 		void onAttackedCreatureDisappear(bool isLogout) override;
 		void onFollowCreatureDisappear(bool isLogout) override;
 		void onUpdateInventoryItem(ItemPtr oldItem, ItemPtr newItem);
@@ -645,8 +637,8 @@ class Player final : public Creature, public Cylinder
 		void sendPing();
 		void sendStats();
 		void onThink(uint32_t interval) override;
-		void postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
-		void postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
+		void notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, NotifyLink link = LINK_OWNER);
+		void notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, NotifyLink link = LINK_OWNER);
 		void onNearbyCreatureMoved(const CreaturePtr& creature);
 
 		void sendFYIBox(const std::string& message) const					{ if (client) client->sendFYIBox(message); }
@@ -795,13 +787,9 @@ class Player final : public Creature, public Cylinder
 			if (not sendAll)
 			{
 				// update one slot
-				auto slotThing = getThing(CONST_SLOT_RIGHT);
-				if (slotThing)
-				{
-					auto slotItem = slotThing->getItem();
-					if (slotItem and slotItem->getWeaponType() == WEAPON_QUIVER)
-						sendInventoryItem(CONST_SLOT_RIGHT, slotItem);
-				}
+				auto slotItem = getInventoryItem(CONST_SLOT_RIGHT);
+				if (slotItem and slotItem->getWeaponType() == WEAPON_QUIVER)
+					sendInventoryItem(CONST_SLOT_RIGHT, slotItem);
 			}
 			else
 			{
@@ -809,13 +797,9 @@ class Player final : public Creature, public Cylinder
 				std::vector<slots_t> slots = {CONST_SLOT_RIGHT, CONST_SLOT_LEFT, CONST_SLOT_AMMO};
 				for (auto const& slot : slots)
 				{
-					auto slotThing = getThing(slot);
-					if (slotThing)
-					{
-						auto slotItem = slotThing->getItem();
-						if (slotItem and slotItem->getWeaponType() == WEAPON_QUIVER)
-							sendInventoryItem(slot, slotItem);
-					}
+					auto slotItem = getInventoryItem(slot);
+					if (slotItem and slotItem->getWeaponType() == WEAPON_QUIVER)
+						sendInventoryItem(slot, slotItem);
 				}
 			}
 		}
@@ -921,9 +905,7 @@ class Player final : public Creature, public Cylinder
 		ProtocolGame_ptr client;
 		std::unique_ptr<BlackTek::ModifierCache> m_modifier_cache;
 
-		ItemPtr		getCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr& mostDamageCreature) override;
-		ThingPtr	getThing(size_t index) override;
-		ThingPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags) override; // another optional ref wrapper
+		[[nodiscard]] BlackTek::ItemLocation resolveItemDestination(int32_t& index, const ItemPtr& item, ItemPtr& destItem, uint32_t& flags);
 
 		Group* group = nullptr;
 		House* editHouse = nullptr;
@@ -939,10 +921,9 @@ class Player final : public Creature, public Cylinder
 		AccountType_t accountType = ACCOUNT_TYPE_NORMAL;
 		slots_t m_secondary_attack_slot = CONST_SLOT_LEFT;
 
-		ReturnValue queryAdd(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
-		[[nodiscard]] ReturnValue can_add_item(const int32_t index, const ItemPtr& item, const uint32_t count, const uint32_t flags) const noexcept;
-		ReturnValue queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t& maxQueryCount, uint32_t flags) override;
-		ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
+		[[nodiscard]] ReturnValue canAddItem(const int32_t index, const ItemPtr& item, const uint32_t count, const uint32_t flags, CreaturePtr actor = nullptr) const noexcept;
+		ReturnValue checkAddCapacity(int32_t index, const ItemPtr& item, uint32_t count, uint32_t& acceptedCount, uint32_t flags);
+		ReturnValue canRemoveItem(const ItemPtr& item, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr);
 
 		uint64_t experience = 0;
 		uint64_t manaSpent = 0;
@@ -970,7 +951,7 @@ class Player final : public Creature, public Cylinder
 		int32_t idleTime = 0;
 
 		int32_t getStepSpeed() const override;
-		int32_t getThingIndex(ThingPtr thing) override;
+		int32_t getItemSlotIndex(const ItemConstPtr& item) const;
 
 		uint32_t party = 0;
 		uint32_t inventoryWeight = 0;
@@ -1007,7 +988,7 @@ class Player final : public Creature, public Cylinder
 		uint32_t healing_modifier_count = 0;
 
 		uint32_t getAttackSpeed() const;
-		uint32_t getItemTypeCount(uint16_t itemId, int32_t subType = -1) const override;
+		uint32_t getItemTypeCount(uint16_t itemId, int32_t subType = -1) const;
 		uint32_t getDamageImmunities() const override			{ return damageImmunities; }
 		uint32_t getConditionImmunities() const override		{ return conditionImmunities; }
 		uint32_t getConditionSuppressions() const override		{ return conditionSuppressions; }
@@ -1022,9 +1003,6 @@ class Player final : public Creature, public Cylinder
 		uint8_t levelPercent = 0;
 		uint8_t magLevelPercent = 0;
 		uint8_t accountManagerState = 0;
-
-		size_t getFirstIndex() const override;
-		size_t getLastIndex() const override;
 
 		float m_dual_wield_multiplier = 1.0f;
 
@@ -1058,7 +1036,7 @@ class Player final : public Creature, public Cylinder
 		bool inventoryAbilities[CONST_SLOT_LAST + 1] = {};
 
 		std::forward_list<Condition*>		getMuteConditions() const;
-		gtl::btree_map<uint32_t, uint32_t>&	getAllItemTypeCount(gtl::btree_map<uint32_t, uint32_t>& countMap) const override;
+		gtl::btree_map<uint32_t, uint32_t>&	getAllItemTypeCount(gtl::btree_map<uint32_t, uint32_t>& countMap) const;
 
 		std::unordered_set<uint32_t>& getAttackedSet()
 		{
@@ -1131,14 +1109,11 @@ class Player final : public Creature, public Cylinder
 		void updateBaseSpeed();
 		void getPathSearchParams(const CreatureConstPtr& creature, FindPathParams& fpp) const override;
 
-		void addThing(int32_t index, ThingPtr thing) override;
-		void updateThing(ThingPtr thing, uint16_t itemId, uint32_t count) override;
-		void replaceThing(uint32_t index, ThingPtr thing) override;
-		void removeThing(ThingPtr thing, uint32_t count) override;
-		void internalAddThing(ThingPtr thing) override;
-		void internalAddThing(uint32_t index, ThingPtr thing) override;
-
-		void addThing(ThingPtr) override {}
+		void addInventoryItem(int32_t slot, const ItemPtr& item);
+		void addInventoryItemSilently(uint32_t slot, const ItemPtr& item);
+		void updateInventoryItem(const ItemPtr& item, uint16_t itemId, uint32_t count);
+		void replaceInventoryItem(uint32_t slot, const ItemPtr& item);
+		void removeInventoryItem(const ItemPtr& item, uint32_t count);
 
 		friend class Game;
 		friend class Npc;
@@ -1147,6 +1122,7 @@ class Player final : public Creature, public Cylinder
 		friend class Actions;
 		friend class IOLoginData;
 		friend class ProtocolGame;
+		friend class ItemContainer;
 };
 
 #endif
