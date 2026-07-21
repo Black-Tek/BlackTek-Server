@@ -9,6 +9,7 @@
 #include "creature.h"
 #include "tasks.h"
 #include "storewindow.h"
+#include "knowncreaturecache.h"
 
 class NetworkMessage;
 class Player;
@@ -410,7 +411,7 @@ class ProtocolGame final : public Protocol
 			g_dispatcher.addTask(createTask(delay, std::forward<Callable>(function)));
 		}
 
-		std::unordered_set<uint32_t> knownCreatureSet;
+		BlackTek::Net::KnownCreatureCache<1300, 2048> knownCreatureSet;
 		ShopInfoList shopItemList;
 		PlayerPtr player = nullptr;
 		std::string account_name{};

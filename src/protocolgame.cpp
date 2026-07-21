@@ -855,43 +855,9 @@ void ProtocolGame::GetFloorDescription(NetworkMessage& msg, int32_t x, int32_t y
 
 void ProtocolGame::checkCreatureAsKnown(uint32_t id, bool& known, uint32_t& removedKnown)
 {
-	const auto result = knownCreatureSet.insert(id);
-	if (not result.second) 
-	{
-		known = true;
-		return;
-	}
-
-	known = false;
-
-	if (knownCreatureSet.size() > 1300)
-	{
-		// Look for a creature to remove
-		for (auto it = knownCreatureSet.begin(), end = knownCreatureSet.end(); it != end; ++it)
-		{
-			const auto& creature = g_game.getCreatureByID(*it);
-			if (not canSee(creature))
-			{
-				removedKnown = *it;
-				knownCreatureSet.erase(it);
-				return;
-			}
-		}
-
-		// Bad situation. Let's just remove anyone.
-		auto it = knownCreatureSet.begin();
-		if (*it == id)
-		{
-			++it;
-		}
-
-		removedKnown = *it;
-		knownCreatureSet.erase(it);
-	} 
-	else
-	{
-		removedKnown = 0;
-	}
+	const auto result = knownCreatureSet.Insert(id);
+	known = result.known;
+	removedKnown = result.evictedId;
 }
 
 bool ProtocolGame::canSee(const CreatureConstPtr& creature) const
@@ -2943,7 +2909,7 @@ void ProtocolGame::refreshWorldView()
 		return;
 	}
 
-	knownCreatureSet.clear();
+	knownCreatureSet.Clear();
 	sendMapDescription(player->getPosition());
 }
 
