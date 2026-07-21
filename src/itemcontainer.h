@@ -8,6 +8,7 @@
 #include "enums.h"
 #include "item.h"
 #include "itemlocation.h"
+#include "spectators.h"
 
 class ContainerIterator
 {
@@ -51,11 +52,13 @@ class ItemContainer final
 		void setHoldingCreature(const CreaturePtr& creature);
 		void removeInbox(const ItemPtr& inbox);
 		void addItemAt(int32_t index, const ItemPtr& item);
+		void addItemAt(int32_t index, const ItemPtr& item, const SpectatorVec& spectators);
 		void addItemBack(ItemPtr& item);
 		void updateItem(const ItemPtr& item, uint16_t itemId, uint32_t count);
 		void replaceItem(uint32_t index, const ItemPtr& item);
 		void removeItem(const ItemPtr& item, uint32_t count);
 		void notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, NotifyLink link = LINK_OWNER);
+		void notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, const SpectatorVec& spectators, NotifyLink link = LINK_OWNER);
 		void notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, NotifyLink link = LINK_OWNER);
 		void addItemSilently(const ItemPtr& item);
 		void startDecaying();
@@ -124,6 +127,7 @@ class ItemContainer final
 		bool pagination;
 
 		void onAddContainerItem(const ItemPtr& ownerItem, ItemPtr& item);
+		void onAddContainerItem(const ItemPtr& ownerItem, ItemPtr& item, const SpectatorVec& spectators);
 		void onUpdateContainerItem(const ItemPtr& ownerItem, uint32_t index, const ItemPtr& oldItem, const ItemPtr& newItem);
 		void onRemoveContainerItem(const ItemPtr& ownerItem, uint32_t index, const ItemPtr& item);
 
@@ -138,6 +142,7 @@ class ItemContainer final
 		ReturnValue validateAddItem(const ItemPtr& item) const;
 
 		void notifyItemAddedDefault(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index);
+		void notifyItemAddedDefault(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, const SpectatorVec& spectators);
 		void notifyItemRemovedDefault(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index);
 
 		friend class ContainerIterator;

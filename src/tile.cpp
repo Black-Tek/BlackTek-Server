@@ -338,7 +338,7 @@ GameModel Tile::getTopVisibleGameModel(const CreaturePtr& creature)
 	return { nullptr, ground };
 }
 
-void Tile::onAddTileItem(const ItemPtr& item)
+void Tile::onAddTileItem(const ItemPtr& item, const SpectatorVec& spectators)
 {
 	if (item->hasProperty(CONST_PROP_MOVEABLE) || item->getContainer()) {
 		if (const auto it = g_game.browseFields.find(getTile()); it != g_game.browseFields.end()) {
@@ -350,8 +350,6 @@ void Tile::onAddTileItem(const ItemPtr& item)
 
 	setTileFlags(item);
 	const Position& cylinderMapPos = getPosition();
-	SpectatorVec spectators;
-	g_game.map.getSpectators(spectators, cylinderMapPos, true);
 	TilePtr self = getTile();
 
 	// send to client and event callback
@@ -369,7 +367,7 @@ void Tile::onAddTileItem(const ItemPtr& item)
 	}
 }
 
-void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType)
+void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType, const SpectatorVec& spectators)
 {
 	if (newItem->hasProperty(CONST_PROP_MOVEABLE) || newItem->getContainer()) {
 		if (const auto it = g_game.browseFields.find(getTile()); it != g_game.browseFields.end()) {
@@ -400,8 +398,6 @@ void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, con
 	}
 
 	const Position& cylinderMapPos = getPosition();
-	SpectatorVec spectators;
-	g_game.map.getSpectators(spectators, cylinderMapPos, true);
 	const auto& self = getTile();
 
 	//send to client and event callback
@@ -715,14 +711,14 @@ TilePtr Tile::resolveItemDestination(ItemPtr& destItem, uint32_t& flags)
 }
 
 
-void Tile::addItem(const ItemPtr& item)
+SpectatorVec Tile::addItem(const ItemPtr& item)
 {
 	updateHouse(item);
 
 	TileItemsPtr items = getItemList();
 	if (items and items->size() >= 0xFFFF)
 	{
-		return /*RETURNVALUE_NOTPOSSIBLE*/;
+		return {} /*RETURNVALUE_NOTPOSSIBLE*/;
 	}
 	item->setTileParent(getTile());
 	if (auto itemContainer = item->getContainer())
@@ -735,10 +731,13 @@ void Tile::addItem(const ItemPtr& item)
 	const ItemType& itemType = Item::items[item->getID()];
 	if (itemType.isGroundTile())
 	{
+		SpectatorVec spectators;
+		g_game.map.getSpectators(spectators, getPosition(), true, true);
+
 		if (ground == nullptr)
 		{
 			ground = item;
-			onAddTileItem(item);
+			onAddTileItem(item, spectators);
 		}
 		else
 		{
@@ -750,12 +749,17 @@ void Tile::addItem(const ItemPtr& item)
 			ground = item;
 			resetTileFlags(oldGround);
 			setTileFlags(item);
-			onUpdateTileItem(oldGround, oldType, item, itemType);
-			notifyItemRemoved(oldGround, {}, 0);
+			onUpdateTileItem(oldGround, oldType, item, itemType, spectators);
+			notifyItemRemoved(oldGround, {}, 0, spectators);
 		}
+
+		return spectators;
 	}
 	else if (itemType.alwaysOnTop)
 	{
+		SpectatorVec spectators;
+		g_game.map.getSpectators(spectators, getPosition(), true, true);
+
 		if (itemType.isSplash() and items)
 		{
 			for (ItemVector::const_iterator it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it)
@@ -766,9 +770,9 @@ void Tile::addItem(const ItemPtr& item)
 					continue;
 				}
 
-				removeItem(oldSplash, 1);
+				removeItem(oldSplash, 1, spectators);
 				oldSplash->clearParent();
-				notifyItemRemoved(oldSplash, {}, 0);
+				notifyItemRemoved(oldSplash, {}, 0, spectators);
 				break;
 			}
 		}
@@ -797,7 +801,8 @@ void Tile::addItem(const ItemPtr& item)
 			items->push_back(item);
 		}
 
-		onAddTileItem(item);
+		onAddTileItem(item, spectators);
+		return spectators;
 	}
 	else
 	{
@@ -812,25 +817,36 @@ void Tile::addItem(const ItemPtr& item)
 					{
 						if (oldField->isReplaceable())
 						{
-							removeItem(oldField, 1);
+							SpectatorVec spectators;
+							g_game.map.getSpectators(spectators, getPosition(), true, true);
+
+							removeItem(oldField, 1, spectators);
 							oldField->clearParent();
-							notifyItemRemoved(oldField, {}, 0);
-							break;
+							notifyItemRemoved(oldField, {}, 0, spectators);
+
+							items->insert(items->getBeginDownItem(), item);
+							items->addDownItemCount(1);
+							onAddTileItem(item, spectators);
+							return spectators;
 						}
 						else
 						{
 							//This magic field cannot be replaced.
 							item->clearParent();
-							return;
+							return {};
 						}
 					}
 				}
 			}
 		}
 
+		SpectatorVec spectators;
+		g_game.map.getSpectators(spectators, getPosition(), true, true);
+
 		items->insert(items->getBeginDownItem(), item);
 		items->addDownItemCount(1);
-		onAddTileItem(item);
+		onAddTileItem(item, spectators);
+		return spectators;
 	}
 }
 
@@ -848,7 +864,10 @@ void Tile::updateItem(const ItemPtr& item, uint16_t itemId, uint32_t count)
 	item->setID(itemId);
 	item->setSubType(count);
 	setTileFlags(item);
-	onUpdateTileItem(item, oldType, item, newType);
+
+	SpectatorVec spectators;
+	g_game.map.getSpectators(spectators, getPosition(), true, true);
+	onUpdateTileItem(item, oldType, item, newType, spectators);
 }
 
 void Tile::replaceItem(uint32_t index, const ItemPtr& item)
@@ -919,7 +938,10 @@ void Tile::replaceItem(uint32_t index, const ItemPtr& item)
 		setTileFlags(item);
 		const ItemType& oldType = Item::items[oldItem->getID()];
 		const ItemType& newType = Item::items[item->getID()];
-		onUpdateTileItem(oldItem, oldType, item, newType);
+
+		SpectatorVec spectators;
+		g_game.map.getSpectators(spectators, getPosition(), true, true);
+		onUpdateTileItem(oldItem, oldType, item, newType, spectators);
 
 		oldItem->clearParent();
 		return /*RETURNVALUE_NOERROR*/;
@@ -940,11 +962,23 @@ void Tile::removeItem(const ItemPtr& item, uint32_t count)
 		ground = nullptr;
 
 		SpectatorVec spectators;
-		g_game.map.getSpectators(spectators, getPosition(), true);
+		g_game.map.getSpectators(spectators, getPosition(), true, true);
 		onRemoveTileItem(spectators, std::vector<int32_t>(spectators.size(), 0), item);
 		return;
 	}
 
+	if (not getItemList())
+	{
+		return;
+	}
+
+	SpectatorVec spectators;
+	g_game.map.getSpectators(spectators, getPosition(), true, true);
+	removeItem(item, count, spectators);
+}
+
+void Tile::removeItem(const ItemPtr& item, uint32_t count, const SpectatorVec& spectators)
+{
 	const auto items = getItemList();
 	if (not items)
 	{
@@ -961,9 +995,6 @@ void Tile::removeItem(const ItemPtr& item, uint32_t count)
 		}
 
 		std::vector<int32_t> oldStackPosVector;
-
-		SpectatorVec spectators;
-		g_game.map.getSpectators(spectators, getPosition(), true);
 
 		for (const auto& c : spectators.players())
 		{
@@ -987,14 +1018,12 @@ void Tile::removeItem(const ItemPtr& item, uint32_t count)
 		{
 			const uint8_t newCount = static_cast<uint8_t>(std::max<int32_t>(0, static_cast<int32_t>(item->getItemCount() - count)));
 			item->setItemCount(newCount);
-			onUpdateTileItem(item, itemType, item, itemType);
+			onUpdateTileItem(item, itemType, item, itemType, spectators);
 		}
 		else
 		{
 			std::vector<int32_t> oldStackPosVector;
 
-			SpectatorVec spectators;
-			g_game.map.getSpectators(spectators, getPosition(), true);
 			for (const auto& c : spectators.players())
 			{
 				const auto spectatorPlayer = std::static_pointer_cast<Player>(c);
@@ -1278,9 +1307,11 @@ void Tile::notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& ol
 {
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), true, true);
+	notifyItemAdded(item, oldLocation, index, spectators, link);
+}
 
-	// another test location
-
+void Tile::notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, const SpectatorVec& spectators, NotifyLink link /*= LINK_OWNER*/)
+{
 	for (auto& spectator : spectators.players())
 	{
 		std::static_pointer_cast<Player>(spectator)->notifyItemAdded(item, oldLocation, index, LINK_NEAR);
@@ -1320,10 +1351,15 @@ void Tile::notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& ol
 	}
 }
 
-void Tile::notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, NotifyLink)
+void Tile::notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, NotifyLink link)
 {
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), true, true);
+	notifyItemRemoved(item, newLocation, index, spectators, link);
+}
+
+void Tile::notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, const SpectatorVec& spectators, NotifyLink)
+{
 	if (getStackSize() > 8)
 	{
 		onUpdateTile(spectators);

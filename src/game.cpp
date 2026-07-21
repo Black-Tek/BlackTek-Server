@@ -2089,13 +2089,16 @@ ReturnValue Game::internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr ite
 			}
 			else
 			{
+				SpectatorVec spectators;
+
 				if (toContainer)
 				{
-					toContainer->addItemAt(index, item);
+					map.getSpectators(spectators, toLocation.containerItem->getPosition(), true, true);
+					toContainer->addItemAt(index, item, spectators);
 				}
 				else if (toLocation.tile)
 				{
-					toLocation.tile->addItem(item);
+					spectators = toLocation.tile->addItem(item);
 				}
 				else
 				{
@@ -2120,11 +2123,11 @@ ReturnValue Game::internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr ite
 				{
 					if (toContainer)
 					{
-						toContainer->notifyItemAdded(item, {}, itemIndex);
+						toContainer->notifyItemAdded(item, {}, itemIndex, spectators);
 					}
 					else if (toLocation.tile)
 					{
-						toLocation.tile->notifyItemAdded(item, {}, itemIndex);
+						toLocation.tile->notifyItemAdded(item, {}, itemIndex, spectators);
 					}
 					else
 					{
@@ -2172,13 +2175,16 @@ ReturnValue Game::internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr ite
 	}
 	else
 	{
+		SpectatorVec spectators;
+
 		if (toContainer)
 		{
-			toContainer->addItemAt(index, item);
+			map.getSpectators(spectators, toLocation.containerItem->getPosition(), true, true);
+			toContainer->addItemAt(index, item, spectators);
 		}
 		else if (toLocation.tile)
 		{
-			toLocation.tile->addItem(item);
+			spectators = toLocation.tile->addItem(item);
 		}
 		else
 		{
@@ -2203,11 +2209,11 @@ ReturnValue Game::internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr ite
 		{
 			if (toContainer)
 			{
-				toContainer->notifyItemAdded(item, {}, itemIndex);
+				toContainer->notifyItemAdded(item, {}, itemIndex, spectators);
 			}
 			else if (toLocation.tile)
 			{
-				toLocation.tile->notifyItemAdded(item, {}, itemIndex);
+				toLocation.tile->notifyItemAdded(item, {}, itemIndex, spectators);
 			}
 			else
 			{

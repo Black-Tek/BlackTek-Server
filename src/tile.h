@@ -274,7 +274,7 @@ class Tile : public SharedObject
 		ReturnValue canEnter(MonsterPtr monster, uint32_t flags);
 		ReturnValue canEnter(NpcPtr npc, uint32_t flags);
 
-		void addItem(const ItemPtr& item);
+		SpectatorVec addItem(const ItemPtr& item);
 		void addItemSilently(const ItemPtr& item);
 
 		void updateItem(const ItemPtr& item, uint16_t itemId, uint32_t count);
@@ -290,7 +290,9 @@ class Tile : public SharedObject
 		BlackTek::GameModel getGameModelAt(size_t index);
 
 		void notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, NotifyLink link = LINK_OWNER);
+		void notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, const SpectatorVec& spectators, NotifyLink link = LINK_OWNER);
 		void notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, NotifyLink link = LINK_OWNER);
+		void notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, const SpectatorVec& spectators, NotifyLink link = LINK_OWNER);
 
 		void notifyCreatureAdded(const CreaturePtr& creature, const TilePtr& oldTile);
 		void notifyCreatureAdded(const CreaturePtr& creature, const TilePtr& oldTile, const SpectatorVec& spectators);
@@ -336,10 +338,11 @@ class Tile : public SharedObject
 	private:
         TilePtr resolveFloorChangeDestination(uint32_t& flags);
 
-		void onAddTileItem(const ItemPtr& item);
-		void onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType);
+		void onAddTileItem(const ItemPtr& item, const SpectatorVec& spectators);
+		void onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType, const SpectatorVec& spectators);
 		void onRemoveTileItem(const SpectatorVec& spectators, const std::vector<int32_t>& oldStackPosVector, const ItemPtr& item);
 		void onUpdateTile(const SpectatorVec& spectators);
+		void removeItem(const ItemPtr& item, uint32_t count, const SpectatorVec& spectators);
 		void applyItemProperties(const ItemConstPtr& item);
 		void recalculateItemProperties();
 		void setTileFlags(const ItemConstPtr& item);
