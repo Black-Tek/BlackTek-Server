@@ -6323,6 +6323,15 @@ void Game::addDistanceEffect(const Position& fromPos, const Position& toPos, con
 	addDistanceEffect(spectators, fromPos, toPos, effect);
 }
 
+void Game::addDistanceEffect(std::span<const CreaturePtr> spectators, const Position& fromPos, const Position& toPos, uint8_t effect)
+{
+	for (const auto& c : spectators)
+	{
+		auto* player = static_cast<Player*>(c.get());
+		player->sendDistanceShoot(fromPos, toPos, effect);
+	}
+}
+
 void Game::addDistanceEffect(const SpectatorVec& spectators, const Position& fromPos, const Position& toPos, uint8_t effect)
 {
 	for (const auto& c : spectators.players())

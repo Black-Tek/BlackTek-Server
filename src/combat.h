@@ -481,7 +481,7 @@ namespace BlackTek
 
 		static bool isProtected(const PlayerConstPtr& attacker, const PlayerConstPtr& target);
 		static void postCombatEffects(const CreaturePtr& caster, const Position& position, const Combat& combat);
-		static void addDistanceEffect(const CreaturePtr& caster, const Position& fromPosition, const Position& toPosition, uint8_t effect);
+		static void addDistanceEffect(const CreaturePtr& caster, const Position& fromPosition, const Position& toPosition, uint8_t effect, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt);
 
 		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const PlayerPtr& victim) const noexcept;
 		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const MonsterPtr& victim) const noexcept;
@@ -498,7 +498,7 @@ namespace BlackTek
 
 		[[nodiscard]] uint32_t applyCrit(uint32_t currentDamage, uint32_t percent, uint32_t flat) noexcept;
 		[[nodiscard]] uint32_t process_steal(const PlayerPtr& caster, const CreaturePtr& victim, const LeechData& steal, uint32_t currentDamage) noexcept;
-		void post_damage(const PlayerPtr& caster, const CreaturePtr& victim, uint32_t currentDamage, LeechData&& leech_data) noexcept;
+		void post_damage(const PlayerPtr& caster, const CreaturePtr& victim, uint32_t currentDamage, LeechData&& leech_data, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const PlayerPtr& caster, const PlayerPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const PlayerPtr& caster, const MonsterPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const MonsterPtr& attacker, const PlayerPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
@@ -510,8 +510,8 @@ namespace BlackTek
 		void execute(const CreaturePtr& caster, const Position& center) noexcept;
 		void setArea(AreaCombat* area);
 		void setArea(std::unique_ptr<AreaCombat> const area);
-		void defense_block_effect(const Position& target_position) const noexcept;
-		void armor_block_effect(const Position& target_position) const noexcept;
+		void defense_block_effect(const Position& target_position, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
+		void armor_block_effect(const Position& target_position, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 		void heal_notification(const CreaturePtr& caster, const CreaturePtr& target, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 		void damage_notification(const CreaturePtr& attacker, const CreaturePtr& defender, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 		void manadamage_notification(const CreaturePtr& attacker, const CreaturePtr& defender, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;

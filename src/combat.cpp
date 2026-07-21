@@ -1703,15 +1703,25 @@ namespace BlackTek
 		return currentDamage;
 	}
 
-	void Combat::post_damage(const PlayerPtr& caster, const CreaturePtr& victim, uint32_t currentDamage, LeechData&& leech) noexcept
+	void Combat::post_damage(const PlayerPtr& caster, const CreaturePtr& victim, uint32_t currentDamage, LeechData&& leech, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
 	{
 		if (impactEffect != CONST_ME_NONE)
-			g_game.addMagicEffect(victim->getPosition(), impactEffect);
+		{
+			if (spectators)
+				g_game.addMagicEffect(victim->getPosition(), impactEffect, *spectators);
+			else
+				g_game.addMagicEffect(victim->getPosition(), impactEffect);
+		}
 
 		if (config.test(Config::Critical))
 		{
 			if ((config.test(Config::AttackModified) and g_config.GetBoolean(ConfigManager::AUGMENT_CRITICAL_ANIMATION)) or not config.test(Config::AttackModified))
-				g_game.addMagicEffect(victim->getPosition(), CONST_ME_CRITICAL_DAMAGE);
+			{
+				if (spectators)
+					g_game.addMagicEffect(victim->getPosition(), CONST_ME_CRITICAL_DAMAGE, *spectators);
+				else
+					g_game.addMagicEffect(victim->getPosition(), CONST_ME_CRITICAL_DAMAGE);
+			}
 		}
 
 		auto primary_conditions = (not config.test(Config::Leech) and currentDamage != COMBAT_HEALING and caster->is_player() and origin != Origin::Condition);
@@ -2420,7 +2430,12 @@ namespace BlackTek
 					TrackConditionApplications(caster, victim);
 				ApplyConditions(victim);
 				if (impactEffect != CONST_ME_NONE)
-					g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				{
+					if (spectators)
+						g_game.addMagicEffect(victim->getPosition(), impactEffect, *spectators);
+					else
+						g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				}
 			}
 			return;
 		}
@@ -2441,7 +2456,7 @@ namespace BlackTek
 		}
 
 		if (distanceEffect != CONST_ANI_NONE)
-			addDistanceEffect(caster, caster->getPosition(), victim->getPosition(), distanceEffect);
+			addDistanceEffect(caster, caster->getPosition(), victim->getPosition(), distanceEffect, spectators);
 
 		uint32_t currentDamage = damage;
 
@@ -2453,9 +2468,9 @@ namespace BlackTek
 			{
 				const auto blocked = blockResult.error();
 				if (blocked == BlockType::Defensive)
-					defense_block_effect(victim->getPosition());
+					defense_block_effect(victim->getPosition(), spectators);
 				else if (blocked == BlockType::Armor)
-					armor_block_effect(victim->getPosition());
+					armor_block_effect(victim->getPosition(), spectators);
 				if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, 0, false);
 				return;
 			}
@@ -2502,7 +2517,7 @@ namespace BlackTek
 		}
 		else
 		{
-			post_damage(caster, victim, currentDamage, std::move(leech_data));
+			post_damage(caster, victim, currentDamage, std::move(leech_data), spectators);
 			if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, damageDealt, victim->getHealth() <= 0);
 		}
 
@@ -2546,7 +2561,12 @@ namespace BlackTek
 					TrackConditionApplications(caster, victim);
 				ApplyConditions(victim);
 				if (impactEffect != CONST_ME_NONE)
-					g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				{
+					if (spectators)
+						g_game.addMagicEffect(victim->getPosition(), impactEffect, *spectators);
+					else
+						g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				}
 			}
 			return;
 		}
@@ -2567,7 +2587,7 @@ namespace BlackTek
 		}
 
 		if (distanceEffect != CONST_ANI_NONE)
-			addDistanceEffect(caster, caster->getPosition(), victim->getPosition(), distanceEffect);
+			addDistanceEffect(caster, caster->getPosition(), victim->getPosition(), distanceEffect, spectators);
 
 		uint32_t currentDamage = damage;
 
@@ -2580,10 +2600,10 @@ namespace BlackTek
 				const auto blocked = blockResult.error();
 
 				if (blocked == BlockType::Defensive)
-					defense_block_effect(victim->getPosition());
+					defense_block_effect(victim->getPosition(), spectators);
 
 				else if (blocked == BlockType::Armor)
-					armor_block_effect(victim->getPosition());
+					armor_block_effect(victim->getPosition(), spectators);
 
 				if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, 0, false);
 				return;
@@ -2611,7 +2631,7 @@ namespace BlackTek
 		}
 		else
 		{
-			post_damage(caster, victim, currentDamage, std::move(leech_data));
+			post_damage(caster, victim, currentDamage, std::move(leech_data), spectators);
 			if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, damageDealt, victim->getHealth() <= 0);
 		}
 
@@ -2657,7 +2677,12 @@ namespace BlackTek
 				ApplyConditions(victim);
 
 				if (impactEffect != CONST_ME_NONE)
-					g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				{
+					if (spectators)
+						g_game.addMagicEffect(victim->getPosition(), impactEffect, *spectators);
+					else
+						g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				}
 			}
 			return;
 		}
@@ -2674,7 +2699,7 @@ namespace BlackTek
 			return;
 
 		if (distanceEffect != CONST_ANI_NONE)
-			addDistanceEffect(attacker, attacker->getPosition(), victim->getPosition(), distanceEffect);
+			addDistanceEffect(attacker, attacker->getPosition(), victim->getPosition(), distanceEffect, spectators);
 
 		uint32_t currentDamage = damage;
 
@@ -2687,10 +2712,10 @@ namespace BlackTek
 				const auto blocked = blockResult.error();
 
 				if (blocked == BlockType::Defensive)
-					defense_block_effect(victim->getPosition());
+					defense_block_effect(victim->getPosition(), spectators);
 
 				else if (blocked == BlockType::Armor)
-					armor_block_effect(victim->getPosition());
+					armor_block_effect(victim->getPosition(), spectators);
 
 				if constexpr (Metrics::ENABLED) CommitStrike(attacker, victim, 0, false);
 
@@ -2756,7 +2781,12 @@ namespace BlackTek
 				ApplyConditions(victim);
 
 				if (impactEffect != CONST_ME_NONE)
-					g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				{
+					if (spectators)
+						g_game.addMagicEffect(victim->getPosition(), impactEffect, *spectators);
+					else
+						g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				}
 			}
 			return;
 		}
@@ -2773,7 +2803,7 @@ namespace BlackTek
 			return;
 
 		if (distanceEffect != CONST_ANI_NONE)
-			addDistanceEffect(attacker, attacker->getPosition(), victim->getPosition(), distanceEffect);
+			addDistanceEffect(attacker, attacker->getPosition(), victim->getPosition(), distanceEffect, spectators);
 
 		uint32_t currentDamage = damage;
 
@@ -2786,10 +2816,10 @@ namespace BlackTek
 				const auto blocked = blockResult.error();
 
 				if (blocked == BlockType::Defensive)
-					defense_block_effect(victim->getPosition());
+					defense_block_effect(victim->getPosition(), spectators);
 
 				else if (blocked == BlockType::Armor)
-					armor_block_effect(victim->getPosition());
+					armor_block_effect(victim->getPosition(), spectators);
 
 				if constexpr (Metrics::ENABLED) CommitStrike(attacker, victim, 0, false);
 
@@ -3266,10 +3296,10 @@ namespace BlackTek
 
 		auto spectators = g_game.map.fetchSpectators(center, true, true, ex + Map::maxViewportX, ex + Map::maxViewportX, ey + Map::maxViewportY, ey + Map::maxViewportY);
 
-		if (distanceEffect != CONST_ANI_NONE)
-			addDistanceEffect(caster, caster_position, center, distanceEffect);
-
 		const std::span<const CreaturePtr> spectators_span(spectators.begin(), spectators.size());
+
+		if (distanceEffect != CONST_ANI_NONE)
+			addDistanceEffect(caster, caster_position, center, distanceEffect, spectators_span);
 
 		apply_effects(spectators, caster, valid_tile_list);
 
@@ -3418,21 +3448,31 @@ namespace BlackTek
 			g_game.addMagicEffect(position, combat.impactEffect);
 	}
 
-	void Combat::addDistanceEffect(const CreaturePtr& caster, const Position& fromPosition, const Position& toPosition, uint8_t effect)
+	void Combat::addDistanceEffect(const CreaturePtr& caster, const Position& fromPosition, const Position& toPosition, uint8_t effect, const std::optional<std::span<const CreaturePtr>> spectators)
 	{
 		if (effect == CONST_ANI_NONE)
 			return;
-		g_game.addDistanceEffect(fromPosition, toPosition, effect);
+
+		if (spectators)
+			g_game.addDistanceEffect(*spectators, fromPosition, toPosition, effect);
+		else
+			g_game.addDistanceEffect(fromPosition, toPosition, effect);
 	}
 
-	void Combat::defense_block_effect(const Position& target_position) const noexcept
+	void Combat::defense_block_effect(const Position& target_position, const std::optional<std::span<const CreaturePtr>> spectators) const noexcept
 	{
-		g_game.addMagicEffect(target_position, CONST_ME_POFF);
+		if (spectators)
+			g_game.addMagicEffect(target_position, CONST_ME_POFF, *spectators);
+		else
+			g_game.addMagicEffect(target_position, CONST_ME_POFF);
 	}
 
-	void Combat::armor_block_effect(const Position& target_position) const noexcept
+	void Combat::armor_block_effect(const Position& target_position, const std::optional<std::span<const CreaturePtr>> spectators) const noexcept
 	{
-		g_game.addMagicEffect(target_position, CONST_ME_BLOCKHIT);
+		if (spectators)
+			g_game.addMagicEffect(target_position, CONST_ME_BLOCKHIT, *spectators);
+		else
+			g_game.addMagicEffect(target_position, CONST_ME_BLOCKHIT);
 	}
 
 	uint8_t Combat::immunity_block_effect() const noexcept

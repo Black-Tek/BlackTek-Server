@@ -607,6 +607,7 @@ class Game
 		void addMagicEffect(const Position& pos, uint8_t effect);
 		static void addMagicEffect(const SpectatorVec& spectators, const Position& pos, uint8_t effect);
 		void addDistanceEffect(const Position& fromPos, const Position& toPos, uint8_t effect);
+		void addDistanceEffect(std::span<const CreaturePtr> spectators, const Position& fromPos, const Position& toPos, uint8_t effect);
 		static void addDistanceEffect(const SpectatorVec& spectators, const Position& fromPos, const Position& toPos, uint8_t effect);
 
 		void setAccountStorageValue(const uint32_t accountId, const uint32_t key, const int32_t value);
