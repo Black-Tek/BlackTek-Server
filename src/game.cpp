@@ -601,6 +601,8 @@ bool Game::placeCreature(CreaturePtr creature, const Position& pos, bool extende
 	SpectatorVec spectators;
 	map.getSpectators(spectators, creature->getPosition(), true);
 
+	const std::span<const CreaturePtr> spectators_span(spectators.begin(), spectators.size());
+
 	for (const auto& c : spectators.players())
 		static_cast<Player*>(c.get())->sendCreatureAppear(creature, creature->getPosition(), magicEffect);
 
@@ -612,10 +614,10 @@ bool Game::placeCreature(CreaturePtr creature, const Position& pos, bool extende
 				static_cast<Player*>(spectator.get())->onCreatureAppear(creature, true);
 				break;
 			case CreatureSubType::Monster:
-				static_cast<Monster*>(spectator.get())->onCreatureAppear(creature, true);
+				static_cast<Monster*>(spectator.get())->onCreatureAppear(creature, true, spectators_span);
 				break;
 			case CreatureSubType::Npc:
-				static_cast<Npc*>(spectator.get())->onCreatureAppear(creature, true);
+				static_cast<Npc*>(spectator.get())->onCreatureAppear(creature, true, spectators_span);
 				break;
 			default:
 				break;
@@ -631,7 +633,7 @@ bool Game::placeCreature(CreaturePtr creature, const Position& pos, bool extende
 
 	if (const auto tile = creature->getTile())
 	{
-		tile->notifyCreatureAdded(creature, nullptr);
+		tile->notifyCreatureAdded(creature, nullptr, spectators);
 	}
 
 	addCreatureCheck(creature);

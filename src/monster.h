@@ -101,9 +101,9 @@ class Monster final : public Creature
 		void setName(const std::string& name);
 
 		void onAttackedCreatureDisappear(bool isLogout) override;
-		void onCreatureAppear(const CreaturePtr& creature, bool isLogin);
+		void onCreatureAppear(const CreaturePtr& creature, bool isLogin, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt);
 		void onRemoveCreature(const CreaturePtr& creature, bool isLogout);
-		void onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos, const TilePtr& oldTile, const Position& oldPos, bool teleport);
+		void onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos, const TilePtr& oldTile, const Position& oldPos, bool teleport, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt);
 		void onCreatureSay(const CreaturePtr& creature, SpeakClasses type, const std::string& text) override;
 
 		void drainHealth(const CreaturePtr& attacker, int32_t damage) override;
@@ -202,7 +202,7 @@ class Monster final : public Creature
 		void removeFriend(const CreaturePtr& creature);
 		void addTarget(const CreaturePtr& creature, bool pushFront = false);
 		void removeTarget(const CreaturePtr& creature);
-		void updateTargetList();
+		void updateTargetList(const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt);
 		void clearTargetList();
 		void clearFriendList();
 

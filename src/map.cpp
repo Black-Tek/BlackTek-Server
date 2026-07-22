@@ -385,6 +385,8 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
     }
 
     // event method
+	const std::span<const CreaturePtr> spectators_span(spectators.begin(), spectators.size());
+
 	for (const auto& spectator : spectators)
 	{
 		switch (spectator->getCreatureSubType())
@@ -393,7 +395,7 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 				static_cast<Player*>(spectator.get())->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
 				break;
 			case CreatureSubType::Monster:
-				static_cast<Monster*>(spectator.get())->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
+				static_cast<Monster*>(spectator.get())->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport, spectators_span);
 				break;
 			case CreatureSubType::Npc:
 				static_cast<Npc*>(spectator.get())->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);

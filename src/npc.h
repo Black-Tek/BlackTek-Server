@@ -203,7 +203,7 @@ class Npc final : public Creature
 
 		void turnToCreature(const CreaturePtr& creature);
 		void setCreatureFocus(const CreaturePtr& creature);
-		void onCreatureAppear(const CreaturePtr& creature, bool isLogin);
+		void onCreatureAppear(const CreaturePtr& creature, bool isLogin, const std::optional<std::span<const CreaturePtr>> precomputed_spectators = std::nullopt);
 		void onRemoveCreature(const CreaturePtr& creature, bool isLogout);
 		void onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos, const TilePtr& oldTile, const Position& oldPos, bool teleport);
 		auto& getScriptInterface() const { return npcEventHandler->scriptInterface; }

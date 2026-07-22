@@ -365,20 +365,33 @@ std::string Npc::getDescription(int32_t)
 	return descr;
 }
 
-void Npc::onCreatureAppear(const CreaturePtr& creature, bool isLogin)
+void Npc::onCreatureAppear(const CreaturePtr& creature, bool isLogin, const std::optional<std::span<const CreaturePtr>> precomputed_spectators)
 {
 	Creature::onCreatureAppear(creature, isLogin);
 
 	if (creature == getCreature())
 	{
-		SpectatorVec players;
-		g_game.map.getSpectators(players, getPosition(), true, true);
-
 		// we leave this one without the view filter as a sort of test to see if anything slips through
 
-		for (const auto& player : players)
+		if (precomputed_spectators)
 		{
-			spectators.insert(std::static_pointer_cast<Player>(player));
+			for (const auto& spectator : *precomputed_spectators)
+			{
+				if (const auto& player = spectator->getPlayer())
+				{
+					spectators.insert(player);
+				}
+			}
+		}
+		else
+		{
+			SpectatorVec players;
+			g_game.map.getSpectators(players, getPosition(), true, true);
+
+			for (const auto& player : players)
+			{
+				spectators.insert(std::static_pointer_cast<Player>(player));
+			}
 		}
 
 		const bool hasSpectators = !spectators.empty();

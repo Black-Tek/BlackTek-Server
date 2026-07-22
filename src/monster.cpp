@@ -124,7 +124,7 @@ void Monster::onAttackedCreatureDisappear(bool)
 	attackTicks = 0;
 }
 
-void Monster::onCreatureAppear(const CreaturePtr& creature, const bool isLogin)
+void Monster::onCreatureAppear(const CreaturePtr& creature, const bool isLogin, const std::optional<std::span<const CreaturePtr>> spectators)
 {
 	Creature::onCreatureAppear(creature, isLogin);
 
@@ -175,7 +175,7 @@ void Monster::onCreatureAppear(const CreaturePtr& creature, const bool isLogin)
 			isMasterInRange = canSee(getMaster()->getPosition());
 		}
 
-		updateTargetList();
+		updateTargetList(spectators);
 		updateIdleStatus();
 	} else {
 		onCreatureEnter(creature);
@@ -231,7 +231,7 @@ void Monster::onRemoveCreature(const CreaturePtr& creature, const bool isLogout)
 }
 
 void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos,
-                             const TilePtr& oldTile, const Position& oldPos, bool teleport)
+                             const TilePtr& oldTile, const Position& oldPos, bool teleport, const std::optional<std::span<const CreaturePtr>> spectators)
 {
 	if (isMapLoaded)
 	{
@@ -380,11 +380,11 @@ void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile
 		}
 		// This updateTargetList() is updating summons target list while moving
 		// and more importantly stoping movement when no targets are left after a kill
-		// because the monster moves again after killing target. 
+		// because the monster moves again after killing target.
 		// We would rather stop monster dead in tracks if they kill the only target around
 		// and then handle summons targetting in a better way to free up the expensive price of updating
 		// every target list of over monster which moves, everytime it moves.
-		updateTargetList();
+		updateTargetList(spectators);
 	} else {
 		const bool canSeeNewPos = canSee(newPos);
 		const bool canSeeOldPos = canSee(oldPos);
@@ -475,7 +475,7 @@ void Monster::removeTarget(const CreaturePtr& creature)
 }
 
 
-void Monster::updateTargetList()
+void Monster::updateTargetList(const std::optional<std::span<const CreaturePtr>> spectators)
 {
 	auto friendIterator = friendList.begin();
 	while (friendIterator != friendList.end()) {
@@ -503,10 +503,17 @@ void Monster::updateTargetList()
 	}
 
 	// Update with new spectators
-	SpectatorVec spectators;
-	g_game.map.getSpectators(spectators, position, true);
-	spectators.erase(this->getCreature());
-	for (const auto& spectator : spectators) {
+	if (spectators)
+	{
+		for (const auto& spectator : *spectators) {
+			onCreatureFound(spectator);
+		}
+		return;
+	}
+
+	SpectatorVec owned;
+	g_game.map.getSpectators(owned, position, true);
+	for (const auto& spectator : owned) {
 		onCreatureFound(spectator);
 	}
 }
