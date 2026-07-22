@@ -328,21 +328,21 @@ void ItemContainer::onAddContainerItem(const ItemPtr& ownerItem, ItemPtr& item)
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, ownerItem->getPosition(), false, true, 1, 1, 1, 1);
 
-	onAddContainerItem(ownerItem, item, spectators);
+	onAddContainerItem(ownerItem, item, std::span<const CreaturePtr>(spectators.begin(), spectators.size()));
 }
 
-void ItemContainer::onAddContainerItem(const ItemPtr& ownerItem, ItemPtr& item, const SpectatorVec& spectators)
+void ItemContainer::onAddContainerItem(const ItemPtr& ownerItem, ItemPtr& item, std::span<const CreaturePtr> spectators)
 {
 	if (not ownerItem)
 		return;
 
-	for (const auto& c : spectators.players())
+	for (const auto& c : spectators)
 	{
 		const auto c_player = std::static_pointer_cast<Player>(c);
 		c_player->sendAddContainerItem(ownerItem->getContainer(), item);
 	}
 
-	for (const auto& c : spectators.players())
+	for (const auto& c : spectators)
 	{
 		const auto c_player = std::static_pointer_cast<Player>(c);
 		c_player->onAddContainerItem(item);
@@ -813,7 +813,7 @@ void ItemContainer::addItemAt(int32_t index, const ItemPtr& item)
 	}
 }
 
-void ItemContainer::addItemAt(int32_t index, const ItemPtr& item, const SpectatorVec& spectators)
+void ItemContainer::addItemAt(int32_t index, const ItemPtr& item, std::span<const CreaturePtr> spectators)
 {
 	if (index >= static_cast<int32_t>(capacity()))
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
@@ -1006,7 +1006,7 @@ void ItemContainer::notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLoc
 	notifyItemAddedDefault(item, oldLocation, index);
 }
 
-void ItemContainer::notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, const SpectatorVec& spectators, NotifyLink)
+void ItemContainer::notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, std::span<const CreaturePtr> spectators, NotifyLink)
 {
 	if (config.Has(ContainerProperty::NotifiesViaOwnerParent))
 	{
@@ -1066,7 +1066,7 @@ void ItemContainer::notifyItemAddedDefault(const ItemPtr& item, const BlackTek::
 		topLocation.tile->notifyItemAdded(item, oldLocation, index, LINK_NEAR);
 }
 
-void ItemContainer::notifyItemAddedDefault(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, const SpectatorVec& spectators)
+void ItemContainer::notifyItemAddedDefault(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, std::span<const CreaturePtr> spectators)
 {
 	auto ownerItem = getOwner();
 

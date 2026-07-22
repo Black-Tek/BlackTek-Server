@@ -405,8 +405,8 @@ void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool force
 		}
 	}
 
-	oldTile->notifyCreatureRemoved(creature, newTile, spectators);
-	newTile->notifyCreatureAdded(creature, oldTile, spectators);
+	oldTile->notifyCreatureRemoved(creature, newTile, spectators_span);
+	newTile->notifyCreatureAdded(creature, oldTile, spectators_span);
 }
 
 void Map::getSpectatorsInternal(SpectatorVec& spectators, const Position& centerPos, const int32_t minRangeX, const int32_t maxRangeX, const int32_t minRangeY, const int32_t maxRangeY, const int32_t minRangeZ, const int32_t maxRangeZ, const bool onlyPlayers) const

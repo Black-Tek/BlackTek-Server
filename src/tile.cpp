@@ -338,7 +338,7 @@ GameModel Tile::getTopVisibleGameModel(const CreaturePtr& creature)
 	return { nullptr, ground };
 }
 
-void Tile::onAddTileItem(const ItemPtr& item, const SpectatorVec& spectators)
+void Tile::onAddTileItem(const ItemPtr& item, std::span<const CreaturePtr> spectators)
 {
 	if (item->hasProperty(CONST_PROP_MOVEABLE) || item->getContainer()) {
 		if (const auto it = g_game.browseFields.find(getTile()); it != g_game.browseFields.end()) {
@@ -353,7 +353,7 @@ void Tile::onAddTileItem(const ItemPtr& item, const SpectatorVec& spectators)
 	TilePtr self = getTile();
 
 	// send to client and event callback
-	for (const auto& spectatorPlayer : spectators.players()
+	for (const auto& spectatorPlayer : spectators
 		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
 	{
 		spectatorPlayer->sendAddTileItem(getTile(), cylinderMapPos, item);
@@ -367,7 +367,7 @@ void Tile::onAddTileItem(const ItemPtr& item, const SpectatorVec& spectators)
 	}
 }
 
-void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType, const SpectatorVec& spectators)
+void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType, std::span<const CreaturePtr> spectators)
 {
 	if (newItem->hasProperty(CONST_PROP_MOVEABLE) || newItem->getContainer()) {
 		if (const auto it = g_game.browseFields.find(getTile()); it != g_game.browseFields.end()) {
@@ -401,7 +401,7 @@ void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, con
 	const auto& self = getTile();
 
 	//send to client and event callback
-	for (const auto& spectatorPlayer : spectators.players()
+	for (const auto& spectatorPlayer : spectators
 		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
 	{
 		spectatorPlayer->sendUpdateTileItem(self, cylinderMapPos, newItem);
@@ -409,7 +409,7 @@ void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, con
 	}
 }
 
-void Tile::onRemoveTileItem(const SpectatorVec& spectators, const std::vector<int32_t>& oldStackPosVector, const ItemPtr& item)
+void Tile::onRemoveTileItem(std::span<const CreaturePtr> spectators, const std::vector<int32_t>& oldStackPosVector, const ItemPtr& item)
 {
 	if (item->hasProperty(CONST_PROP_MOVEABLE) || item->getContainer()) {
 		if (const auto it = g_game.browseFields.find(getTile()); it != g_game.browseFields.end()) {
@@ -425,7 +425,7 @@ void Tile::onRemoveTileItem(const SpectatorVec& spectators, const std::vector<in
 	//send to client and event callback
 	size_t i = 0;
 
-	for (const auto& spectatorPlayer : spectators.players()
+	for (const auto& spectatorPlayer : spectators
 		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
 	{
 		spectatorPlayer->sendRemoveTileThing(cylinderMapPos, oldStackPosVector[i++]);
@@ -453,12 +453,15 @@ void Tile::onRemoveTileItem(const SpectatorVec& spectators, const std::vector<in
 	}
 }
 
-void Tile::onUpdateTile(const SpectatorVec& spectators)
+void Tile::onUpdateTile(std::span<const CreaturePtr> spectators)
 {
 	const Position& cylinderMapPos = getPosition();
 
-	for (const auto& spectator : spectators.players()) {
-		std::static_pointer_cast<Player>(spectator)->sendUpdateTile(getTile(), cylinderMapPos);
+	for (const auto& spectatorPlayer : spectators
+		| std::views::filter([](const auto& c) { return c->is_player(); })
+		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
+	{
+		spectatorPlayer->sendUpdateTile(getTile(), cylinderMapPos);
 	}
 }
 
@@ -733,11 +736,12 @@ SpectatorVec Tile::addItem(const ItemPtr& item)
 	{
 		SpectatorVec spectators;
 		g_game.map.getSpectators(spectators, getPosition(), true, true);
+		const std::span<const CreaturePtr> spectators_span(spectators.begin(), spectators.size());
 
 		if (ground == nullptr)
 		{
 			ground = item;
-			onAddTileItem(item, spectators);
+			onAddTileItem(item, spectators_span);
 		}
 		else
 		{
@@ -749,8 +753,8 @@ SpectatorVec Tile::addItem(const ItemPtr& item)
 			ground = item;
 			resetTileFlags(oldGround);
 			setTileFlags(item);
-			onUpdateTileItem(oldGround, oldType, item, itemType, spectators);
-			notifyItemRemoved(oldGround, {}, 0, spectators);
+			onUpdateTileItem(oldGround, oldType, item, itemType, spectators_span);
+			notifyItemRemoved(oldGround, {}, 0, spectators_span);
 		}
 
 		return spectators;
@@ -759,6 +763,7 @@ SpectatorVec Tile::addItem(const ItemPtr& item)
 	{
 		SpectatorVec spectators;
 		g_game.map.getSpectators(spectators, getPosition(), true, true);
+		const std::span<const CreaturePtr> spectators_span(spectators.begin(), spectators.size());
 
 		if (itemType.isSplash() and items)
 		{
@@ -770,9 +775,9 @@ SpectatorVec Tile::addItem(const ItemPtr& item)
 					continue;
 				}
 
-				removeItem(oldSplash, 1, spectators);
+				removeItem(oldSplash, 1, spectators_span);
 				oldSplash->clearParent();
-				notifyItemRemoved(oldSplash, {}, 0, spectators);
+				notifyItemRemoved(oldSplash, {}, 0, spectators_span);
 				break;
 			}
 		}
@@ -801,7 +806,7 @@ SpectatorVec Tile::addItem(const ItemPtr& item)
 			items->push_back(item);
 		}
 
-		onAddTileItem(item, spectators);
+		onAddTileItem(item, spectators_span);
 		return spectators;
 	}
 	else
@@ -819,14 +824,15 @@ SpectatorVec Tile::addItem(const ItemPtr& item)
 						{
 							SpectatorVec spectators;
 							g_game.map.getSpectators(spectators, getPosition(), true, true);
+							const std::span<const CreaturePtr> spectators_span(spectators.begin(), spectators.size());
 
-							removeItem(oldField, 1, spectators);
+							removeItem(oldField, 1, spectators_span);
 							oldField->clearParent();
-							notifyItemRemoved(oldField, {}, 0, spectators);
+							notifyItemRemoved(oldField, {}, 0, spectators_span);
 
 							items->insert(items->getBeginDownItem(), item);
 							items->addDownItemCount(1);
-							onAddTileItem(item, spectators);
+							onAddTileItem(item, spectators_span);
 							return spectators;
 						}
 						else
@@ -842,10 +848,11 @@ SpectatorVec Tile::addItem(const ItemPtr& item)
 
 		SpectatorVec spectators;
 		g_game.map.getSpectators(spectators, getPosition(), true, true);
+		const std::span<const CreaturePtr> spectators_span(spectators.begin(), spectators.size());
 
 		items->insert(items->getBeginDownItem(), item);
 		items->addDownItemCount(1);
-		onAddTileItem(item, spectators);
+		onAddTileItem(item, spectators_span);
 		return spectators;
 	}
 }
@@ -867,7 +874,7 @@ void Tile::updateItem(const ItemPtr& item, uint16_t itemId, uint32_t count)
 
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), true, true);
-	onUpdateTileItem(item, oldType, item, newType, spectators);
+	onUpdateTileItem(item, oldType, item, newType, std::span<const CreaturePtr>(spectators.begin(), spectators.size()));
 }
 
 void Tile::replaceItem(uint32_t index, const ItemPtr& item)
@@ -941,7 +948,7 @@ void Tile::replaceItem(uint32_t index, const ItemPtr& item)
 
 		SpectatorVec spectators;
 		g_game.map.getSpectators(spectators, getPosition(), true, true);
-		onUpdateTileItem(oldItem, oldType, item, newType, spectators);
+		onUpdateTileItem(oldItem, oldType, item, newType, std::span<const CreaturePtr>(spectators.begin(), spectators.size()));
 
 		oldItem->clearParent();
 		return /*RETURNVALUE_NOERROR*/;
@@ -963,7 +970,7 @@ void Tile::removeItem(const ItemPtr& item, uint32_t count)
 
 		SpectatorVec spectators;
 		g_game.map.getSpectators(spectators, getPosition(), true, true);
-		onRemoveTileItem(spectators, std::vector<int32_t>(spectators.size(), 0), item);
+		onRemoveTileItem(std::span<const CreaturePtr>(spectators.begin(), spectators.size()), std::vector<int32_t>(spectators.size(), 0), item);
 		return;
 	}
 
@@ -974,10 +981,10 @@ void Tile::removeItem(const ItemPtr& item, uint32_t count)
 
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), true, true);
-	removeItem(item, count, spectators);
+	removeItem(item, count, std::span<const CreaturePtr>(spectators.begin(), spectators.size()));
 }
 
-void Tile::removeItem(const ItemPtr& item, uint32_t count, const SpectatorVec& spectators)
+void Tile::removeItem(const ItemPtr& item, uint32_t count, std::span<const CreaturePtr> spectators)
 {
 	const auto items = getItemList();
 	if (not items)
@@ -996,7 +1003,7 @@ void Tile::removeItem(const ItemPtr& item, uint32_t count, const SpectatorVec& s
 
 		std::vector<int32_t> oldStackPosVector;
 
-		for (const auto& c : spectators.players())
+		for (const auto& c : spectators)
 		{
 			const auto spectatorPlayer = std::static_pointer_cast<Player>(c);
 			oldStackPosVector.push_back(getStackposOfItem(spectatorPlayer, item));
@@ -1024,7 +1031,7 @@ void Tile::removeItem(const ItemPtr& item, uint32_t count, const SpectatorVec& s
 		{
 			std::vector<int32_t> oldStackPosVector;
 
-			for (const auto& c : spectators.players())
+			for (const auto& c : spectators)
 			{
 				const auto spectatorPlayer = std::static_pointer_cast<Player>(c);
 				oldStackPosVector.push_back(getStackposOfItem(spectatorPlayer, item));
@@ -1307,12 +1314,12 @@ void Tile::notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& ol
 {
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), true, true);
-	notifyItemAdded(item, oldLocation, index, spectators, link);
+	notifyItemAdded(item, oldLocation, index, std::span<const CreaturePtr>(spectators.begin(), spectators.size()), link);
 }
 
-void Tile::notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, const SpectatorVec& spectators, NotifyLink link /*= LINK_OWNER*/)
+void Tile::notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, std::span<const CreaturePtr> spectators, NotifyLink link /*= LINK_OWNER*/)
 {
-	for (auto& spectator : spectators.players())
+	for (auto& spectator : spectators)
 	{
 		std::static_pointer_cast<Player>(spectator)->notifyItemAdded(item, oldLocation, index, LINK_NEAR);
 	}
@@ -1355,10 +1362,10 @@ void Tile::notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& 
 {
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), true, true);
-	notifyItemRemoved(item, newLocation, index, spectators, link);
+	notifyItemRemoved(item, newLocation, index, std::span<const CreaturePtr>(spectators.begin(), spectators.size()), link);
 }
 
-void Tile::notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, const SpectatorVec& spectators, NotifyLink)
+void Tile::notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, std::span<const CreaturePtr> spectators, NotifyLink)
 {
 	if (getStackSize() > 8)
 	{
@@ -1370,7 +1377,7 @@ void Tile::notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& 
 	// and we would know about it pretty quickly, howevever if this doesn't happen, and this new RTTI tagging
 	// works as well as anticipated, I will cleanup the view changes, and apply the same system for thing, cylinder and item based classes.
 
-	for (auto& spectator : spectators.players())
+	for (auto& spectator : spectators)
 	{
 		std::static_pointer_cast<Player>(spectator)->notifyItemRemoved(item, newLocation, index, LINK_NEAR);
 	}
@@ -1386,14 +1393,16 @@ void Tile::notifyCreatureAdded(const CreaturePtr& creature, const TilePtr& oldTi
 {
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), true, true);
-	notifyCreatureAdded(creature, oldTile, spectators);
+	notifyCreatureAdded(creature, oldTile, std::span<const CreaturePtr>(spectators.begin(), spectators.size()));
 }
 
-void Tile::notifyCreatureAdded(const CreaturePtr& creature, const TilePtr&, const SpectatorVec& spectators)
+void Tile::notifyCreatureAdded(const CreaturePtr& creature, const TilePtr&, std::span<const CreaturePtr> spectators)
 {
-	for (auto& spectator : spectators.players())
+	for (const auto& spectatorPlayer : spectators
+		| std::views::filter([](const auto& c) { return c->is_player(); })
+		| std::views::transform([](auto& c) { return std::static_pointer_cast<Player>(c); }))
 	{
-		std::static_pointer_cast<Player>(spectator)->onNearbyCreatureMoved(creature);
+		spectatorPlayer->onNearbyCreatureMoved(creature);
 	}
 
 	if (hasFlag(TILESTATE_TELEPORT))
@@ -1414,10 +1423,10 @@ void Tile::notifyCreatureRemoved(const CreaturePtr& creature, const TilePtr& new
 	{
 		g_game.map.getSpectators(spectators, getPosition(), true, true);
 	}
-	notifyCreatureRemoved(creature, newTile, spectators);
+	notifyCreatureRemoved(creature, newTile, std::span<const CreaturePtr>(spectators.begin(), spectators.size()));
 }
 
-void Tile::notifyCreatureRemoved(const CreaturePtr& creature, const TilePtr&, const SpectatorVec& spectators)
+void Tile::notifyCreatureRemoved(const CreaturePtr& creature, const TilePtr&, std::span<const CreaturePtr> spectators)
 {
 	if (getStackSize() > 8)
 	{

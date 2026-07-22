@@ -602,6 +602,7 @@ class Game
 
 		//animation help functions
 		void addCreatureHealth(const CreatureConstPtr& target);
+		void addCreatureHealth(const CreatureConstPtr& target, std::span<const CreaturePtr> spectators);
 		static void addCreatureHealth(const SpectatorVec& spectators, const CreatureConstPtr& target);
 		void addMagicEffect(const Position& pos, const uint8_t effect, std::span<const CreaturePtr> pre_cache);
 		void addMagicEffect(const Position& pos, uint8_t effect);

@@ -2987,7 +2987,10 @@ namespace BlackTek
 
 			if (maxHeal <= 0)
 			{
-				g_game.addCreatureHealth(target);
+				if (spectators)
+					g_game.addCreatureHealth(target, *spectators);
+				else
+					g_game.addCreatureHealth(target);
 				commitHeal(target, 0, 0);
 				return;
 			}

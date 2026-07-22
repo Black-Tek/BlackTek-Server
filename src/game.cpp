@@ -633,7 +633,7 @@ bool Game::placeCreature(CreaturePtr creature, const Position& pos, bool extende
 
 	if (const auto tile = creature->getTile())
 	{
-		tile->notifyCreatureAdded(creature, nullptr, spectators);
+		tile->notifyCreatureAdded(creature, nullptr, spectators_span);
 	}
 
 	addCreatureCheck(creature);
@@ -652,6 +652,7 @@ bool Game::removeCreature(CreaturePtr creature, bool isLogout/* = true*/)
 
 	SpectatorVec spectators;
 	map.getSpectators(spectators, tile->getPosition(), true);
+	const std::span<const CreaturePtr> spectators_span(spectators.begin(), spectators.size());
 	for (const auto& c : spectators.players()) {
 		const auto player = std::static_pointer_cast<Player>(c);
 		oldStackPosVector.push_back(player->canSeeCreature(creature) ? tile->getClientIndexOfCreature(player, creature) : -1);
@@ -692,7 +693,7 @@ bool Game::removeCreature(CreaturePtr creature, bool isLogout/* = true*/)
 
 	if (const auto tile = creature->getTile())
 	{
-		tile->notifyCreatureRemoved(creature, nullptr);
+		tile->notifyCreatureRemoved(creature, nullptr, spectators_span);
 	}
 
 	creature->removeList();
@@ -2092,15 +2093,18 @@ ReturnValue Game::internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr ite
 			else
 			{
 				SpectatorVec spectators;
+				std::span<const CreaturePtr> spectators_span;
 
 				if (toContainer)
 				{
 					map.getSpectators(spectators, toLocation.containerItem->getPosition(), true, true);
-					toContainer->addItemAt(index, item, spectators);
+					spectators_span = { spectators.begin(), spectators.size() };
+					toContainer->addItemAt(index, item, spectators_span);
 				}
 				else if (toLocation.tile)
 				{
 					spectators = toLocation.tile->addItem(item);
+					spectators_span = { spectators.begin(), spectators.size() };
 				}
 				else
 				{
@@ -2125,11 +2129,11 @@ ReturnValue Game::internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr ite
 				{
 					if (toContainer)
 					{
-						toContainer->notifyItemAdded(item, {}, itemIndex, spectators);
+						toContainer->notifyItemAdded(item, {}, itemIndex, spectators_span);
 					}
 					else if (toLocation.tile)
 					{
-						toLocation.tile->notifyItemAdded(item, {}, itemIndex, spectators);
+						toLocation.tile->notifyItemAdded(item, {}, itemIndex, spectators_span);
 					}
 					else
 					{
@@ -2178,15 +2182,18 @@ ReturnValue Game::internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr ite
 	else
 	{
 		SpectatorVec spectators;
+		std::span<const CreaturePtr> spectators_span;
 
 		if (toContainer)
 		{
 			map.getSpectators(spectators, toLocation.containerItem->getPosition(), true, true);
-			toContainer->addItemAt(index, item, spectators);
+			spectators_span = { spectators.begin(), spectators.size() };
+			toContainer->addItemAt(index, item, spectators_span);
 		}
 		else if (toLocation.tile)
 		{
 			spectators = toLocation.tile->addItem(item);
+			spectators_span = { spectators.begin(), spectators.size() };
 		}
 		else
 		{
@@ -2211,11 +2218,11 @@ ReturnValue Game::internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr ite
 		{
 			if (toContainer)
 			{
-				toContainer->notifyItemAdded(item, {}, itemIndex, spectators);
+				toContainer->notifyItemAdded(item, {}, itemIndex, spectators_span);
 			}
 			else if (toLocation.tile)
 			{
-				toLocation.tile->notifyItemAdded(item, {}, itemIndex, spectators);
+				toLocation.tile->notifyItemAdded(item, {}, itemIndex, spectators_span);
 			}
 			else
 			{
@@ -6285,6 +6292,15 @@ void Game::addCreatureHealth(const CreatureConstPtr& target)
 	SpectatorVec spectators;
 	map.getSpectators(spectators, target->getPosition(), true, true);
 	addCreatureHealth(spectators, target);
+}
+
+void Game::addCreatureHealth(const CreatureConstPtr& target, std::span<const CreaturePtr> spectators)
+{
+	for (const auto& c : spectators)
+	{
+		auto* player = static_cast<Player*>(c.get());
+		player->sendCreatureHealth(target);
+	}
 }
 
 void Game::addCreatureHealth(const SpectatorVec& spectators, const CreatureConstPtr& target)

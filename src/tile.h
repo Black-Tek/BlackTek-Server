@@ -290,14 +290,14 @@ class Tile : public SharedObject
 		BlackTek::GameModel getGameModelAt(size_t index);
 
 		void notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, NotifyLink link = LINK_OWNER);
-		void notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, const SpectatorVec& spectators, NotifyLink link = LINK_OWNER);
+		void notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, std::span<const CreaturePtr> spectators, NotifyLink link = LINK_OWNER);
 		void notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, NotifyLink link = LINK_OWNER);
-		void notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, const SpectatorVec& spectators, NotifyLink link = LINK_OWNER);
+		void notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, std::span<const CreaturePtr> spectators, NotifyLink link = LINK_OWNER);
 
 		void notifyCreatureAdded(const CreaturePtr& creature, const TilePtr& oldTile);
-		void notifyCreatureAdded(const CreaturePtr& creature, const TilePtr& oldTile, const SpectatorVec& spectators);
+		void notifyCreatureAdded(const CreaturePtr& creature, const TilePtr& oldTile, std::span<const CreaturePtr> spectators);
 		void notifyCreatureRemoved(const CreaturePtr& creature, const TilePtr& newTile);
-		void notifyCreatureRemoved(const CreaturePtr& creature, const TilePtr& newTile, const SpectatorVec& spectators);
+		void notifyCreatureRemoved(const CreaturePtr& creature, const TilePtr& newTile, std::span<const CreaturePtr> spectators);
 
 		const Position& getPosition() const
 		{
@@ -338,11 +338,11 @@ class Tile : public SharedObject
 	private:
         TilePtr resolveFloorChangeDestination(uint32_t& flags);
 
-		void onAddTileItem(const ItemPtr& item, const SpectatorVec& spectators);
-		void onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType, const SpectatorVec& spectators);
-		void onRemoveTileItem(const SpectatorVec& spectators, const std::vector<int32_t>& oldStackPosVector, const ItemPtr& item);
-		void onUpdateTile(const SpectatorVec& spectators);
-		void removeItem(const ItemPtr& item, uint32_t count, const SpectatorVec& spectators);
+		void onAddTileItem(const ItemPtr& item, std::span<const CreaturePtr> spectators);
+		void onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType, std::span<const CreaturePtr> spectators);
+		void onRemoveTileItem(std::span<const CreaturePtr> spectators, const std::vector<int32_t>& oldStackPosVector, const ItemPtr& item);
+		void onUpdateTile(std::span<const CreaturePtr> spectators);
+		void removeItem(const ItemPtr& item, uint32_t count, std::span<const CreaturePtr> spectators);
 		void applyItemProperties(const ItemConstPtr& item);
 		void recalculateItemProperties();
 		void setTileFlags(const ItemConstPtr& item);
