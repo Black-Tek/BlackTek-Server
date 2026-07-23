@@ -11,6 +11,7 @@
 #include "declarations.h"
 #include "gamemodel.h"
 #include "itemlocation.h"
+#include "chunk.h"
 
 #include <optional>
 
@@ -304,6 +305,16 @@ class Tile : public SharedObject
 			return tilePos;
 		}
 
+		BlackTek::World::ChunkHandle getOwningChunk() const
+		{
+			return owning_chunk;
+		}
+
+		void setOwningChunk(BlackTek::World::ChunkHandle chunk)
+		{
+			owning_chunk = chunk;
+		}
+
 		bool isRemoved() const
 		{
 			return false;
@@ -347,10 +358,12 @@ class Tile : public SharedObject
 		void recalculateItemProperties();
 		void setTileFlags(const ItemConstPtr& item);
 		void resetTileFlags(const ItemPtr& item);
+		void syncChunkFlags();
 
 		House* house = nullptr;
 		ItemPtr ground = nullptr;
 		Position tilePos;
+		BlackTek::World::ChunkHandle owning_chunk;
 		uint32_t flags = 0;
 		uint32_t itemProperties = 0;
 		TileItemsPtr items;

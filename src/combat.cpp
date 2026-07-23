@@ -301,6 +301,15 @@ namespace BlackTek
 	thread_local std::vector<TilePtr>			area_valid_tile_buffer;
 	thread_local std::vector<uint16_t>			area_xs_buffer;
 	thread_local std::vector<uint16_t>			area_ys_buffer;
+
+	struct AreaChunkBucket
+	{
+		const BlackTek::World::Chunk* chunk = nullptr;
+		uint16_t tileCount = 0;
+		std::array<uint64_t, BlackTek::World::MaxLayers> mask = {};
+	};
+	thread_local std::vector<AreaChunkBucket> area_chunk_buckets;
+	thread_local std::vector<const BlackTek::World::Chunk*> area_position_chunks;
 	thread_local std::vector<uint32_t>			batch_damage_scratch;
 	thread_local std::vector<Combat::BlockType> batch_block_type_scratch;
 	thread_local std::vector<int32_t>			batch_stats_scratch; // we reuse for defense/armor stats per target
@@ -1050,7 +1059,6 @@ namespace BlackTek
 		const uint16_t base_x = center.x;
 		const uint16_t base_y = center.y;
 
-		// Pre-compute all positions via SIMD gen_positions into thread-local scratch
 		area_xs_buffer.resize(loc_count);
 		area_ys_buffer.resize(loc_count);
 		SIMD::gen_positions(spreads_ptr, forwards_ptr, loc_count, base_x, base_y,
@@ -1066,6 +1074,22 @@ namespace BlackTek
 				area_tile_buffer.push_back(tile);
 			};
 
+		BlackTek::World::ChunkCoord lastChunkCoord{};
+		const BlackTek::World::Chunk* lastChunk = nullptr;
+		bool haveLastChunk = false;
+
+		const auto resolveChunk = [&](const uint16_t wx, const uint16_t wy) noexcept -> const BlackTek::World::Chunk*
+			{
+				const BlackTek::World::ChunkCoord coord = BlackTek::World::ToChunkCoord(wx, wy);
+				if (not haveLastChunk or coord != lastChunkCoord)
+				{
+					lastChunk = g_game.map.getChunk(wx, wy);
+					lastChunkCoord = coord;
+					haveLastChunk = true;
+				}
+				return lastChunk;
+			};
+
 		if (config.test(Config::MultiLevel))
 		{
 			const int  casterZ = static_cast<int>(caster_position.z);
@@ -1076,7 +1100,7 @@ namespace BlackTek
 			const uint8_t minZ = ignore_ground
 				? static_cast<uint8_t>(std::max(0, casterZ - floor_range))
 				: static_cast<uint8_t>(casterZ);
-			const uint8_t maxZ = static_cast<uint8_t>(std::min(MAP_MAX_LAYERS - 1, casterZ + floor_range));
+			const uint8_t maxZ = static_cast<uint8_t>(std::min(BlackTek::World::MaxLayers - 1, casterZ + floor_range));
 
 			const size_t upper = loc_count * static_cast<size_t>(maxZ - minZ + 1);
 			area_position_buffer.reserve(upper);
@@ -1090,9 +1114,11 @@ namespace BlackTek
 					{
 						const uint16_t wx = area_xs_buffer[k];
 						const uint16_t wy = area_ys_buffer[k];
-						const auto tile = g_game.map.getTile(wx, wy, z);
+						const auto& tile = g_game.map.getTileInChunk(resolveChunk(wx, wy), wx, wy, z);
+
 						if (not tile)
 							continue;
+
 						try_emit(tile, Position(wx, wy, z));
 					}
 				}
@@ -1103,10 +1129,11 @@ namespace BlackTek
 				{
 					const uint16_t wx = area_xs_buffer[k];
 					const uint16_t wy = area_ys_buffer[k];
+					const auto* chunk = resolveChunk(wx, wy);
 
 					for (uint8_t z = minZ; z <= maxZ; ++z)
 					{
-						const auto tile = g_game.map.getTile(wx, wy, z);
+						const auto& tile = g_game.map.getTileInChunk(chunk, wx, wy, z);
 						if (tile and tile->getGround())
 						{
 							try_emit(tile, Position(wx, wy, z));
@@ -1126,9 +1153,11 @@ namespace BlackTek
 			{
 				const uint16_t wx = area_xs_buffer[k];
 				const uint16_t wy = area_ys_buffer[k];
-				const auto tile = g_game.map.getTile(wx, wy, z);
+				const auto& tile = g_game.map.getTileInChunk(resolveChunk(wx, wy), wx, wy, z);
+
 				if (not tile)
 					continue;
+
 				try_emit(tile, Position(wx, wy, z));
 			}
 		}
@@ -1201,7 +1230,7 @@ namespace BlackTek
 			const uint8_t minZ = ignore_ground
 				? static_cast<uint8_t>(std::max(0, casterZ - floor_range))
 				: static_cast<uint8_t>(casterZ);
-			const uint8_t maxZ = static_cast<uint8_t>(std::min(MAP_MAX_LAYERS - 1, casterZ + floor_range));
+			const uint8_t maxZ = static_cast<uint8_t>(std::min(BlackTek::World::MaxLayers - 1, casterZ + floor_range));
 
 			if (ignore_ground)
 			{
@@ -1220,14 +1249,26 @@ namespace BlackTek
 				area_position_buffer.reserve(loc_count);
 				area_tile_buffer.reserve(loc_count);
 
+				BlackTek::World::ChunkCoord lastChunkCoord{};
+				const BlackTek::World::Chunk* lastChunk = nullptr;
+				bool haveLastChunk = false;
+
 				for (size_t k = 0; k < loc_count; ++k)
 				{
 					const uint16_t wx = area_xs_buffer[k];
 					const uint16_t wy = area_ys_buffer[k];
 
+					const BlackTek::World::ChunkCoord coord = BlackTek::World::ToChunkCoord(wx, wy);
+					if (not haveLastChunk or coord != lastChunkCoord)
+					{
+						lastChunk = g_game.map.getChunk(wx, wy);
+						lastChunkCoord = coord;
+						haveLastChunk = true;
+					}
+
 					for (uint8_t z = minZ; z <= maxZ; ++z)
 					{
-						const auto tile = g_game.map.getTile(wx, wy, z);
+						const auto& tile = g_game.map.getTileInChunk(lastChunk, wx, wy, z);
 						if (tile and tile->getGround())
 						{
 							area_position_buffer.emplace_back(wx, wy, z);
@@ -3273,24 +3314,107 @@ namespace BlackTek
 		};
 
 		for (size_t i = 0; i < n; ++i)
+			valid_tile_list.push_back(tiles[i]);
+
+		if (config_top_target_only)
 		{
-			const auto& tile = tiles[i];
-
-			valid_tile_list.push_back(tile);
-
-			const auto creaturesOnTile = tile->getCreatures();
-
-			if (not creaturesOnTile)
-				continue;
-
-			const bool onCasterTile = (casterTile == tile);
-
-			const CreaturePtr topCreature =	config_top_target_only	? tile->getTopCreature() : nullptr;
-
-			for (const auto& creature : creaturesOnTile->getList())
+			for (size_t i = 0; i < n; ++i)
 			{
-				if (isStrikeable(creature, topCreature, onCasterTile))
-					area_creature_buffer.push_back(creature);
+				const auto& tile = tiles[i];
+				const auto creaturesOnTile = tile->getCreatures();
+
+				if (not creaturesOnTile)
+					continue;
+
+				const bool onCasterTile = (casterTile == tile);
+				const CreaturePtr topCreature = tile->getTopCreature();
+
+				for (const auto& creature : creaturesOnTile->getList())
+				{
+					if (isStrikeable(creature, topCreature, onCasterTile))
+						area_creature_buffer.push_back(creature);
+				}
+			}
+		}
+		else
+		{
+			using BlackTek::World::Chunk;
+			using BlackTek::World::Floor;
+
+			area_chunk_buckets.clear();
+			area_position_chunks.resize(n);
+
+			for (size_t i = 0; i < n; ++i)
+			{
+				const Position& pos = positions[i];
+				const auto* chunk = g_game.map.getChunk(pos.x, pos.y);
+				area_position_chunks[i] = chunk;
+
+				if (not chunk)
+					continue;
+
+				AreaChunkBucket* bucket = nullptr;
+				for (auto& entry : area_chunk_buckets)
+				{
+					if (entry.chunk == chunk)
+					{
+						bucket = &entry;
+						break;
+					}
+				}
+
+				if (not bucket)
+				{
+					area_chunk_buckets.push_back(AreaChunkBucket{ chunk });
+					bucket = &area_chunk_buckets.back();
+				}
+
+				++bucket->tileCount;
+				bucket->mask[pos.z] |= (uint64_t{ 1 } << ((pos.y & Floor::Mask) * Floor::Size + (pos.x & Floor::Mask)));
+			}
+
+			for (const auto& bucket : area_chunk_buckets)
+			{
+				const Chunk* chunk = bucket.chunk;
+				const size_t creatureScanCount = config_aggressive
+					? static_cast<size_t>(chunk->player_count) + chunk->monster_count
+					: chunk->creature_ptrs.size();
+
+				if (creatureScanCount < bucket.tileCount)
+				{
+					for (size_t k = 0; k < creatureScanCount; ++k)
+					{
+						const uint64_t floorMask = bucket.mask[chunk->creature_z[k]];
+
+						if (floorMask == 0)
+							continue;
+
+						const uint32_t bitIndex = (chunk->creature_y[k] & Floor::Mask) * Floor::Size + (chunk->creature_x[k] & Floor::Mask);
+
+						if (((floorMask >> bitIndex) & 1u) == 0)
+							continue;
+
+						const auto& creature = chunk->creature_ptrs[k];
+						if (isStrikeable(creature, nullptr, false))
+							area_creature_buffer.push_back(creature);
+					}
+				}
+				else
+				{
+					for (size_t i = 0; i < n; ++i)
+					{
+						if (area_position_chunks[i] != chunk)
+							continue;
+
+						const auto creaturesOnTile = tiles[i]->getCreatures();
+						if (not creaturesOnTile)
+							continue;
+
+						for (const auto& creature : creaturesOnTile->getList())
+							if (isStrikeable(creature, nullptr, false))
+								area_creature_buffer.push_back(creature);
+					}
+				}
 			}
 		}
 

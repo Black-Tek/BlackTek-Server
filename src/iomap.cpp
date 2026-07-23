@@ -86,6 +86,8 @@ std::expected<MapLoadStats, MapErrorCode> IOMap::loadMap(Map* map, const std::fi
 		map->width = root_header.width;
 		map->height = root_header.height;
 
+		map->chunk_grid.Reserve(root_header.width, root_header.height);
+
 		map_size = pack_map_size(root_header.width, root_header.height);
 
 		if (root.children.empty() or root.children[0].type != OTBM_MAP_DATA)

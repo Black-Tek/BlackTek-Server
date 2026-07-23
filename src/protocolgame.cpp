@@ -800,7 +800,7 @@ void ProtocolGame::GetMapDescription(int32_t x, int32_t y, int32_t z, int32_t wi
 	if (z > 7)
 	{
 		startz = z - 2;
-		endz = std::min<int32_t>(MAP_MAX_LAYERS - 1, z + 2);
+		endz = std::min<int32_t>(BlackTek::World::MaxLayers - 1, z + 2);
 		zstep = 1;
 	} 
 	else

@@ -14,13 +14,15 @@
 #include "house.h"
 #include "spawn.h"
 
+#include "chunk.h"
+#include "chunkgrid.h"
+#include "floorpool.h"
+
 class Creature;
 class Player;
 class Game;
 class Tile;
 class Map;
-
-static constexpr int32_t MAP_MAX_LAYERS = 16;
 
 struct FindPathParams;
 struct AStarNode {
@@ -66,108 +68,7 @@ class AStarNodes
         int_fast32_t closed_nodes;
 };
 
-static constexpr int32_t FLOOR_BITS = 3;
-static constexpr int32_t FLOOR_SIZE = (1 << FLOOR_BITS);
-static constexpr int32_t FLOOR_MASK = (FLOOR_SIZE - 1);
-
-struct Floor {
-	constexpr Floor() = default;
-	~Floor();
-
-	// non-copyable
-	Floor(const Floor&) = delete;
-	Floor& operator=(const Floor&) = delete;
-
-	// Due to the contiguous, fixed size of arrays, this offers the same benefits as a memory pool
-	// but possibly with better cache locality, so we will leave this for now, in the future
-	// we have probably already mostly eliminated the need for a shared pointer, and will likely eliminate them
-	TilePtr tiles[FLOOR_SIZE][FLOOR_SIZE] = {};
-};
-
 class FrozenPathingConditionCall;
-class QTreeLeafNode;
-
-class QTreeNode
-{
-	public:
-		constexpr QTreeNode() = default;
-		virtual ~QTreeNode();
-
-		// non-copyable
-		QTreeNode(const QTreeNode&) = delete;
-		QTreeNode& operator=(const QTreeNode&) = delete;
-
-		bool isLeaf() const {
-			return leaf;
-		}
-
-		QTreeLeafNode* getLeaf(uint32_t x, uint32_t y);
-
-		template<typename Leaf, typename Node>
-		static Leaf getLeafStatic(Node node, uint32_t x, uint32_t y)
-		{
-
-			uint32_t mask = 0x8000;
-
-			do {
-
-				node = node->child[((x & mask) >> 15) | ((y & mask) >> 14)];
-				if (!node) {
-					return nullptr;
-				}
-
-				x <<= 1;
-				y <<= 1;
-			} while (!node->leaf);
-			return static_cast<Leaf>(node);
-		}
-
-		QTreeLeafNode* createLeaf(uint32_t x, uint32_t y, uint32_t level);
-
-	protected:
-		bool leaf = false;
-
-	private:
-		QTreeNode* child[4] = {};
-
-		friend class Map;
-};
-
-class QTreeLeafNode final : public QTreeNode
-{
-	public:
-		QTreeLeafNode() { leaf = true; newLeaf = true; }
-		~QTreeLeafNode() override;
-
-		// non-copyable
-		QTreeLeafNode(const QTreeLeafNode&) = delete;
-		QTreeLeafNode& operator=(const QTreeLeafNode&) = delete;
-
-		Floor* createFloor(uint32_t z);
-	
-		Floor* getFloor(uint8_t z) const {
-			return array[z];
-		}
-
-		void addCreature(const CreaturePtr& c);
-		void removeCreature(const CreaturePtr& c);
-
-	private:
-		static bool newLeaf;
-		QTreeLeafNode* leafS = nullptr;
-		QTreeLeafNode* leafE = nullptr;
-		Floor* array[MAP_MAX_LAYERS] = {};
-		CreatureVector creature_list;
-		CreatureVector player_list;
-
-		friend class Map;
-		friend class QTreeNode;
-};
-
-/**
-  * Map class.
-  * Holds all the actual map-data
-  */
 
 class Map
 {
@@ -178,57 +79,23 @@ class Map
 		static constexpr int32_t maxClientViewportY = 6;
 
 		static uint32_t clean();
-
-		/**
-		  * Load a map.
-		  * \returns true if the map was loaded successfully
-		  */
 		bool loadMap(const std::string& identifier, bool loadHouses);
-
-		/**
-		  * Save a map.
-		  * \returns true if the map was saved successfully
-		  */
 		static bool save();
-
-		/**
-		  * Get a single tile.
-		  * \returns A reference to the tile slot; references a shared null tile when no tile exists.
-		  */
 		const TilePtr& getTile(uint16_t x, uint16_t y, uint8_t z) const;
-
 		const TilePtr& getTile(const Position& pos) const
 		{
 			return getTile(pos.x, pos.y, pos.z);
 		}
 
-		/**
-		  * Set a single tile.
-		  */
+		const TilePtr& getTileInChunk(const BlackTek::World::Chunk* chunk, uint16_t x, uint16_t y, uint8_t z) const;
+
 		void setTile(uint16_t x, uint16_t y, uint8_t z, TilePtr& newTile);
-	
-		void setTile(const Position& pos, TilePtr& newTile) {
-			setTile(pos.x, pos.y, pos.z, newTile);
-		}
-
-		/**
-		  * Removes a single tile.
-		  */
+		void setTile(const Position& pos, TilePtr& newTile) { setTile(pos.x, pos.y, pos.z, newTile); }
 		void removeTile(uint16_t x, uint16_t y, uint8_t z) const;
-	
-		void removeTile(const Position& pos) {
-			removeTile(pos.x, pos.y, pos.z);
-		}
+		void removeTile(const Position& pos) const { removeTile(pos.x, pos.y, pos.z); }
 
-		/**
-		  * Place a creature on the map
-		  * \param centerPos The position to place the creature
-		  * \param creature Creature to place on the map
-		  * \param extendedPos If true, the creature will in first-hand be placed 2 tiles away
-		  * \param forceLogin If true, placing the creature will not fail because of obstacles (creatures/chests)
-		  */
+
 		bool placeCreature(const Position& centerPos, CreaturePtr creature, bool extendedPos = false, bool forceLogin = false);
-
 		void moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool forceTeleport = false);
 
 		void getSpectators(SpectatorVec& spectators, const Position& centerPos, bool multifloor = false, bool onlyPlayers = false,
@@ -236,47 +103,24 @@ class Map
 		                   int32_t minRangeY = 0, int32_t maxRangeY = 0);
 
 		[[nodiscard]] SpectatorVec fetchSpectators(const Position& centerPos, bool multifloor = false, bool onlyPlayers = false, int32_t minRangeX = 0, int32_t maxRangeX = 0, int32_t minRangeY = 0, int32_t maxRangeY = 0);
-
-		/**
-		  * Checks if you can throw an object to that position
-		  *	\param fromPos from Source point
-		  *	\param toPos Destination point
-		  *	\param rangex maximum allowed range horizontally
-		  *	\param rangey maximum allowed range vertically
-		  *	\param checkLineOfSight checks if there is any blocking objects in the way
-		  *	\param sameFloor checks if the destination is on same floor
-		  *	\returns The result if you can throw there or not
-		  */
-		bool canThrowObjectTo(const Position& fromPos, const Position& toPos, bool checkLineOfSight = true, bool sameFloor = false,
-		                      int32_t rangex = Map::maxClientViewportX, int32_t rangey = Map::maxClientViewportY);
-
-		/**
-		  * Checks if there are no obstacles on that position
-		  *	\param blockFloor counts the ground tile as an obstacle
-		  *	\returns The result if there is an obstacle or not
-		  */
+		bool canThrowObjectTo(const Position& fromPos, const Position& toPos, bool checkLineOfSight = true, bool sameFloor = false, int32_t rangex = Map::maxClientViewportX, int32_t rangey = Map::maxClientViewportY);
 		bool isTileClear(uint16_t x, uint16_t y, uint8_t z, bool blockFloor = false);
-
-		/**
-		  * Checks if path is clear from fromPos to toPos
-		  * Notice: This only checks a straight line if the path is clear, for path finding use getPathTo.
-		  *	\param fromPos from Source point
-		  *	\param toPos Destination point
-		  *	\param sameFloor checks if the destination is on same floor
-		  *	\returns The result if there is no obstacles
-		  */
 		bool isSightClear(const Position& fromPos, const Position& toPos, bool sameFloor = false);
 		static bool checkSightLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t z);
-
 		const TilePtr& canWalkTo(CreaturePtr& creature, const Position& pos);
-
-		bool getPathMatching(CreaturePtr& creature, std::vector<Direction>& dirList,
-		                     const FrozenPathingConditionCall& pathCondition, const FindPathParams& fpp);
+		bool getPathMatching(CreaturePtr& creature, std::vector<Direction>& dirList, const FrozenPathingConditionCall& pathCondition, const FindPathParams& fpp);
 
 		std::map<std::string, Position> waypoints;
 
-		QTreeLeafNode* getQTNode(uint16_t x, uint16_t y) {
-			return QTreeNode::getLeafStatic<QTreeLeafNode*, QTreeNode*>(&root, x, y);
+		BlackTek::World::Chunk* getChunk(uint16_t x, uint16_t y)
+		{
+			const auto handle = chunk_grid.FindChunk(BlackTek::World::ToChunkCoord(x, y));
+			return chunk_grid.GetChunk(handle);
+		}
+
+		BlackTek::World::Chunk* getChunk(BlackTek::World::ChunkHandle handle)
+		{
+			return chunk_grid.GetChunk(handle);
 		}
 
 		Spawns spawns;
@@ -284,7 +128,8 @@ class Map
 		Houses houses;
 
 	private:
-		QTreeNode root;
+		BlackTek::World::ChunkGrid chunk_grid;
+		BlackTek::World::FloorPool floor_pool;
 
 		std::filesystem::path spawnfile;
 		std::filesystem::path housefile;

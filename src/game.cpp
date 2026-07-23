@@ -1040,7 +1040,7 @@ ReturnValue Game::internalMoveCreature(CreaturePtr creature, TilePtr toTile, uin
 		flags = 0;
 
 		//to prevent infinite loop
-		if (++n >= MAP_MAX_LAYERS) {
+		if (++n >= BlackTek::World::MaxLayers) {
 			break;
 		}
 	}
@@ -1410,7 +1410,7 @@ ReturnValue Game::internalMoveItem(BlackTek::ItemLocation fromLocation,
 		toLocation = destination;
 
 		//to prevent infinite loop
-		if (++floorN >= MAP_MAX_LAYERS)
+		if (++floorN >= BlackTek::World::MaxLayers)
 		{
 			break;
 		}

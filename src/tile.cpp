@@ -690,7 +690,15 @@ TilePtr Tile::resolveCreatureDestination(const CreaturePtr& creature, uint32_t& 
 				destTile = g_game.map.getTile(player->getTemplePosition());
 
 				if (not destTile) [[unlikely]]
-					destTile = std::make_shared<Tile>(0xFFFF, 0xFFFF, 0xFF);
+				{
+					static const Position nowherePosition(0xFFFF, 0xFFFF, BlackTek::World::MaxLayers - 1);
+					destTile = g_game.map.getTile(nowherePosition);
+					if (not destTile)
+					{
+						destTile = std::make_shared<Tile>(nowherePosition.x, nowherePosition.y, nowherePosition.z);
+						g_game.map.setTile(nowherePosition, destTile);
+					}
+				}
 			}
 
 			return destTile;
@@ -1056,7 +1064,10 @@ bool Tile::hasCreature(CreaturePtr& creature)
 
 void Tile::removeCreature(CreaturePtr& creature)
 {
-	g_game.map.getQTNode(tilePos.x, tilePos.y)->removeCreature(creature);
+	if (auto* chunk = g_game.map.getChunk(owning_chunk))
+	{
+		chunk->RemoveCreature(creature);
+	}
 	if (const auto creatures = getCreatures())
 	{
 		creatures->removeCreature(creature);
@@ -1547,6 +1558,8 @@ void Tile::setTileFlags(const ItemConstPtr& item)
 	if (item->hasProperty(CONST_PROP_SUPPORTHANGABLE)) {
 		setFlag(TILESTATE_SUPPORTS_HANGABLE);
 	}
+
+	syncChunkFlags();
 }
 
 void Tile::resetTileFlags(const ItemPtr& item)
@@ -1608,6 +1621,24 @@ void Tile::resetTileFlags(const ItemPtr& item)
 	if (!hasProperty(CONST_PROP_SUPPORTHANGABLE)) {
 		resetFlag(TILESTATE_SUPPORTS_HANGABLE);
 	}
+
+	syncChunkFlags();
+}
+
+void Tile::syncChunkFlags()
+{
+	if (not owning_chunk.IsValid())
+		return;
+
+	auto* chunk = g_game.map.getChunk(owning_chunk);
+	if (not chunk)
+		return;
+
+	const uint32_t offsetX = tilePos.x & BlackTek::World::Floor::Mask;
+	const uint32_t offsetY = tilePos.y & BlackTek::World::Floor::Mask;
+
+	chunk->SetTileBlockState(offsetX, offsetY, tilePos.z,
+		hasFlag(TILESTATE_BLOCKPATH), hasFlag(TILESTATE_BLOCKSOLID), hasProperty(CONST_PROP_BLOCKPROJECTILE));
 }
 
 bool Tile::isMoveableBlocking() const

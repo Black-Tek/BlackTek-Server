@@ -588,6 +588,16 @@ class Creature : public SharedObject
 			return position;
 		}
 
+		uint32_t getChunkSlot() const
+		{
+			return chunk_slot;
+		}
+
+		void setChunkSlot(uint32_t slot)
+		{
+			chunk_slot = slot;
+		}
+
 		TilePtr getTile()
 		{
 			[[likely]] if (auto shared_ptr = tile.lock())
@@ -664,6 +674,7 @@ class Creature : public SharedObject
 
 		uint64_t lastStep = 0;
 		uint32_t id = 0;
+		uint32_t chunk_slot = 0;
 		uint32_t scriptEventsBitField = 0;
 		uint32_t eventWalk = 0;
 		uint32_t walkUpdateTicks = 0;
