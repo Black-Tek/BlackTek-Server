@@ -1771,6 +1771,15 @@ namespace BlackTek
 		{
 			const auto totalDamage = currentDamage;
 
+			std::optional<SpectatorVec> leechSpectatorStorage;
+			auto leechSpectatorSpan = [&]() -> std::optional<std::span<const CreaturePtr>>
+			{
+				if (not leechSpectatorStorage)
+					leechSpectatorStorage = g_game.map.fetchSpectators(caster->getPosition(), true, true);
+
+				return std::span<const CreaturePtr>(leechSpectatorStorage->begin(), leechSpectatorStorage->end());
+			};
+
 			if (leech.percent_health > 0 or leech.flat_health > 0)
 			{
 				uint32_t life = 0;
@@ -1789,7 +1798,7 @@ namespace BlackTek
 					hp_gain->config.set(Config::Leech);
 					hp_gain->config.set(Config::TopTargetOnly);
 					hp_gain->config.set(Config::TrueDamage);
-					hp_gain->heal_target(caster, caster, true);
+					hp_gain->heal_target(caster, caster, true, leechSpectatorSpan());
 				}
 			}
 
@@ -1811,7 +1820,7 @@ namespace BlackTek
 					mana_gain->config.set(Config::Leech);
 					mana_gain->config.set(Config::TopTargetOnly);
 					mana_gain->config.set(Config::TrueDamage);
-					mana_gain->heal_target(caster, caster, true);
+					mana_gain->heal_target(caster, caster, true, leechSpectatorSpan());
 				}
 			}
 
@@ -1833,7 +1842,7 @@ namespace BlackTek
 					stamina_gain->config.set(Config::Leech);
 					stamina_gain->config.set(Config::TopTargetOnly);
 					stamina_gain->config.set(Config::TrueDamage);
-					stamina_gain->heal_target(caster, caster, true);
+					stamina_gain->heal_target(caster, caster, true, leechSpectatorSpan());
 				}
 			}
 
@@ -1855,7 +1864,7 @@ namespace BlackTek
 					soul_gain->config.set(Config::Leech);
 					soul_gain->config.set(Config::TopTargetOnly);
 					soul_gain->config.set(Config::TrueDamage);
-					soul_gain->heal_target(caster, caster, true);
+					soul_gain->heal_target(caster, caster, true, leechSpectatorSpan());
 				}
 			}
 		}
@@ -3040,7 +3049,7 @@ namespace BlackTek
 				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), target);
 
 			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(maxHeal));
-			target->changeHealth(healed);
+			target->changeHealth(static_cast<int32_t>(healed), true, spectators);
 			heal_notification(caster, target, healed, spectators);
 			commitHeal(target, 0, healed);
 		}
@@ -4421,17 +4430,42 @@ namespace BlackTek
 		const bool	is_defense_conversion	= (origin == Origin::Absorb or origin == Origin::Restore or origin == Origin::Replenish or origin == Origin::Revive);
 		const bool	is_drain_gain			= (origin == Origin::LifeSteal or origin == Origin::ManaSteal or origin == Origin::StaminaSteal or origin == Origin::SoulSteal);
 
+		const bool anyRecipients = target->is_player() or (not self_target and caster->is_player()) or has_observers;
+
+		if (not anyRecipients)
+			return;
+
+		const bool send_notice_effect = (notice.effect != CONST_ME_NONE);
+		const bool send_origin_effect = (origin_notice.effect != CONST_ME_NONE);
+
+		NetworkMessage noticeEffectMsg;
+		if (send_notice_effect)
+			ProtocolGame::AddMagicEffect(noticeEffectMsg, target_position, notice.effect);
+
+		NetworkMessage originEffectMsg;
+		if (send_origin_effect)
+			ProtocolGame::AddMagicEffect(originEffectMsg, target_position, origin_notice.effect);
+
+		auto sendSharedEffects = [&](Player* player)
+		{
+			if (send_notice_effect and player->canSee(target_position))
+				player->writeToOutputBuffer(noticeEffectMsg);
+
+			if (send_origin_effect and player->canSee(target_position))
+				player->writeToOutputBuffer(originEffectMsg);
+		};
+
 		if (target->is_player())
 		{
 			const std::string amount_str	= std::to_string(amount);
 			const std::string stat_str		= std::string(notice.stat_name);
 			const std::string origin_verb	= std::string(origin_notice.verb);
 
-			const std::string target_text =	
-				is_defense_conversion 
-				? "Your " + origin_verb + " restored " + amount_str + " " + stat_str + "." 
-				: is_drain_gain 
-				? "You drained " + amount_str + " " + stat_str + " from your target." 
+			const std::string target_text =
+				is_defense_conversion
+				? "Your " + origin_verb + " restored " + amount_str + " " + stat_str + "."
+				: is_drain_gain
+				? "You drained " + amount_str + " " + stat_str + " from your target."
 				: self_target
 				? "You heal yourself for " + amount_str + " " + stat_str + "."
 				: "You are healed for " + amount_str + " " + stat_str + " by " + origin_verb + ".";
@@ -4445,13 +4479,7 @@ namespace BlackTek
 
 			auto* player = static_cast<Player*>(target.get());
 			player->sendTextMessage(target_message);
-
-			if (notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(target_position, notice.effect);
-
-			if (origin_notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(target_position, origin_notice.effect);
-
+			sendSharedEffects(player);
 			player->sendStats();
 		}
 
@@ -4465,7 +4493,7 @@ namespace BlackTek
 			const std::string caster_text =
 				is_defense_conversion
 				? target_name + "'s " + origin_verb + " restored " + amount_str + " " + stat_str + " from your attack."
-				: is_drain_gain 
+				: is_drain_gain
 				? "You drained " + amount_str + " " + stat_str + " from " + target_name + "."
 				: target_name + " is healed for " + amount_str + " " + stat_str + " by your " + origin_verb + ".";
 
@@ -4478,12 +4506,7 @@ namespace BlackTek
 
 			auto* player = static_cast<Player*>(caster.get());
 			player->sendTextMessage(caster_message);
-
-			if (notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(target_position, notice.effect);
-
-			if (origin_notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(target_position, origin_notice.effect);
+			sendSharedEffects(player);
 		}
 
 		if (has_observers)
@@ -4495,9 +4518,9 @@ namespace BlackTek
 			const auto& caster_name				= caster->getNameDescription();
 
 			const std::string observer_text =
-				is_defense_conversion 
+				is_defense_conversion
 				? target_name + "'s " + origin_verb + " restored " + amount_str + " " + stat_str + "."
-				: is_drain_gain 
+				: is_drain_gain
 				? caster_name + " drained " + amount_str + " " + stat_str + "."
 				: target_name + " is healed for " + amount_str + " " + stat_str + " by " + origin_verb + ".";
 
@@ -4508,19 +4531,14 @@ namespace BlackTek
 			observer_message.type				= MESSAGE_HEALED_OTHERS;
 			observer_message.text				= observer_text;
 
-			const bool send_notice_effect = (notice.effect != CONST_ME_NONE);
-			const bool send_origin_effect = (origin_notice.effect != CONST_ME_NONE);
+			NetworkMessage textMsg;
+			ProtocolGame::AddTextMessage(textMsg, observer_message);
 
 			for (auto it = observer_iterator; it != observer_view.end(); ++it)
 			{
 				auto* player = static_cast<Player*>((*it).get());
-				player->sendTextMessage(observer_message);
-
-				if (send_notice_effect)
-					player->sendMagicEffect(target_position, notice.effect);
-
-				if (send_origin_effect)
-					player->sendMagicEffect(target_position, origin_notice.effect);
+				player->writeToOutputBuffer(textMsg);
+				sendSharedEffects(player);
 			}
 		}
 	}
@@ -4551,6 +4569,29 @@ namespace BlackTek
 		const auto	origin_notice			= collect_origin_notice(static_cast<Origin>(origin));
 		const bool	is_drain				= (origin == Origin::ManaSteal);
 
+		const bool anyRecipients = defender->is_player() or (not self_target and attacker->is_player()) or has_observers;
+
+		if (not anyRecipients)
+			return;
+
+		const bool send_origin_effect_mana = (origin_notice.effect != CONST_ME_NONE);
+
+		NetworkMessage loseEnergyMsg;
+		ProtocolGame::AddMagicEffect(loseEnergyMsg, defender_position, CONST_ME_LOSEENERGY);
+
+		NetworkMessage originEffectMsg;
+		if (send_origin_effect_mana)
+			ProtocolGame::AddMagicEffect(originEffectMsg, defender_position, origin_notice.effect);
+
+		auto sendSharedEffects = [&](Player* player)
+		{
+			if (player->canSee(defender_position))
+				player->writeToOutputBuffer(loseEnergyMsg);
+
+			if (send_origin_effect_mana and player->canSee(defender_position))
+				player->writeToOutputBuffer(originEffectMsg);
+		};
+
 		if (defender->is_player())
 		{
 			const std::string amount_str	= std::to_string(amount);
@@ -4558,9 +4599,9 @@ namespace BlackTek
 			const auto& attacker_name		= attacker->getNameDescription();
 
 			const std::string defender_text =
-				is_drain 
+				is_drain
 				? attacker_name + " drained " + amount_str + " mana from you."
-				: self_target 
+				: self_target
 				? "You lose " + amount_str + " mana due to your own " + origin_verb + "."
 				: "You lose " + amount_str + " mana due to " + origin_verb + " by " + attacker_name + ".";
 
@@ -4573,10 +4614,7 @@ namespace BlackTek
 
 			auto* player = static_cast<Player*>(defender.get());
 			player->sendTextMessage(defender_message);
-			player->sendMagicEffect(defender_position, CONST_ME_LOSEENERGY);
-
-			if (origin_notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(defender_position, origin_notice.effect);
+			sendSharedEffects(player);
 		}
 
 		if (not self_target and attacker->is_player())
@@ -4586,7 +4624,7 @@ namespace BlackTek
 			const auto& defender_name		= defender->getName();
 
 			const std::string attacker_text =
-				is_drain 
+				is_drain
 				? "You drained " + amount_str + " mana from " + defender_name + "."
 				: defender_name + " loses " + amount_str + " mana due to your " + origin_verb + ".";
 
@@ -4599,10 +4637,7 @@ namespace BlackTek
 
 			auto* player = static_cast<Player*>(attacker.get());
 			player->sendTextMessage(attacker_message);
-			player->sendMagicEffect(defender_position, CONST_ME_LOSEENERGY);
-
-			if (origin_notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(defender_position, origin_notice.effect);
+			sendSharedEffects(player);
 		}
 
 		if (has_observers)
@@ -4624,16 +4659,14 @@ namespace BlackTek
 			observer_message.type			= MESSAGE_DAMAGE_OTHERS;
 			observer_message.text			= observer_text;
 
-			const bool send_origin_effect_mana = (origin_notice.effect != CONST_ME_NONE);
+			NetworkMessage textMsg;
+			ProtocolGame::AddTextMessage(textMsg, observer_message);
 
 			for (auto it = observer_iterator; it != observer_view.end(); ++it)
 			{
 				auto* player = static_cast<Player*>((*it).get());
-				player->sendTextMessage(observer_message);
-				player->sendMagicEffect(defender_position, CONST_ME_LOSEENERGY);
-
-				if (send_origin_effect_mana)
-					player->sendMagicEffect(defender_position, origin_notice.effect);
+				player->writeToOutputBuffer(textMsg);
+				sendSharedEffects(player);
 			}
 		}
 	}
@@ -4669,113 +4702,122 @@ namespace BlackTek
 		const bool	is_piercing			= (origin == Origin::Piercing);
 		const bool	is_drain			= (origin == Origin::LifeSteal or origin == Origin::ManaSteal or origin == Origin::StaminaSteal or origin == Origin::SoulSteal);
 
-		if (defender->is_player())
+		const bool anyRecipients = defender->is_player() or (not self_target and attacker->is_player()) or has_observers;
+
+		if (anyRecipients)
 		{
-			const std::string amount_str	= std::to_string(amount);
-			const std::string origin_verb	= std::string(origin_notice.verb);
-			const auto& attacker_name		= attacker->getNameDescription();
-
-			const std::string defender_text =
-				is_reflect ? (self_target
-					? "You reflected " + amount_str + " damage from your own attack."
-					: "You are struck by " + amount_str + " reflected damage from " + attacker_name + "'s resistance.")
-				: is_deflect ? "You are hit by " + amount_str + " deflected damage from " + attacker_name + "'s resistance."
-				: is_ricochet ? "You are hit by " + amount_str + " ricocheting damage."
-				: is_piercing ? "You are struck by " + amount_str + " piercing damage from " + attacker_name + ", bypassing your defenses."
-				: is_drain ? attacker_name + " drained " + amount_str + " health from you via " + origin_verb + "."
-				: self_target ? "You lose " + amount_str + " health due to your own " + origin_verb + "."
-				: "You lose " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
-
-			TextMessage defender_message	= {};
-			defender_message.position		= defender_position;
-			defender_message.primary.color	= notice.color;
-			defender_message.primary.value	= amount;
-			defender_message.type			= MESSAGE_DAMAGE_RECEIVED;
-			defender_message.text			= defender_text;
-
-			auto* player = static_cast<Player*>(defender.get());
-			player->sendTextMessage(defender_message);
-
-			if (notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(defender_position, notice.effect);
-
-			if (origin_notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(defender_position, origin_notice.effect);
-
-			player->sendStats();
-			player->sendCreatureHealth(defender);
-		}
-
-		if (not self_target and attacker->is_player())
-		{
-			const std::string amount_str	= std::to_string(amount);
-			const std::string origin_verb	= std::string(origin_notice.verb);
-			const auto& defender_name		= defender->getName();
-
-			const std::string attacker_text =
-				is_reflect ? "Your resistance reflected " + amount_str + " damage to " + defender_name + "."
-				: is_deflect ? "Your resistance deflected " + amount_str + " damage to " + defender_name + "."
-				: is_ricochet ? "Your attack ricocheted for " + amount_str + " damage."
-				: is_piercing ? "Your attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
-				: is_drain ? "You drained " + amount_str + " health from " + defender_name + " via " + origin_verb + "."
-				: defender_name + " loses " + amount_str + " health due to your " + origin_verb + ".";
-
-			TextMessage attacker_message	= {};
-			attacker_message.position		= defender_position;
-			attacker_message.primary.color	= notice.color;
-			attacker_message.primary.value	= amount;
-			attacker_message.type			= MESSAGE_DAMAGE_DEALT;
-			attacker_message.text			= attacker_text;
-
-			auto* player = static_cast<Player*>(attacker.get());
-			player->sendTextMessage(attacker_message);
-
-			if (notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(defender_position, notice.effect);
-
-			if (origin_notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(defender_position, origin_notice.effect);
-
-			player->sendCreatureHealth(defender);
-		}
-
-		if (has_observers)
-		{
-			const std::string amount_str	= std::to_string(amount);
-			const std::string origin_verb	= std::string(origin_notice.verb);
-			const auto& defender_name		= defender->getName();
-			const auto& attacker_name		= attacker->getNameDescription();
-
-			const std::string observer_text =
-				is_reflect ? attacker_name + "'s resistance reflected " + amount_str + " damage to " + defender_name + "."
-				: is_deflect ? attacker_name + "'s resistance deflected " + amount_str + " damage to " + defender_name + "."
-				: is_ricochet ? "A ricocheting attack struck " + defender_name + " for " + amount_str + " damage."
-				: is_piercing ? attacker_name + "'s attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
-				: is_drain ? attacker_name + " drained " + amount_str + " health from " + defender_name + "."
-				: defender_name + " loses " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
-
-			TextMessage observer_message	= {};
-			observer_message.position		= defender_position;
-			observer_message.primary.color	= notice.color;
-			observer_message.primary.value	= amount;
-			observer_message.type			= MESSAGE_DAMAGE_OTHERS;
-			observer_message.text			= observer_text;
-
 			const bool send_damage_notice_effect = (notice.effect != CONST_ME_NONE);
 			const bool send_damage_origin_effect = (origin_notice.effect != CONST_ME_NONE);
 
-			for (auto it = observer_iterator; it != observer_view.end(); ++it)
+			NetworkMessage noticeEffectMsg;
+			if (send_damage_notice_effect)
+				ProtocolGame::AddMagicEffect(noticeEffectMsg, defender_position, notice.effect);
+
+			NetworkMessage originEffectMsg;
+			if (send_damage_origin_effect)
+				ProtocolGame::AddMagicEffect(originEffectMsg, defender_position, origin_notice.effect);
+
+			NetworkMessage healthMsg;
+			ProtocolGame::AddCreatureHealth(healthMsg, defender);
+
+			auto sendSharedEffectsAndHealth = [&](Player* player)
 			{
-				auto* player = static_cast<Player*>((*it).get());
-				player->sendTextMessage(observer_message);
+				if (send_damage_notice_effect and player->canSee(defender_position))
+					player->writeToOutputBuffer(noticeEffectMsg);
 
-				if (send_damage_notice_effect)
-					player->sendMagicEffect(defender_position, notice.effect);
+				if (send_damage_origin_effect and player->canSee(defender_position))
+					player->writeToOutputBuffer(originEffectMsg);
 
-				if (send_damage_origin_effect)
-					player->sendMagicEffect(defender_position, origin_notice.effect);
+				player->writeToOutputBuffer(healthMsg);
+			};
 
-				player->sendCreatureHealth(defender);
+			if (defender->is_player())
+			{
+				const std::string amount_str	= std::to_string(amount);
+				const std::string origin_verb	= std::string(origin_notice.verb);
+				const auto& attacker_name		= attacker->getNameDescription();
+
+				const std::string defender_text =
+					is_reflect ? (self_target
+						? "You reflected " + amount_str + " damage from your own attack."
+						: "You are struck by " + amount_str + " reflected damage from " + attacker_name + "'s resistance.")
+					: is_deflect ? "You are hit by " + amount_str + " deflected damage from " + attacker_name + "'s resistance."
+					: is_ricochet ? "You are hit by " + amount_str + " ricocheting damage."
+					: is_piercing ? "You are struck by " + amount_str + " piercing damage from " + attacker_name + ", bypassing your defenses."
+					: is_drain ? attacker_name + " drained " + amount_str + " health from you via " + origin_verb + "."
+					: self_target ? "You lose " + amount_str + " health due to your own " + origin_verb + "."
+					: "You lose " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
+
+				TextMessage defender_message	= {};
+				defender_message.position		= defender_position;
+				defender_message.primary.color	= notice.color;
+				defender_message.primary.value	= amount;
+				defender_message.type			= MESSAGE_DAMAGE_RECEIVED;
+				defender_message.text			= defender_text;
+
+				auto* player = static_cast<Player*>(defender.get());
+				player->sendTextMessage(defender_message);
+				sendSharedEffectsAndHealth(player);
+				player->sendStats();
+			}
+
+			if (not self_target and attacker->is_player())
+			{
+				const std::string amount_str	= std::to_string(amount);
+				const std::string origin_verb	= std::string(origin_notice.verb);
+				const auto& defender_name		= defender->getName();
+
+				const std::string attacker_text =
+					is_reflect ? "Your resistance reflected " + amount_str + " damage to " + defender_name + "."
+					: is_deflect ? "Your resistance deflected " + amount_str + " damage to " + defender_name + "."
+					: is_ricochet ? "Your attack ricocheted for " + amount_str + " damage."
+					: is_piercing ? "Your attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
+					: is_drain ? "You drained " + amount_str + " health from " + defender_name + " via " + origin_verb + "."
+					: defender_name + " loses " + amount_str + " health due to your " + origin_verb + ".";
+
+				TextMessage attacker_message	= {};
+				attacker_message.position		= defender_position;
+				attacker_message.primary.color	= notice.color;
+				attacker_message.primary.value	= amount;
+				attacker_message.type			= MESSAGE_DAMAGE_DEALT;
+				attacker_message.text			= attacker_text;
+
+				auto* player = static_cast<Player*>(attacker.get());
+				player->sendTextMessage(attacker_message);
+				sendSharedEffectsAndHealth(player);
+			}
+
+			if (has_observers)
+			{
+				const std::string amount_str	= std::to_string(amount);
+				const std::string origin_verb	= std::string(origin_notice.verb);
+				const auto& defender_name		= defender->getName();
+				const auto& attacker_name		= attacker->getNameDescription();
+
+				const std::string observer_text =
+					is_reflect ? attacker_name + "'s resistance reflected " + amount_str + " damage to " + defender_name + "."
+					: is_deflect ? attacker_name + "'s resistance deflected " + amount_str + " damage to " + defender_name + "."
+					: is_ricochet ? "A ricocheting attack struck " + defender_name + " for " + amount_str + " damage."
+					: is_piercing ? attacker_name + "'s attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
+					: is_drain ? attacker_name + " drained " + amount_str + " health from " + defender_name + "."
+					: defender_name + " loses " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
+
+				TextMessage observer_message	= {};
+				observer_message.position		= defender_position;
+				observer_message.primary.color	= notice.color;
+				observer_message.primary.value	= amount;
+				observer_message.type			= MESSAGE_DAMAGE_OTHERS;
+				observer_message.text			= observer_text;
+
+				NetworkMessage textMsg;
+				ProtocolGame::AddTextMessage(textMsg, observer_message);
+
+				for (auto it = observer_iterator; it != observer_view.end(); ++it)
+				{
+					auto* player = static_cast<Player*>((*it).get());
+					player->writeToOutputBuffer(textMsg);
+					sendSharedEffectsAndHealth(player);
+				}
 			}
 		}
 

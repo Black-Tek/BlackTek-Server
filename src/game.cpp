@@ -6296,28 +6296,50 @@ void Game::addCreatureHealth(const CreatureConstPtr& target)
 
 void Game::addCreatureHealth(const CreatureConstPtr& target, std::span<const CreaturePtr> spectators)
 {
+	if (spectators.empty())
+		return;
+
+	NetworkMessage msg;
+	ProtocolGame::AddCreatureHealth(msg, target);
+
 	for (const auto& c : spectators)
 	{
 		auto* player = static_cast<Player*>(c.get());
-		player->sendCreatureHealth(target);
+		player->writeToOutputBuffer(msg);
 	}
 }
 
 void Game::addCreatureHealth(const SpectatorVec& spectators, const CreatureConstPtr& target)
 {
-	for (const auto& c : spectators.players())
+	const auto players = spectators.players();
+
+	if (players.empty())
+		return;
+
+	NetworkMessage msg;
+	ProtocolGame::AddCreatureHealth(msg, target);
+
+	for (const auto& c : players)
 	{
 		auto* player = static_cast<Player*>(c.get());
-		player->sendCreatureHealth(target);
+		player->writeToOutputBuffer(msg);
 	}
 }
 
 void Game::addMagicEffect(const Position& position, const uint8_t effect, std::span<const CreaturePtr> spectators)
 {
+	if (spectators.empty())
+		return;
+
+	NetworkMessage msg;
+	ProtocolGame::AddMagicEffect(msg, position, effect);
+
 	for (const auto& c : spectators)
 	{
 		auto* player = static_cast<Player*>(c.get());
-		player->sendMagicEffect(position, effect);
+
+		if (player->canSee(position))
+			player->writeToOutputBuffer(msg);
 	}
 }
 
@@ -6330,10 +6352,20 @@ void Game::addMagicEffect(const Position& position, const uint8_t effect)
 
 void Game::addMagicEffect(const SpectatorVec& spectators, const Position& position, const uint8_t effect)
 {
-	for (const auto& c : spectators.players())
+	const auto players = spectators.players();
+
+	if (players.empty())
+		return;
+
+	NetworkMessage msg;
+	ProtocolGame::AddMagicEffect(msg, position, effect);
+
+	for (const auto& c : players)
 	{
 		auto* player = static_cast<Player*>(c.get());
-		player->sendMagicEffect(position, effect);
+
+		if (player->canSee(position))
+			player->writeToOutputBuffer(msg);
 	}
 }
 
@@ -6349,19 +6381,33 @@ void Game::addDistanceEffect(const Position& fromPos, const Position& toPos, con
 
 void Game::addDistanceEffect(std::span<const CreaturePtr> spectators, const Position& fromPos, const Position& toPos, uint8_t effect)
 {
+	if (spectators.empty())
+		return;
+
+	NetworkMessage msg;
+	ProtocolGame::AddDistanceShoot(msg, fromPos, toPos, effect);
+
 	for (const auto& c : spectators)
 	{
 		auto* player = static_cast<Player*>(c.get());
-		player->sendDistanceShoot(fromPos, toPos, effect);
+		player->writeToOutputBuffer(msg);
 	}
 }
 
 void Game::addDistanceEffect(const SpectatorVec& spectators, const Position& fromPos, const Position& toPos, uint8_t effect)
 {
-	for (const auto& c : spectators.players())
+	const auto players = spectators.players();
+
+	if (players.empty())
+		return;
+
+	NetworkMessage msg;
+	ProtocolGame::AddDistanceShoot(msg, fromPos, toPos, effect);
+
+	for (const auto& c : players)
 	{
 		auto* player = static_cast<Player*>(c.get());
-		player->sendDistanceShoot(fromPos, toPos, effect);
+		player->writeToOutputBuffer(msg);
 	}
 }
 

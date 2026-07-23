@@ -2078,11 +2078,11 @@ void Monster::drainHealth(const CreaturePtr& attacker, const int32_t damage)
 	}
 }
 
-void Monster::changeHealth(const int32_t healthChange, const bool sendHealthChange/* = true*/)
+void Monster::changeHealth(const int32_t healthChange, const bool sendHealthChange/* = true*/, std::optional<std::span<const CreaturePtr>> spectators/* = std::nullopt*/)
 {
 	//In case a player with ignore flag set attacks the monster
 	setIdle(false);
-	Creature::changeHealth(healthChange, sendHealthChange);
+	Creature::changeHealth(healthChange, sendHealthChange, spectators);
 }
 
 bool Monster::challengeCreature(const CreaturePtr& creature, bool force/* = false*/)

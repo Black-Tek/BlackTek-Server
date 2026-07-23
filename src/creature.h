@@ -417,9 +417,9 @@ class Creature : public SharedObject
 			return true;
 		}
 
-		virtual void changeHealth(int32_t healthChange, bool sendHealthChange = true);
+		virtual void changeHealth(int32_t healthChange, bool sendHealthChange = true, std::optional<std::span<const CreaturePtr>> spectators = std::nullopt);
 
-		void gainHealth(const CreaturePtr& healer, int32_t healthGain);
+		void gainHealth(const CreaturePtr& healer, int32_t healthGain, std::optional<std::span<const CreaturePtr>> spectators = std::nullopt);
 		virtual void drainHealth(const CreaturePtr& attacker, int32_t damage);
 
 		virtual bool challengeCreature(const CreaturePtr&, bool) {

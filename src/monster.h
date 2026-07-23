@@ -107,7 +107,7 @@ class Monster final : public Creature
 		void onCreatureSay(const CreaturePtr& creature, SpeakClasses type, const std::string& text) override;
 
 		void drainHealth(const CreaturePtr& attacker, int32_t damage) override;
-		void changeHealth(int32_t healthChange, bool sendHealthChange = true) override;
+		void changeHealth(int32_t healthChange, bool sendHealthChange = true, std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) override;
 
 		void onWalk() override;
 		void onWalkComplete() override;

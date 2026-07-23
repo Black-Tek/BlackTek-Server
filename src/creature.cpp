@@ -713,28 +713,39 @@ ItemPtr Creature::getCorpse(const CreaturePtr&, const CreaturePtr&)
 	return Item::CreateItem(getLookCorpse());
 }
 
-void Creature::changeHealth(int32_t healthChange, bool sendHealthChange/* = true*/)
+void Creature::changeHealth(int32_t healthChange, bool sendHealthChange/* = true*/, std::optional<std::span<const CreaturePtr>> spectators/* = std::nullopt*/)
 {
 	int32_t oldHealth = health;
 
-	if (healthChange > 0) {
+	if (healthChange > 0)
+	{
 		health += std::min<int32_t>(healthChange, getMaxHealth() - health);
-	} else {
+	}
+	else
+	{
 		health = std::max<int32_t>(0, health + healthChange);
 	}
 
-	if (sendHealthChange && oldHealth != health) {
+	if (sendHealthChange and oldHealth != health)
+	{
 		CreatureConstPtr c_creature = this->getCreature();
-		g_game.addCreatureHealth(c_creature); // this is broken or something idk.
+
+		if (spectators)
+			g_game.addCreatureHealth(c_creature, *spectators);
+		else
+			g_game.addCreatureHealth(c_creature);
 	}
 
-	if (health <= 0) g_game.executeDeath(id);
+	if (health <= 0)
+		g_game.executeDeath(id);
 }
 
-void Creature::gainHealth(const CreaturePtr& healer, int32_t healthGain)
+void Creature::gainHealth(const CreaturePtr& healer, int32_t healthGain, std::optional<std::span<const CreaturePtr>> spectators/* = std::nullopt*/)
 {
-	changeHealth(healthGain);
-	if (healer) {
+	changeHealth(healthGain, true, spectators);
+
+	if (healer)
+	{
 		healer->onTargetCreatureGainHealth(std::static_pointer_cast<Creature>(shared_from_this()), healthGain);
 	}
 }
@@ -1196,6 +1207,7 @@ void Creature::removeCondition(ConditionType_t type, bool force/* = false*/)
 		}
 
 		ConditionHandle cond = std::move(*it);
+		cond->markRemoved();
 		it = conditions.erase(it);
 		cond->endCondition(self);
 		onEndCondition(type);
@@ -1222,6 +1234,7 @@ void Creature::removeCondition(ConditionType_t type, ConditionId_t conditionId, 
 		}
 
 		ConditionHandle cond = std::move(*it);
+		cond->markRemoved();
 		it = conditions.erase(it);
 		cond->endCondition(self);
 		onEndCondition(type);
@@ -1260,6 +1273,7 @@ void Creature::removeCondition(const Condition* condition, bool force/* = false*
 	const auto self = std::static_pointer_cast<Creature>(shared_from_this());
 	const auto condType = condition->getType();
 	ConditionHandle cond = std::move(*it);
+	cond->markRemoved();
 	conditions.erase(it);
 	cond->endCondition(self);
 	onEndCondition(condType);
@@ -1287,27 +1301,35 @@ Condition* Creature::getCondition(ConditionType_t type, ConditionId_t conditionI
 void Creature::executeConditions(uint32_t interval)
 {
 	const auto self = std::static_pointer_cast<Creature>(shared_from_this());
-	std::vector<Condition*> snapshot;
-	snapshot.reserve(conditions.size());
-	for (const auto& h : conditions)
-		snapshot.push_back(h.Get());
 
-	for (Condition* condition : snapshot) {
+	std::vector<ConditionHandle> snapshot;
+	snapshot.reserve(conditions.size());
+	for (const auto& handle : conditions)
+		snapshot.push_back(handle);
+
+	for (const ConditionHandle& handle : snapshot)
+	{
+		if (handle->isRemoved())
+			continue;
+
+		Condition* condition = handle.Get();
+		const bool stillActive = condition->executeCondition(self, interval);
+
+		if (stillActive or condition->isRemoved())
+			continue;
+
 		auto it = std::ranges::find_if(conditions, [condition](const ConditionHandle& h) { return h.Get() == condition; });
+
 		if (it == conditions.end())
 			continue;
 
-		if (!condition->executeCondition(self, interval)) {
-			it = std::ranges::find_if(conditions, [condition](const ConditionHandle& h) { return h.Get() == condition; });
-			if (it != conditions.end()) {
-				const auto condType = condition->getType();
-				ConditionHandle cond = std::move(*it);
-				conditions.erase(it);
-				cond->endCondition(self);
-				onEndCondition(condType);
-				BlackTek::EmitConditionEnd(self, condType, BlackTek::Metrics::ConditionRecordType::Expiry);
-			}
-		}
+		const auto condType = condition->getType();
+		ConditionHandle cond = std::move(*it);
+		cond->markRemoved();
+		conditions.erase(it);
+		cond->endCondition(self);
+		onEndCondition(condType);
+		BlackTek::EmitConditionEnd(self, condType, BlackTek::Metrics::ConditionRecordType::Expiry);
 	}
 }
 

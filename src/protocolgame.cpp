@@ -1704,9 +1704,8 @@ void ProtocolGame::sendBasicData()
 }
 
 // to reduce the size of text message, we can and should make a separate method for handling "channel messages"
-void ProtocolGame::sendTextMessage(const TextMessage& message)
+void ProtocolGame::AddTextMessage(NetworkMessage& msg, const TextMessage& message)
 {
-	NetworkMessage msg;
 	msg.add(ServerCode::TextMessage);
 	msg.addByte(message.type);
 	switch (message.type)
@@ -1742,6 +1741,12 @@ void ProtocolGame::sendTextMessage(const TextMessage& message)
 		default: break;
 	}
 	msg.addString(message.text);
+}
+
+void ProtocolGame::sendTextMessage(const TextMessage& message)
+{
+	NetworkMessage msg;
+	AddTextMessage(msg, message);
 	writeToOutputBuffer(msg);
 }
 
@@ -2845,32 +2850,23 @@ void ProtocolGame::sendPingBack()
 	writeToOutputBuffer(msg);
 }
 
-void ProtocolGame::sendDistanceShoot(const Position& from, const Position& to, uint8_t type)
+void ProtocolGame::AddDistanceShoot(NetworkMessage& msg, const Position& from, const Position& to, uint8_t type)
 {
-	NetworkMessage msg;
 	msg.add(ServerCode::DistanceShoot);
 	msg.addPosition(from);
 	msg.addPosition(to);
 	msg.addByte(type);
-	writeToOutputBuffer(msg);
 }
 
-void ProtocolGame::sendMagicEffect(const Position& pos, uint8_t type)
+void ProtocolGame::AddMagicEffect(NetworkMessage& msg, const Position& pos, uint8_t type)
 {
-	if (not canSee(pos)) {
-		return;
-	}
-
-	NetworkMessage msg;
 	msg.add(ServerCode::MagicEffect);
 	msg.addPosition(pos);
 	msg.addByte(type);
-	writeToOutputBuffer(msg);
 }
 
-void ProtocolGame::sendCreatureHealth(const CreatureConstPtr& creature)
+void ProtocolGame::AddCreatureHealth(NetworkMessage& msg, const CreatureConstPtr& creature)
 {
-	NetworkMessage msg;
 	msg.add(ServerCode::CreatureHealth);
 	msg.add<uint32_t>(creature->getID());
 
@@ -2882,6 +2878,30 @@ void ProtocolGame::sendCreatureHealth(const CreatureConstPtr& creature)
 	{
 		msg.addByte(std::ceil((static_cast<double>(creature->getHealth()) / std::max<int32_t>(creature->getMaxHealth(), 1)) * 100));
 	}
+}
+
+void ProtocolGame::sendDistanceShoot(const Position& from, const Position& to, uint8_t type)
+{
+	NetworkMessage msg;
+	AddDistanceShoot(msg, from, to, type);
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendMagicEffect(const Position& pos, uint8_t type)
+{
+	if (not canSee(pos)) {
+		return;
+	}
+
+	NetworkMessage msg;
+	AddMagicEffect(msg, pos, type);
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendCreatureHealth(const CreatureConstPtr& creature)
+{
+	NetworkMessage msg;
+	AddCreatureHealth(msg, creature);
 	writeToOutputBuffer(msg);
 }
 

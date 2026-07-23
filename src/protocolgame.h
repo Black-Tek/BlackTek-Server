@@ -89,6 +89,11 @@ class ProtocolGame final : public Protocol
 			return version;
 		}
 
+		static void AddCreatureHealth(NetworkMessage& msg, const CreatureConstPtr& creature);
+		static void AddMagicEffect(NetworkMessage& msg, const Position& pos, uint8_t type);
+		static void AddDistanceShoot(NetworkMessage& msg, const Position& from, const Position& to, uint8_t type);
+		static void AddTextMessage(NetworkMessage& msg, const TextMessage& message);
+
 	private:
 		ProtocolGame_ptr getThis() {
 			return std::static_pointer_cast<ProtocolGame>(shared_from_this());

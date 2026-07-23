@@ -569,7 +569,7 @@ class Player final : public Creature
 		void onWalkAborted() override;
 		void onWalkComplete() override;
 		void stopWalk();
-		void changeHealth(int32_t healthChange, bool sendHealthChange = true) override;
+		void changeHealth(int32_t healthChange, bool sendHealthChange = true, std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) override;
 		void changeMana(int32_t manaChange);
 		void changeSoul(int32_t soulChange);
 		void addSoul(uint8_t soulChange);
@@ -811,6 +811,7 @@ class Player final : public Creature
 		void sendChangeSpeed(const CreatureConstPtr& creature, uint32_t newSpeed) const				{ if (client) client->sendChangeSpeed(creature, newSpeed); }
 		void sendCreatureHealth(const CreatureConstPtr& creature) const								{ if (client) client->sendCreatureHealth(creature); }
 		void sendDistanceShoot(const Position& from, const Position& to, unsigned char type) const	{ if (client) client->sendDistanceShoot(from, to, type); }
+		void writeToOutputBuffer(const NetworkMessage& msg) const										{ if (client) client->writeToOutputBuffer(msg); }
 		void sendAccountManagerTextWindow(uint32_t id, const std::string& text) const				{ if (client) client->sendAccountManagerTextBox(id, text); }
 		void sendCreatePrivateChannel(uint16_t channelId, const std::string& channelName) const		{ if (client) client->sendCreatePrivateChannel(channelId, channelName); }
 		void sendIcons() const																		{ if (client) client->sendIcons(getClientIcons()); }

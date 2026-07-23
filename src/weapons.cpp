@@ -415,7 +415,10 @@ bool Weapon::useFist(const PlayerPtr& player, const CreaturePtr& target)
 	fist->SetConfig(BlackTek::Combat::Config::BlockedByDefense);
 	fist->SetConfig(BlackTek::Combat::Config::Aggressive);
 	fist->setOrigin(BlackTek::Combat::Origin::Fist);
-	fist->strike_target(player, target);
+
+	const SpectatorVec fistSpectators = g_game.map.fetchSpectators(target->getPosition(), true, true);
+	const std::span<const CreaturePtr> fistSpectatorSpan(fistSpectators.begin(), fistSpectators.end());
+	fist->strike_target(player, target, false, fistSpectatorSpan);
 
 	if (not player->hasFlag(PlayerFlag_NotGainSkill) and player->getAddAttackSkill())
 		player->addSkillAdvance(SKILL_FIST, 1);
@@ -433,11 +436,14 @@ void Weapon::internalUseWeapon(const PlayerPtr& player, const ItemPtr& item, con
 	}
 	else
 	{
+		const SpectatorVec weaponSpectators = g_game.map.fetchSpectators(target->getPosition(), true, true);
+		const std::span<const CreaturePtr> weaponSpectatorSpan(weaponSpectators.begin(), weaponSpectators.end());
+
 		int32_t rawDmg = (getWeaponDamage(player, target, item) * damageModifier) / 100;
 		combat->SetConfig(BlackTek::Combat::Config::TrueDamage);
 		combat->SetDamage(static_cast<uint32_t>(std::abs(rawDmg)));
 		combat->SetDistanceEffect(static_cast<uint8_t>(Item::items[item->getID()].shootType));
-		combat->strike_target(player, target);
+		combat->strike_target(player, target, false, weaponSpectatorSpan);
 
 		int32_t elemDmg = getElementDamage(player, target, item);
 		if (elemDmg != 0)
@@ -447,7 +453,7 @@ void Weapon::internalUseWeapon(const PlayerPtr& player, const ItemPtr& item, con
 				static_cast<uint32_t>(std::abs(elemDmg))
 			);
 			elemStrike->SetConfig(BlackTek::Combat::Config::Aggressive);
-			elemStrike->strike_target(player, target);
+			elemStrike->strike_target(player, target, false, weaponSpectatorSpan);
 		}
 	}
 

@@ -2958,6 +2958,7 @@ void Player::death(const CreaturePtr& lastHitCreature)
 		while (it != end) {
 			if ((*it)->isPersistent()) {
 				ConditionHandle cond = std::move(*it);
+				cond->markRemoved();
 				it = conditions.erase(it);
 				cond->endCondition(this->getPlayer());
 				onEndCondition(cond->getType());
@@ -2972,6 +2973,7 @@ void Player::death(const CreaturePtr& lastHitCreature)
 		while (it != end) {
 			if ((*it)->isPersistent()) {
 				ConditionHandle cond = std::move(*it);
+				cond->markRemoved();
 				it = conditions.erase(it);
 				cond->endCondition(this->getPlayer());
 				onEndCondition(cond->getType());
@@ -4736,9 +4738,9 @@ bool Player::lastHitIsPlayer(const CreaturePtr& lastHitCreature)
 	return lastHitMaster && lastHitMaster->getPlayer();
 }
 
-void Player::changeHealth(int32_t healthChange, bool sendHealthChange/* = true*/)
+void Player::changeHealth(int32_t healthChange, bool sendHealthChange/* = true*/, std::optional<std::span<const CreaturePtr>> spectators/* = std::nullopt*/)
 {
-	Creature::changeHealth(healthChange, sendHealthChange);
+	Creature::changeHealth(healthChange, sendHealthChange, spectators);
 	sendStats();
 }
 
