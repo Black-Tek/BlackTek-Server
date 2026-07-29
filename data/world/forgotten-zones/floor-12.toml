@@ -1,0 +1,63 @@
+[ConvertedSpawn_z12_220]
+range = { start = "110:478:12", end = "119:486:12" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "3:2:0", interval = 60, name = "Ghost" },
+    { position = "7:4:0", interval = 60, name = "Ghost" },
+    { position = "2:6:0", interval = 60, name = "Mummy" },
+]
+
+[ConvertedSpawn_z12_301]
+range = { start = "57:103:12", end = "61:107:12" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Rotworm" },
+]
+
+[ConvertedSpawn_z12_302]
+range = { start = "196:594:12", end = "200:598:12" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Slime" },
+]
+
+[ConvertedSpawn_z12_303]
+range = { start = "206:602:12", end = "210:606:12" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Slime" },
+]
+
+[ConvertedSpawn_z12_304]
+range = { start = "189:610:12", end = "193:614:12" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Slime" },
+]
+
+[ConvertedSpawn_z12_305]
+range = { start = "201:617:12", end = "208:624:12" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "5:2:0", interval = 60, name = "Slime" },
+    { position = "2:5:0", interval = 60, name = "Slime" },
+]
+

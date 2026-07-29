@@ -465,31 +465,27 @@ void LuaScriptInterface::reportError(const char* function, const std::string& er
 	LuaScriptInterface* scriptInterface;
 	getScriptEnv()->getEventInfo(scriptId, scriptInterface, callbackId, timerEvent);
 
-	std::cout << std::endl << "Lua Script Error: ";
+	std::string message = "Lua Script Error: ";
 
-	if (scriptInterface) {
-		std::cout << '[' << scriptInterface->getInterfaceName() << "] " << std::endl;
+	if (scriptInterface)
+	{
+		message += fmt::format("[{}] ", scriptInterface->getInterfaceName());
 
-		if (timerEvent) {
-			std::cout << "in a timer event called from: " << std::endl;
-		}
+		if (timerEvent)
+			message += "in a timer event called from: ";
 
-		if (callbackId) {
-			std::cout << "in callback: " << scriptInterface->getFileById(callbackId) << std::endl;
-		}
+		if (callbackId)
+			message += fmt::format("in callback: {} ", scriptInterface->getFileById(callbackId));
 
-		std::cout << scriptInterface->getFileById(scriptId) << std::endl;
+		message += fmt::format("{} ", scriptInterface->getFileById(scriptId));
 	}
 
-	if (function) {
-		std::cout << function << "(). ";
-	}
+	if (function)
+		message += fmt::format("{}(). ", function);
 
-	if (L && stack_trace) {
-		std::cout << getStackTrace(L, error_desc) << std::endl;
-	} else {
-		std::cout << error_desc << std::endl;
-	}
+	message += (L and stack_trace) ? getStackTrace(L, error_desc) : error_desc;
+
+	BlackTek::Console::Script::Error("{}", message);
 }
 
 bool LuaScriptInterface::pushFunction(int32_t functionId) const
@@ -1815,10 +1811,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(TEXTCOLOR_NONE)
 
 	registerEnum(TILESTATE_NONE)
-	registerEnum(TILESTATE_PROTECTIONZONE)
-	registerEnum(TILESTATE_NOPVPZONE)
-	registerEnum(TILESTATE_NOLOGOUT)
-	registerEnum(TILESTATE_PVPZONE)
 	registerEnum(TILESTATE_FLOORCHANGE)
 	registerEnum(TILESTATE_FLOORCHANGE_DOWN)
 	registerEnum(TILESTATE_FLOORCHANGE_NORTH)
@@ -2287,8 +2279,6 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("Position", "sendMagicEffect", luaPositionSendMagicEffect);
 	registerMethod("Position", "sendDistanceEffect", luaPositionSendDistanceEffect);
-	registerMethod("Position", "getZones()", luaPositionGetZones);
-	registerMethod("Position", "hasZone()", luaPositionHasZone);
 
 	// Tile
 	registerClass("Tile", "", luaTileCreate);
@@ -2681,14 +2671,11 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Stat", "addModifier", luaStatAddModifier);
 	registerMethod("Stat", "removeModifier", luaStatRemoveModifier);
 
-	
-
 	registerClass("StatModifier", "", luaStatModifierCreate);
 	registerMetaMethod("StatModifier", "__eq", luaUserdataCompare);
 	//registerMetaMethod("StatModifier", "__gc", destroySharedUserData<StandardStatMod>);
 	registerMethod("StatModifier", "type", luaStatModifierType);
 	registerMethod("StatModifier", "value", luaStatModifierValue);
-
 
 	// Player
 	registerClass("Player", "Creature", luaPlayerCreate);
@@ -3040,6 +3027,111 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("House", "save", luaHouseSave);
 
+	registerClass("Zone", "", luaZoneCreate);
+	registerMetaMethod("Zone", "__eq", luaZoneEq);
+
+	registerMethod("Zone", "getId", luaZoneGetId);
+	registerMethod("Zone", "getName", luaZoneGetName);
+	registerMethod("Zone", "getStartPosition", luaZoneStartPosition);
+	registerMethod("Zone", "startPosition", luaZoneStartPosition);
+	registerMethod("Zone", "getPositions", luaZoneGetPositions);
+	registerMethod("Zone", "addPosition", luaZoneAddPosition);
+	registerMethod("Zone", "setPositions", luaZoneSetPositions);
+	registerMethod("Zone", "getRange", luaZoneGetRange);
+	registerMethod("Zone", "setRange", luaZoneSetRange);
+
+	registerMethod("Zone", "hasFlag", luaZoneHasFlag);
+	registerMethod("Zone", "setFlag", luaZoneSetFlag);
+	registerMethod("Zone", "clearFlag", luaZoneClearFlag);
+	registerMethod("Zone", "getFlags", luaZoneGetFlags);
+	registerMethod("Zone", "setFlags", luaZoneSetFlags);
+
+	{
+		lua_getglobal(luaState, "Zone");
+		lua_newtable(luaState);
+
+		using ZF = Zones::ZoneFlag;
+		const auto setZFField = [this](const char* name, ZF val)
+		{
+			lua_pushinteger(luaState, static_cast<lua_Integer>(static_cast<uint32_t>(val)));
+			lua_setfield(luaState, -2, name);
+		};
+		setZFField("None",            ZF::None);
+		setZFField("Protection",      ZF::Protection);
+		setZFField("NoPvp",           ZF::NoPvp);
+		setZFField("Pvp",             ZF::Pvp);
+		setZFField("NoLogout",        ZF::NoLogout);
+		setZFField("NoExperience",    ZF::NoExperience);
+		setZFField("NoTrading",       ZF::NoTrading);
+		setZFField("NoTransaction",   ZF::NoTransaction);
+		setZFField("NoParty",         ZF::NoParty);
+		setZFField("NoDrop",          ZF::NoDrop);
+		setZFField("NoDeath",         ZF::NoDeath);
+		setZFField("NoDeathPenalty",  ZF::NoDeathPenalty);
+		setZFField("NoEquipmentLoss", ZF::NoEquipmentLoss);
+		setZFField("NoSummons",       ZF::NoSummons);
+		setZFField("Ghost",           ZF::Ghost);
+		setZFField("NoPathfinding",   ZF::NoPathfinding);
+		setZFField("NoWalk",          ZF::NoWalk);
+		setZFField("NoMonsters",      ZF::NoMonsters);
+		setZFField("NoNpcs",          ZF::NoNpcs);
+
+		lua_setfield(luaState, -2, "Flag");
+		lua_pop(luaState, 1);
+	}
+
+	registerMethod("Zone", "setSpawnType", luaZoneSpawnType);
+	registerMethod("Zone", "getSpawnType", luaZoneSpawnType);
+	registerMethod("Zone", "setPolicy", luaZonePolicy);
+	registerMethod("Zone", "getPolicy", luaZonePolicy);
+	registerMethod("Zone", "addMonster", luaZoneAddMonster);
+	registerMethod("Zone", "addNpc", luaZoneAddNpc);
+	registerMethod("Zone", "setBossMaster", luaZoneSetBossMaster);
+	registerMethod("Zone", "addMinion", luaZoneAddMinion);
+	registerMethod("Zone", "minionBehavior", luaZoneMinionBehavior);
+	registerMethod("Zone", "trigger", luaZoneTrigger);
+	registerMethod("Zone", "getCreatureList", luaZoneGetCreatureList);
+	registerMethod("Zone", "getActiveCreatures", luaZoneGetActiveCreatures);
+
+	registerMethod("Zone", "passive", luaZonePassive);
+	registerMethod("Zone", "forced", luaZoneForced);
+	registerMethod("Zone", "positional", luaZonePositional);
+	registerMethod("Zone", "instant", luaZoneInstant);
+	registerMethod("Zone", "rebootable", luaZoneRebootable);
+	registerMethod("Zone", "resumable", luaZoneResumable);
+	registerMethod("Zone", "degradable", luaZoneDegradable);
+	registerMethod("Zone", "timed", luaZoneTimed);
+
+	registerMethod("Zone", "cooldown", luaZoneCooldown);
+	registerMethod("Zone", "spawnMultiplier", luaZoneSpawnMultiplier);
+	registerMethod("Zone", "expMultiplier", luaZoneExpMultiplier);
+	registerMethod("Zone", "lootMultiplier", luaZoneLootMultiplier);
+	registerMethod("Zone", "skillMultiplier", luaZoneSkillMultiplier);
+	registerMethod("Zone", "weekdays", luaZoneWeekdays);
+
+	registerMethod("Zone", "register", luaZoneRegister);
+	registerMethod("Zone", "isActive", luaZoneIsActive);
+	registerMethod("Zone", "isPaused", luaZoneIsPaused);
+	registerMethod("Zone", "activate", luaZoneActivate);
+	registerMethod("Zone", "deactivate", luaZoneDeactivate);
+	registerMethod("Zone", "pause", luaZonePause);
+	registerMethod("Zone", "unpause", luaZoneUnpause);
+	registerMethod("Zone", "remove", luaZoneRemove);
+
+	registerTable("Zones");
+
+	registerMethod("Zones", "create", luaZonesCreate);
+	registerMethod("Zones", "get", luaZonesGet);
+	registerMethod("Zones", "getByName", luaZonesGetByName);
+	registerMethod("Zones", "remove", luaZonesRemove);
+	registerMethod("Zones", "removeByName", luaZonesRemoveByName);
+	registerMethod("Zones", "getAll", luaZonesGetAll);
+	registerMethod("Zones", "getCount", luaZonesGetCount);
+	registerMethod("Zones", "getByPosition", luaZonesGetByPosition);
+	registerMethod("Zones", "hasWorldFlag", luaZonesHasWorldFlag);
+	registerMethod("Zones", "getWorldFlags", luaZonesGetWorldFlags);
+	registerMethod("Zones", "getZoneType", luaZonesGetZoneType);
+
 	// ItemType
 	registerClass("ItemType", "", luaItemTypeCreate);
 	registerMetaMethod("ItemType", "__eq", luaUserdataCompare);
@@ -3177,13 +3269,11 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("Combat", "execute", luaCombatExecute);
 
-	// Formula override API
 	registerMethod("Combat", "setSituationFormulas",  luaCombatSetSituationFormulas);
 	registerMethod("Combat", "setDamage",             luaCombatSetDamage);
 	registerMethod("Combat", "registerFormula",       luaCombatRegisterFormula);
 	registerMethod("Combat", "getAreaPositions",      luaCombatGetAreaPositions);
 
-	// Combat.Situation sub-table — nested PascalCase enum; access as Combat.Situation.PvP etc.
 	{
 		lua_getglobal(luaState, "Combat");
 		lua_newtable(luaState);
@@ -3195,7 +3285,6 @@ void LuaScriptInterface::registerFunctions()
 		lua_pop(luaState, 1);
 	}
 
-	// Combat.FormulaStage sub-table — nested PascalCase enum; access as Combat.FormulaStage.Output etc.
 	{
 		lua_getglobal(luaState, "Combat");
 		lua_newtable(luaState);
@@ -3212,7 +3301,6 @@ void LuaScriptInterface::registerFunctions()
 		lua_pop(luaState, 1);
 	}
 
-	// Combat.BindSource and Combat.BindKey sub-tables
 	{
 		lua_getglobal(luaState, "Combat");
 
@@ -3244,13 +3332,11 @@ void LuaScriptInterface::registerFunctions()
 		setBKField("Stamina",      BK::Stamina);
 		lua_setfield(luaState, -2, "BindKey");
 
-		lua_pop(luaState, 1); // pop Combat table
+		lua_pop(luaState, 1);
 	}
 
-	// FormulaNode metatable — holds a compiled C++ formula lambda (no Lua VM at runtime)
 	luaL_newmetatable(luaState, "FormulaNode");
 	lua_newtable(luaState);
-	// Class-level factory functions on the FormulaNode table
 	lua_pushcfunction(luaState, luaFormulaNodeBind);      lua_setfield(luaState, -2, "bind");
 	lua_pushcfunction(luaState, luaFormulaNodeBindSkill); lua_setfield(luaState, -2, "bindSkill");
 	lua_pushcfunction(luaState, luaFormulaNodeOutput);    lua_setfield(luaState, -2, "output");
@@ -3262,7 +3348,6 @@ void LuaScriptInterface::registerFunctions()
 	lua_pushcfunction(luaState, luaFormulaNodeFloor);     lua_setfield(luaState, -2, "floor");
 	lua_pushcfunction(luaState, luaFormulaNodeCeil);      lua_setfield(luaState, -2, "ceil");
 	lua_setfield(luaState, -2, "__index");
-	// Arithmetic metamethods — build new lambda closures, no Lua VM at combat time
 	lua_pushcfunction(luaState, luaFormulaNodeAdd); lua_setfield(luaState, -2, "__add");
 	lua_pushcfunction(luaState, luaFormulaNodeSub); lua_setfield(luaState, -2, "__sub");
 	lua_pushcfunction(luaState, luaFormulaNodeMul); lua_setfield(luaState, -2, "__mul");
@@ -3270,9 +3355,8 @@ void LuaScriptInterface::registerFunctions()
 	lua_pushcfunction(luaState, luaFormulaNodeUnm); lua_setfield(luaState, -2, "__unm");
 	lua_pushcfunction(luaState, luaFormulaNodePow); lua_setfield(luaState, -2, "__pow");
 	lua_pushcfunction(luaState, luaFormulaNodeGC);  lua_setfield(luaState, -2, "__gc");
-	lua_pop(luaState, 1); // pop metatable
+	lua_pop(luaState, 1);
 
-	// Expose FormulaNode as a global so scripts can call FormulaNode.bind(...)
 	lua_newtable(luaState);
 	lua_pushcfunction(luaState, luaFormulaNodeBind);      lua_setfield(luaState, -2, "bind");
 	lua_pushcfunction(luaState, luaFormulaNodeBindSkill); lua_setfield(luaState, -2, "bindSkill");
@@ -3286,7 +3370,6 @@ void LuaScriptInterface::registerFunctions()
 	lua_pushcfunction(luaState, luaFormulaNodeCeil);      lua_setfield(luaState, -2, "ceil");
 	lua_setglobal(luaState, "FormulaNode");
 
-	// Combat.Origin sub-table — nested PascalCase enum; access as Combat.Origin.Ranged etc.
 	{
 		lua_getglobal(luaState, "Combat");
 		lua_newtable(luaState);
@@ -3325,12 +3408,10 @@ void LuaScriptInterface::registerFunctions()
 		setOriginField("StaminaSteal", Origin::StaminaSteal);
 		setOriginField("SoulSteal",    Origin::SoulSteal);
 
-		// Combat.Origin = sub-table; pops sub-table then pops Combat
 		lua_setfield(luaState, -2, "Origin");
 		lua_pop(luaState, 1);
 	}
 
-	// Combat.DamageType sub-table — nested PascalCase enum; access as Combat.DamageType.Physical etc.
 	{
 		lua_getglobal(luaState, "Combat");
 		lua_newtable(luaState);
@@ -3354,7 +3435,6 @@ void LuaScriptInterface::registerFunctions()
 		setDmgField("Holy",      COMBAT_HOLYDAMAGE);
 		setDmgField("Death",     COMBAT_DEATHDAMAGE);
 
-		// Combat.DamageType = sub-table; pops sub-table then pops Combat
 		lua_setfield(luaState, -2, "DamageType");
 		lua_pop(luaState, 1);
 	}
@@ -3741,18 +3821,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("XMLNode", "name", luaXmlNodeName);
 	registerMethod("XMLNode", "firstChild", luaXmlNodeFirstChild);
 	registerMethod("XMLNode", "nextSibling", luaXmlNodeNextSibling);
-
-	lua_register(luaState, "Zones", luaGetZones);
-	registerClass("Zone", "", luaCreateZone);
-	registerMetaMethod("Zone", "__gc", luaDeleteZone);
-	registerMethod("Zone", "getId", luaZoneId);
-	registerMethod("Zone", "getCreatures", luaZoneCreatures); // lets pass a creature_type for a filter
-	registerMethod("Zone", "getGrounds", luaZoneGrounds);
-	registerMethod("Zone", "getItems", luaZoneItems);
-	registerMethod("Zone", "getTiles", luaZoneTiles);
-	registerMethod("Zone", "getCreatureCount", luaZoneCreatureCount);
-	registerMethod("Zone", "getItemCount", luaZoneItemCount);
-	registerMethod("Zone", "getTileCount", luaZoneTileCount);
 }
 
 #undef registerEnum
@@ -5926,50 +5994,6 @@ int LuaScriptInterface::luaPositionSendDistanceEffect(lua_State* L)
 
 	pushBoolean(L, true);
 	return 1;
-}
-
-int LuaScriptInterface::luaPositionGetZones(lua_State* L)
-{
-	// position:getZones()
-	// returns table of zone id's
-	if (isTable(L, 1))
-	{
-		auto position = getPosition(L, 1);
-		auto zones = Zones::getZonesByPosition(position);
-		auto index = 0;
-		lua_createtable(L, zones.size(), 0);
-
-		for (auto& zone : zones)
-		{
-			lua_pushnumber(L, zone);
-			lua_rawseti(L, -2, ++index);
-		}
-		return 1;
-	}
-	// should be unreachable
-	lua_pushnil(L);
-	return 1;
-}
-
-int LuaScriptInterface::luaPositionHasZone(lua_State* L)
-{
-	// position:hasZones()
-	// returns true / false
-	if (isTable(L, 1))
-	{
-		auto position = getPosition(L, 1);
-		auto zones = Zones::getZonesByPosition(position);
-		if (zones.empty()) 
-		{
-			pushBoolean(L, false);
-			return 1;
-		} 
-		// else
-		pushBoolean(L, true);
-		return 1;
-	}
-	// should be unreachable
-	return 0;
 }
 
 // Tile
@@ -15574,6 +15598,1530 @@ int LuaScriptInterface::luaHouseSave(lua_State* L)
 	return 1;
 }
 
+namespace
+{
+	class LuaZoneRef
+	{
+	public:
+		LuaZoneRef() : pending(std::make_unique<Zones::Zone>()) {}
+		explicit LuaZoneRef(Zones::ZoneHandle h) noexcept : handle(h) {}
+
+		Zones::Zone* Get() const noexcept
+		{
+			return pending ? pending.get() : Zones::ZoneManager::TryGetMutable(handle);
+		}
+
+		bool IsRegistered() const noexcept { return not pending; }
+
+		void SetRange(Position start, Position end)
+		{
+			if (pending)
+				pendingRange = { start, end };
+			else if (Zones::Zone* zone = Get())
+				zone->SetRange(start, end);
+		}
+
+		bool Register(bool autoActivate)
+		{
+			if (not pending)
+				return true;
+
+			auto result = Zones::ZoneManager::RegisterZone(std::move(*pending));
+
+			if (not result)
+				return false;
+
+			handle = *result;
+			pending.reset();
+
+			Zones::Zone* zone = Zones::ZoneManager::TryGetMutable(handle);
+
+			if (zone and pendingRange)
+				zone->SetRange(pendingRange->first, pendingRange->second);
+
+			if (zone and autoActivate)
+				zone->Activate();
+
+			return true;
+		}
+
+	private:
+		std::unique_ptr<Zones::Zone>                  pending;
+		Zones::ZoneHandle                             handle;
+		std::optional<std::pair<Position, Position>>  pendingRange;
+	};
+
+	Zones::ZoneFlag LuaZoneGetFlagArg(lua_State* L, int32_t arg)
+	{
+		if (lua_isnumber(L, arg))
+			return static_cast<Zones::ZoneFlag>(static_cast<uint32_t>(lua_tonumber(L, arg)));
+
+		if (lua_isstring(L, arg))
+			return Zones::ZoneManager::ParseZoneFlagString(lua_tostring(L, arg));
+
+		return Zones::ZoneFlag::None;
+	}
+
+	uint32_t LuaZoneGetOptionNumber(lua_State* L, int32_t arg, const char* key, uint32_t defaultValue)
+	{
+		if (not lua_istable(L, arg))
+			return defaultValue;
+
+		lua_getfield(L, arg, key);
+		uint32_t value = lua_isnumber(L, -1) ? static_cast<uint32_t>(lua_tonumber(L, -1)) : defaultValue;
+		lua_pop(L, 1);
+		return value;
+	}
+
+	std::string LuaZoneBuildCreatureList(lua_State* L, int32_t arg, uint32_t defaultChance)
+	{
+		std::string creatures;
+
+		if (lua_istable(L, arg))
+		{
+			auto len = lua_rawlen(L, arg);
+
+			for (lua_Integer i = 1; i <= static_cast<lua_Integer>(len); ++i)
+			{
+				lua_rawgeti(L, arg, i);
+
+				if (lua_istable(L, -1))
+				{
+					lua_getfield(L, -1, "name");
+					std::string name = lua_isstring(L, -1) ? lua_tostring(L, -1) : std::string();
+					lua_pop(L, 1);
+
+					lua_getfield(L, -1, "chance");
+					uint32_t chance = lua_isnumber(L, -1) ? static_cast<uint32_t>(lua_tonumber(L, -1)) : 100u;
+					lua_pop(L, 1);
+
+					if (not name.empty())
+						creatures += name + ":" + std::to_string(chance) + ";";
+				}
+
+				lua_pop(L, 1);
+			}
+		}
+		else if (lua_isstring(L, arg))
+		{
+			creatures += std::string(lua_tostring(L, arg)) + ":" + std::to_string(defaultChance) + ";";
+		}
+
+		return creatures;
+	}
+
+	void LuaZonePlaceMonsterEntry(Zones::Zone& zone, Zones::SpawnCreaturePtr entry, uint32_t wave)
+	{
+		if (zone.policy == Zones::Policy::Staged)
+		{
+			entry->wave = static_cast<uint8_t>(wave);
+			zone.waves[entry->wave].push_back(entry);
+
+			if (entry->wave == 1)
+				zone.creature_list = zone.waves[1];
+		}
+		else
+		{
+			zone.creature_list.push_back(entry);
+		}
+	}
+
+	struct LuaZoneNameResult
+	{
+		std::optional<std::string> name;
+		std::string reason;
+	};
+
+	LuaZoneNameResult LuaZoneResolveName(lua_State* L, int32_t nameValueArg)
+	{
+		if (not lua_isstring(L, nameValueArg))
+		{
+			static uint32_t luaZoneNameCounter = 0;
+			return { "LuaZone" + std::to_string(++luaZoneNameCounter), "" };
+		}
+
+		std::string name = lua_tostring(L, nameValueArg);
+
+		if (name.empty())
+		{
+			BlackTek::Console::Warn("[Lua] Zone name rejected: must not be empty");
+			return { std::nullopt, "name must not be empty" };
+		}
+
+		if (name.length() > 64)
+		{
+			BlackTek::Console::Warn("[Lua] Zone name rejected: '{}' is over the 64 character limit", name);
+			return { std::nullopt, "name exceeds the 64 character limit" };
+		}
+
+		if (Zones::ZoneManager::GetZoneByName(name))
+		{
+			BlackTek::Console::Warn("[Lua] Zone name rejected: duplicate name '{}'", name);
+			return { std::nullopt, "a zone named '" + name + "' already exists" };
+		}
+
+		return { name, "" };
+	}
+
+	Zones::SpawnCreaturePtr LuaZoneBuildEntryFromTable(lua_State* L, int32_t entryArg, uint32_t defaultInterval)
+	{
+		uint32_t defaultChance = LuaZoneGetOptionNumber(L, entryArg, "chance", 100u);
+
+		auto entry = std::make_shared<Zones::SpawnCreature>();
+
+		lua_getfield(L, entryArg, "spec");
+		entry->creatures = LuaZoneBuildCreatureList(L, lua_gettop(L), defaultChance);
+		lua_pop(L, 1);
+
+		lua_getfield(L, entryArg, "position");
+		entry->position = LuaScriptInterface::getPosition(L, lua_gettop(L));
+		lua_pop(L, 1);
+
+		entry->chance   = defaultChance;
+		entry->interval = LuaZoneGetOptionNumber(L, entryArg, "interval", defaultInterval) * 1000u;
+
+		return entry;
+	}
+
+	void LuaZoneApplyTable(lua_State* L, LuaZoneRef& ref, int32_t tableArg)
+	{
+		Zones::Zone& zone = *ref.Get();
+
+		lua_getfield(L, tableArg, "positions");
+		if (lua_istable(L, -1))
+		{
+			auto len = lua_rawlen(L, -1);
+			int positionsIdx = lua_gettop(L);
+
+			for (lua_Integer i = 1; i <= static_cast<lua_Integer>(len); ++i)
+			{
+				lua_rawgeti(L, positionsIdx, i);
+				zone.positions.push_back(LuaScriptInterface::getPosition(L, lua_gettop(L)));
+				lua_pop(L, 1);
+			}
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "range");
+		if (lua_istable(L, -1) and lua_rawlen(L, -1) >= 2)
+		{
+			int rangeIdx = lua_gettop(L);
+
+			lua_rawgeti(L, rangeIdx, 1);
+			Position start = LuaScriptInterface::getPosition(L, lua_gettop(L));
+			lua_pop(L, 1);
+
+			lua_rawgeti(L, rangeIdx, 2);
+			Position end = LuaScriptInterface::getPosition(L, lua_gettop(L));
+			lua_pop(L, 1);
+
+			ref.SetRange(start, end);
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "startPosition");
+		if (not lua_isnil(L, -1))
+			zone.startpos = LuaScriptInterface::getPosition(L, lua_gettop(L));
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "flags");
+		if (lua_istable(L, -1))
+		{
+			auto len = lua_rawlen(L, -1);
+			int flagsIdx = lua_gettop(L);
+
+			for (lua_Integer i = 1; i <= static_cast<lua_Integer>(len); ++i)
+			{
+				lua_rawgeti(L, flagsIdx, i);
+				zone.SetFlag(LuaZoneGetFlagArg(L, lua_gettop(L)));
+				lua_pop(L, 1);
+			}
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "spawnType");
+		if (lua_isstring(L, -1))
+			zone.entity_type = Zones::ZoneManager::ParseSpawnTypeString(lua_tostring(L, -1));
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "policy");
+		if (lua_isstring(L, -1))
+			zone.policy = Zones::ZoneManager::ParsePolicyString(lua_tostring(L, -1));
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "monsters");
+		if (lua_istable(L, -1))
+		{
+			auto len = lua_rawlen(L, -1);
+			int monstersIdx = lua_gettop(L);
+
+			for (lua_Integer i = 1; i <= static_cast<lua_Integer>(len); ++i)
+			{
+				lua_rawgeti(L, monstersIdx, i);
+				int entryIdx = lua_gettop(L);
+
+				if (lua_istable(L, entryIdx))
+				{
+					auto wave  = LuaZoneGetOptionNumber(L, entryIdx, "wave", 1u);
+					auto entry = LuaZoneBuildEntryFromTable(L, entryIdx, 60u);
+					LuaZonePlaceMonsterEntry(zone, entry, wave);
+				}
+
+				lua_pop(L, 1);
+			}
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "npcs");
+		if (lua_istable(L, -1))
+		{
+			auto len = lua_rawlen(L, -1);
+			int npcsIdx = lua_gettop(L);
+
+			for (lua_Integer i = 1; i <= static_cast<lua_Integer>(len); ++i)
+			{
+				lua_rawgeti(L, npcsIdx, i);
+				int entryIdx = lua_gettop(L);
+
+				if (lua_istable(L, entryIdx))
+				{
+					auto entry = std::make_shared<Zones::SpawnCreature>();
+
+					lua_getfield(L, entryIdx, "name");
+					entry->creatures = lua_isstring(L, -1) ? lua_tostring(L, -1) : std::string();
+					lua_pop(L, 1);
+
+					lua_getfield(L, entryIdx, "position");
+					entry->position = LuaScriptInterface::getPosition(L, lua_gettop(L));
+					lua_pop(L, 1);
+
+					entry->interval = LuaZoneGetOptionNumber(L, entryIdx, "interval", 0u) * 1000u;
+
+					zone.creature_list.push_back(entry);
+				}
+
+				lua_pop(L, 1);
+			}
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "master");
+		if (lua_istable(L, -1))
+		{
+			auto entry = LuaZoneBuildEntryFromTable(L, lua_gettop(L), 60u);
+			entry->link_type = Zones::LinkType::Master;
+			zone.creature_list.push_back(entry);
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "minions");
+		if (lua_istable(L, -1))
+		{
+			auto len = lua_rawlen(L, -1);
+			int minionsIdx = lua_gettop(L);
+
+			for (lua_Integer i = 1; i <= static_cast<lua_Integer>(len); ++i)
+			{
+				lua_rawgeti(L, minionsIdx, i);
+				int entryIdx = lua_gettop(L);
+
+				if (lua_istable(L, entryIdx))
+				{
+					auto entry = LuaZoneBuildEntryFromTable(L, entryIdx, 60u);
+					entry->link_type = Zones::LinkType::Minion;
+					entry->delay     = LuaZoneGetOptionNumber(L, entryIdx, "delay", 0u);
+					zone.creature_list.push_back(entry);
+				}
+
+				lua_pop(L, 1);
+			}
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "minionBehavior");
+		if (lua_isstring(L, -1))
+			zone.minion_behavior = Zones::ZoneManager::ParseMinionBehavior(lua_tostring(L, -1));
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "trigger");
+		if (lua_isstring(L, -1))
+			zone.configured_trigger = Zones::ZoneManager::ParseTriggerString(lua_tostring(L, -1));
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "weekdays");
+		if (lua_istable(L, -1))
+		{
+			auto len = lua_rawlen(L, -1);
+
+			if (len > 0)
+			{
+				int weekdaysIdx = lua_gettop(L);
+				zone.weekdays.reset();
+
+				for (lua_Integer i = 1; i <= static_cast<lua_Integer>(len); ++i)
+				{
+					lua_rawgeti(L, weekdaysIdx, i);
+
+					if (lua_isstring(L, -1))
+					{
+						auto parsed = Zones::ZoneManager::ParseWeekDayString(lua_tostring(L, -1));
+
+						if (parsed != Zones::WeekDay::None)
+							zone.weekdays.set(static_cast<size_t>(parsed));
+					}
+
+					lua_pop(L, 1);
+				}
+			}
+		}
+		lua_pop(L, 1);
+
+		static const std::vector<std::pair<const char*, Zones::ConfigFlag>> configFields =
+		{
+			{ "passive",    Zones::ConfigFlag::Passive    },
+			{ "forced",     Zones::ConfigFlag::Forced     },
+			{ "positional", Zones::ConfigFlag::Positional },
+			{ "instant",    Zones::ConfigFlag::Instant    },
+			{ "rebootable", Zones::ConfigFlag::Rebootable },
+			{ "resumable",  Zones::ConfigFlag::Resumable  },
+			{ "degradable", Zones::ConfigFlag::Degradable },
+			{ "timed",      Zones::ConfigFlag::Timed      },
+		};
+
+		for (const auto& [key, flag] : configFields)
+		{
+			lua_getfield(L, tableArg, key);
+
+			if (lua_isboolean(L, -1))
+				zone.config.set(static_cast<size_t>(flag), lua_toboolean(L, -1) != 0);
+
+			lua_pop(L, 1);
+		}
+
+		lua_getfield(L, tableArg, "cooldown");
+		if (lua_isnumber(L, -1))
+		{
+			double ms = lua_tonumber(L, -1);
+
+			if (ms >= 0 and ms <= std::numeric_limits<uint16_t>::max())
+				zone.cooldown = static_cast<uint16_t>(ms);
+			else
+				BlackTek::Console::Warn("[Lua] Zone '{}': cooldown {} is out of range (0-65535ms), left at the default", zone.name, ms);
+		}
+		lua_pop(L, 1);
+
+		static const std::vector<std::pair<const char*, uint8_t Zones::Zone::*>> multiplierFields =
+		{
+			{ "spawnMultiplier", &Zones::Zone::spawn_multiplier },
+			{ "expMultiplier",   &Zones::Zone::exp_multiplier   },
+			{ "lootMultiplier",  &Zones::Zone::loot_multiplier  },
+			{ "skillMultiplier", &Zones::Zone::skill_multiplier },
+		};
+
+		for (const auto& [key, member] : multiplierFields)
+		{
+			lua_getfield(L, tableArg, key);
+
+			if (lua_isnumber(L, -1))
+			{
+				double n = lua_tonumber(L, -1);
+
+				if (n >= 1 and n <= 255)
+					zone.*member = static_cast<uint8_t>(n);
+				else
+					BlackTek::Console::Warn("[Lua] Zone '{}': {} value {} is out of range (1-255), left at the default", zone.name, key, n);
+			}
+
+			lua_pop(L, 1);
+		}
+	}
+
+	std::shared_ptr<LuaZoneRef> LuaZoneBuildFromTable(lua_State* L, int32_t tableArg)
+	{
+		lua_getfield(L, tableArg, "name");
+		auto result = LuaZoneResolveName(L, lua_gettop(L));
+		lua_pop(L, 1);
+
+		if (not result.name)
+			return nullptr;
+
+		auto ref = std::make_shared<LuaZoneRef>();
+		ref->Get()->name = *result.name;
+
+		LuaZoneApplyTable(L, *ref, tableArg);
+
+		return ref;
+	}
+}
+
+int LuaScriptInterface::luaZoneCreate(lua_State* L)
+{
+	if (isTable(L, 2))
+	{
+		auto ref = LuaZoneBuildFromTable(L, 2);
+
+		if (ref)
+		{
+			pushSharedPtr(L, ref);
+			setMetatable(L, -1, "Zone");
+		}
+		else
+		{
+			lua_pushnil(L);
+		}
+		return 1;
+	}
+
+	const auto handle = Zones::ZoneManager::GetZoneByName(getString(L, 2));
+
+	if (handle)
+	{
+		pushSharedPtr(L, std::make_shared<LuaZoneRef>(*handle));
+		setMetatable(L, -1, "Zone");
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneEq(lua_State* L)
+{
+	const auto a = getSharedPtr<LuaZoneRef>(L, 1);
+	const auto b = getSharedPtr<LuaZoneRef>(L, 2);
+
+	Zones::Zone* zoneA = a ? a->Get() : nullptr;
+	Zones::Zone* zoneB = b ? b->Get() : nullptr;
+
+	pushBoolean(L, zoneA != nullptr and zoneA == zoneB);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneGetId(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (zone)
+		lua_pushinteger(L, zone->id);
+	else
+		lua_pushnil(L);
+
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneGetName(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (zone)
+		pushString(L, zone->name);
+	else
+		lua_pushnil(L);
+
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneStartPosition(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (lua_gettop(L) == 1)
+	{
+		pushPosition(L, zone->startpos);
+	}
+	else
+	{
+		zone->startpos = getPosition(L, 2);
+		pushBoolean(L, true);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneGetPositions(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_newtable(L);
+	int index = 0;
+
+	for (const auto& position : zone->positions)
+	{
+		pushPosition(L, position);
+		lua_rawseti(L, -2, ++index);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneAddPosition(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	zone->positions.push_back(getPosition(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneSetPositions(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone or not isTable(L, 2))
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	std::vector<Position> positions;
+	auto len = lua_rawlen(L, 2);
+
+	for (lua_Integer i = 1; i <= static_cast<lua_Integer>(len); ++i)
+	{
+		lua_rawgeti(L, 2, i);
+		positions.push_back(getPosition(L, -1));
+		lua_pop(L, 1);
+	}
+
+	zone->positions = std::move(positions);
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneGetRange(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone or not zone->range_end)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	pushPosition(L, zone->startpos);
+	pushPosition(L, *zone->range_end);
+	return 2;
+}
+
+int LuaScriptInterface::luaZoneSetRange(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	zoneRef->SetRange(getPosition(L, 2), getPosition(L, 3));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneHasFlag(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	pushBoolean(L, zone->HasFlag(LuaZoneGetFlagArg(L, 2)));
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneSetFlag(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	zone->SetFlag(LuaZoneGetFlagArg(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneClearFlag(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	zone->ClearFlag(LuaZoneGetFlagArg(L, 2));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneGetFlags(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	static const std::vector<Zones::ZoneFlag> allFlags =
+	{
+		Zones::ZoneFlag::Protection, Zones::ZoneFlag::NoPvp, Zones::ZoneFlag::Pvp, Zones::ZoneFlag::NoLogout,
+		Zones::ZoneFlag::NoExperience, Zones::ZoneFlag::NoTrading, Zones::ZoneFlag::NoTransaction, Zones::ZoneFlag::NoParty,
+		Zones::ZoneFlag::NoDrop, Zones::ZoneFlag::NoDeath, Zones::ZoneFlag::NoDeathPenalty, Zones::ZoneFlag::NoEquipmentLoss,
+		Zones::ZoneFlag::NoSummons, Zones::ZoneFlag::Ghost, Zones::ZoneFlag::NoPathfinding, Zones::ZoneFlag::NoWalk,
+		Zones::ZoneFlag::NoMonsters, Zones::ZoneFlag::NoNpcs,
+	};
+
+	lua_newtable(L);
+	int index = 0;
+
+	for (auto flag : allFlags)
+	{
+		if (zone->HasFlag(flag))
+		{
+			lua_pushinteger(L, static_cast<uint32_t>(flag));
+			lua_rawseti(L, -2, ++index);
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneSetFlags(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone or not isTable(L, 2))
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	zone->world_flags = 0;
+	auto len = lua_rawlen(L, 2);
+
+	for (lua_Integer i = 1; i <= static_cast<lua_Integer>(len); ++i)
+	{
+		lua_rawgeti(L, 2, i);
+		zone->SetFlag(LuaZoneGetFlagArg(L, -1));
+		lua_pop(L, 1);
+	}
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneSpawnType(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (lua_gettop(L) == 1)
+	{
+		switch (zone->entity_type)
+		{
+			case Zones::SpawnType::Monster: pushString(L, "monster"); break;
+			case Zones::SpawnType::Npc:     pushString(L, "npc");     break;
+			case Zones::SpawnType::Boss:    pushString(L, "boss");    break;
+			case Zones::SpawnType::Item:    pushString(L, "item");    break;
+			default:                        lua_pushnil(L);          break;
+		}
+	}
+	else
+	{
+		zone->entity_type = Zones::ZoneManager::ParseSpawnTypeString(getString(L, 2));
+		pushBoolean(L, true);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaZonePolicy(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (lua_gettop(L) == 1)
+	{
+		switch (zone->policy)
+		{
+			case Zones::Policy::Fixed:     pushString(L, "fixed");     break;
+			case Zones::Policy::Relative:  pushString(L, "relative");  break;
+			case Zones::Policy::Staged:    pushString(L, "staged");    break;
+			case Zones::Policy::Triggered: pushString(L, "triggered"); break;
+			default:                       lua_pushnil(L);             break;
+		}
+	}
+	else
+	{
+		zone->policy = Zones::ZoneManager::ParsePolicyString(getString(L, 2));
+		pushBoolean(L, true);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneAddMonster(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	uint32_t defaultChance = LuaZoneGetOptionNumber(L, 4, "chance", 100u);
+
+	auto entry = std::make_shared<Zones::SpawnCreature>();
+	entry->creatures = LuaZoneBuildCreatureList(L, 2, defaultChance);
+	entry->position  = getPosition(L, 3);
+	entry->chance    = defaultChance;
+	entry->interval  = LuaZoneGetOptionNumber(L, 4, "interval", 60u) * 1000u;
+
+	LuaZonePlaceMonsterEntry(*zone, entry, LuaZoneGetOptionNumber(L, 4, "wave", 1u));
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneAddNpc(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	auto entry = std::make_shared<Zones::SpawnCreature>();
+	entry->creatures = getString(L, 2);
+	entry->position  = getPosition(L, 3);
+	entry->interval  = LuaZoneGetOptionNumber(L, 4, "interval", 0u) * 1000u;
+
+	zone->creature_list.push_back(entry);
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneSetBossMaster(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	uint32_t defaultChance = LuaZoneGetOptionNumber(L, 4, "chance", 100u);
+
+	auto entry = std::make_shared<Zones::SpawnCreature>();
+	entry->creatures = LuaZoneBuildCreatureList(L, 2, defaultChance);
+	entry->position  = getPosition(L, 3);
+	entry->chance    = defaultChance;
+	entry->interval  = LuaZoneGetOptionNumber(L, 4, "interval", 60u) * 1000u;
+	entry->link_type = Zones::LinkType::Master;
+
+	zone->creature_list.push_back(entry);
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneAddMinion(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	uint32_t defaultChance = LuaZoneGetOptionNumber(L, 4, "chance", 100u);
+
+	auto entry = std::make_shared<Zones::SpawnCreature>();
+	entry->creatures = LuaZoneBuildCreatureList(L, 2, defaultChance);
+	entry->position  = getPosition(L, 3);
+	entry->chance    = defaultChance;
+	entry->interval  = LuaZoneGetOptionNumber(L, 4, "interval", 60u) * 1000u;
+	entry->link_type = Zones::LinkType::Minion;
+	entry->delay     = LuaZoneGetOptionNumber(L, 4, "delay", 0u);
+
+	zone->creature_list.push_back(entry);
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneMinionBehavior(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (lua_gettop(L) == 1)
+	{
+		switch (zone->minion_behavior)
+		{
+			case Zones::MinionBehavior::DespawnOnMasterDeath: pushString(L, "despawn_on_master_death"); break;
+			case Zones::MinionBehavior::FinishLifeOnly:       pushString(L, "finish_life_only");        break;
+			case Zones::MinionBehavior::IndependentRespawn:   pushString(L, "independent_respawn");     break;
+			default:                                          lua_pushnil(L);                           break;
+		}
+	}
+	else
+	{
+		zone->minion_behavior = Zones::ZoneManager::ParseMinionBehavior(getString(L, 2));
+		pushBoolean(L, true);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneTrigger(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (lua_gettop(L) == 1)
+	{
+		static const std::unordered_map<Zones::SpawnTrigger, std::string> triggerNames =
+		{
+			{ Zones::SpawnTrigger::Spawn,       "Spawn"       },
+			{ Zones::SpawnTrigger::Enter,       "Enter"       },
+			{ Zones::SpawnTrigger::Leave,       "Leave"       },
+			{ Zones::SpawnTrigger::Death,       "Death"       },
+			{ Zones::SpawnTrigger::Despawn,     "Despawn"     },
+			{ Zones::SpawnTrigger::Login,       "Login"       },
+			{ Zones::SpawnTrigger::Logout,      "Logout"      },
+			{ Zones::SpawnTrigger::Use,         "Use"         },
+			{ Zones::SpawnTrigger::Remove,      "Remove"      },
+			{ Zones::SpawnTrigger::Transform,   "Transform"   },
+			{ Zones::SpawnTrigger::Speak,       "Speak"       },
+			{ Zones::SpawnTrigger::Look,        "Look"        },
+			{ Zones::SpawnTrigger::Summon,      "Summon"      },
+			{ Zones::SpawnTrigger::Equip,       "Equip"       },
+			{ Zones::SpawnTrigger::DeEquip,     "DeEquip"     },
+			{ Zones::SpawnTrigger::Attack,      "Attack"      },
+			{ Zones::SpawnTrigger::Defend,      "Defend"      },
+			{ Zones::SpawnTrigger::Idle,        "Idle"        },
+			{ Zones::SpawnTrigger::GainSkull,   "GainSkull"   },
+			{ Zones::SpawnTrigger::LoseSkull,   "LoseSkull"   },
+			{ Zones::SpawnTrigger::Kill,        "Kill"        },
+			{ Zones::SpawnTrigger::EnterBattle, "EnterBattle" },
+			{ Zones::SpawnTrigger::LeaveBattle, "LeaveBattle" },
+		};
+
+		auto it = triggerNames.find(zone->configured_trigger);
+
+		if (it != triggerNames.end())
+			pushString(L, it->second);
+		else
+			lua_pushnil(L);
+	}
+	else
+	{
+		zone->configured_trigger = Zones::ZoneManager::ParseTriggerString(getString(L, 2));
+		pushBoolean(L, true);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneGetCreatureList(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_newtable(L);
+	int index = 0;
+
+	for (const auto& entry : zone->creature_list)
+	{
+		lua_newtable(L);
+		setField(L, "creatures", entry->creatures);
+		setField(L, "chance", entry->chance);
+		setField(L, "interval", entry->interval);
+		setField(L, "delay", entry->delay);
+		setField(L, "wave", static_cast<uint16_t>(entry->wave));
+		pushPosition(L, entry->position);
+		lua_setfield(L, -2, "position");
+
+		lua_rawseti(L, -2, ++index);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneGetActiveCreatures(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_newtable(L);
+	int index = 0;
+
+	for (const auto& [creatureId, entry] : zone->active_creatures)
+	{
+		const auto creature = g_game.getCreatureByID(creatureId);
+
+		if (creature)
+		{
+			pushSharedPtr(L, creature);
+			setCreatureMetatable(L, -1, creature);
+			lua_rawseti(L, -2, ++index);
+		}
+	}
+	return 1;
+}
+
+namespace
+{
+	int LuaZoneConfigFlag(lua_State* L, Zones::ConfigFlag flag)
+	{
+		const auto zoneRef = LuaScriptInterface::getSharedPtr<LuaZoneRef>(L, 1);
+		Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+		if (not zone)
+		{
+			lua_pushnil(L);
+			return 1;
+		}
+
+		auto bit = static_cast<size_t>(flag);
+
+		if (lua_gettop(L) == 1)
+		{
+			LuaScriptInterface::pushBoolean(L, zone->config.test(bit));
+		}
+		else
+		{
+			zone->config.set(bit, LuaScriptInterface::getBoolean(L, 2));
+			LuaScriptInterface::pushBoolean(L, true);
+		}
+		return 1;
+	}
+}
+
+int LuaScriptInterface::luaZonePassive(lua_State* L)
+{
+	return LuaZoneConfigFlag(L, Zones::ConfigFlag::Passive);
+}
+
+int LuaScriptInterface::luaZoneForced(lua_State* L)
+{
+	return LuaZoneConfigFlag(L, Zones::ConfigFlag::Forced);
+}
+
+int LuaScriptInterface::luaZonePositional(lua_State* L)
+{
+	return LuaZoneConfigFlag(L, Zones::ConfigFlag::Positional);
+}
+
+int LuaScriptInterface::luaZoneInstant(lua_State* L)
+{
+	return LuaZoneConfigFlag(L, Zones::ConfigFlag::Instant);
+}
+
+int LuaScriptInterface::luaZoneRebootable(lua_State* L)
+{
+	return LuaZoneConfigFlag(L, Zones::ConfigFlag::Rebootable);
+}
+
+int LuaScriptInterface::luaZoneResumable(lua_State* L)
+{
+	return LuaZoneConfigFlag(L, Zones::ConfigFlag::Resumable);
+}
+
+int LuaScriptInterface::luaZoneDegradable(lua_State* L)
+{
+	return LuaZoneConfigFlag(L, Zones::ConfigFlag::Degradable);
+}
+
+int LuaScriptInterface::luaZoneTimed(lua_State* L)
+{
+	return LuaZoneConfigFlag(L, Zones::ConfigFlag::Timed);
+}
+
+int LuaScriptInterface::luaZoneCooldown(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (lua_gettop(L) == 1)
+	{
+		lua_pushinteger(L, zone->cooldown);
+		return 1;
+	}
+
+	auto ms = getNumber<uint32_t>(L, 2);
+
+	if (ms > std::numeric_limits<uint16_t>::max())
+	{
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	zone->cooldown = static_cast<uint16_t>(ms);
+	pushBoolean(L, true);
+	return 1;
+}
+
+namespace
+{
+	int LuaZoneMultiplier(lua_State* L, uint8_t Zones::Zone::* member)
+	{
+		const auto zoneRef = LuaScriptInterface::getSharedPtr<LuaZoneRef>(L, 1);
+		Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+		if (not zone)
+		{
+			lua_pushnil(L);
+			return 1;
+		}
+
+		if (lua_gettop(L) == 1)
+		{
+			lua_pushinteger(L, zone->*member);
+			return 1;
+		}
+
+		auto n = LuaScriptInterface::getNumber<uint32_t>(L, 2);
+
+		if (n < 1 or n > 255)
+		{
+			LuaScriptInterface::pushBoolean(L, false);
+			return 1;
+		}
+
+		zone->*member = static_cast<uint8_t>(n);
+		LuaScriptInterface::pushBoolean(L, true);
+		return 1;
+	}
+}
+
+int LuaScriptInterface::luaZoneSpawnMultiplier(lua_State* L)
+{
+	return LuaZoneMultiplier(L, &Zones::Zone::spawn_multiplier);
+}
+
+int LuaScriptInterface::luaZoneExpMultiplier(lua_State* L)
+{
+	return LuaZoneMultiplier(L, &Zones::Zone::exp_multiplier);
+}
+
+int LuaScriptInterface::luaZoneLootMultiplier(lua_State* L)
+{
+	return LuaZoneMultiplier(L, &Zones::Zone::loot_multiplier);
+}
+
+int LuaScriptInterface::luaZoneSkillMultiplier(lua_State* L)
+{
+	return LuaZoneMultiplier(L, &Zones::Zone::skill_multiplier);
+}
+
+int LuaScriptInterface::luaZoneWeekdays(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	static const std::vector<std::pair<Zones::WeekDay, std::string>> weekdayNames =
+	{
+		{ Zones::WeekDay::Monday,    "monday"    },
+		{ Zones::WeekDay::Tuesday,   "tuesday"   },
+		{ Zones::WeekDay::Wednesday, "wednesday" },
+		{ Zones::WeekDay::Thursday,  "thursday"  },
+		{ Zones::WeekDay::Friday,    "friday"    },
+		{ Zones::WeekDay::Saturday,  "saturday"  },
+		{ Zones::WeekDay::Sunday,    "sunday"    },
+	};
+
+	if (lua_gettop(L) == 1)
+	{
+		lua_newtable(L);
+		int index = 0;
+
+		for (const auto& [day, name] : weekdayNames)
+		{
+			if (zone->weekdays.test(static_cast<size_t>(day)))
+			{
+				pushString(L, name);
+				lua_rawseti(L, -2, ++index);
+			}
+		}
+		return 1;
+	}
+
+	if (not isTable(L, 2))
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	auto len = lua_rawlen(L, 2);
+
+	if (len > 0)
+	{
+		zone->weekdays.reset();
+
+		for (lua_Integer i = 1; i <= static_cast<lua_Integer>(len); ++i)
+		{
+			lua_rawgeti(L, 2, i);
+
+			if (lua_isstring(L, -1))
+			{
+				auto parsed = Zones::ZoneManager::ParseWeekDayString(lua_tostring(L, -1));
+
+				if (parsed != Zones::WeekDay::None)
+					zone->weekdays.set(static_cast<size_t>(parsed));
+			}
+
+			lua_pop(L, 1);
+		}
+	}
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneRegister(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+
+	if (not zoneRef or not zoneRef->Get())
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	bool autoActivate = lua_isnone(L, 2) ? true : getBoolean(L, 2);
+	pushBoolean(L, zoneRef->Register(autoActivate));
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneIsActive(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	pushBoolean(L, zone->Active());
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneIsPaused(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	pushBoolean(L, zone->Paused());
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneActivate(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	zone->Activate();
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneDeactivate(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	zone->Deactivate();
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZonePause(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	zone->Pause();
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneUnpause(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	zone->Unpause();
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaZoneRemove(lua_State* L)
+{
+	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
+
+	if (not zone)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	pushBoolean(L, Zones::ZoneManager::RemoveZoneByName(zone->name));
+	return 1;
+}
+
+int LuaScriptInterface::luaZonesCreate(lua_State* L)
+{
+	auto result = LuaZoneResolveName(L, 1);
+
+	if (not result.name)
+	{
+		lua_pushnil(L);
+		pushBoolean(L, false);
+		pushString(L, result.reason);
+		return 3;
+	}
+
+	auto ref = std::make_shared<LuaZoneRef>();
+	ref->Get()->name = *result.name;
+
+	pushSharedPtr(L, ref);
+	setMetatable(L, -1, "Zone");
+	return 1;
+}
+
+int LuaScriptInterface::luaZonesGet(lua_State* L)
+{
+	auto id = getNumber<int>(L, 1);
+	auto& registry = Zones::ZoneManager::Get();
+
+	if (id > 0 and id < static_cast<int>(registry.size()) and registry[id].IsValid())
+	{
+		pushSharedPtr(L, std::make_shared<LuaZoneRef>(registry[id]));
+		setMetatable(L, -1, "Zone");
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaZonesGetByName(lua_State* L)
+{
+	const auto handle = Zones::ZoneManager::GetZoneByName(getString(L, 1));
+
+	if (handle)
+	{
+		pushSharedPtr(L, std::make_shared<LuaZoneRef>(*handle));
+		setMetatable(L, -1, "Zone");
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaZonesRemove(lua_State* L)
+{
+	pushBoolean(L, Zones::ZoneManager::RemoveZone(getNumber<int>(L, 1)));
+	return 1;
+}
+
+int LuaScriptInterface::luaZonesRemoveByName(lua_State* L)
+{
+	pushBoolean(L, Zones::ZoneManager::RemoveZoneByName(getString(L, 1)));
+	return 1;
+}
+
+int LuaScriptInterface::luaZonesGetAll(lua_State* L)
+{
+	lua_newtable(L);
+	int index = 0;
+
+	for (Zones::ZoneHandle handle : Zones::ZoneManager::Get())
+	{
+		if (not handle.IsValid())
+			continue;
+
+		pushSharedPtr(L, std::make_shared<LuaZoneRef>(handle));
+		setMetatable(L, -1, "Zone");
+		lua_rawseti(L, -2, ++index);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaZonesGetCount(lua_State* L)
+{
+	lua_pushinteger(L, static_cast<lua_Integer>(Zones::ZoneManager::Count()));
+	return 1;
+}
+
+int LuaScriptInterface::luaZonesGetByPosition(lua_State* L)
+{
+	auto ids = Zones::ZoneManager::GetZonesByPosition(getPosition(L, 1));
+	auto& registry = Zones::ZoneManager::Get();
+
+	lua_newtable(L);
+	int index = 0;
+
+	for (auto id : ids)
+	{
+		if (id > 0 and id < static_cast<int>(registry.size()) and registry[id].IsValid())
+		{
+			pushSharedPtr(L, std::make_shared<LuaZoneRef>(registry[id]));
+			setMetatable(L, -1, "Zone");
+			lua_rawseti(L, -2, ++index);
+		}
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaZonesHasWorldFlag(lua_State* L)
+{
+	pushBoolean(L, Zones::ZoneManager::HasWorldFlag(getPosition(L, 1), LuaZoneGetFlagArg(L, 2)));
+	return 1;
+}
+
+int LuaScriptInterface::luaZonesGetWorldFlags(lua_State* L)
+{
+	lua_pushinteger(L, Zones::ZoneManager::GetWorldFlags(getPosition(L, 1)));
+	return 1;
+}
+
+int LuaScriptInterface::luaZonesGetZoneType(lua_State* L)
+{
+	lua_pushinteger(L, Zones::ZoneManager::GetZoneType(getPosition(L, 1)));
+	return 1;
+}
+
 // ItemType
 int LuaScriptInterface::luaItemTypeCreate(lua_State* L)
 {
@@ -22657,374 +24205,6 @@ int LuaScriptInterface::luaXmlNodeNextSibling(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaGetZones(lua_State* L)
-{
-	auto& zones = Zones::get();
-	auto index = 0;
-	lua_createtable(L, zones.size(), 0);
-
-	for (auto& zone : zones)
-	{
-		pushUserdata<Zone>(L, &zone);
-		setMetatable(L, -1, "Zone");
-		lua_rawseti(L, -2, ++index);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaCreateZone(lua_State* L)
-{
-	// Zone(id)
-	// looks up the zone by id
-	// can return false if zone can't be found or id is 0;
-
-	// Zone(id, positions)
-	// creates zone manually
-
-	// both return userdata
-	if (auto zoneId = getNumber<int>(L, 2))
-	{
-		if (zoneId != 0)
-		{
-			if (auto hasPositions = isTable(L, 3))
-			{
-				std::vector<Position> positions{};
-				positions.reserve(64);
-
-				lua_pushnil(L);
-				while (lua_next(L, 3) != 0) {
-					if (isTable(L, -1)) {
-						auto position = getPosition(L, -1);
-						positions.emplace_back(position);
-					}
-					lua_pop(L, 1);
-				}
-				auto& zone = Zones::createZone(zoneId, positions);
-				pushUserdata<Zone>(L, &zone);
-				setMetatable(L, -1, "Zone");
-				return 1;
-			}
-			else
-			{
-				auto& zone = Zones::getZone(zoneId);
-				// we check the id here again to ensure we don't have a default initialied zone.
-				if (zone.id != 0) 
-				{
-					pushUserdata<Zone>(L, &zone);
-					setMetatable(L, -1, "Zone");
-					return 1;
-				}
-			}
-		} 
-		else
-		{
-			BlackTek::Console::Script::Warn("{}: zone id 0 is reserved and cannot be used", __FUNCTION__);
-			reportErrorFunc(L, "Zone(): id 0 is reserved and cannot be used");
-			lua_pushnil(L);
-			return 1;
-		}
-	}
-
-	// if they didn't include a number, we should probably throw console error
-
-	lua_pushnil(L);
-	return 1;
-}
-
-int LuaScriptInterface::luaDeleteZone(lua_State* L)
-{
-	// zone __gc()
-	Zone** zonePtr = getRawUserdata<Zone>(L, 1);
-	if (zonePtr && *zonePtr) {
-		delete* zonePtr;
-		*zonePtr = nullptr;
-	}
-	return 0;
-}
-
-int LuaScriptInterface::luaZoneId(lua_State* L)
-{
-	if (auto zone = getUserdata<Zone>(L, 1))
-	{
-		lua_pushnumber(L, zone->id);
-		return 1;
-	}
-	// should be unreachable
-	return 0;
-}
-
-int LuaScriptInterface::luaZoneCreatures(lua_State* L)
-{
-	// zone:getCreatures()
-	// zone:getCreatures(creatureType)
-	if (auto zone = getUserdata<Zone>(L, 1))
-	{
-		int index = 0;
-		bool isFiltered = (isNumber(L, 2));
-		CreatureType_t creatureType;
-		lua_createtable(L, zone->positions.size() * 4, 0);
-
-		if (isFiltered)
-		{
-			creatureType = getNumber<CreatureType_t>(L, 2);
-		}
-
-		for (auto& position : zone->positions)
-		{
-			if (auto tile = g_game.map.getTile(position.x, position.y, position.z))
-			{
-				if (tile->getCreatureCount() == 0)
-				{
-					continue;
-				}
-
-				for (auto& creature : tile->getCreatures()->getList())
-				{
-					if (isFiltered and creature->getType() != creatureType)
-					{
-						continue;
-					}
-
-					pushSharedPtr(L, creature);
-					setCreatureMetatable(L, -1, creature);
-					lua_rawseti(L, -2, ++index);
-				}
-			}
-		}
-
-		return 1;
-	}
-	// should be unreachable
-	return 0;
-}
-
-int LuaScriptInterface::luaZoneGrounds(lua_State* L)
-{
-	// zone:getGrounds()
-	if (auto zone = getUserdata<Zone>(L, 1))
-	{
-		lua_createtable(L, zone->positions.size(), 0);
-		int index = 0;
-		for (auto& position : zone->positions)
-		{
-			if (auto tile = g_game.map.getTile(position.x, position.y, position.z))
-			{
-				if (auto ground = tile->getGround()) 
-				{
-					pushSharedPtr(L, ground);
-					setItemMetatable(L, -1, ground);
-					lua_rawseti(L, -2, ++index);
-				}
-			}
-		}
-		return 1;
-	}
-	// should be unreachable
-	return 0;
-}
-
-int LuaScriptInterface::luaZoneItems(lua_State* L)
-{
-	// zone::getItems()
-	// zone::getItems(id)
-	if (auto zone = getUserdata<Zone>(L, 1))
-	{
-		bool isFiltered = (isNumber(L, 2));
-		int index = 0;
-		uint16_t item_type = 0;
-		lua_createtable(L, zone->positions.size() * 10, 0);
-
-		if (isFiltered)
-		{
-			item_type = getNumber<uint16_t>(L, 2);
-		}
-
-		for (auto& position : zone->positions)
-		{
-			if (auto tile = g_game.map.getTile(position.x, position.y, position.z))
-			{
-				if (auto items = tile->getItemList())
-				{
-					for (auto& item : *items)
-					{
-						if (isFiltered and item->getID() != item_type)
-						{
-							continue;
-						}
-
-						pushSharedPtr(L, item);
-						setItemMetatable(L, -1, item);
-						lua_rawseti(L, -2, ++index);
-					}
-				}
-			}
-		}
-		return 1;
-	}
-	// should be unreachable
-	return 0;
-}
-
-int LuaScriptInterface::luaZoneTiles(lua_State* L)
-{
-	// zone::getTiles()
-	// zone::getTiles(flags)
-	if (auto zone = getUserdata<Zone>(L, 1))
-	{
-		int index = 0;
-		auto isFiltered = (isNumber(L, 2));
-		uint32_t flags = 0;
-
-		if (isFiltered)
-		{
-			flags = (getNumber<uint32_t>(L, 2));
-		}
-
-		lua_createtable(L, zone->positions.size(), 0);
-
-		for (auto& position : zone->positions)
-		{
-			if (auto tile = g_game.map.getTile(position.x, position.y, position.z))
-			{
-				if (isFiltered and (tile->getFlags() & flags) != flags)
-				{
-					continue;
-				}
-				pushSharedPtr(L, tile);
-				setMetatable(L, -1, "Tile");
-				lua_rawseti(L, -2, ++index);
-			}
-		}
-		return 1;
-	}
-	// should be unreachable
-	return 0;
-}
-
-int LuaScriptInterface::luaZoneCreatureCount(lua_State* L)
-{
-	// zone::getCreatureCount()
-	// zone::getCreatureCount(CreatureType_t)
-	if (auto zone = getUserdata<Zone>(L, 1))
-	{
-		auto c_count = 0;
-		auto isFiltered = (isNumber(L, 2));
-		CreatureType_t creatureType;
-
-		if (isFiltered)
-		{
-			creatureType = (getNumber<CreatureType_t>(L, 2));
-		}
-
-		for (auto& position : zone->positions)
-		{
-			if (auto tile = g_game.map.getTile(position.x, position.y, position.z))
-			{
-				if (auto t_count = tile->getCreatureCount())
-				{
-					if (isFiltered)
-					{
-						for (auto& creature : tile->getCreatures()->getList())
-						{
-							if (creature->getType() != creatureType)
-							{
-								continue;
-							}
-							++c_count;
-						}
-					}
-					else // no filter, count them all
-					{
-						c_count += t_count;
-					}
-				}
-			}
-		}
-		lua_pushnumber(L, c_count);
-		return 1;
-	}
-	// should be unreachable
-	return 0;
-}
-
-int LuaScriptInterface::luaZoneItemCount(lua_State* L)
-{
-	// zone::getItemCount()
-	// zone::getItemCount(id)
-	if (auto zone = getUserdata<Zone>(L, 1))
-	{
-		auto i_count = 0;
-		auto isFiltered = (isNumber(L, 2));
-		int itemId = 0;
-
-		if (isFiltered)
-		{
-			itemId = (getNumber<int>(L, 2));
-		}
-
-		for (auto& position : zone->positions)
-		{
-			if (auto tile = g_game.map.getTile(position.x, position.y, position.z))
-			{
-				if (auto t_count = tile->getItemCount())
-				{
-					if (isFiltered)
-					{
-						for (auto& item : *tile->getItemList())
-						{
-							if (item->getID() != itemId)
-							{
-								continue;
-							}
-							++i_count;
-						}
-					}
-					else // no filter, count them all
-					{
-						i_count += t_count;
-					}
-				}
-			}
-		}
-		lua_pushnumber(L, i_count);
-		return 1;
-	}
-	// should be unreachable
-	return 0;
-}
-
-int LuaScriptInterface::luaZoneTileCount(lua_State* L)
-{
-	// zone::getTileCount()
-	// zone::getTileCount(flags)
-	if (auto zone = getUserdata<Zone>(L, 1))
-	{
-		auto t_count = 0;
-		auto isFiltered = (isTable(L, 2));
-		tileflags_t flags;
-
-		if (isFiltered)
-		{
-			flags = (getNumber<tileflags_t>(L, 2));
-		}
-
-		for (auto& position : zone->positions)
-		{
-			if (auto tile = g_game.map.getTile(position.x, position.y, position.z))
-			{
-				if (isFiltered and (tile->getFlags() & flags) != flags)
-				{
-					continue;
-				}
-				++t_count;
-			}
-		}
-		lua_pushnumber(L, t_count);
-		return 1;
-	}
-	// should be unreachable
-	return 0;
-}
 
 //
 LuaEnvironment::LuaEnvironment() : LuaScriptInterface("Main Interface") {}

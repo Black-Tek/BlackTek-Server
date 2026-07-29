@@ -50,6 +50,8 @@ public:
 	Loader(const std::string& fileName, const Identifier& acceptedIdentifier);
 	bool getProps(const Node& node, PropStream& props);
 	const Node& parseTree();
+
+	const char* data() const noexcept { return fileContents.data(); }
 };
 
 } //namespace OTB

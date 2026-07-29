@@ -85,10 +85,12 @@ static constexpr size_t MaxCreatureThinkSlots = 20;
 
 #include <coroutine>
 #include <chrono>
+#include <functional>
+#include <optional>
 
-struct CoroTask 
+struct CoroTask
 {
-    struct promise_type 
+    struct promise_type
 	{
         CoroTask get_return_object() { return {}; }
         std::suspend_never initial_suspend() noexcept { return {}; }
@@ -102,45 +104,57 @@ struct CoroTask
 // and reuse this for all the timer wheel tasks, and spawns too
 // possibly eliminate entire usage of dispatcher/scheduler for game tasks
 // only excluding possible things that can benefit to being offloaded from main loop
-struct TimerQueue 
+struct TimerQueue
 {
     using Clock = std::chrono::steady_clock;
     using TimePoint = Clock::time_point;
 
-    struct Entry 
+    struct Entry
 	{
         TimePoint wake;
         std::coroutine_handle<> handle;
+
+        std::function<bool()> stillValid;
+
         bool operator>(const Entry& other) const { return wake > other.wake; }
     };
 
     std::priority_queue<Entry, std::vector<Entry>, std::greater<>> queue;
 
-    void add(TimePoint when, std::coroutine_handle<> handle) 
+    std::optional<std::coroutine_handle<>> currentlyResuming;
+
+    void add(TimePoint when, std::coroutine_handle<> handle, std::function<bool()> stillValid = nullptr)
 	{
-        queue.push({when, handle});
+        queue.push({when, handle, std::move(stillValid)});
     }
 
     void tick() {
         auto now = Clock::now();
-        while (not queue.empty() and queue.top().wake <= now) 
+        while (not queue.empty() and queue.top().wake <= now)
 		{
-            auto handle = queue.top().handle;
+            auto entry = queue.top();
             queue.pop();
-            handle.resume();
+
+            if (not entry.stillValid or entry.stillValid())
+            {
+                currentlyResuming = entry.handle;
+                entry.handle.resume();
+                currentlyResuming.reset();
+            }
         }
     }
 };
 
 inline TimerQueue g_timer_queue;
 
-struct SleepFor 
+struct SleepFor
 {
     uint32_t ms;
+    std::function<bool()> stillValid = nullptr;
     bool await_ready() const noexcept { return ms == 0; }
-    void await_suspend(std::coroutine_handle<> handle) const 
+    void await_suspend(std::coroutine_handle<> handle) const
 	{
-        g_timer_queue.add(TimerQueue::Clock::now() + std::chrono::milliseconds(ms), handle);
+        g_timer_queue.add(TimerQueue::Clock::now() + std::chrono::milliseconds(ms), handle, stillValid);
     }
     void await_resume() const noexcept {}
 };
@@ -736,6 +750,8 @@ class Game
         std::optional<std::pmr::monotonic_buffer_resource>& getMapBlock() { return map_block; }
         std::pmr::unsynchronized_pool_resource& getItemPool() { return item_pool; }
 
+		void initializeSpawnPool();
+
 	private:
 		bool playerSaySpell(const PlayerPtr& player, SpeakClasses type, const std::string& text);
 		void playerWhisper(const PlayerPtr& player, const std::string& text);
@@ -752,6 +768,7 @@ class Game
 		std::pmr::unsynchronized_pool_resource npc_pool;
 		std::pmr::unsynchronized_pool_resource creature_pointer_pool;
 		std::pmr::unsynchronized_pool_resource item_pointer_pool;
+		std::pmr::unsynchronized_pool_resource spawn_pool;
 
 		std::unordered_map<uint32_t, Guild_ptr> guilds;
 

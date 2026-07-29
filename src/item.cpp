@@ -177,7 +177,12 @@ ItemPtr Item::CreateItem(PropStream& propStream)
 			break;
 	}
 
-	return Item::CreateItem(id, 0);
+	auto item = Item::CreateItem(id, 0);
+
+	if (item)
+		++s_loadedItemCount;
+
+	return item;
 }
 
 Item::Item(const uint16_t type, uint16_t count /*= 0*/) :

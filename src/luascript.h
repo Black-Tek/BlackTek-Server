@@ -748,8 +748,6 @@ class LuaScriptInterface
 
 		static int luaPositionSendMagicEffect(lua_State* L);
 		static int luaPositionSendDistanceEffect(lua_State* L);
-		static int luaPositionGetZones(lua_State* L);
-		static int luaPositionHasZone(lua_State* L);
 
 		// Tile
 		static int luaTileCreate(lua_State* L);
@@ -1460,6 +1458,73 @@ class LuaScriptInterface
 
 		static int luaHouseSave(lua_State* L);
 
+		static int luaZoneCreate(lua_State* L);
+
+		static int luaZoneEq(lua_State* L);
+
+		static int luaZoneGetId(lua_State* L);
+		static int luaZoneGetName(lua_State* L);
+		static int luaZoneStartPosition(lua_State* L);
+		static int luaZoneGetPositions(lua_State* L);
+		static int luaZoneAddPosition(lua_State* L);
+		static int luaZoneSetPositions(lua_State* L);
+		static int luaZoneGetRange(lua_State* L);
+		static int luaZoneSetRange(lua_State* L);
+
+		static int luaZoneHasFlag(lua_State* L);
+		static int luaZoneSetFlag(lua_State* L);
+		static int luaZoneClearFlag(lua_State* L);
+		static int luaZoneGetFlags(lua_State* L);
+		static int luaZoneSetFlags(lua_State* L);
+
+		static int luaZoneSpawnType(lua_State* L);
+		static int luaZonePolicy(lua_State* L);
+		static int luaZoneAddMonster(lua_State* L);
+		static int luaZoneAddNpc(lua_State* L);
+		static int luaZoneSetBossMaster(lua_State* L);
+		static int luaZoneAddMinion(lua_State* L);
+		static int luaZoneMinionBehavior(lua_State* L);
+		static int luaZoneTrigger(lua_State* L);
+		static int luaZoneGetCreatureList(lua_State* L);
+		static int luaZoneGetActiveCreatures(lua_State* L);
+
+		static int luaZonePassive(lua_State* L);
+		static int luaZoneForced(lua_State* L);
+		static int luaZonePositional(lua_State* L);
+		static int luaZoneInstant(lua_State* L);
+		static int luaZoneRebootable(lua_State* L);
+		static int luaZoneResumable(lua_State* L);
+		static int luaZoneDegradable(lua_State* L);
+		static int luaZoneTimed(lua_State* L);
+
+		static int luaZoneCooldown(lua_State* L);
+		static int luaZoneSpawnMultiplier(lua_State* L);
+		static int luaZoneExpMultiplier(lua_State* L);
+		static int luaZoneLootMultiplier(lua_State* L);
+		static int luaZoneSkillMultiplier(lua_State* L);
+		static int luaZoneWeekdays(lua_State* L);
+
+		static int luaZoneRegister(lua_State* L);
+		static int luaZoneIsActive(lua_State* L);
+		static int luaZoneIsPaused(lua_State* L);
+		static int luaZoneActivate(lua_State* L);
+		static int luaZoneDeactivate(lua_State* L);
+		static int luaZonePause(lua_State* L);
+		static int luaZoneUnpause(lua_State* L);
+		static int luaZoneRemove(lua_State* L);
+
+		static int luaZonesCreate(lua_State* L);
+		static int luaZonesGet(lua_State* L);
+		static int luaZonesGetByName(lua_State* L);
+		static int luaZonesRemove(lua_State* L);
+		static int luaZonesRemoveByName(lua_State* L);
+		static int luaZonesGetAll(lua_State* L);
+		static int luaZonesGetCount(lua_State* L);
+		static int luaZonesGetByPosition(lua_State* L);
+		static int luaZonesHasWorldFlag(lua_State* L);
+		static int luaZonesGetWorldFlags(lua_State* L);
+		static int luaZonesGetZoneType(lua_State* L);
+
 		// ItemType
 		static int luaItemTypeCreate(lua_State* L);
 
@@ -1945,18 +2010,6 @@ class LuaScriptInterface
 		static int luaXmlNodeName(lua_State* L);
 		static int luaXmlNodeFirstChild(lua_State* L);
 		static int luaXmlNodeNextSibling(lua_State* L);
-
-		static int luaGetZones(lua_State* L);
-		static int luaCreateZone(lua_State* L);
-		static int luaDeleteZone(lua_State* L);
-		static int luaZoneId(lua_State* L);
-		static int luaZoneCreatures(lua_State* L);
-		static int luaZoneGrounds(lua_State* L);
-		static int luaZoneItems(lua_State* L);
-		static int luaZoneTiles(lua_State* L);
-		static int luaZoneCreatureCount(lua_State* L);
-		static int luaZoneItemCount(lua_State* L);
-		static int luaZoneTileCount(lua_State* L);
 
 		//
 		std::string lastLuaError;

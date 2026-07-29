@@ -1,0 +1,77 @@
+[ConvertedSpawn_z11_223]
+range = { start = "151:421:11", end = "159:427:11" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "6:2:0", interval = 60, name = "Necromancer" },
+    { position = "2:4:0", interval = 60, name = "Necromancer" },
+]
+
+[ConvertedSpawn_z11_229]
+range = { start = "109:477:11", end = "116:483:11" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "5:2:0", interval = 60, name = "Mummy" },
+    { position = "2:4:0", interval = 60, name = "Mummy" },
+]
+
+[ConvertedSpawn_z11_237]
+range = { start = "161:440:11", end = "168:445:11" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Demon Skeleton" },
+    { position = "5:3:0", interval = 60, name = "Demon Skeleton" },
+]
+
+[ConvertedSpawn_z11_297]
+range = { start = "63:88:11", end = "73:99:11" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Poison Spider" },
+    { position = "8:9:0", interval = 60, name = "Poison Spider" },
+]
+
+[ConvertedSpawn_z11_298]
+range = { start = "54:99:11", end = "66:110:11" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "9:2:0", interval = 60, name = "Poison Spider" },
+    { position = "10:3:0", interval = 60, name = "Poison Spider" },
+    { position = "2:9:0", interval = 60, name = "Poison Spider" },
+]
+
+[ConvertedSpawn_z11_299]
+range = { start = "140:431:11", end = "144:435:11" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Demon Skeleton" },
+]
+
+[ConvertedSpawn_z11_300]
+range = { start = "145:444:11", end = "153:451:11" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Ghoul" },
+    { position = "6:5:0", interval = 60, name = "Ghoul" },
+]
+

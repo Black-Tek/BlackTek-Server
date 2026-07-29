@@ -102,8 +102,17 @@ std::optional<ReturnValue> CreatureContainer::checkEntryRestrictions(uint32_t fl
     if (hasBitSet(FLAG_NOLIMIT, flags))
         return RETURNVALUE_NOERROR;
 
-    if (hasBitSet(FLAG_PATHFINDING, flags) and tile->hasFlag(TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT))
+    if (Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::NoWalk))
         return RETURNVALUE_NOTPOSSIBLE;
+
+    if (hasBitSet(FLAG_PATHFINDING, flags))
+    {
+        if (tile->hasFlag(TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT))
+            return RETURNVALUE_NOTPOSSIBLE;
+
+        if (Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::NoPathfinding))
+            return RETURNVALUE_NOTPOSSIBLE;
+    }
 
     if (tile->getGround() == nullptr)
         return RETURNVALUE_NOTPOSSIBLE;
@@ -164,7 +173,7 @@ ReturnValue CreatureContainer::canEnter(const PlayerPtr& player, uint32_t flags)
     }
 
     // Player is trying to login to a "no logout" tile.
-    if (player->getTile() == nullptr and tile->hasFlag(TILESTATE_NOLOGOUT))
+    if (player->getTile() == nullptr and Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::NoLogout))
         return RETURNVALUE_NOTPOSSIBLE;
 
     // Player is pz'd, let do some checks.
@@ -172,19 +181,26 @@ ReturnValue CreatureContainer::canEnter(const PlayerPtr& player, uint32_t flags)
 
     if (playerTile and player->isPzLocked())
     {
-        if (not playerTile->hasFlag(TILESTATE_PVPZONE))
+        const bool playerInPvpZone = Zones::ZoneManager::HasWorldFlag(playerTile->getPosition(), Zones::ZoneFlag::Pvp);
+        const bool destInPvpZone   = Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::Pvp);
+
+        if (not playerInPvpZone)
         {
-            if (tile->hasFlag(TILESTATE_PVPZONE))
+            if (destInPvpZone)
                 return RETURNVALUE_PLAYERISPZLOCKEDENTERPVPZONE;
         }
-        else if (not tile->hasFlag(TILESTATE_PVPZONE))
+        else if (not destInPvpZone)
         {
             return RETURNVALUE_PLAYERISPZLOCKEDLEAVEPVPZONE;
         }
 
         // player is trying to enter a non-pvp/protection zone while being pz-locked
-        if ((not playerTile->hasFlag(TILESTATE_NOPVPZONE) and tile->hasFlag(TILESTATE_NOPVPZONE))
-            or (not playerTile->hasFlag(TILESTATE_PROTECTIONZONE) and tile->hasFlag(TILESTATE_PROTECTIONZONE)))
+        const bool playerInNoPvpZone   = Zones::ZoneManager::HasWorldFlag(playerTile->getPosition(), Zones::ZoneFlag::NoPvp);
+        const bool destInNoPvpZone     = Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::NoPvp);
+        const bool playerInProtection  = Zones::ZoneManager::HasWorldFlag(playerTile->getPosition(), Zones::ZoneFlag::Protection);
+        const bool destInProtection    = Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::Protection);
+
+        if ((not playerInNoPvpZone and destInNoPvpZone) or (not playerInProtection and destInProtection))
             return RETURNVALUE_PLAYERISPZLOCKED;
     }
 
@@ -200,7 +216,9 @@ ReturnValue CreatureContainer::canEnter(const MonsterPtr& monster, uint32_t flag
 
     // Monsters
     // Monsters cannot enter pz, jump floors, or step into teleports
-    if (tile->hasFlag(TILESTATE_PROTECTIONZONE | TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT))
+    if (tile->hasFlag(TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT)
+        or Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::Protection)
+        or Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::NoMonsters))
         return RETURNVALUE_NOTPOSSIBLE;
 
     if (tile->isHouseTile()) // should we hardcode these things? I don't think so.
@@ -277,7 +295,10 @@ ReturnValue CreatureContainer::canEnter(const NpcPtr& npc, uint32_t flags) const
     if (npc->isPhaseable())
         return RETURNVALUE_NOERROR;
 
-    if (g_config.GetBoolean(ConfigManager::NPC_PZ_WALKTHROUGH) and tile->hasFlag(TILESTATE_PVPZONE))
+    if (Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::NoNpcs))
+        return RETURNVALUE_NOTPOSSIBLE;
+
+    if (g_config.GetBoolean(ConfigManager::NPC_PZ_WALKTHROUGH) and Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::Pvp))
         return RETURNVALUE_NOERROR;
 
     if (not creatureList.empty() and not hasBitSet(FLAG_IGNOREBLOCKCREATURE, flags))

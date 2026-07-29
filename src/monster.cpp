@@ -220,10 +220,6 @@ void Monster::onRemoveCreature(const CreaturePtr& creature, const bool isLogout)
 	}
 
 	if (creature == this->getCreature()) {
-		if (spawn) {
-			spawn->startSpawnCheck();
-		}
-
 		setIdle(true);
 	} else {
 		onCreatureLeave(creature);
@@ -775,6 +771,7 @@ void Monster::setIdle(const bool idle)
 		return;
 	}
 
+	const bool wasIdle = isIdle;
 	isIdle = idle;
 
 	if (!isIdle) {
@@ -784,6 +781,12 @@ void Monster::setIdle(const bool idle)
 		clearTargetList();
 		clearFriendList();
 		Game::removeCreatureCheck(this->getCreature());
+
+		if (not wasIdle)
+		{
+			if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(getPosition()))
+				spawnOverlay->Trigger(this->getCreature(), Zones::SpawnTrigger::Idle);
+		}
 	}
 }
 
@@ -1057,74 +1060,76 @@ void Monster::onThinkDefense(const uint32_t interval)
 	bool resetTicks = true;
 	defenseTicks += interval;
 
-	for (const spellBlock_t& spellBlock : mType->info.defenseSpells) {
-		if (spellBlock.speed > defenseTicks) {
+	for (const spellBlock_t& spellBlock : mType->info.defenseSpells)
+	{
+		if (spellBlock.speed > defenseTicks)
+		{
 			resetTicks = false;
 			continue;
 		}
 
-		if (defenseTicks % spellBlock.speed >= interval) {
-			//already used this spell for this round
+		// already used this spell for this round
+		if (defenseTicks % spellBlock.speed >= interval)
 			continue;
-		}
 
-		if ((spellBlock.chance >= static_cast<uint32_t>(uniform_random(1, 100)))) {
+		if ((spellBlock.chance >= static_cast<uint32_t>(uniform_random(1, 100))))
+		{
 			minCombatValue = spellBlock.minCombatValue;
 			maxCombatValue = spellBlock.maxCombatValue;
 			spellBlock.spell->castSpell(this->getMonster(), this->getCreature());
 		}
 	}
 
-	if (!isSummon() && summons.size() < mType->info.maxSummons && hasFollowPath) {
-		for (const summonBlock_t& summonBlock : mType->info.summons) {
-			if (summonBlock.speed > defenseTicks) {
+	if (not isSummon() and summons.size() < mType->info.maxSummons and hasFollowPath and not Zones::ZoneManager::HasWorldFlag(getPosition(), Zones::ZoneFlag::NoSummons)) 
+	{
+		for (const summonBlock_t& summonBlock : mType->info.summons)
+		{
+			if (summonBlock.speed > defenseTicks)
+			{
 				resetTicks = false;
 				continue;
 			}
 
-			if (summons.size() >= mType->info.maxSummons) {
+			if (summons.size() >= mType->info.maxSummons)
 				continue;
-			}
 
-			if (defenseTicks % summonBlock.speed >= interval) {
-				//already used this spell for this round
+			// already used this spell for this round
+			if (defenseTicks % summonBlock.speed >= interval)
 				continue;
-			}
 
 			uint32_t summonCount = 0;
 			std::string lowerSummonName = summonBlock.name;
 			toLowerCaseString(lowerSummonName);
 
-			for (const auto& summon : summons) {
-				if (summon->getRegisteredName() == lowerSummonName) {
+			for (const auto& summon : summons)
+			{
+				if (summon->getRegisteredName() == lowerSummonName)
 					++summonCount;
-				}
 			}
 
-			if (summonCount >= summonBlock.max) {
+			if (summonCount >= summonBlock.max)
 				continue;
-			}
 
-			if (summonBlock.chance < static_cast<uint32_t>(uniform_random(1, 100))) {
+			if (summonBlock.chance < static_cast<uint32_t>(uniform_random(1, 100)))
 				continue;
-			}
 
-			if (MonsterPtr summon = g_game.MakeMonster(summonBlock.name)) {
-				if (g_game.placeCreature(summon, getPosition(), false, summonBlock.force, summonBlock.effect)) {
+			if (MonsterPtr summon = g_game.MakeMonster(summonBlock.name))
+			{
+				if (g_game.placeCreature(summon, getPosition(), false, summonBlock.force, summonBlock.effect))
+				{
 					summon->setDropLoot(false);
 					summon->setSkillLoss(false);
 					summon->setMaster(this->getMonster());
-					if (summonBlock.masterEffect != CONST_ME_NONE) {
+
+					if (summonBlock.masterEffect != CONST_ME_NONE)
 						g_game.addMagicEffect(getPosition(), summonBlock.masterEffect);
-					}
 				}
 			}
 		}
 	}
 
-	if (resetTicks) {
+	if (resetTicks)
 		defenseTicks = 0;
-	}
 }
 
 void Monster::onThinkYell(const uint32_t interval)
@@ -1152,9 +1157,8 @@ void Monster::onThinkYell(const uint32_t interval)
 
 bool Monster::walkToSpawn()
 {
-	if (walkingToSpawn || !spawn || !targetList.empty()) {
+	if (walkingToSpawn or spawnZoneId == 0 or not targetList.empty())
 		return false;
-	}
 
 	int32_t distance = std::max<int32_t>(Position::getDistanceX(position, masterPos), Position::getDistanceY(position, masterPos));
 	if (distance == 0) {
@@ -1964,7 +1968,7 @@ ItemPtr Monster::getCorpse(const CreaturePtr& lastHitCreature, const CreaturePtr
 
 bool Monster::isInSpawnRange(const Position& pos) const
 {
-	if (!spawn) {
+	if (spawnZoneId == 0) {
 		return true;
 	}
 
@@ -1972,7 +1976,7 @@ bool Monster::isInSpawnRange(const Position& pos) const
 		return true;
 	}
 
-	if (!Spawns::isInZone(masterPos, Monster::despawnRadius, pos)) {
+	if (!Zones::ZoneManager::IsInZone(masterPos, Monster::despawnRadius, pos)) {
 		return false;
 	}
 
@@ -2044,6 +2048,9 @@ void Monster::updateLookDirection()
 
 void Monster::dropLoot(const ContainerPtr& corpse, const CreaturePtr&)
 {
+    if (Zones::ZoneManager::HasWorldFlag(getPosition(), Zones::ZoneFlag::NoDrop))
+        return;
+
     if (getMonster()->isRewardBoss()) {
         int64_t currentTime = static_cast<int64_t>(time(nullptr));
         int64_t time_limit = static_cast<int64_t>(7 * 24 * 60 * 60) + currentTime;

@@ -12,7 +12,7 @@
 #include "tile.h"
 #include "town.h"
 #include "house.h"
-#include "spawn.h"
+#include "zones.h"
 
 #include "chunk.h"
 #include "chunkgrid.h"
@@ -123,15 +123,21 @@ class Map
 			return chunk_grid.GetChunk(handle);
 		}
 
-		Spawns spawns;
 		Towns towns;
 		Houses houses;
+
+		std::filesystem::path spawnfile;
+		std::filesystem::path otbmFilePath;
+		std::vector<Zones::LegacyZoneFlagTile> legacyZoneFlagTiles;
+
+		int64_t  lastLoadTimeSeconds = 0;
+		uint32_t lastLoadTileCount = 0;
+		uint64_t lastLoadItemCount = 0;
 
 	private:
 		BlackTek::World::ChunkGrid chunk_grid;
 		BlackTek::World::FloorPool floor_pool;
 
-		std::filesystem::path spawnfile;
 		std::filesystem::path housefile;
 
 		uint32_t width = 0;

@@ -47,6 +47,10 @@ std::expected<MapLoadStats, MapErrorCode> IOMap::loadMap(Map* map, const std::fi
 	const auto start = OTSYS_TIME();
 	using Error = MapErrorCode;
 	uint32_t map_size = 0;
+	uint32_t tile_count = 0;
+
+	map->otbmFilePath = fileName;
+	Item::resetLoadedItemCount();
 
 	try
 	{
@@ -104,8 +108,6 @@ std::expected<MapLoadStats, MapErrorCode> IOMap::loadMap(Map* map, const std::fi
 			return std::unexpected(Error::DataParse);
 		}
 
-		uint32_t tile_count = 0;
-
 		for (const auto& node_data : mapNode.children)
         {
             if (node_data.type == OTBM_TILE_AREA)
@@ -161,7 +163,7 @@ std::expected<MapLoadStats, MapErrorCode> IOMap::loadMap(Map* map, const std::fi
 		return std::unexpected(Error::InvalidFormat);
 	}
 
-	return MapLoadStats { (OTSYS_TIME() - start) / (1000), map_size};
+	return MapLoadStats { (OTSYS_TIME() - start) / (1000), map_size, tile_count, Item::getLoadedItemCount() };
 }
 
 bool IOMap::parseMapDataAttributes(OTB::Loader& loader, const OTB::Node& mapNode, Map& map,	const std::filesystem::path& fileName)
@@ -220,6 +222,56 @@ bool IOMap::parseMapDataAttributes(OTB::Loader& loader, const OTB::Node& mapNode
 	return true;
 }
 
+bool IOMap::locateLegacyTileFlagsOffsets(const OTB::Loader& loader, const OTB::Node& tileNode, bool isHouseTile, std::array<size_t, 4>& outOffsets)
+{
+	const char* const base = loader.data();
+	const char*       cursor = tileNode.propsBegin;
+	const char* const end = tileNode.propsEnd;
+
+	auto skipLogicalBytes = [&](int count) -> bool
+	{
+		for (int i = 0; i < count; ++i)
+		{
+			if (cursor >= end)
+				return false;
+
+			if (static_cast<uint8_t>(*cursor) == OTB::Node::ESCAPE)
+				cursor += 2;
+			else
+				cursor += 1;
+		}
+
+		return cursor <= end;
+	};
+
+	if (not skipLogicalBytes(isHouseTile ? 6 : 2))
+		return false;
+
+	if (cursor >= end or static_cast<uint8_t>(*cursor) != OTBM_ATTR_TILE_FLAGS)
+		return false;
+
+	cursor += 1;
+
+	for (auto& offset : outOffsets)
+	{
+		if (cursor >= end)
+			return false;
+
+		if (static_cast<uint8_t>(*cursor) == OTB::Node::ESCAPE)
+		{
+			cursor += 1;
+
+			if (cursor >= end)
+				return false;
+		}
+
+		offset = static_cast<size_t>(cursor - base);
+		cursor += 1;
+	}
+
+	return true;
+}
+
 bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Map& map, std::pmr::polymorphic_allocator<Tile> allocator)
 {
 	PropStream propStream;
@@ -270,7 +322,8 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 		bool isHouseTile = (tileNode.type == OTBM_HOUSETILE);
 		TilePtr tile = nullptr;
 		ItemPtr ground_item = nullptr;
-		uint32_t tileflags = TILESTATE_NONE;
+
+		uint32_t legacyZoneBits = 0;
 
 		if (isHouseTile)
 		{
@@ -312,15 +365,19 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 						return false;
 					}
 
-					if ((flags & OTBM_TILEFLAG_PROTECTIONZONE) != 0)
-						tileflags |= TILESTATE_PROTECTIONZONE;
-					else if ((flags & OTBM_TILEFLAG_NOPVPZONE) != 0)
-						tileflags |= TILESTATE_NOPVPZONE;
-					else if ((flags & OTBM_TILEFLAG_PVPZONE) != 0)
-						tileflags |= TILESTATE_PVPZONE;
+					constexpr uint32_t legacyZoneMask = OTBM_TILEFLAG_PROTECTIONZONE | OTBM_TILEFLAG_NOPVPZONE
+						| OTBM_TILEFLAG_PVPZONE | OTBM_TILEFLAG_NOLOGOUT;
 
-					if ((flags & OTBM_TILEFLAG_NOLOGOUT) != 0)
-						tileflags |= TILESTATE_NOLOGOUT;
+					legacyZoneBits = flags & legacyZoneMask;
+
+					if (legacyZoneBits != 0)
+					{
+						Zones::LegacyZoneFlagTile legacyTile;
+						legacyTile.position    = Position(x, y, static_cast<uint8_t>(z));
+						legacyTile.legacy_bits = legacyZoneBits;
+						legacyTile.patchable   = locateLegacyTileFlagsOffsets(loader, tileNode, isHouseTile, legacyTile.raw_byte_offsets);
+						map.legacyZoneFlagTiles.push_back(std::move(legacyTile));
+					}
 
 					break;
 				}
@@ -433,7 +490,6 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 		if (not tile)
 			tile = createTile(allocator, ground_item, x, y, z);
 
-		tile->setFlag(static_cast<tileflags_t>(tileflags));
 		map.setTile(x, y, z, tile);
 	}
 	return true;

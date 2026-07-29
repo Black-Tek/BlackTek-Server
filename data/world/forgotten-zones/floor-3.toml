@@ -1,0 +1,31 @@
+[ConvertedSpawn_z3_5]
+range = { start = "186:570:3", end = "190:574:3" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Dragon Lord" },
+]
+
+[ConvertedSpawn_z3_7]
+range = { start = "172:581:3", end = "179:587:3" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "5:2:0", interval = 60, name = "Dragon" },
+    { position = "2:4:0", interval = 60, name = "Dragon" },
+]
+
+[ConvertedSpawn_z3_8]
+range = { start = "151:593:3", end = "155:597:3" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Dragon Lord" },
+]
+

@@ -738,11 +738,9 @@ namespace BlackTek
 
 	namespace
 	{
-		constexpr uint32_t kScatterRejectFlags = TILESTATE_PROTECTIONZONE
-			| TILESTATE_FLOORCHANGE
+		constexpr uint32_t kScatterRejectFlags = TILESTATE_FLOORCHANGE
 			| TILESTATE_TELEPORT
 			| TILESTATE_IMMOVABLEBLOCKSOLID
-			| TILESTATE_NOPVPZONE
 			| TILESTATE_IMMOVABLEBLOCKPATH
 			| TILESTATE_IMMOVABLENOFIELDBLOCKPATH;
 
@@ -750,7 +748,8 @@ namespace BlackTek
 		{
 			return tile
 				and g_game.canThrowObjectTo(origin, dest)
-				and tile->getZone() != ZONE_PROTECTION
+				and not Zones::ZoneManager::HasWorldFlag(dest, Zones::ZoneFlag::Protection)
+				and not Zones::ZoneManager::HasWorldFlag(dest, Zones::ZoneFlag::NoPvp)
 				and not tile->hasFlag(kScatterRejectFlags);
 		}
 	}
@@ -1007,7 +1006,8 @@ namespace BlackTek
 		const Position& caster_position,
 		const Position& center,
 		const uint32_t  flag_reject,
-		const bool      config_ignore_barriers) const noexcept
+		const bool      config_ignore_barriers,
+		const bool      reject_protection_zone) const noexcept
 	{
 		area_position_buffer.clear();
 		area_tile_buffer.clear();
@@ -1067,6 +1067,8 @@ namespace BlackTek
 		const auto try_emit = [&](const TilePtr& tile, const Position& position) noexcept
 			{
 				if ((tile->getFlags() & flag_reject) != 0u)
+					return;
+				if (reject_protection_zone and Zones::ZoneManager::HasWorldFlag(position, Zones::ZoneFlag::Protection))
 					return;
 				if (not config_ignore_barriers and not Combat::IsAreaSightClear(center, position))
 					return;
@@ -1397,7 +1399,7 @@ namespace BlackTek
 
 				if (casterPlayer)
 				{
-					if (isNoPvpWorld or tile->hasFlag(TILESTATE_NOPVPZONE)) [[unlikely]]
+					if (isNoPvpWorld or Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::NoPvp)) [[unlikely]]
 					{
 						itemId = resolve_nopvp_item(itemId);
 					}
@@ -1441,11 +1443,10 @@ namespace BlackTek
 		if (attack_blocked)
 			return Combat::TargetCode::CanNotAttackThisPlayer;
 
-		const auto victim_tile = victim->getTile();
-		const auto attacker_tile = caster->getTile();
-
-		const bool attacker_blocked = attacker_tile->hasFlag(TILESTATE_NOPVPZONE | TILESTATE_PROTECTIONZONE);
-		const bool target_protected = victim_tile->hasFlag(TILESTATE_NOPVPZONE | TILESTATE_PROTECTIONZONE);
+		const bool attacker_blocked = Zones::ZoneManager::HasWorldFlag(caster->getPosition(), Zones::ZoneFlag::NoPvp)
+			or Zones::ZoneManager::HasWorldFlag(caster->getPosition(), Zones::ZoneFlag::Protection);
+		const bool target_protected = Zones::ZoneManager::HasWorldFlag(victim->getPosition(), Zones::ZoneFlag::NoPvp)
+			or Zones::ZoneManager::HasWorldFlag(victim->getPosition(), Zones::ZoneFlag::Protection);
 
 		if (attacker_blocked)
 			return Combat::TargetCode::YouAreInProtectionZone;
@@ -1490,7 +1491,7 @@ namespace BlackTek
 			if (attack_blocked)
 				return Combat::TargetCode::CanNotAttackThisPlayer;
 
-			if (victim->getTile()->hasFlag(TILESTATE_NOPVPZONE))
+			if (Zones::ZoneManager::HasWorldFlag(victim->getPosition(), Zones::ZoneFlag::NoPvp))
 				return Combat::TargetCode::TargetIsInProtectionZone;
 
 		}
@@ -1552,7 +1553,7 @@ namespace BlackTek
 		if (attacker->hasFlag(PlayerFlag_IgnoreProtectionZone))
 			return Combat::TargetCode::Valid;
 
-		if (config.test(Config::Aggressive) and tile->hasFlag(TILESTATE_PROTECTIONZONE))
+		if (config.test(Config::Aggressive) and Zones::ZoneManager::HasWorldFlag(target_location, Zones::ZoneFlag::Protection))
 			return Combat::TargetCode::TargetIsInProtectionZone;
 
 		return Combat::TargetCode::Valid;
@@ -1576,7 +1577,7 @@ namespace BlackTek
 		if (attacker_pos.z > target_location.z)
 			return Combat::TargetCode::FirstGoUpStairs;
 
-		if (config.test(Config::Aggressive) and tile->hasFlag(TILESTATE_PROTECTIONZONE))
+		if (config.test(Config::Aggressive) and Zones::ZoneManager::HasWorldFlag(target_location, Zones::ZoneFlag::Protection))
 			return Combat::TargetCode::TargetIsInProtectionZone;
 
 		return Combat::TargetCode::Valid;
@@ -2908,6 +2909,11 @@ namespace BlackTek
 			return;
 		}
 
+		if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(attacker->getPosition()))
+		{
+			spawnOverlay->Trigger(attacker, Zones::SpawnTrigger::Attack);
+		}
+
 		using namespace BlackTek;
 		auto switch_mask = (static_cast<uint32_t>(attacker->getCreatureSubType()) << 16 | static_cast<uint32_t>(defender->getCreatureSubType()) << 8);
 
@@ -3201,10 +3207,11 @@ namespace BlackTek
 		const uint32_t flag_reject =
 			TILESTATE_FLOORCHANGE |
 			TILESTATE_TELEPORT |
-			(config_aggressive and not admin ? static_cast<uint32_t>(TILESTATE_PROTECTIONZONE) : 0u) |
 			(config_ignore_barriers ? 0u : kBarrier);
 
-		const auto [positions, tiles, distance, stored_extent] = buildValidatedArea(caster_position, center, flag_reject, config_ignore_barriers);
+		const bool reject_protection_zone = config_aggressive and not admin;
+
+		const auto [positions, tiles, distance, stored_extent] = buildValidatedArea(caster_position, center, flag_reject, config_ignore_barriers, reject_protection_zone);
 
 		if (tiles.empty())
 			return;
@@ -3774,6 +3781,11 @@ namespace BlackTek
 				}
 
 				target->onBlockHit();
+
+				if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(target->getPosition()))
+				{
+					spawnOverlay->Trigger(target, Zones::SpawnTrigger::Defend);
+				}
 			}
 
 			if (apply_armor_reduction and (armor_cost == 0 or target->get_armor_charges() >= armor_cost))
@@ -3889,6 +3901,11 @@ namespace BlackTek
 
 				// reduces shield block count and awards shielding skill if shield is equipped
 				target->onBlockHit();
+
+				if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(target->getPosition()))
+				{
+					spawnOverlay->Trigger(target, Zones::SpawnTrigger::Defend);
+				}
 			}
 
 			if (apply_armor_reduction and (armor_cost == 0 or target->get_armor_charges() >= armor_cost))
@@ -4938,7 +4955,7 @@ void Item::onStepInField(const CreaturePtr& creature)
 	//remove magic walls/wild growth (only nopvp tiles/world)
 	if (id == ITEM_MAGICWALL_NOPVP or id == ITEM_WILDGROWTH_NOPVP)
 	{
-		if (g_game.getWorldType() == WORLD_TYPE_NO_PVP or getTile()->hasFlag(TILESTATE_NOPVPZONE))
+		if (g_game.getWorldType() == WORLD_TYPE_NO_PVP or Zones::ZoneManager::HasWorldFlag(getPosition(), Zones::ZoneFlag::NoPvp))
 		{
 			g_game.internalRemoveItem(getItem(), 1);
 		}
@@ -4954,7 +4971,7 @@ void Item::onStepInField(const CreaturePtr& creature)
 		{
 			bool harmfulField = true;
 
-			if (g_game.getWorldType() == WORLD_TYPE_NO_PVP or getTile()->hasFlag(TILESTATE_NOPVPZONE))
+			if (g_game.getWorldType() == WORLD_TYPE_NO_PVP or Zones::ZoneManager::HasWorldFlag(getPosition(), Zones::ZoneFlag::NoPvp))
 			{
 				if (const auto& owner = g_game.getCreatureByID(ownerId))
 				{

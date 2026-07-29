@@ -25,7 +25,7 @@ House::House(const uint32_t houseId) : id(houseId)
 
 void House::addTile(const TilePtr& tile)
 {
-	tile->setFlag(TILESTATE_PROTECTIONZONE);
+	Zones::ZoneManager::SetWorldFlag(tile->getPosition(), Zones::ZoneFlag::Protection);
 	houseTiles.push_back(tile);
 }
 

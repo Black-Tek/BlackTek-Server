@@ -299,7 +299,7 @@ class Creature : public SharedObject
 		bool isInvisible() const;
 	
 		ZoneType_t getZone() const {
-			return getTile()->getZone();
+			return Zones::ZoneManager::GetZoneType(getPosition());
 		}
 
 		//walk functions

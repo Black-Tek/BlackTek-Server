@@ -26,16 +26,19 @@ namespace
 bool Map::loadMap(const std::string& identifier, bool loadHouses)
 {
 	IOMap loader;
-    if (!loader.loadMap(this, identifier, g_game.getRawMapBlock(), g_game.getMapBlock()))
+    auto loadResult = loader.loadMap(this, identifier, g_game.getRawMapBlock(), g_game.getMapBlock());
+
+	if (not loadResult)
 	{
 		std::cout << "[Fatal - Map::loadMap] " << loader.getLastErrorString() << std::endl;
 		return false;
 	}
 
-	if (not IOMap::loadSpawns(this))
-	{
-		std::cout << "[Warning - Map::loadMap] Failed to load spawn data." << std::endl;
-	}
+	lastLoadTimeSeconds = loadResult->time;
+	lastLoadTileCount   = loadResult->tileCount;
+	lastLoadItemCount   = loadResult->itemCount;
+
+	IOMap::resolveLegacySpawnFile(this);
 
 	if (loadHouses)
 	{
@@ -225,7 +228,7 @@ bool Map::placeCreature(const Position& centerPos, CreaturePtr creature, bool ex
 
 	auto tile = getTile(centerPos.x, centerPos.y, centerPos.z);
 	if (tile) {
-		placeInPZ = tile->hasFlag(TILESTATE_PROTECTIONZONE);
+		placeInPZ = Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::Protection);
 		uint32_t flags = FLAG_IGNOREBLOCKITEM;
 		if (const auto& player = creature->getPlayer()) {
 			if (player->isAccountManager()) {
@@ -279,7 +282,7 @@ bool Map::placeCreature(const Position& centerPos, CreaturePtr creature, bool ex
 			Position tryPos(centerPos.x + it.first, centerPos.y + it.second, centerPos.z);
 
 			tile = getTile(tryPos.x, tryPos.y, tryPos.z);
-			if (!tile || (placeInPZ && !tile->hasFlag(TILESTATE_PROTECTIONZONE))) {
+			if (!tile || (placeInPZ && !Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::Protection))) {
 				continue;
 			}
 

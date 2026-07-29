@@ -528,13 +528,14 @@ void Npc::doSayToPlayer(const PlayerPtr& player, const std::string& text)
 	}
 }
 
-void Npc::onPlayerTrade(const PlayerPtr& player, int32_t callback, uint16_t itemId, uint8_t count,
-                        uint8_t amount, bool ignore/* = false*/, bool inBackpacks/* = false*/) const
+void Npc::onPlayerTrade(const PlayerPtr& player, int32_t callback, uint16_t itemId, uint8_t count, uint8_t amount, bool ignore/* = false*/, bool inBackpacks/* = false*/) const
 {
+	if (Zones::ZoneManager::HasWorldFlag(player->getPosition(), Zones::ZoneFlag::NoTransaction))
+		return;
+
 	if (npcEventHandler)
-	{
 		npcEventHandler->onPlayerTrade(player, callback, itemId, count, amount, ignore, inBackpacks);
-	}
+
 	player->sendSaleItemList();
 }
 
@@ -613,7 +614,7 @@ bool Npc::canWalkTo(const Position& fromPos, Direction dir)
 	}
 	Position toPos = getNextPosition(dir, fromPos);
 
-	if (not Spawns::isInZone(masterPos, masterRadius, toPos))
+	if (not Zones::ZoneManager::IsInZone(masterPos, masterRadius, toPos))
 	{
 		return false;
 	}

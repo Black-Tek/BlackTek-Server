@@ -366,13 +366,13 @@ void ProtocolGame::logout(bool displayEffect, bool forced)
 		{
 			if (not player->isAccessPlayer())
 			{
-				if (player->getTile()->hasFlag(TILESTATE_NOLOGOUT))
+				if (Zones::ZoneManager::HasWorldFlag(player->getPosition(), Zones::ZoneFlag::NoLogout))
 				{
 					player->sendCancelMessage(RETURNVALUE_YOUCANNOTLOGOUTHERE);
 					return;
 				}
 
-				if (not player->getTile()->hasFlag(TILESTATE_PROTECTIONZONE) and player->hasCondition(CONDITION_INFIGHT))
+				if (not Zones::ZoneManager::HasWorldFlag(player->getPosition(), Zones::ZoneFlag::Protection) and player->hasCondition(CONDITION_INFIGHT))
 				{
 					player->sendCancelMessage(RETURNVALUE_YOUMAYNOTLOGOUTDURINGAFIGHT);
 					return;

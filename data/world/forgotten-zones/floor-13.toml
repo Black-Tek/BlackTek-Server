@@ -1,0 +1,158 @@
+[ConvertedSpawn_z13_232]
+range = { start = "221:315:13", end = "225:319:13" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Dragon Lord" },
+]
+
+[ConvertedSpawn_z13_244]
+range = { start = "122:480:13", end = "129:488:13" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "5:2:0", interval = 60, name = "Vampire" },
+    { position = "2:6:0", interval = 60, name = "Ghost" },
+]
+
+[ConvertedSpawn_z13_249]
+range = { start = "185:648:13", end = "193:657:13" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Demon" },
+    { position = "6:3:0", interval = 60, name = "Demon" },
+    { position = "2:4:0", interval = 60, name = "Demon" },
+    { position = "6:5:0", interval = 60, name = "Demon" },
+    { position = "4:6:0", interval = 60, name = "Demon" },
+    { position = "4:7:0", interval = 60, name = "Demon" },
+]
+
+[ConvertedSpawn_z13_306]
+range = { start = "219:303:13", end = "225:312:13" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Dragon Lord" },
+    { position = "4:7:0", interval = 60, name = "Dragon" },
+]
+
+[ConvertedSpawn_z13_307]
+range = { start = "231:307:13", end = "235:311:13" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Dragon Lord" },
+]
+
+[ConvertedSpawn_z13_308]
+range = { start = "245:310:13", end = "249:314:13" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Dragon Lord" },
+]
+
+[ConvertedSpawn_z13_309]
+range = { start = "237:317:13", end = "241:321:13" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Dragon" },
+]
+
+[ConvertedSpawn_z13_310]
+range = { start = "127:450:13", end = "137:459:13" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "7:2:0", interval = 60, name = "Demon Skeleton" },
+    { position = "2:6:0", interval = 60, name = "Demon Skeleton" },
+    { position = "8:7:0", interval = 60, name = "Mummy" },
+]
+
+[ConvertedSpawn_z13_311]
+range = { start = "135:459:13", end = "141:466:13" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Demon Skeleton" },
+    { position = "4:5:0", interval = 60, name = "Necromancer" },
+]
+
+[ConvertedSpawn_z13_312]
+range = { start = "147:458:13", end = "162:470:13" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "10:2:0", interval = 60, name = "Necromancer" },
+    { position = "13:5:0", interval = 60, name = "Necromancer" },
+    { position = "2:6:0", interval = 60, name = "Necromancer" },
+    { position = "8:10:0", interval = 60, name = "Necromancer" },
+]
+
+[ConvertedSpawn_z13_313]
+range = { start = "112:478:13", end = "116:482:13" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Ghost" },
+]
+
+[ConvertedSpawn_z13_314]
+range = { start = "150:484:13", end = "158:491:13" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "3:2:0", interval = 60, name = "Vampire" },
+    { position = "2:5:0", interval = 60, name = "Vampire" },
+    { position = "6:5:0", interval = 60, name = "Vampire" },
+]
+
+[ConvertedSpawn_z13_315]
+range = { start = "131:483:13", end = "141:492:13" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "8:2:0", interval = 60, name = "Mummy" },
+    { position = "2:7:0", interval = 60, name = "Mummy" },
+]
+
+[ConvertedSpawn_z13_316]
+range = { start = "131:496:13", end = "139:505:13" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "6:2:0", interval = 60, name = "Ghost" },
+    { position = "2:5:0", interval = 60, name = "Vampire" },
+    { position = "5:7:0", interval = 60, name = "Vampire" },
+]
+

@@ -1,0 +1,39 @@
+# Zones/spawn system configuration — controls "smart conversion" of legacy map data (pre-Zones
+# system) into the new Zones system.
+#
+# Every zone — world flags, spawn behavior, or both combined in one table — is authored under
+# data/world/<mapname>-zones/. Every .toml file in that folder is parsed, and every top-level
+# table in each file becomes one zone; see data/world/forgotten-zones/example_zones.toml for the
+# schema.
+
+[zones]
+
+# Legacy OTBM tile flags (protection/no-pvp/pvp/no-logout) that are not already covered by a
+# natively-authored zone get synthesized into new Zones at boot. The converted zones are written
+# out as data/world/converted/<mapname>/<mapname>-zones/legacy-flags.toml so you can inspect and
+# fold them into your own authored zones.
+smart_convert_legacy_zones = true
+
+# Secondary option (requires smart_convert_legacy_zones = true): after conversion, also write a
+# legacy-flag-free copy of the map alongside the converted zones — the map copy lives at
+# data/world/converted/<mapname>/<mapname>.otbm either way; this only controls whether the
+# converted flag bits are additionally cleared from that copy. The original .otbm is never touched.
+strip_legacy_zone_flags_from_binary = false
+
+# Legacy <mapname>-spawn.xml data gets converted into equivalent spawn Zones at boot and written
+# out — one clean TOML file per floor — under data/world/converted/<mapname>/<mapname>-zones/,
+# alongside a copy of the map at data/world/converted/<mapname>/<mapname>.otbm. Spawns that are
+# close together (see spawn_cluster_radius below) get batched into a single Zone — the old spawn
+# system could only ever have one monster from a spawn alive at a time, so servers commonly worked
+# around this by stacking many single-monster spawns right next to each other; the new system has
+# no such limit, so those clusters convert far more sensibly as one multi-monster Zone.
+smart_convert_legacy_spawns = true
+
+# How close together (in tiles, same floor) two legacy <spawn> blocks must be to be batched into
+# one Zone during spawn conversion. Raise this if your server used the one-spawn-per-monster
+# workaround over a wider area; lower it if genuinely unrelated spawns are getting merged.
+spawn_cluster_radius = 8
+
+# Secondary option (requires smart_convert_legacy_spawns = true): after conversion,
+# rename the source spawn.xml aside (to <name>.xml.disabled) so it's clearly retired.
+disable_legacy_spawn_file_after_conversion = false

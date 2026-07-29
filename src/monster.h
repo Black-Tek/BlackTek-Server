@@ -13,7 +13,6 @@
 
 class Creature;
 class Game;
-class Spawn;
 
 using CreatureHashSet = gtl::flat_hash_set<CreaturePtr>;
 using CreatureList = std::vector<CreatureWeakPtr>;
@@ -124,7 +123,7 @@ class Monster final : public Creature
 		void setNameDescription(const std::string& nameDescription) { this->nameDescription = nameDescription; };
 
 		void setMasterPos(Position pos)								{ masterPos = pos; }
-		void setSpawn(Spawn* spawn)									{ this->spawn = spawn; }
+		void setSpawn(int zoneId)										{ this->spawnZoneId = zoneId; }
 
 	private:
 
@@ -142,7 +141,7 @@ class Monster final : public Creature
 		std::string nameDescription;
 
 		MonsterType* mType;
-		Spawn* spawn = nullptr;
+		int spawnZoneId = 0;
 
 		uint64_t getLostExperience() const override { return skillLoss ? mType->info.experience : 0; }
 

@@ -7,10 +7,10 @@
 #include "item.h"
 #include "map.h"
 #include "house.h"
-#include "spawn.h"
 #include "configmanager.h"
 #include <expected>
 #include <memory_resource>
+#include <array>
 
 extern ConfigManager g_config;
 
@@ -125,6 +125,8 @@ struct MapLoadStats
 {
 	int64_t time;
 	uint32_t dimensions;
+	uint32_t tileCount;
+	uint64_t itemCount;
 };
 
 class IOMap
@@ -134,19 +136,13 @@ class IOMap
 	public:
         std::expected<MapLoadStats, MapErrorCode> loadMap(Map* map, const std::filesystem::path& fileName, std::vector<std::byte>& buffer, std::optional<std::pmr::monotonic_buffer_resource>& block);
 
-		/* Load the spawns
-		 * \param map pointer to the Map class
-		 * \returns Returns true if the spawns were loaded successfully
-		 */
-		static bool loadSpawns(Map* map) {
+		static void resolveLegacySpawnFile(Map* map) {
 			if (map->spawnfile.empty()) {
 				//OTBM file doesn't tell us about the spawnfile,
 				//lets guess it is mapname-spawn.xml.
 				map->spawnfile = g_config.GetString(ConfigManager::MAP_NAME);
 				map->spawnfile += "-spawn.xml";
 			}
-
-			return map->spawns.loadFromXml(map->spawnfile.string());
 		}
 
 		/* Load the houses (not house tile-data)
@@ -177,6 +173,9 @@ class IOMap
 		bool parseWaypoints(OTB::Loader& loader, const OTB::Node& waypointsNode, Map& map);
 		bool parseTowns(OTB::Loader& loader, const OTB::Node& townsNode, Map& map);
         bool parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Map& map, std::pmr::polymorphic_allocator<Tile> allocator);
+
+		static bool locateLegacyTileFlagsOffsets(const OTB::Loader& loader, const OTB::Node& tileNode, bool isHouseTile, std::array<size_t, 4>& outOffsets);
+
 		std::string errorString;
 };
 

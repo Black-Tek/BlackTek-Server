@@ -25,10 +25,6 @@ enum tileflags_t : uint32_t {
 	TILESTATE_FLOORCHANGE_WEST = 1 << 4,
 	TILESTATE_FLOORCHANGE_SOUTH_ALT = 1 << 5,
 	TILESTATE_FLOORCHANGE_EAST_ALT = 1 << 6,
-	TILESTATE_PROTECTIONZONE = 1 << 7,
-	TILESTATE_NOPVPZONE = 1 << 8,
-	TILESTATE_NOLOGOUT = 1 << 9,
-	TILESTATE_PVPZONE = 1 << 10,
 	TILESTATE_TELEPORT = 1 << 11,
 	TILESTATE_MAGICFIELD = 1 << 12,
 	TILESTATE_MAILBOX = 1 << 13,
@@ -234,20 +230,6 @@ class Tile : public SharedObject
 
 		void resetFlag(uint32_t flag) {
 			this->flags &= ~flag;
-		}
-
-		ZoneType_t getZone() const {
-			if (hasFlag(TILESTATE_PROTECTIONZONE)) {
-				return ZONE_PROTECTION;
-			} else if (hasFlag(TILESTATE_NOPVPZONE)) {
-				return ZONE_NOPVP;
-			} else if (hasFlag(TILESTATE_PVPZONE)) {
-				return ZONE_PVP;
-			} else if (hasFlag(TILESTATE_NOLOGOUT)) {
-				return ZONE_NOLOGOUT;
-			} else {
-				return ZONE_NORMAL;
-			}
 		}
 
 		bool hasHeight(uint32_t n) const;

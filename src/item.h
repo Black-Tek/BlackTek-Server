@@ -649,6 +649,9 @@ class Item : public SharedObject
 		static ItemPtr CreateContainerItem(const uint16_t type, uint16_t size);
 		static ItemPtr CreateItem(PropStream& propStream);
 		static ItemPtr createHouseTransferItem(House* house);
+
+		static void resetLoadedItemCount() noexcept { s_loadedItemCount = 0; }
+		static uint64_t getLoadedItemCount() noexcept { return s_loadedItemCount; }
 		static std::string getDescription(const ItemType& it, int32_t lookDistance, const ItemPtr& item = nullptr, int32_t subType = -1, bool addArticle = true);
 		static std::string getNameDescription(const ItemType& it, const ItemConstPtr& item = nullptr, int32_t subType = -1, bool addArticle = true);
 		static std::string getWeightDescription(const ItemType& it, uint32_t weight, uint32_t count = 1);
@@ -1372,6 +1375,8 @@ class Item : public SharedObject
 		ContainerPtr containerAlias;
 
 	private:
+        static inline uint64_t s_loadedItemCount = 0;
+
         std::unique_ptr<ItemAttributes> attributes;
 		std::unique_ptr<std::vector<std::shared_ptr<BlackTek::Augment>>> augments;
 		uint32_t attack_modifier_count = 0;

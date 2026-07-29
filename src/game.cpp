@@ -121,6 +121,12 @@ void Game::start(ServiceManager* manager)
 	g_scheduler.addEvent(createSchedulerTask(50, [this]() { coro_timer_cycle(); }));
 	g_scheduler.addEvent(createSchedulerTask(100, [this]() { item_decay_cycle(); }));
 	g_scheduler.addEvent(createSchedulerTask(120, [this]() { equipment_decay_cycle(); }));
+	g_scheduler.addEvent(createSchedulerTask(150, []() { Zones::ZoneManager{}.Supervise(); }));
+}
+
+void Game::initializeSpawnPool()
+{
+	Zones::ZoneManager::SetSpawnPool(&spawn_pool);
 }
 
 GameState_t Game::getGameState() const
@@ -149,7 +155,7 @@ void Game::setGameState(GameState_t newState)
 			groups.load();
 			g_chat->load();
 
-			map.spawns.startup();
+			Zones::ZoneManager::ActivateAll();
 
 			raids.loadFromToml();
 			raids.startup();
@@ -638,6 +644,10 @@ bool Game::placeCreature(CreaturePtr creature, const Position& pos, bool extende
 
 	addCreatureCheck(creature);
 	creature->onPlacedCreature();
+
+	if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(creature->getPosition()))
+		spawnOverlay->Trigger(creature, Zones::SpawnTrigger::Enter);
+
 	return true;
 }
 
@@ -653,23 +663,41 @@ bool Game::removeCreature(CreaturePtr creature, bool isLogout/* = true*/)
 	SpectatorVec spectators;
 	map.getSpectators(spectators, tile->getPosition(), true);
 	const std::span<const CreaturePtr> spectators_span(spectators.begin(), spectators.size());
-	for (const auto& c : spectators.players()) {
+
+	for (const auto& c : spectators.players())
+	{
 		const auto player = std::static_pointer_cast<Player>(c);
 		oldStackPosVector.push_back(player->canSeeCreature(creature) ? tile->getClientIndexOfCreature(player, creature) : -1);
 	}
 
 	tile->removeCreature(creature);
-
 	const Position& tilePosition = tile->getPosition();
+
+	if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(tilePosition))
+	{
+		Zones::SpawnTrigger removalTrigger = Zones::SpawnTrigger::Leave;
+
+		if (creature->getPlayer())
+		{
+			if (isLogout)
+				removalTrigger = Zones::SpawnTrigger::Logout;
+		}
+		else if (creature->getMonster())
+		{
+			removalTrigger = Zones::SpawnTrigger::Despawn;
+		}
+
+		spawnOverlay->Trigger(creature, removalTrigger);
+	}
 
 	//send to client
 	size_t i = 0;
-	for (const auto& c : spectators.players()) {
+	for (const auto& c : spectators.players())
 		static_cast<Player*>(c.get())->sendRemoveTileCreature(creature, tilePosition, oldStackPosVector[i++]);
-	}
 
 	//event method
-	for (const auto spectator : spectators) {
+	for (const auto spectator : spectators)
+	{
 		switch (spectator->getCreatureSubType())
 		{
 			case CreatureSubType::Player:
@@ -687,14 +715,12 @@ bool Game::removeCreature(CreaturePtr creature, bool isLogout/* = true*/)
 	}
 
 	const auto master = creature->getMaster();
-	if (master && !master->isRemoved()) {
+
+	if (master and not master->isRemoved())
 		creature->setMaster(nullptr);
-	}
 
 	if (const auto tile = creature->getTile())
-	{
 		tile->notifyCreatureRemoved(creature, nullptr, spectators_span);
-	}
 
 	creature->removeList();
 	creature->setRemoved();
@@ -702,10 +728,12 @@ bool Game::removeCreature(CreaturePtr creature, bool isLogout/* = true*/)
 
 	removeCreatureCheck(creature);
 
-	for (auto summon : creature->summons) {
+	for (auto summon : creature->summons)
+	{
 		summon->setSkillLoss(false);
 		removeCreature(summon);
 	}
+
 	return true;
 }
 
@@ -914,7 +942,7 @@ void Game::playerMoveCreature(PlayerPtr& player, CreaturePtr& movingCreature, co
 		if (toTile->hasFlag(TILESTATE_BLOCKPATH)) {
 			player->sendCancelMessage(RETURNVALUE_NOTENOUGHROOM);
 			return;
-		} else if ((movingCreature->getZone() == ZONE_PROTECTION && !toTile->hasFlag(TILESTATE_PROTECTIONZONE)) || (movingCreature->getZone() == ZONE_NOPVP && !toTile->hasFlag(TILESTATE_NOPVPZONE))) {
+		} else if ((movingCreature->getZone() == ZONE_PROTECTION && !Zones::ZoneManager::HasWorldFlag(toTile->getPosition(), Zones::ZoneFlag::Protection)) || (movingCreature->getZone() == ZONE_NOPVP && !Zones::ZoneManager::HasWorldFlag(toTile->getPosition(), Zones::ZoneFlag::NoPvp))) {
 			player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
 			return;
 		} else {
@@ -929,7 +957,7 @@ void Game::playerMoveCreature(PlayerPtr& player, CreaturePtr& movingCreature, co
 			}
 
 			const auto movingNpc = movingCreature->getNpc();
-			if (movingNpc && !Spawns::isInZone(movingNpc->getMasterPos(), movingNpc->getMasterRadius(), toPos)) {
+			if (movingNpc && !Zones::ZoneManager::IsInZone(movingNpc->getMasterPos(), movingNpc->getMasterRadius(), toPos)) {
 				player->sendCancelMessage(RETURNVALUE_NOTENOUGHROOM);
 				return;
 			}
@@ -2336,6 +2364,12 @@ ReturnValue Game::internalRemoveItem(ItemPtr item, int32_t count /*= -1*/, bool 
 
 		if (item->isRemoved())
 		{
+			if (location.player)
+			{
+				if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(location.player->getPosition()))
+					spawnOverlay->Trigger(location.player, Zones::SpawnTrigger::Remove);
+			}
+
 			item->onRemoved();
 			if (item->canDecay())
 			{
@@ -2696,6 +2730,12 @@ ItemPtr Game::transformItem(const ItemPtr& item, const uint16_t newId, const int
 	if (newType.getID() == 0)
 	{
 		return item;
+	}
+
+	if (auto holder = item->getHoldingPlayer())
+	{
+		if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(holder->getPosition()))
+			spawnOverlay->Trigger(holder, Zones::SpawnTrigger::Transform);
 	}
 
 	const ItemType& curType = Item::items[item->getID()];
@@ -3392,6 +3432,9 @@ void Game::playerUseItemEx(const uint32_t playerId, const Position& fromPos, con
 	player->resetIdleTime();
 	player->setNextActionTask(nullptr);
 
+	if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(player->getPosition()))
+		spawnOverlay->Trigger(player, Zones::SpawnTrigger::Use);
+
 	g_actions->useItemEx(player, fromPos, toPos, toStackPos, item, isHotkey);
 }
 
@@ -3446,6 +3489,9 @@ void Game::playerUseItem(const uint32_t playerId, const Position& pos, const uin
 
 	player->resetIdleTime();
 	player->setNextActionTask(nullptr);
+
+	if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(player->getPosition()))
+		spawnOverlay->Trigger(player, Zones::SpawnTrigger::Use);
 
 	g_actions->useItem(player, pos, index, item, isHotkey);
 }
@@ -3844,11 +3890,24 @@ void Game::playerRequestTrade(const uint32_t playerId, const Position& pos, uint
 		return;
 	}
 
+	if (Zones::ZoneManager::HasWorldFlag(player->getPosition(), Zones::ZoneFlag::NoTrading))
+	{
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return;
+	}
+
 	const auto tradePartner = getPlayerByID(tradePlayerId);
 	if (!tradePartner || tradePartner == player) {
 		player->sendCancelMessage("Select a player to trade with.");
 		return;
 	}
+
+	if (Zones::ZoneManager::HasWorldFlag(tradePartner->getPosition(), Zones::ZoneFlag::NoTrading))
+	{
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return;
+	}
+
 	if (!Position::areInRange<2, 2, 0>(tradePartner->getPosition(), player->getPosition())) {
 		player->sendCancelMessage(RETURNVALUE_DESTINATIONOUTOFREACH);
 		return;
@@ -4383,6 +4442,9 @@ void Game::playerLookAt(const uint32_t playerId, const Position& pos, uint8_t st
 	} else {
 		lookDistance = -1;
 	}
+
+	if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(playerPos))
+		spawnOverlay->Trigger(player, Zones::SpawnTrigger::Look);
 
 	g_events->eventPlayerOnLook(player, pos, resolution, stackPos, lookDistance);
 }
@@ -6045,6 +6107,9 @@ bool Game::internalCreatureSay(const CreaturePtr& creature, const SpeakClasses t
 		pos = &creature->getPosition();
 	}
 
+	if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(*pos))
+		spawnOverlay->Trigger(creature, Zones::SpawnTrigger::Speak);
+
 	SpectatorVec spectators;
 
 	if (!spectatorsPtr || spectatorsPtr->empty()) {
@@ -6668,7 +6733,7 @@ void Game::shutdown()
 	g_databaseTasks.shutdown();
 	g_dispatcher.shutdown();
 	g_utility_boss.shutdown();
-	map.spawns.clear();
+	Zones::ZoneManager::Clear();
 	raids.clear();
 
 	decay_clean_cycle();
@@ -6691,6 +6756,8 @@ void Game::coro_timer_cycle()
 
     creature_think_cycle();
 	g_timer_queue.tick();
+
+	Zones::ZoneManager::DrainGraveyard();
 }
 
 void Game::decay_clean_cycle()
@@ -6888,6 +6955,8 @@ void Game::playerInviteToParty(const uint32_t playerId, const uint32_t invitedId
 	if (not player)
 		return;
 
+	if (Zones::ZoneManager::HasWorldFlag(player->getPosition(), Zones::ZoneFlag::NoParty))
+		return;
 
 	auto invitedPlayer = getPlayerByID(invitedId);
 
@@ -6927,6 +6996,9 @@ void Game::playerJoinParty(const uint32_t playerId, const uint32_t leaderId)
 	if (!player) {
 		return;
 	}
+
+	if (Zones::ZoneManager::HasWorldFlag(player->getPosition(), Zones::ZoneFlag::NoParty))
+		return;
 
 	const auto leader = getPlayerByID(leaderId);
 	if (!leader || !leader->isInviting(player)) {
@@ -7253,6 +7325,9 @@ void Game::playerCreateMarketOffer(const uint32_t playerId, uint8_t type, const 
 		return;
 	}
 
+	if (Zones::ZoneManager::HasWorldFlag(player->getPosition(), Zones::ZoneFlag::NoTransaction))
+		return;
+
 	if (g_config.GetBoolean(ConfigManager::MARKET_PREMIUM) && !player->isPremium()) {
 		player->sendMarketLeave();
 		return;
@@ -7416,6 +7491,9 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 	if (!player->isInMarket()) {
 		return;
 	}
+
+	if (Zones::ZoneManager::HasWorldFlag(player->getPosition(), Zones::ZoneFlag::NoTransaction))
+		return;
 
 	MarketOfferEx offer = IOMarket::getOfferByCounter(timestamp, counter);
 	if (offer.id == 0) {
