@@ -849,7 +849,18 @@ void Monster::onThink(const uint32_t interval)
 			addEventWalk(true);
 			const auto& attacked_creature = getAttackedCreature();
 			const auto& follow_creature = getFollowCreature();
-			if (isSummon()) 
+
+			if (const auto& proximityTarget = attacked_creature ? attacked_creature : follow_creature)
+			{
+				const Position& targetPos = proximityTarget->getPosition();
+				targetProximityDistance = std::max<int32_t>(Position::getDistanceX(position, targetPos), Position::getDistanceY(position, targetPos));
+			}
+			else
+			{
+				targetProximityDistance = -1;
+			}
+
+			if (isSummon())
 			{
 				if (not attacked_creature) 
 				{
@@ -961,6 +972,20 @@ void Monster::doAttacking(const uint32_t interval)
     {
         attackTicks = 0;
     }
+}
+
+bool Monster::hasSightTo(const Position& fromPos, const Position& toPos)
+{
+	const int64_t now = OTSYS_TIME();
+
+	if (now == losCacheTime and fromPos == losCacheFromPos and toPos == losCacheToPos)
+		return losCacheResult;
+
+	losCacheTime = now;
+	losCacheFromPos = fromPos;
+	losCacheToPos = toPos;
+	losCacheResult = g_game.isSightClear(fromPos, toPos, true);
+	return losCacheResult;
 }
 
 bool Monster::canUseAttack(const Position& pos, const CreatureConstPtr& target) const
@@ -1640,7 +1665,7 @@ bool Monster::followTargetFromDistance(const Position& target_position, Directio
 
 	if (int32_t distance = std::max<int32_t>(Position::getDistanceX(monster_position, target_position), Position::getDistanceY(monster_position, target_position));
 		(distance > mType->info.targetDistance or
-		not g_game.isSightClear(monster_position, target_position, true)))
+		not hasSightTo(monster_position, target_position)))
     {
         return false; // let the A* calculate it
     }
@@ -2134,7 +2159,8 @@ void Monster::getPathSearchParams(const CreatureConstPtr& creature, FindPathPara
 		fpp.keepDistance = true;
 		fpp.fullPathSearch = false;
 	} else if (mType->info.targetDistance <= 1) {
-		fpp.fullPathSearch = true;
+		fpp.fullPathSearch = not hasFollowPath;
+		fpp.clearSight = false;
 	} else {
 		fpp.fullPathSearch = !canUseAttack(getPosition(), creature);
 	}

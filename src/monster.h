@@ -92,8 +92,9 @@ class Monster final : public Creature
 		[[nodiscard]] bool isWalkingToSpawn() const					{ return walkingToSpawn; }
 		[[nodiscard]] bool hasExtraSwing() override					{ return lastMeleeAttack == 0; }
 		[[nodiscard]] bool isFleeing() const						{ return not isSummon() and getHealth() <= mType->info.runAwayHealth and challengeFocusDuration <= 0; }
-		[[nodiscard]] bool isTargetNearby() const					{ return stepDuration >= 1; }
+		[[nodiscard]] bool isTargetNearby() const					{ return targetProximityDistance >= 0 and targetProximityDistance <= 1; }
 		[[nodiscard]] bool isIgnoringFieldDamage() const			{ return ignoreFieldDamage; }
+		[[nodiscard]] bool hasSightTo(const Position& fromPos, const Position& toPos);
 
 		void addList() override;
 		void removeList() override;
@@ -146,12 +147,13 @@ class Monster final : public Creature
 		uint64_t getLostExperience() const override { return skillLoss ? mType->info.experience : 0; }
 
 		int64_t lastMeleeAttack = 0;
+		int64_t losCacheTime = 0;
 
 		int32_t minCombatValue = 0;
 		int32_t maxCombatValue = 0;
 		int32_t targetChangeCooldown = 0;
 		int32_t challengeFocusDuration = 0;
-		int32_t stepDuration = 0;
+		int32_t targetProximityDistance = -1;
 
 		uint32_t attackTicks = 0;
 		uint32_t targetTicks = 0;
@@ -164,6 +166,8 @@ class Monster final : public Creature
 
 		uint16_t getLookCorpse() const override				{ return mType->info.lookcorpse; }
 
+		Position losCacheFromPos;
+		Position losCacheToPos;
 		Position masterPos;
 
 		CreatureHashSet friendList;
@@ -171,6 +175,7 @@ class Monster final : public Creature
 		gtl::flat_hash_set<CreaturePtr> targetSet;
 		std::bitset<mapWalkHeight * mapWalkWidth> localMapCache;
 
+		bool losCacheResult = false;
 		bool ignoreFieldDamage = false;
 		bool isIdle = true;
 		bool isMapLoaded = false;

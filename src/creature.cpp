@@ -243,7 +243,12 @@ void Creature::onAttacking(uint32_t interval)
 	onAttacked();
 	target->onAttacked();
 
-	if (g_game.isSightClear(getPosition(), target->getPosition(), true)) 
+	const auto& selfMonster = getMonster();
+	const bool sightClear = selfMonster
+		? selfMonster->hasSightTo(getPosition(), target->getPosition())
+		: g_game.isSightClear(getPosition(), target->getPosition(), true);
+
+	if (sightClear)
 	{
 		doAttacking(interval);
 	}
@@ -512,8 +517,24 @@ void Creature::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTil
 			{
 				if (creature == target and listWalkDir.empty())
 				{
-					isUpdatingPath = false;
-					goToFollowCreature();
+					const Position& targetPos = target->getPosition();
+					const uint64_t now = OTSYS_TIME();
+					const bool floorElapsed = (now - lastChaseRepath) >= CHASE_REPATH_FLOOR_MS;
+
+					const bool targetBarelyMoved = lastChaseRepath != 0
+						and targetPos.z == lastChaseTargetPos.z
+						and Position::getDistanceX(targetPos, lastChaseTargetPos) <= 1
+						and Position::getDistanceY(targetPos, lastChaseTargetPos) <= 1;
+
+					if (floorElapsed and not targetBarelyMoved)
+					{
+						isUpdatingPath = false;
+						goToFollowCreature();
+					}
+					else
+					{
+						isUpdatingPath = true;
+					}
 				}
 				else
 				{
@@ -911,6 +932,9 @@ void Creature::getPathSearchParams(const CreatureConstPtr&, FindPathParams& fpp)
 void Creature::goToFollowCreature()
 {
 	if (auto target = getFollowCreature()) {
+		lastChaseRepath = OTSYS_TIME();
+		lastChaseTargetPos = target->getPosition();
+
 		FindPathParams fpp;
 		getPathSearchParams(target, fpp);
 

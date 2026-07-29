@@ -656,6 +656,10 @@ class Creature : public SharedObject
 
 		Position position;
 
+		static constexpr int64_t CHASE_REPATH_FLOOR_MS = 200;
+
+		Position lastChaseTargetPos;
+
 		using CountMap = std::map<uint32_t, CountBlock_t>;
 		CountMap damageMap;
 
@@ -673,6 +677,7 @@ class Creature : public SharedObject
 		CreatureWeakPtr followCreature;
 
 		uint64_t lastStep = 0;
+		uint64_t lastChaseRepath = 0;
 		uint32_t id = 0;
 		uint32_t chunk_slot = 0;
 		uint32_t scriptEventsBitField = 0;
