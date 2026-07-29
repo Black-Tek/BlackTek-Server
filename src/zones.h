@@ -617,7 +617,7 @@ namespace Zones
         inline static std::unordered_map<std::string, ZoneHandle> name_registry;
         inline static gtl::flat_hash_map<Position, uint32_t, PositionHash> world_flag_cache;
         inline static gtl::flat_hash_map<Position, uint32_t, PositionHash> external_world_flags;
-        inline static std::unordered_map<Position, ZoneOverlay, PositionHash>  spawn_position_registry;
+        inline static gtl::flat_hash_map<Position, ZoneOverlay, PositionHash>  spawn_position_registry;
         inline static std::unordered_map<uint32_t, SpawnTrigger>                                triggered_spawns;
         inline static std::unordered_map<uint32_t, StageType>                                   staged_spawns;
         inline static std::unordered_map<uint32_t, LinkType>                                    linked_spawns;

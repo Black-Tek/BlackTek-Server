@@ -499,8 +499,8 @@ void Creature::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTil
 			if (oldSpawnOverlay)
 				oldSpawnOverlay->Trigger(self, Zones::SpawnTrigger::Leave);
 
-			if (newSpawnOverlay)
-				newSpawnOverlay->Trigger(self, Zones::SpawnTrigger::Enter);
+			if (auto* freshOverlay = Zones::ZoneManager::GetSpawns(newPos))
+				freshOverlay->Trigger(self, Zones::SpawnTrigger::Enter);
 		}
 	}
 
