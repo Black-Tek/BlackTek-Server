@@ -14,8 +14,6 @@ extern ConfigManager g_config;
 
 Connection_ptr ConnectionManager::createConnection(boost::asio::io_context& io_context, ConstServicePort_ptr servicePort)
 {
-	std::lock_guard<std::mutex> lockClass(connectionManagerLock);
-
 	auto connection = std::make_shared<Connection>(io_context, servicePort);
 	connections.insert(connection);
 	return connection;
@@ -23,16 +21,12 @@ Connection_ptr ConnectionManager::createConnection(boost::asio::io_context& io_c
 
 void ConnectionManager::releaseConnection(const Connection_ptr& connection)
 {
-	std::lock_guard<std::mutex> lockClass(connectionManagerLock);
-
 	connections.erase(connection);
 }
 
 void ConnectionManager::closeAll()
 {
-	std::lock_guard<std::mutex> lockClass(connectionManagerLock);
-
-	for (const auto& connection : connections)
+	connections.for_each([](const Connection_ptr& connection)
 	{
 		try
 		{
@@ -41,7 +35,7 @@ void ConnectionManager::closeAll()
 			connection->socket.close(error);
 		}
 		catch (boost::system::system_error&) {}
-	}
+	});
 	connections.clear();
 }
 
