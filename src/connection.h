@@ -5,6 +5,7 @@
 #define FS_CONNECTION_H
 
 #include <atomic>
+#include <deque>
 #include <unordered_set>
 #include <gtl/phmap.hpp>
 #include "networkmessage.h"
@@ -94,7 +95,7 @@ class Connection : public std::enable_shared_from_this<Connection>
 		boost::asio::steady_timer readTimer;
 		boost::asio::steady_timer writeTimer;
 		boost::asio::strand<boost::asio::io_context::executor_type> strand;
-		std::list<OutputMessage_ptr> messageQueue;
+		std::deque<OutputMessage_ptr> messageQueue;
 		ConstServicePort_ptr service_port;
 		Protocol_ptr protocol;
 		boost::asio::ip::tcp::socket socket;
