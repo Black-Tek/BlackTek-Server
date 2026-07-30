@@ -31,6 +31,27 @@ void ProtocolLogin::disconnectClient(const std::string& message, uint16_t versio
 
 void ProtocolLogin::getCharacterList(const std::string& accountName, const std::string& password, const std::string& token, uint16_t version)
 {
+	//dispatcher thread
+	if (g_game.getGameState() == GAME_STATE_STARTUP) {
+		disconnectClient("Gameworld is starting up. Please wait.", version);
+		return;
+	}
+
+	if (g_game.getGameState() == GAME_STATE_MAINTAIN) {
+		disconnectClient("Gameworld is under maintenance.\nPlease re-connect in a while.", version);
+		return;
+	}
+
+	BanInfo banInfo;
+	if (IOBan::isIpBanned(getIP(), banInfo)) {
+		if (banInfo.reason.empty()) {
+			banInfo.reason = "(none)";
+		}
+
+		disconnectClient(fmt::format("Your IP has been banned until {:s} by {:s}.\n\nReason specified:\n{:s}", formatDateShort(banInfo.expiresAt), banInfo.bannedBy, banInfo.reason), version);
+		return;
+	}
+
 	Account account;
 	if (!IOLoginData::loginserverAuthentication(accountName, password, account)) {
 		disconnectClient("Account name or password is not correct.", version);
@@ -155,31 +176,6 @@ void ProtocolLogin::onRecvFirstMessage(NetworkMessage& msg)
 
 	if (version < CLIENT_VERSION_MIN || version > CLIENT_VERSION_MAX) {
 		disconnectClient(fmt::format("Only clients with protocol {:s} allowed!", CLIENT_VERSION_STR), version);
-		return;
-	}
-
-	if (g_game.getGameState() == GAME_STATE_STARTUP) {
-		disconnectClient("Gameworld is starting up. Please wait.", version);
-		return;
-	}
-
-	if (g_game.getGameState() == GAME_STATE_MAINTAIN) {
-		disconnectClient("Gameworld is under maintenance.\nPlease re-connect in a while.", version);
-		return;
-	}
-
-	BanInfo banInfo;
-	auto connection = getConnection();
-	if (!connection) {
-		return;
-	}
-
-	if (IOBan::isIpBanned(connection->getIP(), banInfo)) {
-		if (banInfo.reason.empty()) {
-			banInfo.reason = "(none)";
-		}
-
-		disconnectClient(fmt::format("Your IP has been banned until {:s} by {:s}.\n\nReason specified:\n{:s}", formatDateShort(banInfo.expiresAt), banInfo.bannedBy, banInfo.reason), version);
 		return;
 	}
 

@@ -102,6 +102,8 @@ class ProtocolGame final : public Protocol
 		void disconnectClient(const std::string& message) const;
 		void writeToOutputBuffer(const NetworkMessage& msg);
 
+		void authenticateAndLogin(std::string accountName, std::string password, std::string characterName, std::string token, uint32_t tokenTime, OperatingSystem_t operatingSystem);
+
 		void release() override;
 
 		void checkCreatureAsKnown(uint32_t id, bool& known, uint32_t& removedKnown);

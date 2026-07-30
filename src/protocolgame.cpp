@@ -444,9 +444,9 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 		return;
 	}
 
-	auto accountName = sessionArgs[0];
-	auto password = sessionArgs[1];
-	std::string_view token = sessionArgs[2];
+	std::string accountName{ sessionArgs[0] };
+	std::string password{ sessionArgs[1] };
+	std::string token{ sessionArgs[2] };
 	uint32_t tokenTime = 0;
 
 	try
@@ -463,7 +463,7 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 		return;
 	}
 
-	auto characterName = msg.getString();
+	std::string characterName{ msg.getString() };
 	uint32_t timeStamp = msg.get<uint32_t>();
 	uint8_t randNumber = msg.getByte();
 
@@ -479,6 +479,15 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 		return;
 	}
 
+	g_dispatcher.addTask([thisPtr = getThis(), accountName = std::move(accountName), password = std::move(password), characterName = std::move(characterName), token = std::move(token), tokenTime, operatingSystem]() mutable
+	{
+		thisPtr->authenticateAndLogin(std::move(accountName), std::move(password), std::move(characterName), std::move(token), tokenTime, operatingSystem);
+	});
+}
+
+void ProtocolGame::authenticateAndLogin(std::string accountName, std::string password, std::string characterName, std::string token, uint32_t tokenTime, OperatingSystem_t operatingSystem)
+{
+	//dispatcher thread
 	if (accountName.empty()
 		and password.empty()
 		and g_config.GetBoolean(ConfigManager::ENABLE_ACCOUNT_MANAGER)
@@ -486,7 +495,7 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 	{
 		accountName = g_config.GetString(ConfigManager::ACCOUNT_MANAGER_AUTH);
 		password = g_config.GetString(ConfigManager::ACCOUNT_MANAGER_AUTH);
-	} 
+	}
 
 	if (g_game.getGameState() == GAME_STATE_STARTUP)
 	{
@@ -527,7 +536,7 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 		return;
 	}
 
-	g_dispatcher.addTask([=, thisPtr = getThis()]() { thisPtr->login(characterId, accountId, operatingSystem); });
+	login(characterId, accountId, operatingSystem);
 }
 
 void ProtocolGame::onConnect()
