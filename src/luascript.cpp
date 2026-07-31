@@ -18479,7 +18479,23 @@ int LuaScriptInterface::luaCombatExecute(lua_State* L)
 
 		case VARIANT_POSITION:
 		{
-			combat->execute(creature, variant.getPosition());
+			if (combat->hasArea())
+			{
+				combat->execute(creature, variant.getPosition());
+			}
+			else
+			{
+				const TilePtr tile = g_game.map.getTile(variant.getPosition());
+				const CreaturePtr target = tile ? tile->getTopVisibleCreature(creature) : nullptr;
+
+				if (target)
+					combat->strike_target(creature, target);
+				else
+				{
+					combat->postCombatEffects(creature, variant.getPosition());
+					g_game.addMagicEffect(variant.getPosition(), CONST_ME_POFF);
+				}
+			}
 			break;
 		}
 
