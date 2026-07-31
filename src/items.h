@@ -182,6 +182,8 @@ struct Abilities {
 	bool manaShield = false;
 	bool invisible = false;
 	bool regeneration = false;
+
+	bool operator==(const Abilities&) const = default;
 };
 
 class ConditionDamage;

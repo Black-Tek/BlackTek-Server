@@ -339,7 +339,7 @@ namespace BlackTek
 			IgnoreGround,		// only meaningful with MultiLevel: skip the ground-barrier check and hit all floors in the range
 			Aggressive,
 			IgnoreBarriers,		// ignores walls for line of sight and such on the combat
-			UseCharges,			// I think this one is used by weapons to reduce ammo
+			UseCharges,			// set on melee/distance weapons with abilities; consumes charges or stackable ammo on the right-hand weapon after a hit
 			HasArea,            // set by setArea() when any area data is registered
 			HasExtArea,         // set by setArea() when diagonal (ext) area data is non-empty
 			HasFormulaCache,    // set when formula_cache is first allocated (any formula override)

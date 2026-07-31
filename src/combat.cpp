@@ -2586,14 +2586,19 @@ namespace BlackTek
 			{
 				const uint16_t charges = weaponItem->getCharges();
 
-				if (charges != 0 and g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_CHARGES))
-					g_game.transformItem(weaponItem, weaponItem->getID(), charges - 1);
+				if (charges != 0)
+				{
+					if (g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_CHARGES))
+						g_game.transformItem(weaponItem, weaponItem->getID(), charges - 1);
+				}
+				else if (weaponItem->isStackable())
+				{
+					if (weaponItem->getItemCount() > 1)
+						g_game.transformItem(weaponItem, weaponItem->getID(), weaponItem->getItemCount() - 1);
 
-				else if (weaponItem->getItemCount() > 1)
-					g_game.transformItem(weaponItem, weaponItem->getID(), weaponItem->getItemCount() - 1);
-
-				else
-					g_game.internalRemoveItem(weaponItem);
+					else
+						g_game.internalRemoveItem(weaponItem);
+				}
 			}
 		}
 	}
@@ -2700,14 +2705,19 @@ namespace BlackTek
 			{
 				const uint16_t charges = weaponItem->getCharges();
 
-				if (charges != 0 and g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_CHARGES))
-					g_game.transformItem(weaponItem, weaponItem->getID(), charges - 1);
+				if (charges != 0)
+				{
+					if (g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_CHARGES))
+						g_game.transformItem(weaponItem, weaponItem->getID(), charges - 1);
+				}
+				else if (weaponItem->isStackable())
+				{
+					if (weaponItem->getItemCount() > 1)
+						g_game.transformItem(weaponItem, weaponItem->getID(), weaponItem->getItemCount() - 1);
 
-				else if (weaponItem->getItemCount() > 1)
-					g_game.transformItem(weaponItem, weaponItem->getID(), weaponItem->getItemCount() - 1);
-
-				else
-					g_game.internalRemoveItem(weaponItem);
+					else
+						g_game.internalRemoveItem(weaponItem);
+				}
 			}
 		}
 	}

@@ -398,7 +398,7 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
         return;
     }
 
-    Abilities& abilities = it.getAbilities();
+    Abilities abilities{};
 
     // Process all attributes in a single pass
     for (const auto& [key, value] : itemTable) {
@@ -1033,6 +1033,9 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
     if ((it.transformToFree || it.transformToOnUse[PLAYERSEX_FEMALE] || it.transformToOnUse[PLAYERSEX_MALE]) && it.type != ITEM_TYPE_BED) {
         std::cout << "[Warning - Items::parseItemToml] Item " << id << " has transform attributes but is not a bed" << std::endl;
     }
+
+    if (not (abilities == Abilities{}))
+        it.getAbilities() = abilities;
 }
 
 ItemType& Items::getItemType(size_t id)

@@ -24052,31 +24052,43 @@ int LuaScriptInterface::luaWeaponExtraElement(lua_State* L)
 {
 	// weapon:extraElement(atk, combatType)
 	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
+	if (weapon)
+	{
 		uint16_t id = weapon->getID();
 		ItemType& it = Item::items.getItemType(id);
-		it.abilities.get()->elementDamage = getNumber<uint16_t>(L, 2);
+		Abilities& abilities = it.getAbilities();
+		abilities.elementDamage = getNumber<uint16_t>(L, 2);
 
-		if (!getNumber<CombatType_t>(L, 3)) {
+		if (not getNumber<CombatType_t>(L, 3))
+		{
 			std::string element = getString(L, 3);
 			std::string tmpStrValue = asLowerCaseString(element);
-			if (tmpStrValue == "earth") {
-				it.abilities.get()->elementType = COMBAT_EARTHDAMAGE;
-			} else if (tmpStrValue == "ice") {
-				it.abilities.get()->elementType = COMBAT_ICEDAMAGE;
-			} else if (tmpStrValue == "energy") {
-				it.abilities.get()->elementType = COMBAT_ENERGYDAMAGE;
-			} else if (tmpStrValue == "fire") {
-				it.abilities.get()->elementType = COMBAT_FIREDAMAGE;
-			} else if (tmpStrValue == "death") {
-				it.abilities.get()->elementType = COMBAT_DEATHDAMAGE;
-			} else if (tmpStrValue == "holy") {
-				it.abilities.get()->elementType = COMBAT_HOLYDAMAGE;
-			} else {
+
+			if (tmpStrValue == "earth")
+				abilities.elementType = COMBAT_EARTHDAMAGE;
+
+			else if (tmpStrValue == "ice")
+				abilities.elementType = COMBAT_ICEDAMAGE;
+
+			else if (tmpStrValue == "energy")
+				abilities.elementType = COMBAT_ENERGYDAMAGE;
+
+			else if (tmpStrValue == "fire")
+				abilities.elementType = COMBAT_FIREDAMAGE;
+
+			else if (tmpStrValue == "death")
+				abilities.elementType = COMBAT_DEATHDAMAGE;
+
+			else if (tmpStrValue == "holy")
+				abilities.elementType = COMBAT_HOLYDAMAGE;
+
+			else
 				std::cout << "[Warning - weapon:extraElement] Type \"" << element << "\" does not exist." << std::endl;
-			}
-		} else {
-			it.abilities.get()->elementType = getNumber<CombatType_t>(L, 3);
+			
+		} 
+		else
+		{
+			abilities.elementType = getNumber<CombatType_t>(L, 3);
 		}
 		pushBoolean(L, true);
 	} else {
