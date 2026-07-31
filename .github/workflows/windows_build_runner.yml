@@ -95,7 +95,8 @@ jobs:
           git -C C:/vcpkg fetch origin
           git -C C:/vcpkg checkout master
           git -C C:/vcpkg reset --hard origin/master
-          
+          C:/vcpkg/bootstrap-vcpkg.bat -disableMetrics
+
           # Clean up outdated packages
           vcpkg remove --outdated --recurse
           
