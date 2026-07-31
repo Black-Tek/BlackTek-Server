@@ -736,6 +736,7 @@ class LuaScriptInterface
 		static int luaVariantGetNumber(lua_State* L);
 		static int luaVariantGetString(lua_State* L);
 		static int luaVariantGetPosition(lua_State* L);
+		static int luaVariantGetType(lua_State* L);
 
 		// Position
 		static int luaPositionCreate(lua_State* L);

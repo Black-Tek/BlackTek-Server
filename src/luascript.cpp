@@ -2267,6 +2267,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Variant", "getNumber", luaVariantGetNumber);
 	registerMethod("Variant", "getString", luaVariantGetString);
 	registerMethod("Variant", "getPosition", luaVariantGetPosition);
+	registerMethod("Variant", "getType", luaVariantGetType);
 
 	// Position
 	registerClass("Position", "", luaPositionCreate);
@@ -5849,6 +5850,14 @@ int LuaScriptInterface::luaVariantGetPosition(lua_State* L)
 	} else {
 		pushPosition(L, Position());
 	}
+	return 1;
+}
+
+int LuaScriptInterface::luaVariantGetType(lua_State* L)
+{
+	// Variant:getType()
+	const LuaVariant& variant = getVariant(L, 1);
+	lua_pushinteger(L, variant.type());
 	return 1;
 }
 
