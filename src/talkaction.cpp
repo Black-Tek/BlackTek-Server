@@ -31,6 +31,14 @@ void TalkActions::clear(bool fromLua)
 	reInitState(fromLua);
 }
 
+bool TalkActions::reload()
+{
+    loaded = false;
+    clear(false);
+    loaded = true;
+    return true;
+}
+
 LuaScriptInterface& TalkActions::getScriptInterface()
 {
 	return scriptInterface;

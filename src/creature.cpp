@@ -1651,6 +1651,44 @@ bool Creature::unregisterCreatureEvent(const std::string& name)
 	return true;
 }
 
+void Creature::purgeCreatureEvent(CreatureEvent* event)
+{
+    if (not event)
+    {
+        return;
+    }
+
+    CreatureEventType_t type = event->getEventType();
+    if (not hasEventRegistered(type))
+    {
+        return;
+    }
+
+    bool resetTypeBit = true;
+
+    auto it = eventsList.begin(), end = eventsList.end();
+    while (it != end)
+    {
+        CreatureEvent* curEvent = *it;
+        if (curEvent == event)
+        {
+            it = eventsList.erase(it);
+            continue;
+        }
+
+        if (curEvent->getEventType() == type)
+        {
+            resetTypeBit = false;
+        }
+        ++it;
+    }
+
+    if (resetTypeBit)
+    {
+        scriptEventsBitField &= ~(static_cast<uint32_t>(1) << type);
+    }
+}
+
 CreatureEventList Creature::getCreatureEvents(CreatureEventType_t type) const
 {
 	CreatureEventList tmpEventList;

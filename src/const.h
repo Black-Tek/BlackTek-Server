@@ -569,6 +569,7 @@ enum ReloadTypes_t : uint8_t  {
 	RELOAD_TYPE_SPELLS,
 	RELOAD_TYPE_TALKACTIONS,
 	RELOAD_TYPE_WEAPONS,
+	RELOAD_TYPE_ZONES,
 };
 
 static constexpr int32_t CHANNEL_GUILD = 0x00;

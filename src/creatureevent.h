@@ -95,7 +95,9 @@ class CreatureEvents final : public BaseEvents
 
 		bool registerLuaEvent(CreatureEvent* event);
 		void clear(bool fromLua) override final;
+		bool reload() override;
 
+		std::vector<CreatureEvent*> getInvalidEvents();
 		void removeInvalidEvents();
 
 	private:

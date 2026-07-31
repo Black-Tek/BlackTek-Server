@@ -6,6 +6,7 @@
 #include "pugicast.h"
 
 #include "actions.h"
+#include "augments.h"
 #include "storewindow.h"
 #include "configmanager.h"
 #include "console.h"
@@ -7895,111 +7896,114 @@ void Game::removeUniqueItem(const uint16_t uniqueId)
 
 bool Game::reload(const ReloadTypes_t reloadType)
 {
-	switch (reloadType) {
-		case RELOAD_TYPE_ACTIONS: return g_actions->reload();
-		case RELOAD_TYPE_CHAT: return g_chat->load();
-		case RELOAD_TYPE_CONFIG: return g_config.Reload();
-		case RELOAD_TYPE_CREATURESCRIPTS: {
-			g_creatureEvents->reload();
-			g_creatureEvents->removeInvalidEvents();
-			return true;
-		}
-		case RELOAD_TYPE_EVENTS: return g_events->load();
-		case RELOAD_TYPE_GLOBALEVENTS: return g_globalEvents->reload();
-		case RELOAD_TYPE_ITEMS: return Item::items.reload();
-		case RELOAD_TYPE_MONSTERS: return g_monsters.reload();
-		case RELOAD_TYPE_MOUNTS: return mounts.reload();
-		case RELOAD_TYPE_MOVEMENTS: return g_moveEvents->reload();
-		case RELOAD_TYPE_NPCS: {
-			Npcs::reload();
-			return true;
-		}
+    switch (reloadType)
+    {
+        case RELOAD_TYPE_ACTIONS:
+            return g_actions->reload();
 
-		case RELOAD_TYPE_QUESTS: return quests.reload();
-		case RELOAD_TYPE_RAIDS: return raids.reload() && raids.startup();
+        case RELOAD_TYPE_AUGMENTS:
+            BlackTek::Augments::reload();
+            return true;
 
-		case RELOAD_TYPE_SPELLS: {
-			if (!g_spells->reload()) {
-				std::cout << "[Error - Game::reload] Failed to reload spells." << std::endl;
-				std::terminate();
-			} else if (!g_monsters.reload()) {
-				std::cout << "[Error - Game::reload] Failed to reload monsters." << std::endl;
-				std::terminate();
-			}
-			return true;
-		}
+        case RELOAD_TYPE_CHAT:
+            return g_chat->load();
 
-		case RELOAD_TYPE_TALKACTIONS: return g_talkActions->reload();
+        case RELOAD_TYPE_CONFIG:
+            return g_config.Reload();
 
-		case RELOAD_TYPE_WEAPONS: {
-			bool results = g_weapons->reload();
-			g_weapons->loadDefaults();
-			return results;
-		}
+        case RELOAD_TYPE_EVENTS:
+            return g_events->load();
 
-		case RELOAD_TYPE_SCRIPTS: {
-			// commented out stuff is TODO, once we approach further in revscriptsys
-			g_actions->clear(true);
-			g_creatureEvents->clear(true);
-			g_moveEvents->clear(true);
-			g_talkActions->clear(true);
-			g_globalEvents->clear(true);
-			g_weapons->clear(true);
-			g_weapons->loadDefaults();
-			g_spells->clear(true);
-			g_scripts->loadScripts("scripts", false, true);
-			g_creatureEvents->removeInvalidEvents();
-			/*
-			Npcs::reload();
-			raids.reload() && raids.startup();
-			Item::items.reload();
-			quests.reload();
-			mounts.reload();
-			g_config.Reload();
-			g_events->load();
-			g_chat->load();
-			*/
-			return true;
-		}
+        case RELOAD_TYPE_ITEMS:
+            return Item::items.reload();
 
-		default: {
-			if (!g_spells->reload()) {
-				std::cout << "[Error - Game::reload] Failed to reload spells." << std::endl;
-				std::terminate();
-			} else if (!g_monsters.reload()) {
-				std::cout << "[Error - Game::reload] Failed to reload monsters." << std::endl;
-				std::terminate();
-			}
+        case RELOAD_TYPE_MONSTERS:
+            return g_monsters.reload();
 
-			g_actions->reload();
-			g_config.Reload();
-			g_creatureEvents->reload();
-			g_monsters.reload();
-			g_moveEvents->reload();
-			Npcs::reload();
-			raids.reload() && raids.startup();
-			g_talkActions->reload();
-			Item::items.reload();
-			g_weapons->reload();
-			g_weapons->clear(true);
-			g_weapons->loadDefaults();
-			quests.reload();
-			mounts.reload();
-			g_globalEvents->reload();
-			g_events->load();
-			g_chat->load();
-			g_actions->clear(true);
-			g_creatureEvents->clear(true);
-			g_moveEvents->clear(true);
-			g_talkActions->clear(true);
-			g_globalEvents->clear(true);
-			g_spells->clear(true);
-			g_scripts->loadScripts("scripts", false, true);
-			g_creatureEvents->removeInvalidEvents();
-			return true;
-		}
-	}
-	return true;
+        case RELOAD_TYPE_MOUNTS:
+            return mounts.reload();
+
+        case RELOAD_TYPE_MOVEMENTS:
+            return g_moveEvents->reload();
+
+        case RELOAD_TYPE_NPCS:
+            Npcs::reload();
+            return true;
+
+        case RELOAD_TYPE_QUESTS:
+            return quests.reload();
+
+        case RELOAD_TYPE_RAIDS:
+            return raids.reload() and raids.startup();
+
+        case RELOAD_TYPE_ZONES:
+            Zones::ZoneManager::Reload();
+            return true;
+
+        case RELOAD_TYPE_ALL:
+        {
+            g_config.Reload();
+            g_actions->reload();
+            g_moveEvents->reload();
+            Npcs::reload();
+            raids.reload() and raids.startup();
+            Item::items.reload();
+            quests.reload();
+            mounts.reload();
+            g_events->load();
+            g_chat->load();
+            BlackTek::Augments::reload();
+            Zones::ZoneManager::Reload();
+            [[fallthrough]];
+        }
+
+        case RELOAD_TYPE_SCRIPTS:
+        case RELOAD_TYPE_WEAPONS:
+        case RELOAD_TYPE_SPELLS:
+        case RELOAD_TYPE_TALKACTIONS:
+        case RELOAD_TYPE_CREATURESCRIPTS:
+        case RELOAD_TYPE_GLOBALEVENTS:
+        {
+            g_actions->clear(true);
+            g_creatureEvents->clear(true);
+            g_moveEvents->clear(true);
+            g_talkActions->clear(true);
+            g_globalEvents->clear(true);
+            g_weapons->clear(true);
+            g_weapons->loadDefaults();
+            g_spells->clear(true);
+            g_storeManager.clear();
+            g_scripts->loadScripts("scripts", false, true);
+
+            for (CreatureEvent* invalidEvent : g_creatureEvents->getInvalidEvents())
+            {
+                for (const auto& player : players | std::views::values)
+                {
+                    player->purgeCreatureEvent(invalidEvent);
+                }
+                for (const auto& monster : monsters | std::views::values)
+                {
+                    monster->purgeCreatureEvent(invalidEvent);
+                }
+                for (const auto& npc : npcs | std::views::values)
+                {
+                    npc->purgeCreatureEvent(invalidEvent);
+                }
+            }
+            g_creatureEvents->removeInvalidEvents();
+
+            if (not g_monsters.reload())
+            {
+                BlackTek::Console::Error("Game::reload ~ Failed to reload monsters.");
+                std::terminate();
+            }
+            return true;
+        }
+
+        default:
+            BlackTek::Console::Warn("Game::reload ~ Unknown reload type: {}", static_cast<int>(reloadType));
+            return false;
+    }
 }
 
 void Game::resetDamageTracking(const uint32_t monsterId)

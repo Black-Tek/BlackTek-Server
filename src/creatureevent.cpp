@@ -24,6 +24,28 @@ void CreatureEvents::clear(bool fromLua)
 	reInitState(fromLua);
 }
 
+bool CreatureEvents::reload()
+{
+    loaded = false;
+    clear(false);
+    removeInvalidEvents();
+    loaded = true;
+    return true;
+}
+
+std::vector<CreatureEvent*> CreatureEvents::getInvalidEvents()
+{
+    std::vector<CreatureEvent*> invalidEvents;
+    for (auto& [name, event] : creatureEvents)
+    {
+        if (event.getScriptId() == 0)
+        {
+            invalidEvents.push_back(&event);
+        }
+    }
+    return invalidEvents;
+}
+
 void CreatureEvents::removeInvalidEvents()
 {
 	for (auto it = creatureEvents.begin(); it != creatureEvents.end();) {
@@ -109,41 +131,50 @@ CreatureEvent* CreatureEvents::getEventByName(const std::string& name, bool forc
 
 bool CreatureEvents::playerLogin(const PlayerPtr& player) const
 {
-	//fire global event if is registered
-	for (const auto& it : creatureEvents) {
-		if (it.second.getEventType() == CREATURE_EVENT_LOGIN) {
-			if (!it.second.executeOnLogin(player)) {
-				return false;
-			}
-		}
-	}
-	return true;
+    //fire global event if is registered
+    for (const auto& it : creatureEvents)
+    {
+        if (it.second.isLoaded() and it.second.getEventType() == CREATURE_EVENT_LOGIN)
+        {
+            if (not it.second.executeOnLogin(player))
+            {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 bool CreatureEvents::playerLogout(const PlayerPtr& player) const
 {
-	//fire global event if is registered
-	for (const auto& val : creatureEvents | std::views::values) {
-		if (val.getEventType() == CREATURE_EVENT_LOGOUT) {
-			if (!val.executeOnLogout(player)) {
-				return false;
-			}
-		}
-	}
-	return true;
+    //fire global event if is registered
+    for (const auto& val : creatureEvents | std::views::values)
+    {
+        if (val.isLoaded() and val.getEventType() == CREATURE_EVENT_LOGOUT)
+        {
+            if (not val.executeOnLogout(player))
+            {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 bool CreatureEvents::playerAdvance(const PlayerPtr& player, skills_t skill, uint32_t oldLevel,
                                        uint32_t newLevel)
 {
-	for (auto& val : creatureEvents | std::views::values) {
-		if (val.getEventType() == CREATURE_EVENT_ADVANCE) {
-			if (!val.executeAdvance(player, skill, oldLevel, newLevel)) {
-				return false;
-			}
-		}
-	}
-	return true;
+    for (auto& val : creatureEvents | std::views::values)
+    {
+        if (val.isLoaded() and val.getEventType() == CREATURE_EVENT_ADVANCE)
+        {
+            if (not val.executeAdvance(player, skill, oldLevel, newLevel))
+            {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 /////////////////////////////////////

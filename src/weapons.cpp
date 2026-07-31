@@ -201,23 +201,29 @@ const Weapon* Weapons::getWeapon(const ItemConstPtr& item) const
 
 void Weapons::clear(bool fromLua)
 {
-	for (auto it = weapons.begin(); it != weapons.end(); ) {
-		if (fromLua == it->second->fromLua) {
-			it = weapons.erase(it);
-		} else {
-			++it;
-		}
-	}
+    for (auto it = weapons.begin(); it != weapons.end(); )
+    {
+        if (fromLua == it->second->fromLua)
+        {
+            delete it->second;
+            it = weapons.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
 
-	reInitState(fromLua);
+    reInitState(fromLua);
 }
 
 bool Weapons::reload()
 {
-	loaded = false;
-	clear(false);
-	loaded = true;
-	return true;
+    loaded = false;
+    clear(false);
+    loadDefaults();
+    loaded = true;
+    return true;
 }
 
 LuaScriptInterface& Weapons::getScriptInterface()
@@ -275,19 +281,23 @@ Event_ptr Weapons::getEvent(const std::string& nodeName)
 
 bool Weapons::registerEvent(Event_ptr event, const pugi::xml_node&)
 {
-	Weapon* weapon = static_cast<Weapon*>(event.release()); //event is guaranteed to be a Weapon
+    Weapon* weapon = static_cast<Weapon*>(event.release()); //event is guaranteed to be a Weapon
 
-	auto result = weapons.emplace(weapon->getID(), weapon);
-	if (!result.second) {
-		std::cout << "[Warning - Weapons::registerEvent] Duplicate registered item with id: " << weapon->getID() << std::endl;
-	}
-	return result.second;
+    auto result = weapons.emplace(weapon->getID(), weapon);
+    if (not result.second)
+    {
+        BlackTek::Console::Warn("Weapons::registerEvent ~ Duplicate registered item with id: {}", weapon->getID());
+        delete weapon;
+    }
+    return result.second;
 }
 
 bool Weapons::registerLuaEvent(Weapon* weapon)
 {
-	weapons[weapon->getID()] = weapon;
-	return true;
+    auto& slot = weapons[weapon->getID()];
+    delete slot;
+    slot = weapon;
+    return true;
 }
 
 //monsters

@@ -84,6 +84,7 @@ class TalkActions final : public BaseEvents
 
 		bool registerLuaEvent(TalkAction* event);
 		void clear(bool fromLua) override final;
+		bool reload() override;
 
 	private:
 		LuaScriptInterface& getScriptInterface() override;

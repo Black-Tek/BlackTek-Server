@@ -269,7 +269,6 @@ bool Items::reload()
 
 	g_moveEvents->reload();
 	g_weapons->reload();
-	g_weapons->loadDefaults();
 	return true;
 }
 

@@ -580,6 +580,7 @@ class Creature : public SharedObject
 		//creature script events
 		bool registerCreatureEvent(const std::string& name);
 		bool unregisterCreatureEvent(const std::string& name);
+		void purgeCreatureEvent(CreatureEvent* event);
 
 		void setCurrentTile(const TilePtr& newTile);
 

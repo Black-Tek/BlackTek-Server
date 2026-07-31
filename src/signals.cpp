@@ -55,55 +55,8 @@ namespace
 	{
 		BlackTek::Console::Info("SIGHUP received, reloading config files...");
 
-		g_actions->reload();
-		BlackTek::Console::Info("Reloaded actions.");
-
-		g_config.Reload();
-		BlackTek::Console::Info("Reloaded config.");
-
-		g_creatureEvents->reload();
-		BlackTek::Console::Info("Reloaded creature scripts.");
-
-		g_moveEvents->reload();
-		BlackTek::Console::Info("Reloaded movements.");
-
-		Npcs::reload();
-		BlackTek::Console::Info("Reloaded npcs.");
-
-		g_game.raids.reload();
-		g_game.raids.startup();
-		BlackTek::Console::Info("Reloaded raids.");
-
-		g_monsters.reload();
-		BlackTek::Console::Info("Reloaded monsters.");
-
-		g_spells->reload();
-		BlackTek::Console::Info("Reloaded spells.");
-
-		g_talkActions->reload();
-		BlackTek::Console::Info("Reloaded talk actions.");
-
-		Item::items.reload();
-		BlackTek::Console::Info("Reloaded items.");
-
-		g_weapons->reload();
-		g_weapons->loadDefaults();
-		BlackTek::Console::Info("Reloaded weapons.");
-
-		g_game.quests.reload();
-		BlackTek::Console::Info("Reloaded quests.");
-
-		g_game.mounts.reload();
-		BlackTek::Console::Info("Reloaded mounts.");
-
-		g_globalEvents->reload();
-		BlackTek::Console::Info("Reloaded globalevents.");
-
-		g_events->load();
-		BlackTek::Console::Info("Reloaded events.");
-
-		g_chat->load();
-		BlackTek::Console::Info("Reloaded chatchannels.");
+		g_game.reload(RELOAD_TYPE_ALL);
+		BlackTek::Console::Info("Reloaded game data.");
 
 		g_luaEnvironment.loadFile("data/global.lua");
 		BlackTek::Console::Info("Reloaded global.lua.");

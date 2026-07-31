@@ -55,6 +55,9 @@ local reloadTypes = {
 	["weapon"] = RELOAD_TYPE_WEAPONS,
 	["weapons"] = RELOAD_TYPE_WEAPONS,
 
+	["zone"] = RELOAD_TYPE_ZONES,
+	["zones"] = RELOAD_TYPE_ZONES,
+
 	["scripts"] = RELOAD_TYPE_SCRIPTS,
 	["libs"] = RELOAD_TYPE_GLOBAL
 }
@@ -77,7 +80,15 @@ local function onSay(player, words, param)
 	end
 
 	-- need to clear EventCallback.data or we end up having duplicated events on /reload scripts
-	if table.contains({RELOAD_TYPE_SCRIPTS, RELOAD_TYPE_ALL}, reloadType) then
+	if table.contains({
+		RELOAD_TYPE_SCRIPTS,
+		RELOAD_TYPE_ALL,
+		RELOAD_TYPE_WEAPONS,
+		RELOAD_TYPE_SPELLS,
+		RELOAD_TYPE_TALKACTIONS,
+		RELOAD_TYPE_CREATURESCRIPTS,
+		RELOAD_TYPE_GLOBALEVENTS
+	}, reloadType) then
 		EventCallback:clear()
 	end
 
