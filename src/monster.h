@@ -207,6 +207,7 @@ class Monster final : public Creature
 		void addTarget(const CreaturePtr& creature, bool pushFront = false);
 		void removeTarget(const CreaturePtr& creature);
 		void updateTargetList(const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt);
+		void pruneTargetAndFriendLists();
 		void clearTargetList();
 		void clearFriendList();
 
@@ -219,6 +220,7 @@ class Monster final : public Creature
 		void updateTileCache(TilePtr tile, int32_t dx, int32_t dy);
 		void updateTileCache(const TilePtr& tile, int32_t dx, int32_t dy, const MonsterPtr& self);
 		void updateTileCache(TilePtr tile, const Position& pos);
+		void findCreaturesOnTile(const TilePtr& tile);
 
 		void onThinkTarget(uint32_t interval);
 		void onThinkYell(uint32_t interval);

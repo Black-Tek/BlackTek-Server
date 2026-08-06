@@ -229,12 +229,14 @@ void Monster::onRemoveCreature(const CreaturePtr& creature, const bool isLogout)
 void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile, const Position& newPos,
                              const TilePtr& oldTile, const Position& oldPos, bool teleport, const std::optional<std::span<const CreaturePtr>> spectators)
 {
+	int32_t dz = 0;
+
 	if (isMapLoaded)
 	{
 		const bool isSelf = (creature == this->getCreature());
 		const int32_t dx = newPos.x - oldPos.x;
 		const int32_t dy = newPos.y - oldPos.y;
-		const int32_t dz = newPos.z - oldPos.z;
+		dz = newPos.z - oldPos.z;
 
 		if (isSelf)
 		{
@@ -254,6 +256,7 @@ void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile
 					{
 						const auto cacheTile = g_game.map.getTile(myPos.getX() + x, myPos.getY() - maxWalkCacheHeight, myPos.z);
 						updateTileCache(cacheTile, x, -maxWalkCacheHeight, self);
+						findCreaturesOnTile(cacheTile);
 					}
 				}
 				else if (dy > 0) // south
@@ -263,6 +266,7 @@ void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile
 					{
 						const auto cacheTile = g_game.map.getTile(myPos.getX() + x, myPos.getY() + maxWalkCacheHeight, myPos.z);
 						updateTileCache(cacheTile, x, maxWalkCacheHeight, self);
+						findCreaturesOnTile(cacheTile);
 					}
 				}
 
@@ -292,6 +296,7 @@ void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile
 					{
 						const auto cacheTile = g_game.map.getTile(myPos.x + maxWalkCacheWidth, myPos.y + y, myPos.z);
 						updateTileCache(cacheTile, maxWalkCacheWidth, y, self);
+						findCreaturesOnTile(cacheTile);
 					}
 				}
 				else if (dx < 0) // west
@@ -320,6 +325,7 @@ void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile
 					{
 						const auto cacheTile = g_game.map.getTile(myPos.x - maxWalkCacheWidth, myPos.y + y, myPos.z);
 						updateTileCache(cacheTile, -maxWalkCacheWidth, y, self);
+						findCreaturesOnTile(cacheTile);
 					}
 				}
 
@@ -374,13 +380,15 @@ void Monster::onCreatureMove(const CreaturePtr& creature, const TilePtr& newTile
 		if (isSummon()) {
 			isMasterInRange = canSee(getMaster()->getPosition());
 		}
-		// This updateTargetList() is updating summons target list while moving
-		// and more importantly stoping movement when no targets are left after a kill
-		// because the monster moves again after killing target.
-		// We would rather stop monster dead in tracks if they kill the only target around
-		// and then handle summons targetting in a better way to free up the expensive price of updating
-		// every target list of over monster which moves, everytime it moves.
-		updateTargetList(spectators);
+		// Finally was able to eliminate that expensive updateTargetList call
+		// instead, we only update the list based on the tiles which came into
+		// view or left the view, when the monster moved, thereby
+		// eliminating tons of needless work.
+		if (isMapLoaded and not teleport and dz == 0) {
+			pruneTargetAndFriendLists();
+		} else {
+			updateTargetList(spectators);
+		}
 	} else {
 		const bool canSeeNewPos = canSee(newPos);
 		const bool canSeeOldPos = canSee(oldPos);
@@ -471,7 +479,7 @@ void Monster::removeTarget(const CreaturePtr& creature)
 }
 
 
-void Monster::updateTargetList(const std::optional<std::span<const CreaturePtr>> spectators)
+void Monster::pruneTargetAndFriendLists()
 {
 	auto friendIterator = friendList.begin();
 	while (friendIterator != friendList.end()) {
@@ -497,6 +505,11 @@ void Monster::updateTargetList(const std::optional<std::span<const CreaturePtr>>
 			++targetIterator;
 		}
 	}
+}
+
+void Monster::updateTargetList(const std::optional<std::span<const CreaturePtr>> spectators)
+{
+	pruneTargetAndFriendLists();
 
 	// Update with new spectators
 	if (spectators)
@@ -1802,6 +1815,20 @@ void Monster::updateTileCache(TilePtr tile, const Position& pos)
 		int32_t dy = Position::getOffsetY(pos, myPos);
 		updateTileCache(tile, dx, dy);
 	}
+}
+
+void Monster::findCreaturesOnTile(const TilePtr& tile)
+{
+	if (not tile)
+		return;
+
+	const auto* creatures = tile->getCreatures();
+
+	if (not creatures)
+		return;
+
+	for (const auto& creature : creatures->getList())
+		onCreatureFound(creature);
 }
 
 int32_t Monster::getWalkCache(const Position& pos) const
