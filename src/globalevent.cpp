@@ -6,6 +6,7 @@
 #include "configmanager.h"
 #include "globalevent.h"
 #include "scheduler.h"
+#include "tools.h"
 
 extern ConfigManager g_config;
 
