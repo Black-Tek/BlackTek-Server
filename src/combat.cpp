@@ -1053,17 +1053,6 @@ namespace BlackTek
 
 		const int32_t distance = std::max(std::abs(dx), std::abs(dy));
 
-		if (not spreads_ptr or loc_count == 0)
-			return { area_position_buffer, area_tile_buffer, distance, 0 };
-
-		const uint16_t base_x = center.x;
-		const uint16_t base_y = center.y;
-
-		area_xs_buffer.resize(loc_count);
-		area_ys_buffer.resize(loc_count);
-		SIMD::gen_positions(spreads_ptr, forwards_ptr, loc_count, base_x, base_y,
-			area_xs_buffer.data(), area_ys_buffer.data());
-
 		const auto try_emit = [&](const TilePtr& tile, const Position& position) noexcept
 			{
 				if ((tile->getFlags() & flag_reject) != 0u)
@@ -1075,6 +1064,24 @@ namespace BlackTek
 				area_position_buffer.push_back(position);
 				area_tile_buffer.push_back(tile);
 			};
+
+		if (not spreads_ptr or loc_count == 0)
+		{
+			if (not config.test(Config::HasArea))
+			{
+				if (const auto& tile = g_game.map.getTile(center))
+					try_emit(tile, center);
+			}
+			return { area_position_buffer, area_tile_buffer, distance, 0 };
+		}
+
+		const uint16_t base_x = center.x;
+		const uint16_t base_y = center.y;
+
+		area_xs_buffer.resize(loc_count);
+		area_ys_buffer.resize(loc_count);
+		SIMD::gen_positions(spreads_ptr, forwards_ptr, loc_count, base_x, base_y,
+			area_xs_buffer.data(), area_ys_buffer.data());
 
 		BlackTek::World::ChunkCoord lastChunkCoord{};
 		const BlackTek::World::Chunk* lastChunk = nullptr;
@@ -1212,7 +1219,13 @@ namespace BlackTek
 		}
 
 		if (not spreads_ptr or loc_count == 0)
-			return { area_position_buffer, 0, 0 };
+		{
+			if (not config.test(Config::HasArea))
+				area_position_buffer.push_back(targetPos);
+
+			const int32_t noAreaDistance = std::max(std::abs(dx), std::abs(dy));
+			return { std::move(area_position_buffer), noAreaDistance, 0 };
+		}
 
 		const uint16_t base_x = targetPos.x;
 		const uint16_t base_y = targetPos.y;
