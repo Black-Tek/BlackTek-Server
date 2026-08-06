@@ -18,11 +18,6 @@
 extern Game g_game;
 extern ConfigManager g_config;
 
-Raids::Raids()
-{
-	scriptInterface.initState();
-}
-
 Raids::~Raids()
 {
 	for (Raid* raid : raidList) {
@@ -170,8 +165,6 @@ void Raids::clear()
 	started = false;
 	running = nullptr;
 	lastRaidEnd = 0;
-
-	scriptInterface.reInitState();
 }
 
 bool Raids::reload()
@@ -230,10 +223,6 @@ bool Raid::loadEvents(const toml::array& events)
 		else if (caseInsensitiveEqual(eventType, "areaspawn"))
 		{
 			event = new AreaSpawnEvent();
-		}
-		else if (caseInsensitiveEqual(eventType, "script"))
-		{
-			event = new ScriptEvent(&g_game.raids.getScriptInterface());
 		}
 		else
 		{
@@ -710,43 +699,4 @@ bool AreaSpawnEvent::executeEvent()
 		}
 	}
 	return true;
-}
-
-bool ScriptEvent::configureRaidEvent(const toml::table& eventTable)
-{
-	if (not RaidEvent::configureRaidEvent(eventTable))
-	{
-		return false;
-	}
-
-	auto scriptValue = eventTable["script"].value<std::string>();
-	if (not scriptValue or scriptValue->empty())
-	{
-		std::cerr << "[Error - ScriptEvent::configureRaidEvent] No script file found for raid" << std::endl;
-		return false;
-	}
-
-	if (not loadScript("data/raids/scripts/" + *scriptValue))
-	{
-		std::cerr << "[Error - ScriptEvent::configureRaidEvent] Can not load raid script: " << *scriptValue << std::endl;
-		return false;
-	}
-	return true;
-}
-
-bool ScriptEvent::executeEvent()
-{
-	//onRaid()
-	if (not scriptInterface->reserveScriptEnv())
-	{
-		std::cerr << "[Error - ScriptEvent::executeEvent] Call stack overflow" << std::endl;
-		return false;
-	}
-
-	ScriptEnvironment* env = scriptInterface->getScriptEnv();
-	env->setScriptId(scriptId, scriptInterface);
-
-	scriptInterface->pushFunction(scriptId);
-
-	return scriptInterface->callFunction(0);
 }

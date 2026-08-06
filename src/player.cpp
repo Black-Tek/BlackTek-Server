@@ -11,9 +11,8 @@
 #include "game.h"
 #include "iologindata.h"
 #include "monster.h"
-#include "movement.h"
+#include "itemevents.h"
 #include "scheduler.h"
-#include "weapons.h"
 #include "player.h"
 #include "spells.h"
 #include "accountmanager.h"
@@ -23,8 +22,7 @@ extern ConfigManager g_config;
 extern Game g_game;
 extern Chat* g_chat;
 extern Vocations g_vocations;
-extern MoveEvents* g_moveEvents;
-extern Weapons* g_weapons;
+extern ItemEvents* g_itemEvents;
 extern CreatureEvents* g_creatureEvents;
 extern Events* g_events;
 
@@ -863,6 +861,15 @@ ItemPtr Player::getInventoryItem(const uint32_t slot) const
 	return inventory[slot];
 }
 
+const ItemPtr& Player::getInventoryItemRef(const slots_t slot) const noexcept
+{
+	static const ItemPtr empty;
+	if (slot < CONST_SLOT_FIRST or slot > CONST_SLOT_LAST)
+		return empty;
+
+	return inventory[slot];
+}
+
 bool Player::isInventorySlot(const slots_t slot)
 {
 	return slot >= CONST_SLOT_FIRST && slot <= CONST_SLOT_LAST;
@@ -906,8 +913,7 @@ ItemPtr Player::getWeapon(const slots_t slot, const bool ignoreAmmo) const
 				for (ContainerIterator containerItem = quiver->iterator(); containerItem.hasNext();
 					containerItem.advance()) {
 					if (itemType.ammoType == (*containerItem)->getAmmoType()) {
-						const auto& weapon = g_weapons->getWeapon(*containerItem);
-						if (weapon && weapon->ammoCheck(this->getPlayer())) {
+						if (g_itemEvents->hasWeaponBehavior(*containerItem) and g_itemEvents->ammoCheck(*containerItem, this->getPlayer())) {
 							return *containerItem;
 						}
 					}
@@ -1891,7 +1897,8 @@ void Player::onCreatureAppear(const CreaturePtr& creature, bool isLogin)
 			for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
 				if (const auto& item = inventory[slot]) {
 					item->startDecaying();
-					g_moveEvents->onPlayerEquip(this->getPlayer(), item, static_cast<slots_t>(slot), false);
+					g_itemEvents->fireEquip(this->getPlayer(), item, static_cast<slots_t>(slot), false);
+					setSlotCombatHookMask(static_cast<slots_t>(slot), g_itemEvents->getCombatHookMask(item));
 				}
 			}
 
@@ -2006,7 +2013,8 @@ void Player::onRemoveCreature(const CreaturePtr& creature, bool isLogout)
 	if (creature == getCreature()) {
 		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
 			if (const auto& item = inventory[slot]) {
-				g_moveEvents->onPlayerDeEquip(this->getPlayer(), item, static_cast<slots_t>(slot));
+				g_itemEvents->fireDeEquip(this->getPlayer(), item, static_cast<slots_t>(slot));
+				clearSlotCombatHookMask(static_cast<slots_t>(slot));
 			}
 		}
 		if (isLogout) {
@@ -3466,7 +3474,7 @@ BlackTek::ItemLocation Player::resolveItemDestination(int32_t& index, const Item
 		ReturnValue ret = canAddItem(slotIndex, candidateItem, candidateItem->getItemCount(), candidateFlags);
 
 		if (ret == RETURNVALUE_NOERROR)
-			ret = g_moveEvents->onPlayerEquip(getPlayer(), candidateItem, static_cast<slots_t>(slotIndex), true);
+			ret = g_itemEvents->fireEquip(getPlayer(), candidateItem, static_cast<slots_t>(slotIndex), true);
 
 		return ret;
 	};
@@ -3801,11 +3809,14 @@ void Player::notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& 
 	if (link == LINK_OWNER)
 	{
 		//calling movement scripts
-		g_moveEvents->onPlayerEquip(this->getPlayer(), item, static_cast<slots_t>(index), false);
+		g_itemEvents->fireEquip(this->getPlayer(), item, static_cast<slots_t>(index), false);
 		g_events->eventPlayerOnInventoryUpdate(this->getPlayer(), item, static_cast<slots_t>(index), true);
 
 		if (isInventorySlot(static_cast<slots_t>(index)))
 		{
+			if (item)
+				setSlotCombatHookMask(static_cast<slots_t>(index), g_itemEvents->getCombatHookMask(item));
+
 			if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(getPosition()))
 				spawnOverlay->Trigger(getPlayer(), Zones::SpawnTrigger::Equip);
 
@@ -3873,11 +3884,13 @@ void Player::notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation
 	if (link == LINK_OWNER)
 	{
 		//calling movement scripts
-		g_moveEvents->onPlayerDeEquip(this->getPlayer(), item, static_cast<slots_t>(index));
+		g_itemEvents->fireDeEquip(this->getPlayer(), item, static_cast<slots_t>(index));
 		g_events->eventPlayerOnInventoryUpdate(this->getPlayer(), item, static_cast<slots_t>(index), false);
 
 		if (isInventorySlot(static_cast<slots_t>(index)))
 		{
+			clearSlotCombatHookMask(static_cast<slots_t>(index));
+
 			if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(getPosition()))
 				spawnOverlay->Trigger(getPlayer(), Zones::SpawnTrigger::DeEquip);
 
@@ -4162,9 +4175,9 @@ void Player::doSecondaryAttack(const CreaturePtr& target)
 	m_is_secondary_attack = true;
 	setDualWieldMultiplier(voc->dualWield.secondaryMultiplier);
 
-	if (const auto& weapon = g_weapons->getWeapon(secondaryTool))
+	if (g_itemEvents->hasWeaponBehavior(secondaryTool))
 	{
-		weapon->useWeapon(getPlayer(), secondaryTool, target);
+		g_itemEvents->useAsWeapon(getPlayer(), secondaryTool, target);
 	}
 	else
 	{
@@ -4177,7 +4190,7 @@ void Player::doSecondaryAttack(const CreaturePtr& target)
 				const int32_t attackValue = std::max<int32_t>(0, secondaryTool->getAttack());
 				const float attackFactor = getAttackFactor();
 				const int32_t maxDmg = static_cast<int32_t>(
-					Weapons::getMaxWeaponDamage(getLevel(), attackSkill, attackValue, attackFactor)
+					ItemEvents::getMaxWeaponDamage(getLevel(), attackSkill, attackValue, attackFactor)
 					* voc->meleeDamageMultiplier
 					* getDualWieldMultiplier()
 				);
@@ -4215,7 +4228,7 @@ void Player::doSecondaryAttack(const CreaturePtr& target)
 				const int32_t attackValue = std::max<int32_t>(0, secondaryTool->getAttack());
 				const float attackFactor  = getAttackFactor();
 				const int32_t maxDmg = static_cast<int32_t>(
-					Weapons::getMaxWeaponDamage(getLevel(), attackSkill, attackValue, attackFactor)
+					ItemEvents::getMaxWeaponDamage(getLevel(), attackSkill, attackValue, attackFactor)
 					* voc->distDamageMultiplier
 					* getDualWieldMultiplier()
 				);
@@ -4292,18 +4305,20 @@ void Player::doAttacking(uint32_t)
 			tool = getWeapon();
 		}
 
-		const auto& weapon = g_weapons->getWeapon(tool);
+		if (g_itemEvents->hasWeaponBehavior(tool))
+		{
+			if (not ItemEvents::interruptSwing(tool))
+				result = g_itemEvents->useAsWeapon(this->getPlayer(), tool, getAttackedCreature());
 
-		if (weapon) {
-			if (!weapon->interruptSwing()) {
-				result = weapon->useWeapon(this->getPlayer(), tool, getAttackedCreature());
-			} else if (!classicSpeed && !canDoAction()) {
+			else if (not classicSpeed and not canDoAction())
 				delay = getNextActionTime();
-			} else {
-				result = weapon->useWeapon(this->getPlayer(), tool, getAttackedCreature());
-			}
-		} else {
-			result = Weapon::useFist(this->getPlayer(), getAttackedCreature());
+
+			else
+				result = g_itemEvents->useAsWeapon(this->getPlayer(), tool, getAttackedCreature());
+		} 
+		else 
+		{
+			result = ItemEvents::useFist(this->getPlayer(), getAttackedCreature());
 		}
 
 		setDualWieldMultiplier(1.0f);
@@ -5748,6 +5763,26 @@ size_t Player::getMaxDepotItems() const
 	}
 
 	return g_config.GetNumber(isPremium() ? ConfigManager::DEPOT_PREMIUM_LIMIT : ConfigManager::DEPOT_FREE_LIMIT);
+}
+
+void Player::setSlotCombatHookMask(slots_t slot, uint16_t mask) noexcept
+{
+	combatHookMasks[slot] = mask;
+	combatHookMask |= mask;
+}
+
+void Player::clearSlotCombatHookMask(slots_t slot) noexcept
+{
+	if (combatHookMasks[slot] == 0)
+		return;
+
+	combatHookMasks[slot] = 0;
+
+	uint16_t recomputed = 0;
+	for (const auto slotMask : combatHookMasks)
+		recomputed |= slotMask;
+
+	combatHookMask = recomputed;
 }
 
 void Player::cacheModifier(const BlackTek::DamageModifier& modifier) noexcept

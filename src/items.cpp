@@ -5,8 +5,7 @@
 
 #include "items.h"
 #include "spells.h"
-#include "movement.h"
-#include "weapons.h"
+#include "itemevents.h"
 
 #include <toml++/toml.hpp>
 #include <optional>
@@ -17,8 +16,7 @@
 #include "itemloader.h"
 #include "console.h"
 
-extern MoveEvents* g_moveEvents;
-extern Weapons* g_weapons;
+extern ItemEvents* g_itemEvents;
 extern ConfigManager g_config;
 
 gtl::flat_hash_map<uint32_t, SkillRegistry> item_skills;
@@ -267,8 +265,7 @@ bool Items::reload()
 		return false;
 	}
 
-	g_moveEvents->reload();
-	g_weapons->reload();
+	g_itemEvents->reload();
 	return true;
 }
 

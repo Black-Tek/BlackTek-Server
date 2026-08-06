@@ -13,11 +13,11 @@
 #include "combat.h"
 #include "game.h"
 #include "monster.h"
-#include "movement.h"
+#include "itemevents.h"
 #include "configmanager.h"
 
 extern Game g_game;
-extern MoveEvents* g_moveEvents;
+extern ItemEvents* g_itemEvents;
 extern ConfigManager g_config;
 
 using BlackTek::GameModel;
@@ -1299,7 +1299,6 @@ GameModel Tile::getGameModelAt(size_t index)
 		--index;
 	}
 
-	const auto& items = getItemList();
 	if (items) {
 		const uint32_t topItemSize = items->getTopItemCount();
 		if (index < topItemSize) {
@@ -1320,6 +1319,40 @@ GameModel Tile::getGameModelAt(size_t index)
 		return { nullptr, items->at(index) };
 	}
 	return {};
+}
+
+std::optional<uint16_t> Tile::getItemIdAt(size_t index) const noexcept
+{
+	if (ground)
+	{
+		if (index == 0)
+			return ground->getID();
+
+		--index;
+	}
+
+	if (items)
+	{
+		const uint32_t topItemSize = items->getTopItemCount();
+
+		if (index < topItemSize)
+			return items->at(items->getDownItemCount() + index)->getID();
+
+		index -= topItemSize;
+	}
+
+	if (creatures)
+	{
+		if (index < creatures->size())
+			return std::nullopt;
+
+		index -= creatures->size();
+	}
+
+	if (items and index < items->getDownItemCount())
+		return items->at(index)->getID();
+
+	return std::nullopt;
 }
 
 void Tile::notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, NotifyLink link /*= LINK_OWNER*/)
@@ -1364,7 +1397,7 @@ void Tile::notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& ol
 
 			if (TilePtr tile = item->getTile())
 			{
-				g_moveEvents->onItemMove(item, tile, true);
+				g_itemEvents->onItemMove(item, tile, true);
 			}
 		}
 	}
@@ -1397,7 +1430,7 @@ void Tile::notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& 
 	//calling movement scripts
 	if (item)
 	{
-		g_moveEvents->onItemMove(item, getTile(), false);
+		g_itemEvents->onItemMove(item, getTile(), false);
 	}
 }
 
@@ -1425,7 +1458,7 @@ void Tile::notifyCreatureAdded(const CreaturePtr& creature, const TilePtr&, std:
 		}
 	}
 
-	g_moveEvents->onCreatureMove(creature, getTile(), MOVE_EVENT_STEP_IN);
+	g_itemEvents->onCreatureMove(creature, getTile(), BlackTek::ItemEvents::HookType::OnStepOn);
 }
 
 void Tile::notifyCreatureRemoved(const CreaturePtr& creature, const TilePtr& newTile)
@@ -1445,7 +1478,7 @@ void Tile::notifyCreatureRemoved(const CreaturePtr& creature, const TilePtr&, st
 		onUpdateTile(spectators);
 	}
 
-	g_moveEvents->onCreatureMove(creature, getTile(), MOVE_EVENT_STEP_OUT);
+	g_itemEvents->onCreatureMove(creature, getTile(), BlackTek::ItemEvents::HookType::OnStepOff);
 }
 
 void Tile::addItemSilently(const ItemPtr& item)

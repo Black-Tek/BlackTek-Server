@@ -271,6 +271,7 @@ class Tile : public SharedObject
 		int32_t getCreatureStackIndex(const CreatureConstPtr& creature) const;
 		uint32_t getItemTypeCount(uint16_t itemId, int32_t subType = -1) const;
 		BlackTek::GameModel getGameModelAt(size_t index);
+		[[nodiscard]] std::optional<uint16_t> getItemIdAt(size_t index) const noexcept;
 
 		void notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, NotifyLink link = LINK_OWNER);
 		void notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, std::span<const CreaturePtr> spectators, NotifyLink link = LINK_OWNER);

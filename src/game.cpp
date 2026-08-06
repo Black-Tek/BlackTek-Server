@@ -5,7 +5,6 @@
 
 #include "pugicast.h"
 
-#include "actions.h"
 #include "augments.h"
 #include "storewindow.h"
 #include "configmanager.h"
@@ -19,20 +18,19 @@
 #include "globalevent.h"
 #include "iologindata.h"
 #include "iomarket.h"
+#include "itemevents.h"
 #include "items.h"
 #include "monster.h"
-#include "movement.h"
 #include "scheduler.h"
 #include "server.h"
 #include "spells.h"
 #include "talkaction.h"
-#include "weapons.h"
 #include "script.h"
 
 #include <fmt/format.h>
 
 extern ConfigManager g_config;
-extern Actions* g_actions;
+extern ItemEvents* g_itemEvents;
 extern Chat* g_chat;
 extern TalkActions* g_talkActions;
 extern Spells* g_spells;
@@ -41,8 +39,6 @@ extern GlobalEvents* g_globalEvents;
 extern CreatureEvents* g_creatureEvents;
 extern Events* g_events;
 extern Monsters g_monsters;
-extern MoveEvents* g_moveEvents;
-extern Weapons* g_weapons;
 extern Scripts* g_scripts;
 
 using BlackTek::GameModel;
@@ -1485,7 +1481,7 @@ ReturnValue Game::internalMoveItem(BlackTek::ItemLocation fromLocation,
 		ret = toLocation.player->canAddItem(index, item, count, flags, actor);
 		if (ret == RETURNVALUE_NOERROR)
 		{
-			ret = g_moveEvents->onPlayerEquip(toLocation.player, item, static_cast<slots_t>(index), true);
+			ret = g_itemEvents->fireEquip(toLocation.player, item, static_cast<slots_t>(index), true);
 		}
 	}
 
@@ -1518,7 +1514,7 @@ ReturnValue Game::internalMoveItem(BlackTek::ItemLocation fromLocation,
 			ret = fromLocation.player->canAddItem(fromItemIndex, toItem, toItem->getItemCount(), 0);
 			if (ret == RETURNVALUE_NOERROR)
 			{
-				ret = g_moveEvents->onPlayerEquip(fromLocation.player, toItem, static_cast<slots_t>(fromItemIndex), true);
+				ret = g_itemEvents->fireEquip(fromLocation.player, toItem, static_cast<slots_t>(fromItemIndex), true);
 			}
 		}
 
@@ -1670,7 +1666,7 @@ ReturnValue Game::internalMoveItem(BlackTek::ItemLocation fromLocation,
 					ret = toLocation.player->canAddItem(index, item, count, flags);
 					if (ret == RETURNVALUE_NOERROR)
 					{
-						ret = g_moveEvents->onPlayerEquip(toLocation.player, item, static_cast<slots_t>(index), true);
+						ret = g_itemEvents->fireEquip(toLocation.player, item, static_cast<slots_t>(index), true);
 					}
 				}
 
@@ -2051,7 +2047,7 @@ ReturnValue Game::internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr ite
 		ret = toLocation.player->canAddItem(index, item, item->getItemCount(), flags);
 		if (ret == RETURNVALUE_NOERROR)
 		{
-			ret = g_moveEvents->onPlayerEquip(toLocation.player, item, static_cast<slots_t>(index), true);
+			ret = g_itemEvents->fireEquip(toLocation.player, item, static_cast<slots_t>(index), true);
 		}
 	}
 
@@ -3371,9 +3367,9 @@ void Game::playerUseItemEx(const uint32_t playerId, const Position& fromPos, con
 	}
 
 	Position walkToPos = fromPos;
-	ReturnValue ret = g_actions->canUse(player, fromPos);
+	ReturnValue ret = g_itemEvents->canUse(player, fromPos);
 	if (ret == RETURNVALUE_NOERROR) {
-		ret = g_actions->canUse(player, toPos, item);
+		ret = g_itemEvents->canUse(player, toPos, item);
 		if (ret == RETURNVALUE_TOOFARAWAY) {
 			walkToPos = toPos;
 		}
@@ -3436,7 +3432,7 @@ void Game::playerUseItemEx(const uint32_t playerId, const Position& fromPos, con
 	if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(player->getPosition()))
 		spawnOverlay->Trigger(player, Zones::SpawnTrigger::Use);
 
-	g_actions->useItemEx(player, fromPos, toPos, toStackPos, item, isHotkey);
+	g_itemEvents->useItemEx(player, fromPos, toPos, toStackPos, item, isHotkey);
 }
 
 void Game::playerUseItem(const uint32_t playerId, const Position& pos, const uint8_t stackPos,
@@ -3465,7 +3461,7 @@ void Game::playerUseItem(const uint32_t playerId, const Position& pos, const uin
 		return;
 	}
 
-	if (ReturnValue ret = g_actions->canUse(player, pos); ret != RETURNVALUE_NOERROR) {
+	if (ReturnValue ret = g_itemEvents->canUse(player, pos); ret != RETURNVALUE_NOERROR) {
 		if (ret == RETURNVALUE_TOOFARAWAY) {
 			if (std::vector<Direction> listDir; player->getPathTo(pos, listDir, 0, 1, true, true)) {
 				playerAutoWalk(player->getID(), listDir);
@@ -3494,7 +3490,7 @@ void Game::playerUseItem(const uint32_t playerId, const Position& pos, const uin
 	if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(player->getPosition()))
 		spawnOverlay->Trigger(player, Zones::SpawnTrigger::Use);
 
-	g_actions->useItem(player, pos, index, item, isHotkey);
+	g_itemEvents->useItem(player, pos, index, item, isHotkey);
 }
 
 void Game::playerUseWithCreature(const uint32_t playerId, const Position& fromPos, const uint8_t fromStackPos, const uint32_t creatureId, const uint16_t spriteId)
@@ -3535,9 +3531,9 @@ void Game::playerUseWithCreature(const uint32_t playerId, const Position& fromPo
 
 	const Position toPos = creature->getPosition();
 	Position walkToPos = fromPos;
-	ReturnValue ret = g_actions->canUse(player, fromPos);
+	ReturnValue ret = g_itemEvents->canUse(player, fromPos);
 	if (ret == RETURNVALUE_NOERROR) {
-		ret = g_actions->canUse(player, toPos, item);
+		ret = g_itemEvents->canUse(player, toPos, item);
 		if (ret == RETURNVALUE_TOOFARAWAY) {
 			walkToPos = toPos;
 		}
@@ -3587,7 +3583,7 @@ void Game::playerUseWithCreature(const uint32_t playerId, const Position& fromPo
 	player->resetIdleTime();
 	player->setNextActionTask(nullptr);
 
-	g_actions->useItemEx(player, fromPos, creature->getPosition(), creature->getTile()->getCreatureStackIndex(creature), item, isHotkey, creature);
+	g_itemEvents->useItemEx(player, fromPos, creature->getPosition(), creature->getTile()->getCreatureStackIndex(creature), item, isHotkey, creature);
 }
 
 void Game::playerCloseContainer(const uint32_t playerId, const uint8_t cid)
@@ -6223,7 +6219,7 @@ void Game::playerParryCounter(const uint32_t playerId, const uint32_t attackerId
 	const int32_t shieldDefense = std::max<int32_t>(0, shield->getDefense());
 	const float attackFactor    = player->getAttackFactor();
 	const int32_t maxDmg = static_cast<int32_t>(
-		Weapons::getMaxWeaponDamage(player->getLevel(), shieldSkill, shieldDefense, attackFactor)
+		ItemEvents::getMaxWeaponDamage(player->getLevel(), shieldSkill, shieldDefense, attackFactor)
 		* voc->dualWield.parry_counter_multiplier
 	);
 
@@ -7898,9 +7894,6 @@ bool Game::reload(const ReloadTypes_t reloadType)
 {
     switch (reloadType)
     {
-        case RELOAD_TYPE_ACTIONS:
-            return g_actions->reload();
-
         case RELOAD_TYPE_AUGMENTS:
             BlackTek::Augments::reload();
             return true;
@@ -7923,9 +7916,6 @@ bool Game::reload(const ReloadTypes_t reloadType)
         case RELOAD_TYPE_MOUNTS:
             return mounts.reload();
 
-        case RELOAD_TYPE_MOVEMENTS:
-            return g_moveEvents->reload();
-
         case RELOAD_TYPE_NPCS:
             Npcs::reload();
             return true;
@@ -7943,8 +7933,6 @@ bool Game::reload(const ReloadTypes_t reloadType)
         case RELOAD_TYPE_ALL:
         {
             g_config.Reload();
-            g_actions->reload();
-            g_moveEvents->reload();
             Npcs::reload();
             raids.reload() and raids.startup();
             Item::items.reload();
@@ -7957,6 +7945,8 @@ bool Game::reload(const ReloadTypes_t reloadType)
             [[fallthrough]];
         }
 
+        case RELOAD_TYPE_ACTIONS:
+        case RELOAD_TYPE_MOVEMENTS:
         case RELOAD_TYPE_SCRIPTS:
         case RELOAD_TYPE_WEAPONS:
         case RELOAD_TYPE_SPELLS:
@@ -7964,13 +7954,10 @@ bool Game::reload(const ReloadTypes_t reloadType)
         case RELOAD_TYPE_CREATURESCRIPTS:
         case RELOAD_TYPE_GLOBALEVENTS:
         {
-            g_actions->clear(true);
+            g_itemEvents->clear(true);
             g_creatureEvents->clear(true);
-            g_moveEvents->clear(true);
             g_talkActions->clear(true);
             g_globalEvents->clear(true);
-            g_weapons->clear(true);
-            g_weapons->loadDefaults();
             g_spells->clear(true);
             g_storeManager.clear();
             g_scripts->loadScripts("scripts", false, true);

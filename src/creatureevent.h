@@ -32,8 +32,6 @@ class CreatureEvent final : public Event
 	public:
 		explicit CreatureEvent(LuaScriptInterface* interface);
 
-		bool configureEvent(const pugi::xml_node& node) override;
-
 		CreatureEventType_t getEventType() const {
 			return type;
 		}
@@ -102,9 +100,6 @@ class CreatureEvents final : public BaseEvents
 
 	private:
 		LuaScriptInterface& getScriptInterface() override;
-		std::string_view getScriptBaseName() const override { return "creaturescripts"; }
-		Event_ptr getEvent(const std::string& nodeName) override;
-		bool registerEvent(Event_ptr event, const pugi::xml_node& node) override;
 
 		//creature events
 		using CreatureEventMap = std::map<std::string, CreatureEvent>;

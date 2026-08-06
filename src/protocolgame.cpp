@@ -16,7 +16,6 @@
 
 #include "configmanager.h"
 #include "console.h"
-#include "actions.h"
 #include "game.h"
 #include "iologindata.h"
 #include "iomarket.h"
@@ -27,7 +26,6 @@
 #include <gtl/btree.hpp>
 
 extern ConfigManager g_config;
-extern Actions actions;
 extern CreatureEvents* g_creatureEvents;
 extern Chat* g_chat;
 

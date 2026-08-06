@@ -1,5 +1,5 @@
-local normalDoor = Action()
-function normalDoor.onUse(player, item, fromPosition, target, toPosition, isHotkey)
+local normalDoor = ItemEvent()
+normalDoor.onUse = function(player, item, fromPosition, target, toPosition, isHotkey)
     local doorId = item:getId()
     local isDoorItem, doorState, pairedId = isDoor(doorId)
 
@@ -34,23 +34,23 @@ end
 normalDoor:register()
 
 
-local doorStepIn = MoveEvent()
-function doorStepIn.onStepIn(creature, item, position, fromPosition)
+local doorStepOn = ItemEvent()
+doorStepOn.onStepOn = function(creature, item, position, fromPosition)
     storeCreatureEntryPosition(creature, fromPosition)
     return true
 end
 for closedId, openId in pairs(normalDoors) do
-    doorStepIn:id(openId)
+    doorStepOn:id(openId)
 end
-doorStepIn:register()
+doorStepOn:register()
 
 
-local doorStepOut = MoveEvent()
-function doorStepOut.onStepOut(creature, item, position, fromPosition)
+local doorStepOff = ItemEvent()
+doorStepOff.onStepOff = function(creature, item, position, fromPosition)
     clearCreatureEntryPosition(creature)
     return true
 end
 for closedId, openId in pairs(normalDoors) do
-    doorStepOut:id(openId)
+    doorStepOff:id(openId)
 end
-doorStepOut:register()
+doorStepOff:register()

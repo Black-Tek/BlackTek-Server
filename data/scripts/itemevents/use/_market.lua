@@ -1,0 +1,5 @@
+local marketAccess = ItemEvent()
+marketAccess:type("use")
+marketAccess:nativeFunction("market")
+marketAccess:id(14405)
+marketAccess:register()

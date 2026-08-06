@@ -25,10 +25,9 @@
 #include "scheduler.h"
 #include "databasetasks.h"
 #include "events.h"
-#include "movement.h"
 #include "globalevent.h"
 #include "script.h"
-#include "weapons.h"
+#include "itemevents.h"
 #include "luavariant.h"
 #include "augments.h"
 #include "damagemodifier.h"
@@ -47,13 +46,10 @@ extern ConfigManager g_config;
 extern Vocations g_vocations;
 extern Spells* g_spells;
 extern Events* g_events;
-extern Actions* g_actions;
 extern TalkActions* g_talkActions;
 extern CreatureEvents* g_creatureEvents;
-extern MoveEvents* g_moveEvents;
 extern GlobalEvents* g_globalEvents;
 extern Scripts* g_scripts;
-extern Weapons* g_weapons;
 
 ScriptEnvironment::DBResultMap ScriptEnvironment::tempResults;
 uint32_t ScriptEnvironment::lastResultId = 0;
@@ -3698,17 +3694,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Spell", "blockWalls", luaSpellBlockWalls);
 	registerMethod("Spell", "checkFloor", luaSpellCheckFloor);
 
-	// Action
-	registerClass("Action", "", luaCreateAction);
-	registerMethod("Action", "onUse", luaActionOnUse);
-	registerMethod("Action", "register", luaActionRegister);
-	registerMethod("Action", "id", luaActionItemId);
-	registerMethod("Action", "aid", luaActionActionId);
-	registerMethod("Action", "uid", luaActionUniqueId);
-	registerMethod("Action", "allowFarUse", luaActionAllowFarUse);
-	registerMethod("Action", "blockWalls", luaActionBlockWalls);
-	registerMethod("Action", "checkFloor", luaActionCheckFloor);
-
 	// TalkAction
 	registerClass("TalkAction", "", luaCreateTalkaction);
 	registerMethod("TalkAction", "onSay", luaTalkactionOnSay);
@@ -3734,27 +3719,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("CreatureEvent", "onManaChange", luaCreatureEventOnCallback);
 	registerMethod("CreatureEvent", "onExtendedOpcode", luaCreatureEventOnCallback);
 
-	// MoveEvent
-	registerClass("MoveEvent", "", luaCreateMoveEvent);
-	registerMethod("MoveEvent", "type", luaMoveEventType);
-	registerMethod("MoveEvent", "register", luaMoveEventRegister);
-	registerMethod("MoveEvent", "level", luaMoveEventLevel);
-	registerMethod("MoveEvent", "magicLevel", luaMoveEventMagLevel);
-	registerMethod("MoveEvent", "slot", luaMoveEventSlot);
-	registerMethod("MoveEvent", "id", luaMoveEventItemId);
-	registerMethod("MoveEvent", "aid", luaMoveEventActionId);
-	registerMethod("MoveEvent", "uid", luaMoveEventUniqueId);
-	registerMethod("MoveEvent", "position", luaMoveEventPosition);
-	registerMethod("MoveEvent", "premium", luaMoveEventPremium);
-	registerMethod("MoveEvent", "vocation", luaMoveEventVocation);
-	registerMethod("MoveEvent", "tileItem", luaMoveEventTileItem);
-	registerMethod("MoveEvent", "onEquip", luaMoveEventOnCallback);
-	registerMethod("MoveEvent", "onDeEquip", luaMoveEventOnCallback);
-	registerMethod("MoveEvent", "onStepIn", luaMoveEventOnCallback);
-	registerMethod("MoveEvent", "onStepOut", luaMoveEventOnCallback);
-	registerMethod("MoveEvent", "onAddItem", luaMoveEventOnCallback);
-	registerMethod("MoveEvent", "onRemoveItem", luaMoveEventOnCallback);
-
 	// GlobalEvent
 	registerClass("GlobalEvent", "", luaCreateGlobalEvent);
 	registerMethod("GlobalEvent", "type", luaGlobalEventType);
@@ -3768,45 +3732,85 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("GlobalEvent", "onRecord", luaGlobalEventOnCallback);
 	registerMethod("GlobalEvent", "onSave", luaGlobalEventOnCallback);
 
-	// Weapon
-	registerClass("Weapon", "", luaCreateWeapon);
-	registerMethod("Weapon", "action", luaWeaponAction);
-	registerMethod("Weapon", "register", luaWeaponRegister);
-	registerMethod("Weapon", "id", luaWeaponId);
-	registerMethod("Weapon", "level", luaWeaponLevel);
-	registerMethod("Weapon", "magicLevel", luaWeaponMagicLevel);
-	registerMethod("Weapon", "mana", luaWeaponMana);
-	registerMethod("Weapon", "manaPercent", luaWeaponManaPercent);
-	registerMethod("Weapon", "health", luaWeaponHealth);
-	registerMethod("Weapon", "healthPercent", luaWeaponHealthPercent);
-	registerMethod("Weapon", "soul", luaWeaponSoul);
-	registerMethod("Weapon", "breakChance", luaWeaponBreakChance);
-	registerMethod("Weapon", "premium", luaWeaponPremium);
-	registerMethod("Weapon", "wieldUnproperly", luaWeaponUnproperly);
-	registerMethod("Weapon", "vocation", luaWeaponVocation);
-	registerMethod("Weapon", "onUseWeapon", luaWeaponOnUseWeapon);
-	registerMethod("Weapon", "element", luaWeaponElement);
-	registerMethod("Weapon", "attack", luaWeaponAttack);
-	registerMethod("Weapon", "defense", luaWeaponDefense);
-	registerMethod("Weapon", "range", luaWeaponRange);
-	registerMethod("Weapon", "charges", luaWeaponCharges);
-	registerMethod("Weapon", "duration", luaWeaponDuration);
-	registerMethod("Weapon", "decayTo", luaWeaponDecayTo);
-	registerMethod("Weapon", "transformEquipTo", luaWeaponTransformEquipTo);
-	registerMethod("Weapon", "transformDeEquipTo", luaWeaponTransformDeEquipTo);
-	registerMethod("Weapon", "slotType", luaWeaponSlotType);
-	registerMethod("Weapon", "hitChance", luaWeaponHitChance);
-	registerMethod("Weapon", "extraElement", luaWeaponExtraElement);
+	registerTable("RegisterType");
+	registerVariable("RegisterType", "ItemId", static_cast<lua_Number>(std::to_underlying(ItemEvent::Register::Type::ItemId)));
+	registerVariable("RegisterType", "ActionId", static_cast<lua_Number>(std::to_underlying(ItemEvent::Register::Type::ActionId)));
+	registerVariable("RegisterType", "UniqueId", static_cast<lua_Number>(std::to_underlying(ItemEvent::Register::Type::UniqueId)));
+	registerVariable("RegisterType", "Position", static_cast<lua_Number>(std::to_underlying(ItemEvent::Register::Type::Position)));
+	registerVariable("RegisterType", "Sword", static_cast<lua_Number>(std::to_underlying(ItemEvent::Register::Type::Sword)));
+	registerVariable("RegisterType", "Club", static_cast<lua_Number>(std::to_underlying(ItemEvent::Register::Type::Club)));
+	registerVariable("RegisterType", "Axe", static_cast<lua_Number>(std::to_underlying(ItemEvent::Register::Type::Axe)));
+	registerVariable("RegisterType", "Shield", static_cast<lua_Number>(std::to_underlying(ItemEvent::Register::Type::Shield)));
+	registerVariable("RegisterType", "Distance", static_cast<lua_Number>(std::to_underlying(ItemEvent::Register::Type::Distance)));
+	registerVariable("RegisterType", "Wand", static_cast<lua_Number>(std::to_underlying(ItemEvent::Register::Type::Wand)));
+	registerVariable("RegisterType", "Ammo", static_cast<lua_Number>(std::to_underlying(ItemEvent::Register::Type::Ammo)));
+	registerVariable("RegisterType", "Any", static_cast<lua_Number>(std::to_underlying(ItemEvent::Register::Type::Any)));
 
-	// exclusively for distance weapons
-	registerMethod("Weapon", "ammoType", luaWeaponAmmoType);
-	registerMethod("Weapon", "maxHitChance", luaWeaponMaxHitChance);
+	// ItemEvent
+	registerClass("ItemEvent", "", luaCreateItemEvent);
+	registerMethod("ItemEvent", "type", luaItemEventType);
+	registerMethod("ItemEvent", "register", luaItemEventRegister);
+	registerMethod("ItemEvent", "nativeFunction", luaItemEventNativeFunction);
 
-	// exclusively for wands
-	registerMethod("Weapon", "damage", luaWeaponWandDamage);
+	// keying
+	registerMethod("ItemEvent", "id", luaItemEventItemId);
+	registerMethod("ItemEvent", "aid", luaItemEventActionId);
+	registerMethod("ItemEvent", "uid", luaItemEventUniqueId);
+	registerMethod("ItemEvent", "position", luaItemEventPosition);
 
-	// exclusively for wands & distance weapons
-	registerMethod("Weapon", "shootType", luaWeaponShootType);
+	// OnUse
+	registerMethod("ItemEvent", "allowFarUse", luaItemEventAllowFarUse);
+	registerMethod("ItemEvent", "blockWalls", luaItemEventBlockWalls);
+	registerMethod("ItemEvent", "checkFloor", luaItemEventCheckFloor);
+
+	// OnEquip/OnDeEquip
+	registerMethod("ItemEvent", "level", luaItemEventLevel);
+	registerMethod("ItemEvent", "magicLevel", luaItemEventMagLevel);
+	registerMethod("ItemEvent", "slot", luaItemEventSlot);
+	registerMethod("ItemEvent", "premium", luaItemEventPremium);
+	registerMethod("ItemEvent", "vocation", luaItemEventVocation);
+	registerMethod("ItemEvent", "tileItem", luaItemEventTileItem);
+
+	// OnUseAsWeapon
+	registerMethod("ItemEvent", "attack", luaItemEventAttack);
+	registerMethod("ItemEvent", "defense", luaItemEventDefense);
+	registerMethod("ItemEvent", "range", luaItemEventRange);
+	registerMethod("ItemEvent", "element", luaItemEventElement);
+	registerMethod("ItemEvent", "mana", luaItemEventMana);
+	registerMethod("ItemEvent", "manaPercent", luaItemEventManaPercent);
+	registerMethod("ItemEvent", "health", luaItemEventHealth);
+	registerMethod("ItemEvent", "healthPercent", luaItemEventHealthPercent);
+	registerMethod("ItemEvent", "soul", luaItemEventSoul);
+	registerMethod("ItemEvent", "breakChance", luaItemEventBreakChance);
+	registerMethod("ItemEvent", "hitChance", luaItemEventHitChance);
+	registerMethod("ItemEvent", "maxHitChance", luaItemEventMaxHitChance);
+	registerMethod("ItemEvent", "wieldUnproperly", luaItemEventWieldUnproperly);
+	registerMethod("ItemEvent", "charges", luaItemEventCharges);
+	registerMethod("ItemEvent", "duration", luaItemEventDuration);
+	registerMethod("ItemEvent", "decayTo", luaItemEventDecayTo);
+	registerMethod("ItemEvent", "transformEquipTo", luaItemEventTransformEquipTo);
+	registerMethod("ItemEvent", "transformDeEquipTo", luaItemEventTransformDeEquipTo);
+	registerMethod("ItemEvent", "ammoType", luaItemEventAmmoType);
+	registerMethod("ItemEvent", "shootType", luaItemEventShootType);
+	registerMethod("ItemEvent", "damage", luaItemEventWandDamage);
+	registerMethod("ItemEvent", "action", luaItemEventAction);
+	registerMethod("ItemEvent", "slotType", luaItemEventSlotType);
+	registerMethod("ItemEvent", "extraElement", luaItemEventExtraElement);
+
+	registerMethodClosure("ItemEvent", "onUse", luaItemEventOnCallback, static_cast<int>(BlackTek::ItemEvents::HookType::OnUse));
+	registerMethodClosure("ItemEvent", "onUseAsWeapon", luaItemEventOnCallback, static_cast<int>(BlackTek::ItemEvents::HookType::OnUseAsWeapon));
+	registerMethodClosure("ItemEvent", "onEquip", luaItemEventOnCallback, static_cast<int>(BlackTek::ItemEvents::HookType::OnEquip));
+	registerMethodClosure("ItemEvent", "onDeEquip", luaItemEventOnCallback, static_cast<int>(BlackTek::ItemEvents::HookType::OnDeEquip));
+	registerMethodClosure("ItemEvent", "onStepOn", luaItemEventOnCallback, static_cast<int>(BlackTek::ItemEvents::HookType::OnStepOn));
+	registerMethodClosure("ItemEvent", "onStepOff", luaItemEventOnCallback, static_cast<int>(BlackTek::ItemEvents::HookType::OnStepOff));
+	registerMethodClosure("ItemEvent", "onAddItem", luaItemEventOnCallback, static_cast<int>(BlackTek::ItemEvents::HookType::OnAddItem));
+	registerMethodClosure("ItemEvent", "onRemoveItem", luaItemEventOnCallback, static_cast<int>(BlackTek::ItemEvents::HookType::OnRemoveItem));
+	registerMethodClosure("ItemEvent", "onAttack", luaItemEventOnCallback, static_cast<int>(BlackTek::ItemEvents::HookType::OnAttack));
+	registerMethodClosure("ItemEvent", "onDefend", luaItemEventOnCallback, static_cast<int>(BlackTek::ItemEvents::HookType::OnDefend));
+	registerMethodClosure("ItemEvent", "onAugment", luaItemEventOnCallback, static_cast<int>(BlackTek::ItemEvents::HookType::OnAugment));
+	registerMethodClosure("ItemEvent", "onRemoveAugment", luaItemEventOnCallback, static_cast<int>(BlackTek::ItemEvents::HookType::OnRemoveAugment));
+	registerMethodClosure("ItemEvent", "onAttackMod", luaItemEventOnCallback, static_cast<int>(BlackTek::ItemEvents::HookType::OnAttackMod));
+	registerMethodClosure("ItemEvent", "onDefenseMod", luaItemEventOnCallback, static_cast<int>(BlackTek::ItemEvents::HookType::OnDefenseMod));
 
 	// XML
 	registerClass("XMLDocument", "", luaCreateXmlDocument);
@@ -22631,161 +22635,6 @@ int LuaScriptInterface::luaSpellCheckFloor(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaCreateAction(lua_State* L)
-{
-	// Action()
-	if (getScriptEnv()->getScriptInterface() != &g_scripts->getScriptInterface()) {
-		reportErrorFunc(L, "Actions can only be registered in the Scripts interface.");
-		lua_pushnil(L);
-		return 1;
-	}
-
-	Action* action = new Action(getScriptEnv()->getScriptInterface());
-	if (action) {
-		action->fromLua = true;
-		pushUserdata<Action>(L, action);
-		setMetatable(L, -1, "Action");
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaActionOnUse(lua_State* L)
-{
-	// action:onUse(callback)
-	Action* action = getUserdata<Action>(L, 1);
-	if (action) {
-		if (!action->loadCallback()) {
-			pushBoolean(L, false);
-			return 1;
-		}
-		action->scripted = true;
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaActionRegister(lua_State* L)
-{
-	// action:register()
-	Action* action = getUserdata<Action>(L, 1);
-	if (action) {
-		if (!action->isScripted()) {
-			pushBoolean(L, false);
-			return 1;
-		}
-		pushBoolean(L, g_actions->registerLuaEvent(action));
-		action->clearActionIdRange();
-		action->clearItemIdRange();
-		action->clearUniqueIdRange();
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaActionItemId(lua_State* L)
-{
-	// action:id(ids)
-	Action* action = getUserdata<Action>(L, 1);
-	if (action) {
-		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
-		if (parameters > 1) {
-			for (int i = 0; i < parameters; ++i) {
-				action->addItemId(getNumber<uint32_t>(L, 2 + i));
-			}
-		} else {
-			action->addItemId(getNumber<uint32_t>(L, 2));
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaActionActionId(lua_State* L)
-{
-	// action:aid(aids)
-	Action* action = getUserdata<Action>(L, 1);
-	if (action) {
-		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
-		if (parameters > 1) {
-			for (int i = 0; i < parameters; ++i) {
-				action->addActionId(getNumber<uint32_t>(L, 2 + i));
-			}
-		} else {
-			action->addActionId(getNumber<uint32_t>(L, 2));
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaActionUniqueId(lua_State* L)
-{
-	// action:uid(uids)
-	Action* action = getUserdata<Action>(L, 1);
-	if (action) {
-		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
-		if (parameters > 1) {
-			for (int i = 0; i < parameters; ++i) {
-				action->addUniqueId(getNumber<uint32_t>(L, 2 + i));
-			}
-		} else {
-			action->addUniqueId(getNumber<uint32_t>(L, 2));
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaActionAllowFarUse(lua_State* L)
-{
-	// action:allowFarUse(bool)
-	Action* action = getUserdata<Action>(L, 1);
-	if (action) {
-		action->setAllowFarUse(getBoolean(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaActionBlockWalls(lua_State* L)
-{
-	// action:blockWalls(bool)
-	Action* action = getUserdata<Action>(L, 1);
-	if (action) {
-		action->setCheckLineOfSight(getBoolean(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaActionCheckFloor(lua_State* L)
-{
-	// action:checkFloor(bool)
-	Action* action = getUserdata<Action>(L, 1);
-	if (action) {
-		action->setCheckFloor(getBoolean(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
 int LuaScriptInterface::luaCreateTalkaction(lua_State* L)
 {
 	// TalkAction(words)
@@ -22976,322 +22825,6 @@ int LuaScriptInterface::luaCreatureEventOnCallback(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaCreateMoveEvent(lua_State* L)
-{
-	// MoveEvent()
-	if (getScriptEnv()->getScriptInterface() != &g_scripts->getScriptInterface()) {
-		reportErrorFunc(L, "MoveEvents can only be registered in the Scripts interface.");
-		lua_pushnil(L);
-		return 1;
-	}
-
-	MoveEvent* moveevent = new MoveEvent(getScriptEnv()->getScriptInterface());
-	if (moveevent) {
-		moveevent->fromLua = true;
-		pushUserdata<MoveEvent>(L, moveevent);
-		setMetatable(L, -1, "MoveEvent");
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEventType(lua_State* L)
-{
-	// moveevent:type(callback)
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (moveevent) {
-		std::string typeName = getString(L, 2);
-		std::string tmpStr = asLowerCaseString(typeName);
-		if (tmpStr == "stepin") {
-			moveevent->setEventType(MOVE_EVENT_STEP_IN);
-			moveevent->stepFunction = moveevent->StepInField;
-		} else if (tmpStr == "stepout") {
-			moveevent->setEventType(MOVE_EVENT_STEP_OUT);
-			moveevent->stepFunction = moveevent->StepOutField;
-		} else if (tmpStr == "equip") {
-			moveevent->setEventType(MOVE_EVENT_EQUIP);
-			moveevent->equipFunction = moveevent->EquipItem;
-		} else if (tmpStr == "deequip") {
-			moveevent->setEventType(MOVE_EVENT_DEEQUIP);
-			moveevent->equipFunction = moveevent->DeEquipItem;
-		} else if (tmpStr == "additem") {
-			moveevent->setEventType(MOVE_EVENT_ADD_ITEM);
-			moveevent->moveFunction = moveevent->AddItemField;
-		} else if (tmpStr == "removeitem") {
-			moveevent->setEventType(MOVE_EVENT_REMOVE_ITEM);
-			moveevent->moveFunction = moveevent->RemoveItemField;
-		} else {
-			std::cout << "Error: [MoveEvent::configureMoveEvent] No valid event name " << typeName << std::endl;
-			pushBoolean(L, false);
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEventRegister(lua_State* L)
-{
-	// moveevent:register()
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (moveevent) {
-		if ((moveevent->getEventType() == MOVE_EVENT_EQUIP || moveevent->getEventType() == MOVE_EVENT_DEEQUIP) && moveevent->getSlot() == SLOTP_WHEREEVER) {
-			uint32_t id = moveevent->getItemIdRange().at(0);
-			ItemType& it = Item::items.getItemType(id);
-			moveevent->setSlot(it.slotPosition);
-		}
-		if (!moveevent->isScripted()) {
-			pushBoolean(L, g_moveEvents->registerLuaFunction(moveevent));
-			return 1;
-		}
-		pushBoolean(L, g_moveEvents->registerLuaEvent(moveevent));
-		moveevent->clearItemIdRange();
-		moveevent->clearActionIdRange();
-		moveevent->clearUniqueIdRange();
-		moveevent->clearPosList();
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEventOnCallback(lua_State* L)
-{
-	// moveevent:onEquip / deEquip / etc. (callback)
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (moveevent) {
-		if (!moveevent->loadCallback()) {
-			pushBoolean(L, false);
-			return 1;
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEventSlot(lua_State* L)
-{
-	// moveevent:slot(slot)
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (!moveevent) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	if (moveevent->getEventType() == MOVE_EVENT_EQUIP || moveevent->getEventType() == MOVE_EVENT_DEEQUIP) {
-		std::string slotName = asLowerCaseString(getString(L, 2));
-		if (slotName == "head") {
-			moveevent->setSlot(SLOTP_HEAD);
-		} else if (slotName == "necklace") {
-			moveevent->setSlot(SLOTP_NECKLACE);
-		} else if (slotName == "backpack") {
-			moveevent->setSlot(SLOTP_BACKPACK);
-		} else if (slotName == "armor" || slotName == "body") {
-			moveevent->setSlot(SLOTP_ARMOR);
-		} else if (slotName == "right-hand") {
-			moveevent->setSlot(SLOTP_RIGHT);
-		} else if (slotName == "left-hand") {
-			moveevent->setSlot(SLOTP_LEFT);
-		} else if (slotName == "hand" || slotName == "shield") {
-			moveevent->setSlot(SLOTP_RIGHT | SLOTP_LEFT);
-		} else if (slotName == "legs") {
-			moveevent->setSlot(SLOTP_LEGS);
-		} else if (slotName == "feet") {
-			moveevent->setSlot(SLOTP_FEET);
-		} else if (slotName == "ring") {
-			moveevent->setSlot(SLOTP_RING);
-		} else if (slotName == "ammo") {
-			moveevent->setSlot(SLOTP_AMMO);
-		} else {
-			std::cout << "[Warning - MoveEvent::configureMoveEvent] Unknown slot type: " << slotName << std::endl;
-			pushBoolean(L, false);
-			return 1;
-		}
-	}
-
-	pushBoolean(L, true);
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEventLevel(lua_State* L)
-{
-	// moveevent:level(lvl)
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (moveevent) {
-		moveevent->setRequiredLevel(getNumber<uint32_t>(L, 2));
-		moveevent->setWieldInfo(WIELDINFO_LEVEL);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEventMagLevel(lua_State* L)
-{
-	// moveevent:magicLevel(lvl)
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (moveevent) {
-		moveevent->setRequiredMagLevel(getNumber<uint32_t>(L, 2));
-		moveevent->setWieldInfo(WIELDINFO_MAGLV);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEventPremium(lua_State* L)
-{
-	// moveevent:premium(bool)
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (moveevent) {
-		moveevent->setNeedPremium(getBoolean(L, 2));
-		moveevent->setWieldInfo(WIELDINFO_PREMIUM);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEventVocation(lua_State* L)
-{
-	// moveevent:vocation(vocName[, showInDescription = false, lastVoc = false])
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (moveevent) {
-		moveevent->addVocEquipMap(getString(L, 2));
-		moveevent->setWieldInfo(WIELDINFO_VOCREQ);
-		std::string tmp;
-		bool showInDescription = false;
-		bool lastVoc = false;
-		if (getBoolean(L, 3)) {
-			showInDescription = getBoolean(L, 3);
-		}
-		if (getBoolean(L, 4)) {
-			lastVoc = getBoolean(L, 4);
-		}
-		if (showInDescription) {
-			if (moveevent->getVocationString().empty()) {
-				tmp = asLowerCaseString(getString(L, 2));
-				tmp += "s";
-				moveevent->setVocationString(tmp);
-			} else {
-				tmp = moveevent->getVocationString();
-				if (lastVoc) {
-					tmp += " and ";
-				} else {
-					tmp += ", ";
-				}
-				tmp += asLowerCaseString(getString(L, 2));
-				tmp += "s";
-				moveevent->setVocationString(tmp);
-			}
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEventTileItem(lua_State* L)
-{
-	// moveevent:tileItem(bool)
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (moveevent) {
-		moveevent->setTileItem(getBoolean(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEventItemId(lua_State* L)
-{
-	// moveevent:id(ids)
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (moveevent) {
-		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
-		if (parameters > 1) {
-			for (int i = 0; i < parameters; ++i) {
-				moveevent->addItemId(getNumber<uint32_t>(L, 2 + i));
-			}
-		} else {
-			moveevent->addItemId(getNumber<uint32_t>(L, 2));
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEventActionId(lua_State* L)
-{
-	// moveevent:aid(ids)
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (moveevent) {
-		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
-		if (parameters > 1) {
-			for (int i = 0; i < parameters; ++i) {
-				moveevent->addActionId(getNumber<uint32_t>(L, 2 + i));
-			}
-		} else {
-			moveevent->addActionId(getNumber<uint32_t>(L, 2));
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEventUniqueId(lua_State* L)
-{
-	// moveevent:uid(ids)
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (moveevent) {
-		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
-		if (parameters > 1) {
-			for (int i = 0; i < parameters; ++i) {
-				moveevent->addUniqueId(getNumber<uint32_t>(L, 2 + i));
-			}
-		} else {
-			moveevent->addUniqueId(getNumber<uint32_t>(L, 2));
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEventPosition(lua_State* L)
-{
-	// moveevent:position(positions)
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (moveevent) {
-		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
-		if (parameters > 1) {
-			for (int i = 0; i < parameters; ++i) {
-				moveevent->addPosList(getPosition(L, 2 + i));
-			}
-		} else {
-			moveevent->addPosList(getPosition(L, 2));
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
 int LuaScriptInterface::luaCreateGlobalEvent(lua_State* L)
 {
 	// GlobalEvent(eventName)
@@ -23450,311 +22983,890 @@ int LuaScriptInterface::luaGlobalEventInterval(lua_State* L)
 	return 1;
 }
 
-// Weapon
-int LuaScriptInterface::luaCreateWeapon(lua_State* L)
+// ItemEvent
+namespace
 {
-	// Weapon(type)
-	if (getScriptEnv()->getScriptInterface() != &g_scripts->getScriptInterface()) {
-		reportErrorFunc(L, "Weapons can only be registered in the Scripts interface.");
-		lua_pushnil(L);
-		return 1;
-	}
-
-	WeaponType_t type = getNumber<WeaponType_t>(L, 2);
-	switch (type) {
-		case WEAPON_SWORD:
-		case WEAPON_AXE:
-		case WEAPON_CLUB: {
-			WeaponMelee* weapon = new WeaponMelee(getScriptEnv()->getScriptInterface());
-			if (weapon) {
-				pushUserdata<WeaponMelee>(L, weapon);
-				setMetatable(L, -1, "Weapon");
-				weapon->weaponType = type;
-				weapon->fromLua = true;
-			} else {
-				lua_pushnil(L);
-			}
-			break;
-		}
-		case WEAPON_DISTANCE:
-		case WEAPON_AMMO: {
-			WeaponDistance* weapon = new WeaponDistance(getScriptEnv()->getScriptInterface());
-			if (weapon) {
-				pushUserdata<WeaponDistance>(L, weapon);
-				setMetatable(L, -1, "Weapon");
-				weapon->weaponType = type;
-				weapon->fromLua = true;
-			} else {
-				lua_pushnil(L);
-			}
-			break;
-		}
-		case WEAPON_WAND: {
-			WeaponWand* weapon = new WeaponWand(getScriptEnv()->getScriptInterface());
-			if (weapon) {
-				pushUserdata<WeaponWand>(L, weapon);
-				setMetatable(L, -1, "Weapon");
-				weapon->weaponType = type;
-				weapon->fromLua = true;
-			} else {
-				lua_pushnil(L);
-			}
-			break;
-		}
-		default: {
-			lua_pushnil(L);
-			break;
-		}
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponAction(lua_State* L)
-{
-	// weapon:action(callback)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		std::string typeName = getString(L, 2);
-		std::string tmpStr = asLowerCaseString(typeName);
-		if (tmpStr == "removecount") {
-			weapon->action = WEAPONACTION_REMOVECOUNT;
-		} else if (tmpStr == "removecharge") {
-			weapon->action = WEAPONACTION_REMOVECHARGE;
-		} else if (tmpStr == "move") {
-			weapon->action = WEAPONACTION_MOVE;
-		} else {
-			std::cout << "Error: [Weapon::action] No valid action " << typeName << std::endl;
-			pushBoolean(L, false);
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponRegister(lua_State* L)
-{
-	// weapon:register()
-	Weapon** weaponPtr = getRawUserdata<Weapon>(L, 1);
-	if (!weaponPtr) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	if (auto* weapon = *weaponPtr) {
-		if (weapon->weaponType == WEAPON_DISTANCE || weapon->weaponType == WEAPON_AMMO) {
-			weapon = getUserdata<WeaponDistance>(L, 1);
-		} else if (weapon->weaponType == WEAPON_WAND) {
-			weapon = getUserdata<WeaponWand>(L, 1);
-		} else {
-			weapon = getUserdata<WeaponMelee>(L, 1);
-		}
-
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.weaponType = weapon->weaponType;
-
-		if (weapon->getWieldInfo() != 0) {
-			it.wieldInfo = weapon->getWieldInfo();
-			it.vocationString = weapon->getVocationString();
-			it.minReqLevel = weapon->getReqLevel();
-			it.minReqMagicLevel = weapon->getReqMagLv();
-		}
-
-		weapon->configureWeapon(it);
-		pushBoolean(L, g_weapons->registerLuaEvent(weapon));
-		*weaponPtr = nullptr; // Remove luascript reference
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponOnUseWeapon(lua_State* L)
-{
-	// weapon:onUseWeapon(callback)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		if (!weapon->loadCallback()) {
-			pushBoolean(L, false);
-			return 1;
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponUnproperly(lua_State* L)
-{
-	// weapon:wieldedUnproperly(bool)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setWieldUnproperly(getBoolean(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponLevel(lua_State* L)
-{
-	// weapon:level(lvl)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setRequiredLevel(getNumber<uint32_t>(L, 2));
-		weapon->setWieldInfo(WIELDINFO_LEVEL);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponMagicLevel(lua_State* L)
-{
-	// weapon:magicLevel(lvl)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setRequiredMagLevel(getNumber<uint32_t>(L, 2));
-		weapon->setWieldInfo(WIELDINFO_MAGLV);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponMana(lua_State* L)
-{
-	// weapon:mana(mana)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setMana(getNumber<uint32_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponManaPercent(lua_State* L)
-{
-	// weapon:manaPercent(percent)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setManaPercent(getNumber<uint32_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponHealth(lua_State* L)
-{
-	// weapon:health(health)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setHealth(getNumber<int32_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponHealthPercent(lua_State* L)
-{
-	// weapon:healthPercent(percent)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setHealthPercent(getNumber<uint32_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponSoul(lua_State* L)
-{
-	// weapon:soul(soul)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setSoul(getNumber<uint32_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponBreakChance(lua_State* L)
-{
-	// weapon:breakChance(percent)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setBreakChance(getNumber<uint32_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponWandDamage(lua_State* L)
-{
-	// weapon:damage(damage[min, max]) only use this if the weapon is a wand!
-	WeaponWand* weapon = getUserdata<WeaponWand>(L, 1);
-	if (weapon) {
-		weapon->setMinChange(getNumber<uint32_t>(L, 2));
-		if (lua_gettop(L) > 2) {
-			weapon->setMaxChange(getNumber<uint32_t>(L, 3));
-		} else {
-			weapon->setMaxChange(getNumber<uint32_t>(L, 2));
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponElement(lua_State* L)
-{
-	// weapon:element(combatType)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon)
+	std::optional<BlackTek::ItemEvents::HookType> LuaItemEventParseHookType(const std::string& name)
 	{
-		if (not weapon->combat)
-			weapon->combat = BlackTek::g_combat_registry.Create();
+		if (name == "use")
+			return BlackTek::ItemEvents::HookType::OnUse;
+		if (name == "useasweapon" or name == "useweapon")
+			return BlackTek::ItemEvents::HookType::OnUseAsWeapon;
+		if (name == "equip")
+			return BlackTek::ItemEvents::HookType::OnEquip;
+		if (name == "deequip")
+			return BlackTek::ItemEvents::HookType::OnDeEquip;
+		if (name == "stepon")
+			return BlackTek::ItemEvents::HookType::OnStepOn;
+		if (name == "stepoff")
+			return BlackTek::ItemEvents::HookType::OnStepOff;
+		if (name == "additem")
+			return BlackTek::ItemEvents::HookType::OnAddItem;
+		if (name == "removeitem")
+			return BlackTek::ItemEvents::HookType::OnRemoveItem;
 
-		if (not getNumber<CombatType_t>(L, 2))
+		return std::nullopt;
+	}
+
+	std::optional<uint32_t> LuaItemEventParseSlot(const std::string& name)
+	{
+		if (name == "head")
+			return SLOTP_HEAD;
+		if (name == "necklace")
+			return SLOTP_NECKLACE;
+		if (name == "backpack")
+			return SLOTP_BACKPACK;
+		if (name == "armor" or name == "body")
+			return SLOTP_ARMOR;
+		if (name == "right-hand")
+			return SLOTP_RIGHT;
+		if (name == "left-hand")
+			return SLOTP_LEFT;
+		if (name == "hand" or name == "shield")
+			return SLOTP_RIGHT | SLOTP_LEFT;
+		if (name == "legs")
+			return SLOTP_LEGS;
+		if (name == "feet")
+			return SLOTP_FEET;
+		if (name == "ring")
+			return SLOTP_RING;
+		if (name == "ammo")
+			return SLOTP_AMMO;
+
+		return std::nullopt;
+	}
+
+	std::optional<CombatType_t> LuaItemEventParseElement(const std::string& name)
+	{
+		if (name == "earth")
+			return COMBAT_EARTHDAMAGE;
+		if (name == "ice")
+			return COMBAT_ICEDAMAGE;
+		if (name == "energy")
+			return COMBAT_ENERGYDAMAGE;
+		if (name == "fire")
+			return COMBAT_FIREDAMAGE;
+		if (name == "death")
+			return COMBAT_DEATHDAMAGE;
+		if (name == "holy")
+			return COMBAT_HOLYDAMAGE;
+
+		return std::nullopt;
+	}
+
+	std::optional<Ammo_t> LuaItemEventParseAmmoType(const std::string& name)
+	{
+		if (name == "arrow")
+			return AMMO_ARROW;
+		if (name == "bolt")
+			return AMMO_BOLT;
+
+		return std::nullopt;
+	}
+
+	std::optional<WeaponAction_t> LuaItemEventParseAction(const std::string& name)
+	{
+		if (name == "removecount")
+			return WEAPONACTION_REMOVECOUNT;
+		if (name == "removecharge")
+			return WEAPONACTION_REMOVECHARGE;
+		if (name == "move")
+			return WEAPONACTION_MOVE;
+
+		return std::nullopt;
+	}
+
+	void LuaItemEventAppendNumbers(lua_State* L, int32_t fieldArg, std::vector<uint16_t>& out)
+	{
+		if (lua_istable(L, fieldArg))
 		{
-			std::string element = getString(L, 2);
-			std::string tmpStrValue = asLowerCaseString(element);
-			if (tmpStrValue == "earth")
-				weapon->combat->SetDamageType(static_cast<uint16_t>(COMBAT_EARTHDAMAGE));
-			else if (tmpStrValue == "ice")
-				weapon->combat->SetDamageType(static_cast<uint16_t>(COMBAT_ICEDAMAGE));
-			else if (tmpStrValue == "energy")
-				weapon->combat->SetDamageType(static_cast<uint16_t>(COMBAT_ENERGYDAMAGE));
-			else if (tmpStrValue == "fire")
-				weapon->combat->SetDamageType(static_cast<uint16_t>(COMBAT_FIREDAMAGE));
-			else if (tmpStrValue == "death")
-				weapon->combat->SetDamageType(static_cast<uint16_t>(COMBAT_DEATHDAMAGE));
-			else if (tmpStrValue == "holy")
-				weapon->combat->SetDamageType(static_cast<uint16_t>(COMBAT_HOLYDAMAGE));
+			auto len = lua_rawlen(L, fieldArg);
+
+			for (lua_Integer i = 1; i <= static_cast<lua_Integer>(len); ++i)
+			{
+				lua_rawgeti(L, fieldArg, i);
+
+				if (lua_isnumber(L, -1))
+					out.push_back(static_cast<uint16_t>(lua_tonumber(L, -1)));
+
+				lua_pop(L, 1);
+			}
+		}
+		else if (lua_isnumber(L, fieldArg))
+		{
+			out.push_back(static_cast<uint16_t>(lua_tonumber(L, fieldArg)));
+		}
+	}
+
+	void LuaItemEventApplyTable(lua_State* L, ItemEvent& itemEvent, int32_t tableArg)
+	{
+		lua_getfield(L, tableArg, "type");
+		if (lua_isstring(L, -1))
+		{
+			std::string tmpStr = asLowerCaseString(lua_tostring(L, -1));
+			auto hook = LuaItemEventParseHookType(tmpStr);
+
+			if (hook)
+				itemEvent.hook = *hook;
 			else
-				std::cout << "[Warning - weapon:element] Type \"" << element << "\" does not exist." << std::endl;
+				BlackTek::Console::Script::Warn("LuaScriptInterface::luaCreateItemEvent: No valid event name {}", tmpStr);
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "weaponType");
+		if (lua_isnumber(L, -1))
+		{
+			itemEvent.hook = BlackTek::ItemEvents::HookType::OnUseAsWeapon;
+
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->weaponType = LuaScriptInterface::getNumber<WeaponType_t>(L, lua_gettop(L));
+			itemEvent.weaponConfig->weaponTypeSet = true;
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "id");
+		LuaItemEventAppendNumbers(L, lua_gettop(L), itemEvent.itemIds);
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "aid");
+		LuaItemEventAppendNumbers(L, lua_gettop(L), itemEvent.actionIds);
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "uid");
+		LuaItemEventAppendNumbers(L, lua_gettop(L), itemEvent.uniqueIds);
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "position");
+		if (lua_istable(L, -1) and lua_rawlen(L, -1) > 0)
+		{
+			auto len = lua_rawlen(L, -1);
+			int positionsIdx = lua_gettop(L);
+
+			for (lua_Integer i = 1; i <= static_cast<lua_Integer>(len); ++i)
+			{
+				lua_rawgeti(L, positionsIdx, i);
+				itemEvent.positions.push_back(LuaScriptInterface::getPosition(L, lua_gettop(L)));
+				lua_pop(L, 1);
+			}
+		}
+		else if (not lua_isnil(L, -1))
+		{
+			itemEvent.positions.push_back(LuaScriptInterface::getPosition(L, lua_gettop(L)));
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "allowFarUse");
+		if (lua_isboolean(L, -1))
+			itemEvent.allowFarUse = lua_toboolean(L, -1) != 0;
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "blockWalls");
+		if (lua_isboolean(L, -1))
+			itemEvent.checkLineOfSight = lua_toboolean(L, -1) != 0;
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "checkFloor");
+		if (lua_isboolean(L, -1))
+			itemEvent.checkFloor = lua_toboolean(L, -1) != 0;
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "level");
+		if (lua_isnumber(L, -1))
+		{
+			itemEvent.requiredLevel = LuaScriptInterface::getNumber<uint32_t>(L, lua_gettop(L));
+			itemEvent.wieldInfo |= WIELDINFO_LEVEL;
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "magicLevel");
+		if (lua_isnumber(L, -1))
+		{
+			itemEvent.requiredMagicLevel = LuaScriptInterface::getNumber<uint32_t>(L, lua_gettop(L));
+			itemEvent.wieldInfo |= WIELDINFO_MAGLV;
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "slot");
+		if (lua_isstring(L, -1))
+		{
+			std::string slotName = asLowerCaseString(lua_tostring(L, -1));
+			auto slot = LuaItemEventParseSlot(slotName);
+
+			if (slot)
+				itemEvent.slot = *slot;
+			else
+				BlackTek::Console::Script::Warn("LuaScriptInterface::luaCreateItemEvent: Unknown slot type {}", slotName);
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "premium");
+		if (lua_isboolean(L, -1))
+		{
+			itemEvent.premium = lua_toboolean(L, -1) != 0;
+			itemEvent.wieldInfo |= WIELDINFO_PREMIUM;
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "tileItem");
+		if (lua_isboolean(L, -1))
+			itemEvent.tileItem = lua_toboolean(L, -1) != 0;
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "vocation");
+		if (lua_istable(L, -1))
+		{
+			auto len = lua_rawlen(L, -1);
+			int vocationIdx = lua_gettop(L);
+
+			for (lua_Integer i = 1; i <= static_cast<lua_Integer>(len); ++i)
+			{
+				lua_rawgeti(L, vocationIdx, i);
+
+				if (lua_isstring(L, -1))
+				{
+					std::string vocName = lua_tostring(L, -1);
+					itemEvent.addVocEquipMap(vocName);
+					itemEvent.wieldInfo |= WIELDINFO_VOCREQ;
+
+					std::string tmp = asLowerCaseString(vocName) + "s";
+
+					if (itemEvent.vocationString.empty())
+						itemEvent.vocationString = tmp;
+					else
+						itemEvent.vocationString += (i == static_cast<lua_Integer>(len) ? " and " : ", ") + tmp;
+				}
+
+				lua_pop(L, 1);
+			}
+		}
+		else if (lua_isstring(L, -1))
+		{
+			std::string vocName = lua_tostring(L, -1);
+			itemEvent.addVocEquipMap(vocName);
+			itemEvent.wieldInfo |= WIELDINFO_VOCREQ;
+			itemEvent.vocationString = asLowerCaseString(vocName) + "s";
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "attack");
+		if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->attack = LuaScriptInterface::getNumber<int32_t>(L, lua_gettop(L));
+			itemEvent.weaponConfig->attackSet = true;
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "defense");
+		if (lua_istable(L, -1) and lua_rawlen(L, -1) >= 2)
+		{
+			int defenseIdx = lua_gettop(L);
+
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			lua_rawgeti(L, defenseIdx, 1);
+			itemEvent.weaponConfig->defense = LuaScriptInterface::getNumber<int32_t>(L, lua_gettop(L));
+			lua_pop(L, 1);
+
+			lua_rawgeti(L, defenseIdx, 2);
+			itemEvent.weaponConfig->extraDefense = LuaScriptInterface::getNumber<int32_t>(L, lua_gettop(L));
+			lua_pop(L, 1);
+
+			itemEvent.weaponConfig->defenseSet = true;
+		}
+		else if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->defense = LuaScriptInterface::getNumber<int32_t>(L, lua_gettop(L));
+			itemEvent.weaponConfig->defenseSet = true;
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "range");
+		if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->range = LuaScriptInterface::getNumber<uint8_t>(L, lua_gettop(L));
+			itemEvent.weaponConfig->rangeSet = true;
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "element");
+		if (lua_isnumber(L, -1) or lua_isstring(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			if (not itemEvent.weaponConfig->combat)
+				itemEvent.weaponConfig->combat = BlackTek::g_combat_registry.Create();
+
+			if (lua_isnumber(L, -1))
+			{
+				itemEvent.weaponConfig->combat->SetDamageType(static_cast<uint16_t>(LuaScriptInterface::getNumber<CombatType_t>(L, lua_gettop(L))));
+			}
+			else
+			{
+				std::string element = lua_tostring(L, -1);
+				auto parsed = LuaItemEventParseElement(asLowerCaseString(element));
+
+				if (parsed)
+					itemEvent.weaponConfig->combat->SetDamageType(static_cast<uint16_t>(*parsed));
+				else
+					BlackTek::Console::Script::Warn("LuaScriptInterface::luaCreateItemEvent: Type \"{}\" does not exist.", element);
+			}
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "mana");
+		if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->mana = LuaScriptInterface::getNumber<uint32_t>(L, lua_gettop(L));
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "manaPercent");
+		if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->manaPercent = LuaScriptInterface::getNumber<uint32_t>(L, lua_gettop(L));
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "health");
+		if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->health = LuaScriptInterface::getNumber<uint32_t>(L, lua_gettop(L));
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "healthPercent");
+		if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->healthPercent = LuaScriptInterface::getNumber<uint32_t>(L, lua_gettop(L));
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "soul");
+		if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->soul = LuaScriptInterface::getNumber<uint32_t>(L, lua_gettop(L));
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "breakChance");
+		if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->breakChance = LuaScriptInterface::getNumber<int32_t>(L, lua_gettop(L));
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "hitChance");
+		if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->hitChance = LuaScriptInterface::getNumber<int32_t>(L, lua_gettop(L));
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "maxHitChance");
+		if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->maxHitChance = LuaScriptInterface::getNumber<int32_t>(L, lua_gettop(L));
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "wieldUnproperly");
+		if (lua_isboolean(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->wieldUnproperly = lua_toboolean(L, -1) != 0;
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "charges");
+		if (lua_istable(L, -1) and lua_rawlen(L, -1) >= 2)
+		{
+			int chargesIdx = lua_gettop(L);
+
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			lua_rawgeti(L, chargesIdx, 1);
+			itemEvent.weaponConfig->charges = LuaScriptInterface::getNumber<uint32_t>(L, lua_gettop(L));
+			lua_pop(L, 1);
+
+			lua_rawgeti(L, chargesIdx, 2);
+			itemEvent.weaponConfig->showCharges = lua_toboolean(L, lua_gettop(L)) != 0;
+			lua_pop(L, 1);
+
+			itemEvent.weaponConfig->chargesSet = true;
+		}
+		else if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->charges = LuaScriptInterface::getNumber<uint32_t>(L, lua_gettop(L));
+			itemEvent.weaponConfig->chargesSet = true;
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "duration");
+		if (lua_istable(L, -1) and lua_rawlen(L, -1) >= 2)
+		{
+			int durationIdx = lua_gettop(L);
+
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			lua_rawgeti(L, durationIdx, 1);
+			itemEvent.weaponConfig->duration = LuaScriptInterface::getNumber<uint32_t>(L, lua_gettop(L));
+			lua_pop(L, 1);
+
+			lua_rawgeti(L, durationIdx, 2);
+			itemEvent.weaponConfig->showDuration = lua_toboolean(L, lua_gettop(L)) != 0;
+			lua_pop(L, 1);
+
+			itemEvent.weaponConfig->durationSet = true;
+		}
+		else if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->duration = LuaScriptInterface::getNumber<uint32_t>(L, lua_gettop(L));
+			itemEvent.weaponConfig->durationSet = true;
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "decayTo");
+		if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->decayTo = LuaScriptInterface::getNumber<int32_t>(L, lua_gettop(L));
+			itemEvent.weaponConfig->decayToSet = true;
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "transformEquipTo");
+		if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->transformEquipTo = LuaScriptInterface::getNumber<uint16_t>(L, lua_gettop(L));
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "transformDeEquipTo");
+		if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->transformDeEquipTo = LuaScriptInterface::getNumber<uint16_t>(L, lua_gettop(L));
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "ammoType");
+		if (lua_isstring(L, -1))
+		{
+			std::string type = lua_tostring(L, -1);
+			auto ammoType = LuaItemEventParseAmmoType(type);
+
+			if (ammoType)
+			{
+				if (not itemEvent.weaponConfig)
+					itemEvent.weaponConfig.emplace();
+
+				itemEvent.weaponConfig->ammoType = *ammoType;
+				itemEvent.weaponConfig->ammoTypeSet = true;
+			}
+			else
+			{
+				BlackTek::Console::Script::Warn("LuaScriptInterface::luaCreateItemEvent: Type \"{}\" does not exist.", type);
+			}
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "shootType");
+		if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->shootType = LuaScriptInterface::getNumber<ShootType_t>(L, lua_gettop(L));
+			itemEvent.weaponConfig->shootTypeSet = true;
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "damage");
+		if (lua_istable(L, -1) and lua_rawlen(L, -1) >= 2)
+		{
+			int damageIdx = lua_gettop(L);
+
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			lua_rawgeti(L, damageIdx, 1);
+			itemEvent.weaponConfig->minChange = LuaScriptInterface::getNumber<int32_t>(L, lua_gettop(L));
+			lua_pop(L, 1);
+
+			lua_rawgeti(L, damageIdx, 2);
+			itemEvent.weaponConfig->maxChange = LuaScriptInterface::getNumber<int32_t>(L, lua_gettop(L));
+			lua_pop(L, 1);
+		}
+		else if (lua_isnumber(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->minChange = LuaScriptInterface::getNumber<int32_t>(L, lua_gettop(L));
+			itemEvent.weaponConfig->maxChange = itemEvent.weaponConfig->minChange;
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "action");
+		if (lua_isstring(L, -1))
+		{
+			std::string typeName = lua_tostring(L, -1);
+			auto action = LuaItemEventParseAction(asLowerCaseString(typeName));
+
+			if (action)
+			{
+				if (not itemEvent.weaponConfig)
+					itemEvent.weaponConfig.emplace();
+
+				itemEvent.weaponConfig->action = *action;
+			}
+			else
+			{
+				BlackTek::Console::Script::Warn("LuaScriptInterface::luaCreateItemEvent: No valid action \"{}\"", typeName);
+			}
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "slotType");
+		if (lua_isstring(L, -1))
+		{
+			if (not itemEvent.weaponConfig)
+				itemEvent.weaponConfig.emplace();
+
+			itemEvent.weaponConfig->twoHanded = (std::string(lua_tostring(L, -1)) == "two-handed");
+			itemEvent.weaponConfig->slotTypeSet = true;
+		}
+		lua_pop(L, 1);
+
+		lua_getfield(L, tableArg, "extraElement");
+		if (not lua_isnil(L, -1))
+		{
+			bool valid = false;
+
+			if (lua_istable(L, -1) and lua_rawlen(L, -1) >= 2)
+			{
+				int extraElementIdx = lua_gettop(L);
+
+				lua_rawgeti(L, extraElementIdx, 1);
+				bool atkIsNumber = lua_isnumber(L, -1);
+				int32_t extraAtk = atkIsNumber ? LuaScriptInterface::getNumber<int32_t>(L, lua_gettop(L)) : 0;
+				lua_pop(L, 1);
+
+				lua_rawgeti(L, extraElementIdx, 2);
+				std::optional<CombatType_t> extraType;
+
+				if (lua_isnumber(L, -1))
+					extraType = LuaScriptInterface::getNumber<CombatType_t>(L, lua_gettop(L));
+				else if (lua_isstring(L, -1))
+					extraType = LuaItemEventParseElement(asLowerCaseString(lua_tostring(L, -1)));
+
+				lua_pop(L, 1);
+
+				if (atkIsNumber and extraType)
+				{
+					if (not itemEvent.weaponConfig)
+						itemEvent.weaponConfig.emplace();
+
+					itemEvent.weaponConfig->extraElementDamage = extraAtk;
+					itemEvent.weaponConfig->extraElementType = *extraType;
+					itemEvent.weaponConfig->extraElementSet = true;
+					valid = true;
+				}
+			}
+
+			if (not valid)
+				BlackTek::Console::Script::Warn("LuaScriptInterface::luaCreateItemEvent: extraElement requires a valid {{atk, type}} array");
+		}
+		lua_pop(L, 1);
+
+		static const std::vector<std::pair<const char*, BlackTek::ItemEvents::HookType>> callbackFields =
+		{
+			{ "onUse",            BlackTek::ItemEvents::HookType::OnUse            },
+			{ "onUseAsWeapon",    BlackTek::ItemEvents::HookType::OnUseAsWeapon    },
+			{ "onEquip",          BlackTek::ItemEvents::HookType::OnEquip          },
+			{ "onDeEquip",        BlackTek::ItemEvents::HookType::OnDeEquip        },
+			{ "onStepOn",         BlackTek::ItemEvents::HookType::OnStepOn         },
+			{ "onStepOff",        BlackTek::ItemEvents::HookType::OnStepOff        },
+			{ "onAddItem",        BlackTek::ItemEvents::HookType::OnAddItem        },
+			{ "onRemoveItem",     BlackTek::ItemEvents::HookType::OnRemoveItem     },
+			{ "onAttack",         BlackTek::ItemEvents::HookType::OnAttack         },
+			{ "onDefend",         BlackTek::ItemEvents::HookType::OnDefend         },
+			{ "onAugment",        BlackTek::ItemEvents::HookType::OnAugment        },
+			{ "onRemoveAugment",  BlackTek::ItemEvents::HookType::OnRemoveAugment  },
+			{ "onAttackMod",      BlackTek::ItemEvents::HookType::OnAttackMod      },
+			{ "onDefenseMod",     BlackTek::ItemEvents::HookType::OnDefenseMod     },
+		};
+
+		for (const auto& [key, hookType] : callbackFields)
+		{
+			lua_getfield(L, tableArg, key);
+
+			if (lua_isfunction(L, -1))
+			{
+				if (itemEvent.loadCallback())
+					itemEvent.hook = hookType;
+			}
+			else if (not lua_isnil(L, -1))
+			{
+				BlackTek::Console::Script::Warn("LuaScriptInterface::luaCreateItemEvent: {} must be a function", key);
+			}
+
+			lua_pop(L, 1);
+		}
+
+		lua_getfield(L, tableArg, "nativeFunction");
+		if (lua_isstring(L, -1))
+		{
+			std::string functionName = lua_tostring(L, -1);
+			bool matched = true;
+
+			if (itemEvent.hook == BlackTek::ItemEvents::HookType::OnUse and caseInsensitiveEqual(functionName, "market"))
+				itemEvent.actionFunction = BlackTek::ItemEvents::Defaults::EnterMarket;
+			else if (itemEvent.hook == BlackTek::ItemEvents::HookType::OnStepOn and caseInsensitiveEqual(functionName, "onsteponfield"))
+				itemEvent.stepFunction = BlackTek::ItemEvents::Defaults::StepOnField;
+			else if (itemEvent.hook == BlackTek::ItemEvents::HookType::OnStepOff and caseInsensitiveEqual(functionName, "onstepofffield"))
+				itemEvent.stepFunction = BlackTek::ItemEvents::Defaults::StepOffField;
+			else if (itemEvent.hook == BlackTek::ItemEvents::HookType::OnAddItem and caseInsensitiveEqual(functionName, "onaddfield"))
+				itemEvent.moveFunction = BlackTek::ItemEvents::Defaults::AddItemField;
+			else if (itemEvent.hook == BlackTek::ItemEvents::HookType::OnRemoveItem and caseInsensitiveEqual(functionName, "onremovefield"))
+				itemEvent.moveFunction = BlackTek::ItemEvents::Defaults::RemoveItemField;
+			else if (itemEvent.hook == BlackTek::ItemEvents::HookType::OnEquip and caseInsensitiveEqual(functionName, "onequipitem"))
+				itemEvent.equipFunction = BlackTek::ItemEvents::Defaults::EquipItem;
+			else if (itemEvent.hook == BlackTek::ItemEvents::HookType::OnDeEquip and caseInsensitiveEqual(functionName, "ondeequipitem"))
+				itemEvent.equipFunction = BlackTek::ItemEvents::Defaults::DeEquipItem;
+			else
+				matched = false;
+
+			if (not matched)
+				BlackTek::Console::Script::Warn("LuaScriptInterface::luaCreateItemEvent: Function \"{}\" does not exist for this hook.", functionName);
+		}
+		lua_pop(L, 1);
+	}
+}
+
+int LuaScriptInterface::luaCreateItemEvent(lua_State* L)
+{
+	// ItemEvent([weaponType]) or ItemEvent(table)
+	if (getScriptEnv()->getScriptInterface() != &g_scripts->getScriptInterface())
+	{
+		reportErrorFunc(L, "ItemEvents can only be registered in the Scripts interface.");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	ItemEvent* itemEvent = new ItemEvent(getScriptEnv()->getScriptInterface());
+	itemEvent->fromLua = true;
+
+	if (isTable(L, 2))
+	{
+		LuaItemEventApplyTable(L, *itemEvent, 2);
+	}
+	else if (lua_gettop(L) >= 2)
+	{
+		itemEvent->hook = BlackTek::ItemEvents::HookType::OnUseAsWeapon;
+		itemEvent->weaponConfig.emplace();
+		itemEvent->weaponConfig->weaponType = getNumber<WeaponType_t>(L, 2);
+		itemEvent->weaponConfig->weaponTypeSet = true;
+	}
+
+	pushUserdata<ItemEvent>(L, itemEvent);
+	setMetatable(L, -1, "ItemEvent");
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventType(lua_State* L)
+{
+	// itemEvent:type(name)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+
+	if (not itemEvent)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	std::string tmpStr = asLowerCaseString(getString(L, 2));
+	auto hook = LuaItemEventParseHookType(tmpStr);
+
+	if (not hook)
+	{
+		BlackTek::Console::Script::Warn("LuaScriptInterface::luaItemEventType: No valid event name {}", tmpStr);
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	itemEvent->hook = *hook;
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventNativeFunction(lua_State* L)
+{
+	// itemEvent:nativeFunction(name)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+
+	if (not itemEvent)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	std::string functionName = getString(L, 2);
+
+	if (itemEvent->hook == BlackTek::ItemEvents::HookType::OnUse and caseInsensitiveEqual(functionName, "market"))
+	{
+		itemEvent->actionFunction = BlackTek::ItemEvents::Defaults::EnterMarket;
+	}
+	else if (itemEvent->hook == BlackTek::ItemEvents::HookType::OnStepOn and caseInsensitiveEqual(functionName, "onsteponfield"))
+	{
+		itemEvent->stepFunction = BlackTek::ItemEvents::Defaults::StepOnField;
+	}
+	else if (itemEvent->hook == BlackTek::ItemEvents::HookType::OnStepOff and caseInsensitiveEqual(functionName, "onstepofffield"))
+	{
+		itemEvent->stepFunction = BlackTek::ItemEvents::Defaults::StepOffField;
+	}
+	else if (itemEvent->hook == BlackTek::ItemEvents::HookType::OnAddItem and caseInsensitiveEqual(functionName, "onaddfield"))
+	{
+		itemEvent->moveFunction = BlackTek::ItemEvents::Defaults::AddItemField;
+	}
+	else if (itemEvent->hook == BlackTek::ItemEvents::HookType::OnRemoveItem and caseInsensitiveEqual(functionName, "onremovefield"))
+	{
+		itemEvent->moveFunction = BlackTek::ItemEvents::Defaults::RemoveItemField;
+	}
+	else if (itemEvent->hook == BlackTek::ItemEvents::HookType::OnEquip and caseInsensitiveEqual(functionName, "onequipitem"))
+	{
+		itemEvent->equipFunction = BlackTek::ItemEvents::Defaults::EquipItem;
+	}
+	else if (itemEvent->hook == BlackTek::ItemEvents::HookType::OnDeEquip and caseInsensitiveEqual(functionName, "ondeequipitem"))
+	{
+		itemEvent->equipFunction = BlackTek::ItemEvents::Defaults::DeEquipItem;
+	}
+	else
+	{
+		BlackTek::Console::Script::Warn("LuaScriptInterface::luaItemEventNativeFunction: Function \"{}\" does not exist for this hook.", functionName);
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventRegister(lua_State* L)
+{
+	// itemEvent:register([registerType])
+	ItemEvent** itemEventPtr = getRawUserdata<ItemEvent>(L, 1);
+
+	if (not itemEventPtr or not *itemEventPtr)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	ItemEvent* itemEvent = *itemEventPtr;
+
+	if (lua_gettop(L) >= 2)
+		itemEvent->categories.push_back(getNumber<ItemEvent::Register::Type>(L, 2));
+
+	pushBoolean(L, g_itemEvents->registerLuaEvent(itemEvent));
+	*itemEventPtr = nullptr;
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventOnCallback(lua_State* L)
+{
+	// itemEvent.onX = function(...) / itemEvent:onX(callback) - HookType is upvalue 1
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+
+	if (not itemEvent)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (not itemEvent->loadCallback())
+	{
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	itemEvent->hook = static_cast<BlackTek::ItemEvents::HookType>(lua_tointeger(L, lua_upvalueindex(1)));
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventItemId(lua_State* L)
+{
+	// itemEvent:id(ids)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+
+	if (itemEvent)
+	{
+		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
+
+		if (parameters > 1)
+		{
+			for (int i = 0; i < parameters; ++i)
+				itemEvent->itemIds.push_back(getNumber<uint16_t>(L, 2 + i));
 		}
 		else
 		{
-			weapon->combat->SetDamageType(static_cast<uint16_t>(getNumber<CombatType_t>(L, 2)));
+			itemEvent->itemIds.push_back(getNumber<uint16_t>(L, 2));
 		}
 		pushBoolean(L, true);
 	}
@@ -23765,336 +23877,782 @@ int LuaScriptInterface::luaWeaponElement(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaWeaponPremium(lua_State* L)
+int LuaScriptInterface::luaItemEventActionId(lua_State* L)
 {
-	// weapon:premium(bool)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setNeedPremium(getBoolean(L, 2));
-		weapon->setWieldInfo(WIELDINFO_PREMIUM);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
+	// itemEvent:aid(aids)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
 
-int LuaScriptInterface::luaWeaponVocation(lua_State* L)
-{
-	// weapon:vocation(vocName[, showInDescription = false, lastVoc = false])
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->addVocWeaponMap(getString(L, 2));
-		weapon->setWieldInfo(WIELDINFO_VOCREQ);
-		std::string tmp;
-		bool showInDescription = getBoolean(L, 3, false);
-		bool lastVoc = getBoolean(L, 4, false);
-
-		if (showInDescription) {
-			if (weapon->getVocationString().empty()) {
-				tmp = asLowerCaseString(getString(L, 2));
-				tmp += "s";
-				weapon->setVocationString(tmp);
-			} else {
-				tmp = weapon->getVocationString();
-				if (lastVoc) {
-					tmp += " and ";
-				} else {
-					tmp += ", ";
-				}
-				tmp += asLowerCaseString(getString(L, 2));
-				tmp += "s";
-				weapon->setVocationString(tmp);
-			}
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponId(lua_State* L)
-{
-	// weapon:id(id)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setID(getNumber<uint32_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponAttack(lua_State* L)
-{
-	// weapon:attack(atk)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.attack = getNumber<int32_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponDefense(lua_State* L)
-{
-	// weapon:defense(defense[, extraDefense])
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.defense = getNumber<int32_t>(L, 2);
-		if (lua_gettop(L) > 2) {
-			it.extraDefense = getNumber<int32_t>(L, 3);
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponRange(lua_State* L)
-{
-	// weapon:range(range)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.shootRange = getNumber<uint8_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponCharges(lua_State* L)
-{
-	// weapon:charges(charges[, showCharges = true])
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		bool showCharges = getBoolean(L, 3, true);
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-
-		it.charges = getNumber<uint32_t>(L, 2);
-		it.showCharges = showCharges;
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponDuration(lua_State* L)
-{
-	// weapon:duration(duration[, showDuration = true])
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		bool showDuration = getBoolean(L, 3, true);
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-
-		it.decayTime = getNumber<uint32_t>(L, 2);
-		it.showDuration = showDuration;
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponDecayTo(lua_State* L)
-{
-	// weapon:decayTo([itemid = 0])
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t itemid = getNumber<uint16_t>(L, 2, 0);
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-
-		it.decayTo = itemid;
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponTransformEquipTo(lua_State* L)
-{
-	// weapon:transformEquipTo(itemid)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.transformEquipTo = getNumber<uint16_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponTransformDeEquipTo(lua_State* L)
-{
-	// weapon:transformDeEquipTo(itemid)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.transformDeEquipTo = getNumber<uint16_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponShootType(lua_State* L)
-{
-	// weapon:shootType(type)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.shootType = getNumber<ShootType_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponSlotType(lua_State* L)
-{
-	// weapon:slotType(slot)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		std::string slot = getString(L, 2);
-
-		if (slot == "two-handed") {
-			it.slotPosition |= SLOTP_TWO_HAND;
-		} else {
-			it.slotPosition |= SLOTP_HAND;
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponAmmoType(lua_State* L)
-{
-	// weapon:ammoType(type)
-	WeaponDistance* weapon = getUserdata<WeaponDistance>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		std::string type = getString(L, 2);
-
-		if (type == "arrow") {
-			it.ammoType = AMMO_ARROW;
-		} else if (type == "bolt"){
-			it.ammoType = AMMO_BOLT;
-		} else {
-			std::cout << "[Warning - weapon:ammoType] Type \"" << type << "\" does not exist." << std::endl;
-			lua_pushnil(L);
-			return 1;
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponHitChance(lua_State* L)
-{
-	// weapon:hitChance(chance)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.hitChance = getNumber<int8_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponMaxHitChance(lua_State* L)
-{
-	// weapon:maxHitChance(max)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.maxHitChance = getNumber<int32_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponExtraElement(lua_State* L)
-{
-	// weapon:extraElement(atk, combatType)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon)
+	if (itemEvent)
 	{
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		Abilities& abilities = it.getAbilities();
-		abilities.elementDamage = getNumber<uint16_t>(L, 2);
+		int parameters = lua_gettop(L) - 1;
 
-		if (not getNumber<CombatType_t>(L, 3))
+		if (parameters > 1)
 		{
-			std::string element = getString(L, 3);
-			std::string tmpStrValue = asLowerCaseString(element);
-
-			if (tmpStrValue == "earth")
-				abilities.elementType = COMBAT_EARTHDAMAGE;
-
-			else if (tmpStrValue == "ice")
-				abilities.elementType = COMBAT_ICEDAMAGE;
-
-			else if (tmpStrValue == "energy")
-				abilities.elementType = COMBAT_ENERGYDAMAGE;
-
-			else if (tmpStrValue == "fire")
-				abilities.elementType = COMBAT_FIREDAMAGE;
-
-			else if (tmpStrValue == "death")
-				abilities.elementType = COMBAT_DEATHDAMAGE;
-
-			else if (tmpStrValue == "holy")
-				abilities.elementType = COMBAT_HOLYDAMAGE;
-
-			else
-				std::cout << "[Warning - weapon:extraElement] Type \"" << element << "\" does not exist." << std::endl;
-			
-		} 
+			for (int i = 0; i < parameters; ++i)
+				itemEvent->actionIds.push_back(getNumber<uint16_t>(L, 2 + i));
+		}
 		else
 		{
-			abilities.elementType = getNumber<CombatType_t>(L, 3);
+			itemEvent->actionIds.push_back(getNumber<uint16_t>(L, 2));
+		}
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventUniqueId(lua_State* L)
+{
+	// itemEvent:uid(uids)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		int parameters = lua_gettop(L) - 1;
+
+		if (parameters > 1)
+		{
+			for (int i = 0; i < parameters; ++i)
+				itemEvent->uniqueIds.push_back(getNumber<uint16_t>(L, 2 + i));
+		}
+		else
+		{
+			itemEvent->uniqueIds.push_back(getNumber<uint16_t>(L, 2));
+		}
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventPosition(lua_State* L)
+{
+	// itemEvent:position(positions)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent) {
+		int parameters = lua_gettop(L) - 1;
+		if (parameters > 1) {
+			for (int i = 0; i < parameters; ++i) {
+				itemEvent->positions.push_back(getPosition(L, 2 + i));
+			}
+		} else {
+			itemEvent->positions.push_back(getPosition(L, 2));
 		}
 		pushBoolean(L, true);
 	} else {
 		lua_pushnil(L);
 	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventAllowFarUse(lua_State* L)
+{
+	// itemEvent:allowFarUse(bool)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		itemEvent->allowFarUse = getBoolean(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventBlockWalls(lua_State* L)
+{
+	// itemEvent:blockWalls(bool)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		itemEvent->checkLineOfSight = getBoolean(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventCheckFloor(lua_State* L)
+{
+	// itemEvent:checkFloor(bool)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		itemEvent->checkFloor = getBoolean(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventLevel(lua_State* L)
+{
+	// itemEvent:level(lvl)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		itemEvent->requiredLevel = getNumber<uint32_t>(L, 2);
+		itemEvent->wieldInfo |= WIELDINFO_LEVEL;
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventMagLevel(lua_State* L)
+{
+	// itemEvent:magicLevel(lvl)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		itemEvent->requiredMagicLevel = getNumber<uint32_t>(L, 2);
+		itemEvent->wieldInfo |= WIELDINFO_MAGLV;
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventSlot(lua_State* L)
+{
+	// itemEvent:slot(slot)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (not itemEvent)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	std::string slotName = asLowerCaseString(getString(L, 2));
+	auto slot = LuaItemEventParseSlot(slotName);
+
+	if (not slot)
+	{
+		BlackTek::Console::Script::Warn("LuaScriptInterface::luaItemEventSlot: Unknown slot type {}", slotName);
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	itemEvent->slot = *slot;
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventPremium(lua_State* L)
+{
+	// itemEvent:premium(bool)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		itemEvent->premium = getBoolean(L, 2);
+		itemEvent->wieldInfo |= WIELDINFO_PREMIUM;
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventVocation(lua_State* L)
+{
+	// itemEvent:vocation(vocName[, showInDescription = false, lastVoc = false])
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (not itemEvent)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	itemEvent->addVocEquipMap(getString(L, 2));
+	itemEvent->wieldInfo |= WIELDINFO_VOCREQ;
+
+	if (getBoolean(L, 3, false))
+	{
+		bool lastVoc = getBoolean(L, 4, false);
+		std::string tmp;
+		if (itemEvent->vocationString.empty())
+		{
+			tmp = asLowerCaseString(getString(L, 2));
+			tmp += "s";
+			itemEvent->vocationString = tmp;
+		}
+		else
+		{
+			tmp = itemEvent->vocationString;
+			tmp += lastVoc ? " and " : ", ";
+			tmp += asLowerCaseString(getString(L, 2));
+			tmp += "s";
+			itemEvent->vocationString = tmp;
+		}
+	}
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventTileItem(lua_State* L)
+{
+	// itemEvent:tileItem(bool)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		itemEvent->tileItem = getBoolean(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventAttack(lua_State* L)
+{
+	// itemEvent:attack(atk)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->attack = getNumber<int32_t>(L, 2);
+		itemEvent->weaponConfig->attackSet = true;
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventDefense(lua_State* L)
+{
+	// itemEvent:defense(defense[, extraDefense])
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->defense = getNumber<int32_t>(L, 2);
+
+		if (lua_gettop(L) > 2)
+			itemEvent->weaponConfig->extraDefense = getNumber<int32_t>(L, 3);
+
+		itemEvent->weaponConfig->defenseSet = true;
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventRange(lua_State* L)
+{
+	// itemEvent:range(range)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->range = getNumber<uint8_t>(L, 2);
+		itemEvent->weaponConfig->rangeSet = true;
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventElement(lua_State* L)
+{
+	// itemEvent:element(combatType)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (not itemEvent)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (not itemEvent->weaponConfig)
+		itemEvent->weaponConfig.emplace();
+
+	if (not itemEvent->weaponConfig->combat)
+		itemEvent->weaponConfig->combat = BlackTek::g_combat_registry.Create();
+
+	if (not getNumber<CombatType_t>(L, 2))
+	{
+		std::string element = getString(L, 2);
+		auto parsed = LuaItemEventParseElement(asLowerCaseString(element));
+
+		if (parsed)
+			itemEvent->weaponConfig->combat->SetDamageType(static_cast<uint16_t>(*parsed));
+		else
+			BlackTek::Console::Script::Warn("LuaScriptInterface::luaItemEventElement: Type \"{}\" does not exist.", element);
+	}
+	else
+	{
+		itemEvent->weaponConfig->combat->SetDamageType(static_cast<uint16_t>(getNumber<CombatType_t>(L, 2)));
+	}
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventMana(lua_State* L)
+{
+	// itemEvent:mana(mana)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->mana = getNumber<uint32_t>(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventManaPercent(lua_State* L)
+{
+	// itemEvent:manaPercent(percent)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->manaPercent = getNumber<uint32_t>(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventHealth(lua_State* L)
+{
+	// itemEvent:health(health)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->health = getNumber<uint32_t>(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventHealthPercent(lua_State* L)
+{
+	// itemEvent:healthPercent(percent)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->healthPercent = getNumber<uint32_t>(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventSoul(lua_State* L)
+{
+	// itemEvent:soul(soul)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->soul = getNumber<uint32_t>(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventBreakChance(lua_State* L)
+{
+	// itemEvent:breakChance(percent)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->breakChance = getNumber<int32_t>(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventHitChance(lua_State* L)
+{
+	// itemEvent:hitChance(chance)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->hitChance = getNumber<int32_t>(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventMaxHitChance(lua_State* L)
+{
+	// itemEvent:maxHitChance(max)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->maxHitChance = getNumber<int32_t>(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventWieldUnproperly(lua_State* L)
+{
+	// itemEvent:wieldUnproperly(bool)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->wieldUnproperly = getBoolean(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventCharges(lua_State* L)
+{
+	// itemEvent:charges(charges[, showCharges = true])
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->charges = getNumber<uint32_t>(L, 2);
+		itemEvent->weaponConfig->showCharges = getBoolean(L, 3, true);
+		itemEvent->weaponConfig->chargesSet = true;
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventDuration(lua_State* L)
+{
+	// itemEvent:duration(duration[, showDuration = true])
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->duration = getNumber<uint32_t>(L, 2);
+		itemEvent->weaponConfig->showDuration = getBoolean(L, 3, true);
+		itemEvent->weaponConfig->durationSet = true;
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventDecayTo(lua_State* L)
+{
+	// itemEvent:decayTo([itemid = 0])
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->decayTo = getNumber<int32_t>(L, 2, 0);
+		itemEvent->weaponConfig->decayToSet = true;
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventTransformEquipTo(lua_State* L)
+{
+	// itemEvent:transformEquipTo(itemid)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->transformEquipTo = getNumber<uint16_t>(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventTransformDeEquipTo(lua_State* L)
+{
+	// itemEvent:transformDeEquipTo(itemid)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->transformDeEquipTo = getNumber<uint16_t>(L, 2);
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventAmmoType(lua_State* L)
+{
+	// itemEvent:ammoType(type)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (not itemEvent)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (not itemEvent->weaponConfig)
+		itemEvent->weaponConfig.emplace();
+
+	std::string type = getString(L, 2);
+	auto ammoType = LuaItemEventParseAmmoType(type);
+
+	if (not ammoType)
+	{
+		BlackTek::Console::Script::Warn("LuaScriptInterface::luaItemEventAmmoType: Type \"{}\" does not exist.", type);
+		lua_pushnil(L);
+		return 1;
+	}
+
+	itemEvent->weaponConfig->ammoType = *ammoType;
+	itemEvent->weaponConfig->ammoTypeSet = true;
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventShootType(lua_State* L)
+{
+	// itemEvent:shootType(type)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->shootType = getNumber<ShootType_t>(L, 2);
+		itemEvent->weaponConfig->shootTypeSet = true;
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventWandDamage(lua_State* L)
+{
+	// itemEvent:damage(damage[, max]) - wands only
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (itemEvent)
+	{
+		if (not itemEvent->weaponConfig)
+			itemEvent->weaponConfig.emplace();
+
+		itemEvent->weaponConfig->minChange = getNumber<int32_t>(L, 2);
+
+		if (lua_gettop(L) > 2)
+			itemEvent->weaponConfig->maxChange = getNumber<int32_t>(L, 3);
+		else
+			itemEvent->weaponConfig->maxChange = itemEvent->weaponConfig->minChange;
+
+		pushBoolean(L, true);
+	}
+	else
+	{
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventAction(lua_State* L)
+{
+	// itemEvent:action(name) removecount, removecharge, move
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+
+	if (not itemEvent)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (not itemEvent->weaponConfig)
+		itemEvent->weaponConfig.emplace();
+
+	std::string typeName = getString(L, 2);
+	auto action = LuaItemEventParseAction(asLowerCaseString(typeName));
+
+	if (not action)
+	{
+		BlackTek::Console::Script::Warn("LuaScriptInterface::luaItemEventAction: No valid action \"{}\"", typeName);
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	itemEvent->weaponConfig->action = *action;
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventSlotType(lua_State* L)
+{
+	// itemEvent:slotType(slot) - "two-handed" or anything else for one-handed
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (not itemEvent)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (not itemEvent->weaponConfig)
+		itemEvent->weaponConfig.emplace();
+
+	itemEvent->weaponConfig->twoHanded = (getString(L, 2) == "two-handed");
+	itemEvent->weaponConfig->slotTypeSet = true;
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaItemEventExtraElement(lua_State* L)
+{
+	// itemEvent:extraElement(atk, combatType)
+	ItemEvent* itemEvent = getUserdata<ItemEvent>(L, 1);
+	if (not itemEvent)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (not itemEvent->weaponConfig)
+		itemEvent->weaponConfig.emplace();
+
+	itemEvent->weaponConfig->extraElementDamage = getNumber<int32_t>(L, 2);
+
+	if (not getNumber<CombatType_t>(L, 3))
+	{
+		std::string element = getString(L, 3);
+		auto parsed = LuaItemEventParseElement(asLowerCaseString(element));
+
+		if (parsed)
+			itemEvent->weaponConfig->extraElementType = *parsed;
+		else
+			BlackTek::Console::Script::Warn("LuaScriptInterface::luaItemEventExtraElement: Type \"{}\" does not exist.", element);
+	}
+	else
+	{
+		itemEvent->weaponConfig->extraElementType = getNumber<CombatType_t>(L, 3);
+	}
+
+	itemEvent->weaponConfig->extraElementSet = true;
+	pushBoolean(L, true);
 	return 1;
 }
 

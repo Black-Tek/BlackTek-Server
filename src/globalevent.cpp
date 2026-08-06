@@ -5,9 +5,7 @@
 
 #include "configmanager.h"
 #include "globalevent.h"
-#include "tools.h"
 #include "scheduler.h"
-#include "pugicast.h"
 
 extern ConfigManager g_config;
 
@@ -53,44 +51,6 @@ bool GlobalEvents::reload()
 	clear(false);
 	loaded = true;
 	return true;
-}
-
-Event_ptr GlobalEvents::getEvent(const std::string& nodeName)
-{
-	if (!caseInsensitiveEqual(nodeName, "globalevent")) {
-		return nullptr;
-	}
-	return Event_ptr(new GlobalEvent(&scriptInterface));
-}
-
-bool GlobalEvents::registerEvent(Event_ptr event, const pugi::xml_node&)
-{
-	GlobalEvent_ptr globalEvent{static_cast<GlobalEvent*>(event.release())}; //event is guaranteed to be a GlobalEvent
-	if (globalEvent->getEventType() == GLOBALEVENT_TIMER) {
-		auto result = timerMap.emplace(globalEvent->getName(), std::move(*globalEvent));
-		if (result.second) {
-			if (timerEventId == 0) {
-				timerEventId = g_scheduler.addEvent(createSchedulerTask(SCHEDULER_MINTICKS, [this]() { timer(); }));
-			}
-			return true;
-		}
-	} else if (globalEvent->getEventType() != GLOBALEVENT_NONE) {
-		auto result = serverMap.emplace(globalEvent->getName(), std::move(*globalEvent));
-		if (result.second) {
-			return true;
-		}
-	} else { // think event
-		auto result = thinkMap.emplace(globalEvent->getName(), std::move(*globalEvent));
-		if (result.second) {
-			if (thinkEventId == 0) {
-				thinkEventId = g_scheduler.addEvent(createSchedulerTask(SCHEDULER_MINTICKS, [this]() { think(); }));
-			}
-			return true;
-		}
-	}
-
-	std::cout << "[Warning - GlobalEvents::configureEvent] Duplicate registered globalevent with name: " << globalEvent->getName() << std::endl;
-	return false;
 }
 
 bool GlobalEvents::registerLuaEvent(GlobalEvent* event)
@@ -244,84 +204,6 @@ GlobalEventMap GlobalEvents::getEventMap(GlobalEvent_t type)
 }
 
 GlobalEvent::GlobalEvent(LuaScriptInterface* interface) : Event(interface) {}
-
-bool GlobalEvent::configureEvent(const pugi::xml_node& node)
-{
-	pugi::xml_attribute nameAttribute = node.attribute("name");
-	if (!nameAttribute) {
-		std::cout << "[Error - GlobalEvent::configureEvent] Missing name for a globalevent" << std::endl;
-		return false;
-	}
-
-	name = nameAttribute.as_string();
-	eventType = GLOBALEVENT_NONE;
-
-	pugi::xml_attribute attr;
-	if ((attr = node.attribute("time"))) {
-		std::vector<int32_t> params = vectorAtoi(explodeString(attr.as_string(), ":"));
-
-		int32_t hour = params.front();
-		if (hour < 0 || hour > 23) {
-			std::cout << "[Error - GlobalEvent::configureEvent] Invalid hour \"" << attr.as_string() << "\" for globalevent with name: " << name << std::endl;
-			return false;
-		}
-
-		interval |= hour << 16;
-
-		int32_t min = 0;
-		int32_t sec = 0;
-		if (params.size() > 1) {
-			min = params[1];
-			if (min < 0 || min > 59) {
-				std::cout << "[Error - GlobalEvent::configureEvent] Invalid minute \"" << attr.as_string() << "\" for globalevent with name: " << name << std::endl;
-				return false;
-			}
-
-			if (params.size() > 2) {
-				sec = params[2];
-				if (sec < 0 || sec > 59) {
-					std::cout << "[Error - GlobalEvent::configureEvent] Invalid second \"" << attr.as_string() << "\" for globalevent with name: " << name << std::endl;
-					return false;
-				}
-			}
-		}
-
-		time_t current_time = time(nullptr);
-		tm* timeinfo = localtime(&current_time);
-		timeinfo->tm_hour = hour;
-		timeinfo->tm_min = min;
-		timeinfo->tm_sec = sec;
-
-		time_t difference = static_cast<time_t>(difftime(mktime(timeinfo), current_time));
-		if (difference < 0) {
-			difference += 86400;
-		}
-
-		nextExecution = current_time + difference;
-		eventType = GLOBALEVENT_TIMER;
-	} else if ((attr = node.attribute("type"))) {
-		const char* value = attr.value();
-		if (caseInsensitiveEqual(value, "startup")) {
-			eventType = GLOBALEVENT_STARTUP;
-		} else if (caseInsensitiveEqual(value, "shutdown")) {
-			eventType = GLOBALEVENT_SHUTDOWN;
-		} else if (caseInsensitiveEqual(value, "record")) {
-			eventType = GLOBALEVENT_RECORD;
-		} else if (caseInsensitiveEqual(value, "save")) {
-			eventType = GLOBALEVENT_SAVE;
-		} else {
-			std::cout << "[Error - GlobalEvent::configureEvent] No valid type \"" << attr.as_string() << "\" for globalevent with name " << name << std::endl;
-			return false;
-		}
-	} else if ((attr = node.attribute("interval"))) {
-		interval = std::max<int32_t>(SCHEDULER_MINTICKS, pugi::cast<int32_t>(attr.value()));
-		nextExecution = OTSYS_TIME() + interval;
-	} else {
-		std::cout << "[Error - GlobalEvent::configureEvent] No interval for globalevent with name " << name << std::endl;
-		return false;
-	}
-	return true;
-}
 
 std::string_view GlobalEvent::getScriptEventName() const
 {

@@ -46,11 +46,6 @@ class GlobalEvents final : public BaseEvents
 		bool reload() override;
 
 	private:
-		std::string_view getScriptBaseName() const override { return "globalevents"; }
-
-		Event_ptr getEvent(const std::string& nodeName) override;
-		bool registerEvent(Event_ptr event, const pugi::xml_node& node) override;
-
 		LuaScriptInterface& getScriptInterface() override {
 			return scriptInterface;
 		}
@@ -65,8 +60,6 @@ class GlobalEvent final : public Event
 {
 	public:
 		explicit GlobalEvent(LuaScriptInterface* interface);
-
-		bool configureEvent(const pugi::xml_node& node) override;
 
 		bool executeRecord(uint32_t current, uint32_t old) const;
 		bool executeEvent() const;

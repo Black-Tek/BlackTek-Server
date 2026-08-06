@@ -67,13 +67,6 @@ ec.onRemovePlayerAugment = {}
 -- Monster
 ec.onDropLoot = {}
 ec.onSpawn = {}
--- Item
-ec.onAttack = {}
-ec.onDefend = {}
-ec.onItemAugment = {}
-ec.onRemoveItemAugment = {}
-ec.onModifierAttack = {}
-ec.onModifierDefend = {}
 
 EventCallback = {
 	register = function(self, triggerIndex)

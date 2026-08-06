@@ -46,14 +46,4 @@
 	<event class="Monster" method="onDropLoot" enabled="1" />
 	<event class="Monster" method="onSpawn" enabled="0" />
 
-	<!-- Item methods -->
-	<event class="Item" method="onAttack" enabled="0"/>
-	<event class="Item" method="onDefend" enabled="0"/>
-	<event class="Item" method="onAugment" enabled="1"/>
-	<event class="Item" method="onRemoveAugment" enabled="1"/>
-
-	<event class="Item" method="onModifierAttack" enabled="1"/>
-	<event class="Item" method="onModifierDefend" enabled="1"/>
-
-
 </events>

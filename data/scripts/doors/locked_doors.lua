@@ -1,6 +1,6 @@
-local useKeyOnDoor = Action()
+local useKeyOnDoor = ItemEvent()
 
-function useKeyOnDoor.onUse(player, item, fromPosition, target, toPosition, isHotkey)
+useKeyOnDoor.onUse = function(player, item, fromPosition, target, toPosition, isHotkey)
     local doorItem = findDoorOnTile(toPosition)
     if not doorItem then
         return false
@@ -74,9 +74,9 @@ end
 
 useKeyOnDoor:register()
 
-local useLockedDoor = Action()
+local useLockedDoor = ItemEvent()
 
-function useLockedDoor.onUse(player, item, fromPosition, target, toPosition, isHotkey)
+useLockedDoor.onUse = function(player, item, fromPosition, target, toPosition, isHotkey)
 
     if player:hasGamemasterAccess() and doorConfig.allowGamemasterBypass then
         teleportOnDoor(player, toPosition)

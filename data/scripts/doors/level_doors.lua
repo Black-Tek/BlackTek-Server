@@ -1,6 +1,6 @@
-local levelDoor = Action()
+local levelDoor = ItemEvent()
 
-function levelDoor.onUse(player, item, fromPosition, target, toPosition, isHotkey)
+levelDoor.onUse = function(player, item, fromPosition, target, toPosition, isHotkey)
     local doorItem = findDoorOnTile(toPosition)
     if not doorItem then
         return false
@@ -65,9 +65,9 @@ end
 
 levelDoor:register()
 
-local levelDoorStepIn = MoveEvent()
+local levelDoorStepOn = ItemEvent()
 
-function levelDoorStepIn.onStepIn(creature, item, position, fromPosition)
+levelDoorStepOn.onStepOn = function(creature, item, position, fromPosition)
     if not creature:isPlayer() then
         if not doorConfig.levelDoorAllowMonsters then
             creature:teleportTo(fromPosition, true)
@@ -101,14 +101,14 @@ function levelDoorStepIn.onStepIn(creature, item, position, fromPosition)
 end
 
 for closedId, openId in pairs(levelDoors.ids) do
-    levelDoorStepIn:id(openId)
+    levelDoorStepOn:id(openId)
 end
 
-levelDoorStepIn:register()
+levelDoorStepOn:register()
 
-local levelDoorStepOut = MoveEvent()
+local levelDoorStepOff = ItemEvent()
 
-function levelDoorStepOut.onStepOut(creature, item, position, fromPosition)
+levelDoorStepOff.onStepOff = function(creature, item, position, fromPosition)
     clearCreatureEntryPosition(creature)
     local doorPosition = item:getPosition()
     local tile = Tile(doorPosition)
@@ -128,7 +128,7 @@ function levelDoorStepOut.onStepOut(creature, item, position, fromPosition)
 end
 
 for closedId, openId in pairs(levelDoors.ids) do
-    levelDoorStepOut:id(openId)
+    levelDoorStepOff:id(openId)
 end
 
-levelDoorStepOut:register()
+levelDoorStepOff:register()

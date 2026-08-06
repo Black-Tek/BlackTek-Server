@@ -1,0 +1,6 @@
+local sorcererAndDruidStaff = ItemEvent(WEAPON_WAND)
+sorcererAndDruidStaff:id(19391)
+sorcererAndDruidStaff:damage(8, 18)
+sorcererAndDruidStaff:element("energy")
+sorcererAndDruidStaff:mana(2)
+sorcererAndDruidStaff:register()

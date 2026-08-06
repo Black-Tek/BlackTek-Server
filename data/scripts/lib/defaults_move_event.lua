@@ -1,10 +1,10 @@
 -- default callbacks
 
-function defaultStepIn(creature, item, position, fromPosition)
+function defaultStepOn(creature, item, position, fromPosition)
 	return true
 end
 
-function defaultStepOut(creature, item, position, fromPosition)
+function defaultStepOff(creature, item, position, fromPosition)
 	return true
 end
 

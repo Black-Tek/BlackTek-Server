@@ -8,9 +8,9 @@
 #include "creaturecontainer.h"
 #include "console.h"
 #include "scheduler.h"
-#include "weapons.h"
 #include "configmanager.h"
 #include "events.h"
+#include "itemevents.h"
 #include "monster.h"
 #include "spells.h"
 #include "metrics.h"
@@ -26,9 +26,9 @@ using BlackTek::MatrixArea;
 using BlackTek::CreateArea;
 
 extern Game g_game;
-extern Weapons* g_weapons;
 extern ConfigManager g_config;
 extern Events* g_events;
+extern ItemEvents* g_itemEvents;
 
 namespace BlackTek
 {
@@ -2467,6 +2467,94 @@ namespace BlackTek
 	template void Combat::accumulate_attack_mods<PlayerPtr>(const PlayerPtr&, const PlayerPtr&, uint32_t&, LeechData&, LeechData&, const std::optional<std::span<const CreaturePtr>>&);
 	template void Combat::accumulate_attack_mods<MonsterPtr>(const PlayerPtr&, const MonsterPtr&, uint32_t&, LeechData&, LeechData&, const std::optional<std::span<const CreaturePtr>>&);
 
+	bool Combat::HasLeechEffect(const LeechData& data) noexcept
+	{
+		return data.percent_health != 0
+			or data.percent_mana != 0
+			or data.percent_stamina != 0
+			or data.percent_soul != 0
+			or data.flat_health != 0
+			or data.flat_mana != 0
+			or data.flat_stamina != 0
+			or data.flat_soul != 0;
+	}
+
+	void Combat::FireItemCombatHooks(bool isAttack, const PlayerPtr& holder, const CreaturePtr& other, uint32_t currentDamage, bool leechedDamage) const noexcept
+	{
+		const auto attackHook = isAttack ? BlackTek::ItemEvents::HookType::OnAttack : BlackTek::ItemEvents::HookType::OnDefend;
+		const auto modifierHook = isAttack ? BlackTek::ItemEvents::HookType::OnAttackMod : BlackTek::ItemEvents::HookType::OnDefenseMod;
+
+		const bool wantsAttackHook = g_itemEvents->hasHook(attackHook);
+		const bool wantsModifierHook = g_itemEvents->hasHook(modifierHook);
+		if (not wantsAttackHook and not wantsModifierHook)
+			return;
+
+		const uint16_t attackBit = wantsAttackHook ? BlackTek::ItemEvents::ToHookMask(attackHook) : uint16_t{ 0 };
+		const uint16_t modBit = wantsModifierHook ? BlackTek::ItemEvents::ToHookMask(modifierHook) : uint16_t{ 0 };
+		const uint16_t neededMask = attackBit | modBit;
+
+		if ((holder->getCombatHookMask() & neededMask) == 0)
+			return;
+
+		const auto blockTypeT = static_cast<BlockType_t>(blockType);
+		const auto combatTypeT = static_cast<CombatType_t>(damage_type);
+		const auto originT = static_cast<Origin>(origin);
+
+		const uint8_t otherType = other ? static_cast<uint8_t>(other->getType()) : 0;
+		const uint8_t otherRace = other ? static_cast<uint8_t>(other->getRace()) : RACE_NONE;
+		static const std::string emptyCreatureName;
+		const std::string& otherName = other ? other->getName() : emptyCreatureName;
+
+		for (uint32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot)
+		{
+			const uint16_t slotMask = holder->getSlotCombatHookMask(static_cast<slots_t>(slot));
+			if ((slotMask & neededMask) == 0)
+				continue;
+
+			const ItemPtr item = holder->getInventoryItemRef(static_cast<slots_t>(slot));
+			if (not item)
+				continue;
+
+			if (wantsAttackHook and (slotMask & attackBit))
+			{
+				if (isAttack)
+					g_itemEvents->fireAttack(item, holder, other, blockTypeT, combatTypeT, originT, config.test(Config::Critical), leechedDamage);
+				else
+					g_itemEvents->fireDefend(item, holder, other, blockTypeT, combatTypeT, originT, config.test(Config::Critical), leechedDamage);
+			}
+
+			if (wantsModifierHook and (slotMask & modBit) and item->isAugmented())
+			{
+				size_t totalModifiers = 0;
+				for (const auto& augment : *item->getAugments())
+				{
+					totalModifiers += augment->getModifiers().size();
+				}
+
+				std::vector<DamageModifier> matchedModifiers;
+				matchedModifiers.reserve(totalModifiers);
+				for (const auto& augment : *item->getAugments())
+				{
+					for (const auto& modifier : augment->getModifiers())
+					{
+						const bool stanceMatches = isAttack ? modifier.isAttackStance() : modifier.isDefenseStance();
+						if (stanceMatches and modifier.applies(combatTypeT, otherType, origin, otherRace, otherName))
+							matchedModifiers.push_back(modifier);
+					}
+				}
+
+				for (const auto& modifier : matchedModifiers)
+				{
+					auto modifierPtr = std::make_shared<DamageModifier>(modifier);
+					if (isAttack)
+						g_itemEvents->fireAttackMod(item, holder, other, modifierPtr, currentDamage);
+					else
+						g_itemEvents->fireDefenseMod(item, holder, other, modifierPtr, currentDamage);
+				}
+			}
+		}
+	}
+
 	void Combat::strike_target(const PlayerPtr& caster, const PlayerPtr& victim, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
 	{
 		const bool config_has_condition = config.test(Config::HasCondition);
@@ -2557,6 +2645,9 @@ namespace BlackTek
 					currentDamage = defense_augment(caster, victim, currentDamage, std::nullopt);
 			}
 		}
+
+		FireItemCombatHooks(true, caster, victim, currentDamage, HasLeechEffect(leech_data) or HasLeechEffect(steal_data));
+		FireItemCombatHooks(false, victim, caster, currentDamage, HasLeechEffect(leech_data) or HasLeechEffect(steal_data));
 
 		currentDamage = process_steal(caster, victim, steal_data, currentDamage);
 
@@ -2676,6 +2767,8 @@ namespace BlackTek
 			if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, 0, false);
 			return;
 		}
+
+		FireItemCombatHooks(true, caster, victim, currentDamage, HasLeechEffect(leech_data) or HasLeechEffect(steal_data));
 
 		currentDamage = process_steal(caster, victim, steal_data, currentDamage);
 
@@ -2804,6 +2897,8 @@ namespace BlackTek
 					currentDamage = defense_augment(attacker, victim, currentDamage, std::nullopt);
 			}
 		}
+
+		FireItemCombatHooks(false, victim, attacker, currentDamage, false);
 
 		const uint32_t damageDealt = apply_damage(attacker, victim, currentDamage, spectators);
 

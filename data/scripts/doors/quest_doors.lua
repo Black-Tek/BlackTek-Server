@@ -1,6 +1,6 @@
-local questDoor = Action()
+local questDoor = ItemEvent()
 
-function questDoor.onUse(player, item, fromPosition, target, toPosition, isHotkey)
+questDoor.onUse = function(player, item, fromPosition, target, toPosition, isHotkey)
     local doorId = item:getId()
     local isQuestDoor, doorState, pairedId = isQuestDoor(doorId)
 
@@ -58,9 +58,9 @@ end
 questDoor:register()
 
 
-local questDoorStepIn = MoveEvent()
+local questDoorStepOn = ItemEvent()
 
-function questDoorStepIn.onStepIn(creature, item, position, fromPosition)
+questDoorStepOn.onStepOn = function(creature, item, position, fromPosition)
     if not creature:isPlayer() then
         if not doorConfig.questDoorAllowMonsters then
             creature:teleportTo(fromPosition, true)
@@ -93,15 +93,15 @@ function questDoorStepIn.onStepIn(creature, item, position, fromPosition)
 end
 
 for closedId, openId in pairs(questDoors.ids) do
-    questDoorStepIn:id(openId)
+    questDoorStepOn:id(openId)
 end
 
-questDoorStepIn:register()
+questDoorStepOn:register()
 
 
-local questDoorStepOut = MoveEvent()
+local questDoorStepOff = ItemEvent()
 
-function questDoorStepOut.onStepOut(creature, item, position, fromPosition)
+questDoorStepOff.onStepOff = function(creature, item, position, fromPosition)
     clearCreatureEntryPosition(creature)
     local doorPosition = item:getPosition()
     local tile = Tile(doorPosition)
@@ -121,7 +121,7 @@ function questDoorStepOut.onStepOut(creature, item, position, fromPosition)
 end
 
 for closedId, openId in pairs(questDoors.ids) do
-    questDoorStepOut:id(openId)
+    questDoorStepOff:id(openId)
 end
 
-questDoorStepOut:register()
+questDoorStepOff:register()

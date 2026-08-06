@@ -8,12 +8,9 @@
 #include "console.h"
 #include "tasks.h"
 #include "game.h"
-#include "actions.h"
 #include "configmanager.h"
 #include "spells.h"
 #include "talkaction.h"
-#include "movement.h"
-#include "weapons.h"
 #include "raids.h"
 #include "quests.h"
 #include "mounts.h"
@@ -28,12 +25,9 @@ extern DatabaseTasks g_databaseTasks;
 extern Dispatcher g_dispatcher;
 
 extern ConfigManager g_config;
-extern Actions* g_actions;
 extern Monsters g_monsters;
 extern TalkActions* g_talkActions;
-extern MoveEvents* g_moveEvents;
 extern Spells* g_spells;
-extern Weapons* g_weapons;
 extern Game g_game;
 extern CreatureEvents* g_creatureEvents;
 extern GlobalEvents* g_globalEvents;

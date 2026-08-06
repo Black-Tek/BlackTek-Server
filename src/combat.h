@@ -497,6 +497,7 @@ namespace BlackTek
 		[[nodiscard]] std::pair<CombatHandle, uint32_t> penetrateDamage(uint32_t currentDamage, uint32_t percent, uint32_t flat) noexcept;
 
 		[[nodiscard]] uint32_t applyCrit(uint32_t currentDamage, uint32_t percent, uint32_t flat) noexcept;
+		[[nodiscard]] static bool HasLeechEffect(const LeechData& data) noexcept;
 		[[nodiscard]] uint32_t process_steal(const PlayerPtr& caster, const CreaturePtr& victim, const LeechData& steal, uint32_t currentDamage) noexcept;
 		void post_damage(const PlayerPtr& caster, const CreaturePtr& victim, uint32_t currentDamage, LeechData&& leech_data, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const PlayerPtr& caster, const PlayerPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
@@ -724,6 +725,8 @@ namespace BlackTek
 
 		template <typename VictimT>
 		void accumulate_attack_mods(const PlayerPtr& caster, const VictimT& victim, uint32_t& currentDamage, LeechData& leech_data, LeechData& steal_data, const std::optional<std::span<const CreaturePtr>>& spectators) noexcept;
+
+		void FireItemCombatHooks(bool isAttack, const PlayerPtr& holder, const CreaturePtr& other, uint32_t currentDamage, bool leechedDamage) const noexcept;
 
 		void CommitStrike(const CreaturePtr& attacker, const CreaturePtr& victim, uint32_t damageDealt, bool wasFatal) noexcept;
 

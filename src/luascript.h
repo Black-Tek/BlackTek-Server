@@ -1605,11 +1605,8 @@ class LuaScriptInterface
 		static int luaCombatCreate(lua_State* L);
 		static int luaCombatDelete(lua_State* L);
 
-		// Generic config-flag setter/getter used via lua_pushcclosure upvalue (upvalue 1 = Config enum int)
 		static int luaCombatSetConfigFlag(lua_State* L);
 		static int luaCombatGetConfigFlag(lua_State* L);
-
-		// Dedicated non-flag property methods
 		static int luaCombatSetDamageType(lua_State* L);
 		static int luaCombatGetDamageType(lua_State* L);
 		static int luaCombatSetImpactEffect(lua_State* L);
@@ -1634,8 +1631,6 @@ class LuaScriptInterface
 		static int luaCombatRegisterFormula(lua_State* L);
 		static int luaCombatGetAreaPositions(lua_State* L);
 
-		// FormulaNode — Lua userdata wrapping a compiled C++ formula expression
-		// pushFormulaNode / getFormulaNode are file-scope statics in luascript.cpp
 		static int luaFormulaNodeBind(lua_State* L);
 		static int luaFormulaNodeBindSkill(lua_State* L);
 		static int luaFormulaNodeOutput(lua_State* L);
@@ -1654,7 +1649,7 @@ class LuaScriptInterface
 		static int luaFormulaNodePow(lua_State* L);
 		static int luaFormulaNodeGC(lua_State* L);
 
-		// CombatMetrics — query/control surface over BlackTek::Metrics
+		// CombatMetrics
 		static int luaCombatMetricsQuery(lua_State* L);
 		static int luaCombatMetricsQueryEvents(lua_State* L);
 		static int luaCombatMetricsQueryModifiers(lua_State* L);
@@ -1898,17 +1893,6 @@ class LuaScriptInterface
 		static int luaSpellBlockWalls(lua_State* L);
 		static int luaSpellCheckFloor(lua_State* L);
 
-		// Actions
-		static int luaCreateAction(lua_State* L);
-		static int luaActionOnUse(lua_State* L);
-		static int luaActionRegister(lua_State* L);
-		static int luaActionItemId(lua_State* L);
-		static int luaActionActionId(lua_State* L);
-		static int luaActionUniqueId(lua_State* L);
-		static int luaActionAllowFarUse(lua_State* L);
-		static int luaActionBlockWalls(lua_State* L);
-		static int luaActionCheckFloor(lua_State* L);
-
 		// Talkactions
 		static int luaCreateTalkaction(lua_State* L);
 		static int luaTalkactionOnSay(lua_State* L);
@@ -1937,22 +1921,6 @@ class LuaScriptInterface
 		static int luaCreatureEventRegister(lua_State* L);
 		static int luaCreatureEventOnCallback(lua_State* L);
 
-		// MoveEvents
-		static int luaCreateMoveEvent(lua_State* L);
-		static int luaMoveEventType(lua_State* L);
-		static int luaMoveEventRegister(lua_State* L);
-		static int luaMoveEventOnCallback(lua_State* L);
-		static int luaMoveEventLevel(lua_State* L);
-		static int luaMoveEventSlot(lua_State* L);
-		static int luaMoveEventMagLevel(lua_State* L);
-		static int luaMoveEventPremium(lua_State* L);
-		static int luaMoveEventVocation(lua_State* L);
-		static int luaMoveEventTileItem(lua_State* L);
-		static int luaMoveEventItemId(lua_State* L);
-		static int luaMoveEventActionId(lua_State* L);
-		static int luaMoveEventUniqueId(lua_State* L);
-		static int luaMoveEventPosition(lua_State* L);
-
 		// GlobalEvents
 		static int luaCreateGlobalEvent(lua_State* L);
 		static int luaGlobalEventType(lua_State* L);
@@ -1961,45 +1929,57 @@ class LuaScriptInterface
 		static int luaGlobalEventTime(lua_State* L);
 		static int luaGlobalEventInterval(lua_State* L);
 
-		// Weapon
-		static int luaCreateWeapon(lua_State* L);
-		static int luaWeaponId(lua_State* L);
-		static int luaWeaponLevel(lua_State* L);
-		static int luaWeaponMagicLevel(lua_State* L);
-		static int luaWeaponMana(lua_State* L);
-		static int luaWeaponManaPercent(lua_State* L);
-		static int luaWeaponHealth(lua_State* L);
-		static int luaWeaponHealthPercent(lua_State* L);
-		static int luaWeaponSoul(lua_State* L);
-		static int luaWeaponPremium(lua_State* L);
-		static int luaWeaponBreakChance(lua_State* L);
-		static int luaWeaponAction(lua_State* L);
-		static int luaWeaponUnproperly(lua_State* L);
-		static int luaWeaponVocation(lua_State* L);
-		static int luaWeaponOnUseWeapon(lua_State* L);
-		static int luaWeaponRegister(lua_State* L);
-		static int luaWeaponElement(lua_State* L);
-		static int luaWeaponAttack(lua_State* L);
-		static int luaWeaponDefense(lua_State* L);
-		static int luaWeaponRange(lua_State* L);
-		static int luaWeaponCharges(lua_State* L);
-		static int luaWeaponDuration(lua_State* L);
-		static int luaWeaponDecayTo(lua_State* L);
-		static int luaWeaponTransformEquipTo(lua_State* L);
-		static int luaWeaponTransformDeEquipTo(lua_State* L);
-		static int luaWeaponSlotType(lua_State* L);
-		static int luaWeaponHitChance(lua_State* L);
-		static int luaWeaponExtraElement(lua_State* L);
+		// ItemEvent
+		static int luaCreateItemEvent(lua_State* L);
+		static int luaItemEventType(lua_State* L);
+		static int luaItemEventRegister(lua_State* L);
+		static int luaItemEventOnCallback(lua_State* L);
+		static int luaItemEventNativeFunction(lua_State* L);
 
-		// exclusively for distance weapons
-		static int luaWeaponMaxHitChance(lua_State* L);
-		static int luaWeaponAmmoType(lua_State* L);
+		// keying
+		static int luaItemEventItemId(lua_State* L);
+		static int luaItemEventActionId(lua_State* L);
+		static int luaItemEventUniqueId(lua_State* L);
+		static int luaItemEventPosition(lua_State* L);
 
-		// exclusively for wands
-		static int luaWeaponWandDamage(lua_State* L);
+		// OnUse
+		static int luaItemEventAllowFarUse(lua_State* L);
+		static int luaItemEventBlockWalls(lua_State* L);
+		static int luaItemEventCheckFloor(lua_State* L);
 
-		// exclusively for wands & distance weapons
-		static int luaWeaponShootType(lua_State* L);
+		// OnEquip/OnDeEquip
+		static int luaItemEventLevel(lua_State* L);
+		static int luaItemEventMagLevel(lua_State* L);
+		static int luaItemEventSlot(lua_State* L);
+		static int luaItemEventPremium(lua_State* L);
+		static int luaItemEventVocation(lua_State* L);
+		static int luaItemEventTileItem(lua_State* L);
+
+		// OnUseAsWeapon
+		static int luaItemEventAttack(lua_State* L);
+		static int luaItemEventDefense(lua_State* L);
+		static int luaItemEventRange(lua_State* L);
+		static int luaItemEventElement(lua_State* L);
+		static int luaItemEventMana(lua_State* L);
+		static int luaItemEventManaPercent(lua_State* L);
+		static int luaItemEventHealth(lua_State* L);
+		static int luaItemEventHealthPercent(lua_State* L);
+		static int luaItemEventSoul(lua_State* L);
+		static int luaItemEventBreakChance(lua_State* L);
+		static int luaItemEventHitChance(lua_State* L);
+		static int luaItemEventMaxHitChance(lua_State* L);
+		static int luaItemEventWieldUnproperly(lua_State* L);
+		static int luaItemEventCharges(lua_State* L);
+		static int luaItemEventDuration(lua_State* L);
+		static int luaItemEventDecayTo(lua_State* L);
+		static int luaItemEventTransformEquipTo(lua_State* L);
+		static int luaItemEventTransformDeEquipTo(lua_State* L);
+		static int luaItemEventAmmoType(lua_State* L);
+		static int luaItemEventShootType(lua_State* L);
+		static int luaItemEventWandDamage(lua_State* L);
+		static int luaItemEventAction(lua_State* L);
+		static int luaItemEventSlotType(lua_State* L);
+		static int luaItemEventExtraElement(lua_State* L);
 
 		// XML
 		static int luaCreateXmlDocument(lua_State* L);

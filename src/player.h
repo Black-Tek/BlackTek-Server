@@ -26,7 +26,6 @@
 
 class House;
 class NetworkMessage;
-class Weapon;
 class ProtocolGame;
 class Npc;
 class SchedulerTask;
@@ -179,6 +178,7 @@ class Player final : public Creature
 		ContainerPtr		getContainerByID(uint8_t cid);
 		ItemPtr				getInventoryItem(slots_t slot) const;
 		ItemPtr				getInventoryItem(uint32_t slot) const;
+		[[nodiscard]] const ItemPtr& getInventoryItemRef(slots_t slot) const noexcept;
 		ContainerPtr		getDepotChest(uint32_t depotId, bool autoCreate);
 		ContainerPtr&		getDepotLocker();
 		ContainerPtr&		getRewardChest();
@@ -519,6 +519,8 @@ class Player final : public Creature
 		[[nodiscard]] bool	hasConversionModifiers() const noexcept		{ return conversion_modifier_count > 0; }
 		[[nodiscard]] bool	hasReformModifiers() const noexcept			{ return reform_modifier_count > 0;		}
 		[[nodiscard]] bool	hasHealingModifiers() const noexcept		{ return healing_modifier_count > 0;	}
+		[[nodiscard]] uint16_t	getCombatHookMask() const noexcept			{ return combatHookMask; }
+		[[nodiscard]] uint16_t	getSlotCombatHookMask(slots_t slot) const noexcept	{ return combatHookMasks[slot]; }
 		[[nodiscard]] bool	hasFilteredAttackMods()	const noexcept		{ return m_modifier_cache and not m_modifier_cache->during_filtered_attack.empty();	}
 		[[nodiscard]] bool	hasFilteredAttackPostMods()	const noexcept	{ return m_modifier_cache and not m_modifier_cache->post_filtered_attack.empty();	}
 		[[nodiscard]] bool	hasFilteredDefenseMods() const noexcept		{ return m_modifier_cache and not m_modifier_cache->filted_defense.empty();			}
@@ -1035,6 +1037,8 @@ class Player final : public Creature
 		int32_t varStats[STAT_LAST + 1] = {};
 		std::bitset<6> blessings;
 		bool inventoryAbilities[CONST_SLOT_LAST + 1] = {};
+		uint16_t combatHookMasks[CONST_SLOT_LAST + 1] = {};
+		uint16_t combatHookMask = 0;
 
 		std::forward_list<Condition*>		getMuteConditions() const;
 		gtl::btree_map<uint32_t, uint32_t>&	getAllItemTypeCount(gtl::btree_map<uint32_t, uint32_t>& countMap) const;
@@ -1106,6 +1110,8 @@ class Player final : public Creature
 		void death(const CreaturePtr& lastHitCreature) override;
 		void cacheModifier(const BlackTek::DamageModifier& mod) noexcept;
 		void uncacheModifier(const BlackTek::DamageModifier& mod) noexcept;
+		void setSlotCombatHookMask(slots_t slot, uint16_t mask) noexcept;
+		void clearSlotCombatHookMask(slots_t slot) noexcept;
 		void updateItemsLight(bool internal = false);
 		void updateBaseSpeed();
 		void getPathSearchParams(const CreatureConstPtr& creature, FindPathParams& fpp) const override;
@@ -1120,7 +1126,7 @@ class Player final : public Creature
 		friend class Npc;
 		friend class LuaScriptInterface;
 		friend class Map;
-		friend class Actions;
+		friend class ItemEvents;
 		friend class IOLoginData;
 		friend class ProtocolGame;
 		friend class ItemContainer;

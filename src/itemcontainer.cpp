@@ -6,10 +6,10 @@
 #include "itemcontainer.h"
 #include "iomap.h"
 #include "game.h"
-#include "movement.h"
+#include "itemevents.h"
 
 extern Game g_game;
-extern MoveEvents* g_moveEvents;
+extern ItemEvents* g_itemEvents;
 
 using BlackTek::Containers::ContainerConfig;
 using BlackTek::Containers::ContainerProperty;
@@ -620,7 +620,7 @@ ReturnValue ItemContainer::canAddItemStandard(int32_t index, const ItemPtr& item
 		ReturnValue ret = topLocation.player->canAddItem(INDEX_ANYWHERE, item, count, flags | FLAG_CHILDISOWNER, actor);
 
 		if (ret == RETURNVALUE_NOERROR)
-			ret = g_moveEvents->onPlayerEquip(topLocation.player, item, static_cast<slots_t>(INDEX_ANYWHERE), true);
+			ret = g_itemEvents->fireEquip(topLocation.player, item, static_cast<slots_t>(INDEX_ANYWHERE), true);
 
 		return ret;
 	}

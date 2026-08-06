@@ -84,17 +84,6 @@ do
 end
 
 do
-	local function ActionNewIndex(self, key, value)
-		if key == "onUse" then
-			self:onUse(value)
-			return
-		end
-		rawset(self, key, value)
-	end
-	rawgetmetatable("Action").__newindex = ActionNewIndex
-end
-
-do
 	local function TalkActionNewIndex(self, key, value)
 		if key == "onSay" then
 			self:onSay(value)
@@ -162,35 +151,59 @@ do
 end
 
 do
-	local function MoveEventNewIndex(self, key, value)
-		if key == "onEquip" then
-			self:type("equip")
+	-- ItemEvent replaces Action/MoveEvent/Weapon's OnUse/OnEquip/OnDeEquip/OnStepOn/OnStepOff/
+	-- OnAddItem/OnRemoveItem/OnUseAsWeapon hooks (item_events.md S9) under one class. Each
+	-- itemEvent:onX(...) method is a closure with its HookType already baked in as an upvalue
+	-- (see LuaScriptInterface::luaItemEventOnCallback, registered via registerMethodClosure),
+	-- so - unlike the old ActionNewIndex/MoveEventNewIndex compat handlers - this never needs to
+	-- call :type(...) itself; the method call alone both records the callback and sets the hook.
+	local function ItemEventNewIndex(self, key, value)
+		if key == "onUse" then
+			self:onUse(value)
+			return
+		elseif key == "onUseAsWeapon" then
+			self:onUseAsWeapon(value)
+			return
+		elseif key == "onEquip" then
 			self:onEquip(value)
 			return
 		elseif key == "onDeEquip" then
-			self:type("deequip")
 			self:onDeEquip(value)
 			return
+		elseif key == "onStepOn" then
+			self:onStepOn(value)
+			return
+		elseif key == "onStepOff" then
+			self:onStepOff(value)
+			return
 		elseif key == "onAddItem" then
-			self:type("additem")
 			self:onAddItem(value)
 			return
 		elseif key == "onRemoveItem" then
-			self:type("removeitem")
 			self:onRemoveItem(value)
 			return
-		elseif key == "onStepIn" then
-			self:type("stepin")
-			self:onStepIn(value)
+		elseif key == "onAttack" then
+			self:onAttack(value)
 			return
-		elseif key == "onStepOut" then
-			self:type("stepout")
-			self:onStepOut(value)
+		elseif key == "onDefend" then
+			self:onDefend(value)
+			return
+		elseif key == "onAugment" then
+			self:onAugment(value)
+			return
+		elseif key == "onRemoveAugment" then
+			self:onRemoveAugment(value)
+			return
+		elseif key == "onAttackMod" then
+			self:onAttackMod(value)
+			return
+		elseif key == "onDefenseMod" then
+			self:onDefenseMod(value)
 			return
 		end
 		rawset(self, key, value)
 	end
-	rawgetmetatable("MoveEvent").__newindex = MoveEventNewIndex
+	rawgetmetatable("ItemEvent").__newindex = ItemEventNewIndex
 end
 
 do
@@ -221,17 +234,6 @@ do
 		rawset(self, key, value)
 	end
 	rawgetmetatable("GlobalEvent").__newindex = GlobalEventNewIndex
-end
-
-do
-	local function WeaponNewIndex(self, key, value)
-		if key == "onUseWeapon" then
-			self:onUseWeapon(value)
-			return
-		end
-		rawset(self, key, value)
-	end
-	rawgetmetatable("Weapon").__newindex = WeaponNewIndex
 end
 
 do
