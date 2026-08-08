@@ -172,9 +172,11 @@ class ScriptEnvironment
 
 		//temporary item list
 		static std::multimap<ScriptEnvironment*, ItemPtr> tempItems;
+		static gtl::flat_hash_map<const Item*, ScriptEnvironment*> tempItemOwners;
 
 		//local item map
-		gtl::node_hash_map<uint32_t, ItemPtr> localMap;
+		gtl::flat_hash_map<uint32_t, ItemPtr> localMap;
+		gtl::flat_hash_map<const Item*, uint32_t> reverseMap;
 		uint32_t lastUID = std::numeric_limits<uint16_t>::max();
 
 		//script file id
@@ -278,30 +280,34 @@ class LuaScriptInterface
 			*userdata = value;
 		}
 
+		static inline int spCacheRef = LUA_NOREF;
+
 		static void initSharedPtrCache(lua_State* L)
 		{
-			lua_newtable(L); 
-			lua_newtable(L); 
+			lua_newtable(L);
+			lua_newtable(L);
 			lua_pushstring(L, "v");
-			lua_setfield(L, -2, "__mode"); 
+			lua_setfield(L, -2, "__mode");
 			lua_setmetatable(L, -2);
-    
+
+			lua_pushvalue(L, -1);
 			lua_setfield(L, LUA_REGISTRYINDEX, "sp_cache");
+			spCacheRef = luaL_ref(L, LUA_REGISTRYINDEX);
 		}
 
 		// todo: refine all the userdata in the future to just go by an embedded GUID for lookup
 		// thereby reducing size of userdata, C++ maintains ownership and lifecycle responsibility of the objects
 		// and with those two things comes better performance and stability
 		template <SharedPtr T>
-		static inline void pushSharedPtr(lua_State* L, T value, int nuvalue = 1) 
+		static inline void pushSharedPtr(lua_State* L, const T& value, int nuvalue = 1)
 		{
 			const void* key = value.get();
 
 			if (key)
 			{
 				// optional: we could create more caches, a cache for each metatable/class type, and that would boost performance on lua even further
-				lua_getfield(L, LUA_REGISTRYINDEX, "sp_cache");
-        
+				lua_rawgeti(L, LUA_REGISTRYINDEX, spCacheRef);
+
 				if (lua_rawgetp(L, -1, key) == LUA_TUSERDATA)
 				{
 					auto* cached = static_cast<T*>(lua_touserdata(L, -1));
@@ -315,20 +321,20 @@ class LuaScriptInterface
 				lua_pop(L, 1); // Pop nil/invalid result baecause if we made it here, we have one
 
 				void* ud = lua_newuserdatauv(L, sizeof(T), nuvalue);
-				new (ud) T(std::move(value));
+				new (ud) T(value);
 
 				lua_pushvalue(L, -1);
 				lua_rawsetp(L, -3, key);
-        
+
 				lua_remove(L, -2);
-			} 
+			}
 			else
 			{
 				// Key is null
 				// Currently we push a userdata containing an empty shared_ptr
 				// We might need to push nil, but it should be the same result..
 				// in the future we do extensive tests on whats best for this situation.
-				new (lua_newuserdatauv(L, sizeof(T), nuvalue)) T(std::move(value));
+				new (lua_newuserdatauv(L, sizeof(T), nuvalue)) T(value);
 			}
 		}
 

@@ -36,6 +36,7 @@
 #include "metrics_format.h"
 #include "storewindow.h"
 
+using BlackTek::Augment;
 using BlackTek::DamageModifier;
 using BlackTek::GameModel;
 
@@ -55,6 +56,7 @@ ScriptEnvironment::DBResultMap ScriptEnvironment::tempResults;
 uint32_t ScriptEnvironment::lastResultId = 0;
 
 std::multimap<ScriptEnvironment*, ItemPtr> ScriptEnvironment::tempItems;
+gtl::flat_hash_map<const Item*, ScriptEnvironment*> ScriptEnvironment::tempItemOwners;
 
 LuaEnvironment g_luaEnvironment;
 
@@ -75,6 +77,7 @@ void ScriptEnvironment::resetEnv()
 	timerEvent = false;
 	interface = nullptr;
 	localMap.clear();
+	reverseMap.clear();
 	tempResults.clear();
 
 	auto pair = tempItems.equal_range(this);
@@ -85,6 +88,9 @@ void ScriptEnvironment::resetEnv()
 		{
 			// g_game.ReleaseItem(item);
 		}
+		if (item)
+			tempItemOwners.erase(item.get());
+
 		it = tempItems.erase(it);
 	}
 }
@@ -124,22 +130,23 @@ uint32_t ScriptEnvironment::addItem(const ItemPtr& item)
 		return item->getUniqueId();
 	}
 
-	for (const auto& it : localMap) {
-		if (it.second == item) {
-			return it.first;
-		}
-	}
+	if (auto it = reverseMap.find(item.get()); it != reverseMap.end())
+		return it->second;
 
 	localMap[++lastUID] = item;
+	reverseMap[item.get()] = lastUID;
 	return lastUID;
 }
 
 void ScriptEnvironment::insertItem(uint32_t uid, const ItemPtr& item)
 {
 	auto result = localMap.emplace(uid, item);
-	if (!result.second) {
-		std::cout << std::endl << "Lua Script Error: uid already taken.";
-	}
+
+	if (not result.second)
+		BlackTek::Console::Error("ScriptEnvironment::insertItem: uid {} already taken.", uid);
+
+	else
+		reverseMap[item.get()] = uid;
 }
 
 GameModel ScriptEnvironment::getGameModelByUID(const uint32_t uid)
@@ -211,6 +218,7 @@ void ScriptEnvironment::removeItemByUID(const uint32_t uid)
 	}
 
 	if (auto it = localMap.find(uid); it != localMap.end()) {
+		reverseMap.erase(it->second.get());
 		localMap.erase(it);
 	}
 }
@@ -218,16 +226,23 @@ void ScriptEnvironment::removeItemByUID(const uint32_t uid)
 void ScriptEnvironment::addTempItem(const ItemPtr& item)
 {
 	tempItems.emplace(this, item);
+	tempItemOwners[item.get()] = this;
 }
 
 void ScriptEnvironment::removeTempItem(const ItemPtr& item)
 {
-	for (auto it = tempItems.begin(), end = tempItems.end(); it != end; ++it) {
-		if (it->second == item) {
-			tempItems.erase(it);
-			break;
-		}
-	}
+	auto ownerIt = tempItemOwners.find(item.get());
+	if (ownerIt == tempItemOwners.end())
+		return;
+
+	auto* owner = ownerIt->second;
+	auto [first, last] = tempItems.equal_range(owner);
+	auto it = std::find_if(first, last, [&item](const auto& pair) { return pair.second == item; });
+
+	if (it != last)
+		tempItems.erase(it);
+
+	tempItemOwners.erase(ownerIt);
 }
 
 uint32_t ScriptEnvironment::addResult(const DBResult_ptr& res)
@@ -5167,7 +5182,7 @@ int LuaScriptInterface::luaGameGetSpectators(lua_State* L)
 	lua_createtable(L, spectators.size(), 0);
 
 	int index = 0;
-	for (auto creature : spectators) {
+	for (const auto& creature : spectators) {
 		pushSharedPtr(L, creature);
 		setCreatureMetatable(L, -1, creature);
 		lua_rawseti(L, -2, ++index);
@@ -6293,7 +6308,7 @@ int LuaScriptInterface::luaTileGetItemByType(lua_State* L)
 	}
 
 	if (const TileItemsPtr items = tile->getItemList()) {
-		for (const auto item : *items) {
+		for (const auto& item : *items) {
 			const ItemType& it = Item::items[item->getID()];
 			if (it.type == itemType) {
 				pushSharedPtr(L, item);
@@ -6461,7 +6476,7 @@ int LuaScriptInterface::luaTileGetItems(lua_State* L)
 	lua_createtable(L, itemVector->size(), 0);
 
 	int index = 0;
-	for (const auto item : *itemVector) {
+	for (const auto& item : *itemVector) {
 		pushSharedPtr(L, item);
 		setItemMetatable(L, -1, item);
 		lua_rawseti(L, -2, ++index);
@@ -10625,7 +10640,7 @@ int LuaScriptInterface::luaCreatureGetSummons(lua_State* L)
 	lua_createtable(L, creature->getSummonCount(), 0);
 
 	int index = 0;
-	for (const auto summon : creature->getSummons()) {
+	for (const auto& summon : creature->getSummons()) {
 		pushSharedPtr(L, summon);
 		setCreatureMetatable(L, -1, summon);
 		lua_rawseti(L, -2, ++index);
@@ -14365,7 +14380,7 @@ int LuaScriptInterface::luaMonsterGetFriendList(lua_State* L)
 	lua_createtable(L, friendList.size(), 0);
 
 	int index = 0;
-	for (const auto creature : friendList) {
+	for (const auto& creature : friendList) {
 		pushSharedPtr(L, creature);
 		setCreatureMetatable(L, -1, creature);
 		lua_rawseti(L, -2, ++index);
@@ -14683,7 +14698,7 @@ int LuaScriptInterface::luaGuildGetMembersOnline(lua_State* L)
 	lua_createtable(L, members.size(), 0);
 
 	int index = 0;
-	for (const auto player : members) {
+	for (const auto& player : members) {
 		pushSharedPtr(L, player);
 		setMetatable(L, -1, "Player");
 		lua_rawseti(L, -2, ++index);
@@ -15411,7 +15426,7 @@ int LuaScriptInterface::luaHouseGetBeds(lua_State* L)
 	lua_createtable(L, beds.size(), 0);
 
 	int index = 0;
-	for (const auto bedItem : beds) {
+	for (const auto& bedItem : beds) {
 		pushSharedPtr(L, bedItem);
 		setItemMetatable(L, -1, bedItem);
 		lua_rawseti(L, -2, ++index);
@@ -15443,7 +15458,7 @@ int LuaScriptInterface::luaHouseGetDoors(lua_State* L)
 	lua_createtable(L, doors.size(), 0);
 
 	int index = 0;
-	for (const auto door : doors) {
+	for (const auto& door : doors) {
 		pushSharedPtr(L, door);
 		setItemMetatable(L, -1, door);
 		lua_rawseti(L, -2, ++index);
@@ -15492,7 +15507,7 @@ int LuaScriptInterface::luaHouseGetTiles(lua_State* L)
 	lua_createtable(L, tiles.size(), 0);
 
 	int index = 0;
-	for (const auto tile : tiles) {
+	for (const auto& tile : tiles) {
 		pushSharedPtr(L, tile);
 		setMetatable(L, -1, "Tile");
 		lua_rawseti(L, -2, ++index);
@@ -15513,9 +15528,9 @@ int LuaScriptInterface::luaHouseGetItems(lua_State* L)
 	lua_newtable(L);
 
 	int index = 0;
-	for (const auto tile : tiles) {
+	for (const auto& tile : tiles) {
 		if(const auto itemVector = tile->getItemList()) {
-			for(const auto item : *itemVector) {
+			for(const auto& item : *itemVector) {
 				pushSharedPtr(L, item);
 				setItemMetatable(L, -1, item);
 				lua_rawseti(L, -2, ++index);
