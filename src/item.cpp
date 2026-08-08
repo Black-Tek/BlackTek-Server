@@ -2368,6 +2368,7 @@ void ItemAttributes::setStrAttr(itemAttrTypes type, std::string_view value)
 	}
 
 	if (value.empty()) {
+		removeAttribute(type);
 		return;
 	}
 
