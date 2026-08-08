@@ -2281,7 +2281,7 @@ void LuaScriptInterface::registerFunctions()
 	// Tile
 	registerClass("Tile", "", luaTileCreate);
 	registerMetaMethod("Tile", "__eq", luaUserdataCompare);
-	//registerMetaMethod("Tile", "__gc", destroySharedUserData<Tile>);
+	registerMetaMethod("Tile", "__gc", destroySharedUserData<Tile>);
 
 	registerMethod("Tile", "remove", luaTileRemove);
 
@@ -2403,7 +2403,7 @@ void LuaScriptInterface::registerFunctions()
 	// Item
 	registerClass("Item", "", luaItemCreate);
 	registerMetaMethod("Item", "__eq", luaUserdataCompare);
-	//registerMetaMethod("Item", "__gc", destroySharedUserData<Item>);
+	registerMetaMethod("Item", "__gc", destroySharedUserData<Item>);
 
 	registerMethod("Item", "isItem", luaItemIsItem);
 
@@ -2485,7 +2485,7 @@ void LuaScriptInterface::registerFunctions()
 	// DamageModifier
 	registerClass("DamageModifier", "", luaDamageModifierCreate);
 	registerMetaMethod("DamageModifier", "__eq", luaUserdataCompare);
-	//registerMetaMethod("DamageModifier", "__gc", destroySharedUserData<DamageModifier>);
+	registerMetaMethod("DamageModifier", "__gc", destroySharedUserData<DamageModifier>);
 	registerMethod("DamageModifier", "setType", luaDamageModifierSetType);
 	registerMethod("DamageModifier", "setStance", luaDamageModifierSetStance);
 	registerMethod("DamageModifier", "setValue", luaDamageModifierSetValue);
@@ -2513,7 +2513,7 @@ void LuaScriptInterface::registerFunctions()
 	// Augment
 	registerClass("Augment", "", luaAugmentCreate);
 	registerMetaMethod("Augment", "__eq", luaUserdataCompare);
-	//registerMetaMethod("Augment", "__gc", destroySharedUserData<Augment>);
+	registerMetaMethod("Augment", "__gc", destroySharedUserData<Augment>);
 	registerMethod("Augment", "register", luaAugmentRegister);
 	registerMethod("Augment", "setName", luaAugmentSetName);
 	registerMethod("Augment", "setDescription", luaAugmentSetDescription);
@@ -2527,7 +2527,7 @@ void LuaScriptInterface::registerFunctions()
 	// Container
 	registerClass("Container", "Item", luaContainerCreate);
 	registerMetaMethod("Container", "__eq", luaUserdataCompare);
-	//registerMetaMethod("Container", "__gc", destroySharedUserData<ItemContainer>);
+	registerMetaMethod("Container", "__gc", destroySharedUserData<ItemContainer>);
 
 	registerMethod("Container", "getSize", luaContainerGetSize);
 	registerMethod("Container", "getCapacity", luaContainerGetCapacity);
@@ -2553,7 +2553,7 @@ void LuaScriptInterface::registerFunctions()
 	// Creature
 	registerClass("Creature", "", luaCreatureCreate);
 	registerMetaMethod("Creature", "__eq", luaUserdataCompare);
-	//registerMetaMethod("Creature", "__gc", destroySharedUserData<Creature>);
+	registerMetaMethod("Creature", "__gc", destroySharedUserData<Creature>);
 
 	registerMethod("Creature", "getEvents", luaCreatureGetEvents);
 	registerMethod("Creature", "registerEvent", luaCreatureRegisterEvent);
@@ -2657,7 +2657,7 @@ void LuaScriptInterface::registerFunctions()
 	// Stat
 	registerClass("Stat", "", luaStatCreate);
 	registerMetaMethod("Stat", "__eq", luaUserdataCompare);
-	//registerMetaMethod("Stat", "__gc", destroySharedUserData<StandardStat>);
+	registerMetaMethod("Stat", "__gc", destroySharedUserData<StandardStat>);
 	registerMethod("Stat", "id", luaStatId);
 	registerMethod("Stat", "max", luaStatMax);
 	registerMethod("Stat", "value", luaStatValue);
@@ -2671,14 +2671,14 @@ void LuaScriptInterface::registerFunctions()
 
 	registerClass("StatModifier", "", luaStatModifierCreate);
 	registerMetaMethod("StatModifier", "__eq", luaUserdataCompare);
-	//registerMetaMethod("StatModifier", "__gc", destroySharedUserData<StandardStatMod>);
+	registerMetaMethod("StatModifier", "__gc", destroySharedUserData<StandardStatMod>);
 	registerMethod("StatModifier", "type", luaStatModifierType);
 	registerMethod("StatModifier", "value", luaStatModifierValue);
 
 	// Player
 	registerClass("Player", "Creature", luaPlayerCreate);
 	registerMetaMethod("Player", "__eq", luaUserdataCompare);
-	//registerMetaMethod("Player", "__gc", destroySharedUserData<Player>);
+	registerMetaMethod("Player", "__gc", destroySharedUserData<Player>);
 
 	registerMethod("Player", "isPlayer", luaPlayerIsPlayer);
 
@@ -2868,7 +2868,7 @@ void LuaScriptInterface::registerFunctions()
 	// Monster
 	registerClass("Monster", "Creature", luaMonsterCreate);
 	registerMetaMethod("Monster", "__eq", luaUserdataCompare);
-	//registerMetaMethod("Monster", "__gc", destroySharedUserData<Monster>);
+	registerMetaMethod("Monster", "__gc", destroySharedUserData<Monster>);
 
 	registerMethod("Monster", "getId", luaMonsterGetId);
 	registerMethod("Monster", "isMonster", luaMonsterIsMonster);
@@ -2906,7 +2906,7 @@ void LuaScriptInterface::registerFunctions()
 	// Npc
 	registerClass("Npc", "Creature", luaNpcCreate);
 	registerMetaMethod("Npc", "__eq", luaUserdataCompare);
-	//registerMetaMethod("Npc", "__gc", destroySharedUserData<Npc>);
+	registerMetaMethod("Npc", "__gc", destroySharedUserData<Npc>);
 
 	registerMethod("Npc", "isNpc", luaNpcIsNpc);
 
