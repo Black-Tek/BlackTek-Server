@@ -26,3 +26,6 @@ db-data
 
 # Log files
 blacktek.log
+
+# Tmp folder for user's private files
+/tmp
