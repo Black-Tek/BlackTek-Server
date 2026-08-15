@@ -5,37 +5,31 @@
 
 #include "scriptmanager.h"
 
-#include "actions.h"
 #include "chat.h"
 #include "talkaction.h"
 #include "spells.h"
-#include "movement.h"
-#include "weapons.h"
 #include "globalevent.h"
 #include "events.h"
 #include "script.h"
+#include "itemevents.h"
 
-Actions* g_actions = nullptr;
 CreatureEvents* g_creatureEvents = nullptr;
 Chat* g_chat = nullptr;
 Events* g_events = nullptr;
 GlobalEvents* g_globalEvents = nullptr;
 Spells* g_spells = nullptr;
 TalkActions* g_talkActions = nullptr;
-MoveEvents* g_moveEvents = nullptr;
-Weapons* g_weapons = nullptr;
 Scripts* g_scripts = nullptr;
+ItemEvents* g_itemEvents = nullptr;
 
 extern LuaEnvironment g_luaEnvironment;
 
 ScriptingManager::~ScriptingManager()
 {
+	delete g_itemEvents;
 	delete g_events;
-	delete g_weapons;
 	delete g_spells;
-	delete g_actions;
 	delete g_talkActions;
-	delete g_moveEvents;
 	delete g_chat;
 	delete g_creatureEvents;
 	delete g_globalEvents;
@@ -54,35 +48,18 @@ bool ScriptingManager::loadScriptSystems()
 	// extremely minor performance hit, is in the case in which we quit anyways.
 	g_scripts = new Scripts();
 	g_chat = new Chat();
-	g_weapons = new Weapons();
 	g_spells = new Spells();
-	g_actions = new Actions();
 	g_talkActions = new TalkActions();
-	g_moveEvents = new MoveEvents();
 	g_creatureEvents = new CreatureEvents();
 	g_globalEvents = new GlobalEvents();
 	g_events = new Events();
+
+	g_itemEvents = new ItemEvents();
 
 	[[unlikely]]
 	if (not g_scripts->loadScripts("scripts/lib", true, false))
 	{
 		std::cout << "> ERROR: Unable to load lua libs!" << std::endl;
-		return false;
-	}
-
-	g_weapons->loadDefaults();
-
-	[[unlikely]]
-	if (not g_actions->loadFromXml())
-	{
-		std::cout << "> ERROR: Unable to load actions!" << std::endl;
-		return false;
-	}
-
-	[[unlikely]]
-	if (not g_moveEvents->loadFromXml())
-	{
-		std::cout << "> ERROR: Unable to load move events!" << std::endl;
 		return false;
 	}
 

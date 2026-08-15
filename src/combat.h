@@ -4,7 +4,7 @@
 #pragma once
 
 #include "metrics_types.h"
-#include "thing.h"
+#include "item.h"
 #include "condition.h"
 #include "map.h"
 #include "tools.h"
@@ -339,7 +339,7 @@ namespace BlackTek
 			IgnoreGround,		// only meaningful with MultiLevel: skip the ground-barrier check and hit all floors in the range
 			Aggressive,
 			IgnoreBarriers,		// ignores walls for line of sight and such on the combat
-			UseCharges,			// I think this one is used by weapons to reduce ammo
+			UseCharges,			// set on melee/distance weapons with abilities; consumes charges or stackable ammo on the right-hand weapon after a hit
 			HasArea,            // set by setArea() when any area data is registered
 			HasExtArea,         // set by setArea() when diagonal (ext) area data is non-empty
 			HasFormulaCache,    // set when formula_cache is first allocated (any formula override)
@@ -481,7 +481,7 @@ namespace BlackTek
 
 		static bool isProtected(const PlayerConstPtr& attacker, const PlayerConstPtr& target);
 		static void postCombatEffects(const CreaturePtr& caster, const Position& position, const Combat& combat);
-		static void addDistanceEffect(const CreaturePtr& caster, const Position& fromPosition, const Position& toPosition, uint8_t effect);
+		static void addDistanceEffect(const CreaturePtr& caster, const Position& fromPosition, const Position& toPosition, uint8_t effect, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt);
 
 		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const PlayerPtr& victim) const noexcept;
 		[[nodiscard]] TargetCode target(const PlayerPtr& attacker, const MonsterPtr& victim) const noexcept;
@@ -497,8 +497,9 @@ namespace BlackTek
 		[[nodiscard]] std::pair<CombatHandle, uint32_t> penetrateDamage(uint32_t currentDamage, uint32_t percent, uint32_t flat) noexcept;
 
 		[[nodiscard]] uint32_t applyCrit(uint32_t currentDamage, uint32_t percent, uint32_t flat) noexcept;
+		[[nodiscard]] static bool HasLeechEffect(const LeechData& data) noexcept;
 		[[nodiscard]] uint32_t process_steal(const PlayerPtr& caster, const CreaturePtr& victim, const LeechData& steal, uint32_t currentDamage) noexcept;
-		void post_damage(const PlayerPtr& caster, const CreaturePtr& victim, uint32_t currentDamage, LeechData&& leech_data) noexcept;
+		void post_damage(const PlayerPtr& caster, const CreaturePtr& victim, uint32_t currentDamage, LeechData&& leech_data, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const PlayerPtr& caster, const PlayerPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const PlayerPtr& caster, const MonsterPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const MonsterPtr& attacker, const PlayerPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
@@ -506,12 +507,12 @@ namespace BlackTek
 		void strike_target(const CreaturePtr& attacker, const CreaturePtr& defender, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void apply_healing_modifiers(const PlayerPtr& caster, const auto& target);
 		void heal_target(const CreaturePtr& caster, const CreaturePtr& target, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
-		[[nodiscard]] ValidatedArea buildValidatedArea(const Position& caster_position, const Position& center, const uint32_t flag_reject, const bool config_ignore_barriers) const noexcept;
+		[[nodiscard]] ValidatedArea buildValidatedArea(const Position& caster_position, const Position& center, const uint32_t flag_reject, const bool config_ignore_barriers, const bool reject_protection_zone = false) const noexcept;
 		void execute(const CreaturePtr& caster, const Position& center) noexcept;
 		void setArea(AreaCombat* area);
 		void setArea(std::unique_ptr<AreaCombat> const area);
-		void defense_block_effect(const Position& target_position) const noexcept;
-		void armor_block_effect(const Position& target_position) const noexcept;
+		void defense_block_effect(const Position& target_position, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
+		void armor_block_effect(const Position& target_position, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 		void heal_notification(const CreaturePtr& caster, const CreaturePtr& target, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 		void damage_notification(const CreaturePtr& attacker, const CreaturePtr& defender, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 		void manadamage_notification(const CreaturePtr& attacker, const CreaturePtr& defender, uint32_t amount, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
@@ -725,6 +726,8 @@ namespace BlackTek
 		template <typename VictimT>
 		void accumulate_attack_mods(const PlayerPtr& caster, const VictimT& victim, uint32_t& currentDamage, LeechData& leech_data, LeechData& steal_data, const std::optional<std::span<const CreaturePtr>>& spectators) noexcept;
 
+		void FireItemCombatHooks(bool isAttack, const PlayerPtr& holder, const CreaturePtr& other, uint32_t currentDamage, bool leechedDamage) const noexcept;
+
 		void CommitStrike(const CreaturePtr& attacker, const CreaturePtr& victim, uint32_t damageDealt, bool wasFatal) noexcept;
 
 		void ApplyConditions(const CreaturePtr& target) noexcept;
@@ -888,48 +891,4 @@ namespace BlackTek
 	// Used by FormulaNode closures built in Lua to read creature stats at combat time.
 	int32_t resolve_bind_key(Combat::BindKey key, const CreaturePtr& creature) noexcept;
 
-	class MagicField final : public Item
-	{
-	public:
-		explicit MagicField(uint16_t type) : Item(type), createTime(OTSYS_TIME())
-		{
-			thing_subtype = ThingSubType::MagicField;
-			item_subtype = ItemSubType::MagicField;
-		}
-
-		MagicFieldPtr getMagicField() override
-		{
-			return static_shared_this<MagicField>();
-		}
-
-		MagicFieldConstPtr getMagicField() const override
-		{
-			return static_shared_this<MagicField>();
-		}
-
-		bool isReplaceable() const
-		{
-			return Item::items[getID()].replaceable;
-		}
-
-		CombatType_t getCombatType() const
-		{
-			const ItemType& it = items[getID()];
-			return it.combatType;
-		}
-
-		int32_t getDamage() const
-		{
-			const ItemType& it = items[getID()];
-			if (it.conditionDamage)
-			{
-				return it.conditionDamage->getTotalDamage();
-			}
-			return 0;
-		}
-		void onStepInField(const CreaturePtr& creature);
-
-	private:
-		int64_t createTime;
-	};
 }

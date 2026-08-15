@@ -1,0 +1,10 @@
+[ConvertedSpawn_z14_317]
+range = { start = "256:677:14", end = "260:681:14" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Demon" },
+]
+

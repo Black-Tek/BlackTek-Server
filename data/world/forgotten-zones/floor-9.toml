@@ -1,0 +1,341 @@
+[ConvertedSpawn_z9_127]
+range = { start = "73:65:9", end = "87:79:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Spider" },
+    { position = "7:2:0", interval = 60, name = "Bug" },
+    { position = "9:7:0", interval = 60, name = "Bug" },
+    { position = "12:12:0", interval = 60, name = "Spider" },
+]
+
+[ConvertedSpawn_z9_149]
+range = { start = "37:88:9", end = "53:106:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Troll" },
+    { position = "8:5:0", interval = 60, name = "Troll" },
+    { position = "6:8:0", interval = 60, name = "Troll" },
+    { position = "10:8:0", interval = 60, name = "Troll" },
+    { position = "14:16:0", interval = 60, name = "Troll" },
+]
+
+[ConvertedSpawn_z9_159]
+range = { start = "152:398:9", end = "156:402:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Troll" },
+]
+
+[ConvertedSpawn_z9_166]
+range = { start = "135:393:9", end = "139:397:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Troll" },
+]
+
+[ConvertedSpawn_z9_169]
+range = { start = "124:460:9", end = "128:464:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Ghoul" },
+]
+
+[ConvertedSpawn_z9_172]
+range = { start = "412:435:9", end = "416:439:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Tortoise" },
+]
+
+[ConvertedSpawn_z9_175]
+range = { start = "124:376:9", end = "136:387:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "10:2:0", interval = 60, name = "Troll" },
+    { position = "2:9:0", interval = 60, name = "Troll" },
+]
+
+[ConvertedSpawn_z9_178]
+range = { start = "115:444:9", end = "121:449:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "4:2:0", interval = 60, name = "Skeleton" },
+    { position = "2:3:0", interval = 60, name = "Skeleton" },
+]
+
+[ConvertedSpawn_z9_181]
+range = { start = "205:542:9", end = "217:550:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "10:2:0", interval = 60, name = "Rat" },
+    { position = "2:3:0", interval = 60, name = "Swamp Troll" },
+    { position = "6:6:0", interval = 60, name = "Swamp Troll" },
+]
+
+[ConvertedSpawn_z9_184]
+range = { start = "118:471:9", end = "122:475:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Ghoul" },
+]
+
+[ConvertedSpawn_z9_187]
+range = { start = "422:439:9", end = "426:443:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Thornback Tortoise" },
+]
+
+[ConvertedSpawn_z9_190]
+range = { start = "198:531:9", end = "207:538:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "5:2:0", interval = 60, name = "Swamp Troll" },
+    { position = "2:5:0", interval = 60, name = "Swamp Troll" },
+    { position = "7:5:0", interval = 60, name = "Swamp Troll" },
+]
+
+[ConvertedSpawn_z9_196]
+range = { start = "225:593:9", end = "229:597:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Bat" },
+]
+
+[ConvertedSpawn_z9_199]
+range = { start = "414:497:9", end = "418:501:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Tortoise" },
+]
+
+[ConvertedSpawn_z9_272]
+range = { start = "69:73:9", end = "74:82:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Spider" },
+    { position = "3:7:0", interval = 60, name = "Spider" },
+]
+
+[ConvertedSpawn_z9_273]
+range = { start = "104:79:9", end = "113:91:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "7:2:0", interval = 60, name = "Minotaur" },
+    { position = "2:5:0", interval = 60, name = "Minotaur" },
+    { position = "4:10:0", interval = 60, name = "Minotaur" },
+]
+
+[ConvertedSpawn_z9_274]
+range = { start = "112:94:9", end = "124:100:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "10:2:0", interval = 60, name = "Orc" },
+    { position = "2:3:0", interval = 60, name = "Orc" },
+    { position = "3:4:0", interval = 60, name = "Orc" },
+]
+
+[ConvertedSpawn_z9_275]
+range = { start = "58:100:9", end = "64:106:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "4:2:0", interval = 60, name = "Troll" },
+    { position = "2:4:0", interval = 60, name = "Troll" },
+]
+
+[ConvertedSpawn_z9_276]
+range = { start = "223:374:9", end = "227:378:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Rotworm" },
+]
+
+[ConvertedSpawn_z9_277]
+range = { start = "213:381:9", end = "219:388:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Rotworm" },
+    { position = "4:5:0", interval = 60, name = "Rotworm" },
+]
+
+[ConvertedSpawn_z9_278]
+range = { start = "234:383:9", end = "240:391:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "4:2:0", interval = 60, name = "Rotworm" },
+    { position = "2:6:0", interval = 60, name = "Rotworm" },
+]
+
+[ConvertedSpawn_z9_279]
+range = { start = "163:394:9", end = "167:398:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Troll" },
+]
+
+[ConvertedSpawn_z9_280]
+range = { start = "449:435:9", end = "457:442:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Blood Crab" },
+    { position = "6:5:0", interval = 60, name = "Blood Crab" },
+]
+
+[ConvertedSpawn_z9_281]
+range = { start = "432:437:9", end = "439:445:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Thornback Tortoise" },
+    { position = "5:6:0", interval = 60, name = "Thornback Tortoise" },
+]
+
+[ConvertedSpawn_z9_282]
+range = { start = "459:445:9", end = "463:449:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Blood Crab" },
+]
+
+[ConvertedSpawn_z9_283]
+range = { start = "108:451:9", end = "112:455:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Skeleton" },
+]
+
+[ConvertedSpawn_z9_284]
+range = { start = "108:465:9", end = "112:469:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Ghoul" },
+]
+
+[ConvertedSpawn_z9_285]
+range = { start = "113:480:9", end = "121:489:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Ghoul" },
+    { position = "6:4:0", interval = 60, name = "Ghoul" },
+    { position = "3:7:0", interval = 60, name = "Ghoul" },
+]
+
+[ConvertedSpawn_z9_286]
+range = { start = "425:498:9", end = "431:504:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "4:2:0", interval = 60, name = "Tortoise" },
+    { position = "2:4:0", interval = 60, name = "Tortoise" },
+]
+
+[ConvertedSpawn_z9_287]
+range = { start = "183:541:9", end = "192:548:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "2:2:0", interval = 60, name = "Rat" },
+    { position = "7:3:0", interval = 60, name = "Swamp Troll" },
+    { position = "4:5:0", interval = 60, name = "Swamp Troll" },
+]
+
+[ConvertedSpawn_z9_288]
+range = { start = "200:557:9", end = "211:566:9" }
+spawn_type = "monster"
+policy = "fixed"
+passive = true
+forced = true
+monsters = [
+    { position = "3:2:0", interval = 60, name = "Swamp Troll" },
+    { position = "6:5:0", interval = 60, name = "Swamp Troll" },
+    { position = "2:6:0", interval = 60, name = "Swamp Troll" },
+    { position = "9:7:0", interval = 60, name = "Rat" },
+]
+

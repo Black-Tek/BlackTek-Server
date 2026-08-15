@@ -8,6 +8,7 @@
 
 #include "account.h"
 #include "combat.h"
+#include "itemlocation.h"
 #include "groups.h"
 #include "map.h"
 #include "position.h"
@@ -84,10 +85,12 @@ static constexpr size_t MaxCreatureThinkSlots = 20;
 
 #include <coroutine>
 #include <chrono>
+#include <functional>
+#include <optional>
 
-struct CoroTask 
+struct CoroTask
 {
-    struct promise_type 
+    struct promise_type
 	{
         CoroTask get_return_object() { return {}; }
         std::suspend_never initial_suspend() noexcept { return {}; }
@@ -101,45 +104,57 @@ struct CoroTask
 // and reuse this for all the timer wheel tasks, and spawns too
 // possibly eliminate entire usage of dispatcher/scheduler for game tasks
 // only excluding possible things that can benefit to being offloaded from main loop
-struct TimerQueue 
+struct TimerQueue
 {
     using Clock = std::chrono::steady_clock;
     using TimePoint = Clock::time_point;
 
-    struct Entry 
+    struct Entry
 	{
         TimePoint wake;
         std::coroutine_handle<> handle;
+
+        std::function<bool()> stillValid;
+
         bool operator>(const Entry& other) const { return wake > other.wake; }
     };
 
     std::priority_queue<Entry, std::vector<Entry>, std::greater<>> queue;
 
-    void add(TimePoint when, std::coroutine_handle<> handle) 
+    std::optional<std::coroutine_handle<>> currentlyResuming;
+
+    void add(TimePoint when, std::coroutine_handle<> handle, std::function<bool()> stillValid = nullptr)
 	{
-        queue.push({when, handle});
+        queue.push({when, handle, std::move(stillValid)});
     }
 
     void tick() {
         auto now = Clock::now();
-        while (not queue.empty() and queue.top().wake <= now) 
+        while (not queue.empty() and queue.top().wake <= now)
 		{
-            auto handle = queue.top().handle;
+            auto entry = queue.top();
             queue.pop();
-            handle.resume();
+
+            if (not entry.stillValid or entry.stillValid())
+            {
+                currentlyResuming = entry.handle;
+                entry.handle.resume();
+                currentlyResuming.reset();
+            }
         }
     }
 };
 
 inline TimerQueue g_timer_queue;
 
-struct SleepFor 
+struct SleepFor
 {
     uint32_t ms;
+    std::function<bool()> stillValid = nullptr;
     bool await_ready() const noexcept { return ms == 0; }
-    void await_suspend(std::coroutine_handle<> handle) const 
+    void await_suspend(std::coroutine_handle<> handle) const
 	{
-        g_timer_queue.add(TimerQueue::Clock::now() + std::chrono::milliseconds(ms), handle);
+        g_timer_queue.add(TimerQueue::Clock::now() + std::chrono::milliseconds(ms), handle, stillValid);
     }
     void await_resume() const noexcept {}
 };
@@ -221,9 +236,10 @@ class Game
 			return worldType;
 		}
 
-		ThingPtr internalGetCylinder(const PlayerPtr& player, const Position& pos);
-		ThingPtr internalGetThing(const PlayerPtr& player, const Position& pos, int32_t index,
+		BlackTek::ItemLocation resolveItemLocation(const PlayerPtr& player, const Position& pos);
+		ItemPtr resolveItem(const PlayerPtr& player, const Position& pos, int32_t index,
 		                        uint32_t spriteId, stackPosType_t type);
+		ItemPtr filterHangableItem(const PlayerPtr& player, const TilePtr& tile, ItemPtr item) const;
 		static void internalGetPosition(const ItemPtr& item, Position& pos, uint8_t& stackpos);
 
 		static std::string getTradeErrorDescription(ReturnValue ret, const ItemPtr& item);
@@ -394,13 +410,13 @@ class Game
 		ReturnValue internalMoveCreature(CreaturePtr creature, Direction direction, uint32_t flags = 0);
 		ReturnValue internalMoveCreature(CreaturePtr creature, TilePtr toTile, uint32_t flags = 0);
 
-		ReturnValue internalMoveItem(ThingPtr fromThing, ThingPtr toThing, int32_t index,
+		ReturnValue internalMoveItem(BlackTek::ItemLocation fromLocation, BlackTek::ItemLocation toLocation, int32_t index,
 		                             ItemPtr item, uint32_t count, std::optional<std::reference_wrapper<ItemPtr>> _moveItem, uint32_t flags = 0, CreaturePtr actor = nullptr, ItemPtr tradeItem = nullptr, const Position* fromPos = nullptr, const Position* toPos = nullptr);
 							// another spot to use a ref wrapper and possibly optional for ItemPtr* above
 
-		ReturnValue internalAddItem(ThingPtr toThing, ItemPtr item, int32_t index = INDEX_WHEREEVER,
+		ReturnValue internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr item, int32_t index = INDEX_ANYWHERE,
 		                            uint32_t flags = 0, bool test = false);
-		ReturnValue internalAddItem(ThingPtr toThing, ItemPtr item, int32_t index,
+		ReturnValue internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr item, int32_t index,
 		                            uint32_t flags, bool test, uint32_t& remainderCount);
 		ReturnValue internalRemoveItem(ItemPtr item, int32_t count = -1, bool test = false, uint32_t flags = 0);
 
@@ -408,32 +424,29 @@ class Game
 
 		/**
 		  * Find an item of a certain type
-		  * \param cylinder to search the item
 		  * \param itemId is the item to remove
 		  * \param subType is the extra type an item can have such as charges/fluidtype, default is -1
 			* meaning it's not used
 		  * \param depthSearch if true it will check child containers aswell
 		  * \returns A pointer to the item to an item and nullptr if not found
 		  */
-		ItemPtr findItemOfType(const CylinderPtr& cylinder, uint16_t itemId,
+		ItemPtr findItemOfType(const BlackTek::ItemLocation& location, uint16_t itemId,
 		                     bool depthSearch = true, int32_t subType = -1) const;
 
 		/**
 		  * Remove/Add item(s) with a monetary value
-		  * \param cylinder to remove the money from
 		  * \param money is the amount to remove
 		  * \param flags optional flags to modify the default behavior
 		  * \returns true if the removal was successful
 		  */
-		bool removeMoney(CylinderPtr& cylinder, uint64_t money, uint32_t flags = 0);
+		bool removeMoney(const BlackTek::ItemLocation& location, uint64_t money, uint32_t flags = 0);
 
 		/**
 		  * Add item(s) with monetary value
-		  * \param cylinder which will receive money
 		  * \param money the amount to give
 		  * \param flags optional flags to modify default behavior
 		  */
-		void addMoney( CylinderPtr& cylinder, uint64_t money, uint32_t flags = 0);
+		void addMoney(const BlackTek::ItemLocation& location, uint64_t money, uint32_t flags = 0);
 
 		/**
 		  * Transform one item to another type/count
@@ -444,15 +457,9 @@ class Game
 		  */
 		ItemPtr transformItem(const ItemPtr& item, uint16_t newId, int32_t newCount = -1);
 
-		/**
-		  * Teleports an object to another position
-		  * \param thing is the object to teleport
-		  * \param newPos is the new position
-		  * \param pushMove force teleport if false
-		  * \param flags optional flags to modify default behavior
-		  * \returns true if the teleportation was successful
-		  */
-		ReturnValue internalTeleport(const ThingPtr& thing, const Position& newPos, bool pushMove = true, uint32_t flags = 0);
+		ReturnValue internalTeleport(const CreaturePtr& creature, const Position& newPos, bool pushMove = true, uint32_t flags = 0);
+
+		ReturnValue internalTeleport(const ItemPtr& item, const Position& newPos, bool pushMove = true, uint32_t flags = 0);
 
 		/**
 		  * Turn a creature to a different direction.
@@ -491,13 +498,13 @@ class Game
 		void broadcastMessage(const std::string& text, MessageClasses type) const;
 
 		//Implementation of player invoked events
-		void playerMoveThing(uint32_t playerId, const Position& fromPos, uint16_t spriteId, uint8_t fromStackPos,
+		void playerMoveRequest(uint32_t playerId, const Position& fromPos, uint16_t spriteId, uint8_t fromStackPos,
 		                     const Position& toPos, uint8_t count);
 		void playerMoveCreatureByID(uint32_t playerId, uint32_t movingCreatureId, const Position& movingCreatureOrigPos, const Position& toPos);
 		void playerMoveCreature(PlayerPtr& player, CreaturePtr& movingCreature, const Position& movingCreatureOrigPos, TilePtr& toTile);
 		void playerMoveItemByPlayerID(uint32_t playerId, const Position& fromPos, uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count);
 		void playerMoveItem(const PlayerPtr& player, const Position& fromPos,
-		                    uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count, ItemPtr item, ThingPtr toThing);
+		                    uint16_t spriteId, uint8_t fromStackPos, const Position& toPos, uint8_t count, ItemPtr item, BlackTek::ItemLocation toLocation);
 		void playerEquipItem(uint32_t playerId, uint16_t spriteId);
 		void playerMove(uint32_t playerId, Direction direction);
 		void playerCreatePrivateChannel(uint32_t playerId);
@@ -609,11 +616,13 @@ class Game
 
 		//animation help functions
 		void addCreatureHealth(const CreatureConstPtr& target);
+		void addCreatureHealth(const CreatureConstPtr& target, std::span<const CreaturePtr> spectators);
 		static void addCreatureHealth(const SpectatorVec& spectators, const CreatureConstPtr& target);
 		void addMagicEffect(const Position& pos, const uint8_t effect, std::span<const CreaturePtr> pre_cache);
 		void addMagicEffect(const Position& pos, uint8_t effect);
 		static void addMagicEffect(const SpectatorVec& spectators, const Position& pos, uint8_t effect);
 		void addDistanceEffect(const Position& fromPos, const Position& toPos, uint8_t effect);
+		void addDistanceEffect(std::span<const CreaturePtr> spectators, const Position& fromPos, const Position& toPos, uint8_t effect);
 		static void addDistanceEffect(const SpectatorVec& spectators, const Position& fromPos, const Position& toPos, uint8_t effect);
 
 		void setAccountStorageValue(const uint32_t accountId, const uint32_t key, const int32_t value);
@@ -635,8 +644,8 @@ class Game
 		void sendOfflineTrainingDialog(const PlayerPtr& player) const;
 
 		const std::pmr::unordered_map<uint32_t, PlayerPtr>& getPlayers() const { return players; }
-		const std::pmr::map<uint32_t, NpcPtr>& getNpcs() const  { return npcs; }
-		const std::pmr::map<uint32_t, MonsterPtr>& getMonsters() const { return monsters; }
+		const gtl::flat_hash_map<uint32_t, NpcPtr>& getNpcs() const  { return npcs; }
+		const gtl::flat_hash_map<uint32_t, MonsterPtr>& getMonsters() const { return monsters; }
 
 		void addPlayer(PlayerPtr player);
 		void removePlayer(const PlayerPtr& player);
@@ -741,6 +750,8 @@ class Game
         std::optional<std::pmr::monotonic_buffer_resource>& getMapBlock() { return map_block; }
         std::pmr::unsynchronized_pool_resource& getItemPool() { return item_pool; }
 
+		void initializeSpawnPool();
+
 	private:
 		bool playerSaySpell(const PlayerPtr& player, SpeakClasses type, const std::string& text);
 		void playerWhisper(const PlayerPtr& player, const std::string& text);
@@ -757,6 +768,7 @@ class Game
 		std::pmr::unsynchronized_pool_resource npc_pool;
 		std::pmr::unsynchronized_pool_resource creature_pointer_pool;
 		std::pmr::unsynchronized_pool_resource item_pointer_pool;
+		std::pmr::unsynchronized_pool_resource spawn_pool;
 
 		std::unordered_map<uint32_t, Guild_ptr> guilds;
 
@@ -784,8 +796,8 @@ class Game
 
 		WildcardTreeNode wildcardTree { false };
 
-		std::pmr::map<uint32_t, MonsterPtr> monsters;
-		std::pmr::map<uint32_t, NpcPtr> npcs;
+		gtl::flat_hash_map<uint32_t, MonsterPtr> monsters;
+		gtl::flat_hash_map<uint32_t, NpcPtr> npcs;
 
 		//list of items that are in trading state, mapped to the player
 		std::map<ItemPtr, uint32_t> tradeItems;

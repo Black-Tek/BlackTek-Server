@@ -18,11 +18,6 @@
 extern Game g_game;
 extern ConfigManager g_config;
 
-Raids::Raids()
-{
-	scriptInterface.initState();
-}
-
 Raids::~Raids()
 {
 	for (Raid* raid : raidList) {
@@ -150,7 +145,8 @@ void Raids::checkRaids()
 		}
 	}
 
-	checkRaidsEvent = g_scheduler.addEvent(createSchedulerTask(CHECK_RAIDS_INTERVAL * 1000, [this]() { checkRaids(); }));
+	static auto nextTick = std::chrono::steady_clock::now();
+	checkRaidsEvent = g_scheduler.addEvent(createSchedulerTask(BlackTek::NextResyncDelay(nextTick, CHECK_RAIDS_INTERVAL * 1000), [this]() { checkRaids(); }));
 }
 
 void Raids::clear()
@@ -169,8 +165,6 @@ void Raids::clear()
 	started = false;
 	running = nullptr;
 	lastRaidEnd = 0;
-
-	scriptInterface.reInitState();
 }
 
 bool Raids::reload()
@@ -229,10 +223,6 @@ bool Raid::loadEvents(const toml::array& events)
 		else if (caseInsensitiveEqual(eventType, "areaspawn"))
 		{
 			event = new AreaSpawnEvent();
-		}
-		else if (caseInsensitiveEqual(eventType, "script"))
-		{
-			event = new ScriptEvent(&g_game.raids.getScriptInterface());
 		}
 		else
 		{
@@ -695,7 +685,7 @@ bool AreaSpawnEvent::executeEvent()
 			for (int32_t tries = 0; tries < MAXIMUM_TRIES_PER_MONSTER; tries++)
 			{
 				const auto& tile = g_game.map.getTile(uniform_random(fromPos.x, toPos.x), uniform_random(fromPos.y, toPos.y), uniform_random(fromPos.z, toPos.z));
-				if (tile and not tile->isMoveableBlocking() and not tile->hasFlag(TILESTATE_PROTECTIONZONE) and tile->getTopCreature() == nullptr and g_game.placeCreature(monster, tile->getPosition(), false, true))
+				if (tile and not tile->isMoveableBlocking() and not Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::Protection) and tile->getTopCreature() == nullptr and g_game.placeCreature(monster, tile->getPosition(), false, true))
 				{
 					success = true;
 					break;
@@ -709,43 +699,4 @@ bool AreaSpawnEvent::executeEvent()
 		}
 	}
 	return true;
-}
-
-bool ScriptEvent::configureRaidEvent(const toml::table& eventTable)
-{
-	if (not RaidEvent::configureRaidEvent(eventTable))
-	{
-		return false;
-	}
-
-	auto scriptValue = eventTable["script"].value<std::string>();
-	if (not scriptValue or scriptValue->empty())
-	{
-		std::cerr << "[Error - ScriptEvent::configureRaidEvent] No script file found for raid" << std::endl;
-		return false;
-	}
-
-	if (not loadScript("data/raids/scripts/" + *scriptValue))
-	{
-		std::cerr << "[Error - ScriptEvent::configureRaidEvent] Can not load raid script: " << *scriptValue << std::endl;
-		return false;
-	}
-	return true;
-}
-
-bool ScriptEvent::executeEvent()
-{
-	//onRaid()
-	if (not scriptInterface->reserveScriptEnv())
-	{
-		std::cerr << "[Error - ScriptEvent::executeEvent] Call stack overflow" << std::endl;
-		return false;
-	}
-
-	ScriptEnvironment* env = scriptInterface->getScriptEnv();
-	env->setScriptId(scriptId, scriptInterface);
-
-	scriptInterface->pushFunction(scriptId);
-
-	return scriptInterface->callFunction(0);
 }

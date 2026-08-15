@@ -77,7 +77,6 @@ Npc::Npc(const std::string& name) :
 	masterRadius(-1),
 	loaded(false)
 {
-	thing_subtype = ThingSubType::Npc;
 	creature_subtype = CreatureSubType::Npc;
 	reset();
 }
@@ -366,20 +365,33 @@ std::string Npc::getDescription(int32_t)
 	return descr;
 }
 
-void Npc::onCreatureAppear(const CreaturePtr& creature, bool isLogin)
+void Npc::onCreatureAppear(const CreaturePtr& creature, bool isLogin, const std::optional<std::span<const CreaturePtr>> precomputed_spectators)
 {
 	Creature::onCreatureAppear(creature, isLogin);
 
 	if (creature == getCreature())
 	{
-		SpectatorVec players;
-		g_game.map.getSpectators(players, getPosition(), true, true);
-
 		// we leave this one without the view filter as a sort of test to see if anything slips through
 
-		for (const auto& player : players)
+		if (precomputed_spectators)
 		{
-			spectators.insert(std::static_pointer_cast<Player>(player));
+			for (const auto& spectator : *precomputed_spectators)
+			{
+				if (const auto& player = spectator->getPlayer())
+				{
+					spectators.insert(player);
+				}
+			}
+		}
+		else
+		{
+			SpectatorVec players;
+			g_game.map.getSpectators(players, getPosition(), true, true);
+
+			for (const auto& player : players)
+			{
+				spectators.insert(std::static_pointer_cast<Player>(player));
+			}
 		}
 
 		const bool hasSpectators = !spectators.empty();
@@ -516,13 +528,14 @@ void Npc::doSayToPlayer(const PlayerPtr& player, const std::string& text)
 	}
 }
 
-void Npc::onPlayerTrade(const PlayerPtr& player, int32_t callback, uint16_t itemId, uint8_t count,
-                        uint8_t amount, bool ignore/* = false*/, bool inBackpacks/* = false*/) const
+void Npc::onPlayerTrade(const PlayerPtr& player, int32_t callback, uint16_t itemId, uint8_t count, uint8_t amount, bool ignore/* = false*/, bool inBackpacks/* = false*/) const
 {
+	if (Zones::ZoneManager::HasWorldFlag(player->getPosition(), Zones::ZoneFlag::NoTransaction))
+		return;
+
 	if (npcEventHandler)
-	{
 		npcEventHandler->onPlayerTrade(player, callback, itemId, count, amount, ignore, inBackpacks);
-	}
+
 	player->sendSaleItemList();
 }
 
@@ -601,13 +614,13 @@ bool Npc::canWalkTo(const Position& fromPos, Direction dir)
 	}
 	Position toPos = getNextPosition(dir, fromPos);
 
-	if (not Spawns::isInZone(masterPos, masterRadius, toPos))
+	if (not Zones::ZoneManager::IsInZone(masterPos, masterRadius, toPos))
 	{
 		return false;
 	}
 	const auto& tile = g_game.map.getTile(toPos);
 
-	if (not tile or tile->queryAdd(this->getNpc(), 0) != RETURNVALUE_NOERROR)
+	if (not tile or tile->canEnter(this->getNpc(), 0) != RETURNVALUE_NOERROR)
 	{
 		return false;
 	}
@@ -909,22 +922,22 @@ int NpcScriptInterface::luagetDistanceTo(lua_State* L)
 	const auto& npc = env->getNpc();
 	if (not npc)
 	{
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_THING_NOT_FOUND));
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_GAME_MODEL_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
 
 	const uint32_t uid = getNumber<uint32_t>(L, -1);
 
-	const auto& thing = env->getThingByUID(uid);
+	const auto& thing = env->getGameModelByUID(uid);
 	if (not thing)
 	{
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_THING_NOT_FOUND));
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_GAME_MODEL_NOT_FOUND));
 		lua_pushnil(L);
 		return 1;
 	}
 
-	const Position& thingPos = thing->getPosition();
+	const Position& thingPos = thing.creature ? thing.creature->getPosition() : thing.item->getPosition();
 	const Position& npcPos = npc->getPosition();
 
 	if (npcPos.z != thingPos.z)

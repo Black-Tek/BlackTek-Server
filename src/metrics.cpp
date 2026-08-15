@@ -814,8 +814,9 @@ namespace BlackTek::Metrics
 
         if (g_metrics_runtime.rolling_dump.enabled and g_metrics_runtime.rolling_dump.interval_hours > 0.0)
         {
-            const auto delayMs = static_cast<uint32_t>(g_metrics_runtime.rolling_dump.interval_hours * 3600.0 * 1000.0);
-            g_scheduler.addEvent(createSchedulerTask(delayMs, []() { RunRollingDump(); }));
+            static auto nextTick = std::chrono::steady_clock::now();
+            const auto intervalMs = static_cast<int32_t>(g_metrics_runtime.rolling_dump.interval_hours * 3600.0 * 1000.0);
+            g_scheduler.addEvent(createSchedulerTask(BlackTek::NextResyncDelay(nextTick, intervalMs), []() { RunRollingDump(); }));
         }
     }
 }

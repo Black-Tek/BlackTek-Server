@@ -6,7 +6,6 @@
 
 #include "const.h"
 #include "position.h"
-#include "baseevents.h"
 
 #include <toml++/toml.hpp>
 
@@ -35,7 +34,7 @@ class RaidEvent;
 class Raids
 {
 	public:
-		Raids();
+		Raids() = default;
 		~Raids();
 
 		// non-copyable
@@ -76,14 +75,8 @@ class Raids
 
 		void checkRaids();
 
-		LuaScriptInterface& getScriptInterface() {
-			return scriptInterface;
-		}
-
 	private:
 		static constexpr std::string_view folder = "data/raids";
-		
-		LuaScriptInterface scriptInterface{"Raid Interface"};
 
 		std::list<Raid*> raidList;
 		Raid* running = nullptr;
@@ -203,22 +196,6 @@ class AreaSpawnEvent final : public RaidEvent
 	private:
 		std::list<MonsterSpawn> spawnList;
 		Position fromPos, toPos;
-};
-
-class ScriptEvent final : public RaidEvent, public Event
-{
-	public:
-		explicit ScriptEvent(LuaScriptInterface* interface) : Event(interface) {}
-
-		bool configureRaidEvent(const toml::table& eventTable) override;
-		bool configureEvent(const pugi::xml_node&) override {
-			return false;
-		}
-
-		bool executeEvent() override;
-
-	private:
-		std::string_view getScriptEventName() const override { return "onRaid"; }
 };
 
 #endif

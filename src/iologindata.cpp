@@ -733,8 +733,8 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::
 			auto item = pair.first;
 			int32_t pid = pair.second;
 			if (pid >= CONST_SLOT_FIRST && pid <= CONST_SLOT_LAST) {
-				player->internalAddThing(pid, item);
-				player->postAddNotification(item, nullptr, pid);
+				player->addInventoryItemSilently(pid, item);
+				player->notifyItemAdded(item, {}, pid);
 			} else {
 				ItemMap::const_iterator it2 = itemMap.find(pid);
 				if (it2 == itemMap.end()) {
@@ -742,7 +742,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::
 				}
 
 				if (auto container = it2->second.first->getContainer()) {
-					container->internalAddThing(item);
+					container->addItemSilently(item);
 				}
 			}
 		}
@@ -761,7 +761,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::
 			int32_t pid = pair.second;
 			if (pid >= 0 && pid < 100) {
 				if (auto depotChest = player->getDepotChest(pid, true)) {
-					depotChest->internalAddThing(item);
+					depotChest->addItemSilently(item);
 				}
 			} else {
 				ItemMap::const_iterator it2 = itemMap.find(pid);
@@ -770,7 +770,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::
 				}
 
 				if (auto container = it2->second.first->getContainer()) {
-					container->internalAddThing(item);
+					container->addItemSilently(item);
 				}
 			}
 		}
@@ -810,7 +810,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::
 			if (pid == 0)
 			{
 				auto& rewardChest = player->getRewardChest();
-				rewardChest->internalAddThing(item);
+				rewardChest->addItemSilently(item);
 			}
 			else
 			{
@@ -822,7 +822,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::
 
 				if (auto container = it2->second.first->getContainer())
 				{
-					container->internalAddThing(item);
+					container->addItemSilently(item);
 				}
 			}
 		}
@@ -839,7 +839,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::
 			auto item = pair.first;
 
 			if (int32_t pid = pair.second; pid >= 0 && pid < 100) {
-				player->getInbox()->internalAddThing(item);
+				player->getInbox()->addItemSilently(item);
 			} else {
 				ItemMap::const_iterator it2 = itemMap.find(pid);
 
@@ -848,7 +848,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::
 				}
 
 				if (auto container = it2->second.first->getContainer()) {
-					container->internalAddThing(item);
+					container->addItemSilently(item);
 				}
 			}
 		}
@@ -865,7 +865,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::
 			auto item = pair.first;
 
 			if (int32_t pid = pair.second; pid >= 0 && pid < 100) {
-				player->getStoreInbox()->internalAddThing(item);
+				player->getStoreInbox()->addItemSilently(item);
 			} else {
 				ItemMap::const_iterator it2 = itemMap.find(pid);
 
@@ -874,7 +874,7 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::
 				}
 
 				if (auto container = it2->second.first->getContainer()) {
-					container->internalAddThing(item);
+					container->addItemSilently(item);
 				}
 			}
 		}

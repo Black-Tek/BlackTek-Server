@@ -5,11 +5,12 @@
 
 #include "combat.h"
 #include "game.h"
+#include "creaturecontainer.h"
 #include "console.h"
 #include "scheduler.h"
-#include "weapons.h"
 #include "configmanager.h"
 #include "events.h"
+#include "itemevents.h"
 #include "monster.h"
 #include "spells.h"
 #include "metrics.h"
@@ -25,9 +26,9 @@ using BlackTek::MatrixArea;
 using BlackTek::CreateArea;
 
 extern Game g_game;
-extern Weapons* g_weapons;
 extern ConfigManager g_config;
 extern Events* g_events;
+extern ItemEvents* g_itemEvents;
 
 namespace BlackTek
 {
@@ -300,6 +301,15 @@ namespace BlackTek
 	thread_local std::vector<TilePtr>			area_valid_tile_buffer;
 	thread_local std::vector<uint16_t>			area_xs_buffer;
 	thread_local std::vector<uint16_t>			area_ys_buffer;
+
+	struct AreaChunkBucket
+	{
+		const BlackTek::World::Chunk* chunk = nullptr;
+		uint16_t tileCount = 0;
+		std::array<uint64_t, BlackTek::World::MaxLayers> mask = {};
+	};
+	thread_local std::vector<AreaChunkBucket> area_chunk_buckets;
+	thread_local std::vector<const BlackTek::World::Chunk*> area_position_chunks;
 	thread_local std::vector<uint32_t>			batch_damage_scratch;
 	thread_local std::vector<Combat::BlockType> batch_block_type_scratch;
 	thread_local std::vector<int32_t>			batch_stats_scratch; // we reuse for defense/armor stats per target
@@ -728,11 +738,9 @@ namespace BlackTek
 
 	namespace
 	{
-		constexpr uint32_t kScatterRejectFlags = TILESTATE_PROTECTIONZONE
-			| TILESTATE_FLOORCHANGE
+		constexpr uint32_t kScatterRejectFlags = TILESTATE_FLOORCHANGE
 			| TILESTATE_TELEPORT
 			| TILESTATE_IMMOVABLEBLOCKSOLID
-			| TILESTATE_NOPVPZONE
 			| TILESTATE_IMMOVABLEBLOCKPATH
 			| TILESTATE_IMMOVABLENOFIELDBLOCKPATH;
 
@@ -740,7 +748,8 @@ namespace BlackTek
 		{
 			return tile
 				and g_game.canThrowObjectTo(origin, dest)
-				and tile->getZone() != ZONE_PROTECTION
+				and not Zones::ZoneManager::HasWorldFlag(dest, Zones::ZoneFlag::Protection)
+				and not Zones::ZoneManager::HasWorldFlag(dest, Zones::ZoneFlag::NoPvp)
 				and not tile->hasFlag(kScatterRejectFlags);
 		}
 	}
@@ -997,7 +1006,8 @@ namespace BlackTek
 		const Position& caster_position,
 		const Position& center,
 		const uint32_t  flag_reject,
-		const bool      config_ignore_barriers) const noexcept
+		const bool      config_ignore_barriers,
+		const bool      reject_protection_zone) const noexcept
 	{
 		area_position_buffer.clear();
 		area_tile_buffer.clear();
@@ -1043,26 +1053,50 @@ namespace BlackTek
 
 		const int32_t distance = std::max(std::abs(dx), std::abs(dy));
 
-		if (not spreads_ptr or loc_count == 0)
-			return { area_position_buffer, area_tile_buffer, distance, 0 };
-
-		const uint16_t base_x = center.x;
-		const uint16_t base_y = center.y;
-
-		// Pre-compute all positions via SIMD gen_positions into thread-local scratch
-		area_xs_buffer.resize(loc_count);
-		area_ys_buffer.resize(loc_count);
-		SIMD::gen_positions(spreads_ptr, forwards_ptr, loc_count, base_x, base_y,
-			area_xs_buffer.data(), area_ys_buffer.data());
-
 		const auto try_emit = [&](const TilePtr& tile, const Position& position) noexcept
 			{
 				if ((tile->getFlags() & flag_reject) != 0u)
+					return;
+				if (reject_protection_zone and Zones::ZoneManager::HasWorldFlag(position, Zones::ZoneFlag::Protection))
 					return;
 				if (not config_ignore_barriers and not Combat::IsAreaSightClear(center, position))
 					return;
 				area_position_buffer.push_back(position);
 				area_tile_buffer.push_back(tile);
+			};
+
+		if (not spreads_ptr or loc_count == 0)
+		{
+			if (not config.test(Config::HasArea))
+			{
+				if (const auto& tile = g_game.map.getTile(center))
+					try_emit(tile, center);
+			}
+			return { area_position_buffer, area_tile_buffer, distance, 0 };
+		}
+
+		const uint16_t base_x = center.x;
+		const uint16_t base_y = center.y;
+
+		area_xs_buffer.resize(loc_count);
+		area_ys_buffer.resize(loc_count);
+		SIMD::gen_positions(spreads_ptr, forwards_ptr, loc_count, base_x, base_y,
+			area_xs_buffer.data(), area_ys_buffer.data());
+
+		BlackTek::World::ChunkCoord lastChunkCoord{};
+		const BlackTek::World::Chunk* lastChunk = nullptr;
+		bool haveLastChunk = false;
+
+		const auto resolveChunk = [&](const uint16_t wx, const uint16_t wy) noexcept -> const BlackTek::World::Chunk*
+			{
+				const BlackTek::World::ChunkCoord coord = BlackTek::World::ToChunkCoord(wx, wy);
+				if (not haveLastChunk or coord != lastChunkCoord)
+				{
+					lastChunk = g_game.map.getChunk(wx, wy);
+					lastChunkCoord = coord;
+					haveLastChunk = true;
+				}
+				return lastChunk;
 			};
 
 		if (config.test(Config::MultiLevel))
@@ -1075,7 +1109,7 @@ namespace BlackTek
 			const uint8_t minZ = ignore_ground
 				? static_cast<uint8_t>(std::max(0, casterZ - floor_range))
 				: static_cast<uint8_t>(casterZ);
-			const uint8_t maxZ = static_cast<uint8_t>(std::min(MAP_MAX_LAYERS - 1, casterZ + floor_range));
+			const uint8_t maxZ = static_cast<uint8_t>(std::min(BlackTek::World::MaxLayers - 1, casterZ + floor_range));
 
 			const size_t upper = loc_count * static_cast<size_t>(maxZ - minZ + 1);
 			area_position_buffer.reserve(upper);
@@ -1089,9 +1123,11 @@ namespace BlackTek
 					{
 						const uint16_t wx = area_xs_buffer[k];
 						const uint16_t wy = area_ys_buffer[k];
-						const auto tile = g_game.map.getTile(wx, wy, z);
+						const auto& tile = g_game.map.getTileInChunk(resolveChunk(wx, wy), wx, wy, z);
+
 						if (not tile)
 							continue;
+
 						try_emit(tile, Position(wx, wy, z));
 					}
 				}
@@ -1102,10 +1138,11 @@ namespace BlackTek
 				{
 					const uint16_t wx = area_xs_buffer[k];
 					const uint16_t wy = area_ys_buffer[k];
+					const auto* chunk = resolveChunk(wx, wy);
 
 					for (uint8_t z = minZ; z <= maxZ; ++z)
 					{
-						const auto tile = g_game.map.getTile(wx, wy, z);
+						const auto& tile = g_game.map.getTileInChunk(chunk, wx, wy, z);
 						if (tile and tile->getGround())
 						{
 							try_emit(tile, Position(wx, wy, z));
@@ -1125,9 +1162,11 @@ namespace BlackTek
 			{
 				const uint16_t wx = area_xs_buffer[k];
 				const uint16_t wy = area_ys_buffer[k];
-				const auto tile = g_game.map.getTile(wx, wy, z);
+				const auto& tile = g_game.map.getTileInChunk(resolveChunk(wx, wy), wx, wy, z);
+
 				if (not tile)
 					continue;
+
 				try_emit(tile, Position(wx, wy, z));
 			}
 		}
@@ -1180,7 +1219,13 @@ namespace BlackTek
 		}
 
 		if (not spreads_ptr or loc_count == 0)
-			return { area_position_buffer, 0, 0 };
+		{
+			if (not config.test(Config::HasArea))
+				area_position_buffer.push_back(targetPos);
+
+			const int32_t noAreaDistance = std::max(std::abs(dx), std::abs(dy));
+			return { std::move(area_position_buffer), noAreaDistance, 0 };
+		}
 
 		const uint16_t base_x = targetPos.x;
 		const uint16_t base_y = targetPos.y;
@@ -1200,7 +1245,7 @@ namespace BlackTek
 			const uint8_t minZ = ignore_ground
 				? static_cast<uint8_t>(std::max(0, casterZ - floor_range))
 				: static_cast<uint8_t>(casterZ);
-			const uint8_t maxZ = static_cast<uint8_t>(std::min(MAP_MAX_LAYERS - 1, casterZ + floor_range));
+			const uint8_t maxZ = static_cast<uint8_t>(std::min(BlackTek::World::MaxLayers - 1, casterZ + floor_range));
 
 			if (ignore_ground)
 			{
@@ -1219,14 +1264,26 @@ namespace BlackTek
 				area_position_buffer.reserve(loc_count);
 				area_tile_buffer.reserve(loc_count);
 
+				BlackTek::World::ChunkCoord lastChunkCoord{};
+				const BlackTek::World::Chunk* lastChunk = nullptr;
+				bool haveLastChunk = false;
+
 				for (size_t k = 0; k < loc_count; ++k)
 				{
 					const uint16_t wx = area_xs_buffer[k];
 					const uint16_t wy = area_ys_buffer[k];
 
+					const BlackTek::World::ChunkCoord coord = BlackTek::World::ToChunkCoord(wx, wy);
+					if (not haveLastChunk or coord != lastChunkCoord)
+					{
+						lastChunk = g_game.map.getChunk(wx, wy);
+						lastChunkCoord = coord;
+						haveLastChunk = true;
+					}
+
 					for (uint8_t z = minZ; z <= maxZ; ++z)
 					{
-						const auto tile = g_game.map.getTile(wx, wy, z);
+						const auto& tile = g_game.map.getTileInChunk(lastChunk, wx, wy, z);
 						if (tile and tile->getGround())
 						{
 							area_position_buffer.emplace_back(wx, wy, z);
@@ -1355,7 +1412,7 @@ namespace BlackTek
 
 				if (casterPlayer)
 				{
-					if (isNoPvpWorld or tile->hasFlag(TILESTATE_NOPVPZONE)) [[unlikely]]
+					if (isNoPvpWorld or Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::NoPvp)) [[unlikely]]
 					{
 						itemId = resolve_nopvp_item(itemId);
 					}
@@ -1376,8 +1433,7 @@ namespace BlackTek
 
 				item->setOwner(casterID);
 
-				CylinderPtr holder = tile;
-				ReturnValue return_value = g_game.internalAddItem(holder, item);
+				ReturnValue return_value = g_game.internalAddItem({ .tile = tile }, item);
 				auto decay = (return_value == RETURNVALUE_NOERROR) and item->canDecay();
 
 				if (decay) [[likely]]
@@ -1400,11 +1456,10 @@ namespace BlackTek
 		if (attack_blocked)
 			return Combat::TargetCode::CanNotAttackThisPlayer;
 
-		const auto victim_tile = victim->getTile();
-		const auto attacker_tile = caster->getTile();
-
-		const bool attacker_blocked = attacker_tile->hasFlag(TILESTATE_NOPVPZONE | TILESTATE_PROTECTIONZONE);
-		const bool target_protected = victim_tile->hasFlag(TILESTATE_NOPVPZONE | TILESTATE_PROTECTIONZONE);
+		const bool attacker_blocked = Zones::ZoneManager::HasWorldFlag(caster->getPosition(), Zones::ZoneFlag::NoPvp)
+			or Zones::ZoneManager::HasWorldFlag(caster->getPosition(), Zones::ZoneFlag::Protection);
+		const bool target_protected = Zones::ZoneManager::HasWorldFlag(victim->getPosition(), Zones::ZoneFlag::NoPvp)
+			or Zones::ZoneManager::HasWorldFlag(victim->getPosition(), Zones::ZoneFlag::Protection);
 
 		if (attacker_blocked)
 			return Combat::TargetCode::YouAreInProtectionZone;
@@ -1449,7 +1504,7 @@ namespace BlackTek
 			if (attack_blocked)
 				return Combat::TargetCode::CanNotAttackThisPlayer;
 
-			if (victim->getTile()->hasFlag(TILESTATE_NOPVPZONE))
+			if (Zones::ZoneManager::HasWorldFlag(victim->getPosition(), Zones::ZoneFlag::NoPvp))
 				return Combat::TargetCode::TargetIsInProtectionZone;
 
 		}
@@ -1511,7 +1566,7 @@ namespace BlackTek
 		if (attacker->hasFlag(PlayerFlag_IgnoreProtectionZone))
 			return Combat::TargetCode::Valid;
 
-		if (config.test(Config::Aggressive) and tile->hasFlag(TILESTATE_PROTECTIONZONE))
+		if (config.test(Config::Aggressive) and Zones::ZoneManager::HasWorldFlag(target_location, Zones::ZoneFlag::Protection))
 			return Combat::TargetCode::TargetIsInProtectionZone;
 
 		return Combat::TargetCode::Valid;
@@ -1535,7 +1590,7 @@ namespace BlackTek
 		if (attacker_pos.z > target_location.z)
 			return Combat::TargetCode::FirstGoUpStairs;
 
-		if (config.test(Config::Aggressive) and tile->hasFlag(TILESTATE_PROTECTIONZONE))
+		if (config.test(Config::Aggressive) and Zones::ZoneManager::HasWorldFlag(target_location, Zones::ZoneFlag::Protection))
 			return Combat::TargetCode::TargetIsInProtectionZone;
 
 		return Combat::TargetCode::Valid;
@@ -1703,15 +1758,25 @@ namespace BlackTek
 		return currentDamage;
 	}
 
-	void Combat::post_damage(const PlayerPtr& caster, const CreaturePtr& victim, uint32_t currentDamage, LeechData&& leech) noexcept
+	void Combat::post_damage(const PlayerPtr& caster, const CreaturePtr& victim, uint32_t currentDamage, LeechData&& leech, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
 	{
 		if (impactEffect != CONST_ME_NONE)
-			g_game.addMagicEffect(victim->getPosition(), impactEffect);
+		{
+			if (spectators)
+				g_game.addMagicEffect(victim->getPosition(), impactEffect, *spectators);
+			else
+				g_game.addMagicEffect(victim->getPosition(), impactEffect);
+		}
 
 		if (config.test(Config::Critical))
 		{
 			if ((config.test(Config::AttackModified) and g_config.GetBoolean(ConfigManager::AUGMENT_CRITICAL_ANIMATION)) or not config.test(Config::AttackModified))
-				g_game.addMagicEffect(victim->getPosition(), CONST_ME_CRITICAL_DAMAGE);
+			{
+				if (spectators)
+					g_game.addMagicEffect(victim->getPosition(), CONST_ME_CRITICAL_DAMAGE, *spectators);
+				else
+					g_game.addMagicEffect(victim->getPosition(), CONST_ME_CRITICAL_DAMAGE);
+			}
 		}
 
 		auto primary_conditions = (not config.test(Config::Leech) and currentDamage != COMBAT_HEALING and caster->is_player() and origin != Origin::Condition);
@@ -1719,6 +1784,15 @@ namespace BlackTek
 		if (primary_conditions)
 		{
 			const auto totalDamage = currentDamage;
+
+			std::optional<SpectatorVec> leechSpectatorStorage;
+			auto leechSpectatorSpan = [&]() -> std::optional<std::span<const CreaturePtr>>
+			{
+				if (not leechSpectatorStorage)
+					leechSpectatorStorage = g_game.map.fetchSpectators(caster->getPosition(), true, true);
+
+				return std::span<const CreaturePtr>(leechSpectatorStorage->begin(), leechSpectatorStorage->end());
+			};
 
 			if (leech.percent_health > 0 or leech.flat_health > 0)
 			{
@@ -1738,7 +1812,7 @@ namespace BlackTek
 					hp_gain->config.set(Config::Leech);
 					hp_gain->config.set(Config::TopTargetOnly);
 					hp_gain->config.set(Config::TrueDamage);
-					hp_gain->heal_target(caster, caster, true);
+					hp_gain->heal_target(caster, caster, true, leechSpectatorSpan());
 				}
 			}
 
@@ -1760,7 +1834,7 @@ namespace BlackTek
 					mana_gain->config.set(Config::Leech);
 					mana_gain->config.set(Config::TopTargetOnly);
 					mana_gain->config.set(Config::TrueDamage);
-					mana_gain->heal_target(caster, caster, true);
+					mana_gain->heal_target(caster, caster, true, leechSpectatorSpan());
 				}
 			}
 
@@ -1782,7 +1856,7 @@ namespace BlackTek
 					stamina_gain->config.set(Config::Leech);
 					stamina_gain->config.set(Config::TopTargetOnly);
 					stamina_gain->config.set(Config::TrueDamage);
-					stamina_gain->heal_target(caster, caster, true);
+					stamina_gain->heal_target(caster, caster, true, leechSpectatorSpan());
 				}
 			}
 
@@ -1804,7 +1878,7 @@ namespace BlackTek
 					soul_gain->config.set(Config::Leech);
 					soul_gain->config.set(Config::TopTargetOnly);
 					soul_gain->config.set(Config::TrueDamage);
-					soul_gain->heal_target(caster, caster, true);
+					soul_gain->heal_target(caster, caster, true, leechSpectatorSpan());
 				}
 			}
 		}
@@ -2406,6 +2480,94 @@ namespace BlackTek
 	template void Combat::accumulate_attack_mods<PlayerPtr>(const PlayerPtr&, const PlayerPtr&, uint32_t&, LeechData&, LeechData&, const std::optional<std::span<const CreaturePtr>>&);
 	template void Combat::accumulate_attack_mods<MonsterPtr>(const PlayerPtr&, const MonsterPtr&, uint32_t&, LeechData&, LeechData&, const std::optional<std::span<const CreaturePtr>>&);
 
+	bool Combat::HasLeechEffect(const LeechData& data) noexcept
+	{
+		return data.percent_health != 0
+			or data.percent_mana != 0
+			or data.percent_stamina != 0
+			or data.percent_soul != 0
+			or data.flat_health != 0
+			or data.flat_mana != 0
+			or data.flat_stamina != 0
+			or data.flat_soul != 0;
+	}
+
+	void Combat::FireItemCombatHooks(bool isAttack, const PlayerPtr& holder, const CreaturePtr& other, uint32_t currentDamage, bool leechedDamage) const noexcept
+	{
+		const auto attackHook = isAttack ? BlackTek::ItemEvents::HookType::OnAttack : BlackTek::ItemEvents::HookType::OnDefend;
+		const auto modifierHook = isAttack ? BlackTek::ItemEvents::HookType::OnAttackMod : BlackTek::ItemEvents::HookType::OnDefenseMod;
+
+		const bool wantsAttackHook = g_itemEvents->hasHook(attackHook);
+		const bool wantsModifierHook = g_itemEvents->hasHook(modifierHook);
+		if (not wantsAttackHook and not wantsModifierHook)
+			return;
+
+		const uint16_t attackBit = wantsAttackHook ? BlackTek::ItemEvents::ToHookMask(attackHook) : uint16_t{ 0 };
+		const uint16_t modBit = wantsModifierHook ? BlackTek::ItemEvents::ToHookMask(modifierHook) : uint16_t{ 0 };
+		const uint16_t neededMask = attackBit | modBit;
+
+		if ((holder->getCombatHookMask() & neededMask) == 0)
+			return;
+
+		const auto blockTypeT = static_cast<BlockType_t>(blockType);
+		const auto combatTypeT = static_cast<CombatType_t>(damage_type);
+		const auto originT = static_cast<Origin>(origin);
+
+		const uint8_t otherType = other ? static_cast<uint8_t>(other->getType()) : 0;
+		const uint8_t otherRace = other ? static_cast<uint8_t>(other->getRace()) : RACE_NONE;
+		static const std::string emptyCreatureName;
+		const std::string& otherName = other ? other->getName() : emptyCreatureName;
+
+		for (uint32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot)
+		{
+			const uint16_t slotMask = holder->getSlotCombatHookMask(static_cast<slots_t>(slot));
+			if ((slotMask & neededMask) == 0)
+				continue;
+
+			const ItemPtr item = holder->getInventoryItemRef(static_cast<slots_t>(slot));
+			if (not item)
+				continue;
+
+			if (wantsAttackHook and (slotMask & attackBit))
+			{
+				if (isAttack)
+					g_itemEvents->fireAttack(item, holder, other, blockTypeT, combatTypeT, originT, config.test(Config::Critical), leechedDamage);
+				else
+					g_itemEvents->fireDefend(item, holder, other, blockTypeT, combatTypeT, originT, config.test(Config::Critical), leechedDamage);
+			}
+
+			if (wantsModifierHook and (slotMask & modBit) and item->isAugmented())
+			{
+				size_t totalModifiers = 0;
+				for (const auto& augment : *item->getAugments())
+				{
+					totalModifiers += augment->getModifiers().size();
+				}
+
+				std::vector<DamageModifier> matchedModifiers;
+				matchedModifiers.reserve(totalModifiers);
+				for (const auto& augment : *item->getAugments())
+				{
+					for (const auto& modifier : augment->getModifiers())
+					{
+						const bool stanceMatches = isAttack ? modifier.isAttackStance() : modifier.isDefenseStance();
+						if (stanceMatches and modifier.applies(combatTypeT, otherType, origin, otherRace, otherName))
+							matchedModifiers.push_back(modifier);
+					}
+				}
+
+				for (const auto& modifier : matchedModifiers)
+				{
+					auto modifierPtr = std::make_shared<DamageModifier>(modifier);
+					if (isAttack)
+						g_itemEvents->fireAttackMod(item, holder, other, modifierPtr, currentDamage);
+					else
+						g_itemEvents->fireDefenseMod(item, holder, other, modifierPtr, currentDamage);
+				}
+			}
+		}
+	}
+
 	void Combat::strike_target(const PlayerPtr& caster, const PlayerPtr& victim, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
 	{
 		const bool config_has_condition = config.test(Config::HasCondition);
@@ -2420,7 +2582,12 @@ namespace BlackTek
 					TrackConditionApplications(caster, victim);
 				ApplyConditions(victim);
 				if (impactEffect != CONST_ME_NONE)
-					g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				{
+					if (spectators)
+						g_game.addMagicEffect(victim->getPosition(), impactEffect, *spectators);
+					else
+						g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				}
 			}
 			return;
 		}
@@ -2441,7 +2608,7 @@ namespace BlackTek
 		}
 
 		if (distanceEffect != CONST_ANI_NONE)
-			addDistanceEffect(caster, caster->getPosition(), victim->getPosition(), distanceEffect);
+			addDistanceEffect(caster, caster->getPosition(), victim->getPosition(), distanceEffect, spectators);
 
 		uint32_t currentDamage = damage;
 
@@ -2453,9 +2620,9 @@ namespace BlackTek
 			{
 				const auto blocked = blockResult.error();
 				if (blocked == BlockType::Defensive)
-					defense_block_effect(victim->getPosition());
+					defense_block_effect(victim->getPosition(), spectators);
 				else if (blocked == BlockType::Armor)
-					armor_block_effect(victim->getPosition());
+					armor_block_effect(victim->getPosition(), spectators);
 				if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, 0, false);
 				return;
 			}
@@ -2492,6 +2659,9 @@ namespace BlackTek
 			}
 		}
 
+		FireItemCombatHooks(true, caster, victim, currentDamage, HasLeechEffect(leech_data) or HasLeechEffect(steal_data));
+		FireItemCombatHooks(false, victim, caster, currentDamage, HasLeechEffect(leech_data) or HasLeechEffect(steal_data));
+
 		currentDamage = process_steal(caster, victim, steal_data, currentDamage);
 
 		const uint32_t damageDealt = apply_damage(caster, victim, currentDamage, spectators);
@@ -2502,7 +2672,7 @@ namespace BlackTek
 		}
 		else
 		{
-			post_damage(caster, victim, currentDamage, std::move(leech_data));
+			post_damage(caster, victim, currentDamage, std::move(leech_data), spectators);
 			if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, damageDealt, victim->getHealth() <= 0);
 		}
 
@@ -2520,14 +2690,19 @@ namespace BlackTek
 			{
 				const uint16_t charges = weaponItem->getCharges();
 
-				if (charges != 0 and g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_CHARGES))
-					g_game.transformItem(weaponItem, weaponItem->getID(), charges - 1);
+				if (charges != 0)
+				{
+					if (g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_CHARGES))
+						g_game.transformItem(weaponItem, weaponItem->getID(), charges - 1);
+				}
+				else if (weaponItem->isStackable())
+				{
+					if (weaponItem->getItemCount() > 1)
+						g_game.transformItem(weaponItem, weaponItem->getID(), weaponItem->getItemCount() - 1);
 
-				else if (weaponItem->getItemCount() > 1)
-					g_game.transformItem(weaponItem, weaponItem->getID(), weaponItem->getItemCount() - 1);
-
-				else
-					g_game.internalRemoveItem(weaponItem);
+					else
+						g_game.internalRemoveItem(weaponItem);
+				}
 			}
 		}
 	}
@@ -2546,7 +2721,12 @@ namespace BlackTek
 					TrackConditionApplications(caster, victim);
 				ApplyConditions(victim);
 				if (impactEffect != CONST_ME_NONE)
-					g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				{
+					if (spectators)
+						g_game.addMagicEffect(victim->getPosition(), impactEffect, *spectators);
+					else
+						g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				}
 			}
 			return;
 		}
@@ -2567,7 +2747,7 @@ namespace BlackTek
 		}
 
 		if (distanceEffect != CONST_ANI_NONE)
-			addDistanceEffect(caster, caster->getPosition(), victim->getPosition(), distanceEffect);
+			addDistanceEffect(caster, caster->getPosition(), victim->getPosition(), distanceEffect, spectators);
 
 		uint32_t currentDamage = damage;
 
@@ -2580,10 +2760,10 @@ namespace BlackTek
 				const auto blocked = blockResult.error();
 
 				if (blocked == BlockType::Defensive)
-					defense_block_effect(victim->getPosition());
+					defense_block_effect(victim->getPosition(), spectators);
 
 				else if (blocked == BlockType::Armor)
-					armor_block_effect(victim->getPosition());
+					armor_block_effect(victim->getPosition(), spectators);
 
 				if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, 0, false);
 				return;
@@ -2601,6 +2781,8 @@ namespace BlackTek
 			return;
 		}
 
+		FireItemCombatHooks(true, caster, victim, currentDamage, HasLeechEffect(leech_data) or HasLeechEffect(steal_data));
+
 		currentDamage = process_steal(caster, victim, steal_data, currentDamage);
 
 		const uint32_t damageDealt = apply_damage(caster, victim, currentDamage, spectators);
@@ -2611,7 +2793,7 @@ namespace BlackTek
 		}
 		else
 		{
-			post_damage(caster, victim, currentDamage, std::move(leech_data));
+			post_damage(caster, victim, currentDamage, std::move(leech_data), spectators);
 			if constexpr (Metrics::ENABLED) CommitStrike(caster, victim, damageDealt, victim->getHealth() <= 0);
 		}
 
@@ -2629,14 +2811,19 @@ namespace BlackTek
 			{
 				const uint16_t charges = weaponItem->getCharges();
 
-				if (charges != 0 and g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_CHARGES))
-					g_game.transformItem(weaponItem, weaponItem->getID(), charges - 1);
+				if (charges != 0)
+				{
+					if (g_config.GetBoolean(ConfigManager::REMOVE_WEAPON_CHARGES))
+						g_game.transformItem(weaponItem, weaponItem->getID(), charges - 1);
+				}
+				else if (weaponItem->isStackable())
+				{
+					if (weaponItem->getItemCount() > 1)
+						g_game.transformItem(weaponItem, weaponItem->getID(), weaponItem->getItemCount() - 1);
 
-				else if (weaponItem->getItemCount() > 1)
-					g_game.transformItem(weaponItem, weaponItem->getID(), weaponItem->getItemCount() - 1);
-
-				else
-					g_game.internalRemoveItem(weaponItem);
+					else
+						g_game.internalRemoveItem(weaponItem);
+				}
 			}
 		}
 	}
@@ -2657,7 +2844,12 @@ namespace BlackTek
 				ApplyConditions(victim);
 
 				if (impactEffect != CONST_ME_NONE)
-					g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				{
+					if (spectators)
+						g_game.addMagicEffect(victim->getPosition(), impactEffect, *spectators);
+					else
+						g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				}
 			}
 			return;
 		}
@@ -2674,7 +2866,7 @@ namespace BlackTek
 			return;
 
 		if (distanceEffect != CONST_ANI_NONE)
-			addDistanceEffect(attacker, attacker->getPosition(), victim->getPosition(), distanceEffect);
+			addDistanceEffect(attacker, attacker->getPosition(), victim->getPosition(), distanceEffect, spectators);
 
 		uint32_t currentDamage = damage;
 
@@ -2687,10 +2879,10 @@ namespace BlackTek
 				const auto blocked = blockResult.error();
 
 				if (blocked == BlockType::Defensive)
-					defense_block_effect(victim->getPosition());
+					defense_block_effect(victim->getPosition(), spectators);
 
 				else if (blocked == BlockType::Armor)
-					armor_block_effect(victim->getPosition());
+					armor_block_effect(victim->getPosition(), spectators);
 
 				if constexpr (Metrics::ENABLED) CommitStrike(attacker, victim, 0, false);
 
@@ -2718,6 +2910,8 @@ namespace BlackTek
 					currentDamage = defense_augment(attacker, victim, currentDamage, std::nullopt);
 			}
 		}
+
+		FireItemCombatHooks(false, victim, attacker, currentDamage, false);
 
 		const uint32_t damageDealt = apply_damage(attacker, victim, currentDamage, spectators);
 
@@ -2756,7 +2950,12 @@ namespace BlackTek
 				ApplyConditions(victim);
 
 				if (impactEffect != CONST_ME_NONE)
-					g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				{
+					if (spectators)
+						g_game.addMagicEffect(victim->getPosition(), impactEffect, *spectators);
+					else
+						g_game.addMagicEffect(victim->getPosition(), impactEffect);
+				}
 			}
 			return;
 		}
@@ -2773,7 +2972,7 @@ namespace BlackTek
 			return;
 
 		if (distanceEffect != CONST_ANI_NONE)
-			addDistanceEffect(attacker, attacker->getPosition(), victim->getPosition(), distanceEffect);
+			addDistanceEffect(attacker, attacker->getPosition(), victim->getPosition(), distanceEffect, spectators);
 
 		uint32_t currentDamage = damage;
 
@@ -2786,10 +2985,10 @@ namespace BlackTek
 				const auto blocked = blockResult.error();
 
 				if (blocked == BlockType::Defensive)
-					defense_block_effect(victim->getPosition());
+					defense_block_effect(victim->getPosition(), spectators);
 
 				else if (blocked == BlockType::Armor)
-					armor_block_effect(victim->getPosition());
+					armor_block_effect(victim->getPosition(), spectators);
 
 				if constexpr (Metrics::ENABLED) CommitStrike(attacker, victim, 0, false);
 
@@ -2826,6 +3025,11 @@ namespace BlackTek
 		{
 			heal_target(attacker, defender, skip_validation, spectators);
 			return;
+		}
+
+		if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(attacker->getPosition()))
+		{
+			spawnOverlay->Trigger(attacker, Zones::SpawnTrigger::Attack);
 		}
 
 		using namespace BlackTek;
@@ -2957,7 +3161,10 @@ namespace BlackTek
 
 			if (maxHeal <= 0)
 			{
-				g_game.addCreatureHealth(target);
+				if (spectators)
+					g_game.addCreatureHealth(target, *spectators);
+				else
+					g_game.addCreatureHealth(target);
 				commitHeal(target, 0, 0);
 				return;
 			}
@@ -2966,7 +3173,7 @@ namespace BlackTek
 				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), target);
 
 			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(maxHeal));
-			target->changeHealth(healed);
+			target->changeHealth(static_cast<int32_t>(healed), true, spectators);
 			heal_notification(caster, target, healed, spectators);
 			commitHeal(target, 0, healed);
 		}
@@ -3118,10 +3325,11 @@ namespace BlackTek
 		const uint32_t flag_reject =
 			TILESTATE_FLOORCHANGE |
 			TILESTATE_TELEPORT |
-			(config_aggressive and not admin ? static_cast<uint32_t>(TILESTATE_PROTECTIONZONE) : 0u) |
 			(config_ignore_barriers ? 0u : kBarrier);
 
-		const auto [positions, tiles, distance, stored_extent] = buildValidatedArea(caster_position, center, flag_reject, config_ignore_barriers);
+		const bool reject_protection_zone = config_aggressive and not admin;
+
+		const auto [positions, tiles, distance, stored_extent] = buildValidatedArea(caster_position, center, flag_reject, config_ignore_barriers, reject_protection_zone);
 
 		if (tiles.empty())
 			return;
@@ -3240,24 +3448,107 @@ namespace BlackTek
 		};
 
 		for (size_t i = 0; i < n; ++i)
+			valid_tile_list.push_back(tiles[i]);
+
+		if (config_top_target_only)
 		{
-			const auto& tile = tiles[i];
-
-			valid_tile_list.push_back(tile);
-
-			const auto& creaturesOnTile = tile->getCreatures();
-
-			if (not creaturesOnTile)
-				continue;
-
-			const bool onCasterTile = (casterTile == tile);
-
-			const CreaturePtr topCreature =	config_top_target_only	? tile->getTopCreature() : nullptr;
-
-			for (const auto& creature : *creaturesOnTile)
+			for (size_t i = 0; i < n; ++i)
 			{
-				if (isStrikeable(creature, topCreature, onCasterTile))
-					area_creature_buffer.push_back(creature);
+				const auto& tile = tiles[i];
+				const auto creaturesOnTile = tile->getCreatures();
+
+				if (not creaturesOnTile)
+					continue;
+
+				const bool onCasterTile = (casterTile == tile);
+				const CreaturePtr topCreature = tile->getTopCreature();
+
+				for (const auto& creature : creaturesOnTile->getList())
+				{
+					if (isStrikeable(creature, topCreature, onCasterTile))
+						area_creature_buffer.push_back(creature);
+				}
+			}
+		}
+		else
+		{
+			using BlackTek::World::Chunk;
+			using BlackTek::World::Floor;
+
+			area_chunk_buckets.clear();
+			area_position_chunks.resize(n);
+
+			for (size_t i = 0; i < n; ++i)
+			{
+				const Position& pos = positions[i];
+				const auto* chunk = g_game.map.getChunk(pos.x, pos.y);
+				area_position_chunks[i] = chunk;
+
+				if (not chunk)
+					continue;
+
+				AreaChunkBucket* bucket = nullptr;
+				for (auto& entry : area_chunk_buckets)
+				{
+					if (entry.chunk == chunk)
+					{
+						bucket = &entry;
+						break;
+					}
+				}
+
+				if (not bucket)
+				{
+					area_chunk_buckets.push_back(AreaChunkBucket{ chunk });
+					bucket = &area_chunk_buckets.back();
+				}
+
+				++bucket->tileCount;
+				bucket->mask[pos.z] |= (uint64_t{ 1 } << ((pos.y & Floor::Mask) * Floor::Size + (pos.x & Floor::Mask)));
+			}
+
+			for (const auto& bucket : area_chunk_buckets)
+			{
+				const Chunk* chunk = bucket.chunk;
+				const size_t creatureScanCount = config_aggressive
+					? static_cast<size_t>(chunk->player_count) + chunk->monster_count
+					: chunk->creature_ptrs.size();
+
+				if (creatureScanCount < bucket.tileCount)
+				{
+					for (size_t k = 0; k < creatureScanCount; ++k)
+					{
+						const uint64_t floorMask = bucket.mask[chunk->creature_z[k]];
+
+						if (floorMask == 0)
+							continue;
+
+						const uint32_t bitIndex = (chunk->creature_y[k] & Floor::Mask) * Floor::Size + (chunk->creature_x[k] & Floor::Mask);
+
+						if (((floorMask >> bitIndex) & 1u) == 0)
+							continue;
+
+						const auto& creature = chunk->creature_ptrs[k];
+						if (isStrikeable(creature, nullptr, false))
+							area_creature_buffer.push_back(creature);
+					}
+				}
+				else
+				{
+					for (size_t i = 0; i < n; ++i)
+					{
+						if (area_position_chunks[i] != chunk)
+							continue;
+
+						const auto creaturesOnTile = tiles[i]->getCreatures();
+						if (not creaturesOnTile)
+							continue;
+
+						for (const auto& creature : creaturesOnTile->getList())
+							if (isStrikeable(creature, nullptr, false))
+								area_creature_buffer.push_back(creature);
+					}
+				}
 			}
 		}
 
@@ -3266,10 +3557,10 @@ namespace BlackTek
 
 		auto spectators = g_game.map.fetchSpectators(center, true, true, ex + Map::maxViewportX, ex + Map::maxViewportX, ey + Map::maxViewportY, ey + Map::maxViewportY);
 
-		if (distanceEffect != CONST_ANI_NONE)
-			addDistanceEffect(caster, caster_position, center, distanceEffect);
-
 		const std::span<const CreaturePtr> spectators_span(spectators.begin(), spectators.size());
+
+		if (distanceEffect != CONST_ANI_NONE)
+			addDistanceEffect(caster, caster_position, center, distanceEffect, spectators_span);
 
 		apply_effects(spectators, caster, valid_tile_list);
 
@@ -3418,21 +3709,31 @@ namespace BlackTek
 			g_game.addMagicEffect(position, combat.impactEffect);
 	}
 
-	void Combat::addDistanceEffect(const CreaturePtr& caster, const Position& fromPosition, const Position& toPosition, uint8_t effect)
+	void Combat::addDistanceEffect(const CreaturePtr& caster, const Position& fromPosition, const Position& toPosition, uint8_t effect, const std::optional<std::span<const CreaturePtr>> spectators)
 	{
 		if (effect == CONST_ANI_NONE)
 			return;
-		g_game.addDistanceEffect(fromPosition, toPosition, effect);
+
+		if (spectators)
+			g_game.addDistanceEffect(*spectators, fromPosition, toPosition, effect);
+		else
+			g_game.addDistanceEffect(fromPosition, toPosition, effect);
 	}
 
-	void Combat::defense_block_effect(const Position& target_position) const noexcept
+	void Combat::defense_block_effect(const Position& target_position, const std::optional<std::span<const CreaturePtr>> spectators) const noexcept
 	{
-		g_game.addMagicEffect(target_position, CONST_ME_POFF);
+		if (spectators)
+			g_game.addMagicEffect(target_position, CONST_ME_POFF, *spectators);
+		else
+			g_game.addMagicEffect(target_position, CONST_ME_POFF);
 	}
 
-	void Combat::armor_block_effect(const Position& target_position) const noexcept
+	void Combat::armor_block_effect(const Position& target_position, const std::optional<std::span<const CreaturePtr>> spectators) const noexcept
 	{
-		g_game.addMagicEffect(target_position, CONST_ME_BLOCKHIT);
+		if (spectators)
+			g_game.addMagicEffect(target_position, CONST_ME_BLOCKHIT, *spectators);
+		else
+			g_game.addMagicEffect(target_position, CONST_ME_BLOCKHIT);
 	}
 
 	uint8_t Combat::immunity_block_effect() const noexcept
@@ -3598,6 +3899,11 @@ namespace BlackTek
 				}
 
 				target->onBlockHit();
+
+				if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(target->getPosition()))
+				{
+					spawnOverlay->Trigger(target, Zones::SpawnTrigger::Defend);
+				}
 			}
 
 			if (apply_armor_reduction and (armor_cost == 0 or target->get_armor_charges() >= armor_cost))
@@ -3713,6 +4019,11 @@ namespace BlackTek
 
 				// reduces shield block count and awards shielding skill if shield is equipped
 				target->onBlockHit();
+
+				if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(target->getPosition()))
+				{
+					spawnOverlay->Trigger(target, Zones::SpawnTrigger::Defend);
+				}
 			}
 
 			if (apply_armor_reduction and (armor_cost == 0 or target->get_armor_charges() >= armor_cost))
@@ -4254,17 +4565,42 @@ namespace BlackTek
 		const bool	is_defense_conversion	= (origin == Origin::Absorb or origin == Origin::Restore or origin == Origin::Replenish or origin == Origin::Revive);
 		const bool	is_drain_gain			= (origin == Origin::LifeSteal or origin == Origin::ManaSteal or origin == Origin::StaminaSteal or origin == Origin::SoulSteal);
 
+		const bool anyRecipients = target->is_player() or (not self_target and caster->is_player()) or has_observers;
+
+		if (not anyRecipients)
+			return;
+
+		const bool send_notice_effect = (notice.effect != CONST_ME_NONE);
+		const bool send_origin_effect = (origin_notice.effect != CONST_ME_NONE);
+
+		NetworkMessage noticeEffectMsg;
+		if (send_notice_effect)
+			ProtocolGame::AddMagicEffect(noticeEffectMsg, target_position, notice.effect);
+
+		NetworkMessage originEffectMsg;
+		if (send_origin_effect)
+			ProtocolGame::AddMagicEffect(originEffectMsg, target_position, origin_notice.effect);
+
+		auto sendSharedEffects = [&](Player* player)
+		{
+			if (send_notice_effect and player->canSee(target_position))
+				player->writeToOutputBuffer(noticeEffectMsg);
+
+			if (send_origin_effect and player->canSee(target_position))
+				player->writeToOutputBuffer(originEffectMsg);
+		};
+
 		if (target->is_player())
 		{
 			const std::string amount_str	= std::to_string(amount);
 			const std::string stat_str		= std::string(notice.stat_name);
 			const std::string origin_verb	= std::string(origin_notice.verb);
 
-			const std::string target_text =	
-				is_defense_conversion 
-				? "Your " + origin_verb + " restored " + amount_str + " " + stat_str + "." 
-				: is_drain_gain 
-				? "You drained " + amount_str + " " + stat_str + " from your target." 
+			const std::string target_text =
+				is_defense_conversion
+				? "Your " + origin_verb + " restored " + amount_str + " " + stat_str + "."
+				: is_drain_gain
+				? "You drained " + amount_str + " " + stat_str + " from your target."
 				: self_target
 				? "You heal yourself for " + amount_str + " " + stat_str + "."
 				: "You are healed for " + amount_str + " " + stat_str + " by " + origin_verb + ".";
@@ -4278,13 +4614,7 @@ namespace BlackTek
 
 			auto* player = static_cast<Player*>(target.get());
 			player->sendTextMessage(target_message);
-
-			if (notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(target_position, notice.effect);
-
-			if (origin_notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(target_position, origin_notice.effect);
-
+			sendSharedEffects(player);
 			player->sendStats();
 		}
 
@@ -4298,7 +4628,7 @@ namespace BlackTek
 			const std::string caster_text =
 				is_defense_conversion
 				? target_name + "'s " + origin_verb + " restored " + amount_str + " " + stat_str + " from your attack."
-				: is_drain_gain 
+				: is_drain_gain
 				? "You drained " + amount_str + " " + stat_str + " from " + target_name + "."
 				: target_name + " is healed for " + amount_str + " " + stat_str + " by your " + origin_verb + ".";
 
@@ -4311,12 +4641,7 @@ namespace BlackTek
 
 			auto* player = static_cast<Player*>(caster.get());
 			player->sendTextMessage(caster_message);
-
-			if (notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(target_position, notice.effect);
-
-			if (origin_notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(target_position, origin_notice.effect);
+			sendSharedEffects(player);
 		}
 
 		if (has_observers)
@@ -4328,9 +4653,9 @@ namespace BlackTek
 			const auto& caster_name				= caster->getNameDescription();
 
 			const std::string observer_text =
-				is_defense_conversion 
+				is_defense_conversion
 				? target_name + "'s " + origin_verb + " restored " + amount_str + " " + stat_str + "."
-				: is_drain_gain 
+				: is_drain_gain
 				? caster_name + " drained " + amount_str + " " + stat_str + "."
 				: target_name + " is healed for " + amount_str + " " + stat_str + " by " + origin_verb + ".";
 
@@ -4341,19 +4666,14 @@ namespace BlackTek
 			observer_message.type				= MESSAGE_HEALED_OTHERS;
 			observer_message.text				= observer_text;
 
-			const bool send_notice_effect = (notice.effect != CONST_ME_NONE);
-			const bool send_origin_effect = (origin_notice.effect != CONST_ME_NONE);
+			NetworkMessage textMsg;
+			ProtocolGame::AddTextMessage(textMsg, observer_message);
 
 			for (auto it = observer_iterator; it != observer_view.end(); ++it)
 			{
 				auto* player = static_cast<Player*>((*it).get());
-				player->sendTextMessage(observer_message);
-
-				if (send_notice_effect)
-					player->sendMagicEffect(target_position, notice.effect);
-
-				if (send_origin_effect)
-					player->sendMagicEffect(target_position, origin_notice.effect);
+				player->writeToOutputBuffer(textMsg);
+				sendSharedEffects(player);
 			}
 		}
 	}
@@ -4384,6 +4704,29 @@ namespace BlackTek
 		const auto	origin_notice			= collect_origin_notice(static_cast<Origin>(origin));
 		const bool	is_drain				= (origin == Origin::ManaSteal);
 
+		const bool anyRecipients = defender->is_player() or (not self_target and attacker->is_player()) or has_observers;
+
+		if (not anyRecipients)
+			return;
+
+		const bool send_origin_effect_mana = (origin_notice.effect != CONST_ME_NONE);
+
+		NetworkMessage loseEnergyMsg;
+		ProtocolGame::AddMagicEffect(loseEnergyMsg, defender_position, CONST_ME_LOSEENERGY);
+
+		NetworkMessage originEffectMsg;
+		if (send_origin_effect_mana)
+			ProtocolGame::AddMagicEffect(originEffectMsg, defender_position, origin_notice.effect);
+
+		auto sendSharedEffects = [&](Player* player)
+		{
+			if (player->canSee(defender_position))
+				player->writeToOutputBuffer(loseEnergyMsg);
+
+			if (send_origin_effect_mana and player->canSee(defender_position))
+				player->writeToOutputBuffer(originEffectMsg);
+		};
+
 		if (defender->is_player())
 		{
 			const std::string amount_str	= std::to_string(amount);
@@ -4391,9 +4734,9 @@ namespace BlackTek
 			const auto& attacker_name		= attacker->getNameDescription();
 
 			const std::string defender_text =
-				is_drain 
+				is_drain
 				? attacker_name + " drained " + amount_str + " mana from you."
-				: self_target 
+				: self_target
 				? "You lose " + amount_str + " mana due to your own " + origin_verb + "."
 				: "You lose " + amount_str + " mana due to " + origin_verb + " by " + attacker_name + ".";
 
@@ -4406,10 +4749,7 @@ namespace BlackTek
 
 			auto* player = static_cast<Player*>(defender.get());
 			player->sendTextMessage(defender_message);
-			player->sendMagicEffect(defender_position, CONST_ME_LOSEENERGY);
-
-			if (origin_notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(defender_position, origin_notice.effect);
+			sendSharedEffects(player);
 		}
 
 		if (not self_target and attacker->is_player())
@@ -4419,7 +4759,7 @@ namespace BlackTek
 			const auto& defender_name		= defender->getName();
 
 			const std::string attacker_text =
-				is_drain 
+				is_drain
 				? "You drained " + amount_str + " mana from " + defender_name + "."
 				: defender_name + " loses " + amount_str + " mana due to your " + origin_verb + ".";
 
@@ -4432,10 +4772,7 @@ namespace BlackTek
 
 			auto* player = static_cast<Player*>(attacker.get());
 			player->sendTextMessage(attacker_message);
-			player->sendMagicEffect(defender_position, CONST_ME_LOSEENERGY);
-
-			if (origin_notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(defender_position, origin_notice.effect);
+			sendSharedEffects(player);
 		}
 
 		if (has_observers)
@@ -4457,16 +4794,14 @@ namespace BlackTek
 			observer_message.type			= MESSAGE_DAMAGE_OTHERS;
 			observer_message.text			= observer_text;
 
-			const bool send_origin_effect_mana = (origin_notice.effect != CONST_ME_NONE);
+			NetworkMessage textMsg;
+			ProtocolGame::AddTextMessage(textMsg, observer_message);
 
 			for (auto it = observer_iterator; it != observer_view.end(); ++it)
 			{
 				auto* player = static_cast<Player*>((*it).get());
-				player->sendTextMessage(observer_message);
-				player->sendMagicEffect(defender_position, CONST_ME_LOSEENERGY);
-
-				if (send_origin_effect_mana)
-					player->sendMagicEffect(defender_position, origin_notice.effect);
+				player->writeToOutputBuffer(textMsg);
+				sendSharedEffects(player);
 			}
 		}
 	}
@@ -4502,125 +4837,133 @@ namespace BlackTek
 		const bool	is_piercing			= (origin == Origin::Piercing);
 		const bool	is_drain			= (origin == Origin::LifeSteal or origin == Origin::ManaSteal or origin == Origin::StaminaSteal or origin == Origin::SoulSteal);
 
-		if (defender->is_player())
+		const bool anyRecipients = defender->is_player() or (not self_target and attacker->is_player()) or has_observers;
+
+		if (anyRecipients)
 		{
-			const std::string amount_str	= std::to_string(amount);
-			const std::string origin_verb	= std::string(origin_notice.verb);
-			const auto& attacker_name		= attacker->getNameDescription();
-
-			const std::string defender_text =
-				is_reflect ? (self_target
-					? "You reflected " + amount_str + " damage from your own attack."
-					: "You are struck by " + amount_str + " reflected damage from " + attacker_name + "'s resistance.")
-				: is_deflect ? "You are hit by " + amount_str + " deflected damage from " + attacker_name + "'s resistance."
-				: is_ricochet ? "You are hit by " + amount_str + " ricocheting damage."
-				: is_piercing ? "You are struck by " + amount_str + " piercing damage from " + attacker_name + ", bypassing your defenses."
-				: is_drain ? attacker_name + " drained " + amount_str + " health from you via " + origin_verb + "."
-				: self_target ? "You lose " + amount_str + " health due to your own " + origin_verb + "."
-				: "You lose " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
-
-			TextMessage defender_message	= {};
-			defender_message.position		= defender_position;
-			defender_message.primary.color	= notice.color;
-			defender_message.primary.value	= amount;
-			defender_message.type			= MESSAGE_DAMAGE_RECEIVED;
-			defender_message.text			= defender_text;
-
-			auto* player = static_cast<Player*>(defender.get());
-			player->sendTextMessage(defender_message);
-
-			if (notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(defender_position, notice.effect);
-
-			if (origin_notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(defender_position, origin_notice.effect);
-
-			player->sendStats();
-			player->sendCreatureHealth(defender);
-		}
-
-		if (not self_target and attacker->is_player())
-		{
-			const std::string amount_str	= std::to_string(amount);
-			const std::string origin_verb	= std::string(origin_notice.verb);
-			const auto& defender_name		= defender->getName();
-
-			const std::string attacker_text =
-				is_reflect ? "Your resistance reflected " + amount_str + " damage to " + defender_name + "."
-				: is_deflect ? "Your resistance deflected " + amount_str + " damage to " + defender_name + "."
-				: is_ricochet ? "Your attack ricocheted for " + amount_str + " damage."
-				: is_piercing ? "Your attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
-				: is_drain ? "You drained " + amount_str + " health from " + defender_name + " via " + origin_verb + "."
-				: defender_name + " loses " + amount_str + " health due to your " + origin_verb + ".";
-
-			TextMessage attacker_message	= {};
-			attacker_message.position		= defender_position;
-			attacker_message.primary.color	= notice.color;
-			attacker_message.primary.value	= amount;
-			attacker_message.type			= MESSAGE_DAMAGE_DEALT;
-			attacker_message.text			= attacker_text;
-
-			auto* player = static_cast<Player*>(attacker.get());
-			player->sendTextMessage(attacker_message);
-
-			if (notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(defender_position, notice.effect);
-
-			if (origin_notice.effect != CONST_ME_NONE)
-				player->sendMagicEffect(defender_position, origin_notice.effect);
-
-			player->sendCreatureHealth(defender);
-		}
-
-		if (has_observers)
-		{
-			const std::string amount_str	= std::to_string(amount);
-			const std::string origin_verb	= std::string(origin_notice.verb);
-			const auto& defender_name		= defender->getName();
-			const auto& attacker_name		= attacker->getNameDescription();
-
-			const std::string observer_text =
-				is_reflect ? attacker_name + "'s resistance reflected " + amount_str + " damage to " + defender_name + "."
-				: is_deflect ? attacker_name + "'s resistance deflected " + amount_str + " damage to " + defender_name + "."
-				: is_ricochet ? "A ricocheting attack struck " + defender_name + " for " + amount_str + " damage."
-				: is_piercing ? attacker_name + "'s attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
-				: is_drain ? attacker_name + " drained " + amount_str + " health from " + defender_name + "."
-				: defender_name + " loses " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
-
-			TextMessage observer_message	= {};
-			observer_message.position		= defender_position;
-			observer_message.primary.color	= notice.color;
-			observer_message.primary.value	= amount;
-			observer_message.type			= MESSAGE_DAMAGE_OTHERS;
-			observer_message.text			= observer_text;
-
 			const bool send_damage_notice_effect = (notice.effect != CONST_ME_NONE);
 			const bool send_damage_origin_effect = (origin_notice.effect != CONST_ME_NONE);
 
-			for (auto it = observer_iterator; it != observer_view.end(); ++it)
+			NetworkMessage noticeEffectMsg;
+			if (send_damage_notice_effect)
+				ProtocolGame::AddMagicEffect(noticeEffectMsg, defender_position, notice.effect);
+
+			NetworkMessage originEffectMsg;
+			if (send_damage_origin_effect)
+				ProtocolGame::AddMagicEffect(originEffectMsg, defender_position, origin_notice.effect);
+
+			NetworkMessage healthMsg;
+			ProtocolGame::AddCreatureHealth(healthMsg, defender);
+
+			auto sendSharedEffectsAndHealth = [&](Player* player)
 			{
-				auto* player = static_cast<Player*>((*it).get());
-				player->sendTextMessage(observer_message);
+				if (send_damage_notice_effect and player->canSee(defender_position))
+					player->writeToOutputBuffer(noticeEffectMsg);
 
-				if (send_damage_notice_effect)
-					player->sendMagicEffect(defender_position, notice.effect);
+				if (send_damage_origin_effect and player->canSee(defender_position))
+					player->writeToOutputBuffer(originEffectMsg);
 
-				if (send_damage_origin_effect)
-					player->sendMagicEffect(defender_position, origin_notice.effect);
+				player->writeToOutputBuffer(healthMsg);
+			};
 
-				player->sendCreatureHealth(defender);
+			if (defender->is_player())
+			{
+				const std::string amount_str	= std::to_string(amount);
+				const std::string origin_verb	= std::string(origin_notice.verb);
+				const auto& attacker_name		= attacker->getNameDescription();
+
+				const std::string defender_text =
+					is_reflect ? (self_target
+						? "You reflected " + amount_str + " damage from your own attack."
+						: "You are struck by " + amount_str + " reflected damage from " + attacker_name + "'s resistance.")
+					: is_deflect ? "You are hit by " + amount_str + " deflected damage from " + attacker_name + "'s resistance."
+					: is_ricochet ? "You are hit by " + amount_str + " ricocheting damage."
+					: is_piercing ? "You are struck by " + amount_str + " piercing damage from " + attacker_name + ", bypassing your defenses."
+					: is_drain ? attacker_name + " drained " + amount_str + " health from you via " + origin_verb + "."
+					: self_target ? "You lose " + amount_str + " health due to your own " + origin_verb + "."
+					: "You lose " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
+
+				TextMessage defender_message	= {};
+				defender_message.position		= defender_position;
+				defender_message.primary.color	= notice.color;
+				defender_message.primary.value	= amount;
+				defender_message.type			= MESSAGE_DAMAGE_RECEIVED;
+				defender_message.text			= defender_text;
+
+				auto* player = static_cast<Player*>(defender.get());
+				player->sendTextMessage(defender_message);
+				sendSharedEffectsAndHealth(player);
+				player->sendStats();
+			}
+
+			if (not self_target and attacker->is_player())
+			{
+				const std::string amount_str	= std::to_string(amount);
+				const std::string origin_verb	= std::string(origin_notice.verb);
+				const auto& defender_name		= defender->getName();
+
+				const std::string attacker_text =
+					is_reflect ? "Your resistance reflected " + amount_str + " damage to " + defender_name + "."
+					: is_deflect ? "Your resistance deflected " + amount_str + " damage to " + defender_name + "."
+					: is_ricochet ? "Your attack ricocheted for " + amount_str + " damage."
+					: is_piercing ? "Your attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
+					: is_drain ? "You drained " + amount_str + " health from " + defender_name + " via " + origin_verb + "."
+					: defender_name + " loses " + amount_str + " health due to your " + origin_verb + ".";
+
+				TextMessage attacker_message	= {};
+				attacker_message.position		= defender_position;
+				attacker_message.primary.color	= notice.color;
+				attacker_message.primary.value	= amount;
+				attacker_message.type			= MESSAGE_DAMAGE_DEALT;
+				attacker_message.text			= attacker_text;
+
+				auto* player = static_cast<Player*>(attacker.get());
+				player->sendTextMessage(attacker_message);
+				sendSharedEffectsAndHealth(player);
+			}
+
+			if (has_observers)
+			{
+				const std::string amount_str	= std::to_string(amount);
+				const std::string origin_verb	= std::string(origin_notice.verb);
+				const auto& defender_name		= defender->getName();
+				const auto& attacker_name		= attacker->getNameDescription();
+
+				const std::string observer_text =
+					is_reflect ? attacker_name + "'s resistance reflected " + amount_str + " damage to " + defender_name + "."
+					: is_deflect ? attacker_name + "'s resistance deflected " + amount_str + " damage to " + defender_name + "."
+					: is_ricochet ? "A ricocheting attack struck " + defender_name + " for " + amount_str + " damage."
+					: is_piercing ? attacker_name + "'s attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
+					: is_drain ? attacker_name + " drained " + amount_str + " health from " + defender_name + "."
+					: defender_name + " loses " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
+
+				TextMessage observer_message	= {};
+				observer_message.position		= defender_position;
+				observer_message.primary.color	= notice.color;
+				observer_message.primary.value	= amount;
+				observer_message.type			= MESSAGE_DAMAGE_OTHERS;
+				observer_message.text			= observer_text;
+
+				NetworkMessage textMsg;
+				ProtocolGame::AddTextMessage(textMsg, observer_message);
+
+				for (auto it = observer_iterator; it != observer_view.end(); ++it)
+				{
+					auto* player = static_cast<Player*>((*it).get());
+					player->writeToOutputBuffer(textMsg);
+					sendSharedEffectsAndHealth(player);
+				}
 			}
 		}
 
 		if (notice.fluid != FLUID_NONE)
 		{
 			TilePtr tile		= g_game.map.getTile(defender_position);
-			CylinderPtr c_tile	= tile;
 			auto fluid			= Item::CreateItem(ITEM_SMALLSPLASH, notice.fluid);
 
 			if (fluid) [[likely]]
 			{
-				g_game.internalAddItem(c_tile, fluid, INDEX_WHEREEVER, FLAG_NOLIMIT);
+				g_game.internalAddItem({ .tile = tile }, fluid, INDEX_ANYWHERE, FLAG_NOLIMIT);
 				g_game.startDecay(fluid);
 			}
 		}
@@ -4713,7 +5056,8 @@ namespace BlackTek
 	}
 }
 
-void BlackTek::MagicField::onStepInField(const CreaturePtr& creature)
+
+void Item::onStepInField(const CreaturePtr& creature)
 {
 	//remove magic walls/wild growth
 	if (id == ITEM_MAGICWALL or id == ITEM_WILDGROWTH or id == ITEM_MAGICWALL_SAFE or id == ITEM_WILDGROWTH_SAFE or isBlocking())
@@ -4729,7 +5073,7 @@ void BlackTek::MagicField::onStepInField(const CreaturePtr& creature)
 	//remove magic walls/wild growth (only nopvp tiles/world)
 	if (id == ITEM_MAGICWALL_NOPVP or id == ITEM_WILDGROWTH_NOPVP)
 	{
-		if (g_game.getWorldType() == WORLD_TYPE_NO_PVP or getTile()->hasFlag(TILESTATE_NOPVPZONE))
+		if (g_game.getWorldType() == WORLD_TYPE_NO_PVP or Zones::ZoneManager::HasWorldFlag(getPosition(), Zones::ZoneFlag::NoPvp))
 		{
 			g_game.internalRemoveItem(getItem(), 1);
 		}
@@ -4745,7 +5089,7 @@ void BlackTek::MagicField::onStepInField(const CreaturePtr& creature)
 		{
 			bool harmfulField = true;
 
-			if (g_game.getWorldType() == WORLD_TYPE_NO_PVP or getTile()->hasFlag(TILESTATE_NOPVPZONE))
+			if (g_game.getWorldType() == WORLD_TYPE_NO_PVP or Zones::ZoneManager::HasWorldFlag(getPosition(), Zones::ZoneFlag::NoPvp))
 			{
 				if (const auto& owner = g_game.getCreatureByID(ownerId))
 				{
@@ -4760,14 +5104,14 @@ void BlackTek::MagicField::onStepInField(const CreaturePtr& creature)
 			{
 				if (const auto& attackerPlayer = g_game.getPlayerByID(ownerId))
 				{
-					if (Combat::isProtected(attackerPlayer, targetPlayer))
+					if (BlackTek::Combat::isProtected(attackerPlayer, targetPlayer))
 					{
 						harmfulField = false;
 					}
 				}
 			}
 
-			if (not harmfulField or (OTSYS_TIME() - createTime <= 5000) or creature->hasBeenAttacked(ownerId))
+			if (not harmfulField or (OTSYS_TIME() - magicFieldCreateTime <= 5000) or creature->hasBeenAttacked(ownerId))
 			{
 				conditionCopy->setParam(CONDITION_PARAM_OWNER, ownerId);
 			}

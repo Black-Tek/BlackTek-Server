@@ -6,9 +6,9 @@
 #include "combat.h"
 #include "configmanager.h"
 #include "game.h"
+#include "itemevents.h"
 #include "luavariant.h"
 #include "monster.h"
-#include "pugicast.h"
 #include "spells.h"
 
 extern Game g_game;
@@ -18,6 +18,9 @@ extern Vocations g_vocations;
 extern ConfigManager g_config;
 extern LuaEnvironment g_luaEnvironment;
 extern Events* g_events;
+extern ItemEvents* g_itemEvents;
+
+using BlackTek::GameModel;
 
 Spells::Spells()
 {
@@ -120,22 +123,6 @@ bool Spells::reload()
 LuaScriptInterface& Spells::getScriptInterface()
 {
 	return scriptInterface;
-}
-
-Event_ptr Spells::getEvent(const std::string& nodeName)
-{
-	if (caseInsensitiveEqual(nodeName, "rune")) {
-		return Event_ptr(new RuneSpell(&scriptInterface));
-	} else if (caseInsensitiveEqual(nodeName, "instant")) {
-		return Event_ptr(new InstantSpell(&scriptInterface));
-	}
-	return nullptr;
-}
-
-bool Spells::registerEvent(Event_ptr event, const pugi::xml_node&)
-{
-	std::cout << "[Warning - Spells::registerEvent] registerEvent is a deprecated function! \n";
-	return false;
 }
 
 bool Spells::registerInstantLuaEvent(InstantSpell* event)
@@ -836,7 +823,9 @@ ReturnValue RuneSpell::canExecuteAction(const PlayerConstPtr& player, const Posi
 		return RETURNVALUE_CANNOTUSETHISOBJECT;
 	}
 
-	ReturnValue ret = Action::canExecuteAction(player, toPos);
+	ReturnValue ret = allowFarUse
+		? g_itemEvents->canUseFar(player, toPos, checkLineOfSight, checkFloor)
+		: g_itemEvents->canUse(player, toPos);
 	if (ret != RETURNVALUE_NOERROR) {
 		return ret;
 	}
@@ -852,7 +841,7 @@ ReturnValue RuneSpell::canExecuteAction(const PlayerConstPtr& player, const Posi
 	return RETURNVALUE_NOERROR;
 }
 
-bool RuneSpell::executeUse(const PlayerPtr& player, const ItemPtr& item, const Position&, const ThingPtr& target, const Position& toPosition, bool isHotkey)
+bool RuneSpell::executeUse(const PlayerPtr& player, const ItemPtr& item, const Position&, const GameModel& target, const Position& toPosition, bool isHotkey)
 {
 	if (!playerRuneSpellCheck(player, toPosition)) {
 		return false;
@@ -866,14 +855,15 @@ bool RuneSpell::executeUse(const PlayerPtr& player, const ItemPtr& item, const P
 
 	if (needTarget) {
 
-		if (target == nullptr) {
+		if (not target)
+		{
 			if (const auto& toTile = g_game.map.getTile(toPosition)) {
 				if (const auto& visibleCreature = toTile->getBottomVisibleCreature(player)) {
 					var.setNumber(visibleCreature->getID());
 				}
 			}
 		} else {
-			var.setNumber(target->getCreature()->getID());
+			var.setNumber(target.creature->getID());
 		}
 	} else {
 		var.setPosition(toPosition);

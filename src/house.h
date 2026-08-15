@@ -12,7 +12,6 @@
 #include "position.h"
 
 class House;
-class BedItem;
 class Player;
 
 class AccessList
@@ -34,54 +33,6 @@ class AccessList
 		bool allowEveryone = false;
 };
 
-class Door final : public Item
-{
-	public:
-		explicit Door(uint16_t type);
-
-		// non-copyable
-		Door(const Door&) = delete;
-		Door& operator=(const Door&) = delete;
-
-		DoorPtr getDoor() override {
-			return static_shared_this<Door>();
-		}
-	
-		DoorConstPtr getDoor() const override {
-			return static_shared_this<Door>();
-		}
-
-		House* getHouse() const {
-			return house;
-		}
-
-		//serialization
-		Attr_ReadValue readAttr(AttrTypes_t attr, PropStream& propStream) override;
-		void serializeAttr(PropWriteStream&) const override {}
-
-		void setDoorId(uint32_t doorId) {
-			setIntAttr(ITEM_ATTRIBUTE_DOORID, doorId);
-		}
-	
-		uint32_t getDoorId() const {
-			return getIntAttr(ITEM_ATTRIBUTE_DOORID);
-		}
-
-		bool canUse(const PlayerConstPtr& player) const;
-
-		void setAccessList(std::string_view textlist);
-		bool getAccessList(std::string& list) const;
-
-		void onRemoved() override;
-
-	private:
-		void setHouse(House* house);
-
-		House* house = nullptr;
-		std::unique_ptr<AccessList> accessList;
-		friend class House;
-};
-
 enum AccessList_t {
 	GUEST_LIST = 0x100,
 	SUBOWNER_LIST = 0x101,
@@ -97,29 +48,8 @@ enum AccessHouseLevel_t {
 using HouseTileList = std::list<TilePtr>;
 using HouseBedItemList = std::list<BedItemPtr>;
 
-class HouseTransferItem;
-using HouseTransferItemPtr = std::shared_ptr<HouseTransferItem>;
-using HouseTransferItemConstPtr = std::shared_ptr<const HouseTransferItem>;
-
-class HouseTransferItem final : public Item
-{
-	public:
-		static HouseTransferItemPtr createHouseTransferItem(House* house);
-
-		explicit HouseTransferItem(House* house) : Item(0), house(house)
-		{
-			thing_subtype = ThingSubType::HouseTransferItem;
-			item_subtype = ItemSubType::HouseTransferItem;
-		}
-
-		void onTradeEvent(TradeEvents_t event, const PlayerPtr& owner) override;
-		bool canTransform() const override {
-			return false;
-		}
-
-	private:
-		House* house;
-};
+using HouseTransferItemPtr = ItemPtr;
+using HouseTransferItemConstPtr = ItemConstPtr;
 
 class House
 {

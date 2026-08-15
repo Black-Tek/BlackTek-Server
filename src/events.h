@@ -8,6 +8,8 @@
 #include "const.h"
 #include "creature.h"
 #include "party.h"
+#include "gamemodel.h"
+#include "itemlocation.h"
 
 class ItemType;
 class Tile;
@@ -71,14 +73,6 @@ class Events
 		int32_t monsterOnDropLoot = -1;
 		int32_t monsterOnSpawn = -1;
 
-		// Item
-		int32_t itemOnAttack = -1;
-		int32_t itemOnDefend = -1;
-		int32_t itemOnAugment = -1;
-		int32_t itemOnRemoveAugment = -1;
-		int32_t itemOnModifierAttack = -1;
-		int32_t itemOnModifierDefend = -1;
-
 	};
 
 	public:
@@ -105,12 +99,12 @@ class Events
 
 		// Player
 		bool eventPlayerOnBrowseField(const PlayerPtr& player, const Position& position);
-		void eventPlayerOnLook(const PlayerPtr& player, const Position& position, const ThingPtr& thing, uint8_t stackpos, int32_t lookDistance);
+		void eventPlayerOnLook(const PlayerPtr& player, const Position& position, const BlackTek::GameModel& thing, uint8_t stackpos, int32_t lookDistance);
 		void eventPlayerOnLookInBattleList(const PlayerPtr& player, const CreaturePtr& creature, int32_t lookDistance);
 		void eventPlayerOnLookInTrade(const PlayerPtr& player, const PlayerPtr& partner, const ItemPtr& item, int32_t lookDistance);
 		bool eventPlayerOnLookInShop(const PlayerPtr& player, const ItemType* itemType, uint8_t count, const std::string& description);
-		ReturnValue eventPlayerOnMoveItem(const PlayerPtr& player, const ItemPtr& item, uint16_t count, const Position& fromPosition, const Position& toPosition, const CylinderPtr& fromCylinder, const CylinderPtr& toCylinder);
-		void eventPlayerOnItemMoved(const PlayerPtr& player, const ItemPtr& item, uint16_t count, const Position& fromPosition, const Position& toPosition, const CylinderPtr& fromCylinder, const CylinderPtr& toCylinder);
+		ReturnValue eventPlayerOnMoveItem(const PlayerPtr& player, const ItemPtr& item, uint16_t count, const Position& fromPosition, const Position& toPosition, const BlackTek::ItemLocation& fromLocation, const BlackTek::ItemLocation& toLocation);
+		void eventPlayerOnItemMoved(const PlayerPtr& player, const ItemPtr& item, uint16_t count, const Position& fromPosition, const Position& toPosition, const BlackTek::ItemLocation& fromLocation, const BlackTek::ItemLocation& toLocation);
 		bool eventPlayerOnMoveCreature(const PlayerPtr& player, const CreaturePtr& creature, const Position& fromPosition, const Position& toPosition);
 		void eventPlayerOnReportRuleViolation(const PlayerPtr& player, const std::string& targetName, uint8_t reportType, uint8_t reportReason, const std::string& comment, const std::string& translation);
 		bool eventPlayerOnReportBug(const PlayerPtr& player, const std::string& message, const Position& position, uint8_t category);
@@ -131,15 +125,6 @@ class Events
 		// Monster
 		void eventMonsterOnDropLoot(const MonsterPtr& monster, const ContainerPtr& corpse);
 		bool eventMonsterOnSpawn(const MonsterPtr& monster, const Position& position, bool startup, bool artificial);
-
-		// Item
-		//void eventItemOnAttack(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& defender, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
-		//void eventItemOnDefend(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& attacker, BlockType_t blockType, CombatType_t combatType, CombatOrigin origin, bool criticalDamage = false, bool leechedDamage = false);
-		//void eventItemOnAugment(const ItemPtr& item, std::shared_ptr<BlackTek::Augment> augment);
-		void eventItemOnRemoveAugment(const ItemPtr& item, std::shared_ptr<BlackTek::Augment> augment);
-
-		//void eventItemOnModifierAttack(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& defender, const std::shared_ptr<DamageModifier>& modifier, CombatDamage& damage);
-    	//void eventItemOnModifierDefend(const ItemPtr& item, const PlayerPtr& itemHolder, const CreaturePtr& attacker, const std::shared_ptr<DamageModifier>& modifier, CombatDamage& damage);
 
 		constexpr auto getScriptId(EventInfoId eventInfoId) const {
 			switch (eventInfoId)

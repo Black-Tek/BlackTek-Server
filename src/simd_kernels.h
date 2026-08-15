@@ -293,6 +293,114 @@ inline void compute_bbox(const MapCoord* xs, const MapCoord* ys, size_t count, M
 
 namespace detail
 {
+	inline void scalar_reject_mask(const MapCoord* xs, const MapCoord* ys, size_t count,
+	                                MapCoord xMin, MapCoord xMax, MapCoord yMin, MapCoord yMax, uint8_t* out_mask) noexcept
+	{
+		for (size_t index = 0; index < count; ++index)
+		{
+			const MapCoord x = xs[index];
+			const MapCoord y = ys[index];
+			const bool rejected = (xMin > x) or (x > xMax) or (yMin > y) or (y > yMax);
+			out_mask[index] = rejected ? 0x00u : 0xFFu;
+		}
+	}
+
+	#if defined(_MSC_VER) || defined(__GNUC__) || defined(__clang__)
+
+		inline void sse2_reject_mask(const MapCoord* xs, const MapCoord* ys, size_t count,
+		                              MapCoord xMin, MapCoord xMax, MapCoord yMin, MapCoord yMax, uint8_t* out_mask) noexcept
+		{
+			const Vec128Int signFlipMask = _mm_set1_epi16(static_cast<CoordOffset>(0x8000));
+			const Vec128Int vecXMin = _mm_xor_si128(_mm_set1_epi16(static_cast<CoordOffset>(xMin)), signFlipMask);
+			const Vec128Int vecXMax = _mm_xor_si128(_mm_set1_epi16(static_cast<CoordOffset>(xMax)), signFlipMask);
+			const Vec128Int vecYMin = _mm_xor_si128(_mm_set1_epi16(static_cast<CoordOffset>(yMin)), signFlipMask);
+			const Vec128Int vecYMax = _mm_xor_si128(_mm_set1_epi16(static_cast<CoordOffset>(yMax)), signFlipMask);
+			size_t index = 0;
+
+			for (; index + 8 <= count; index += 8)
+			{
+				Vec128Int packedX = _mm_xor_si128(_mm_loadu_si128(reinterpret_cast<const Vec128Int*>(xs + index)), signFlipMask);
+				Vec128Int packedY = _mm_xor_si128(_mm_loadu_si128(reinterpret_cast<const Vec128Int*>(ys + index)), signFlipMask);
+
+				Vec128Int rejectXMin = _mm_cmpgt_epi16(vecXMin, packedX);
+				Vec128Int rejectXMax = _mm_cmpgt_epi16(packedX, vecXMax);
+				Vec128Int rejectYMin = _mm_cmpgt_epi16(vecYMin, packedY);
+				Vec128Int rejectYMax = _mm_cmpgt_epi16(packedY, vecYMax);
+
+				Vec128Int rejected = _mm_or_si128(_mm_or_si128(rejectXMin, rejectXMax), _mm_or_si128(rejectYMin, rejectYMax));
+				Vec128Int accepted = _mm_xor_si128(rejected, _mm_set1_epi16(-1));
+
+				alignas(16) uint8_t lanesAsBytes[16];
+				_mm_store_si128(reinterpret_cast<Vec128Int*>(lanesAsBytes), accepted);
+				for (int lane = 0; lane < 8; ++lane)
+				{
+					out_mask[index + lane] = lanesAsBytes[lane * 2];
+				}
+			}
+
+			scalar_reject_mask(xs + index, ys + index, count - index, xMin, xMax, yMin, yMax, out_mask + index);
+		}
+
+		BT_TARGET_AVX2 inline void avx2_reject_mask(const MapCoord* xs, const MapCoord* ys, size_t count,
+		                                             MapCoord xMin, MapCoord xMax, MapCoord yMin, MapCoord yMax, uint8_t* out_mask) noexcept
+		{
+			const Vec256Int signFlipMask = _mm256_set1_epi16(static_cast<CoordOffset>(0x8000));
+			const Vec256Int vecXMin = _mm256_xor_si256(_mm256_set1_epi16(static_cast<CoordOffset>(xMin)), signFlipMask);
+			const Vec256Int vecXMax = _mm256_xor_si256(_mm256_set1_epi16(static_cast<CoordOffset>(xMax)), signFlipMask);
+			const Vec256Int vecYMin = _mm256_xor_si256(_mm256_set1_epi16(static_cast<CoordOffset>(yMin)), signFlipMask);
+			const Vec256Int vecYMax = _mm256_xor_si256(_mm256_set1_epi16(static_cast<CoordOffset>(yMax)), signFlipMask);
+			size_t index = 0;
+
+			for (; index + 16 <= count; index += 16)
+			{
+				Vec256Int packedX = _mm256_xor_si256(_mm256_loadu_si256(reinterpret_cast<const Vec256Int*>(xs + index)), signFlipMask);
+				Vec256Int packedY = _mm256_xor_si256(_mm256_loadu_si256(reinterpret_cast<const Vec256Int*>(ys + index)), signFlipMask);
+
+				Vec256Int rejectXMin = _mm256_cmpgt_epi16(vecXMin, packedX);
+				Vec256Int rejectXMax = _mm256_cmpgt_epi16(packedX, vecXMax);
+				Vec256Int rejectYMin = _mm256_cmpgt_epi16(vecYMin, packedY);
+				Vec256Int rejectYMax = _mm256_cmpgt_epi16(packedY, vecYMax);
+
+				Vec256Int rejected = _mm256_or_si256(_mm256_or_si256(rejectXMin, rejectXMax), _mm256_or_si256(rejectYMin, rejectYMax));
+				Vec256Int accepted = _mm256_xor_si256(rejected, _mm256_set1_epi16(-1));
+
+				alignas(32) uint8_t lanesAsBytes[32];
+				_mm256_store_si256(reinterpret_cast<Vec256Int*>(lanesAsBytes), accepted);
+				for (int lane = 0; lane < 16; ++lane)
+				{
+					out_mask[index + lane] = lanesAsBytes[lane * 2];
+				}
+			}
+
+			sse2_reject_mask(xs + index, ys + index, count - index, xMin, xMax, yMin, yMax, out_mask + index);
+		}
+
+	#endif
+
+}
+
+inline void compute_spectator_mask(const MapCoord* xs, const MapCoord* ys, size_t count,
+                                    MapCoord xMin, MapCoord xMax, MapCoord yMin, MapCoord yMax, uint8_t* out_mask) noexcept
+{
+	#if defined(_MSC_VER) || defined(__GNUC__) || defined(__clang__)
+		switch (g_level)
+		{
+			case Level::AVX2:
+				detail::avx2_reject_mask(xs, ys, count, xMin, xMax, yMin, yMax, out_mask);
+				return;
+			case Level::SSE4_1:
+			case Level::SSE2:
+				detail::sse2_reject_mask(xs, ys, count, xMin, xMax, yMin, yMax, out_mask);
+				return;
+			default: break;
+		}
+	#endif
+
+	detail::scalar_reject_mask(xs, ys, count, xMin, xMax, yMin, yMax, out_mask);
+}
+
+namespace detail
+{
 	template<class ResistanceFactors>
 	inline void scalar_batch_resistance(const CombatStat* stats, size_t count, const ResistanceFactors& f, const CombatStat* rng_vals, CombatStat* out) noexcept
 	{

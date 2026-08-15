@@ -91,7 +91,8 @@ jobs:
         git -C /usr/local/share/vcpkg reset --hard HEAD
         git -C /usr/local/share/vcpkg clean -fd
         git -C /usr/local/share/vcpkg pull
-        
+        /usr/local/share/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
         # Install with retry logic
         max_attempts=3
         attempt=1

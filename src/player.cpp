@@ -3,7 +3,6 @@
 
 #include "otpch.h"
 #include "tools.h"
-#include "bed.h"
 #include "chat.h"
 #include "combat.h"
 #include "configmanager.h"
@@ -12,9 +11,8 @@
 #include "game.h"
 #include "iologindata.h"
 #include "monster.h"
-#include "movement.h"
+#include "itemevents.h"
 #include "scheduler.h"
-#include "weapons.h"
 #include "player.h"
 #include "spells.h"
 #include "accountmanager.h"
@@ -24,8 +22,7 @@ extern ConfigManager g_config;
 extern Game g_game;
 extern Chat* g_chat;
 extern Vocations g_vocations;
-extern MoveEvents* g_moveEvents;
-extern Weapons* g_weapons;
+extern ItemEvents* g_itemEvents;
 extern CreatureEvents* g_creatureEvents;
 extern Events* g_events;
 
@@ -714,9 +711,7 @@ Player::Player(ProtocolGame_ptr p) :
 	inbox(CreateSystemContainer(ITEM_INBOX, 30, false, true, ContainerSubType::Inbox)),
 	storeInbox(CreateSystemContainer(ITEM_STORE_INBOX, 20, true, true, ContainerSubType::StoreInbox))
 {
-	thing_subtype = ThingSubType::Player;
 	creature_subtype = CreatureSubType::Player;
-	cylinder_subtype = CylinderSubType::Player;
 }
 
 Player::~Player()
@@ -866,6 +861,15 @@ ItemPtr Player::getInventoryItem(const uint32_t slot) const
 	return inventory[slot];
 }
 
+const ItemPtr& Player::getInventoryItemRef(const slots_t slot) const noexcept
+{
+	static const ItemPtr empty;
+	if (slot < CONST_SLOT_FIRST or slot > CONST_SLOT_LAST)
+		return empty;
+
+	return inventory[slot];
+}
+
 bool Player::isInventorySlot(const slots_t slot)
 {
 	return slot >= CONST_SLOT_FIRST && slot <= CONST_SLOT_LAST;
@@ -909,8 +913,7 @@ ItemPtr Player::getWeapon(const slots_t slot, const bool ignoreAmmo) const
 				for (ContainerIterator containerItem = quiver->iterator(); containerItem.hasNext();
 					containerItem.advance()) {
 					if (itemType.ammoType == (*containerItem)->getAmmoType()) {
-						const auto& weapon = g_weapons->getWeapon(*containerItem);
-						if (weapon && weapon->ammoCheck(this->getPlayer())) {
+						if (g_itemEvents->hasWeaponBehavior(*containerItem) and g_itemEvents->ammoCheck(*containerItem, this->getPlayer())) {
 							return *containerItem;
 						}
 					}
@@ -1107,7 +1110,8 @@ uint16_t Player::getClientIcons() const
 		icons |= ICON_REDSWORDS;
 	}
 
-	if (tile.lock() && tile.lock()->hasFlag(TILESTATE_PROTECTIONZONE)) {
+	if (tile.lock() and Zones::ZoneManager::HasWorldFlag(tile.lock()->getPosition(), Zones::ZoneFlag::Protection))
+	{
 		icons |= ICON_PIGEON;
 
 		// Don't show ICON_SWORDS if player is in protection zone.
@@ -1509,9 +1513,8 @@ bool Player::canWalkthrough(const CreatureConstPtr& creature) const
 	}
 
 	const auto& playerTile = player->getTile();
-	if (!playerTile || (!playerTile->hasFlag(TILESTATE_PROTECTIONZONE) && player->getLevel() > static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PROTECTION_LEVEL)))) {
+	if (not playerTile or (not Zones::ZoneManager::HasWorldFlag(playerTile->getPosition(), Zones::ZoneFlag::Protection) && player->getLevel() > static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PROTECTION_LEVEL))))
 		return false;
-	}
 
 	const auto& playerTileGround = playerTile->getGround();
 	if (!playerTileGround || !playerTileGround->hasWalkStack()) {
@@ -1545,7 +1548,7 @@ bool Player::canWalkthroughEx(const CreatureConstPtr& creature) const
 	}
 
 	const auto& playerTile = player->getTile();
-	return playerTile && (playerTile->hasFlag(TILESTATE_PROTECTIONZONE) || player->getLevel() <= static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PROTECTION_LEVEL)));
+	return playerTile and (Zones::ZoneManager::HasWorldFlag(playerTile->getPosition(), Zones::ZoneFlag::Protection) or player->getLevel() <= static_cast<uint32_t>(g_config.GetNumber(ConfigManager::PROTECTION_LEVEL)));
 }
 
 void Player::onReceiveMail() const
@@ -1600,19 +1603,19 @@ ContainerPtr& Player::getDepotLocker()
 {
 	if (!depotLocker) {
 		depotLocker = CreateSystemContainer(ITEM_LOCKER1, Item::items[ITEM_LOCKER1].maxItems, true, false, ContainerSubType::DepotLocker);
-		depotLocker->internalAddThing(Item::CreateItem(ITEM_MARKET));
-		depotLocker->internalAddThing(inbox->getOwner());
+		depotLocker->addItemSilently(Item::CreateItem(ITEM_MARKET));
+		depotLocker->addItemSilently(inbox->getOwner());
 		if (const ContainerPtr depotChest = CreateSystemContainer(ITEM_DEPOT, Item::items[ITEM_DEPOT].maxItems, true, false, ContainerSubType::DepotChest))
 		{
 			// adding in reverse to align them from first to last
 			for (int16_t depotId = depotChest->capacity(); depotId >= 0; --depotId) {
 				if (ContainerPtr box = getDepotChest(depotId, true))
 				{
-					depotChest->internalAddThing(box->getOwner());
+					depotChest->addItemSilently(box->getOwner());
 				}
 			}
 
-			depotLocker->internalAddThing(depotChest->getOwner());
+			depotLocker->addItemSilently(depotChest->getOwner());
 		}
 	}
 	return depotLocker;
@@ -1667,37 +1670,39 @@ void Player::sendPing()
 	int64_t timeNow = OTSYS_TIME();
 
 	bool hasLostConnection = false;
-	if ((timeNow - lastPing) >= 5000) {
+
+	if ((timeNow - lastPing) >= 5000)
+	{
 		lastPing = timeNow;
-		if (client) {
+
+		if (client)
 			client->sendPing();
-		} else {
+
+		else
 			hasLostConnection = true;
-		}
 	}
 
 	int64_t noPongTime = timeNow - lastPong;
-	if ((hasLostConnection || noPongTime >= 7000) && getAttackedCreature() && getAttackedCreature()->getPlayer()) {
+
+	if ((hasLostConnection or noPongTime >= 7000) and getAttackedCreature() and getAttackedCreature()->getPlayer())
 		setAttackedCreature(nullptr);
-	}
 
 	int32_t noPongKickTime = vocation->getNoPongKickTime();
-	if (pzLocked && noPongKickTime < 60000) {
+
+	if (pzLocked and noPongKickTime < 60000)
 		noPongKickTime = 60000;
-	}
 
-	if (noPongTime >= noPongKickTime) {
-		if (isConnecting || getTile()->hasFlag(TILESTATE_NOLOGOUT)) {
+	if (noPongTime >= noPongKickTime) 
+	{
+		if (isConnecting or Zones::ZoneManager::HasWorldFlag(getPosition(), Zones::ZoneFlag::NoLogout))
 			return;
-		}
 
-		if (!g_creatureEvents->playerLogout(this->getPlayer())) {
+		if (not g_creatureEvents->playerLogout(this->getPlayer()))
 			return;
-		}
 
-		if (client) {
+		if (client)
 			client->logout(true, true);
-		}
+
 		g_game.removeCreature(this->getPlayer(), true);
 	}
 }
@@ -1854,8 +1859,6 @@ void Player::onUpdateTileItem
 	const ItemType& newType
 )
 {
-	Creature::onUpdateTileItem(tile, pos, oldItem, oldType, newItem, newType);
-
 	if (oldItem != newItem)
 	{
 		onRemoveTileItem(tile, pos, oldType, oldItem);
@@ -1871,8 +1874,6 @@ void Player::onUpdateTileItem
 void Player::onRemoveTileItem(const TilePtr& tile, const Position& pos, const ItemType& iType,
                               const ItemPtr& item)
 {
-	Creature::onRemoveTileItem(tile, pos, iType, item);
-
 	if (tradeState != TRADE_TRANSFER) {
 		checkTradeState(item);
 
@@ -1896,7 +1897,8 @@ void Player::onCreatureAppear(const CreaturePtr& creature, bool isLogin)
 			for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
 				if (const auto& item = inventory[slot]) {
 					item->startDecaying();
-					g_moveEvents->onPlayerEquip(this->getPlayer(), item, static_cast<slots_t>(slot), false);
+					g_itemEvents->fireEquip(this->getPlayer(), item, static_cast<slots_t>(slot), false);
+					setSlotCombatHookMask(static_cast<slots_t>(slot), g_itemEvents->getCombatHookMask(item));
 				}
 			}
 
@@ -2011,7 +2013,8 @@ void Player::onRemoveCreature(const CreaturePtr& creature, bool isLogout)
 	if (creature == getCreature()) {
 		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
 			if (const auto& item = inventory[slot]) {
-				g_moveEvents->onPlayerDeEquip(this->getPlayer(), item, static_cast<slots_t>(slot));
+				g_itemEvents->fireDeEquip(this->getPlayer(), item, static_cast<slots_t>(slot));
+				clearSlotCombatHookMask(static_cast<slots_t>(slot));
 			}
 		}
 		if (isLogout) {
@@ -2347,7 +2350,7 @@ void Player::onThink(const uint32_t interval)
 		addMessageBuffer();
 	}
 
-	if (not getTile()->hasFlag(TILESTATE_NOLOGOUT) and not isAccessPlayer())
+	if (not Zones::ZoneManager::HasWorldFlag(getPosition(), Zones::ZoneFlag::NoLogout) and not isAccessPlayer())
 	{
 		idleTime += interval;
 		const int32_t kickAfterMinutes = g_config.GetNumber(ConfigManager::KICK_AFTER_MINUTES);
@@ -2892,7 +2895,7 @@ void Player::death(const CreaturePtr& lastHitCreature)
 			sumMana += vocation->getReqMana(i);
 		}
 
-		double deathLossPercent = getLostPercent() * (unfairFightReduction / 100.);
+		double deathLossPercent = Zones::ZoneManager::HasWorldFlag(getPosition(), Zones::ZoneFlag::NoDeathPenalty) ? 0.0 : getLostPercent() * (unfairFightReduction / 100.);
 		removeManaSpent(static_cast<uint64_t>((sumMana + manaSpent) * deathLossPercent), false);
 
 		//Skill loss
@@ -2965,6 +2968,7 @@ void Player::death(const CreaturePtr& lastHitCreature)
 		while (it != end) {
 			if ((*it)->isPersistent()) {
 				ConditionHandle cond = std::move(*it);
+				cond->markRemoved();
 				it = conditions.erase(it);
 				cond->endCondition(this->getPlayer());
 				onEndCondition(cond->getType());
@@ -2979,6 +2983,7 @@ void Player::death(const CreaturePtr& lastHitCreature)
 		while (it != end) {
 			if ((*it)->isPersistent()) {
 				ConditionHandle cond = std::move(*it);
+				cond->markRemoved();
 				it = conditions.erase(it);
 				cond->endCondition(this->getPlayer());
 				onEndCondition(cond->getType());
@@ -3041,6 +3046,9 @@ void Player::addInFightTicks(const bool pzlock /*= false*/)
 
 	if (pzlock) {
 		pzLocked = true;
+
+		if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(getPosition()))
+			spawnOverlay->Trigger(getPlayer(), Zones::SpawnTrigger::GainPzLock);
 	}
 
 	auto condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_INFIGHT, g_config.GetNumber(ConfigManager::PZ_LOCKED), 0);
@@ -3177,7 +3185,7 @@ bool Player::hasCapacity(const ItemPtr& item, uint32_t count) const
 	if (hasFlag(PlayerFlag_CannotPickupItem))
 		return false;
 
-	if (hasFlag(PlayerFlag_HasInfiniteCapacity) or item->getTopParent() == getPlayer())
+	if (hasFlag(PlayerFlag_HasInfiniteCapacity) or item->getLocation().player == getPlayer())
 		return true;
 
 	uint32_t itemWeight = item->getContainer() != nullptr ? item->getWeight() : item->getBaseWeight();
@@ -3188,22 +3196,7 @@ bool Player::hasCapacity(const ItemPtr& item, uint32_t count) const
 	return itemWeight <= getFreeCapacity();
 }
 
-ReturnValue Player::queryAdd(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr)
-{
-	if (not thing->is_item())
-		return RETURNVALUE_NOTPOSSIBLE;
-
-	const auto& item = thing->getItem();
-
-	auto query = can_add_item(index, item, count, flags);
-
-	if (query == RETURNVALUE_NOERROR)
-		query = g_moveEvents->onPlayerEquip(getPlayer(), item, static_cast<slots_t>(index), true);
-	
-	return query;
-}
-
-ReturnValue Player::can_add_item(const int32_t index, const ItemPtr& item, const uint32_t count, const uint32_t flags) const noexcept
+ReturnValue Player::canAddItem(const int32_t index, const ItemPtr& item, const uint32_t count, const uint32_t flags, CreaturePtr) const noexcept
 {
 	constexpr auto equipable_mask = SLOTP_HEAD | SLOTP_NECKLACE | SLOTP_BACKPACK | SLOTP_ARMOR | SLOTP_LEGS | SLOTP_FEET | SLOTP_RING;
 
@@ -3378,12 +3371,18 @@ ReturnValue Player::can_add_item(const int32_t index, const ItemPtr& item, const
 		if (usingClassicSlots)
 			return RETURNVALUE_NEEDEXCHANGE;
 
-		const auto& cylinder = item->getTopParent();
-		const auto& container = cylinder ? cylinder->getContainer() : nullptr;
-		const auto& creature = cylinder ? cylinder->getCreature() : nullptr;
+		ItemPtr topContainerItem = item;
 
-		const bool isDepotOrPlayer = cylinder and ((container and container->getContainerSubType() == ContainerSubType::DepotChest)
-			or (creature and creature->getCreatureSubType() == CreatureSubType::Player));
+		while (auto owner = topContainerItem->getContainerParent())
+		{
+			topContainerItem = owner;
+		}
+
+		const bool nested = (topContainerItem != item);
+		const auto topContainer = nested ? topContainerItem->getContainer() : nullptr;
+
+		const bool isDepotOrPlayer = (topContainer and topContainer->getContainerSubType() == ContainerSubType::DepotChest)
+			or (not nested and static_cast<bool>(item->getLocation().player));
 
 		return isDepotOrPlayer ? RETURNVALUE_NEEDEXCHANGE : RETURNVALUE_NOTENOUGHROOM;
 	}
@@ -3392,17 +3391,9 @@ ReturnValue Player::can_add_item(const int32_t index, const ItemPtr& item, const
 }
 
 // change to std::expected<count, returnvalue>
-ReturnValue Player::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count, uint32_t& maxQueryCount, uint32_t flags)
+ReturnValue Player::checkAddCapacity(int32_t index, const ItemPtr& item, uint32_t count, uint32_t& acceptedCount, uint32_t flags)
 {
-	const auto& item = thing->getItem();
-
-	if (not item)
-	{
-		maxQueryCount = 0;
-		return RETURNVALUE_NOTPOSSIBLE;
-	}
-
-	if (index == INDEX_WHEREEVER)
+	if (index == INDEX_ANYWHERE)
 	{
 		uint32_t n = 0;
 		const auto item_count = item->getItemCount();
@@ -3413,18 +3404,18 @@ ReturnValue Player::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t
 			{
 				if (auto subContainer = inventoryItem->getContainer())
 				{
-					uint32_t queryCount = 0;
-					subContainer->queryMaxCount(INDEX_WHEREEVER, item, item_count, queryCount, flags);
-					n += queryCount;
+					uint32_t subAcceptedCount = 0;
+					subContainer->checkAddCapacity(INDEX_ANYWHERE, item, item_count, subAcceptedCount, flags);
+					n += subAcceptedCount;
 
 					// iterate through all items, including sub-containers (deep search)
 					for (ContainerIterator it = subContainer->iterator(); it.hasNext(); it.advance())
 					{
 						if (auto tmpContainer = (*it)->getContainer())
 						{
-							queryCount = 0;
-							tmpContainer->queryMaxCount(INDEX_WHEREEVER, item, item_count, queryCount, flags);
-							n += queryCount;
+							subAcceptedCount = 0;
+							tmpContainer->checkAddCapacity(INDEX_ANYWHERE, item, item_count, subAcceptedCount, flags);
+							n += subAcceptedCount;
 						}
 					}
 				}
@@ -3432,41 +3423,42 @@ ReturnValue Player::queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t
 				{
 					const uint32_t remainder = (100 - inventoryItem->getItemCount()); // here is a hardcoded "limit" of 100, it likely exists elsewhere, should be a config
 
-					if (can_add_item(slotIndex, item, remainder, flags) == RETURNVALUE_NOERROR)
+					if (canAddItem(slotIndex, item, remainder, flags) == RETURNVALUE_NOERROR)
 						n += remainder;
 				}
 			}
-			
-			else if (can_add_item(slotIndex, item, item_count, flags) == RETURNVALUE_NOERROR)
+
+			else if (canAddItem(slotIndex, item, item_count, flags) == RETURNVALUE_NOERROR)
 				n += item->isStackable() ? 100 : 1; // here is a hardcoded "limit" of 100, it likely exists elsewhere, should be a config
 		}
-		maxQueryCount = n;
+		acceptedCount = n;
 	}
 	else
 	{
-		const auto& destThing = getThing(index);
-		const ItemPtr destItem = destThing ? destThing->getItem() : nullptr;
+		const auto& destItem = getInventoryItem(static_cast<slots_t>(index));
 
 		if (destItem)
 		{
-			maxQueryCount = (destItem->isStackable() and item->equals(destItem) and destItem->getItemCount() < 100) ? 100 - destItem->getItemCount() : 0;
+			acceptedCount = (destItem->isStackable() and item->equals(destItem) and destItem->getItemCount() < 100) ? 100 - destItem->getItemCount() : 0;
 		}
-		else if (can_add_item(index, item, count, flags) == RETURNVALUE_NOERROR)
+		else if (canAddItem(index, item, count, flags) == RETURNVALUE_NOERROR)
 		{
-			maxQueryCount = item->isStackable() ? 100 : 1; // here is a hardcoded "limit" of 100, it likely exists elsewhere, should be a config
+			acceptedCount = item->isStackable() ? 100 : 1; // here is a hardcoded "limit" of 100, it likely exists elsewhere, should be a config
 			return RETURNVALUE_NOERROR;
 		}
 	}
 
-	return maxQueryCount < count ? RETURNVALUE_NOTENOUGHROOM : RETURNVALUE_NOERROR;
+	return acceptedCount < count ? RETURNVALUE_NOTENOUGHROOM : RETURNVALUE_NOERROR;
 }
 
-ReturnValue Player::queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr /*= nullptr*/)
+ReturnValue Player::canRemoveItem(const ItemPtr& item, uint32_t count, uint32_t flags, CreaturePtr /*= nullptr*/)
 {
-	const int32_t index = getThingIndex(thing);
-	const auto& item = thing->getItem();
+	if (item == nullptr)
+		return RETURNVALUE_NOTPOSSIBLE;
 
-	if (index == -1 or item == nullptr or count == 0 or	(item->isStackable() and count > item->getItemCount()))
+	const int32_t index = getItemSlotIndex(item);
+
+	if (index == -1 or count == 0 or (item->isStackable() and count > item->getItemCount()))
 		return RETURNVALUE_NOTPOSSIBLE;
 
 	if (not item->isMoveable() and not hasBitSet(FLAG_IGNORENOTMOVEABLE, flags))
@@ -3475,16 +3467,24 @@ ReturnValue Player::queryRemove(const ThingPtr& thing, uint32_t count, uint32_t 
 	return RETURNVALUE_NOERROR;
 }
 
-ThingPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags)
+BlackTek::ItemLocation Player::resolveItemDestination(int32_t& index, const ItemPtr& item, ItemPtr& destItem, uint32_t& flags)
 {
-	if (index == 0 /*drop to capacity window*/ or index == INDEX_WHEREEVER)
+	auto admitsItem = [this](int32_t slotIndex, const ItemPtr& candidateItem, uint32_t candidateFlags)
+	{
+		ReturnValue ret = canAddItem(slotIndex, candidateItem, candidateItem->getItemCount(), candidateFlags);
+
+		if (ret == RETURNVALUE_NOERROR)
+			ret = g_itemEvents->fireEquip(getPlayer(), candidateItem, static_cast<slots_t>(slotIndex), true);
+
+		return ret;
+	};
+
+	if (index == 0 /*drop to capacity window*/ or index == INDEX_ANYWHERE)
 	{
 		destItem.reset();
 
-		const ItemPtr item = thing ? thing->getItem() : nullptr;
-
 		if (not item)
-			return getPlayer();
+			return { .player = getPlayer() };
 
 		const bool autoStack = not (flags & FLAG_IGNOREAUTOSTACK);
 		const bool isStackable = item->isStackable();
@@ -3499,22 +3499,22 @@ ThingPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr
 				if (inventoryItem == tradeItem or inventoryItem == item)
 					continue;
 
-				if (autoStack and isStackable and queryAdd(slotIndex, item, item->getItemCount(), 0) == RETURNVALUE_NOERROR
+				if (autoStack and isStackable and admitsItem(slotIndex, item, 0) == RETURNVALUE_NOERROR
 					and inventoryItem->equals(item) and inventoryItem->getItemCount() < 100) // here is a hardcoded "limit" of 100, it likely exists elsewhere, should be a config
 				{
 					index = slotIndex;
 					destItem = inventoryItem;
-					return getPlayer();
+					return { .player = getPlayer() };
 				}
 
 				if (auto subContainer = inventoryItem->getContainer())
 					containers.push_back(subContainer);
 			}
-			else if (queryAdd(slotIndex, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
+			else if (admitsItem(slotIndex, item, flags) == RETURNVALUE_NOERROR)
 			{
 				index = slotIndex;
 				destItem.reset();
-				return getPlayer();
+				return { .player = getPlayer() };
 			}
 		}
 
@@ -3529,11 +3529,11 @@ ThingPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr
 				uint32_t n = tmpContainer->capacity() - std::min(tmpContainer->capacity(), static_cast<uint32_t>(tmpContainer->size()));
 				while (n)
 				{
-					if (tmpContainer->queryAdd(tmpContainer->capacity() - n, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
+					if (tmpContainer->canAddItem(tmpContainer->capacity() - n, item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
 					{
 						index = tmpContainer->capacity() - n;
 						destItem.reset();
-						return tmpContainer->getOwner();
+						return { .containerItem = tmpContainer->getOwner() };
 					}
 					--n;
 				}
@@ -3548,71 +3548,63 @@ ThingPtr Player::queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr
 				{
 					index = tmpContainer->size();
 					destItem = tmpContainerItem;
-					return tmpContainer->getOwner();
+					return { .containerItem = tmpContainer->getOwner() };
 				}
 
 				if (auto subContainer = tmpContainerItem->getContainer())
 					containers.push_back(subContainer);
 			}
 
-			if (tmpContainer->size() < tmpContainer->capacity() and tmpContainer->queryAdd(tmpContainer->size(), item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
+			if (tmpContainer->size() < tmpContainer->capacity() and tmpContainer->canAddItem(tmpContainer->size(), item, item->getItemCount(), flags) == RETURNVALUE_NOERROR)
 			{
 				index = tmpContainer->size();
 				destItem.reset();
-				return tmpContainer->getOwner();
+				return { .containerItem = tmpContainer->getOwner() };
 			}
 		}
 
-		return getPlayer();
+		return { .player = getPlayer() };
 	}
 
-	const auto destThing = getThing(index);
-	if (destThing)
+	const auto& slotItem = getInventoryItem(static_cast<slots_t>(index));
+	if (slotItem)
 	{
-		destItem = destThing->getItem();
+		destItem = slotItem;
 
-		if (auto subContainer = destThing->getContainer())
+		if (auto subContainer = slotItem->getContainer())
 		{
-			index = INDEX_WHEREEVER;
+			index = INDEX_ANYWHERE;
 			destItem.reset();
-			return subContainer->getOwner();
+			return { .containerItem = subContainer->getOwner() };
 		}
 	}
 
-	return getPlayer();
+	return { .player = getPlayer() };
 }
 
-void Player::addThing(int32_t index, ThingPtr thing)
+void Player::addInventoryItem(int32_t slot, const ItemPtr& item)
 {
-	if (index < CONST_SLOT_FIRST || index > CONST_SLOT_LAST) {
+	if (slot < CONST_SLOT_FIRST or slot > CONST_SLOT_LAST)
+	{
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
 	}
 
-	const auto& item = thing->getItem();
-	if (!item) {
-		return /*RETURNVALUE_NOTPOSSIBLE*/;
-	}
-
-	item->setParent(getPlayer());
+	item->setInventoryOwner(getPlayer());
 	if (auto itemContainer = item->getContainer())
 	{
 		itemContainer->setHoldingCreature(getPlayer());
 	}
-	inventory[index] = item;
+	inventory[slot] = item;
 
 	//send to client
-	sendInventoryItem(static_cast<slots_t>(index), item);
+	sendInventoryItem(static_cast<slots_t>(slot), item);
 }
 
-void Player::updateThing(ThingPtr thing, uint16_t itemId, uint32_t count)
+void Player::updateInventoryItem(const ItemPtr& item, uint16_t itemId, uint32_t count)
 {
-	int32_t index = getThingIndex(thing);
-	if (index == -1) {
-		return /*RETURNVALUE_NOTPOSSIBLE*/;
-	}
-
-	const auto& item = thing->getItem();
-	if (!item) {
+	int32_t slot = getItemSlotIndex(item);
+	if (slot == -1)
+	{
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
 	}
 
@@ -3620,58 +3612,53 @@ void Player::updateThing(ThingPtr thing, uint16_t itemId, uint32_t count)
 	item->setSubType(count);
 
 	//send to client
-	sendInventoryItem(static_cast<slots_t>(index), item);
+	sendInventoryItem(static_cast<slots_t>(slot), item);
 
 	//event methods
 	onUpdateInventoryItem(item, item);
 }
 
-void Player::replaceThing(uint32_t index, ThingPtr thing)
+void Player::replaceInventoryItem(uint32_t slot, const ItemPtr& item)
 {
-	if (index > CONST_SLOT_LAST) {
+	if (slot > CONST_SLOT_LAST)
+	{
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
 	}
 
-	const auto& oldItem = getInventoryItem(static_cast<slots_t>(index));
-	if (!oldItem) {
-		return /*RETURNVALUE_NOTPOSSIBLE*/;
-	}
-
-	const auto& item = thing->getItem();
-	if (!item) {
+	const auto& oldItem = getInventoryItem(static_cast<slots_t>(slot));
+	if (not oldItem)
+	{
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
 	}
 
 	//send to client
-	sendInventoryItem(static_cast<slots_t>(index), item);
+	sendInventoryItem(static_cast<slots_t>(slot), item);
 
 	//event methods
 	onUpdateInventoryItem(oldItem, item);
-	item->setParent(getPlayer());
+	item->setInventoryOwner(getPlayer());
 	if (auto itemContainer = item->getContainer())
 	{
 		itemContainer->setHoldingCreature(getPlayer());
 	}
 
-	inventory[index] = item;
+	inventory[slot] = item;
 }
 
-void Player::removeThing(ThingPtr thing, uint32_t count)
+void Player::removeInventoryItem(const ItemPtr& item, uint32_t count)
 {
-	const auto& item = thing->getItem();
-	if (!item) {
+	int32_t slot = getItemSlotIndex(item);
+	if (slot == -1)
+	{
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
 	}
 
-	int32_t index = getThingIndex(thing);
-	if (index == -1) {
-		return /*RETURNVALUE_NOTPOSSIBLE*/;
-	}
-
-	if (item->isStackable()) {
-		if (count == item->getItemCount()) {
+	if (item->isStackable())
+	{
+		if (count == item->getItemCount())
+		{
 			//send change to client
-			sendInventoryItem(static_cast<slots_t>(index), nullptr);
+			sendInventoryItem(static_cast<slots_t>(slot), nullptr);
 
 			//event methods
 			onRemoveInventoryItem(item);
@@ -3681,20 +3668,24 @@ void Player::removeThing(ThingPtr thing, uint32_t count)
 				itemContainer->setHoldingCreature(nullptr);
 			}
 			item->clearParent();
-			inventory[index] = nullptr;
-		} else {
+			inventory[slot] = nullptr;
+		}
+		else
+		{
 			uint8_t newCount = static_cast<uint8_t>(std::max<int32_t>(0, item->getItemCount() - count));
 			item->setItemCount(newCount);
 
 			//send change to client
-			sendInventoryItem(static_cast<slots_t>(index), item);
+			sendInventoryItem(static_cast<slots_t>(slot), item);
 
 			//event methods
 			onUpdateInventoryItem(item, item);
 		}
-	} else {
+	}
+	else
+	{
 		//send change to client
-		sendInventoryItem(static_cast<slots_t>(index), nullptr);
+		sendInventoryItem(static_cast<slots_t>(slot), nullptr);
 
 		//event methods
 		onRemoveInventoryItem(item);
@@ -3703,28 +3694,20 @@ void Player::removeThing(ThingPtr thing, uint32_t count)
 			itemContainer->setHoldingCreature(nullptr);
 		}
 		item->clearParent();
-		inventory[index] = nullptr;
+		inventory[slot] = nullptr;
 	}
 }
 
-int32_t Player::getThingIndex(ThingPtr thing)
+int32_t Player::getItemSlotIndex(const ItemConstPtr& item) const
 {
-	for (int i = CONST_SLOT_FIRST; i <= CONST_SLOT_LAST; ++i) {
-		if (inventory[i] == thing) {
+	for (int i = CONST_SLOT_FIRST; i <= CONST_SLOT_LAST; ++i)
+	{
+		if (inventory[i] == item)
+		{
 			return i;
 		}
 	}
 	return -1;
-}
-
-size_t Player::getFirstIndex() const
-{
-	return CONST_SLOT_FIRST;
-}
-
-size_t Player::getLastIndex() const
-{
-	return CONST_SLOT_LAST + 1;
 }
 
 uint32_t Player::getItemTypeCount(const uint16_t itemId, int32_t subType /*= -1*/) const
@@ -3821,25 +3804,21 @@ gtl::btree_map<uint32_t, uint32_t>& Player::getAllItemTypeCount(gtl::btree_map<u
 	return countMap;
 }
 
-ThingPtr Player::getThing(size_t index)
-{
-	if (index >= CONST_SLOT_FIRST && index <= CONST_SLOT_LAST) {
-		return inventory[index];
-	}
-	return nullptr;
-}
-
-void Player::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t index, cylinderlink_t link /*= LINK_OWNER*/)
+void Player::notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, NotifyLink link /*= LINK_OWNER*/)
 {
 	if (link == LINK_OWNER)
 	{
 		//calling movement scripts
-		g_moveEvents->onPlayerEquip(this->getPlayer(), thing->getItem(), static_cast<slots_t>(index), false);
-		g_events->eventPlayerOnInventoryUpdate(this->getPlayer(), thing->getItem(), static_cast<slots_t>(index), true);
+		g_itemEvents->fireEquip(this->getPlayer(), item, static_cast<slots_t>(index), false);
+		g_events->eventPlayerOnInventoryUpdate(this->getPlayer(), item, static_cast<slots_t>(index), true);
 
 		if (isInventorySlot(static_cast<slots_t>(index)))
 		{
-			const auto& item = thing->getItem();
+			if (item)
+				setSlotCombatHookMask(static_cast<slots_t>(index), g_itemEvents->getCombatHookMask(item));
+
+			if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(getPosition()))
+				spawnOverlay->Trigger(getPlayer(), Zones::SpawnTrigger::Equip);
 
 			if (item and item->isAugmented())
 			{
@@ -3859,23 +3838,14 @@ void Player::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t 
 
 	if (link == LINK_OWNER or link == LINK_TOPPARENT)
 	{
-		const auto& i = (oldParent ? oldParent->getItem() : nullptr);
-
-		// Check if we owned the old container too, so we don't need to do anything,
-		// as the list was updated in postRemoveNotification
-		assert(i ? i->getContainer() != nullptr : true);
-
-		if (i)
-			requireListUpdate = i->getHoldingPlayer() != getPlayer();
-		else
-			requireListUpdate = oldParent != getPlayer();
+		requireListUpdate = oldLocation.player != getPlayer();
 
 		updateInventoryWeight();
 		updateItemsLight();
 		sendStats();
 	}
 
-	if (auto item = thing->getItem())
+	if (item)
 	{
 		if (auto container = item->getContainer())
 			onSendContainer(container);
@@ -3884,41 +3854,45 @@ void Player::postAddNotification(ThingPtr thing, CylinderPtr oldParent, int32_t 
 			updateSaleShopList(item);
 
 	}
-	else if (auto creature = thing->getCreature())
-	{
-		if (creature == getCreature())
-		{
-			//check containers
-			std::vector<ContainerPtr> containers;
+}
 
-			if (openContainers)
+void Player::onNearbyCreatureMoved(const CreaturePtr& creature)
+{
+	if (creature == getCreature())
+	{
+		//check containers
+		std::vector<ContainerPtr> containers;
+
+		if (openContainers)
+		{
+			for (auto& val : *openContainers | std::views::values)
 			{
-				for (auto& val : *openContainers | std::views::values)
+				if (not Position::areInRange<1, 1, 0>(val.container->getOwner()->getPosition(), getPosition()))
 				{
-					if (not Position::areInRange<1, 1, 0>(val.container->getOwner()->getPosition(), getPosition()))
-					{
-						containers.push_back(val.container);
-					}
+					containers.push_back(val.container);
 				}
 			}
-
-			for (auto& container : containers)
-				autoCloseContainers(container);
 		}
+
+		for (auto& container : containers)
+			autoCloseContainers(container);
 	}
 }
 
-void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32_t index, cylinderlink_t link /*= LINK_OWNER*/)
+void Player::notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, NotifyLink link /*= LINK_OWNER*/)
 {
 	if (link == LINK_OWNER)
 	{
 		//calling movement scripts
-		g_moveEvents->onPlayerDeEquip(this->getPlayer(), thing->getItem(), static_cast<slots_t>(index));
-		g_events->eventPlayerOnInventoryUpdate(this->getPlayer(), thing->getItem(), static_cast<slots_t>(index), false);
+		g_itemEvents->fireDeEquip(this->getPlayer(), item, static_cast<slots_t>(index));
+		g_events->eventPlayerOnInventoryUpdate(this->getPlayer(), item, static_cast<slots_t>(index), false);
 
 		if (isInventorySlot(static_cast<slots_t>(index)))
 		{
-			auto item = thing->getItem();
+			clearSlotCombatHookMask(static_cast<slots_t>(index));
+
+			if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(getPosition()))
+				spawnOverlay->Trigger(getPlayer(), Zones::SpawnTrigger::DeEquip);
 
 			if (item and item->isAugmented())
 			{
@@ -3938,23 +3912,14 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 
 	if (link == LINK_OWNER or link == LINK_TOPPARENT)
 	{
-		const auto& i = (newParent ? newParent->getItem() : nullptr);
+		requireListUpdate = newLocation.player != getPlayer();
 
-		// Check if we owned the old container too, so we don't need to do anything,
-		// as the list was updated in postRemoveNotification
-		assert(i ? i->getContainer() != nullptr : true);
-
-		if (i)
-			requireListUpdate = i->getHoldingPlayer() != getPlayer();
-		else
-			requireListUpdate = newParent != getPlayer();
-		
 		updateInventoryWeight();
 		updateItemsLight();
 		sendStats();
 	}
 
-	if (auto item = thing->getItem())
+	if (item)
 	{
 		if (auto container = item->getContainer())
 		{
@@ -3962,54 +3927,66 @@ void Player::postRemoveNotification(ThingPtr thing, CylinderPtr newParent, int32
 			{
 				autoCloseContainers(container);
 			}
-			else if (container->getOwner()->getTopParent() == this->getPlayer())
+			else
 			{
-				onSendContainer(container);
-			}
-			else if (auto topContainer = container->getOwner()->getTopParent()->getContainer())
-			{
-				if (topContainer->getContainerSubType() == ContainerSubType::DepotChest)
-				{
-					const auto& depotChest = topContainer;
-					bool isOwner = false;
+				ItemPtr topContainerItem = container->getOwner();
 
-					if (depotChests)
+				while (auto owner = topContainerItem->getContainerParent())
+				{
+					topContainerItem = owner;
+				}
+
+				const bool nested = (topContainerItem != container->getOwner());
+
+				if (not nested and topContainerItem->getLocation().player == this->getPlayer())
+				{
+					onSendContainer(container);
+				}
+				else if (auto topContainer = nested ? topContainerItem->getContainer() : nullptr)
+				{
+					if (topContainer->getContainerSubType() == ContainerSubType::DepotChest)
 					{
-						for (const auto& it : *depotChests)
+						const auto& depotChest = topContainer;
+						bool isOwner = false;
+
+						if (depotChests)
 						{
-							if (it.second == depotChest) 
+							for (const auto& it : *depotChests)
 							{
-								isOwner = true;
-								onSendContainer(container);
+								if (it.second == depotChest)
+								{
+									isOwner = true;
+									onSendContainer(container);
+								}
 							}
 						}
+
+						if (not isOwner)
+							autoCloseContainers(container);
+
 					}
-
-					if (not isOwner)
-						autoCloseContainers(container);
-
-				}
-				else if (topContainer->getContainerSubType() == ContainerSubType::Inbox)
-				{
-					const auto& inboxContainer = topContainer;
-
-					if (inboxContainer == inbox)
+					else if (topContainer->getContainerSubType() == ContainerSubType::Inbox)
 					{
-						onSendContainer(container);
-					} 
+						const auto& inboxContainer = topContainer;
+
+						if (inboxContainer == inbox)
+						{
+							onSendContainer(container);
+						}
+						else
+						{
+							autoCloseContainers(container);
+						}
+					}
 					else
 					{
-						autoCloseContainers(container);
+						onSendContainer(container);
 					}
 				}
 				else
 				{
-					onSendContainer(container);
+					autoCloseContainers(container);
 				}
-			}
-			else
-			{
-				autoCloseContainers(container);
 			}
 		}
 
@@ -4072,26 +4049,17 @@ bool Player::hasShopItemForSale(uint32_t itemId, uint8_t subType) const
 	});
 }
 
-void Player::internalAddThing(ThingPtr thing)
+void Player::addInventoryItemSilently(uint32_t slot, const ItemPtr& item)
 {
-	internalAddThing(0, thing);
-}
-
-void Player::internalAddThing(uint32_t index, ThingPtr thing)
-{
-	const auto& item = thing->getItem();
-	if (!item) {
-		return;
-	}
-
-	//index == 0 means we should equip this item at the most appropriate slot (no action required here)
-	if (index > CONST_SLOT_WHEREEVER && index <= CONST_SLOT_LAST) {
-		if (inventory[index]) {
+	if (slot > CONST_SLOT_WHEREEVER and slot <= CONST_SLOT_LAST)
+	{
+		if (inventory[slot])
+		{
 			return;
 		}
 
-		inventory[index] = item;
-		item->setParent(getPlayer());
+		inventory[slot] = item;
+		item->setInventoryOwner(getPlayer());
 		if (auto itemContainer = item->getContainer())
 		{
 			itemContainer->setHoldingCreature(getPlayer());
@@ -4207,9 +4175,9 @@ void Player::doSecondaryAttack(const CreaturePtr& target)
 	m_is_secondary_attack = true;
 	setDualWieldMultiplier(voc->dualWield.secondaryMultiplier);
 
-	if (const auto& weapon = g_weapons->getWeapon(secondaryTool))
+	if (g_itemEvents->hasWeaponBehavior(secondaryTool))
 	{
-		weapon->useWeapon(getPlayer(), secondaryTool, target);
+		g_itemEvents->useAsWeapon(getPlayer(), secondaryTool, target);
 	}
 	else
 	{
@@ -4222,7 +4190,7 @@ void Player::doSecondaryAttack(const CreaturePtr& target)
 				const int32_t attackValue = std::max<int32_t>(0, secondaryTool->getAttack());
 				const float attackFactor = getAttackFactor();
 				const int32_t maxDmg = static_cast<int32_t>(
-					Weapons::getMaxWeaponDamage(getLevel(), attackSkill, attackValue, attackFactor)
+					ItemEvents::getMaxWeaponDamage(getLevel(), attackSkill, attackValue, attackFactor)
 					* voc->meleeDamageMultiplier
 					* getDualWieldMultiplier()
 				);
@@ -4260,7 +4228,7 @@ void Player::doSecondaryAttack(const CreaturePtr& target)
 				const int32_t attackValue = std::max<int32_t>(0, secondaryTool->getAttack());
 				const float attackFactor  = getAttackFactor();
 				const int32_t maxDmg = static_cast<int32_t>(
-					Weapons::getMaxWeaponDamage(getLevel(), attackSkill, attackValue, attackFactor)
+					ItemEvents::getMaxWeaponDamage(getLevel(), attackSkill, attackValue, attackFactor)
 					* voc->distDamageMultiplier
 					* getDualWieldMultiplier()
 				);
@@ -4337,18 +4305,20 @@ void Player::doAttacking(uint32_t)
 			tool = getWeapon();
 		}
 
-		const auto& weapon = g_weapons->getWeapon(tool);
+		if (g_itemEvents->hasWeaponBehavior(tool))
+		{
+			if (not ItemEvents::interruptSwing(tool))
+				result = g_itemEvents->useAsWeapon(this->getPlayer(), tool, getAttackedCreature());
 
-		if (weapon) {
-			if (!weapon->interruptSwing()) {
-				result = weapon->useWeapon(this->getPlayer(), tool, getAttackedCreature());
-			} else if (!classicSpeed && !canDoAction()) {
+			else if (not classicSpeed and not canDoAction())
 				delay = getNextActionTime();
-			} else {
-				result = weapon->useWeapon(this->getPlayer(), tool, getAttackedCreature());
-			}
-		} else {
-			result = Weapon::useFist(this->getPlayer(), getAttackedCreature());
+
+			else
+				result = g_itemEvents->useAsWeapon(this->getPlayer(), tool, getAttackedCreature());
+		} 
+		else 
+		{
+			result = ItemEvents::useFist(this->getPlayer(), getAttackedCreature());
 		}
 
 		setDualWieldMultiplier(1.0f);
@@ -4528,6 +4498,9 @@ void Player::onEndCondition(const ConditionType_t type)
 		pzLocked = false;
 		clearAttacked();
 
+		if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(getPosition()))
+			spawnOverlay->Trigger(getPlayer(), Zones::SpawnTrigger::LosePzLock);
+
 		if (getSkull() != SKULL_RED && getSkull() != SKULL_BLACK) {
 			setSkull(SKULL_NONE);
 		}
@@ -4588,6 +4561,9 @@ void Player::onAttackedCreature(const CreaturePtr& target, bool addFightTicks /*
 		if (!pzLocked && g_game.getWorldType() == WORLD_TYPE_PVP_ENFORCED) {
 			pzLocked = true;
 			sendIcons();
+
+			if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(getPosition()))
+				spawnOverlay->Trigger(getPlayer(), Zones::SpawnTrigger::GainPzLock);
 		}
 
 		targetPlayer->addInFightTicks();
@@ -4599,6 +4575,9 @@ void Player::onAttackedCreature(const CreaturePtr& target, bool addFightTicks /*
 			if (!pzLocked) {
 				pzLocked = true;
 				sendIcons();
+
+				if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(getPosition()))
+					spawnOverlay->Trigger(getPlayer(), Zones::SpawnTrigger::GainPzLock);
 			}
 
 			//if (!Combat::isInPvpZone(this->getPlayer(), targetPlayer) && !isInWar(targetPlayer)) {
@@ -4735,6 +4714,9 @@ void Player::gainExperience(uint64_t gainExp, const CreaturePtr& source)
 		return;
 	}
 
+	if (Zones::ZoneManager::HasWorldFlag(getPosition(), Zones::ZoneFlag::NoExperience))
+		return;
+
 	addExperience(source, gainExp, true);
 }
 
@@ -4794,9 +4776,9 @@ bool Player::lastHitIsPlayer(const CreaturePtr& lastHitCreature)
 	return lastHitMaster && lastHitMaster->getPlayer();
 }
 
-void Player::changeHealth(int32_t healthChange, bool sendHealthChange/* = true*/)
+void Player::changeHealth(int32_t healthChange, bool sendHealthChange/* = true*/, std::optional<std::span<const CreaturePtr>> spectators/* = std::nullopt*/)
 {
-	Creature::changeHealth(healthChange, sendHealthChange);
+	Creature::changeHealth(healthChange, sendHealthChange, spectators);
 	sendStats();
 }
 
@@ -4808,6 +4790,9 @@ void Player::changeMana(int32_t manaChange)
 		} else {
 			mana = std::max<int32_t>(0, mana + manaChange);
 		}
+
+		if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(getPosition()))
+			spawnOverlay->Trigger(getPlayer(), Zones::SpawnTrigger::ManaChange);
 	}
 
 	sendStats();
@@ -4821,6 +4806,9 @@ void Player::changeSoul(int32_t soulChange)
 		soul = std::max<int32_t>(0, soul + soulChange);
 	}
 
+	if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(getPosition()))
+		spawnOverlay->Trigger(getPlayer(), Zones::SpawnTrigger::SoulChange);
+
 	sendStats();
 }
 
@@ -4829,6 +4817,9 @@ void Player::addSoul(uint8_t gain)
 {
 	if (gain > 0) {
 		soul += gain;
+
+		if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(getPosition()))
+			spawnOverlay->Trigger(getPlayer(), Zones::SpawnTrigger::SoulChange);
 	}
 	sendStats();
 }
@@ -4837,6 +4828,9 @@ void Player::addStamina(uint16_t gain)
 {
 	if (gain > 0) {
 		staminaMinutes += gain;
+
+		if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(getPosition()))
+			spawnOverlay->Trigger(getPlayer(), Zones::SpawnTrigger::StaminaChange);
 	}
 	sendStats();
 }
@@ -4848,6 +4842,9 @@ void Player::changeStamina(int32_t amount)
 	} else {
 		staminaMinutes = std::max<int32_t>(0, staminaMinutes + amount);
 	}
+
+	if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(getPosition()))
+		spawnOverlay->Trigger(getPlayer(), Zones::SpawnTrigger::StaminaChange);
 }
 
 bool Player::canWear(uint32_t lookType, uint8_t addons) const
@@ -5389,7 +5386,8 @@ bool Player::toggleMount(const bool mount)
 			return false;
 		}
 
-		if (!group->access && tile.lock()->hasFlag(TILESTATE_PROTECTIONZONE)) {
+		if (not group->access and Zones::ZoneManager::HasWorldFlag(getPosition(), Zones::ZoneFlag::Protection))
+		{
 			sendCancelMessage(RETURNVALUE_ACTIONNOTPERMITTEDINPROTECTIONZONE);
 			return false;
 		}
@@ -5765,6 +5763,26 @@ size_t Player::getMaxDepotItems() const
 	}
 
 	return g_config.GetNumber(isPremium() ? ConfigManager::DEPOT_PREMIUM_LIMIT : ConfigManager::DEPOT_FREE_LIMIT);
+}
+
+void Player::setSlotCombatHookMask(slots_t slot, uint16_t mask) noexcept
+{
+	combatHookMasks[slot] = mask;
+	combatHookMask |= mask;
+}
+
+void Player::clearSlotCombatHookMask(slots_t slot) noexcept
+{
+	if (combatHookMasks[slot] == 0)
+		return;
+
+	combatHookMasks[slot] = 0;
+
+	uint16_t recomputed = 0;
+	for (const auto slotMask : combatHookMasks)
+		recomputed |= slotMask;
+
+	combatHookMask = recomputed;
 }
 
 void Player::cacheModifier(const BlackTek::DamageModifier& modifier) noexcept
@@ -6218,13 +6236,12 @@ void Player::getOpenPositionsInRadius(int radius, std::vector<Position>& out) co
 
 			auto tile = g_game.map.getTile(pos);
 			const bool isValid = tile
-			&& g_game.canThrowObjectTo(center, pos)
-			&& !tile->getZone() == ZONE_PROTECTION
-			&& !tile->hasFlag(TILESTATE_PROTECTIONZONE
-				| TILESTATE_FLOORCHANGE
+			and g_game.canThrowObjectTo(center, pos)
+			and not Zones::ZoneManager::HasWorldFlag(pos, Zones::ZoneFlag::Protection)
+			and not Zones::ZoneManager::HasWorldFlag(pos, Zones::ZoneFlag::NoPvp)
+			and not tile->hasFlag(TILESTATE_FLOORCHANGE
 				| TILESTATE_TELEPORT
 				| TILESTATE_IMMOVABLEBLOCKSOLID
-				| TILESTATE_NOPVPZONE
 				| TILESTATE_IMMOVABLEBLOCKPATH
 				| TILESTATE_IMMOVABLENOFIELDBLOCKPATH);
 
@@ -6298,13 +6315,12 @@ Position Player::generateAttackPosition(std::optional<CreaturePtr> attacker, Pos
 
 		const auto& tile = g_game.map.getTile(targetLocation);
 		const bool isValid = tile
-			&& g_game.canThrowObjectTo(defensePosition, targetLocation)
-			&& !tile->getZone() == ZONE_PROTECTION
-			&& !tile->hasFlag(TILESTATE_PROTECTIONZONE
-				| TILESTATE_FLOORCHANGE
+			and g_game.canThrowObjectTo(defensePosition, targetLocation)
+			and not Zones::ZoneManager::HasWorldFlag(targetLocation, Zones::ZoneFlag::Protection)
+			and not Zones::ZoneManager::HasWorldFlag(targetLocation, Zones::ZoneFlag::NoPvp)
+			and not tile->hasFlag(TILESTATE_FLOORCHANGE
 				| TILESTATE_TELEPORT
 				| TILESTATE_IMMOVABLEBLOCKSOLID
-				| TILESTATE_NOPVPZONE
 				| TILESTATE_IMMOVABLEBLOCKPATH
 				| TILESTATE_IMMOVABLENOFIELDBLOCKPATH);
 

@@ -89,6 +89,7 @@ bool ConfigManager::Load()
     auto monstersTbl = SafeParseFile("config/monsters.toml");
     auto scriptsTbl  = SafeParseFile("config/scripts.toml");
     auto storeTbl    = SafeParseFile("config/store.toml");
+    auto zonesTbl    = SafeParseFile("config/zones.toml");
 
     // -------------------------------------------------------------------------
     // One-time settings: only loaded on the first call to Load().
@@ -241,6 +242,11 @@ bool ConfigManager::Load()
     booleans[DEFAULT_WORLD_LIGHT]             = gameplayTbl["world"]["default_world_light"].value_or(true);
     booleans[HOUSE_OWNED_BY_ACCOUNT]          = gameplayTbl["houses"]["owned_by_account"].value_or(false);
     booleans[CLEAN_PROTECTION_ZONES]          = gameplayTbl["world"]["clean_protection_zones"].value_or(false);
+    integers[LEGACY_SPAWN_CLUSTER_RADIUS]                = static_cast<int32_t>(zonesTbl["zones"]["spawn_cluster_radius"].value_or(int64_t{8}));
+    booleans[SMART_CONVERT_LEGACY_ZONES]                 = zonesTbl["zones"]["smart_convert_legacy_zones"].value_or(true);
+    booleans[STRIP_LEGACY_ZONE_FLAGS]                    = zonesTbl["zones"]["strip_legacy_zone_flags_from_binary"].value_or(false);
+    booleans[SMART_CONVERT_LEGACY_SPAWNS]                = zonesTbl["zones"]["smart_convert_legacy_spawns"].value_or(true);
+    booleans[DISABLE_LEGACY_SPAWN_FILE_AFTER_CONVERSION] = zonesTbl["zones"]["disable_legacy_spawn_file_after_conversion"].value_or(false);
     booleans[HOUSE_DOOR_SHOW_PRICE]           = gameplayTbl["houses"]["door_show_price"].value_or(true);
     booleans[ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS] = gameplayTbl["houses"]["only_invited_can_move_items"].value_or(true);
     booleans[BED_OFFLINE_TRAINING]            = gameplayTbl["stamina"]["bed_offline_training"].value_or(true);

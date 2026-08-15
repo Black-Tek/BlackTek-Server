@@ -4,11 +4,14 @@
 #ifndef FS_TILE_H
 #define FS_TILE_H
 
-#include "cylinder.h"
+#include "enums.h"
 #include "item.h"
 #include "tools.h"
 #include "spectators.h"
 #include "declarations.h"
+#include "gamemodel.h"
+#include "itemlocation.h"
+#include "chunk.h"
 
 #include <optional>
 
@@ -22,10 +25,6 @@ enum tileflags_t : uint32_t {
 	TILESTATE_FLOORCHANGE_WEST = 1 << 4,
 	TILESTATE_FLOORCHANGE_SOUTH_ALT = 1 << 5,
 	TILESTATE_FLOORCHANGE_EAST_ALT = 1 << 6,
-	TILESTATE_PROTECTIONZONE = 1 << 7,
-	TILESTATE_NOPVPZONE = 1 << 8,
-	TILESTATE_NOLOGOUT = 1 << 9,
-	TILESTATE_PVPZONE = 1 << 10,
 	TILESTATE_TELEPORT = 1 << 11,
 	TILESTATE_MAGICFIELD = 1 << 12,
 	TILESTATE_MAILBOX = 1 << 13,
@@ -134,28 +133,15 @@ class TileItemVector : public ItemVector
 };
 
 class House;
+class CreatureContainer;
 
-class Tile : public Cylinder, public SharedObject
+class Tile : public SharedObject
 {
 	public:
-		Tile(uint16_t x, uint16_t y, uint8_t z) : tilePos(x, y, z) {
-			items = std::make_shared<TileItemVector>();
-			creatures = std::make_shared<CreatureVector>();
-			thing_subtype = ThingSubType::Tile;
-			cylinder_subtype = CylinderSubType::Tile;
-		}
+		Tile(uint16_t x, uint16_t y, uint8_t z);
+		Tile(uint16_t x, uint16_t y, uint8_t z, House* house);
 
-		Tile(uint16_t x, uint16_t y, uint8_t z, House* house) : tilePos(x, y, z) {
-			items = std::make_shared<TileItemVector>();
-			creatures = std::make_shared<CreatureVector>();
-			this->house = house;
-			thing_subtype = ThingSubType::Tile;
-			cylinder_subtype = CylinderSubType::Tile;
-		}
-
-		~Tile() {
-			ground.reset();
-		};
+		~Tile();
 
 		// non-copyable
 		Tile(const Tile&) = delete;
@@ -169,24 +155,27 @@ class Tile : public Cylinder, public SharedObject
 			return items;
 		}
 
-		TileCreaturesPtr getCreatures() {
-			return creatures;
+		CreatureContainer* getCreatures() {
+			return creatures.get();
 		}
 
-
-		TileCreaturesConstPtr getCreatures() const {
-			return creatures;
+		const CreatureContainer* getCreatures() const {
+			return creatures.get();
 		}
+
+		CreatureContainer& ensureCreatures();
 
 		House* getHouse() const {
 			return house;
 		}
 
-		int32_t getThrowRange() const override final {
+		int32_t getThrowRange() const
+		{
 			return 0;
 		}
-	
-		bool isPushable() const override final {
+
+		bool isPushable() const
+		{
 			return false;
 		}
 
@@ -203,10 +192,11 @@ class Tile : public Cylinder, public SharedObject
 		ItemPtr getTopTopItem() const;
 		ItemPtr getTopDownItem() const;
 		bool isMoveableBlocking() const;
-		ThingPtr getTopVisibleThing(const CreaturePtr creature);
+		BlackTek::GameModel getTopVisibleGameModel(const CreaturePtr& creature);
 		ItemPtr getItemByTopOrder(int32_t topOrder);
 
-		size_t getThingCount() const {
+		size_t getStackSize() const
+		{
 			size_t thingCount = getCreatureCount() + getItemCount();
 			if (ground) {
 				thingCount++;
@@ -242,67 +232,74 @@ class Tile : public Cylinder, public SharedObject
 			this->flags &= ~flag;
 		}
 
-		ZoneType_t getZone() const {
-			if (hasFlag(TILESTATE_PROTECTIONZONE)) {
-				return ZONE_PROTECTION;
-			} else if (hasFlag(TILESTATE_NOPVPZONE)) {
-				return ZONE_NOPVP;
-			} else if (hasFlag(TILESTATE_PVPZONE)) {
-				return ZONE_PVP;
-			} else if (hasFlag(TILESTATE_NOLOGOUT)) {
-				return ZONE_NOLOGOUT;
-			} else {
-				return ZONE_NORMAL;
-			}
-		}
-
 		bool hasHeight(uint32_t n) const;
 
-		std::string getDescription(int32_t lookDistance) override final;
+		std::string getDescription(int32_t lookDistance);
 
 		int32_t getClientIndexOfCreature(const PlayerConstPtr& player, const CreatureConstPtr& creature) const;
 		int32_t getStackposOfItem(const PlayerConstPtr& player, const ItemConstPtr& item) const;
 
-		//cylinder implementations
-		ReturnValue queryAdd(int32_t index, const ThingPtr& thing, uint32_t count,
-		                     uint32_t flags, CreaturePtr actor = nullptr) override;
-		ReturnValue queryMaxCount(int32_t index, const ThingPtr& thing, uint32_t count,
-				uint32_t& maxQueryCount, uint32_t flags) override final;
-		ReturnValue queryRemove(const ThingPtr& thing, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr) override;
-		ThingPtr queryDestination(int32_t& index, const ThingPtr& thing, ItemPtr& destItem, uint32_t& flags) override; // another optional wrap ref
+		struct UniformStackIndex
+		{
+			int32_t index = -1;
+			bool uniform = true;
+		};
 
-		ReturnValue queryAdd(ItemPtr item, uint32_t flags, CreaturePtr mover);
-		ReturnValue queryAdd(PlayerPtr player, uint32_t flags);
-		ReturnValue queryAdd(MonsterPtr monster, uint32_t flags);
-		ReturnValue queryAdd(NpcPtr npc, uint32_t flags);
+		UniformStackIndex getUniformClientIndexOfCreature(const CreatureConstPtr& creature) const;
 
-		void addThing(ThingPtr thing) override final;
-		void addThing(int32_t index, ThingPtr thing) override;
+		TilePtr resolveCreatureDestination(const CreaturePtr& creature, uint32_t& flags);
 
-		void updateThing(ThingPtr thing, uint16_t itemId, uint32_t count) override final;
-		void replaceThing(uint32_t index, ThingPtr thing) override final;
+		ReturnValue canAddItem(const ItemPtr& item, uint32_t flags, const CreaturePtr& mover);
+		ReturnValue checkAddCapacity(int32_t index, const ItemPtr& item, uint32_t count, uint32_t& acceptedCount, uint32_t flags);
+		ReturnValue canRemoveItem(const ItemPtr& item, uint32_t count, uint32_t flags, CreaturePtr actor = nullptr);
+		TilePtr resolveItemDestination(ItemPtr& destItem, uint32_t& flags);
+		ReturnValue canEnter(PlayerPtr player, uint32_t flags);
+		ReturnValue canEnter(MonsterPtr monster, uint32_t flags);
+		ReturnValue canEnter(NpcPtr npc, uint32_t flags);
 
-		void removeThing(ThingPtr thing, uint32_t count) override final;
+		SpectatorVec addItem(const ItemPtr& item);
+		void addItemSilently(const ItemPtr& item);
+
+		void updateItem(const ItemPtr& item, uint16_t itemId, uint32_t count);
+		void replaceItem(uint32_t index, const ItemPtr& item);
+
+		void removeItem(const ItemPtr& item, uint32_t count);
 		bool hasCreature(CreaturePtr& creature);
 		void removeCreature(CreaturePtr& creature);
 
-		int32_t getThingIndex(ThingPtr thing) override final;
-		size_t getFirstIndex() const override final;
-		size_t getLastIndex() const override final;
-		uint32_t getItemTypeCount(uint16_t itemId, int32_t subType = -1) const override final;
-		ThingPtr getThing(size_t index) override final;
+		int32_t getItemStackIndex(const ItemConstPtr& item);
+		int32_t getCreatureStackIndex(const CreatureConstPtr& creature) const;
+		uint32_t getItemTypeCount(uint16_t itemId, int32_t subType = -1) const;
+		BlackTek::GameModel getGameModelAt(size_t index);
+		[[nodiscard]] std::optional<uint16_t> getItemIdAt(size_t index) const noexcept;
 
-		void postAddNotification(ThingPtr thing,  CylinderPtr oldParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
-		void postRemoveNotification(ThingPtr thing,  CylinderPtr newParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
+		void notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, NotifyLink link = LINK_OWNER);
+		void notifyItemAdded(const ItemPtr& item, const BlackTek::ItemLocation& oldLocation, int32_t index, std::span<const CreaturePtr> spectators, NotifyLink link = LINK_OWNER);
+		void notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, NotifyLink link = LINK_OWNER);
+		void notifyItemRemoved(const ItemPtr& item, const BlackTek::ItemLocation& newLocation, int32_t index, std::span<const CreaturePtr> spectators, NotifyLink link = LINK_OWNER);
 
-		void internalAddThing(ThingPtr thing) override final;
-		void internalAddThing(uint32_t index, ThingPtr thing) override;
+		void notifyCreatureAdded(const CreaturePtr& creature, const TilePtr& oldTile);
+		void notifyCreatureAdded(const CreaturePtr& creature, const TilePtr& oldTile, std::span<const CreaturePtr> spectators);
+		void notifyCreatureRemoved(const CreaturePtr& creature, const TilePtr& newTile);
+		void notifyCreatureRemoved(const CreaturePtr& creature, const TilePtr& newTile, std::span<const CreaturePtr> spectators);
 
-		const Position& getPosition() const override final {
+		const Position& getPosition() const
+		{
 			return tilePos;
 		}
 
-		bool isRemoved() const override final {
+		BlackTek::World::ChunkHandle getOwningChunk() const
+		{
+			return owning_chunk;
+		}
+
+		void setOwningChunk(BlackTek::World::ChunkHandle chunk)
+		{
+			owning_chunk = chunk;
+		}
+
+		bool isRemoved() const
+		{
 			return false;
 		}
 
@@ -316,19 +313,13 @@ class Tile : public Cylinder, public SharedObject
 			return ground;
 		}
 
-		TilePtr getTile() final {
+		TilePtr getTile()
+		{
 			return static_shared_this<Tile>();
 		}
 
-		CylinderPtr getCylinder() override final {
-			return static_shared_this<Tile>();
-		}
-
-		CylinderConstPtr getCylinder() const override final {
-			return static_shared_this<const Tile>();
-		}
-
-		TileConstPtr getTile() const final {
+		TileConstPtr getTile() const
+		{
 			return static_shared_this<Tile>();
 		}
 	
@@ -339,23 +330,26 @@ class Tile : public Cylinder, public SharedObject
 		void updateHouse(const ItemPtr& item);
 
 	private:
-        std::optional<ReturnValue> queryAddRestrictions(uint32_t flags) const;
+        TilePtr resolveFloorChangeDestination(uint32_t& flags);
 
-		void onAddTileItem(ItemPtr& item);
-		void onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType);
-		void onRemoveTileItem(const SpectatorVec& spectators, const std::vector<int32_t>& oldStackPosVector, const ItemPtr& item);
-		void onUpdateTile(const SpectatorVec& spectators);
+		void onAddTileItem(const ItemPtr& item, std::span<const CreaturePtr> spectators);
+		void onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType, std::span<const CreaturePtr> spectators);
+		void onRemoveTileItem(std::span<const CreaturePtr> spectators, const std::vector<int32_t>& oldStackPosVector, const ItemPtr& item);
+		void onUpdateTile(std::span<const CreaturePtr> spectators);
+		void removeItem(const ItemPtr& item, uint32_t count, std::span<const CreaturePtr> spectators);
 		void applyItemProperties(const ItemConstPtr& item);
 		void recalculateItemProperties();
 		void setTileFlags(const ItemConstPtr& item);
 		void resetTileFlags(const ItemPtr& item);
+		void syncChunkFlags();
 
 		House* house = nullptr;
 		ItemPtr ground = nullptr;
 		Position tilePos;
+		BlackTek::World::ChunkHandle owning_chunk;
 		uint32_t flags = 0;
 		uint32_t itemProperties = 0;
 		TileItemsPtr items;
-		TileCreaturesPtr creatures;
+		std::unique_ptr<CreatureContainer> creatures;
 };
 #endif

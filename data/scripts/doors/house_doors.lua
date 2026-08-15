@@ -1,8 +1,8 @@
 -- house related logic is handled in src (house.cpp, house.h)
 -- this script could even be combined with normal_doors
 -- however it's kept separate to make it easier to apply custom logic
-local houseDoor = Action()
-function houseDoor.onUse(player, item, fromPosition, target, toPosition, isHotkey)
+local houseDoor = ItemEvent()
+houseDoor.onUse = function(player, item, fromPosition, target, toPosition, isHotkey)
     local doorId = item:getId()
     local isDoorItem, doorState, pairedId = isDoor(doorId)
 
@@ -36,8 +36,8 @@ end
 houseDoor:register()
 
 
-local doorStepIn = MoveEvent()
-function doorStepIn.onStepIn(creature, item, position, fromPosition)
+local doorStepOn = ItemEvent()
+doorStepOn.onStepOn = function(creature, item, position, fromPosition)
     if doorConfig.allowGamemasterBypass and creature:isPlayer() and creature:hasGamemasterAccess() then
         return true
     end
@@ -47,18 +47,18 @@ function doorStepIn.onStepIn(creature, item, position, fromPosition)
 end
 
 for closedId, openId in pairs(houseDoors) do
-    doorStepIn:id(openId)
+    doorStepOn:id(openId)
 end
-doorStepIn:register()
+doorStepOn:register()
 
 
-local doorStepOut = MoveEvent()
-function doorStepOut.onStepOut(creature, item, position, fromPosition)
+local doorStepOff = ItemEvent()
+doorStepOff.onStepOff = function(creature, item, position, fromPosition)
     clearCreatureEntryPosition(creature)
     return true
 end
 
 for closedId, openId in pairs(houseDoors) do
-    doorStepOut:id(openId)
+    doorStepOff:id(openId)
 end
-doorStepOut:register()
+doorStepOff:register()

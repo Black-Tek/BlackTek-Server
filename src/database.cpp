@@ -8,6 +8,7 @@
 #include "database.h"
 
 #include <mysql/errmsg.h>
+#include <vector>
 
 extern ConfigManager g_config;
 
@@ -30,6 +31,10 @@ bool Database::connect()
 	// automatic reconnect
 	bool reconnect = true;
 	mysql_options(handle, MYSQL_OPT_RECONNECT, &reconnect);
+
+	constexpr unsigned int timeoutSeconds = 30;
+	mysql_options(handle, MYSQL_OPT_READ_TIMEOUT, &timeoutSeconds);
+	mysql_options(handle, MYSQL_OPT_WRITE_TIMEOUT, &timeoutSeconds);
 
 	// connects to database
 	if (!mysql_real_connect(handle, g_config.GetString(ConfigManager::MYSQL_HOST).c_str(), g_config.GetString(ConfigManager::MYSQL_USER).c_str(), g_config.GetString(ConfigManager::MYSQL_PASS).c_str(), g_config.GetString(ConfigManager::MYSQL_DB).c_str(), g_config.GetNumber(ConfigManager::SQL_PORT), g_config.GetString(ConfigManager::MYSQL_SOCK).c_str(), 0)) {
@@ -156,10 +161,13 @@ std::string Database::escapeBlob(const char* s, uint32_t length) const
 	escaped.push_back('\'');
 
 	if (length != 0) {
-		char* output = new char[maxLength];
-		auto escaped_length = mysql_real_escape_string(handle, output, s, length);
-		escaped.append(output, escaped_length);
-		delete[] output;
+		thread_local std::vector<char> scratch;
+		if (scratch.size() < maxLength) {
+			scratch.resize(maxLength);
+		}
+
+		auto escaped_length = mysql_real_escape_string(handle, scratch.data(), s, length);
+		escaped.append(scratch.data(), escaped_length);
 	}
 
 	escaped.push_back('\'');

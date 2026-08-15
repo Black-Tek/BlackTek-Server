@@ -7,24 +7,38 @@
 #include "iomapserialize.h"
 #include "combat.h"
 #include "creature.h"
+#include "creaturecontainer.h"
 #include "game.h"
 #include "monster.h"
+#include "simd_kernels.h"
 
 extern Game g_game;
+
+namespace
+{
+    // Shared sentinel so tile lookups can return by const reference without refcount traffic on misses.
+    const TilePtr null_tile = nullptr;
+
+    thread_local BlackTek::World::ChunkCoord last_chunk_coord{};
+    thread_local const BlackTek::World::Chunk* last_chunk = nullptr;
+}
 
 bool Map::loadMap(const std::string& identifier, bool loadHouses)
 {
 	IOMap loader;
-    if (!loader.loadMap(this, identifier, g_game.getRawMapBlock(), g_game.getMapBlock()))
+    auto loadResult = loader.loadMap(this, identifier, g_game.getRawMapBlock(), g_game.getMapBlock());
+
+	if (not loadResult)
 	{
 		std::cout << "[Fatal - Map::loadMap] " << loader.getLastErrorString() << std::endl;
 		return false;
 	}
 
-	if (not IOMap::loadSpawns(this))
-	{
-		std::cout << "[Warning - Map::loadMap] Failed to load spawn data." << std::endl;
-	}
+	lastLoadTimeSeconds = loadResult->time;
+	lastLoadTileCount   = loadResult->tileCount;
+	lastLoadItemCount   = loadResult->itemCount;
+
+	IOMap::resolveLegacySpawnFile(this);
 
 	if (loadHouses)
 	{
@@ -63,111 +77,144 @@ bool Map::save()
 	return saved;
 }
 
-TilePtr Map::getTile(const uint16_t x, const uint16_t y, const uint8_t z)
+const TilePtr& Map::getTile(const uint16_t x, const uint16_t y, const uint8_t z) const
 {
-	if (z >= MAP_MAX_LAYERS) {
-		return nullptr;
-	}
+    using namespace BlackTek::World;
 
-	auto leaf = QTreeNode::getLeafStatic< QTreeLeafNode*, QTreeNode*>(&root, x, y);
-	if (!leaf) {
-		return nullptr;
-	}
+    if (z >= MaxLayers)
+        return null_tile;
 
-	auto floor = leaf->getFloor(z);
-	if (!floor) {
-		return nullptr;
-	}
-	return floor->tiles[x & FLOOR_MASK][y & FLOOR_MASK];
+    const ChunkCoord chunkCoord = ToChunkCoord(x, y);
+    const Chunk* chunk = last_chunk;
+
+    if (not chunk or chunkCoord != last_chunk_coord)
+    {
+        const auto chunkHandle = chunk_grid.FindChunk(chunkCoord);
+        chunk = chunk_grid.GetChunk(chunkHandle);
+
+        if (chunk)
+        {
+            last_chunk_coord = chunkCoord;
+            last_chunk = chunk;
+        }
+    }
+
+    if (not chunk)
+        return null_tile;
+
+    const auto floorHandle = chunk->floor_handles[z];
+    const auto* floor = floor_pool.Get(floorHandle);
+
+    if (not floor)
+        return null_tile;
+
+    return floor->tiles[x & Floor::Mask][y & Floor::Mask];
+}
+
+const TilePtr& Map::getTileInChunk(const BlackTek::World::Chunk* chunk, const uint16_t x, const uint16_t y, const uint8_t z) const
+{
+    using namespace BlackTek::World;
+
+    if (not chunk or z >= MaxLayers)
+        return null_tile;
+
+    const auto* floor = floor_pool.Get(chunk->floor_handles[z]);
+    if (not floor)
+        return null_tile;
+
+    return floor->tiles[x & Floor::Mask][y & Floor::Mask];
 }
 
 void Map::setTile(const uint16_t x, const uint16_t y, const uint8_t z, TilePtr& newTile)
 {
-	if (z >= MAP_MAX_LAYERS) {
+    using namespace BlackTek::World;
+
+	if (z >= MaxLayers)
+    {
 		std::cout << "ERROR: Attempt to set tile on invalid coordinate " << Position(x, y, z) << "!" << std::endl;
 		return;
 	}
 
-	QTreeLeafNode::newLeaf = false;
-	const auto& leaf = root.createLeaf(x, y, 15);
+	const ChunkHandle chunkHandle = chunk_grid.GetOrCreateChunk(ToChunkCoord(x, y));
+	Chunk* chunk = chunk_grid.GetChunk(chunkHandle);
+	FloorHandle floorHandle = chunk->floor_handles[z];
 
-	if (QTreeLeafNode::newLeaf) {
-		//update north
-		if (const auto& northLeaf = root.getLeaf(x, y - FLOOR_SIZE)) {
-			northLeaf->leafS = leaf;
-		}
-
-		//update west leaf
-		if (const auto& westLeaf = root.getLeaf(x - FLOOR_SIZE, y)) {
-			westLeaf->leafE = leaf;
-		}
-
-		//update south
-		if (const auto& southLeaf = root.getLeaf(x, y + FLOOR_SIZE)) {
-			leaf->leafS = southLeaf;
-		}
-
-		//update east
-		if (const auto& eastLeaf = root.getLeaf(x + FLOOR_SIZE, y)) {
-			leaf->leafE = eastLeaf;
-		}
+	if (not floorHandle.IsValid()) 
+    {
+		floorHandle = floor_pool.Allocate();
+		chunk->floor_handles[z] = floorHandle;
 	}
 
-	const auto& floor = leaf->createFloor(z);
-	const uint32_t offsetX = x & FLOOR_MASK;
-	const uint32_t offsetY = y & FLOOR_MASK;
+	Floor* floor = floor_pool.Get(floorHandle);
+	const uint32_t offsetX = x & Floor::Mask;
+	const uint32_t offsetY = y & Floor::Mask;
 
-	if (auto& tile = floor->tiles[offsetX][offsetY]) {
-		if (const auto& items = newTile->getItemList()) {
-			for (auto it = items->rbegin(), end = items->rend(); it != end; ++it) {
-				tile->addThing(*it);
-			}
+	if (auto& tile = floor->tiles[offsetX][offsetY]) 
+    {
+		if (const auto& items = newTile->getItemList()) 
+        {
+			for (auto it = items->rbegin(), end = items->rend(); it != end; ++it)
+				tile->addItem(*it);
+
 			items->clear();
 		}
 
-		if (const auto& ground = newTile->getGround()) {
-			tile->addThing(ground);
+		if (const auto& ground = newTile->getGround())
+        {
+			tile->addItem(ground);
 			newTile->setGround(nullptr);
 		}
-	} else {
+	}
+    else
+    {
+		newTile->setOwningChunk(chunkHandle);
 		tile = newTile;
+
+		chunk->SetTileBlockState(offsetX, offsetY, z,
+			newTile->hasFlag(TILESTATE_BLOCKPATH), newTile->hasFlag(TILESTATE_BLOCKSOLID), newTile->hasProperty(CONST_PROP_BLOCKPROJECTILE));
 	}
 }
 
 void Map::removeTile(const uint16_t x, const uint16_t y, const uint8_t z) const
 {
-	if (z >= MAP_MAX_LAYERS) {
-		return;
-	}
+    using namespace BlackTek::World;
 
-	const auto& leaf = QTreeNode::getLeafStatic<const QTreeLeafNode*, const QTreeNode*>(&root, x, y);
-	if (!leaf) {
+	if (z >= MaxLayers)
 		return;
-	}
 
-	const auto& floor = leaf->getFloor(z);
-	if (!floor) {
+	const auto chunkHandle = chunk_grid.FindChunk(ToChunkCoord(x, y));
+	const auto* chunk = chunk_grid.GetChunk(chunkHandle);
+
+	if (not chunk)
 		return;
-	}
 
-	if (const auto& tile = floor->tiles[x & FLOOR_MASK][y & FLOOR_MASK]) {
-		if (const auto& creatures = tile->getCreatures()) {
-			for (int32_t i = creatures->size(); --i >= 0;) {
-				if (const auto& player = (*creatures)[i]->getPlayer()) {
+	const auto floorHandle = chunk->floor_handles[z];
+	const auto* floor = floor_pool.Get(floorHandle);
+
+	if (not floor)
+		return;
+
+	if (const auto& tile = floor->tiles[x & Floor::Mask][y & Floor::Mask])
+    {
+		if (const auto& creatures = tile->getCreatures())
+        {
+			for (int32_t i = creatures->size(); --i >= 0;)
+            {
+				if (const auto& player = creatures->getList()[i]->getPlayer())
 					g_game.internalTeleport(player, player->getTown()->getTemplePosition(), false, FLAG_NOLIMIT);
-				} else {
-					g_game.removeCreature((*creatures)[i]);
-				}
+				else 
+					g_game.removeCreature(creatures->getList()[i]);
 			}
 		}
 
-		if (const auto& items = tile->getItemList()) {
-			for (auto it = items->begin(), end = items->end(); it != end; ++it) {
+		if (const auto& items = tile->getItemList()) 
+        {
+			for (auto it = items->begin(), end = items->end(); it != end; ++it)
 				g_game.internalRemoveItem(*it);
-			}
 		}
 
-		if (const auto& ground = tile->getGround()) {
+		if (const auto& ground = tile->getGround())
+        {
 			g_game.internalRemoveItem(ground);
 			tile->setGround(nullptr);
 		}
@@ -181,7 +228,7 @@ bool Map::placeCreature(const Position& centerPos, CreaturePtr creature, bool ex
 
 	auto tile = getTile(centerPos.x, centerPos.y, centerPos.z);
 	if (tile) {
-		placeInPZ = tile->hasFlag(TILESTATE_PROTECTIONZONE);
+		placeInPZ = Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::Protection);
 		uint32_t flags = FLAG_IGNOREBLOCKITEM;
 		if (const auto& player = creature->getPlayer()) {
 			if (player->isAccountManager()) {
@@ -191,15 +238,15 @@ bool Map::placeCreature(const Position& centerPos, CreaturePtr creature, bool ex
         ReturnValue ret = RETURNVALUE_NOERROR;
         if (creature->getCreatureSubType() == CreatureSubType::Player)
         {
-            ret = tile->queryAdd(std::static_pointer_cast<Player>(creature), FLAG_IGNOREBLOCKITEM);
+            ret = tile->canEnter(std::static_pointer_cast<Player>(creature), FLAG_IGNOREBLOCKITEM);
         }
         else if (creature->getCreatureSubType() == CreatureSubType::Monster)
         {
-            ret = tile->queryAdd(std::static_pointer_cast<Monster>(creature), FLAG_IGNOREBLOCKITEM);
+            ret = tile->canEnter(std::static_pointer_cast<Monster>(creature), FLAG_IGNOREBLOCKITEM);
         }
         else if (creature->getCreatureSubType() == CreatureSubType::Npc)
         {
-            ret = tile->queryAdd(std::static_pointer_cast<Npc>(creature), FLAG_IGNOREBLOCKITEM);
+            ret = tile->canEnter(std::static_pointer_cast<Npc>(creature), FLAG_IGNOREBLOCKITEM);
         }
 		foundTile = forceLogin || ret == RETURNVALUE_NOERROR || ret == RETURNVALUE_PLAYERISNOTINVITED;
 	} else {
@@ -235,22 +282,22 @@ bool Map::placeCreature(const Position& centerPos, CreaturePtr creature, bool ex
 			Position tryPos(centerPos.x + it.first, centerPos.y + it.second, centerPos.z);
 
 			tile = getTile(tryPos.x, tryPos.y, tryPos.z);
-			if (!tile || (placeInPZ && !tile->hasFlag(TILESTATE_PROTECTIONZONE))) {
+			if (!tile || (placeInPZ && !Zones::ZoneManager::HasWorldFlag(tile->getPosition(), Zones::ZoneFlag::Protection))) {
 				continue;
 			}
 
             ReturnValue ret = RETURNVALUE_NOERROR;
             if (creature->getCreatureSubType() == CreatureSubType::Player)
             {
-                ret = tile->queryAdd(std::static_pointer_cast<Player>(creature), 0);
+                ret = tile->canEnter(std::static_pointer_cast<Player>(creature), 0);
             }
             else if (creature->getCreatureSubType() == CreatureSubType::Monster)
             {
-                ret = tile->queryAdd(std::static_pointer_cast<Monster>(creature), 0);
+                ret = tile->canEnter(std::static_pointer_cast<Monster>(creature), 0);
             }
             else if (creature->getCreatureSubType() == CreatureSubType::Npc)
             {
-                ret = tile->queryAdd(std::static_pointer_cast<Npc>(creature), 0);
+                ret = tile->canEnter(std::static_pointer_cast<Npc>(creature), 0);
             }
 
 			if (ret == RETURNVALUE_NOERROR) {
@@ -266,111 +313,156 @@ bool Map::placeCreature(const Position& centerPos, CreaturePtr creature, bool ex
 		}
 	}
 
-	int32_t index = 0;
 	uint32_t flags = 0;
-	ItemPtr toItem = nullptr;
-	auto toCylinder = tile->queryDestination(index, creature, toItem, flags)->getCylinder();
-	toCylinder->internalAddThing(creature);
+	TilePtr destTile = tile->resolveCreatureDestination(creature, flags);
+	destTile->ensureCreatures().addCreatureSilently(creature);
 
-	const Position& dest = toCylinder->getPosition();
-	getQTNode(dest.x, dest.y)->addCreature(creature);
+	const Position& dest = destTile->getPosition();
+    if (auto* chunk = getChunk(dest.x, dest.y))
+        chunk->AddCreature(creature);
+    else
+        BlackTek::Console::DebugLog("Creature placed on non-existent tile, and has escaped spectator tracking as a result!");
+
 	return true;
 }
 
 void Map::moveCreature(CreaturePtr& creature, const TilePtr& newTile, bool forceTeleport/* = false*/)
 {
 	const auto& oldTile = creature->getTile();
-	// If the tile does not have the creature it means that the creature is ready for elimination, we skip the move.
-	if (!oldTile->hasCreature(creature)) {
+
+	if (not oldTile->hasCreature(creature))
 		return;
-	}
+
 	Position oldPos = oldTile->getPosition();
 	Position newPos = newTile->getPosition();
 
-	bool teleport = forceTeleport || !newTile->getGround() || !Position::areInRange<1, 1, 0>(oldPos, newPos);
+	bool teleport = forceTeleport or not newTile->getGround() or not Position::areInRange<1, 1, 0>(oldPos, newPos);
 
 	SpectatorVec spectators;
-	if (!teleport) {
-		// 1-step walk: a single expanded scan covers spectators of both old and new positions,
-		// avoiding a second getSpectators call and the O(n²) addSpectators merge entirely.
-		getSpectators(spectators, oldPos, true, false,
-		              maxViewportX + 1, maxViewportX + 1,
-		              maxViewportY + 1, maxViewportY + 1);
-	} else {
+	if (not teleport)
+    {
+		getSpectators(spectators, oldPos, true, false, maxViewportX + 1, maxViewportX + 1, maxViewportY + 1, maxViewportY + 1);
+	}
+    else
+    {
 		SpectatorVec newPosSpectators;
 		getSpectators(spectators, oldPos, true);
 		getSpectators(newPosSpectators, newPos, true);
 		spectators.addSpectators(newPosSpectators);
 	}
 
-	std::vector<int32_t> oldStackPosVector;
+	const Tile::UniformStackIndex oldStackIndex = oldTile->getUniformClientIndexOfCreature(creature);
+
+	thread_local std::vector<int32_t> oldStackPosVector;
+	oldStackPosVector.clear();
+
 	for (const auto& c : spectators.players())
     {
 		const auto& tmpPlayer = std::static_pointer_cast<Player>(c);
 
-		if (tmpPlayer->canSeeCreature(creature))
-			oldStackPosVector.push_back(oldTile->getClientIndexOfCreature(tmpPlayer, creature));
-		else
+		if (not tmpPlayer->canSeeCreature(creature))
+		{
 			oldStackPosVector.push_back(-1);
+			continue;
+		}
+
+		oldStackPosVector.push_back(oldStackIndex.uniform ? oldStackIndex.index : oldTile->getClientIndexOfCreature(tmpPlayer, creature));
 	}
 
-	//remove the creature
-	oldTile->removeThing(creature, 0);
-
-	const auto& leaf = getQTNode(oldPos.x, oldPos.y);
-	const auto& new_leaf = getQTNode(newPos.x, newPos.y);
-
-	// Switch the node ownership
-	if (leaf != new_leaf) {
-		leaf->removeCreature(creature);
-		new_leaf->addCreature(creature);
+	if (const auto creatures = oldTile->getCreatures())
+	{
+		creatures->removeCreature(creature);
 	}
 
-	//add the creature
-	newTile->addThing(creature);
+	newTile->ensureCreatures().addCreature(creature);
 
-	if (!teleport) {
-		if (oldPos.y > newPos.y) {
+	using BlackTek::World::Chunk;
+	using BlackTek::World::ChunkHandle;
+
+	const ChunkHandle oldChunkHandle = oldTile->getOwningChunk();
+	const ChunkHandle newChunkHandle = newTile->getOwningChunk();
+
+	if (oldChunkHandle == newChunkHandle)
+    {
+		if (Chunk* chunk = getChunk(newChunkHandle)) 
+			chunk->UpdateCreaturePosition(creature, newPos);
+	} 
+    else
+    {
+		if (Chunk* oldChunk = getChunk(oldChunkHandle))
+			oldChunk->RemoveCreature(creature);
+
+		if (Chunk* newChunk = getChunk(newChunkHandle)) 
+			newChunk->AddCreature(creature);
+
+        else 
+            BlackTek::Console::DebugLog("Creature placed on non-existent tile, and has escaped spectator tracking as a result!");
+	}
+
+	if (not teleport)
+    {
+		if (oldPos.y > newPos.y)
 			creature->setDirection(DIRECTION_NORTH);
-		} else if (oldPos.y < newPos.y) {
-			creature->setDirection(DIRECTION_SOUTH);
-		}
 
-		if (oldPos.x < newPos.x) {
+        else if (oldPos.y < newPos.y)
+			creature->setDirection(DIRECTION_SOUTH);
+
+		if (oldPos.x < newPos.x)
 			creature->setDirection(DIRECTION_EAST);
-		} else if (oldPos.x > newPos.x) {
+
+		else if (oldPos.x > newPos.x)
 			creature->setDirection(DIRECTION_WEST);
-		}
 	}
 
-	// send to client
+	const Tile::UniformStackIndex newStackIndex = newTile->getUniformClientIndexOfCreature(creature);
+
 	size_t i = 0;
 	for (const auto& c : spectators.players())
     {
 		const auto& tmpPlayer = std::static_pointer_cast<Player>(c);
 
-		// Use the correct stackpos
 		if (const int32_t& stackpos = oldStackPosVector[i++]; stackpos != -1)
-			tmpPlayer->sendCreatureMove(creature, newPos, newTile->getClientIndexOfCreature(tmpPlayer, creature), oldPos, stackpos, teleport);
+		{
+			const int32_t newStackpos = newStackIndex.uniform ? newStackIndex.index : newTile->getClientIndexOfCreature(tmpPlayer, creature);
+			tmpPlayer->sendCreatureMove(creature, newPos, newStackpos, oldPos, stackpos, teleport);
+		}
 	}
 
-    if (creature->getCreatureSubType() == CreatureSubType::Player
-        or (creature->getCreatureSubType() == CreatureSubType::Monster and creature->getMaster() and creature->getMaster()->getCreatureSubType() == CreatureSubType::Player))
+    if (creature->getCreatureSubType() == CreatureSubType::Player or (creature->getCreatureSubType() == CreatureSubType::Monster and creature->getMaster() and creature->getMaster()->getCreatureSubType() == CreatureSubType::Player))
     {
         for (const auto& c : spectators.monsters())
             static_cast<Monster*>(c.get())->setIdle(false);
     }
 
-    // event method
-	for (const auto& spectator : spectators)
-		spectator->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
+	const std::span<const CreaturePtr> spectators_span(spectators.begin(), spectators.size());
 
-	oldTile->postRemoveNotification(creature, newTile, 0);
-	newTile->postAddNotification(creature, oldTile, 0);
+	for (const auto& spectator : spectators)
+	{
+		switch (spectator->getCreatureSubType())
+		{
+			case CreatureSubType::Player:
+				static_cast<Player*>(spectator.get())->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
+				break;
+			case CreatureSubType::Monster:
+				static_cast<Monster*>(spectator.get())->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport, spectators_span);
+				break;
+			case CreatureSubType::Npc:
+				static_cast<Npc*>(spectator.get())->onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
+				break;
+			default:
+				break;
+		}
+	}
+
+	oldTile->notifyCreatureRemoved(creature, newTile, spectators_span);
+	newTile->notifyCreatureAdded(creature, oldTile, spectators_span);
 }
 
 void Map::getSpectatorsInternal(SpectatorVec& spectators, const Position& centerPos, const int32_t minRangeX, const int32_t maxRangeX, const int32_t minRangeY, const int32_t maxRangeY, const int32_t minRangeZ, const int32_t maxRangeZ, const bool onlyPlayers) const
 {
+    using namespace BlackTek::World;
+    using namespace BlackTek::SIMD;
+
     const auto min_y = centerPos.y + minRangeY;
     const auto min_x = centerPos.x + minRangeX;
     const auto max_y = centerPos.y + maxRangeY;
@@ -389,155 +481,151 @@ void Map::getSpectatorsInternal(SpectatorVec& spectators, const Position& center
     const int32_t base_xMin = min_x + minoffset;
     const int32_t base_xMax = max_x + maxoffset;
 
-    // Precompute XY bounds for every valid Z level so the inner loop does
-    // a table lookup instead of 4 additions per creature.
     struct ZBounds { int32_t yMin, yMax, xMin, xMax; };
-    ZBounds zbounds[MAP_MAX_LAYERS];
-    for (int32_t z = minRangeZ; z <= maxRangeZ; ++z) {
+    ZBounds zbounds[MaxLayers];
+
+    for (int32_t z = 0; z < MaxLayers; ++z)
+    {
+        if (z < minRangeZ or z > maxRangeZ)
+        {
+            zbounds[z] = { 1, 0, 1, 0 };
+            continue;
+        }
         const int32_t off = static_cast<int32_t>(centerPos.getZ()) - z;
         zbounds[z] = { base_yMin + off, base_yMax + off, base_xMin + off, base_xMax + off };
     }
 
-    const int32_t startx1 = x1 - (x1 % FLOOR_SIZE);
-    const int32_t starty1 = y1 - (y1 % FLOOR_SIZE);
-    const int32_t endx2 = x2 - (x2 % FLOOR_SIZE);
-    const int32_t endy2 = y2 - (y2 % FLOOR_SIZE);
+    const int32_t startx1 = x1 - (x1 % Floor::Size);
+    const int32_t starty1 = y1 - (y1 % Floor::Size);
+    const int32_t endx2 = x2 - (x2 % Floor::Size);
+    const int32_t endy2 = y2 - (y2 % Floor::Size);
 
-    const auto& startLeaf = QTreeNode::getLeafStatic<const QTreeLeafNode*, const QTreeNode*>(&root, startx1, starty1);
-    auto leafS = startLeaf;
+    const int32_t startChunkX = startx1 >> Floor::Bits;
+    const int32_t startChunkY = starty1 >> Floor::Bits;
+    const int32_t endChunkX = endx2 >> Floor::Bits;
+    const int32_t endChunkY = endy2 >> Floor::Bits;
 
-    for (int_fast32_t ny = starty1; ny <= endy2; ny += FLOOR_SIZE) {
-        const QTreeLeafNode* leafE = leafS;
-        for (int_fast32_t nx = startx1; nx <= endx2; nx += FLOOR_SIZE) {
-            if (leafE) {
-                const auto& node_list = (onlyPlayers ? leafE->player_list : leafE->creature_list);
-                for (const CreaturePtr& creature : node_list) {
-                    const Position& cpos = creature->getPosition();
-                    if (minRangeZ > cpos.z || maxRangeZ < cpos.z) {
-                        continue;
+    ChunkHandle rowStartHandle = chunk_grid.FindChunk({ startChunkX, startChunkY });
+
+    thread_local std::vector<uint8_t> spectatorMaskScratch;
+
+    const auto clampToCoord = [](int32_t value) noexcept -> MapCoord
+    {
+        return static_cast<MapCoord>(std::clamp(value, 0, 0xFFFF));
+    };
+
+    for (int32_t chunkY = startChunkY; chunkY <= endChunkY; ++chunkY)
+    {
+        ChunkHandle current = rowStartHandle;
+        for (int32_t chunkX = startChunkX; chunkX <= endChunkX; ++chunkX)
+        {
+            if (const Chunk* chunk = chunk_grid.GetChunk(current))
+            {
+                const size_t creatureCount = onlyPlayers ? chunk->player_count : chunk->creature_ptrs.size();
+                const bool sameFloor = creatureCount > 0 and chunk->AllCreaturesSameFloor();
+                const uint8_t firstZ = sameFloor ? chunk->creature_z[0] : 0;
+
+                if (sameFloor and creatureCount > 0)
+                {
+                    if (const auto& b = zbounds[firstZ];
+                        b.yMin <= b.yMax and b.xMin <= b.xMax and
+                        b.xMax >= 0 and b.xMin <= 0xFFFF and
+                        b.yMax >= 0 and b.yMin <= 0xFFFF)
+                    {
+                        spectatorMaskScratch.resize(creatureCount);
+                        compute_spectator_mask(chunk->creature_x.data(), chunk->creature_y.data(), creatureCount, clampToCoord(b.xMin), clampToCoord(b.xMax),clampToCoord(b.yMin), clampToCoord(b.yMax), spectatorMaskScratch.data());
+
+                        for (size_t i = 0; i < creatureCount; ++i)
+                        {
+                            if (spectatorMaskScratch[i])
+                                spectators.emplace_back(chunk->creature_ptrs[i]);
+                        }
                     }
-                    const auto& b = zbounds[cpos.z];
-                    if (b.yMin > cpos.y || b.yMax < cpos.y || b.xMin > cpos.x || b.xMax < cpos.x) {
-                        continue;
-                    }
-                    spectators.emplace_back(creature);
                 }
-                leafE = leafE->leafE;
-            } else {
-                leafE = QTreeNode::getLeafStatic<const QTreeLeafNode*, const QTreeNode*>(&root, nx + FLOOR_SIZE, ny);
+                else
+                {
+                    for (size_t i = 0; i < creatureCount; ++i)
+                    {
+                        const uint16_t cx = chunk->creature_x[i];
+                        const uint16_t cy = chunk->creature_y[i];
+                        const uint8_t cz = chunk->creature_z[i];
+                        const auto& b = zbounds[cz];
+
+                        if (b.yMin > cy or b.yMax < cy or b.xMin > cx or b.xMax < cx)
+                            continue;
+
+                        spectators.emplace_back(chunk->creature_ptrs[i]);
+                    }
+                }
+
+                current = chunk->east_neighbor;
+            }
+            else
+            {
+                current = chunk_grid.FindChunk({ chunkX + 1, chunkY });
             }
         }
 
-        if (leafS) {
-            leafS = leafS->leafS;
-        } else {
-            leafS = QTreeNode::getLeafStatic<const QTreeLeafNode*, const QTreeNode*>(&root, startx1, ny + FLOOR_SIZE);
-        }
+        if (const Chunk* rowStartChunk = chunk_grid.GetChunk(rowStartHandle))
+            rowStartHandle = rowStartChunk->south_neighbor;
+
+        else
+            rowStartHandle = chunk_grid.FindChunk({ startChunkX, chunkY + 1 });
     }
 
     if (onlyPlayers)
-    {
         spectators.setPlayersOnlyMode();
-    }
+
     else
-    {
         spectators.partitionByType();
-    }
 }
 
-void Map::getSpectators(SpectatorVec& spectators, const Position& centerPos, const bool multifloor /*= false*/, bool onlyPlayers /*= false*/, int32_t minRangeX /*= 0*/, int32_t maxRangeX /*= 0*/, int32_t minRangeY /*= 0*/, int32_t maxRangeY /*= 0*/)
+void Map::getSpectators(SpectatorVec& spectators, const Position& centerPos, const bool multifloor /*= false*/, const bool onlyPlayers /*= false*/, int32_t minRangeX /*= 0*/, int32_t maxRangeX /*= 0*/, int32_t minRangeY /*= 0*/, int32_t maxRangeY /*= 0*/)
 {
-    if (centerPos.z >= MAP_MAX_LAYERS) {
+    if (centerPos.z >= BlackTek::World::MaxLayers)
+    {
         return;
     }
-
-    bool foundCache = false;
-    bool cacheResult = false;
 
     minRangeX = (minRangeX == 0 ? -maxViewportX : -minRangeX);
     maxRangeX = (maxRangeX == 0 ? maxViewportX : maxRangeX);
     minRangeY = (minRangeY == 0 ? -maxViewportY : -minRangeY);
     maxRangeY = (maxRangeY == 0 ? maxViewportY : maxRangeY);
 
-    chunkKey.minRangeX = minRangeX;
-	chunkKey.maxRangeX = maxRangeX;
-	chunkKey.minRangeY = minRangeY;
-	chunkKey.maxRangeY = maxRangeY;
-	chunkKey.x = centerPos.x;
-	chunkKey.y = centerPos.y;
-	chunkKey.z = centerPos.z;
-	chunkKey.multifloor = multifloor;
-	chunkKey.onlyPlayers = onlyPlayers;
+    int32_t minRangeZ;
+    int32_t maxRangeZ;
 
-    if (const auto it = chunksSpectatorCache.find(chunkKey); it != chunksSpectatorCache.end()) {
-		if (!spectators.empty()) {
-			spectators.addSpectators(it->second);
-		} else {
-			spectators = it->second;
-		}
-		foundCache = true;
-	} else {
-		cacheResult = true;
-	}
-
-    if (minRangeX == -maxViewportX && maxRangeX == maxViewportX && minRangeY == -maxViewportY && maxRangeY == maxViewportY && multifloor) {
-        if (onlyPlayers) {
-	        if (const auto it = playersSpectatorCache.find(centerPos); it != playersSpectatorCache.end()) {
-                spectators.addSpectators(it->second);
-                foundCache = true;
-            }
+    if (multifloor)
+    {
+        if (centerPos.z > 7)
+        {
+            // underground (8->15)
+            minRangeZ = std::max<int32_t>(centerPos.getZ() - 2, 0);
+            maxRangeZ = std::min<int32_t>(centerPos.getZ() + 2, BlackTek::World::MaxLayers - 1);
         }
-
-        if (!foundCache) {
-	        if (const auto it = spectatorCache.find(centerPos); it != spectatorCache.end()) {
-                if (!onlyPlayers) {
-                    const SpectatorVec& cachedSpectators = it->second;
-                    spectators.addSpectators(cachedSpectators);
-                } else {
-                    for (const auto& spectator : it->second) {
-                        if (spectator->getPlayer()) {
-                            spectators.emplace_back(spectator);
-                        }
-                    }
-                    spectators.setPlayersOnlyMode();
-                }
-                foundCache = true;
-            } else {
-                cacheResult = true;
-            }
+        else if (centerPos.z == 6)
+        {
+            minRangeZ = 0;
+            maxRangeZ = 8;
+        }
+        else if (centerPos.z == 7)
+        {
+            minRangeZ = 0;
+            maxRangeZ = 9;
+        }
+        else
+        {
+            minRangeZ = 0;
+            maxRangeZ = 7;
         }
     }
-
-    if (!foundCache) {
-        int32_t minRangeZ;
-        int32_t maxRangeZ;
-
-        if (multifloor) {
-            if (centerPos.z > 7) {
-                //underground (8->15)
-                minRangeZ = std::max<int32_t>(centerPos.getZ() - 2, 0);
-                maxRangeZ = std::min<int32_t>(centerPos.getZ() + 2, MAP_MAX_LAYERS - 1);
-            } else if (centerPos.z == 6) {
-                minRangeZ = 0;
-                maxRangeZ = 8;
-            } else if (centerPos.z == 7) {
-                minRangeZ = 0;
-                maxRangeZ = 9;
-            } else {
-                minRangeZ = 0;
-                maxRangeZ = 7;
-            }
-        } else {
-            minRangeZ = centerPos.z;
-            maxRangeZ = centerPos.z;
-        }
-
-        getSpectatorsInternal(spectators, centerPos, minRangeX, maxRangeX, minRangeY, maxRangeY, minRangeZ, maxRangeZ, onlyPlayers);
-
-        if (cacheResult) {
-            chunksSpectatorCache.emplace(chunkKey, spectators);
-        }
+    else
+    {
+        minRangeZ = centerPos.z;
+        maxRangeZ = centerPos.z;
     }
+
+    getSpectatorsInternal(spectators, centerPos, minRangeX, maxRangeX, minRangeY, maxRangeY, minRangeZ, maxRangeZ, onlyPlayers);
 }
 
 // Todo: Handroll this implementation out, building custom constructors for the spectators if we must, which will allow us to utilize the 
@@ -548,16 +636,6 @@ SpectatorVec Map::fetchSpectators(const Position& centerPos, const bool multiflo
     SpectatorVec spectators;
     getSpectators(spectators, centerPos, multifloor, onlyPlayers, minRangeX, maxRangeX, minRangeY, maxRangeY);
     return spectators;
-}
-
-void Map::clearSpectatorCache()
-{
-	spectatorCache.clear();
-}
-
-void Map::clearPlayersSpectatorCache()
-{
-	playersSpectatorCache.clear();
 }
 
 bool Map::canThrowObjectTo(const Position& fromPos, const Position& toPos, const bool checkLineOfSight /*= true*/, const bool sameFloor /*= false*/,
@@ -572,16 +650,44 @@ bool Map::canThrowObjectTo(const Position& fromPos, const Position& toPos, const
 
 bool Map::isTileClear(const uint16_t x, const uint16_t y, const uint8_t z, const bool blockFloor /*= false*/)
 {
-	auto tile = getTile(x, y, z);
-	if (!tile) {
-		return true;
-	}
+    using namespace BlackTek::World;
 
-	if (blockFloor && tile->getGround()) {
-		return false;
-	}
+    if (not blockFloor and z < MaxLayers)
+    {
+        const ChunkCoord chunkCoord = ToChunkCoord(x, y);
+        const Chunk* chunk = last_chunk;
 
-	return !tile->hasProperty(CONST_PROP_BLOCKPROJECTILE);
+        if (not chunk or chunkCoord != last_chunk_coord)
+        {
+            const auto chunkHandle = chunk_grid.FindChunk(chunkCoord);
+            chunk = chunk_grid.GetChunk(chunkHandle);
+
+            if (chunk)
+            {
+                last_chunk_coord = chunkCoord;
+                last_chunk = chunk;
+            }
+        }
+
+        if (not chunk)
+            return true;
+
+        const uint32_t bitIndex = (y & Floor::Mask) * Floor::Size + (x & Floor::Mask);
+        return not ((chunk->block_projectile_mask[z] >> bitIndex) & 1u);
+    }
+
+    const auto& tile = getTile(x, y, z);
+    if (not tile)
+    {
+        return true;
+    }
+
+    if (blockFloor and tile->getGround())
+    {
+        return false;
+    }
+
+    return not tile->hasProperty(CONST_PROP_BLOCKPROJECTILE);
 }
 
 namespace {
@@ -716,26 +822,32 @@ bool Map::isSightClear(const Position& fromPos, const Position& toPos, const boo
 	return checkSightLine(fromPos.x, fromPos.y, toPos.x, toPos.y, fromPos.z);
 }
 
-TilePtr Map::canWalkTo(CreaturePtr& creature, const Position& pos)
+const TilePtr& Map::canWalkTo(CreaturePtr& creature, const Position& pos)
 {
-	int32_t walkCache = 2;
-	if (creature->getCreatureSubType() == CreatureSubType::Monster)
-	{
-		walkCache = std::static_pointer_cast<Monster>(creature)->getWalkCache(pos);
-	}
+    int32_t walkCache = 2;
+    if (creature->getCreatureSubType() == CreatureSubType::Monster)
+    {
+        walkCache = std::static_pointer_cast<Monster>(creature)->getWalkCache(pos);
+    }
 
-	if (walkCache == 0) {
-		return nullptr;
-	} else if (walkCache == 1) {
-		return getTile(pos.x, pos.y, pos.z);
-	}
+    if (walkCache == 0)
+    {
+        return null_tile;
+    }
 
-	//used for non-cached tiles
-	const auto& tile = getTile(pos.x, pos.y, pos.z);
-	if (creature->getTile() != tile) {
-		if (!tile) {
-			return nullptr;
-		}
+    if (walkCache == 1)
+    {
+        return getTile(pos.x, pos.y, pos.z);
+    }
+
+    // used for non-cached tiles
+    const auto& tile = getTile(pos.x, pos.y, pos.z);
+    if (creature->getTile() != tile)
+    {
+        if (not tile)
+        {
+            return null_tile;
+        }
 
         uint32_t flags = FLAG_PATHFINDING;
         const auto subtype = creature->getCreatureSubType();
@@ -747,23 +859,23 @@ TilePtr Map::canWalkTo(CreaturePtr& creature, const Position& pos)
         ReturnValue ret = RETURNVALUE_NOERROR;
         if (subtype == CreatureSubType::Player)
         {
-            ret = tile->queryAdd(std::static_pointer_cast<Player>(creature), flags);
+            ret = tile->canEnter(std::static_pointer_cast<Player>(creature), flags);
         }
         else if (subtype == CreatureSubType::Monster)
         {
-            ret = tile->queryAdd(std::static_pointer_cast<Monster>(creature), flags);
+            ret = tile->canEnter(std::static_pointer_cast<Monster>(creature), flags);
         }
         else if (subtype == CreatureSubType::Npc)
         {
-            ret = tile->queryAdd(std::static_pointer_cast<Npc>(creature), flags);
+            ret = tile->canEnter(std::static_pointer_cast<Npc>(creature), flags);
         }
 
         if (ret != RETURNVALUE_NOERROR)
         {
-            return nullptr;
+            return null_tile;
         }
-	}
-	return tile;
+    }
+    return tile;
 }
 
 namespace
@@ -912,7 +1024,7 @@ bool Map::getPathMatching(CreaturePtr& creature, std::vector<Direction>& dirList
             }
 
             auto* neighbor_node = nodes.GetNodeByPosition(position.x, position.y);
-            TilePtr tile = neighbor_node ? getTile(position.x, position.y, position.z) : canWalkTo(creature, position);
+            const TilePtr& tile = neighbor_node ? getTile(position.x, position.y, position.z) : canWalkTo(creature, position);
 
             if (not tile)
             {
@@ -1242,7 +1354,7 @@ int_fast32_t AStarNodes::GetMapWalkCost(const AStarNode* node, const Position& n
     return MAP_NORMALWALKCOST;
 }
 
-int_fast32_t AStarNodes::GetTileWalkCost(const CreaturePtr creature, const TileConstPtr& tile)
+int_fast32_t AStarNodes::GetTileWalkCost(const CreaturePtr& creature, const TileConstPtr& tile)
 {
     int_fast32_t cost = 0;
 
@@ -1264,96 +1376,6 @@ int_fast32_t AStarNodes::GetTileWalkCost(const CreaturePtr creature, const TileC
     }
 
     return cost;
-}
-
-// Floor
-Floor::~Floor()
-{
-	for (auto& row : tiles) {
-		for (auto& tile : row) {
-			tile.reset();
-		}
-	}
-}
-
-// QTreeNode
-QTreeNode::~QTreeNode()
-{
-	for (const auto* ptr : child) {
-		delete ptr;
-	}
-}
-
-QTreeLeafNode* QTreeNode::getLeaf(const uint32_t x, const uint32_t y)
-{
-	if (leaf) {
-		return static_cast<QTreeLeafNode*>(this);
-	}
-
-	const auto& node = child[((x & 0x8000) >> 15) | ((y & 0x8000) >> 14)];
-	if (!node) {
-		return nullptr;
-	}
-	return node->getLeaf(x << 1, y << 1);
-}
-
-QTreeLeafNode* QTreeNode::createLeaf(const uint32_t x, const uint32_t y, const uint32_t level)
-{
-	if (!isLeaf()) {
-		const uint32_t index = ((x & 0x8000) >> 15) | ((y & 0x8000) >> 14);
-		if (!child[index]) {
-			if (level != FLOOR_BITS) {
-				child[index] = new QTreeNode();
-			} else {
-				child[index] = new QTreeLeafNode();
-				QTreeLeafNode::newLeaf = true;
-			}
-		}
-		return child[index]->createLeaf(x * 2, y * 2, level - 1);
-	}
-	return static_cast<QTreeLeafNode*>(this);
-}
-
-// QTreeLeafNode
-bool QTreeLeafNode::newLeaf = false;
-
-QTreeLeafNode::~QTreeLeafNode()
-{
-	for (const auto* ptr : array) {
-		delete ptr;
-	}
-}
-
-Floor* QTreeLeafNode::createFloor(const uint32_t z)
-{
-	if (!array[z]) {
-		array[z] = new Floor();
-	}
-	return array[z];
-}
-
-void QTreeLeafNode::addCreature(const CreaturePtr& c)
-{
-	creature_list.push_back(c);
-
-	if (c->getPlayer()) {
-		player_list.push_back(c);
-	}
-}
-
-void QTreeLeafNode::removeCreature(const CreaturePtr& c)
-{
-	auto iter = std::ranges::find(creature_list, c);
-	assert(iter != creature_list.end());
-	*iter = creature_list.back();
-	creature_list.pop_back();
-
-	if (c->getPlayer()) {
-		iter = std::ranges::find(player_list, c);
-		assert(iter != player_list.end());
-		*iter = player_list.back();
-		player_list.pop_back();
-	}
 }
 
 uint32_t Map::clean()

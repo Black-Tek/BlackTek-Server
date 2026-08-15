@@ -5,9 +5,9 @@
 #define FS_SPELLS_H
 
 #include "player.h"
-#include "actions.h"
 #include "talkaction.h"
 #include "baseevents.h"
+#include "gamemodel.h"
 
 class InstantSpell;
 class RuneSpell;
@@ -37,7 +37,6 @@ class Spells final : public BaseEvents
 		TalkActionResult_t playerSaySpell(const PlayerPtr& player, std::string& words);
 
 		static Position getCasterPosition(const CreaturePtr& creature, Direction dir);
-		std::string_view getScriptBaseName() const override { return "spells"; }
 
 		const std::map<std::string, InstantSpell>& getInstantSpells() const {
 			return instants;
@@ -51,8 +50,6 @@ class Spells final : public BaseEvents
 
 	private:
 		LuaScriptInterface& getScriptInterface() override;
-		Event_ptr getEvent(const std::string& nodeName) override;
-		bool registerEvent(Event_ptr event, const pugi::xml_node& node) override;
 
 		std::map<uint16_t, RuneSpell> runes;
 		std::map<std::string, InstantSpell> instants;
@@ -82,9 +79,6 @@ class CombatSpell final : public Event, public BaseSpell
 
 		bool castSpell(const CreaturePtr& creature) override;
 		bool castSpell(const CreaturePtr& creature, const CreaturePtr& target) override;
-		bool configureEvent(const pugi::xml_node&) override {
-			return true;
-		}
 
 		//scripting
 		bool executeCastSpell(const CreaturePtr& creature, const LuaVariant& var);
@@ -429,22 +423,23 @@ class InstantSpell final : public TalkAction, public Spell
 		bool casterTargetOrDirection = false;
 };
 
-class RuneSpell final : public Action, public Spell
+class RuneSpell final : public Event, public Spell
 {
 	public:
-		explicit RuneSpell(LuaScriptInterface* interface) : Action(interface) {}
+		explicit RuneSpell(LuaScriptInterface* interface) : Event(interface) {}
 
-		ReturnValue canExecuteAction(const PlayerConstPtr& player, const Position& toPos) override;
-	
-		bool hasOwnErrorHandler() override {
+		[[nodiscard]] ReturnValue canExecuteAction(const PlayerConstPtr& player, const Position& toPos);
+
+		[[nodiscard]] bool hasOwnErrorHandler() const noexcept {
 			return true;
 		}
-	
-		ThingPtr getTarget(const PlayerPtr&, const CreaturePtr& targetCreature, const Position&, uint8_t) const override {
-			return targetCreature; // implicit upcasts are handled automatically
+
+		[[nodiscard]] BlackTek::GameModel getTarget(const PlayerPtr&, const CreaturePtr& targetCreature, const Position&, uint8_t) const noexcept
+		{
+			return BlackTek::GameModel{targetCreature, nullptr};
 		}
 
-		bool executeUse(const PlayerPtr& player, const ItemPtr& item, const Position& fromPosition, const ThingPtr& target, const Position& toPosition, bool isHotkey) override;
+		bool executeUse(const PlayerPtr& player, const ItemPtr& item, const Position& fromPosition, const BlackTek::GameModel& target, const Position& toPosition, bool isHotkey);
 
 		bool castSpell(const CreaturePtr& creature) override;
 		bool castSpell(const CreaturePtr& creature, const CreaturePtr& target) override;
@@ -455,24 +450,48 @@ class RuneSpell final : public Action, public Spell
 		bool isInstant() const override {
 			return false;
 		}
-	
+
 		uint16_t getRuneItemId() const {
 			return runeId;
 		}
-	
+
 		void setRuneItemId(uint16_t i) {
 			runeId = i;
 		}
-	
+
 		uint32_t getCharges() const {
 			return charges;
 		}
-	
+
 		void setCharges(uint32_t c) {
 			if (c > 0) {
 				hasCharges = true;
 			}
 			charges = c;
+		}
+
+		[[nodiscard]] bool getAllowFarUse() const noexcept {
+			return allowFarUse;
+		}
+
+		void setAllowFarUse(bool v) noexcept {
+			allowFarUse = v;
+		}
+
+		[[nodiscard]] bool getCheckLineOfSight() const noexcept {
+			return checkLineOfSight;
+		}
+
+		void setCheckLineOfSight(bool v) noexcept {
+			checkLineOfSight = v;
+		}
+
+		[[nodiscard]] bool getCheckFloor() const noexcept {
+			return checkFloor;
+		}
+
+		void setCheckFloor(bool v) noexcept {
+			checkFloor = v;
 		}
 
 	private:
@@ -483,6 +502,10 @@ class RuneSpell final : public Action, public Spell
 		uint16_t runeId = 0;
 		uint32_t charges = 0;
 		bool hasCharges = false;
+
+		bool allowFarUse = false;
+		bool checkFloor = true;
+		bool checkLineOfSight = true;
 };
 
 #endif

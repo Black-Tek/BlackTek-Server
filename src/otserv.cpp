@@ -497,8 +497,9 @@ void mainLoader(int, char*[], ServiceManager* services)
 	Console::printProgress("Monsters", true, std::to_string(g_monsters.count()));
 
 	// Load zones
-	Zones::load();
-	Console::printProgress("Zones", true, std::to_string(Zones::count()));
+	Zones::ZoneManager::LoadZones();
+	Console::printProgress("Zones", true, std::to_string(Zones::ZoneManager::Count()));
+	Console::printProgress("Spawns", true, std::to_string(Zones::ZoneManager::SpawnCount()));
 
 	// Load augments
 	BlackTek::Augments::loadAll();
@@ -511,6 +512,20 @@ void mainLoader(int, char*[], ServiceManager* services)
 		startupErrorMessage("Failed to load map");
 		return;
 	}
+
+	Console::printProgress("Map Tiles", true, std::to_string(g_game.map.lastLoadTileCount));
+	Console::printProgress("Map Items", true, std::to_string(g_game.map.lastLoadItemCount));
+	Console::printProgress("Map Load Time", true, std::to_string(g_game.map.lastLoadTimeSeconds) + "s");
+
+	Zones::ZoneManager::StampWorldZoneFlags();
+
+	if (g_config.GetBoolean(ConfigManager::SMART_CONVERT_LEGACY_ZONES))
+		Zones::ZoneManager::SmartConvertLegacyZoneFlags(g_game.map);
+
+	if (g_config.GetBoolean(ConfigManager::SMART_CONVERT_LEGACY_SPAWNS))
+		Zones::ZoneManager::ConvertLegacySpawns(g_game.map.spawnfile, g_game.map.otbmFilePath);
+
+	g_game.initializeSpawnPool();
 
 	// Initialize game state
 	g_game.setGameState(GAME_STATE_INIT);

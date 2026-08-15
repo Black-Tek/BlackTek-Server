@@ -6,7 +6,8 @@
 
 #include <memory>
 #include "const.h"
-#include "thing.h"
+#include "declarations.h"
+#include "position.h"
 
 class Item;
 struct Position;

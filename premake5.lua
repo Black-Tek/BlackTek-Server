@@ -109,13 +109,17 @@ project "Black-Tek-Server"
     filter { "system:windows", "configurations:Release" }
         vsprops { VcpkgTriplet = "x64-windows-static" }
         links { "Crypt32", "Secur32", "Iphlpapi", "Shlwapi" }
+        linktimeoptimization "On"
 
     filter { "system:windows", "configurations:Debug" }
         vsprops { VcpkgTriplet = "x64-windows" }
 
     -- Architecture-specific settings
-    filter "architecture:x86_64"
+    filter { "architecture:x86_64", "configurations:Debug" }
         vectorextensions "AVX"
+
+    filter { "architecture:x86_64", "configurations:Release" }
+        vectorextensions "AVX2"
 
     -- Linux-specific settings
     filter { "system:linux", "options:verbose" }

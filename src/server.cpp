@@ -94,6 +94,9 @@ void ServicePort::onAccept(const Connection_ptr& connection, const boost::system
 			return;
 		}
 
+		boost::system::error_code noDelayError;
+		connection->getSocket().set_option(boost::asio::ip::tcp::no_delay(true), noDelayError);
+
 		auto remote_ip = connection->getIP();
 		if (remote_ip != 0 && g_bans.acceptConnection(remote_ip)) {
 			Service_ptr service = services.front();

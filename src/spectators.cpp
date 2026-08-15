@@ -7,23 +7,46 @@
 #include "creature.h"
 #include <gtl/phmap.hpp>
 
-// Both methods live here rather than inline in spectators.h because spectators.h
-// is pulled in via tile.h → creature.h, forming a cycle that prevents creature.h
-// from being included in spectators.h. By the time this TU is compiled, Creature
-// is fully defined and gtl headers are available without polluting every includer.
+namespace
+{
+    constexpr size_t SMALL_MERGE_LIMIT = 64;
+}
 
 void SpectatorVec::addSpectators(const SpectatorVec& other)
 {
-    if (other.empty()) return;
-    if (vec_.empty()) {
+    if (other.empty())
+    {
+        return;
+    }
+
+    if (vec_.empty())
+    {
         *this = other;
         return;
     }
 
-    gtl::flat_hash_set<CreaturePtr> seen(vec_.begin(), vec_.end());
-    for (const auto& c : other.vec_) {
-        if (seen.insert(c).second)
-            vec_.emplace_back(c);
+    if (vec_.size() <= SMALL_MERGE_LIMIT)
+    {
+        for (const auto& c : other.vec_)
+        {
+            if (std::ranges::find(vec_, c) == vec_.end())
+            {
+                vec_.emplace_back(c);
+            }
+        }
+    }
+    else
+    {
+        gtl::flat_hash_set<CreaturePtr> seen;
+        seen.reserve(vec_.size() + other.vec_.size());
+        seen.insert(vec_.begin(), vec_.end());
+        for (const auto& c : other.vec_)
+        {
+            if (seen.insert(c).second)
+            {
+                vec_.emplace_back(c);
+            }
+        }
     }
     partitionByType();
 }

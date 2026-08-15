@@ -5,7 +5,6 @@
 
 #include "iomapserialize.h"
 #include "game.h"
-#include "bed.h"
 
 #include <fmt/format.h>
 
@@ -44,7 +43,7 @@ void IOMapSerialize::loadHouseItems(Map* map)
 		}
 
 		while (item_count--) {
-			loadItem(propStream, tile);
+			loadItem(propStream, BlackTek::ItemLocation{.tile = tile});
 		}
 	} while (result->next());
 }
@@ -97,7 +96,8 @@ bool IOMapSerialize::saveHouseItems()
 bool IOMapSerialize::loadContainer(PropStream& propStream, const ContainerPtr& container)
 {
 	while (container->serializationCount > 0) {
-		if (not loadItem(propStream, container->getOwner())) {
+		if (not loadItem(propStream, BlackTek::ItemLocation{.containerItem = container->getOwner()}))
+		{
 			std::cout << "[Warning - IOMapSerialize::loadContainer] Unserialization error for container item: " << container->getOwner()->getID() << std::endl;
 			return false;
 		}
@@ -112,19 +112,18 @@ bool IOMapSerialize::loadContainer(PropStream& propStream, const ContainerPtr& c
 	return true;
 }
 
-bool IOMapSerialize::loadItem(PropStream& propStream, const ThingPtr& parent)
+bool IOMapSerialize::loadItem(PropStream& propStream, const BlackTek::ItemLocation& parent)
 {
 	uint16_t id;
 	if (!propStream.read<uint16_t>(id)) {
 		return false;
 	}
 
-	auto parentCylinder = parent->getCylinder();
-	auto parentContainer = parent->getContainer();
+	const ContainerPtr parentContainer = parent.containerItem ? parent.containerItem->getContainer() : nullptr;
 
 	TilePtr tile = nullptr;
 	if (not parentContainer) {
-		tile = parent->getTile();
+		tile = parent.tile;
 	}
 
 	const ItemType& iType = Item::items[id];
@@ -137,13 +136,13 @@ bool IOMapSerialize::loadItem(PropStream& propStream, const ThingPtr& parent)
 					return false;
 				}
 
-				if (parentCylinder)
+				if (parent.tile)
 				{
-					parentCylinder->internalAddThing(item);
+					parent.tile->addItemSilently(item);
 				}
 				else if (parentContainer)
 				{
-					parentContainer->internalAddThing(item);
+					parentContainer->addItemSilently(item);
 				}
 				item->startDecaying();
 			} else {
@@ -190,8 +189,7 @@ bool IOMapSerialize::loadItem(PropStream& propStream, const ThingPtr& parent)
 						return false;
 					}
 				} else if (dummy->getItemSubType() == ItemSubType::BedItem) {
-				auto bedItem = std::static_pointer_cast<BedItem>(dummy);
-					uint32_t sleeperGUID = bedItem->getSleeper();
+					uint32_t sleeperGUID = dummy->getSleeper();
 					if (sleeperGUID != 0) {
 						g_game.removeBedSleeper(sleeperGUID);
 					}

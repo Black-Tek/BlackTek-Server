@@ -8,8 +8,26 @@
 #include "thread_holder_base.h"
 
 #include <gtl/phmap.hpp>
+#include <algorithm>
+#include <chrono>
 
 static constexpr int32_t SCHEDULER_MINTICKS = 50;
+
+namespace BlackTek
+{
+	inline uint32_t NextResyncDelay(std::chrono::steady_clock::time_point& nextTick, int32_t intervalMs)
+	{
+		using Clock = std::chrono::steady_clock;
+		nextTick += std::chrono::milliseconds(intervalMs);
+
+		const auto now = Clock::now();
+
+		if (nextTick <= now)
+			nextTick = now + std::chrono::milliseconds(intervalMs);
+
+		return static_cast<uint32_t>(std::max<int64_t>(0, std::chrono::duration_cast<std::chrono::milliseconds>(nextTick - now).count()));
+	}
+}
 
 class SchedulerTask : public Task
 {

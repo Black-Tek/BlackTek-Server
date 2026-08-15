@@ -112,6 +112,16 @@ class Condition
 			return subId;
 		}
 
+		bool isRemoved() const noexcept
+		{
+			return removed_;
+		}
+
+		void markRemoved() noexcept
+		{
+			removed_ = true;
+		}
+
 		[[nodiscard]] virtual ConditionHandle clone() const = 0;
 
 		ConditionType_t getType() const {
@@ -158,6 +168,7 @@ class Condition
 	private:
 		ConditionId_t id;
 		CreaturePtr source = nullptr;
+		bool removed_ = false;
 
 		mutable int32_t m_ref_count{ 0 };
 

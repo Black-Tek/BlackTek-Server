@@ -1397,10 +1397,49 @@ bool ConditionDamage::getNextDamage(int32_t& damage)
 	return false;
 }
 
+namespace
+{
+	[[nodiscard]] CombatType_t DamageTypeFromCondition(ConditionType_t type) noexcept
+	{
+		switch (type)
+		{
+			case CONDITION_FIRE:     return COMBAT_FIREDAMAGE;
+			case CONDITION_ENERGY:   return COMBAT_ENERGYDAMAGE;
+			case CONDITION_POISON:   return COMBAT_EARTHDAMAGE;
+			case CONDITION_BLEEDING: return COMBAT_PHYSICALDAMAGE;
+			case CONDITION_DROWN:    return COMBAT_DROWNDAMAGE;
+			case CONDITION_FREEZING: return COMBAT_ICEDAMAGE;
+			case CONDITION_DAZZLED:  return COMBAT_HOLYDAMAGE;
+			case CONDITION_CURSED:   return COMBAT_DEATHDAMAGE;
+			default:                 return COMBAT_UNDEFINEDDAMAGE;
+		}
+	}
+}
+
 bool ConditionDamage::doDamage(CreaturePtr creature, int32_t healthChange) const
 {
 	if (creature->isSuppress(getType()) or creature->isImmune(getType()))
 		return false;
+
+	if (healthChange >= 0 or not creature->isAttackable())
+		return true;
+
+	uint32_t damage = static_cast<uint32_t>(-healthChange);
+	const auto attacker = g_game.getCreatureByID(owner);
+
+	if (field and creature->getPlayer() and attacker and attacker->getPlayer())
+		damage = static_cast<uint32_t>(std::round(damage / 2.));
+
+	// we validate the owner is still around and if it isn't we attribute the damage
+	// to the victim itself so strike_target() has a valid attacker to work with.
+	// this is different than how OT copies RL as there will never be a path for the classic
+	// "something evil" message as the source of the damage
+	const auto& source = attacker ? attacker : creature;
+
+	auto handle = BlackTek::g_combat_registry.Create(DamageTypeFromCondition(getType()), damage);
+	handle->setTrueDamage(true);
+	handle->SetConfig(BlackTek::Combat::Config::AttackModified);
+	handle->strike_target(source, creature, true);
 	return true;
 }
 
