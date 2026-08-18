@@ -31,6 +31,7 @@ class Npc;
 class SchedulerTask;
 class Bed;
 class Guild;
+struct CoroTask;
 
 constexpr uint16_t MaximumStamina = 2520;
 
@@ -966,7 +967,8 @@ class Player final : public Creature
 		uint32_t magLevel = 0;
 		uint32_t actionTaskEvent = 0;
 		uint32_t walkTaskEvent = 0;
-		uint32_t classicAttackEvent = 0;
+		uint32_t attack_schedule_generation = 0;
+		uint32_t classic_attack_schedule_generation = 0;
 		uint32_t MessageBufferTicks = 0;
 		uint32_t lastIP = 0;
 		uint32_t accountNumber = 0;
@@ -1107,6 +1109,7 @@ class Player final : public Creature
 		void updateInventoryWeight();
 		void setNextWalkActionTask(SchedulerTask* task);
 		void setNextActionTask(SchedulerTask* task, bool resetIdleTime = true);
+		CoroTask armNextAttackCheck(uint32_t delay, uint32_t generation, bool useClassicSchedule) noexcept;
 		void death(const CreaturePtr& lastHitCreature) override;
 		void cacheModifier(const BlackTek::DamageModifier& mod) noexcept;
 		void uncacheModifier(const BlackTek::DamageModifier& mod) noexcept;

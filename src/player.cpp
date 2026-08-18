@@ -2301,6 +2301,8 @@ void Player::setNextWalkActionTask(SchedulerTask* task)
 
 void Player::setNextActionTask(SchedulerTask* task, bool resetIdleTime /*= true */)
 {
+	++attack_schedule_generation;
+
 	if (actionTaskEvent != 0)
 	{
 		g_scheduler.stopEvent(actionTaskEvent);
@@ -4323,12 +4325,16 @@ void Player::doAttacking(uint32_t)
 
 		setDualWieldMultiplier(1.0f);
 
-		SchedulerTask* task = createSchedulerTask(std::max<uint32_t>(SCHEDULER_MINTICKS, delay), [id = getID()]() { g_game.checkCreatureAttack(id); });
-		if (!classicSpeed) {
-			setNextActionTask(task, false);
-		} else {
-			g_scheduler.stopEvent(classicAttackEvent);
-			classicAttackEvent = g_scheduler.addEvent(task);
+		const uint32_t armDelay = std::max<uint32_t>(SCHEDULER_MINTICKS, delay);
+		if (not classicSpeed)
+		{
+			++attack_schedule_generation;
+			armNextAttackCheck(armDelay, attack_schedule_generation, false);
+		}
+		else
+		{
+			++classic_attack_schedule_generation;
+			armNextAttackCheck(armDelay, classic_attack_schedule_generation, true);
 		}
 
 		if (result)
@@ -4350,6 +4356,16 @@ void Player::doAttacking(uint32_t)
 			}
 		}
 	}
+}
+
+CoroTask Player::armNextAttackCheck(uint32_t delay, uint32_t generation, bool useClassicSchedule) noexcept
+{
+	const uint32_t id = getID();
+	co_await SleepFor{delay, [id]() { return static_cast<bool>(g_game.getPlayerByID(id)); }};
+
+	const uint32_t currentGeneration = useClassicSchedule ? classic_attack_schedule_generation : attack_schedule_generation;
+	if (generation == currentGeneration)
+		g_game.checkCreatureAttack(id);
 }
 
 uint64_t Player::getGainedExperience(const CreaturePtr& attacker) const
