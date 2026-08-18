@@ -63,6 +63,9 @@ class Scheduler : public ThreadHolder<Scheduler>
 
 		void shutdown();
 
+		[[nodiscard]] bool isRunning() const noexcept { return getState() == THREAD_STATE_RUNNING; }
+		[[nodiscard]] boost::asio::io_context& getIoContext() noexcept { return io_context; }
+
 		void threadMain() { io_context.run(); }
 	private:
 		std::atomic<uint32_t> lastEventId{0};
@@ -72,5 +75,10 @@ class Scheduler : public ThreadHolder<Scheduler>
 };
 
 extern Scheduler g_scheduler;
+
+namespace BlackTek::Scheduling
+{
+	boost::asio::awaitable<void> RunDispatcherHeartbeat(Scheduler& scheduler, std::chrono::milliseconds interval, TaskFunc onTick);
+}
 
 #endif

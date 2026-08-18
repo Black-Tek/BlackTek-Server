@@ -115,7 +115,7 @@ void Game::start(ServiceManager* manager)
 		g_scheduler.addEvent(createSchedulerTask(EVENT_LIGHTINTERVAL, [this]() { checkLight(); }));
 	}
 	g_scheduler.addEvent(createSchedulerTask(20, [this]() { decay_clean_cycle(); }));
-	g_scheduler.addEvent(createSchedulerTask(50, [this]() { coro_timer_cycle(); }));
+	boost::asio::co_spawn(g_scheduler.getIoContext(), BlackTek::Scheduling::RunDispatcherHeartbeat(g_scheduler, std::chrono::milliseconds(EVENT_CORO_TIMER_CYCLE), [this]() { coro_timer_cycle(); }), boost::asio::detached);
 	g_scheduler.addEvent(createSchedulerTask(100, [this]() { item_decay_cycle(); }));
 	g_scheduler.addEvent(createSchedulerTask(120, [this]() { equipment_decay_cycle(); }));
 	g_scheduler.addEvent(createSchedulerTask(150, []() { Zones::ZoneManager{}.Supervise(); }));
@@ -6748,10 +6748,7 @@ void Game::shutdown()
 
 void Game::coro_timer_cycle()
 {
-	static auto next_tick = std::chrono::steady_clock::now();
-	g_scheduler.addEvent(createSchedulerTask(BlackTek::NextResyncDelay(next_tick, EVENT_CORO_TIMER_CYCLE), [this]() { coro_timer_cycle(); }));
-
-    creature_think_cycle();
+	creature_think_cycle();
 	g_timer_queue.tick();
 
 	Zones::ZoneManager::DrainGraveyard();

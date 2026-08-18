@@ -68,3 +68,28 @@ SchedulerTask* createSchedulerTask(uint32_t delay, TaskFunc&& f)
 {
 	return new SchedulerTask(delay, std::move(f));
 }
+
+namespace BlackTek::Scheduling
+{
+	boost::asio::awaitable<void> RunDispatcherHeartbeat(Scheduler& scheduler, std::chrono::milliseconds interval, TaskFunc onTick)
+	{
+		boost::asio::steady_timer timer(scheduler.getIoContext());
+		auto nextTick = std::chrono::steady_clock::now();
+
+		while (scheduler.isRunning())
+		{
+			nextTick += interval;
+			timer.expires_at(nextTick);
+
+			boost::system::error_code ec;
+			co_await timer.async_wait(boost::asio::redirect_error(boost::asio::use_awaitable, ec));
+
+			if (ec)
+			{
+				co_return;
+			}
+
+			g_dispatcher.addTask(TaskFunc(onTick));
+		}
+	}
+}
