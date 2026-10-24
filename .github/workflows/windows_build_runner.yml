@@ -142,8 +142,20 @@ jobs:
           cmd /c copy Black-Tek-Server.exe BlackTek-Server-Debug.exe
           del Black-Tek-Server.exe
           cd D:\a\BlackTek-Server
-      
-      - name: Cleanup Vcpkg_installed 
+
+      - name: Compile and Run Unit Tests
+        run: |
+          cd D:\a\BlackTek-Server\BlackTek-Server
+          msbuild Black-Tek-Server.sln /p:Configuration=Test /p:LanguageStandard=stdcppLatest /p:VcpkgManifestFeatures=tests
+          .\Black-Tek-Server.exe
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Unit tests failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+          del Black-Tek-Server.exe
+          cd D:\a\BlackTek-Server
+
+      - name: Cleanup Vcpkg_installed
         run: Remove-Item -Path "D:/a/BlackTek-Server/BlackTek-Server/vcpkg_installed" -Recurse -Force
         shell: pwsh
       

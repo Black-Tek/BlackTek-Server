@@ -64,7 +64,10 @@ jobs:
         else
           echo "libuuid is already installed."
         fi
-    
+
+    - name: Install Google Test
+      run: sudo apt-get install -y libgtest-dev
+
     - name: Setup Premake
       run: |
         git clone https://github.com/premake/premake-core
@@ -127,7 +130,13 @@ jobs:
         make -j $(nproc) config=debug_64 CC=gcc-15 CXX=g++-15
         cp Black-Tek-Server BlackTek-Server-Debug
         rm Black-Tek-Server
-    
+
+    - name: Compile and Run Unit Tests 64
+      run: |
+        make -j $(nproc) config=test_64 CC=gcc-15 CXX=g++-15
+        ./Black-Tek-Server
+        rm Black-Tek-Server
+
     - name: Cleanup Vcpkg_installed
       uses: JesseTG/rm@v1.0.3
       with:
