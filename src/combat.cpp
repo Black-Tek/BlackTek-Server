@@ -955,30 +955,6 @@ namespace BlackTek
 		return result;
 	}
 
-	void Combat::setArea(AreaCombat* area)
-	{
-		if (not area)
-			return;
-
-		CombatArea cardinal  = area->GetCombatArea();
-		CombatArea extended  = area->GetExtCombatArea();
-
-		const bool hasCard     = std::ranges::any_of(cardinal.spreads, [](const auto& d) { return not d.empty(); });
-		const bool hasExtended = std::ranges::any_of(extended.spreads, [](const auto& d) { return not d.empty(); });
-
-		if (hasCard or hasExtended)
-		{
-			auto& pair = combat_area_pair_map[combat_id];
-			if (hasCard)     pair.area          = std::move(cardinal);
-			if (hasExtended) pair.extended_area  = std::move(extended);
-			cached_areas = &pair;
-			config.set(Config::HasArea);
-			if (hasExtended) config.set(Config::HasExtArea);
-		}
-
-		delete area;
-	}
-
 	void Combat::setArea(std::unique_ptr<AreaCombat> const area)
 	{
 		if (not area)

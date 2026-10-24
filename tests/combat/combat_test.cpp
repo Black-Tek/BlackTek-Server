@@ -509,16 +509,6 @@ TEST(CombatScalarAccessors, EachSetterRoundTripsItsGetter)
 
 // ---------------------------------------------------------------------------
 // AreaCombat
-//
-// Combat::setArea()/hasArea() are deliberately NOT exercised here: calling
-// Combat::setArea(AreaCombat*) on a registry-allocated Combat with a real,
-// non-empty area reliably corrupts the heap (glibc reports "double free or
-// corruption (out)" / "free(): invalid size"), crashing the whole test
-// binary. This reproduces with a plain radius-1 area and happens regardless
-// of whether the Combat handle is ever released -- see the PR discussion /
-// follow-up issue for the bisection. It is a real bug in src/combat.cpp's
-// Combat::setArea + combat_area_pair_map interaction, independent of SIMD,
-// and needs its own fix before a setArea/hasArea test can be added safely.
 // ---------------------------------------------------------------------------
 
 TEST(AreaCombatTest, DefaultConstructedAreaHasNoShapeUntilSetup)
@@ -546,4 +536,17 @@ TEST(AreaCombatTest, RadiusOneProducesANonEmptySymmetricShape)
 	EXPECT_EQ(combatArea.count(DIRECTION_SOUTH), northCount);
 	EXPECT_EQ(combatArea.count(DIRECTION_WEST), northCount);
 	EXPECT_GT(combatArea.max_extent, 0);
+}
+
+TEST(CombatArea, HasAreaIsFalseUntilAnAreaIsSet)
+{
+	auto handle = BlackTek::g_combat_registry.Create();
+	EXPECT_FALSE(handle->hasArea());
+
+	auto area = std::make_unique<BlackTek::AreaCombat>();
+	area->setupArea(/*radius=*/1);
+	handle->setArea(std::move(area));
+
+	EXPECT_TRUE(handle->hasArea());
+	EXPECT_TRUE(handle->GetConfig(Combat::Config::HasArea));
 }

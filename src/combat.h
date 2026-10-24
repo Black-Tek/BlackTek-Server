@@ -509,7 +509,6 @@ namespace BlackTek
 		void heal_target(const CreaturePtr& caster, const CreaturePtr& target, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		[[nodiscard]] ValidatedArea buildValidatedArea(const Position& caster_position, const Position& center, const uint32_t flag_reject, const bool config_ignore_barriers, const bool reject_protection_zone = false) const noexcept;
 		void execute(const CreaturePtr& caster, const Position& center) noexcept;
-		void setArea(AreaCombat* area);
 		void setArea(std::unique_ptr<AreaCombat> const area);
 		void defense_block_effect(const Position& target_position, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;
 		void armor_block_effect(const Position& target_position, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) const noexcept;

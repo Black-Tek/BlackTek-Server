@@ -52,19 +52,13 @@ of scope for these folders — it gets its own test suite instead.
   to each level in turn (see `ScopedSimdLevel` in
   `combat/simd_kernels_test.cpp`) and diff every level's output against
   scalar *and* against the single-target formula it's supposed to
-  reproduce. That file currently has 5 failing tests documenting real,
-  reproducible bugs this approach caught in `src/simd_dispatch.h` /
-  `src/simd_kernels.h` — read the "KNOWN BUG" comments above each one
-  before touching that code.
+  reproduce. That approach caught 4 real, reproducible bugs in
+  `src/simd_dispatch.h` / `src/simd_kernels.h`, since fixed.
 - Some functions are deliberately not covered yet: anything that needs
   a live Player/Monster/Map/Game (`Combat::strike_target`,
   `post_damage`, the `target()` overloads, `postCombatEffects`, etc.)
   is out of scope until there's a lightweight way to construct that
-  state for a test. `Combat::setArea()` is also deliberately not
-  covered — calling it on a registry-allocated `Combat` with a real
-  area reliably corrupts the heap and crashes the whole test binary;
-  that's a separate bug from the SIMD ones above and needs its own fix
-  before a test can safely exercise it.
+  state for a test.
 - `BlackTek::Build::IsUnitTestBuild` (`src/build_config.h`) is available
   if a piece of production code ever needs to branch on whether it was
   compiled into the test binary.
