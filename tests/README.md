@@ -30,14 +30,16 @@ eventual `src/` folder-by-system grouping:
 ```
 tests/
   combat/
-    combat_test.cpp
+    combat_test.cpp         # Combat's own formulas, accessors, damage modifiers
+    simd_kernels_test.cpp   # the scalar/SSE2/SSE4.1/AVX2 kernels in simd_kernels.h
 ```
 
 Add new systems as their own subfolder (e.g. `tests/items/`,
 `tests/creatures/`) rather than dropping files at the top level.
 Premake picks up any new file automatically via the `tests/**.cpp`
 glob in `premake5.lua` — no build changes needed to add a subfolder
-or a file within one.
+or a file within one. The Lua scripting interface is explicitly out
+of scope for these folders — it gets its own test suite instead.
 
 ## Writing tests
 
@@ -45,6 +47,24 @@ or a file within one.
   don't require a running game world) directly — see
   `combat/combat_test.cpp` for the pattern used against `Combat`'s
   static formula evaluators.
+- For a vectorized (SSE2/SSE4.1/AVX2) code path, don't just dispatch
+  through the public wrapper and hope — force `BlackTek::SIMD::g_level`
+  to each level in turn (see `ScopedSimdLevel` in
+  `combat/simd_kernels_test.cpp`) and diff every level's output against
+  scalar *and* against the single-target formula it's supposed to
+  reproduce. That file currently has 5 failing tests documenting real,
+  reproducible bugs this approach caught in `src/simd_dispatch.h` /
+  `src/simd_kernels.h` — read the "KNOWN BUG" comments above each one
+  before touching that code.
+- Some functions are deliberately not covered yet: anything that needs
+  a live Player/Monster/Map/Game (`Combat::strike_target`,
+  `post_damage`, the `target()` overloads, `postCombatEffects`, etc.)
+  is out of scope until there's a lightweight way to construct that
+  state for a test. `Combat::setArea()` is also deliberately not
+  covered — calling it on a registry-allocated `Combat` with a real
+  area reliably corrupts the heap and crashes the whole test binary;
+  that's a separate bug from the SIMD ones above and needs its own fix
+  before a test can safely exercise it.
 - `BlackTek::Build::IsUnitTestBuild` (`src/build_config.h`) is available
   if a piece of production code ever needs to branch on whether it was
   compiled into the test binary.

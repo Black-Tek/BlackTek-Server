@@ -300,3 +300,250 @@ TEST(CombatDamageModifiers, PenetrateDamageNeverExceedsCurrentDamage)
 	EXPECT_EQ(remaining, 0u);
 	EXPECT_EQ(pierceHandle->GetDamage(), 10u); // clamped to currentDamage, never goes negative
 }
+
+// ---------------------------------------------------------------------------
+// transformDamage
+// ---------------------------------------------------------------------------
+
+TEST(CombatTransformDamage, ProducesAHandleCarryingTheRequestedTypeAndAmount)
+{
+	Combat combat;
+
+	auto handle = combat.transformDamage(static_cast<uint16_t>(Combat::DamageType::Fire), 42u);
+
+	EXPECT_EQ(handle->GetDamageType(), static_cast<uint16_t>(Combat::DamageType::Fire));
+	EXPECT_EQ(handle->GetDamage(), 42u);
+	EXPECT_TRUE(handle->GetConfig(Combat::Config::AttackModified));
+	EXPECT_FALSE(handle->GetConfig(Combat::Config::HealthTarget));
+}
+
+TEST(CombatTransformDamage, HealingTypeAlsoSetsHealthTarget)
+{
+	Combat combat;
+
+	auto handle = combat.transformDamage(static_cast<uint16_t>(Combat::DamageType::Healing), 10u);
+
+	EXPECT_TRUE(handle->GetConfig(Combat::Config::HealthTarget));
+}
+
+// ---------------------------------------------------------------------------
+// immunity_block_effect
+// ---------------------------------------------------------------------------
+
+TEST(CombatImmunityBlockEffect, MapsDamageTypeToExpectedMagicEffect)
+{
+	Combat physical;
+	physical.SetDamageType(Combat::DamageType::Physical);
+	EXPECT_EQ(physical.immunity_block_effect(), CONST_ME_BLOCKHIT);
+
+	Combat fire;
+	fire.SetDamageType(Combat::DamageType::Fire);
+	EXPECT_EQ(fire.immunity_block_effect(), CONST_ME_BLOCKHIT);
+
+	Combat earth;
+	earth.SetDamageType(Combat::DamageType::Earth);
+	EXPECT_EQ(earth.immunity_block_effect(), CONST_ME_GREEN_RINGS);
+
+	Combat holy;
+	holy.SetDamageType(Combat::DamageType::Holy);
+	EXPECT_EQ(holy.immunity_block_effect(), CONST_ME_HOLYDAMAGE);
+
+	Combat undefined;
+	undefined.SetDamageType(Combat::DamageType::Undefined);
+	EXPECT_EQ(undefined.immunity_block_effect(), CONST_ME_NONE);
+
+	Combat healing;
+	healing.SetDamageType(Combat::DamageType::Healing);
+	EXPECT_EQ(healing.immunity_block_effect(), CONST_ME_NONE);
+}
+
+// ---------------------------------------------------------------------------
+// collect_heal_notice_data
+// ---------------------------------------------------------------------------
+
+TEST(CombatHealNoticeData, NoHealTargetFlagYieldsZero)
+{
+	Combat combat;
+	EXPECT_EQ(combat.collect_heal_notice_data(), 0u);
+}
+
+TEST(CombatHealNoticeData, EachHealTargetFlagYieldsADistinctNonZeroValue)
+{
+	Combat health;
+	health.SetConfig(Combat::Config::HealthTarget);
+	Combat mana;
+	mana.SetConfig(Combat::Config::ManaTarget);
+	Combat stamina;
+	stamina.SetConfig(Combat::Config::StaminaTarget);
+	Combat soul;
+	soul.SetConfig(Combat::Config::SoulTarget);
+
+	EXPECT_NE(health.collect_heal_notice_data(), 0u);
+	EXPECT_NE(mana.collect_heal_notice_data(), 0u);
+	EXPECT_NE(stamina.collect_heal_notice_data(), 0u);
+	EXPECT_NE(soul.collect_heal_notice_data(), 0u);
+
+	EXPECT_NE(health.collect_heal_notice_data(), mana.collect_heal_notice_data());
+	EXPECT_NE(health.collect_heal_notice_data(), stamina.collect_heal_notice_data());
+	EXPECT_NE(health.collect_heal_notice_data(), soul.collect_heal_notice_data());
+	EXPECT_NE(mana.collect_heal_notice_data(), stamina.collect_heal_notice_data());
+	EXPECT_NE(mana.collect_heal_notice_data(), soul.collect_heal_notice_data());
+	EXPECT_NE(stamina.collect_heal_notice_data(), soul.collect_heal_notice_data());
+}
+
+// ---------------------------------------------------------------------------
+// collect_origin_notice
+// ---------------------------------------------------------------------------
+
+TEST(CombatOriginNotice, MapsOriginToExpectedEffectAndVerb)
+{
+	auto melee = Combat::collect_origin_notice(Combat::Origin::Melee);
+	EXPECT_EQ(melee.effect, CONST_ME_NONE);
+	EXPECT_EQ(melee.verb, "a melee attack");
+
+	auto reflect = Combat::collect_origin_notice(Combat::Origin::Reflect);
+	EXPECT_EQ(reflect.effect, CONST_ME_MAGIC_RED);
+	EXPECT_EQ(reflect.verb, "a reflected attack");
+
+	auto deflect = Combat::collect_origin_notice(Combat::Origin::Deflect);
+	EXPECT_EQ(deflect.effect, CONST_ME_MAGIC_BLUE);
+	EXPECT_EQ(deflect.verb, "a deflected attack");
+
+	auto ricochet = Combat::collect_origin_notice(Combat::Origin::Ricochet);
+	EXPECT_EQ(ricochet.effect, CONST_ME_MAGIC_BLUE);
+	EXPECT_EQ(ricochet.verb, "a ricocheting attack");
+}
+
+// ---------------------------------------------------------------------------
+// Config flags: every set*/is* wrapper pair round-trips through the
+// underlying bitset exactly like GetConfig/SetConfig do directly.
+// ---------------------------------------------------------------------------
+
+TEST(CombatConfigFlags, EveryNamedWrapperRoundTripsItsOwnBit)
+{
+	Combat combat;
+
+	EXPECT_FALSE(combat.isTrueDamage());
+	combat.setTrueDamage(true);
+	EXPECT_TRUE(combat.isTrueDamage());
+	combat.setTrueDamage(false);
+	EXPECT_FALSE(combat.isTrueDamage());
+
+	EXPECT_FALSE(combat.isBlockedByArmor());
+	combat.setBlockedByArmor(true);
+	EXPECT_TRUE(combat.isBlockedByArmor());
+
+	EXPECT_FALSE(combat.isBlockedByShield());
+	combat.setBlockedByShield(true);
+	EXPECT_TRUE(combat.isBlockedByShield());
+
+	EXPECT_FALSE(combat.isTopTargetOnly());
+	combat.setTopTargetOnly(true);
+	EXPECT_TRUE(combat.isTopTargetOnly());
+
+	EXPECT_FALSE(combat.isSelfOnly());
+	combat.setSelfOnly(true);
+	EXPECT_TRUE(combat.isSelfOnly());
+
+	EXPECT_FALSE(combat.isFriendlyParty());
+	combat.setFriendlyParty(true);
+	EXPECT_TRUE(combat.isFriendlyParty());
+
+	EXPECT_FALSE(combat.isEnemyParty());
+	combat.setEnemyParty(true);
+	EXPECT_TRUE(combat.isEnemyParty());
+
+	EXPECT_FALSE(combat.isFraggedOnly());
+	combat.setFraggedOnly(true);
+	EXPECT_TRUE(combat.isFraggedOnly());
+
+	EXPECT_FALSE(combat.isAggressive());
+	combat.setAggressive(true);
+	EXPECT_TRUE(combat.isAggressive());
+
+	EXPECT_FALSE(combat.isUtility());
+	combat.setIsUtility(true);
+	EXPECT_TRUE(combat.isUtility());
+
+	EXPECT_FALSE(combat.isIgnoreBarriers());
+	combat.setIgnoreBarriers(true);
+	EXPECT_TRUE(combat.isIgnoreBarriers());
+
+	EXPECT_FALSE(combat.usesCharges());
+	combat.setUseCharges(true);
+	EXPECT_TRUE(combat.usesCharges());
+
+	// None of the wrappers above should have touched an unrelated flag.
+	EXPECT_FALSE(combat.GetConfig(Combat::Config::Critical));
+}
+
+// ---------------------------------------------------------------------------
+// Trivial scalar getter/setter round trips
+// ---------------------------------------------------------------------------
+
+TEST(CombatScalarAccessors, EachSetterRoundTripsItsGetter)
+{
+	Combat combat;
+
+	combat.SetDamageType(Combat::DamageType::Ice);
+	EXPECT_EQ(combat.GetDamageType(), static_cast<uint16_t>(Combat::DamageType::Ice));
+
+	combat.SetDamage(1337u);
+	EXPECT_EQ(combat.GetDamage(), 1337u);
+
+	combat.SetImpactEffect(CONST_ME_EXPLOSIONAREA);
+	EXPECT_EQ(combat.GetImpactEffect(), CONST_ME_EXPLOSIONAREA);
+
+	combat.SetDistanceEffect(CONST_ANI_FIRE);
+	EXPECT_EQ(combat.GetDistanceEffect(), CONST_ANI_FIRE);
+
+	combat.SetBlockType(Combat::BlockType::Armor);
+	EXPECT_EQ(combat.GetBlockType(), static_cast<uint8_t>(Combat::BlockType::Armor));
+
+	combat.SetItemId(3031u);
+	EXPECT_EQ(combat.GetItemId(), 3031u);
+
+	combat.set_id(777);
+	EXPECT_EQ(combat.id(), 777);
+}
+
+// ---------------------------------------------------------------------------
+// AreaCombat
+//
+// Combat::setArea()/hasArea() are deliberately NOT exercised here: calling
+// Combat::setArea(AreaCombat*) on a registry-allocated Combat with a real,
+// non-empty area reliably corrupts the heap (glibc reports "double free or
+// corruption (out)" / "free(): invalid size"), crashing the whole test
+// binary. This reproduces with a plain radius-1 area and happens regardless
+// of whether the Combat handle is ever released -- see the PR discussion /
+// follow-up issue for the bisection. It is a real bug in src/combat.cpp's
+// Combat::setArea + combat_area_pair_map interaction, independent of SIMD,
+// and needs its own fix before a setArea/hasArea test can be added safely.
+// ---------------------------------------------------------------------------
+
+TEST(AreaCombatTest, DefaultConstructedAreaHasNoShapeUntilSetup)
+{
+	BlackTek::AreaCombat area;
+	auto combatArea = area.GetCombatArea();
+
+	for (size_t dir = 0; dir < 4; ++dir)
+		EXPECT_EQ(combatArea.count(dir), 0u);
+	EXPECT_EQ(combatArea.max_extent, 0);
+}
+
+TEST(AreaCombatTest, RadiusOneProducesANonEmptySymmetricShape)
+{
+	BlackTek::AreaCombat area;
+	area.setupArea(/*radius=*/1);
+	auto combatArea = area.GetCombatArea();
+
+	// A radius-1 area always covers at least the center tile in every
+	// direction's position list, and every direction is generated from the
+	// same base shape, so they should all report the same tile count.
+	const size_t northCount = combatArea.count(DIRECTION_NORTH);
+	EXPECT_GT(northCount, 0u);
+	EXPECT_EQ(combatArea.count(DIRECTION_EAST), northCount);
+	EXPECT_EQ(combatArea.count(DIRECTION_SOUTH), northCount);
+	EXPECT_EQ(combatArea.count(DIRECTION_WEST), northCount);
+	EXPECT_GT(combatArea.max_extent, 0);
+}
