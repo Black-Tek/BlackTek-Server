@@ -259,7 +259,13 @@ inline void gen_positions(const CoordOffset* spreads, const CoordOffset* forward
 			minY = avx2_hmin_epu16(packedMinY);
 			maxY = avx2_hmax_epu16(packedMaxY);
 
-			sse41_compute_bbox(xs + index, ys + index, count - index, minX, maxX, minY, maxY);
+			MapCoord tailMinX = 0, tailMaxX = 0, tailMinY = 0, tailMaxY = 0;
+			sse41_compute_bbox(xs + index, ys + index, count - index, tailMinX, tailMaxX, tailMinY, tailMaxY);
+
+			minX = std::min(minX, tailMinX);
+			maxX = std::max(maxX, tailMaxX);
+			minY = std::min(minY, tailMinY);
+			maxY = std::max(maxY, tailMaxY);
 		}
 	#endif
 
@@ -408,7 +414,8 @@ namespace detail
 		switch (f.formula_type)
 		{
 			case RF::Identity:
-				std::memcpy(out, stats, count * sizeof(CombatStat));
+				for (size_t index = 0; index < count; ++index)
+					out[index] = std::max<CombatStat>(stats[index], 0);
 				return;
 
 			case RF::Percent:
@@ -428,9 +435,9 @@ namespace detail
 					const CombatStat upperBound = static_cast<CombatStat>(static_cast<float>(statValue) * f.max_scale + f.max_base);
 					const CombatStat valueRange = upperBound - lowerBound + 1;
 					if (valueRange <= 0) { out[index] = lowerBound; continue; }
-					// map pre-generated random to [lowerBound, upperBound]
 					const RandomRoll randomNormalized = static_cast<RandomRoll>(rng_vals[index]) & 0x7FFFFFFFu;
-					out[index] = lowerBound + static_cast<CombatStat>(static_cast<float>(randomNormalized) * (1.0f / static_cast<float>(0x7FFFFFFFu)) * static_cast<float>(valueRange));
+					const CombatStat sampled = lowerBound + static_cast<CombatStat>(static_cast<float>(randomNormalized) * (1.0f / static_cast<float>(0x7FFFFFFFu)) * static_cast<float>(valueRange));
+					out[index] = std::clamp(sampled, lowerBound, upperBound);
 				}
 				return;
 
@@ -446,7 +453,8 @@ namespace detail
 						const CombatStat valueRange = upperBound - lowerBound + 1;
 						if (valueRange <= 0) { out[index] = lowerBound; continue; }
 						const RandomRoll randomNormalized = static_cast<RandomRoll>(rng_vals[index]) & 0x7FFFFFFFu;
-						out[index] = lowerBound + static_cast<CombatStat>(static_cast<float>(randomNormalized) * (1.0f / static_cast<float>(0x7FFFFFFFu)) * static_cast<float>(valueRange));
+						const CombatStat sampled = lowerBound + static_cast<CombatStat>(static_cast<float>(randomNormalized) * (1.0f / static_cast<float>(0x7FFFFFFFu)) * static_cast<float>(valueRange));
+						out[index] = std::clamp(sampled, lowerBound, upperBound);
 					}
 					else
 					{
@@ -462,6 +470,14 @@ namespace detail
 	}
 
 #if defined(_MSC_VER) || defined(__GNUC__) || defined(__clang__)
+	inline Vec128Int sse2_clamp_epi32(Vec128Int value, Vec128Int lowerBound, Vec128Int upperBound) noexcept
+	{
+		const Vec128Int belowUpper = _mm_cmplt_epi32(value, upperBound);
+		const Vec128Int clampedUpper = _mm_or_si128(_mm_and_si128(belowUpper, value), _mm_andnot_si128(belowUpper, upperBound));
+		const Vec128Int aboveLower = _mm_cmpgt_epi32(clampedUpper, lowerBound);
+		return _mm_or_si128(_mm_and_si128(aboveLower, clampedUpper), _mm_andnot_si128(aboveLower, lowerBound));
+	}
+
 	template<class ResistanceFactors>
 	inline void sse2_batch_resistance(const CombatStat* stats, size_t count, const ResistanceFactors& f, const CombatStat* rng_vals, CombatStat* out) noexcept
 	{
@@ -469,8 +485,19 @@ namespace detail
 		switch (f.formula_type)
 		{
 			case RF::Identity:
-				std::memcpy(out, stats, count * sizeof(CombatStat));
+			{
+				size_t index = 0;
+
+				for (; index + 4 <= count; index += 4)
+				{
+					Vec128Int packedStats = _mm_loadu_si128(reinterpret_cast<const Vec128Int*>(stats + index));
+					Vec128Int signMask = _mm_srai_epi32(packedStats, 31);
+					_mm_storeu_si128(reinterpret_cast<Vec128Int*>(out + index), _mm_andnot_si128(signMask, packedStats));
+				}
+
+				scalar_batch_resistance(stats + index, count - index, f, rng_vals ? rng_vals + index : nullptr, out + index);
 				return;
+			}
 
 			case RF::Percent:
 			{
@@ -514,6 +541,7 @@ namespace detail
 					Vec128Int    maskedRng        = _mm_and_si128(_mm_loadu_si128(reinterpret_cast<const Vec128Int*>(rng_vals + index)), rngMask31Bit);
 					Vec128Float  floatOffset      = _mm_mul_ps(_mm_mul_ps(_mm_cvtepi32_ps(maskedRng), vecRngInverse), floatRange);
 					Vec128Int    outputValues     = _mm_add_epi32(intLowerBound, _mm_cvttps_epi32(floatOffset));
+					outputValues = sse2_clamp_epi32(outputValues, intLowerBound, intUpperBound);
 					_mm_storeu_si128(reinterpret_cast<Vec128Int*>(out + index), outputValues);
 				}
 
@@ -545,6 +573,7 @@ namespace detail
 								floatRange         = _mm_max_ps(floatRange, vecOne);
 					Vec128Int   maskedRng          = _mm_and_si128(_mm_loadu_si128(reinterpret_cast<const Vec128Int*>(rng_vals + index)), rngMask31Bit);
 					Vec128Int   randomResult       = _mm_add_epi32(intLowerBound, _mm_cvttps_epi32(_mm_mul_ps(_mm_mul_ps(_mm_cvtepi32_ps(maskedRng), vecRngInverse), floatRange)));
+					randomResult = sse2_clamp_epi32(randomResult, intLowerBound, intUpperBound);
 					Vec128Int   outputValues       = _mm_or_si128(_mm_and_si128(aboveThresholdMask, randomResult), _mm_andnot_si128(aboveThresholdMask, vecFlatAmount));
 					_mm_storeu_si128(reinterpret_cast<Vec128Int*>(out + index), outputValues);
 				}
@@ -566,8 +595,19 @@ namespace detail
 		switch (f.formula_type)
 		{
 			case RF::Identity:
-				std::memcpy(out, stats, count * sizeof(CombatStat));
+			{
+				const Vec256Int vecZero = _mm256_setzero_si256();
+				size_t index = 0;
+
+				for (; index + 8 <= count; index += 8)
+				{
+					Vec256Int packedStats = _mm256_loadu_si256(reinterpret_cast<const Vec256Int*>(stats + index));
+					_mm256_storeu_si256(reinterpret_cast<Vec256Int*>(out + index), _mm256_max_epi32(packedStats, vecZero));
+				}
+
+				sse2_batch_resistance(stats + index, count - index, f, rng_vals ? rng_vals + index : nullptr, out + index);
 				return;
+			}
 
 			case RF::Percent:
 			{
@@ -611,6 +651,7 @@ namespace detail
 					Vec256Int    maskedRng        = _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const Vec256Int*>(rng_vals + index)), rngMask31Bit);
 					Vec256Float  floatOffset     = _mm256_mul_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(maskedRng), vecRngInverse), floatRange);
 					Vec256Int    outputValues    = _mm256_add_epi32(intLowerBound, _mm256_cvttps_epi32(floatOffset));
+					outputValues = _mm256_min_epi32(_mm256_max_epi32(outputValues, intLowerBound), intUpperBound);
 					_mm256_storeu_si256(reinterpret_cast<Vec256Int*>(out + index), outputValues);
 				}
 
@@ -643,6 +684,7 @@ namespace detail
 					floatRange                     = _mm256_max_ps(floatRange, vecOne);
 					Vec256Int   maskedRng          = _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const Vec256Int*>(rng_vals + index)), rngMask31Bit);
 					Vec256Int   randomResult       = _mm256_add_epi32(intLowerBound, _mm256_cvttps_epi32(_mm256_mul_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(maskedRng), vecRngInverse), floatRange)));
+					randomResult = _mm256_min_epi32(_mm256_max_epi32(randomResult, intLowerBound), intUpperBound);
 					Vec256Int   outputValues       = _mm256_blendv_epi8(vecFlatAmount, randomResult, aboveThresholdMask);
 					_mm256_storeu_si256(reinterpret_cast<Vec256Int*>(out + index), outputValues);
 				}

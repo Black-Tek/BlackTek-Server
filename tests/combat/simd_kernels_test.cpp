@@ -63,7 +63,7 @@ namespace
 
 	// Forces BlackTek::SIMD::g_level for the lifetime of the scope, then restores it.
 	// Used to drive the public dispatch functions down a specific kernel without
-	// depending on (the currently broken, see SimdDispatch tests below) detect().
+	// depending on detect().
 	struct ScopedSimdLevel
 	{
 		Level previous;
@@ -91,19 +91,9 @@ TEST_F(SimdKernelsTest, DetectSelectsAvx2OnAvx2CapableHardware)
 	const Level previousLevel = g_level;
 	detect();
 	const Level detectedLevel = g_level;
-	g_level = previousLevel; // detect() mutates global state; restore it for other tests
+	g_level = previousLevel;
 
-	EXPECT_EQ(detectedLevel, Level::AVX2)
-		<< "BlackTek::SIMD::detect() (src/simd_dispatch.h) only runs real CPUID "
-		   "detection under _MSC_VER/__INTEL_COMPILER; every other compiler (GCC, "
-		   "Clang -- i.e. every non-MSVC build, which includes this platform's "
-		   "normal Linux/macOS server build) hits the #else branch and "
-		   "unconditionally sets g_level = Scalar regardless of what the CPU "
-		   "actually supports. That means Combat::block_batch's calls into "
-		   "BlackTek::SIMD::batch_resistance/batch_resolve never reach the SSE2/"
-		   "SSE4.1/AVX2 kernels at all on a GCC/Clang build, even on this "
-		   "AVX2-capable runner -- only an MSVC (Windows) build ever dispatches "
-		   "past Scalar.";
+	EXPECT_EQ(detectedLevel, Level::AVX2);
 }
 
 // ---------------------------------------------------------------------------
@@ -150,24 +140,6 @@ TEST_F(SimdKernelsTest, GenPositionsAgreesAcrossScalarSse2Avx2)
 // ---------------------------------------------------------------------------
 // compute_bbox (src/simd_kernels.h) -- also exercises the SSE4.1-only path,
 // which gen_positions/batch_resistance/batch_resolve don't have.
-//
-// KNOWN BUG this currently catches: detail::avx2_compute_bbox hands its
-// *remainder* off to detail::sse41_compute_bbox (count - index elements,
-// where index is however many full 16-element AVX2 chunks it consumed).
-// sse41_compute_bbox unconditionally re-seeds its own packed min/max
-// registers to sentinel values and overwrites the by-reference minX/maxX/
-// minY/maxY outputs from them -- it never merges with what's already there.
-// So whenever count >= 16, AVX2's correctly-computed aggregate over the
-// chunk(s) it processed is thrown away and replaced by whatever
-// sse41_compute_bbox computes from the 0-15 leftover elements alone (or,
-// when count is an exact multiple of 16 and there's no leftover at all,
-// by the untouched sentinels themselves: minX/minY = 65535, maxX/maxY = 0).
-// SSE2 and SSE4.1 don't have this problem when dispatched to directly --
-// they both hand their own remainder to scalar_compute_bbox, which merges
-// into the passed-in accumulator instead of resetting it.
-// This is exactly the kind of AVX2-specific combat divergence the batch
-// spectator/area bounding-box computation (used for AoE targeting) could
-// hit on any run with 16+ positions.
 // ---------------------------------------------------------------------------
 
 TEST_F(SimdKernelsTest, ComputeBboxAgreesAcrossScalarSse2Sse41Avx2)
@@ -215,10 +187,10 @@ TEST_F(SimdKernelsTest, ComputeBboxAgreesAcrossScalarSse2Sse41Avx2)
 		{
 			ScopedSimdLevel scope(Level::AVX2);
 			compute_bbox(xs.data(), ys.data(), count, minX, maxX, minY, maxY);
-			EXPECT_EQ(minX, sMinX) << "AVX2 minX diverged at count=" << count << " -- see KNOWN BUG comment above this test";
-			EXPECT_EQ(maxX, sMaxX) << "AVX2 maxX diverged at count=" << count << " -- see KNOWN BUG comment above this test";
-			EXPECT_EQ(minY, sMinY) << "AVX2 minY diverged at count=" << count << " -- see KNOWN BUG comment above this test";
-			EXPECT_EQ(maxY, sMaxY) << "AVX2 maxY diverged at count=" << count << " -- see KNOWN BUG comment above this test";
+			EXPECT_EQ(minX, sMinX) << "AVX2 minX diverged at count=" << count;
+			EXPECT_EQ(maxX, sMaxX) << "AVX2 maxX diverged at count=" << count;
+			EXPECT_EQ(minY, sMinY) << "AVX2 minY diverged at count=" << count;
+			EXPECT_EQ(maxY, sMaxY) << "AVX2 maxY diverged at count=" << count;
 		}
 	}
 }
@@ -268,16 +240,6 @@ TEST_F(SimdKernelsTest, ComputeSpectatorMaskAgreesAcrossScalarSse2Avx2)
 // Identity and Percent are fully deterministic (no RNG involved anywhere),
 // so the batched kernel must match the single-target formula exactly for
 // every input -- any mismatch here is an unambiguous, reproducible bug.
-//
-// KNOWN BUG this currently catches: Combat::calculate_resistance floors
-// *every* formula type to 0 for a non-positive stat (`if (stat <= 0) return
-// 0;`, checked before the switch). detail::scalar_batch_resistance's
-// Identity case is a bare memcpy of the raw stat with no such floor, so a
-// target with 0 or negative defense/armor gets a different (and possibly
-// negative) resistance through Combat::block_batch than it would through
-// Combat::block() for the exact same stat. Percent/LinearRandom/Parity all
-// apply their own `stat <= 0` guard in the batch kernel, so this is
-// Identity-only.
 // ---------------------------------------------------------------------------
 
 TEST_F(SimdKernelsTest, BatchResistanceIdentityAndPercentMatchCalculateResistance)
@@ -308,8 +270,7 @@ TEST_F(SimdKernelsTest, BatchResistanceIdentityAndPercentMatchCalculateResistanc
 			{
 				EXPECT_EQ(out[i], Combat::calculate_resistance(*factors, stats[i]))
 					<< "formula=" << static_cast<int>(factors->formula_type)
-					<< " level=" << static_cast<int>(level) << " stat=" << stats[i]
-					<< " -- see KNOWN BUG comment above this test if stat <= 0";
+					<< " level=" << static_cast<int>(level) << " stat=" << stats[i];
 			}
 		}
 	}
@@ -361,17 +322,7 @@ TEST_F(SimdKernelsTest, BatchResistanceLinearRandomStaysWithinItsOwnBounds)
 				}
 
 				EXPECT_LE(out[0], upperBound)
-					<< "level=" << static_cast<int>(level) << " stat=" << stat << " roll=" << roll
-					<< ": batch_resistance's LinearRandom roll-to-range mapping (src/simd_kernels.h) produced "
-					   << out[0] << ", which exceeds its own computed upper bound of " << upperBound << ". "
-					   "This reproduces with plain scalar float arithmetic (it is not an SSE2/AVX2-specific "
-					   "divergence) -- the formula computes valueRange = upperBound - lowerBound + 1, then "
-					   "scales the roll's [0,1] fraction by that *inclusive* range width without clamping, so "
-					   "the top end of the roll space can round up to lowerBound + valueRange == upperBound + 1. "
-					   "Combat::calculate_resistance's own LinearRandom branch (src/combat.h) can never do this, "
-					   "since it draws from std::uniform_int_distribution(lowerBound, upperBound) directly -- so "
-					   "a multi-target hit through Combat::block_batch can roll a defense/armor resistance one "
-					   "higher than any single-target hit with the same stats ever could.";
+					<< "level=" << static_cast<int>(level) << " stat=" << stat << " roll=" << roll;
 			}
 		}
 	}
@@ -409,11 +360,7 @@ TEST_F(SimdKernelsTest, BatchResistanceParityStaysWithinItsOwnBounds)
 				}
 
 				EXPECT_LE(out[0], upperBound)
-					<< "level=" << static_cast<int>(level) << " stat=" << stat << " roll=" << roll
-					<< ": batch_resistance's Parity roll-to-range mapping produced " << out[0]
-					<< ", which exceeds its own computed upper bound of " << upperBound << " -- same off-by-one "
-					   "as the LinearRandom case above (BatchResistanceLinearRandomStaysWithinItsOwnBounds), "
-					   "just in the Parity branch's bound computation instead.";
+					<< "level=" << static_cast<int>(level) << " stat=" << stat << " roll=" << roll;
 			}
 		}
 	}
