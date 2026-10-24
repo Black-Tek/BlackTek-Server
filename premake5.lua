@@ -1,6 +1,6 @@
 -- Workspace configuration for Black-Tek-Server
 workspace "Black-Tek-Server"
-    configurations { "Debug", "Release" }
+    configurations { "Debug", "Release", "Test" }
     platforms { "64", "ARM64", "ARM" }
     location ""
     editorintegration "On"
@@ -78,6 +78,23 @@ project "Black-Tek-Server"
         symbols "Off"
         optimize "Full"
 
+    -- Unit test build: compiles the engine sources together with tests/**.cpp
+    -- against Google Test, exclusively chosen by passing config=test (or
+    -- config=test_64/arm/arm64) to the generated build, e.g.
+    -- `premake5 gmake2 && make config=test_64`. BLACKTEK_UNIT_TESTS swaps out
+    -- otserv.cpp's main() for gtest's own (see the #ifndef guard there) and
+    -- exposes BlackTek::Build::IsUnitTestBuild (src/build_config.h) as a
+    -- constexpr flag for any other code that needs to branch on it.
+    filter "configurations:Test"
+        defines { "DEBUG", "BLACKTEK_UNIT_TESTS" }
+        runtime "Debug"
+        staticruntime "Off"
+        symbols "On"
+        optimize "Debug"
+        incrementallink "Off"
+        files { "tests/**.cpp", "tests/**.h" }
+        includedirs { "src" }
+
     -- Platform-specific settings
     filter "platforms:64"
         architecture "x86_64"
@@ -145,6 +162,12 @@ project "Black-Tek-Server"
         libdirs { "/usr/lib" }
         includedirs { "/usr/include", "/usr/include/lua5.*" }
         links { "pugixml", _OPTIONS["lua"], "fmt", "mariadb", "cryptopp", "boost_iostreams", "zstd", "z", "curl", "ssl", "crypto" }
+
+    filter { "system:linux", "configurations:Test" }
+        links { "gtest", "gtest_main", "pthread" }
+
+    filter { "system:windows", "configurations:Test" }
+        links { "gtest", "gtest_main" }
 
     -- Toolset-specific settings
     filter "toolset:gcc"

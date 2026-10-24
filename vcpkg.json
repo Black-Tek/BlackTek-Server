@@ -33,6 +33,12 @@
       "dependencies": [
         "luajit"
       ]
+    },
+    "tests": {
+      "description": "Build the Google Test unit test suite (config=test)",
+      "dependencies": [
+        "gtest"
+      ]
     }
   },
   "default-features": [
