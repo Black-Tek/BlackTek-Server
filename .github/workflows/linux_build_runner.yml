@@ -65,9 +65,6 @@ jobs:
           echo "libuuid is already installed."
         fi
 
-    - name: Install Google Test
-      run: sudo apt-get install -y libgtest-dev
-
     - name: Setup Premake
       run: |
         git clone https://github.com/premake/premake-core
@@ -129,12 +126,6 @@ jobs:
       run: |
         make -j $(nproc) config=debug_64 CC=gcc-15 CXX=g++-15
         cp Black-Tek-Server BlackTek-Server-Debug
-        rm Black-Tek-Server
-
-    - name: Compile and Run Unit Tests 64
-      run: |
-        make -j $(nproc) config=test_64 CC=gcc-15 CXX=g++-15
-        ./Black-Tek-Server
         rm Black-Tek-Server
 
     - name: Cleanup Vcpkg_installed
@@ -266,3 +257,10 @@ jobs:
           ### What's Changed
           See the auto-generated release notes below for a full list of changes.
         files: BlackTek-Server-Linux-ubuntu-24.04-${{ steps.release_type.outputs.version }}.zip
+
+  unit_tests:
+    name: Unit Tests
+    permissions:
+      checks: write
+      contents: read
+    uses: ./.github/workflows/linux_unit_tests.yml

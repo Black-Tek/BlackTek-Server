@@ -22,13 +22,39 @@ make config=test_64      # or test_arm64 / test_arm
 the file list, and `BLACKTEK_UNIT_TESTS` is only defined, under
 `configurations:Test` in `premake5.lua`.
 
+## Layout
+
+Tests are grouped into one subfolder per system, mirroring the
+eventual `src/` folder-by-system grouping:
+
+```
+tests/
+  combat/
+    combat_test.cpp
+```
+
+Add new systems as their own subfolder (e.g. `tests/items/`,
+`tests/creatures/`) rather than dropping files at the top level.
+Premake picks up any new file automatically via the `tests/**.cpp`
+glob in `premake5.lua` — no build changes needed to add a subfolder
+or a file within one.
+
 ## Writing tests
 
-- New test files go under `tests/`, matching `tests/**.cpp`.
 - Prefer testing pure/static logic (formulas, lookups, helpers that
   don't require a running game world) directly — see
-  `combat_test.cpp` for the pattern used against `Combat`'s static
-  formula evaluators.
+  `combat/combat_test.cpp` for the pattern used against `Combat`'s
+  static formula evaluators.
 - `BlackTek::Build::IsUnitTestBuild` (`src/build_config.h`) is available
   if a piece of production code ever needs to branch on whether it was
   compiled into the test binary.
+
+## CI
+
+Unit tests do not run inline in the `Linux Build`/`Windows Build`
+runners. Each triggers its own dedicated reusable workflow —
+`.github/workflows/linux_unit_tests.yml` and
+`.github/workflows/windows_unit_tests.yml` — which builds the `Test`
+configuration, runs it with JUnit XML output, and publishes a
+[dorny/test-reporter](https://github.com/dorny/test-reporter) check
+with a per-test pass/fail breakdown instead of raw console output.

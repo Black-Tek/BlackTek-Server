@@ -143,18 +143,6 @@ jobs:
           del Black-Tek-Server.exe
           cd D:\a\BlackTek-Server
 
-      - name: Compile and Run Unit Tests
-        run: |
-          cd D:\a\BlackTek-Server\BlackTek-Server
-          msbuild Black-Tek-Server.sln /p:Configuration=Test /p:LanguageStandard=stdcppLatest /p:VcpkgManifestFeatures=tests
-          .\Black-Tek-Server.exe
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "Unit tests failed with exit code $LASTEXITCODE"
-            exit $LASTEXITCODE
-          }
-          del Black-Tek-Server.exe
-          cd D:\a\BlackTek-Server
-
       - name: Cleanup Vcpkg_installed
         run: Remove-Item -Path "D:/a/BlackTek-Server/BlackTek-Server/vcpkg_installed" -Recurse -Force
         shell: pwsh
@@ -294,3 +282,10 @@ jobs:
             ### What's Changed
             See the auto-generated release notes below for a full list of changes.
           files: BlackTek-Server-Windows-${{ steps.release_type.outputs.version }}.zip
+
+  unit_tests:
+    name: Unit Tests
+    permissions:
+      checks: write
+      contents: read
+    uses: ./.github/workflows/windows_unit_tests.yml
