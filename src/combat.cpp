@@ -3003,20 +3003,25 @@ namespace BlackTek
 			return;
 		}
 
-		if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(attacker->getPosition()))
+		// Some damage sources have no real attacker (traps, inventory explosions, etc.);
+		// attribute the strike to the victim itself rather than dereferencing a null attacker,
+		// matching the fallback used for ownerless field damage (see ConditionDamage::doDamage).
+		const auto& source = attacker ? attacker : defender;
+
+		if (auto spawnOverlay = Zones::ZoneManager::GetSpawns(source->getPosition()))
 		{
-			spawnOverlay->Trigger(attacker, Zones::SpawnTrigger::Attack);
+			spawnOverlay->Trigger(source, Zones::SpawnTrigger::Attack);
 		}
 
 		using namespace BlackTek;
-		auto switch_mask = (static_cast<uint32_t>(attacker->getCreatureSubType()) << 16 | static_cast<uint32_t>(defender->getCreatureSubType()) << 8);
+		auto switch_mask = (static_cast<uint32_t>(source->getCreatureSubType()) << 16 | static_cast<uint32_t>(defender->getCreatureSubType()) << 8);
 
 		switch (switch_mask)
 		{
-			case Constant::Player_Vs_Player:	strike_target(PlayerCast(attacker), PlayerCast(defender), skip_validation, spectators);		break;
-			case Constant::Player_Vs_Monster:	strike_target(PlayerCast(attacker), MonsterCast(defender), skip_validation, spectators);	break;
-			case Constant::Monster_Vs_Player:	strike_target(MonsterCast(attacker), PlayerCast(defender), skip_validation, spectators);	break;
-			case Constant::Monster_Vs_Monster:	strike_target(MonsterCast(attacker), MonsterCast(defender), skip_validation, spectators);	break;
+			case Constant::Player_Vs_Player:	strike_target(PlayerCast(source), PlayerCast(defender), skip_validation, spectators);		break;
+			case Constant::Player_Vs_Monster:	strike_target(PlayerCast(source), MonsterCast(defender), skip_validation, spectators);	break;
+			case Constant::Monster_Vs_Player:	strike_target(MonsterCast(source), PlayerCast(defender), skip_validation, spectators);	break;
+			case Constant::Monster_Vs_Monster:	strike_target(MonsterCast(source), MonsterCast(defender), skip_validation, spectators);	break;
 			default: [[unlikely]]
 				break;
 		}
