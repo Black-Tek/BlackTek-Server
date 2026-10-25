@@ -107,7 +107,7 @@ jobs:
       - name: Build Unit Tests
         run: |
           cd D:\a\BlackTek-Server\BlackTek-Server
-          msbuild Black-Tek-Server.sln /p:Configuration=Test /p:LanguageStandard=stdcppLatest /p:VcpkgManifestFeatures=tests
+          msbuild Black-Tek-Server.sln /p:Configuration=Test /p:LanguageStandard=stdcppLatest /p:VcpkgAdditionalInstallOptions="--x-feature=tests"
 
       - name: Run Unit Tests
         id: run_tests
