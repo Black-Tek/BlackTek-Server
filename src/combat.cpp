@@ -2583,7 +2583,9 @@ namespace BlackTek
 			return;
 		}
 
-		if (distanceEffect != CONST_ANI_NONE)
+		// Area strikes (Combat::execute's per-target loop, skip_validation = true) already send
+		// a single distance effect toward the center tile; don't fire another one per creature hit.
+		if (not skip_validation and distanceEffect != CONST_ANI_NONE)
 			addDistanceEffect(caster, caster->getPosition(), victim->getPosition(), distanceEffect, spectators);
 
 		uint32_t currentDamage = damage;
@@ -2722,7 +2724,9 @@ namespace BlackTek
 			return;
 		}
 
-		if (distanceEffect != CONST_ANI_NONE)
+		// Area strikes (Combat::execute's per-target loop, skip_validation = true) already send
+		// a single distance effect toward the center tile; don't fire another one per creature hit.
+		if (not skip_validation and distanceEffect != CONST_ANI_NONE)
 			addDistanceEffect(caster, caster->getPosition(), victim->getPosition(), distanceEffect, spectators);
 
 		uint32_t currentDamage = damage;
@@ -2841,7 +2845,9 @@ namespace BlackTek
 		if (not skip_validation and target_code != TargetCode::Valid)
 			return;
 
-		if (distanceEffect != CONST_ANI_NONE)
+		// Area strikes (Combat::execute's per-target loop, skip_validation = true) already send
+		// a single distance effect toward the center tile; don't fire another one per creature hit.
+		if (not skip_validation and distanceEffect != CONST_ANI_NONE)
 			addDistanceEffect(attacker, attacker->getPosition(), victim->getPosition(), distanceEffect, spectators);
 
 		uint32_t currentDamage = damage;
@@ -2947,7 +2953,9 @@ namespace BlackTek
 		if (not skip_validation and target_code != TargetCode::Valid)
 			return;
 
-		if (distanceEffect != CONST_ANI_NONE)
+		// Area strikes (Combat::execute's per-target loop, skip_validation = true) already send
+		// a single distance effect toward the center tile; don't fire another one per creature hit.
+		if (not skip_validation and distanceEffect != CONST_ANI_NONE)
 			addDistanceEffect(attacker, attacker->getPosition(), victim->getPosition(), distanceEffect, spectators);
 
 		uint32_t currentDamage = damage;
