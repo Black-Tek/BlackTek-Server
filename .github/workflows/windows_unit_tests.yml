@@ -1,0 +1,136 @@
+name: Windows Unit Tests
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  unit_tests:
+    name: Combat Unit Tests (Windows)
+    runs-on: windows-2022
+    permissions:
+      checks: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@main
+
+      - name: Restore vcpkg cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            C:\vcpkg\installed
+            C:\vcpkg\downloads
+            C:\vcpkg\buildtrees
+            D:\a\BlackTek-Server\BlackTek-Server\vcpkg_installed
+          key: vcpkg-${{ runner.os }}-tests-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-v2
+          restore-keys: |
+            vcpkg-${{ runner.os }}-tests-v2-
+            vcpkg-${{ runner.os }}-v2-
+
+      - name: Update Visual Studio 2022 to latest
+        shell: pwsh
+        run: |
+          $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe"
+          & $installer update --quiet --norestart --installPath "${env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise"
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0 -and $exitCode -ne 3010) {
+            Write-Warning "VS installer exited with code $exitCode (may already be up to date)"
+          }
+
+      - name: Setup Premake & Generate Solution
+        run: |
+          git clone https://github.com/premake/premake-core
+          cd premake-core
+          cmd /c Bootstrap.bat
+          move .\bin\release\premake5.exe D:\a\BlackTek-Server\BlackTek-Server\premake5.exe
+          cd D:\a\BlackTek-Server\BlackTek-Server
+          D:\a\BlackTek-Server\BlackTek-Server\premake5.exe vs2022
+
+      - name: Configure Package Manager
+        uses: egor-tensin/vs-shell@v2
+        with:
+          arch: x64
+
+      - name: Setup vcpkg environment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          # Set environment variables for vcpkg
+          echo "VCPKG_MAX_CONCURRENCY=2" >> $env:GITHUB_ENV
+          echo "VCPKG_KEEP_ENV_VARS=GITHUB_TOKEN" >> $env:GITHUB_ENV
+
+      - name: Install Dependencies
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          cd D:\a\BlackTek-Server
+          git -C C:/vcpkg fetch origin
+          git -C C:/vcpkg checkout master
+          git -C C:/vcpkg reset --hard origin/master
+          C:/vcpkg/bootstrap-vcpkg.bat -disableMetrics
+
+          # Clean up outdated packages
+          vcpkg remove --outdated --recurse
+
+          # Install with retry logic
+          $maxAttempts = 3
+          $attempt = 1
+          $success = $false
+
+          while (-not $success -and $attempt -le $maxAttempts) {
+            Write-Host "Installation attempt $attempt of $maxAttempts"
+            try {
+              # Only integrate - MSBuild will install packages via vcpkg.json manifest
+              vcpkg integrate install
+              $success = $true
+              Write-Host "vcpkg integration successful! Packages will be installed during build."
+            }
+            catch {
+              Write-Host "Attempt $attempt failed. Error: $_"
+              if ($attempt -lt $maxAttempts) {
+                $waitTime = [math]::Pow(2, $attempt) * 30
+                Write-Host "Waiting $waitTime seconds before retry..."
+                Start-Sleep -Seconds $waitTime
+              }
+              $attempt++
+            }
+          }
+
+          if (-not $success) {
+            Write-Error "Failed to install dependencies after $maxAttempts attempts"
+            exit 1
+          }
+
+      - name: Build Unit Tests
+        run: |
+          cd D:\a\BlackTek-Server\BlackTek-Server
+          msbuild Black-Tek-Server.sln /p:Configuration=Test /p:LanguageStandard=stdcppLatest /p:VcpkgAdditionalInstallOptions="--x-feature=tests"
+
+      - name: Run Unit Tests
+        id: run_tests
+        shell: pwsh
+        run: |
+          cd D:\a\BlackTek-Server\BlackTek-Server
+          New-Item -ItemType Directory -Force -Path test-results | Out-Null
+          .\Black-Tek-Server.exe --gtest_output=xml:test-results/combat.xml
+          "exit_code=$LASTEXITCODE" >> $env:GITHUB_OUTPUT
+
+      - name: Publish Test Report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Combat Unit Tests (Windows)
+          path: 'D:/a/BlackTek-Server/BlackTek-Server/test-results/*.xml'
+          reporter: java-junit
+          fail-on-error: false
+          list-suites: all
+          list-tests: all
+
+      - name: Fail job if unit tests failed
+        if: steps.run_tests.outputs.exit_code != '0'
+        run: |
+          Write-Host "Unit tests failed (gtest exit code ${{ steps.run_tests.outputs.exit_code }}). See the 'Combat Unit Tests (Windows)' check for details."
+          exit 1

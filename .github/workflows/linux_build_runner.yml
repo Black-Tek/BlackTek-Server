@@ -64,7 +64,7 @@ jobs:
         else
           echo "libuuid is already installed."
         fi
-    
+
     - name: Setup Premake
       run: |
         git clone https://github.com/premake/premake-core
@@ -127,7 +127,7 @@ jobs:
         make -j $(nproc) config=debug_64 CC=gcc-15 CXX=g++-15
         cp Black-Tek-Server BlackTek-Server-Debug
         rm Black-Tek-Server
-    
+
     - name: Cleanup Vcpkg_installed
       uses: JesseTG/rm@v1.0.3
       with:
@@ -257,3 +257,10 @@ jobs:
           ### What's Changed
           See the auto-generated release notes below for a full list of changes.
         files: BlackTek-Server-Linux-ubuntu-24.04-${{ steps.release_type.outputs.version }}.zip
+
+  unit_tests:
+    name: Unit Tests
+    permissions:
+      checks: write
+      contents: read
+    uses: ./.github/workflows/linux_unit_tests.yml

@@ -240,6 +240,10 @@ void badAllocationHandler()
 	exit(-1);
 }
 
+// BLACKTEK_UNIT_TESTS (config=test, see premake5.lua) replaces this entry
+// point with Google Test's own main() while still linking against the
+// globals defined above (g_game, g_config, g_dispatcher, ...).
+#ifndef BLACKTEK_UNIT_TESTS
 int main(int argc, char* argv[])
 {
 	StringVector args = StringVector(argv, argv + argc);
@@ -292,6 +296,7 @@ int main(int argc, char* argv[])
 
 	return 0;
 }
+#endif // !BLACKTEK_UNIT_TESTS
 
 #include "accountmanager.h"
 

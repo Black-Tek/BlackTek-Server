@@ -142,8 +142,8 @@ jobs:
           cmd /c copy Black-Tek-Server.exe BlackTek-Server-Debug.exe
           del Black-Tek-Server.exe
           cd D:\a\BlackTek-Server
-      
-      - name: Cleanup Vcpkg_installed 
+
+      - name: Cleanup Vcpkg_installed
         run: Remove-Item -Path "D:/a/BlackTek-Server/BlackTek-Server/vcpkg_installed" -Recurse -Force
         shell: pwsh
       
@@ -282,3 +282,10 @@ jobs:
             ### What's Changed
             See the auto-generated release notes below for a full list of changes.
           files: BlackTek-Server-Windows-${{ steps.release_type.outputs.version }}.zip
+
+  unit_tests:
+    name: Unit Tests
+    permissions:
+      checks: write
+      contents: read
+    uses: ./.github/workflows/windows_unit_tests.yml

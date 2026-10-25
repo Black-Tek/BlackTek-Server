@@ -8,6 +8,9 @@
 # Build Output
 /build
 
+# Unit test JUnit XML output
+/test-results
+
 *.dll
 *.exe
 *.pdb

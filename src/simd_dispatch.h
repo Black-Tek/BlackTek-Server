@@ -56,6 +56,28 @@ namespace BlackTek::SIMD
 		}
 
 		g_level = Level::SSE4_1;
+#elif defined(__GNUC__) || defined(__clang__)
+		__builtin_cpu_init();
+
+		if (__builtin_cpu_supports("avx2"))
+		{
+			g_level = Level::AVX2;
+			return;
+		}
+
+		if (__builtin_cpu_supports("sse4.1"))
+		{
+			g_level = Level::SSE4_1;
+			return;
+		}
+
+		if (__builtin_cpu_supports("sse2"))
+		{
+			g_level = Level::SSE2;
+			return;
+		}
+
+		g_level = Level::Scalar;
 #else
 		g_level = Level::Scalar;
 #endif

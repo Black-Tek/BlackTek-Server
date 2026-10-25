@@ -1,0 +1,131 @@
+name: Linux Unit Tests
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  unit_tests:
+    name: Combat Unit Tests (Linux)
+    runs-on: ubuntu-24.04
+    permissions:
+      checks: write
+      contents: read
+    steps:
+    - name: Set up Git
+      uses: actions/checkout@v4
+
+    - name: Install GCC 15
+      run: |
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        sudo apt-get update
+        sudo apt-get install -y gcc-15 g++-15 libstdc++-15-dev
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-15 100 --slave /usr/bin/g++ g++ /usr/bin/g++-15
+        sudo update-alternatives --set gcc /usr/bin/gcc-15
+        echo "CC=gcc-15" >> $GITHUB_ENV
+        echo "CXX=g++-15" >> $GITHUB_ENV
+
+    - name: Restore vcpkg cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          /usr/local/share/vcpkg/installed
+          /usr/local/share/vcpkg/downloads
+          /usr/local/share/vcpkg/buildtrees
+          ${{ github.workspace }}/vcpkg_installed
+        key: vcpkg-ubuntu-24.04-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-v3
+        restore-keys: |
+          vcpkg-ubuntu-24.04-v3-
+
+    - name: Install Uuid
+      run: |
+        if ! pkg-config --exists uuid; then
+          echo "libuuid is not installed. Installing it..."
+          sudo apt-get update
+          sudo apt-get install -y uuid-dev
+        else
+          echo "libuuid is already installed."
+        fi
+
+    - name: Install Google Test
+      run: sudo apt-get install -y libgtest-dev
+
+    - name: Setup Premake
+      run: |
+        git clone https://github.com/premake/premake-core
+        cd premake-core
+        make -f Bootstrap.mak linux
+        cd ..
+        ./premake-core/bin/release/premake5 gmake
+
+    - name: Setup vcpkg environment
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Set environment variables for vcpkg
+        echo "VCPKG_MAX_CONCURRENCY=2" >> $GITHUB_ENV
+        echo "VCPKG_KEEP_ENV_VARS=GITHUB_TOKEN" >> $GITHUB_ENV
+
+    - name: Install Vcpkg Libraries
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        set -e  # Exit on error
+
+        # Update vcpkg
+        git -C /usr/local/share/vcpkg reset --hard HEAD
+        git -C /usr/local/share/vcpkg clean -fd
+        git -C /usr/local/share/vcpkg pull
+        /usr/local/share/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+        # Install with retry logic
+        max_attempts=3
+        attempt=1
+
+        while [ $attempt -le $max_attempts ]; do
+          echo "Installation attempt $attempt of $max_attempts"
+
+          if vcpkg install; then
+            echo "Installation successful!"
+            exit 0
+          else
+            echo "Attempt $attempt failed"
+            if [ $attempt -lt $max_attempts ]; then
+              wait_time=$((2 ** attempt * 30))
+              echo "Waiting $wait_time seconds before retry..."
+              sleep $wait_time
+            fi
+            attempt=$((attempt + 1))
+          fi
+        done
+
+        echo "Failed to install dependencies after $max_attempts attempts"
+        exit 1
+
+    - name: Build Unit Tests 64
+      run: make -j $(nproc) config=test_64 CC=gcc-15 CXX=g++-15
+
+    - name: Run Unit Tests
+      id: run_tests
+      run: |
+        set +e
+        mkdir -p test-results
+        ./Black-Tek-Server --gtest_output=xml:test-results/combat.xml
+        echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+    - name: Publish Test Report
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: Combat Unit Tests (Linux)
+        path: 'test-results/*.xml'
+        reporter: java-junit
+        fail-on-error: false
+        list-suites: all
+        list-tests: all
+
+    - name: Fail job if unit tests failed
+      if: steps.run_tests.outputs.exit_code != '0'
+      run: |
+        echo "Unit tests failed (gtest exit code ${{ steps.run_tests.outputs.exit_code }}). See the 'Combat Unit Tests (Linux)' check for details."
+        exit 1

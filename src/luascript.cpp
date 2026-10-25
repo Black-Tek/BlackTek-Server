@@ -18066,7 +18066,7 @@ int LuaScriptInterface::luaCombatCreate(lua_State* L)
 		const BlackTek::AreaCombat* area = g_luaEnvironment.getAreaObject(static_cast<uint32_t>(lua_tointeger(L, -1)));
 		if (area)
 		{
-			combat->setArea(new BlackTek::AreaCombat(*area));
+			combat->setArea(std::make_unique<BlackTek::AreaCombat>(*area));
 		}
 	}
 	lua_pop(L, 1);
@@ -18403,7 +18403,7 @@ int LuaScriptInterface::luaCombatSetArea(lua_State* L)
 		return 1;
 	}
 
-	combat->setArea(new BlackTek::AreaCombat(*area));
+	combat->setArea(std::make_unique<BlackTek::AreaCombat>(*area));
 	pushBoolean(L, true);
 	return 1;
 }
