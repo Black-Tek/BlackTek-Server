@@ -3306,9 +3306,13 @@ namespace BlackTek
 
 		const Position& caster_position = caster->getPosition();
 
+		// TILESTATE_NOFIELDBLOCKPATH (unlike plain TILESTATE_BLOCKPATH) excludes magic fields,
+		// so a non-blocking field (fire/poison/energy) on a tile doesn't reject it here.
+		// Genuinely blocking fields (magic wall, wild growth) still reject via
+		// TILESTATE_IMMOVABLEBLOCKSOLID.
 		constexpr uint32_t kBarrier =
 			TILESTATE_IMMOVABLEBLOCKSOLID |
-			TILESTATE_BLOCKPATH |
+			TILESTATE_NOFIELDBLOCKPATH |
 			TILESTATE_IMMOVABLENOFIELDBLOCKPATH;
 
 		const uint32_t flag_reject =
