@@ -4761,6 +4761,8 @@ namespace BlackTek
 			const std::string observer_text =
 				is_drain
 				? attacker_name + " drained " + amount_str + " mana from " + defender_name + "."
+				: self_target
+				? defender_name + " loses " + amount_str + " mana due to " + origin_verb + "."
 				: defender_name + " loses " + amount_str + " mana due to " + origin_verb + " by " + attacker_name + ".";
 
 			TextMessage observer_message	= {};
@@ -4911,6 +4913,7 @@ namespace BlackTek
 					: is_ricochet ? "A ricocheting attack struck " + defender_name + " for " + amount_str + " damage."
 					: is_piercing ? attacker_name + "'s attack pierced through " + defender_name + "'s defenses for " + amount_str + " damage."
 					: is_drain ? attacker_name + " drained " + amount_str + " health from " + defender_name + "."
+					: self_target ? defender_name + " loses " + amount_str + " health due to " + origin_verb + "."
 					: defender_name + " loses " + amount_str + " health due to " + origin_verb + " by " + attacker_name + ".";
 
 				TextMessage observer_message	= {};
