@@ -4514,13 +4514,45 @@ void Game::playerSetAttackedCreature(const uint32_t playerId, const uint32_t cre
 		player->sendCancelTarget();
 		return;
 	}
-	//const ReturnValue ret = Combat::canTargetCreature(player, attackCreature);
-	//if (ret != RETURNVALUE_NOERROR) {
-	//	player->sendCancelMessage(ret);
-	//	player->sendCancelTarget();
-	//	player->setAttackedCreature(nullptr);
-	//	return;
-	//}
+
+	if (const auto& targetPlayer = attackCreature->getPlayer()) {
+		if (targetPlayer != player) {
+			BlackTek::Combat eligibility;
+			const auto target_code = eligibility.target(player, targetPlayer);
+			ReturnValue ret = RETURNVALUE_NOERROR;
+
+			switch (target_code) {
+				case BlackTek::Combat::TargetCode::CanNotAttackThisPlayer:
+					ret = RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
+					break;
+				case BlackTek::Combat::TargetCode::YouAreInProtectionZone:
+					ret = RETURNVALUE_YOUMAYNOTATTACKAPERSONWHILEINPROTECTIONZONE;
+					break;
+				case BlackTek::Combat::TargetCode::TargetIsInProtectionZone:
+					ret = RETURNVALUE_YOUMAYNOTATTACKAPERSONINPROTECTIONZONE;
+					break;
+				default:
+					break;
+			}
+
+			if (ret == RETURNVALUE_NOERROR && player->hasSecureMode() && player->getSkullClient(targetPlayer) == SKULL_NONE
+					&& !Zones::ZoneManager::HasWorldFlag(player->getPosition(), Zones::ZoneFlag::Pvp)) {
+				ret = RETURNVALUE_TURNSECUREMODETOATTACKUNMARKEDPLAYERS;
+			}
+
+			if (ret != RETURNVALUE_NOERROR) {
+				player->sendCancelMessage(ret);
+				player->sendCancelTarget();
+				player->setAttackedCreature(nullptr);
+				return;
+			}
+		}
+	} else if (attackCreature->getMonster() && player->hasFlag(PlayerFlag_CannotAttackMonster)) {
+		player->sendCancelMessage(RETURNVALUE_YOUMAYNOTATTACKTHISCREATURE);
+		player->sendCancelTarget();
+		player->setAttackedCreature(nullptr);
+		return;
+	}
 
 	player->setAttackedCreature(attackCreature);
 	updateCreatureWalk(player->getID());
