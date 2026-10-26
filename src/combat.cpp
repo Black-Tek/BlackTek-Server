@@ -5081,6 +5081,14 @@ void Item::onStepInField(const CreaturePtr& creature)
 	{
 		auto conditionCopy = it.conditionDamage->clone();
 		const uint32_t ownerId = getOwner();
+
+		// Whether this specific creature (a player) is ineligible to be harmed by this field at
+		// all — a no-pvp-world/zone field owned by a player (or their summon), or a target the
+		// owner is pvp-protected against. Previously "harmfulField" only ever changed who the
+		// damage was attributed to, never whether it was applied, so no-pvp field variants still
+		// hurt players exactly like their pvp counterparts.
+		bool blockedForPlayer = false;
+
 		if (ownerId)
 		{
 			bool harmfulField = true;
@@ -5098,21 +5106,29 @@ void Item::onStepInField(const CreaturePtr& creature)
 
 			if (const auto& targetPlayer = creature->getPlayer())
 			{
-				if (const auto& attackerPlayer = g_game.getPlayerByID(ownerId))
+				if (not harmfulField)
+				{
+					blockedForPlayer = true;
+				}
+				else if (const auto& attackerPlayer = g_game.getPlayerByID(ownerId))
 				{
 					if (BlackTek::Combat::isProtected(attackerPlayer, targetPlayer))
 					{
 						harmfulField = false;
+						blockedForPlayer = true;
 					}
 				}
 			}
 
-			if (not harmfulField or (OTSYS_TIME() - magicFieldCreateTime <= 5000) or creature->hasBeenAttacked(ownerId))
+			if (not blockedForPlayer and (not harmfulField or (OTSYS_TIME() - magicFieldCreateTime <= 5000) or creature->hasBeenAttacked(ownerId)))
 			{
 				conditionCopy->setParam(CONDITION_PARAM_OWNER, ownerId);
 			}
 		}
 
-		creature->addCondition(std::move(conditionCopy));
+		if (not blockedForPlayer)
+		{
+			creature->addCondition(std::move(conditionCopy));
+		}
 	}
 }
