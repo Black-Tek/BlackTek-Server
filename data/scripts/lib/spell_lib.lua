@@ -1,5 +1,10 @@
 --Pre-made areas
 
+-- Single tile
+AREA_SINGLE_TILE = {
+	{ 3 }
+}
+
 --Waves
 AREA_WAVE3 = {
 	{1, 1, 1},

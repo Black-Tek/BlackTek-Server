@@ -12,13 +12,13 @@ RuneAttackCombats = {
     MagicWallRune = {
         distanceEffect = CONST_ANI_ENERGY,
         createdItem    = ITEM_MAGICWALL,
-        area           = createCombatArea(AREA_SQUARE1X1),
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     WildGrowthRune = {
         distanceEffect = CONST_ANI_ENERGY,
         createdItem    = ITEM_WILDGROWTH,
-        area           = createCombatArea(AREA_SQUARE1X1),
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     EnergyBombRune = {
@@ -36,7 +36,7 @@ RuneAttackCombats = {
         impactEffect   = CONST_ME_ENERGYHIT,
         distanceEffect = CONST_ANI_ENERGYBALL,
         createdItem    = ITEM_ENERGYFIELD_PVP,
-        area           = createCombatArea(AREA_SQUARE1X1),
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     EnergyWallRune = {
@@ -61,7 +61,7 @@ RuneAttackCombats = {
         damageType     = Combat.DamageType.Fire,
         distanceEffect = CONST_ANI_FIRE,
         createdItem    = ITEM_FIREFIELD_PVP_FULL,
-        area           = createCombatArea(AREA_SQUARE1X1),
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     FireWallRune = {
@@ -85,7 +85,7 @@ RuneAttackCombats = {
         damageType     = Combat.DamageType.Earth,
         distanceEffect = CONST_ANI_ENERGY,
         createdItem    = ITEM_POISONFIELD_PVP,
-        area           = createCombatArea(AREA_SQUARE1X1),
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     PoisonWallRune = {

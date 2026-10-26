@@ -18,6 +18,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Fire,
         impactEffect   = CONST_ME_FIREATTACK,
         distanceEffect = CONST_ANI_FIRE,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     Berserk = {
@@ -43,6 +44,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Energy,
         impactEffect   = CONST_ME_ENERGYAREA,
         distanceEffect = CONST_ANI_ENERGY,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     ChillOut = {
@@ -57,6 +59,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Death,
         impactEffect   = CONST_ME_MORTAREA,
         distanceEffect = CONST_ANI_DEATH,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     DeathStrike = {
@@ -64,6 +67,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Death,
         impactEffect   = CONST_ME_MORTAREA,
         distanceEffect = CONST_ANI_DEATH,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     DivineCaldera = {
@@ -78,6 +82,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Holy,
         impactEffect   = CONST_ME_HOLYDAMAGE,
         distanceEffect = CONST_ANI_SMALLHOLY,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     Electrify = {
@@ -85,6 +90,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Energy,
         impactEffect   = CONST_ME_ENERGYAREA,
         distanceEffect = CONST_ANI_ENERGY,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     EnergyBeam = {
@@ -99,6 +105,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Energy,
         impactEffect   = CONST_ME_ENERGYAREA,
         distanceEffect = CONST_ANI_ENERGY,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     EnergyWave = {
@@ -114,6 +121,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Earth,
         impactEffect   = CONST_ME_CARNIPHILA,
         distanceEffect = CONST_ANI_EARTH,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     EternalWinter = {
@@ -152,6 +160,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Fire,
         impactEffect   = CONST_ME_FIREATTACK,
         distanceEffect = CONST_ANI_FIRE,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     FrontSweep = {
@@ -191,6 +200,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Holy,
         impactEffect   = CONST_ME_HOLYDAMAGE,
         distanceEffect = CONST_ANI_SMALLHOLY,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     IceStrike = {
@@ -198,6 +208,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Ice,
         impactEffect   = CONST_ME_ICEATTACK,
         distanceEffect = CONST_ANI_SMALLICE,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     IceWave = {
@@ -212,6 +223,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Fire,
         impactEffect   = CONST_ME_HITBYFIRE,
         distanceEffect = CONST_ANI_FIRE,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     InflictWound = {
@@ -226,6 +238,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Energy,
         impactEffect   = CONST_ME_ENERGYAREA,
         distanceEffect = CONST_ANI_ENERGY,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     MudAttack = {
@@ -233,6 +246,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Earth,
         impactEffect   = CONST_ME_CARNIPHILA,
         distanceEffect = CONST_ANI_SMALLEARTH,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     PhysicalStrike = {
@@ -241,6 +255,7 @@ AttackCombats = {
         impactEffect   = CONST_ME_EXPLOSIONAREA,
         distanceEffect = CONST_ANI_EXPLOSION,
         blockedByArmor = true,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     PractiseFireWave = {
@@ -269,6 +284,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Energy,
         impactEffect   = CONST_ME_ENERGYAREA,
         distanceEffect = CONST_ANI_ENERGY,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     StrongEtherealSpear = {
@@ -284,6 +300,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Fire,
         impactEffect   = CONST_ME_FIREATTACK,
         distanceEffect = CONST_ANI_FIRE,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     StrongIceStrike = {
@@ -291,6 +308,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Ice,
         impactEffect   = CONST_ME_ICEATTACK,
         distanceEffect = CONST_ANI_SMALLICE,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     StrongIceWave = {
@@ -305,6 +323,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Earth,
         impactEffect   = CONST_ME_CARNIPHILA,
         distanceEffect = CONST_ANI_SMALLEARTH,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     TerraStrike = {
@@ -312,6 +331,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Earth,
         impactEffect   = CONST_ME_CARNIPHILA,
         distanceEffect = CONST_ANI_SMALLEARTH,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     TerraWave = {
@@ -326,6 +346,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Energy,
         impactEffect   = CONST_ME_ENERGYAREA,
         distanceEffect = CONST_ANI_ENERGY,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     UltimateFlameStrike = {
@@ -333,6 +354,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Fire,
         impactEffect   = CONST_ME_FIREATTACK,
         distanceEffect = CONST_ANI_FIRE,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     UltimateIceStrike = {
@@ -340,6 +362,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Ice,
         impactEffect   = CONST_ME_ICEATTACK,
         distanceEffect = CONST_ANI_SMALLICE,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     UltimateTerraStrike = {
@@ -347,6 +370,7 @@ AttackCombats = {
         damageType     = Combat.DamageType.Earth,
         impactEffect   = CONST_ME_CARNIPHILA,
         distanceEffect = CONST_ANI_SMALLEARTH,
+        area           = createCombatArea(AREA_SINGLE_TILE),
     },
 
     WhirlwindThrow = {
