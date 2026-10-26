@@ -3242,8 +3242,11 @@ namespace BlackTek
 	{
 		const auto tile = g_game.map.getTile(x, y, z);
 		if (not tile) return true;
+		// TILESTATE_NOFIELDBLOCKPATH (unlike plain TILESTATE_BLOCKPATH) excludes magic fields, so a
+		// non-blocking field (fire/poison/energy) doesn't break line-of-sight for other AoE spells —
+		// mirrors the kBarrier fix in Combat::execute() for tile rejection (see #253).
 		constexpr uint32_t barrier = TILESTATE_IMMOVABLEBLOCKSOLID
-			| TILESTATE_BLOCKPATH
+			| TILESTATE_NOFIELDBLOCKPATH
 			| TILESTATE_IMMOVABLENOFIELDBLOCKPATH;
 		return (tile->getFlags() & barrier) == 0u;
 	}
