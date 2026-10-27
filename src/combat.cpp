@@ -5081,12 +5081,6 @@ void Item::onStepInField(const CreaturePtr& creature)
 	{
 		auto conditionCopy = it.conditionDamage->clone();
 		const uint32_t ownerId = getOwner();
-
-		// Whether this specific creature (a player) is ineligible to be harmed by this field at
-		// all — a no-pvp-world/zone field owned by a player (or their summon), or a target the
-		// owner is pvp-protected against. Previously "harmfulField" only ever changed who the
-		// damage was attributed to, never whether it was applied, so no-pvp field variants still
-		// hurt players exactly like their pvp counterparts.
 		bool blockedForPlayer = false;
 
 		if (ownerId)
