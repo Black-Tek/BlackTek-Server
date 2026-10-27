@@ -17986,6 +17986,11 @@ int LuaScriptInterface::luaCombatCreate(lua_State* L)
 		const bool is_utility = (type == DT::Unknown || type == DT::Healing);
 		combat->SetConfig(BlackTek::Combat::Config::Aggressive, !is_utility);
 		combat->SetConfig(BlackTek::Combat::Config::IsUtility, is_utility);
+
+		if (type == DT::Healing)
+		{
+			combat->SetConfig(BlackTek::Combat::Config::HealthTarget);
+		}
 	}
 	lua_pop(L, 1);
 
@@ -18059,6 +18064,20 @@ int LuaScriptInterface::luaCombatCreate(lua_State* L)
 	applyFlag("isUtility",       Config::IsUtility);
 	applyFlag("ignoreBarriers",  Config::IgnoreBarriers);
 	applyFlag("useCharges",      Config::UseCharges);
+
+	const auto applyStatTarget = [&](const char* key, Config flag)
+	{
+		lua_getfield(L, 2, key);
+		if (lua_isboolean(L, -1) and lua_toboolean(L, -1) != 0)
+		{
+			combat->SetConfig(Config::HealthTarget, false);
+			combat->SetConfig(flag, true);
+		}
+		lua_pop(L, 1);
+	};
+	applyStatTarget("manaTarget",    Config::ManaTarget);
+	applyStatTarget("staminaTarget", Config::StaminaTarget);
+	applyStatTarget("soulTarget",    Config::SoulTarget);
 
 	lua_getfield(L, 2, "area");
 	if (lua_isnumber(L, -1))
