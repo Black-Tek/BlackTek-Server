@@ -17987,9 +17987,6 @@ int LuaScriptInterface::luaCombatCreate(lua_State* L)
 		combat->SetConfig(BlackTek::Combat::Config::Aggressive, !is_utility);
 		combat->SetConfig(BlackTek::Combat::Config::IsUtility, is_utility);
 
-		// heal_target() only acts when one of the Health/Mana/Stamina/SoulTarget bits is set,
-		// so a Healing combat with none of them (the "manaTarget"/etc. fields below) explicitly
-		// set would otherwise silently do nothing. Default to restoring health.
 		if (type == DT::Healing)
 		{
 			combat->SetConfig(BlackTek::Combat::Config::HealthTarget);
@@ -18068,9 +18065,6 @@ int LuaScriptInterface::luaCombatCreate(lua_State* L)
 	applyFlag("ignoreBarriers",  Config::IgnoreBarriers);
 	applyFlag("useCharges",      Config::UseCharges);
 
-	// Explicit stat-target overrides for Healing combats (defaults to HealthTarget above).
-	// Only one of these should end up set; picking mana/stamina/soul clears the health default
-	// since heal_target() checks HealthTarget first and would otherwise win regardless.
 	const auto applyStatTarget = [&](const char* key, Config flag)
 	{
 		lua_getfield(L, 2, key);
