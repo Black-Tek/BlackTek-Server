@@ -2554,15 +2554,12 @@ namespace BlackTek
 		{
 			if (config_has_condition)
 			{
-				// Condition-only combats (no direct damage component — paralyze runes, DoT-only
-				// spells) must still respect target eligibility; otherwise negative conditions
-				// bypass secure mode / protection / pvp-world checks entirely (see #258).
 				if (not skip_validation)
 				{
-					const auto target_code = target(caster, victim);
-					if (target_code != TargetCode::Valid)
+					const auto targetCode = target(caster, victim);
+					if (targetCode != TargetCode::Valid)
 					{
-						auto message = resolve_target_code(target_code);
+						auto message = resolve_target_code(targetCode);
 						caster->sendTextMessage(MessageClasses::MESSAGE_INFO_DESCR, message);
 						return;
 					}
@@ -2709,13 +2706,12 @@ namespace BlackTek
 		{
 			if (config_has_condition)
 			{
-				// Condition-only combats must still respect target eligibility (see #258).
 				if (not skip_validation)
 				{
-					const auto target_code = target(caster, victim);
-					if (target_code != TargetCode::Valid)
+					const auto targetCode = target(caster, victim);
+					if (targetCode != TargetCode::Valid)
 					{
-						auto message = resolve_target_code(target_code);
+						auto message = resolve_target_code(targetCode);
 						caster->sendTextMessage(MessageClasses::MESSAGE_INFO_DESCR, message);
 						return;
 					}
@@ -2844,7 +2840,6 @@ namespace BlackTek
 		{
 			if (config_has_condition)
 			{
-				// Condition-only combats must still respect target eligibility (see #258).
 				if (not skip_validation and target(attacker, victim) != TargetCode::Valid)
 					return;
 
@@ -2956,7 +2951,6 @@ namespace BlackTek
 		{
 			if (config_has_condition)
 			{
-				// Condition-only combats must still respect target eligibility (see #258).
 				if (not skip_validation and target(attacker, victim) != TargetCode::Valid)
 					return;
 
