@@ -5109,6 +5109,8 @@ void Item::onStepInField(const CreaturePtr& creature)
 	{
 		auto conditionCopy = it.conditionDamage->clone();
 		const uint32_t ownerId = getOwner();
+		bool blockedForPlayer = false;
+
 		if (ownerId)
 		{
 			bool harmfulField = true;
@@ -5126,21 +5128,29 @@ void Item::onStepInField(const CreaturePtr& creature)
 
 			if (const auto& targetPlayer = creature->getPlayer())
 			{
-				if (const auto& attackerPlayer = g_game.getPlayerByID(ownerId))
+				if (not harmfulField)
+				{
+					blockedForPlayer = true;
+				}
+				else if (const auto& attackerPlayer = g_game.getPlayerByID(ownerId))
 				{
 					if (BlackTek::Combat::isProtected(attackerPlayer, targetPlayer))
 					{
 						harmfulField = false;
+						blockedForPlayer = true;
 					}
 				}
 			}
 
-			if (not harmfulField or (OTSYS_TIME() - magicFieldCreateTime <= 5000) or creature->hasBeenAttacked(ownerId))
+			if (not blockedForPlayer and (not harmfulField or (OTSYS_TIME() - magicFieldCreateTime <= 5000) or creature->hasBeenAttacked(ownerId)))
 			{
 				conditionCopy->setParam(CONDITION_PARAM_OWNER, ownerId);
 			}
 		}
 
-		creature->addCondition(std::move(conditionCopy));
+		if (not blockedForPlayer)
+		{
+			creature->addCondition(std::move(conditionCopy));
+		}
 	}
 }
