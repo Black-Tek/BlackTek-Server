@@ -3270,8 +3270,9 @@ namespace BlackTek
 	{
 		const auto tile = g_game.map.getTile(x, y, z);
 		if (not tile) return true;
+		// mirrors the kBarrier fix in Combat::execute() (#253): exclude magic fields from the barrier
 		constexpr uint32_t barrier = TILESTATE_IMMOVABLEBLOCKSOLID
-			| TILESTATE_BLOCKPATH
+			| TILESTATE_NOFIELDBLOCKPATH
 			| TILESTATE_IMMOVABLENOFIELDBLOCKPATH;
 		return (tile->getFlags() & barrier) == 0u;
 	}
