@@ -2554,6 +2554,17 @@ namespace BlackTek
 		{
 			if (config_has_condition)
 			{
+				if (not skip_validation)
+				{
+					const auto targetCode = target(caster, victim);
+					if (targetCode != TargetCode::Valid)
+					{
+						auto message = resolve_target_code(targetCode);
+						caster->sendTextMessage(MessageClasses::MESSAGE_INFO_DESCR, message);
+						return;
+					}
+				}
+
 				if constexpr (Metrics::ENABLED and Metrics::CAPTURE_CONDITIONS)
 					TrackConditionApplications(caster, victim);
 				ApplyConditions(victim);
@@ -2695,6 +2706,17 @@ namespace BlackTek
 		{
 			if (config_has_condition)
 			{
+				if (not skip_validation)
+				{
+					const auto targetCode = target(caster, victim);
+					if (targetCode != TargetCode::Valid)
+					{
+						auto message = resolve_target_code(targetCode);
+						caster->sendTextMessage(MessageClasses::MESSAGE_INFO_DESCR, message);
+						return;
+					}
+				}
+
 				if constexpr (Metrics::ENABLED and Metrics::CAPTURE_CONDITIONS)
 					TrackConditionApplications(caster, victim);
 				ApplyConditions(victim);
@@ -2818,6 +2840,9 @@ namespace BlackTek
 		{
 			if (config_has_condition)
 			{
+				if (not skip_validation and target(attacker, victim) != TargetCode::Valid)
+					return;
+
 				if constexpr (Metrics::ENABLED and Metrics::CAPTURE_CONDITIONS)
 					TrackConditionApplications(attacker, victim);
 
@@ -2926,6 +2951,9 @@ namespace BlackTek
 		{
 			if (config_has_condition)
 			{
+				if (not skip_validation and target(attacker, victim) != TargetCode::Valid)
+					return;
+
 				if constexpr (Metrics::ENABLED and Metrics::CAPTURE_CONDITIONS)
 					TrackConditionApplications(attacker, victim);
 
