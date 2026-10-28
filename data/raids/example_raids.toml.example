@@ -1,3 +1,4 @@
+# Disabled example: choose valid map positions and rename to .toml to enable.
 # Raids Configuration
 # Place .toml files anywhere in data/raids/ (supports subfolders)
 # Each raid entry needs: name, interval, margin, events[]

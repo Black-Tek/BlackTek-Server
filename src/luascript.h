@@ -827,6 +827,7 @@ class LuaScriptInterface
 
 		static int luaTileHasProperty(lua_State* L);
 		static int luaTileHasFlag(lua_State* L);
+		static int luaTileQueryAdd(lua_State* L);
 
 		static int luaTileGetThingIndex(lua_State* L);
 

@@ -1,33 +1,50 @@
-if not MonsterStorages then
-    MonsterStorages = setmetatable({}, {
-        __index = function (storage, cid)
-            local self = Monster(cid)
-            if not self then
-                return
-            end
-
-            if self:registerEvent("MonsterStorages") then
-                storage[cid] = {}
-                return storage[cid]
-            end
-        end
-    })
-end
+-- Store numeric state only; reads must not allocate a record.
+MonsterStorages = setmetatable(MonsterStorages or {}, nil)
 
 local creatureEvent = CreatureEvent("MonsterStorages")
-
-function creatureEvent.onDeath(self)
-    MonsterStorages[self:getId()] = nil
+function creatureEvent.onDeath(monster)
+    MonsterStorages[monster:getId()] = nil
     return true
 end
-
 creatureEvent:register()
 
 function Monster:getStorageValue(key)
-    return MonsterStorages[self:getId()][key] or -1
+    local values = rawget(MonsterStorages, self:getId())
+    return values and values[key] or -1
 end
 
 function Monster:setStorageValue(key, value)
-    MonsterStorages[self:getId()][key] = value
+    local id = self:getId()
+    local values = rawget(MonsterStorages, id)
+    if value == nil or value == -1 then
+        if values then
+            values[key] = nil
+            if not next(values) then
+                MonsterStorages[id] = nil
+            end
+        end
+        return true
+    end
+    if not values then
+        if not self:registerEvent("MonsterStorages") then
+            return false
+        end
+        values = {}
+        MonsterStorages[id] = values
+    end
+    values[key] = value
     return true
 end
+
+-- Despawns, summon dismissal and forced removal do not emit onDeath.
+local cleanup = GlobalEvent("MonsterStorageCleanup")
+function cleanup.onThink(interval)
+    for id in pairs(MonsterStorages) do
+        if not Monster(id) then
+            MonsterStorages[id] = nil
+        end
+    end
+    return true
+end
+cleanup:interval(60000)
+cleanup:register()

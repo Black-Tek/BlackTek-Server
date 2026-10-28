@@ -2368,6 +2368,7 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("Tile", "hasProperty", luaTileHasProperty);
 	registerMethod("Tile", "hasFlag", luaTileHasFlag);
+	registerMethod("Tile", "queryAdd", luaTileQueryAdd);
 
 	registerMethod("Tile", "addItem", luaTileAddItem);
 	registerMethod("Tile", "addItemEx", luaTileAddItemEx);
@@ -6655,6 +6656,33 @@ int LuaScriptInterface::luaTileHasFlag(lua_State* L)
 	} else {
 		lua_pushnil(L);
 	}
+	return 1;
+}
+
+int LuaScriptInterface::luaTileQueryAdd(lua_State* L)
+{
+	// tile:queryAdd(creature[, flags = 0])
+	const auto tile = getSharedPtr<Tile>(L, 1);
+	const auto creature = getCreature(L, 2);
+	if (not tile or not creature)
+	{
+		lua_pushinteger(L, RETURNVALUE_NOTPOSSIBLE);
+		return 1;
+	}
+
+	// This is a movement validation query, so never bypass entry restrictions.
+	const auto flags = getNumber<uint32_t>(L, 3, 0) & ~static_cast<uint32_t>(FLAG_NOLIMIT);
+	ReturnValue result = RETURNVALUE_NOTPOSSIBLE;
+	if (const auto player = creature->getPlayer())
+		result = tile->canEnter(player, flags);
+
+	else if (const auto monster = creature->getMonster())
+		result = tile->canEnter(monster, flags);
+
+	else if (const auto npc = creature->getNpc())
+		result = tile->canEnter(npc, flags);
+
+	lua_pushinteger(L, result);
 	return 1;
 }
 
