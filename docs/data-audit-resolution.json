@@ -1,0 +1,487 @@
+{
+  "baseline": "8eb6337c3923ab63c4a5ef2d4a2fa54a132f7b1b",
+  "scope": "Audited data defects, with current engine adaptations and regression tests.",
+  "findings": [
+    {
+      "audit_id": "F01",
+      "title": "Door closing can bypass protection-zone and house-entry restrictions",
+      "status": "fixed",
+      "files": [
+        "data/scripts/doors/door_lib.lua"
+      ],
+      "resolution": "Expose Tile:queryAdd and validate every pushed creature before teleporting. Native checks enforce house invitations and PZ/PvP restrictions. Upstream uses typed canEnter methods and current zone APIs."
+    },
+    {
+      "audit_id": "F02",
+      "title": "Already harvested roots produce unlimited rewards",
+      "status": "fixed",
+      "files": [
+        "data/scripts/itemevents/use/others/juicy_root.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F03",
+      "title": "Escape confirms paid imbuement operations instead of cancelling",
+      "status": "fixed",
+      "files": [
+        "data/scripts/creaturescripts/modal_window_helper.lua"
+      ],
+      "resolution": "Default Enter/Escape now use the actual button IDs."
+    },
+    {
+      "audit_id": "F04",
+      "title": "Imbuement choices are shared across players and bypass item restrictions",
+      "status": "not_applicable",
+      "files": [
+        "data/scripts/creaturescripts/imbuements_shrine.lua"
+      ],
+      "resolution": "Upstream removed the old imbuement shrine and legacy Imbuement Lua APIs. src/item.cpp discards legacy ATTR_IMBUESLOTS/ATTR_IMBUEMENTS during deserialization. No obsolete shrine, helper APIs or chance code was reintroduced."
+    },
+    {
+      "audit_id": "F05",
+      "title": "Abandoned modal windows retain disconnected players and inventories",
+      "status": "fixed",
+      "files": [
+        "data/scripts/creaturescripts/modal_window_helper.lua"
+      ],
+      "resolution": "Consume callbacks before invoking them; clean failed sends, logout, offline players, expiry and reload. Native pending IDs are invalidated through Player:forgetModalWindow."
+    },
+    {
+      "audit_id": "F06",
+      "title": "House wrapping permission accepts part of another player's name",
+      "status": "fixed",
+      "files": [
+        "data/events/scripts/player.lua"
+      ],
+      "resolution": "Use house:canEditAccessList(GUEST_LIST, player), the engine's parsed authorization."
+    },
+    {
+      "audit_id": "F07",
+      "title": "Old imbuement confirmations can modify an item after ownership changes",
+      "status": "not_applicable",
+      "files": [
+        "data/scripts/creaturescripts/imbuements_shrine.lua"
+      ],
+      "resolution": "Upstream removed the old imbuement shrine and legacy Imbuement Lua APIs. src/item.cpp discards legacy ATTR_IMBUESLOTS/ATTR_IMBUEMENTS during deserialization. No obsolete shrine, helper APIs or chance code was reintroduced."
+    },
+    {
+      "audit_id": "F08",
+      "title": "Monster storage records survive non-death removal",
+      "status": "fixed",
+      "files": [
+        "data/scripts/monsters/monster_storages.lua"
+      ],
+      "resolution": "Avoid allocations on reads, delete cleared records, clean death immediately and sweep non-death removals every 60 seconds. Only numeric Lua records are retained, never creatures."
+    },
+    {
+      "audit_id": "F09",
+      "title": "Door movement callbacks call player/monster-only storage APIs on NPCs",
+      "status": "fixed",
+      "files": [
+        "data/scripts/doors/door_lib.lua"
+      ],
+      "resolution": "Store door entry positions in transient per-creature ID state that works for NPCs, with a sweep for removed creatures."
+    },
+    {
+      "audit_id": "F10",
+      "title": "Four registered locked door IDs can never unlock",
+      "status": "mitigated_missing_content",
+      "files": [
+        "data/scripts/doors/door_lib.lua"
+      ],
+      "resolution": "Use explicit reversible keyed-door pairs. Door 14634 correctly maps to 14633; 13236,13237,14641 are excluded from keyed registration because no matching open asset exists."
+    },
+    {
+      "audit_id": "F11",
+      "title": "Five map teleports point to missing tiles",
+      "status": "mitigated_missing_content",
+      "files": [
+        "data/world/forgotten.otbm"
+      ],
+      "resolution": "Remove exactly five broken teleport nodes, 55 bytes total, without rewriting other map data. No destinations were invented."
+    },
+    {
+      "audit_id": "F12",
+      "title": "All three shipped raids spawn outside the supplied map",
+      "status": "mitigated_missing_content",
+      "files": [
+        "data/raids/example_raids.toml"
+      ],
+      "resolution": "Rename off-map example_raids.toml to example_raids.toml.example. The example remains available but cannot announce raids at nonexistent tiles."
+    },
+    {
+      "audit_id": "F13",
+      "title": "Roping another player bypasses protection-zone lock",
+      "status": "fixed",
+      "files": [
+        "data/scripts/lib/actions.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F14",
+      "title": "Rope destination occupancy check is always false",
+      "status": "fixed",
+      "files": [
+        "data/scripts/lib/actions.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F15",
+      "title": "Fresh characters skip the gravedigger taming sequence",
+      "status": "fixed",
+      "files": [
+        "data/scripts/itemevents/use/others/nail_case.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F16",
+      "title": "Potion restrictions validate the user instead of the recipient",
+      "status": "fixed",
+      "files": [
+        "data/scripts/itemevents/use/other/potions.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F17",
+      "title": "Demonic blood fails when held directly in an equipment slot",
+      "status": "fixed",
+      "files": [
+        "data/scripts/itemevents/use/other/potions.lua"
+      ],
+      "resolution": "If no output slot is available, the input is kept and a not-enough-room error is returned."
+    },
+    {
+      "audit_id": "F18",
+      "title": "Rust remover crashes on six configured rusty item types",
+      "status": "fixed",
+      "files": [
+        "data/scripts/itemevents/use/tools/rust_remover.lua"
+      ],
+      "resolution": "Empty loot configurations follow the existing configured break/failure behavior. No new reward odds were invented."
+    },
+    {
+      "audit_id": "F19",
+      "title": "Every marble-sculpting attempt destroys the marble",
+      "status": "fixed",
+      "files": [
+        "data/scripts/itemevents/use/tools/skinning.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F20",
+      "title": "Werewolf helmet enchanting always reaches missing configuration",
+      "status": "fixed",
+      "files": [
+        "data/scripts/itemevents/use/other/enchanting.lua"
+      ],
+      "resolution": "All former skill branches pointed at result 24783, so the unused missing storage selection was replaced with that explicit existing result."
+    },
+    {
+      "audit_id": "F21",
+      "title": "Plague bell uses an undefined storage key",
+      "status": "fixed",
+      "files": [
+        "data/scripts/itemevents/use/others/afflicted_outfit.lua"
+      ],
+      "resolution": "Existing storage 0 was not migrated because it can contain unrelated state. No database migration or live player modification was performed."
+    },
+    {
+      "audit_id": "F22",
+      "title": "Beak Doctor achievement checks an undefined outfit ID",
+      "status": "fixed",
+      "files": [
+        "data/scripts/itemevents/use/others/afflicted_outfit.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F23",
+      "title": "Death-list command cannot accept a player name",
+      "status": "fixed",
+      "files": [
+        "data/scripts/talkactions/deathlist.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F24",
+      "title": "Public sendtext command sends a malformed text packet",
+      "status": "fixed",
+      "files": [
+        "data/scripts/talkactions/sendtext.lua"
+      ],
+      "resolution": "The debug display now uses native sendTextMessage serialization and requires staff access."
+    },
+    {
+      "audit_id": "F25",
+      "title": "Buying premium exceeds the configured 365-day cap",
+      "status": "fixed",
+      "files": [
+        "data/scripts/talkactions/buyprem.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F26",
+      "title": "Registered post horn has no instrument configuration",
+      "status": "fixed",
+      "files": [
+        "data/scripts/itemevents/use/other/music.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F27",
+      "title": "Glooth food rewards have no usable food action",
+      "status": "fixed",
+      "files": [
+        "data/scripts/itemevents/use/other/food.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F28",
+      "title": "Empty crate rolls bypass the search cooldown",
+      "status": "fixed",
+      "files": [
+        "data/scripts/itemevents/use/others/crate_usable.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F29",
+      "title": "Summon Creature calls a nonexistent ManaCost method",
+      "status": "fixed",
+      "files": [
+        "data/scripts/spells/support/summon_creature.lua"
+      ],
+      "resolution": "Use the registered manaCost getter."
+    },
+    {
+      "audit_id": "F30",
+      "title": "Animate Dead bypasses the two-summon limit",
+      "status": "fixed",
+      "files": [
+        "data/scripts/spells/runes/support/animate_dead_rune.lua"
+      ],
+      "resolution": "Reject capped casts before creating a monster or consuming a corpse, preserving the CanSummonAll bypass used by Summon Creature."
+    },
+    {
+      "audit_id": "F31",
+      "title": "Eleven item definitions refer to missing augment names",
+      "status": "fixed",
+      "files": [
+        "data/augments/defaultItems.toml",
+        "data/items/items.toml"
+      ],
+      "resolution": "Align nine augment definition names and the earmuffs reference with the intended item names, restoring all eleven affected item references."
+    },
+    {
+      "audit_id": "F32",
+      "title": "Ornate legs resist every damage type because of a misspelled damage filter",
+      "status": "fixed",
+      "files": [
+        "data/augments/defaultItems.toml"
+      ],
+      "resolution": "Change fiphysicalre to physical."
+    },
+    {
+      "audit_id": "F33",
+      "title": "Conjure Wand of Darkness references an unavailable item",
+      "status": "fixed",
+      "files": [
+        "data/scripts/spells/conjuring/#wand_of_darkness.lua"
+      ],
+      "resolution": "Preserve the script under the loader's # disabled-file convention, with a comment identifying missing item 28416 and its client assets."
+    },
+    {
+      "audit_id": "F34",
+      "title": "Three monster summon definitions reference nonexistent monster names",
+      "status": "fixed",
+      "files": [
+        "data/scripts/monsters/monsters/lord_of_the_elements.lua",
+        "data/scripts/monsters/monsters/thul.lua",
+        "data/scripts/monsters/monsters/versperoth.lua"
+      ],
+      "resolution": "Ported the two name corrections and unavailable-minion disable to current Lua monster definitions, preserving all other upstream behavior."
+    },
+    {
+      "audit_id": "F35",
+      "title": "Migration advances the database version even when its SQL fails",
+      "status": "fixed",
+      "files": [
+        "data/migrations/0.lua"
+      ],
+      "resolution": "Check CREATE TABLE and all ALTER TABLE results, return false immediately on failure, and retain idempotent behavior for partial upgrades."
+    },
+    {
+      "audit_id": "F36",
+      "title": "Failed imbuement application still charges and reports success",
+      "status": "not_applicable",
+      "files": [
+        "data/scripts/creaturescripts/imbuements_shrine.lua"
+      ],
+      "resolution": "Upstream removed the old imbuement shrine and legacy Imbuement Lua APIs. src/item.cpp discards legacy ATTR_IMBUESLOTS/ATTR_IMBUEMENTS during deserialization. No obsolete shrine, helper APIs or chance code was reintroduced."
+    },
+    {
+      "audit_id": "F37",
+      "title": "Expired imbuements leave Lua-added critical and leech chance behind",
+      "status": "not_applicable",
+      "files": [
+        "data/scripts/eventcallbacks/item/default_onRemoveImbue.lua"
+      ],
+      "resolution": "Upstream removed the old imbuement shrine and legacy Imbuement Lua APIs. src/item.cpp discards legacy ATTR_IMBUESLOTS/ATTR_IMBUEMENTS during deserialization. No obsolete shrine, helper APIs or chance code was reintroduced."
+    },
+    {
+      "audit_id": "F38",
+      "title": "Staged bank transfers reject every recipient before looking them up",
+      "status": "fixed",
+      "files": [
+        "data/npc/scripts/bank.lua"
+      ],
+      "resolution": "Resolve recipient before checking lookup result."
+    },
+    {
+      "audit_id": "F39",
+      "title": "Unknown recipients raise a Lua error in one-line bank transfers",
+      "status": "fixed",
+      "files": [
+        "data/npc/scripts/bank.lua"
+      ],
+      "resolution": "Validate lookup before accessing name or vocation; compare vocation IDs."
+    },
+    {
+      "audit_id": "F40",
+      "title": "Bank amount parsing errors on ordinary nonnumeric replies",
+      "status": "fixed",
+      "files": [
+        "data/npc/lib/npc.lua"
+      ],
+      "resolution": "Check digit match before substring, reject overflow and nonfinite/noninteger values."
+    },
+    {
+      "audit_id": "F41",
+      "title": "Scheduled server save performs no save when close and shutdown are disabled",
+      "status": "fixed",
+      "files": [
+        "data/scripts/globalevents/serversave.lua"
+      ],
+      "resolution": "Call saveServer when neither close nor shutdown supplies the save."
+    },
+    {
+      "audit_id": "F42",
+      "title": "Trekolt's random ship destination is chosen once at script load",
+      "status": "fixed",
+      "files": [
+        "data/npc/scripts/ship.lua"
+      ],
+      "resolution": "Allow a destination function, evaluated for each confirmed voyage."
+    },
+    {
+      "audit_id": "F43",
+      "title": "Door item pushing reports success after a failed move",
+      "status": "fixed",
+      "files": [
+        "data/scripts/doors/door_lib.lua"
+      ],
+      "resolution": "Honor item:moveTo and creature:teleportTo failures and keep searching candidate positions."
+    },
+    {
+      "audit_id": "F44",
+      "title": "Malformed looktype parameter raises a Lua error",
+      "status": "fixed",
+      "files": [
+        "data/scripts/talkactions/looktype.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F45",
+      "title": "Multispawn and multisummon accept invalid range indexes",
+      "status": "fixed",
+      "files": [
+        "data/scripts/talkactions/multispawn.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F46",
+      "title": "Death-list dates use incorrect ordinal suffixes after day nine",
+      "status": "fixed",
+      "files": [
+        "data/scripts/talkactions/deathlist.lua"
+      ],
+      "resolution": "Corrected behavior with regression coverage in tests/data."
+    },
+    {
+      "audit_id": "F47",
+      "title": "Monster spell helper functions overwrite one another in the shared Lua state",
+      "status": "already_fixed",
+      "files": [
+        "data/scripts/spells/monster/aggresive_lava_bomb.lua",
+        "data/scripts/spells/monster/ember_beast_area.lua",
+        "data/scripts/spells/monster/ember_beast_beam.lua",
+        "data/scripts/spells/monster/freed_soul_spell.lua",
+        "data/scripts/spells/monster/remorseless_wave.lua",
+        "data/scripts/spells/monster/source_of_corruption_wave.lua"
+      ],
+      "resolution": "No upstream edit: all six scripts already use direct per-spell Combat:getPositions loops with local per-cast state, and define no shared spellCallback."
+    },
+    {
+      "audit_id": "F48",
+      "title": "Quoted chance values make Warden's Calling effects trigger every time",
+      "status": "fixed",
+      "files": [
+        "data/augments/knight.toml"
+      ],
+      "resolution": "Use integer probabilities for all five modifiers."
+    },
+    {
+      "audit_id": "F49",
+      "title": "Varak travel charges more than the quoted fare",
+      "status": "fixed",
+      "files": [
+        "data/npc/scripts/ship.lua"
+      ],
+      "resolution": "Charge quoted 150 gold."
+    }
+  ],
+  "additional_safeguards": [
+    {
+      "title": "Oversized coin conversion can overflow native count",
+      "status": "fixed",
+      "resolution": "Bound exchange outputs to 10000 coins (100 stacks), constrain multiplication before native calls."
+    },
+    {
+      "title": "Delayed speech dereferences missing entities",
+      "status": "fixed",
+      "resolution": "Resolve and validate both player and NPC before scheduling/speaking."
+    },
+    {
+      "title": "Pressure plate dereferences missing neighboring tile",
+      "status": "fixed",
+      "resolution": "Guard Tile lookup before depot query."
+    },
+    {
+      "title": "Multiple auction wins reuse stale balance",
+      "status": "fixed",
+      "resolution": "Atomic conditional UPDATE JOIN charges current balance and assigns house owner together, then mirrors resulting owner into memory."
+    }
+  ],
+  "additional_corrections": [
+    "Door fallback rounds respect configured occupant restrictions.",
+    "Native modal IDs are released on cancellation, replacement, expiry and reload.",
+    "Restore the Phantasm Summon registry key lost during upstream Lua migration."
+  ],
+  "deployment": [
+    "Rebuild the server to include Tile:queryAdd and Player:forgetModalWindow before deploying the data files.",
+    "Some unavailable content is explicitly disabled or removed, as detailed in tests/data/README.txt.",
+    "This change does not repair already affected player inventories, balances or storage values in a live database."
+  ]
+}
