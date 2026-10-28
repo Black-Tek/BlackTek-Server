@@ -3,11 +3,11 @@ local function getArticle(str)
 end
 
 local function getMonthDayEnding(day)
-	if day == "01" or day == "21" or day == "31" then
+	if day == 1 or day == 21 or day == 31 then
 		return "st"
-	elseif day == "02" or day == "22" then
+	elseif day == 2 or day == 22 then
 		return "nd"
-	elseif day == "03" or day == "23" then
+	elseif day == 3 or day == 23 then
 		return "rd"
 	else
 		return "th"
@@ -42,11 +42,11 @@ local function onSay(player, words, param)
 					killed_by = string.lower(killed_by)
 				end
 
-				if date.day < 10 then date.day = "0" .. date.day end
+				local day = string.format("%02d%s", date.day, getMonthDayEnding(date.day))
 				if date.hour < 10 then date.hour = "0" .. date.hour end
 				if date.min < 10 then date.min = "0" .. date.min end
 				if date.sec < 10 then date.sec = "0" .. date.sec end
-				str = str .. breakline .. " " .. date.day .. getMonthDayEnding(date.day) .. " " .. getMonthString(date.month) .. " " .. date.year .. " " .. date.hour .. ":" .. date.min .. ":" .. date.sec .. "   Died at Level " .. result.getNumber(resultId, "level") .. " by " .. article .. killed_by .. "."
+				str = str .. breakline .. " " .. day .. " " .. getMonthString(date.month) .. " " .. date.year .. " " .. date.hour .. ":" .. date.min .. ":" .. date.sec .. "   Died at Level " .. result.getNumber(resultId, "level") .. " by " .. article .. killed_by .. "."
 			until not result.next(resultId)
 			result.free(resultId)
 		end
@@ -66,4 +66,5 @@ local deathlist = TalkAction("!deathlist")
 function deathlist.onSay(player, words, param)
     return onSay(player, words, param)
 end
+deathlist:separator(" ")
 deathlist:register()

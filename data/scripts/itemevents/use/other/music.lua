@@ -16,6 +16,7 @@ local instruments = {
 	[2084] = {effect = CONST_ME_SOUND_GREEN}, -- harp
 	[2085] = {effect = CONST_ME_SOUND_GREEN}, -- harp
 	[2332] = {effect = CONST_ME_SOUND_GREEN}, -- Waldo's post horn
+	[2364] = {effect = CONST_ME_SOUND_GREEN}, -- post horn
 	[2367] = {effect = CONST_ME_SOUND_GREEN}, -- drum (immovable)
 	[2368] = {effect = CONST_ME_SOUND_GREEN}, -- simple fanfare (immovable)
 	[2369] = {effect = CONST_ME_SOUND_YELLOW, itemId = 2681, itemCount = 10, chance = 80, remove = true}, -- cornucopia (immovable)

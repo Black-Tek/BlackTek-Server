@@ -65,7 +65,7 @@ function multispawn.onSay(player, words, param)
     local rows = tonumber(args[2])
 
 
-    if rows and rows <= 3 then
+    if rows and Range[rows] then
         for each, dataset in ipairs(Range[rows]) do
             doSpawn(dataset)
         end
@@ -75,7 +75,7 @@ function multispawn.onSay(player, words, param)
     local random = args[2] == "/random"
     local count = tonumber(args[3])
 
-    if random and count and count > 0 then
+    if random and count and count % 1 == 0 and count > 0 then
         if count > 48 then
             count = 48
             player:sendTextMessage(MESSAGE_INFO_DESCR, "The max is 48 creatures at one time! Defaulting to the max!")
@@ -129,7 +129,7 @@ function multisummon.onSay(player, words, param)
 
     local rows = tonumber(args[2])
 
-    if rows and rows <=3 then
+    if rows and Range[rows] then
         for each, dataset in ipairs(Range[rows]) do
             doSummon(dataset)
         end
@@ -139,7 +139,7 @@ function multisummon.onSay(player, words, param)
     local random = args[2] == "/random"
     local count = tonumber(args[3])
 
-    if random and count and count > 0 then
+    if random and count and count % 1 == 0 and count > 0 then
         if count > 48 then
             count = 48
             player:sendTextMessage(MESSAGE_INFO_DESCR, "The max is 48 creatures at one time! Defaulting to the max!")

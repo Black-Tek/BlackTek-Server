@@ -6,6 +6,7 @@ afflictedOutfit.onUse = function(player, item, fromPosition, target, toPosition,
 		return true
 	end
 	local hasOutfit = player:getStorageValue(PlayerStorageKeys.afflictedOutfit) == 1
+	local looktype = player:getSex() == PLAYERSEX_FEMALE and 431 or 430
 	if item.itemid == 13925 then -- plague mask
 		if not hasOutfit then
 			return false
@@ -25,12 +26,12 @@ afflictedOutfit.onUse = function(player, item, fromPosition, target, toPosition,
 		if not hasOutfit then
 			return false
 		end
-		if player:getStorageValue(PlayerStorageKeys.addonPlagueBell) == 1 then
+		if player:getStorageValue(PlayerStorageKeys.afflictedPlagueBell) == 1 then
 			return false
 		end
 		player:addOutfitAddon(430, 1)
 		player:addOutfitAddon(431, 1)
-		player:setStorageValue(PlayerStorageKeys.addonPlagueBell, 1)
+		player:setStorageValue(PlayerStorageKeys.afflictedPlagueBell, 1)
 		player:say("You gained a plague bell for your outfit.", TALKTYPE_MONSTER_SAY, false, player)
 		if player:hasOutfit(looktype, 3) then
 			player:addAchievement("Beak Doctor")
