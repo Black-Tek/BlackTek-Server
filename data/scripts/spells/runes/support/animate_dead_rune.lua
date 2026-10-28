@@ -1,6 +1,12 @@
 local spell = Spell(SPELL_RUNE)
 
 function spell.onCastSpell(creature, variant, isHotkey)
+	if not creature:hasFlag(PlayerFlag_CanSummonAll) and #creature:getSummons() >= 2 then
+		creature:sendCancelMessage("You cannot summon more creatures.")
+		creature:getPosition():sendMagicEffect(CONST_ME_POFF)
+		return false
+	end
+
 	local position = variant:getPosition()
 	local tile = Tile(position)
 	if tile and creature:getSkull() ~= SKULL_BLACK then

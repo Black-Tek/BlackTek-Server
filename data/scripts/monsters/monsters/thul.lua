@@ -89,7 +89,7 @@ monster.immunities = {
 }
 monster.maxSummons = 2
 monster.summons = {
-    {name = "Massive Water Elementals", interval = 2000, chance = 10, max = 2},
+    {name = "Massive Water Elemental", interval = 2000, chance = 10, max = 2},
 }
 monster.voices = {
     interval = 5000,

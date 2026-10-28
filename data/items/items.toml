@@ -40271,7 +40271,7 @@ description = "They feel nice and warm on your ears."
 weight = 500
 armor = 0
 slotType = "head"
-augment = "Pair of Earmuffs"
+augment = "pair of earmuffs"
 
 [[items]]
 id = 7460

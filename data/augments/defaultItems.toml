@@ -177,7 +177,7 @@ modifiers = [
 
 
 [magmaBoots]
-name = ""
+name = "magma boots"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "fire"},
 	{ mod = "weakness", value = 5, damage = "ice"}
@@ -314,7 +314,7 @@ modifiers = [
 
 
 [robeOfIceQueen]
-name = "the robe of the ice queen"
+name = "robe of the ice queen"
 modifiers = [
 	{ mod = "resist", value = 12, damage = "ice"},
 	{ mod = "weakness", value = 12, damage = "energy"}
@@ -392,8 +392,8 @@ modifiers = [
 ]
 
 
-[earthbornGiantArmor]
-name = "earthborn giant armor"
+[earthbornTitanArmor]
+name = "earthborn titan armor"
 modifiers = [
 	{ mod = "resist", value = 5, damage = "earth"},
 	{ mod = "weakness", value = 5, damage = "fire"}
@@ -408,8 +408,8 @@ modifiers = [
 ]
 
 
-[oceanbornColossusArmor]
-name = "oceanborn colossus armor"
+[oceanbornLeviathanArmor]
+name = "oceanborn leviathan armor"
 modifiers = [
     { mod = "resist", value = 5, damage = "ice"},
     { mod = "weakness", value = 5, damage = "energy"}
@@ -548,7 +548,7 @@ modifiers = [
 
 
 [spellweaverRobe]
-name = "spellweaver robe"
+name = "spellweaver's robe"
 modifiers = [
 	{ mod = "resist", value = 10, damage = "energy"},
 	{ mod = "weakness", value = 10, damage = "earth"}
@@ -607,20 +607,20 @@ modifiers = [
     { mod = "resist", value = 8, damage = "physical"}
 ]
 
-[deapthLorica]
-name = "deapth lorica"
+[depthLorica]
+name = "depth lorica"
 modifiers = [
     { mod = "resist", value = 5, damage = "death"}
 ]
 
-[deathGalea]
-name = "death galea"
+[depthGalea]
+name = "depth galea"
 modifiers = [
     { mod = "resist", value = 100, damage = "drown"}
 ]
 
-[deathOcrea]
-name = "death ocrea"
+[depthOcrea]
+name = "depth ocrea"
 modifiers = [
     { mod = "resist", value = 15, damage = "manadrain"}
 ]
@@ -634,7 +634,7 @@ modifiers = [
 [ornateLegs]
 name = "ornate legs"
 modifiers = [
-    { mod = "resist", value = 5, damage = "fiphysicalre"}
+    { mod = "resist", value = 5, damage = "physical"}
 ]
 
 [ornateShield]
@@ -734,8 +734,8 @@ modifiers = [
     { mod = "resist", value = 4, damage = "physical"}
 ]
 
-[icyCulotte]
-name = "icy culotte"
+[icyCulottes]
+name = "icy culottes"
 modifiers = [
     { mod = "resist", value = 8, damage = "ice"}
 ]

@@ -95,7 +95,7 @@ monster.summons = {
     {name = "Blistering Fire Elemental", interval = 4000, chance = 50, max = 0},
     {name = "Jagged Earth Elemental", interval = 4000, chance = 50, max = 0},
     {name = "Roaring Water Elemental", interval = 4000, chance = 50, max = 0},
-    {name = "Overcharged Energy Elemental", interval = 4000, chance = 50, max = 0},
+    {name = "Overcharged Energy Element", interval = 4000, chance = 50, max = 0},
 }
 monster.voices = {
     interval = 5000,
