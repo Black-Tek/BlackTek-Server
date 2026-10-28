@@ -2858,6 +2858,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "hasOutfit", luaPlayerHasOutfit);
 	registerMethod("Player", "canWearOutfit", luaPlayerCanWearOutfit);
 	registerMethod("Player", "sendOutfitWindow", luaPlayerSendOutfitWindow);
+	registerMethod("Player", "forgetModalWindow", luaPlayerForgetModalWindow);
 
 	registerMethod("Player", "addMount", luaPlayerAddMount);
 	registerMethod("Player", "removeMount", luaPlayerRemoveMount);
@@ -13418,6 +13419,21 @@ int LuaScriptInterface::luaPlayerCanWearOutfit(lua_State* L)
 	} else {
 		lua_pushnil(L);
 	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerForgetModalWindow(lua_State* L)
+{
+	// player:forgetModalWindow(id) invalidates the pending reply without sending UI.
+	const auto player = getSharedPtr<Player>(L, 1);
+	if (not player)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	player->onModalWindowHandled(getNumber<uint32_t>(L, 2));
+	pushBoolean(L, true);
 	return 1;
 }
 

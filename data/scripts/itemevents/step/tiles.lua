@@ -34,7 +34,8 @@ stepOn.onStepOn = function(creature, item, position, fromPosition)
 	if Tile(position):hasFlag(TILESTATE_PROTECTIONZONE) then
 		local lookPosition = creature:getPosition()
 		lookPosition:getNextPosition(creature:getDirection())
-		local depotItem = Tile(lookPosition):getItemByType(ITEM_TYPE_DEPOT)
+		local lookTile = Tile(lookPosition)
+		local depotItem = lookTile and lookTile:getItemByType(ITEM_TYPE_DEPOT)
 		if depotItem then
 			local depotItems = creature:getDepotItemCount();
 			creature:sendTextMessage(MESSAGE_STATUS_DEFAULT, "Your depot contains " .. depotItems .. " item" .. (depotItems > 1 and "s." or "."))

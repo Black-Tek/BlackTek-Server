@@ -171,7 +171,9 @@ function Player:onWrapItem(item)
 		return
 	end
 
-	if house ~= self:getHouse() and not string.find(house:getAccessList(SUBOWNER_LIST):lower(), "%f[%a]" .. self:getName():lower() .. "%f[%A]") then
+	-- Owners and subowners can edit the guest list. Use the engine's parsed
+	-- access rules, including full names, exclusions, guilds and account owners.
+	if not house:canEditAccessList(GUEST_LIST, self) then
 		self:sendCancelMessage("You cannot wrap or unwrap items from a house, which you are only guest to.")
 		return
 	end

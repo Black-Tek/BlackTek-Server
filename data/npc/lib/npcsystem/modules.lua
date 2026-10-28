@@ -172,7 +172,7 @@ if Modules == nil then
 				npcHandler:say(parameters.msg or "Set the sails!", cid)
 				npcHandler:releaseFocus(cid)
 
-				local destination = Position(parameters.destination)
+				local destination = Position(type(parameters.destination) == "function" and parameters.destination() or parameters.destination)
 				local position = player:getPosition()
 				player:teleportTo(destination)
 
