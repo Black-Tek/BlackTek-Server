@@ -282,7 +282,7 @@ function canPushToPosition(position, round, doorPosition, creature)
         return true
     end
 
-    if round == 2 and creatureCount > 0 then
+    if creatureCount > 0 then
 
         for _, creature in ipairs(activeCreatures) do
             if creature:isPlayer() and not doorConfig.allowPushOntoPlayers then
@@ -305,7 +305,9 @@ function canPushToPosition(position, round, doorPosition, creature)
             return false
         end
 
-        return true
+        if round == 2 then
+            return true
+        end
     end
 
     if round == 3 then

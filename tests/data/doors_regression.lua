@@ -68,3 +68,15 @@ assert(not pushItemFromDoor(item, {x = 1, y = 1, z = 7}))
 item.moveTo = function() return true end
 assert(pushItemFromDoor(item, {x = 1, y = 1, z = 7}))
 print('PASS: failed item moves try alternatives and return failure')
+
+local occupant = {
+    isPlayer = function() return true end, isMonster = function() return false end,
+    isRemoved = function() return false end, getHealth = function() return 100 end,
+    getSkull = function() return SKULL_NONE end
+}
+destination.getCreatures = function() return {occupant} end
+doorConfig.allowPushOntoPlayers = false
+assert(not canPushToPosition({x = 1, y = 1, z = 7}, 3, nil, npc))
+doorConfig.allowPushOntoPlayers = true
+assert(canPushToPosition({x = 1, y = 1, z = 7}, 3, nil, npc))
+print('PASS: fallback search cannot bypass configured occupant restrictions')
