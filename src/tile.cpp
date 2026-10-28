@@ -95,15 +95,18 @@ void Tile::applyItemProperties(const ItemConstPtr& item)
 	}
 }
 
-void Tile::recalculateItemProperties()
+void Tile::recalculateItemProperties(const ItemPtr& exclude) noexcept
 {
 	itemProperties = 0;
-	if (ground) {
+	if (ground and ground != exclude)
 		applyItemProperties(ground);
-	}
-	if (const auto itemList = getItemList()) {
-		for (const auto& item : *itemList) {
-			applyItemProperties(item);
+
+	if (const auto itemList = getItemList())
+	{
+		for (const auto& item : *itemList)
+		{
+			if (item != exclude)
+				applyItemProperties(item);
 		}
 	}
 }
@@ -1634,7 +1637,8 @@ void Tile::setTileFlags(const ItemConstPtr& item)
 
 void Tile::resetTileFlags(const ItemPtr& item)
 {
-	recalculateItemProperties();
+	// updateItem calls this before changing the ID, while the old item is still on the tile.
+	recalculateItemProperties(item);
 
 	if (const ItemType& it = Item::items[item->getID()]; it.floorChange != 0) {
 		resetFlag(TILESTATE_FLOORCHANGE);

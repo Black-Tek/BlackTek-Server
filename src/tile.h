@@ -374,7 +374,7 @@ class Tile : public SharedObject
 		void onUpdateTile(std::span<const CreaturePtr> spectators);
 		void removeItem(const ItemPtr& item, uint32_t count, std::span<const CreaturePtr> spectators);
 		void applyItemProperties(const ItemConstPtr& item);
-		void recalculateItemProperties();
+		void recalculateItemProperties(const ItemPtr& exclude) noexcept;
 		void setTileFlags(const ItemConstPtr& item);
 		void resetTileFlags(const ItemPtr& item);
 		void syncChunkFlags();
