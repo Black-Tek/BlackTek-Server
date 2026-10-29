@@ -89,9 +89,9 @@ rustRemover.onUse = function(player, item, fromPosition, target, toPosition, isH
 	local randomChance = math.random(10000)
 	local index = false
 
-	if targetItem[1].chance >= randomChance then -- implying first item in the table index always has the highest chance.
+	if targetItem[1] and targetItem[1].chance >= randomChance then -- implying first item in the table index always has the highest chance.
 		while not index do
-			randomIndex = math.random(#targetItem)
+			local randomIndex = math.random(#targetItem)
 			if targetItem[randomIndex].chance >= randomChance then
 				index = randomIndex
 			end
@@ -99,6 +99,7 @@ rustRemover.onUse = function(player, item, fromPosition, target, toPosition, isH
 	end
 
 	if not index then
+		local msg
 		if table.contains({9808, 9809, 9810}, target.itemid) then
 			msg = "The armor was already damaged so badly that it broke when you tried to clean it."
 		end

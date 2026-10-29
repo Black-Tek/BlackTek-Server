@@ -167,9 +167,19 @@ function onUseRope(player, item, fromPosition, target, toPosition, isHotkey)
 
 		if thing:isPlayer() then
 			local destinationTile = Tile(toPosition:moveUpstairs())
+			if not destinationTile then
+				return false
+			end
+			if destinationTile:hasFlag(TILESTATE_PROTECTIONZONE) and thing:isPzLocked() then
+				player:sendCancelMessage(RETURNVALUE_PLAYERISPZLOCKED)
+				return true
+			end
 			local ground = destinationTile:getGround()
 			local pathIsClear = not destinationTile:hasFlag(TILESTATE_IMMOVABLEBLOCKSOLID) and not destinationTile:hasFlag(TILESTATE_BLOCKSOLID)
-			if not ground or not destinationTile:getCreatureCount() == 0 or not pathIsClear then
+			if not ground or destinationTile:getCreatureCount() ~= 0 or not pathIsClear then
+				return false
+			end
+			if destinationTile:queryAdd(thing) ~= RETURNVALUE_NOERROR then
 				return false
 			end
 			return thing:teleportTo(toPosition, false)

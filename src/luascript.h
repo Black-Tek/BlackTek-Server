@@ -827,6 +827,7 @@ class LuaScriptInterface
 
 		static int luaTileHasProperty(lua_State* L);
 		static int luaTileHasFlag(lua_State* L);
+		static int luaTileQueryAdd(lua_State* L);
 
 		static int luaTileGetThingIndex(lua_State* L);
 
@@ -1289,6 +1290,7 @@ class LuaScriptInterface
 		static int luaPlayerHasOutfit(lua_State* L);
 		static int luaPlayerCanWearOutfit(lua_State* L);
 		static int luaPlayerSendOutfitWindow(lua_State* L);
+		static int luaPlayerForgetModalWindow(lua_State* L);
 
 		static int luaPlayerAddMount(lua_State* L);
 		static int luaPlayerRemoveMount(lua_State* L);

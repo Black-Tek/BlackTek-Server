@@ -161,6 +161,7 @@ edibleItem:id(16014)
 edibleItem:id(18397)
 edibleItem:id(19737)
 for id = 20100, 20101 do edibleItem:id(id) end
+for id = 23514, 23517 do edibleItem:id(id) end
 edibleItem:id(24841)
 edibleItem:id(24843)
 edibleItem:id(26191)

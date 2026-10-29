@@ -29,7 +29,7 @@ function spell.onCastSpell(creature, variant)
 		end
 	end
 
-	local manaCost = monsterType:ManaCost()
+	local manaCost = monsterType:manaCost()
 	if creature:getMana() < manaCost and not creature:hasFlag(PlayerFlag_HasInfiniteMana) then
 		creature:sendCancelMessage(RETURNVALUE_NOTENOUGHMANA)
 		creature:getPosition():sendMagicEffect(CONST_ME_POFF)

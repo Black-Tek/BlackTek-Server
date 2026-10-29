@@ -1,4 +1,4 @@
-local mtype = Game.createMonsterType("Phantasm")
+local mtype = Game.createMonsterType("Phantasm Summon")
 local monster = {}
 
 monster.name = "Phantasm"

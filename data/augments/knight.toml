@@ -24,10 +24,10 @@ modifiers = [
 	# Absorb physical damage
 	{ mod = "absorb", value = 100, damage = "physical"},
 	# High Defenses
-	{ mod = "resist", value = 30, chance = "25", damage = "death"},
-	{ mod = "resist", value = 25, chance = "25", damage = "fire"},
-	{ mod = "reflect", value = 20, chance = "10", damage = "energy"},
-	{ mod = "deflect", value = 10, chance = "10", damage = "earth"},
-	{ mod = "ricochet", value = 10, chance = "10", damage = "ice"},
+	{ mod = "resist", value = 30, chance = 25, damage = "death"},
+	{ mod = "resist", value = 25, chance = 25, damage = "fire"},
+	{ mod = "reflect", value = 20, chance = 10, damage = "energy"},
+	{ mod = "deflect", value = 10, chance = 10, damage = "earth"},
+	{ mod = "ricochet", value = 10, chance = 10, damage = "ice"},
 
 ]

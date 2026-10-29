@@ -1,9 +1,18 @@
-local ModalWindowAutoID = 10000
+-- Keep IDs unique across script reloads, so replies to old windows cannot
+-- accidentally confirm a newly created operation.
+ModalWindowNextId = ModalWindowNextId or 10000
 
 if not __ModalWindow then
 	__ModalWindow = ModalWindow
-	ModalWindows = {}
 end
+-- Old callbacks belong to the previous script generation.
+for playerId, windows in pairs(ModalWindows or {}) do
+	local player = Player(playerId)
+	if player and player.forgetModalWindow then
+		for id in pairs(windows) do player:forgetModalWindow(id) end
+	end
+end
+ModalWindows = {}
 
 ModalWindow = {}
 ModalWindow.__index = ModalWindow
@@ -180,8 +189,8 @@ function ModalWindow:setId()
 		return self.modalWindowId
 	end
 
-	self.modalWindowId = ModalWindowAutoID
-	ModalWindowAutoID = ModalWindowAutoID + 1
+	self.modalWindowId = ModalWindowNextId
+	ModalWindowNextId = ModalWindowNextId + 1
 	return self.modalWindowId
 end
 
@@ -193,9 +202,10 @@ function ModalWindow:create()
 		local name = self.buttons[id].name
 		modalWindow:addButton(id, name)
 		if id == self.defaultEnterButton or name == self.defaultEnterButton then
-			modalWindow:setDefaultEnterButton(id - 1)
-		elseif id == self.defaultEscapeButton or name == self.defaultEscapeButton then
-			modalWindow:setDefaultEscapeButton(id - 1)
+			modalWindow:setDefaultEnterButton(id)
+		end
+		if id == self.defaultEscapeButton or name == self.defaultEscapeButton then
+			modalWindow:setDefaultEscapeButton(id)
 		end
 	end
 
@@ -208,11 +218,35 @@ end
 function ModalWindow:sendToPlayer(player)
 	local modalWindow = self:create()
 	local playerId = player:getId()
+	if not modalWindow:sendToPlayer(player) then
+		return false
+	end
 	ModalWindows[playerId] = ModalWindows[playerId] or {}
+	if not ModalWindows[playerId][self.modalWindowId] then
+		self.using = self.using + 1
+	end
 	ModalWindows[playerId][self.modalWindowId] = self
+	self.expiresAt = os.time() + (self.timeout or 900)
 	player:registerEvent("modalWindowHelper")
-	self.using = self.using + 1
-	return modalWindow:sendToPlayer(player)
+	return true
+end
+
+function ModalWindow.clearPlayer(playerId, modalWindowId)
+	local windows = ModalWindows[playerId]
+	if not windows then
+		return
+	end
+	local player = Player(playerId)
+	for id, window in pairs(windows) do
+		if not modalWindowId or id == modalWindowId then
+			if player and player.forgetModalWindow then player:forgetModalWindow(id) end
+			window.using = math.max(0, window.using - 1)
+			windows[id] = nil
+		end
+	end
+	if not next(windows) then
+		ModalWindows[playerId] = nil
+	end
 end
 
 local creatureEvent = CreatureEvent("modalWindowHelper")
@@ -229,24 +263,54 @@ function creatureEvent.onModalWindow(player, modalWindowId, buttonId, choiceId)
 		return true
 	end
 
-	local button = modalWindow.buttons[buttonId] or {}
-	local choice = modalWindow.choices[choiceId] or {}
-	if button.callback then
-		button.callback(player, button, choice)
-	elseif choice.callback then
-		choice.callback(player, button, choice)
-	elseif modalWindow.defaultCallback then
-		modalWindow.defaultCallback(player, button, choice)
+	-- Remove the entry before user code runs, including when the callback errors
+	-- or creates another window. A reply can consume an operation only once.
+	ModalWindow.clearPlayer(playerId, modalWindowId)
+	if modalWindow.expiresAt <= os.time() then
+		return true
 	end
 
-	modalWindow.using = modalWindow.using - 1
-	if modalWindow.using == 0 then
-		modalWindows[modalWindowId] = nil
-		if not next(modalWindows) then
-			ModalWindows[playerId] = nil
+	local button = modalWindow.buttons[buttonId]
+	if not button then
+		return true
+	end
+	local choice = modalWindow.choices[choiceId] or {}
+	local callback = button.callback or choice.callback or modalWindow.defaultCallback
+	if callback then
+		local ok, err = pcall(callback, player, button, choice)
+		if not ok then
+			print("[ModalWindow] Callback failed: " .. tostring(err))
 		end
 	end
 	return true
 end
 
 creatureEvent:register()
+
+local logout = CreatureEvent("modalWindowLogout")
+function logout.onLogout(player)
+	ModalWindow.clearPlayer(player:getId())
+	return true
+end
+logout:register()
+
+-- Forced kicks bypass onLogout in this engine. Sweep offline players and
+-- expired windows as well, so their callbacks cannot retain native objects.
+local cleanup = GlobalEvent("modalWindowCleanup")
+function cleanup.onThink(interval)
+	local now = os.time()
+	for playerId, windows in pairs(ModalWindows) do
+		if not Player(playerId) then
+			ModalWindow.clearPlayer(playerId)
+		else
+			for id, window in pairs(windows) do
+				if window.expiresAt <= now then
+					ModalWindow.clearPlayer(playerId, id)
+				end
+			end
+		end
+	end
+	return true
+end
+cleanup:interval(60000)
+cleanup:register()

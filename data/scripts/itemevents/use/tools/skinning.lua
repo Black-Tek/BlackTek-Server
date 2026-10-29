@@ -118,7 +118,7 @@ skinningKnife.onUse = function(player, item, fromPosition, target, toPosition, i
 	if type(skin[1]) == "table" then
 		local added = false
 		for _, skinChild in ipairs(skin) do
-			if randomChance <= skinChild.chance and not target.itemid == 13583 then
+			if randomChance <= skinChild.chance and target.itemid ~= 13583 then
 				if target.itemid == 11343 then
 					local marble = player:addItem(skinChild.newItem, skinChild.amount or 1)
 					if marble then
@@ -129,7 +129,6 @@ skinningKnife.onUse = function(player, item, fromPosition, target, toPosition, i
 						player:addAchievementProgress("Marble Madness", 5)
 					end
 					effect = CONST_ME_HITAREA
-					target:remove()
 					added = true
 				else
 					target:transform(skinChild.newItem, skinChild.amount or 1)
@@ -140,11 +139,17 @@ skinningKnife.onUse = function(player, item, fromPosition, target, toPosition, i
 			end
 		end
 
-		if not added and target.itemid == 11343 then
+		if target.itemid == 11343 then
 			effect = CONST_ME_HITAREA
-			player:say("Your attempt at shaping that marble rock failed miserably.", TALKTYPE_MONSTER_SAY)
-			transform = false
+			if not added then
+				player:say("Your attempt at shaping that marble rock failed miserably.", TALKTYPE_MONSTER_SAY)
+			end
 			target:remove()
+			if toPosition.x == CONTAINER_POSITION then
+				toPosition = player:getPosition()
+			end
+			toPosition:sendMagicEffect(effect)
+			return true
 		end
 	elseif randomChance <= skin.chance then
 		if table.contains({7441, 7442, 7444, 7445}, target.itemid) then

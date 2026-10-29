@@ -1,10 +1,5 @@
--- store the position of the player when they enter a door
--- now we can push them back there later
-DOOR_ENTRY_STORAGE = {
-    X = 50000,
-    Y = 50001,
-    Z = 50002
-}
+-- Door entry positions are transient and apply to players, monsters and NPCs.
+local doorEntryPositions = {}
 
 doorConfig = {
     allowGamemasterBypass = false,                    -- if true, gamemasters will teleport directly onto doors without opening them
@@ -84,12 +79,13 @@ doorKeys = { 2086, 2087, 2088, 2089, 2090, 2091, 2092, 10032, 21537, 25338 }
 
 -- lockedDoors are locked/unlocked using doorKeys but otherwise have no special rules once unlocked
 -- IMPORTANT: lockedDoors transform into normalDoors when unlocked, so they must have a corresponding entry in normalDoors
--- add 1 to the lockedDoor ID to get the normalDoor ID
+-- Most keyed doors use the next item ID; exceptional pairs are explicit below.
+-- 13236, 13237 and 14641 have no matching open door in these assets.
 lockedDoors = {
     ids = {
         1209, 1212, 1231, 1234, 1249, 1252, 3535, 3544, 4913, 4916, 5098, 5107, 5116, 5125, 5134, 5137, 5140, 5143,
         5278, 5281, 5732, 5735, 6192, 6195, 6249, 6252, 6891, 6900, 7033, 7042, 8541, 8544, 9165, 9168, 9267, 9270,
-        10268, 10271, 10468, 10477, 10775, 10784, 12092, 12099, 12188, 12197, 13236, 13237, 14634, 14641, 19840, 19849,
+        10268, 10271, 10468, 10477, 10775, 10784, 12092, 12099, 12188, 12197, 14634, 19840, 19849,
         19980, 19989, 20273, 20282, 22814, 22823, 25283, 25290
     },
     messages = {
@@ -174,56 +170,57 @@ local function isActiveDoorCreature(creature)
 end
 
 function storeCreatureEntryPosition(creature, fromPosition)
-    if not isValidDoorStorageCreature(creature) then
-        return
+    if isValidDoorStorageCreature(creature) and fromPosition then
+        doorEntryPositions[creature:getId()] = {x = fromPosition.x, y = fromPosition.y, z = fromPosition.z}
     end
-
-    creature:setStorageValue(DOOR_ENTRY_STORAGE.X, fromPosition.x)
-    creature:setStorageValue(DOOR_ENTRY_STORAGE.Y, fromPosition.y)
-    creature:setStorageValue(DOOR_ENTRY_STORAGE.Z, fromPosition.z)
 end
 
 function getCreatureEntryPosition(creature)
-    if not isValidDoorStorageCreature(creature) then
-        return nil
-    end
-
-    local x = creature:getStorageValue(DOOR_ENTRY_STORAGE.X)
-    local y = creature:getStorageValue(DOOR_ENTRY_STORAGE.Y)
-    local z = creature:getStorageValue(DOOR_ENTRY_STORAGE.Z)
-
-    if x == -1 or y == -1 or z == -1 then
-        return nil
-    end
-
-    return Position(x, y, z)
+    local entry = creature and doorEntryPositions[creature:getId()]
+    return entry and Position(entry.x, entry.y, entry.z) or nil
 end
 
 function clearCreatureEntryPosition(creature)
-    if not isValidDoorStorageCreature(creature) then
-        return
+    if creature then
+        doorEntryPositions[creature:getId()] = nil
     end
-
-    creature:setStorageValue(DOOR_ENTRY_STORAGE.X, -1)
-    creature:setStorageValue(DOOR_ENTRY_STORAGE.Y, -1)
-    creature:setStorageValue(DOOR_ENTRY_STORAGE.Z, -1)
 end
 
-function canPushToPosition(position, round, doorPosition)
+local doorEntryCleanup = GlobalEvent("DoorEntryCleanup")
+function doorEntryCleanup.onThink(interval)
+    for id in pairs(doorEntryPositions) do
+        if not Creature(id) then
+            doorEntryPositions[id] = nil
+        end
+    end
+    return true
+end
+doorEntryCleanup:interval(60000)
+doorEntryCleanup:register()
+
+function canPushToPosition(position, round, doorPosition, creature)
     if not position then return false end
 
     local tile = Tile(position)
-    if not tile then return false end
+    if not tile or not tile:getGround() then return false end
+
+    -- Teleport bypasses normal movement checks. Validate the destination first,
+    -- retaining house invitations and all PZ/PvP restrictions in the engine.
+    if creature then
+        local flags = FLAG_IGNOREBLOCKCREATURE
+        if doorConfig.allowPushThroughMagicWalls then
+            flags = flags + FLAG_IGNOREBLOCKITEM
+        end
+        if tile:queryAdd(creature, flags) ~= RETURNVALUE_NOERROR then
+            return false
+        end
+    end
 
     local hasMagicWall = tile:getItemById(ITEM_MAGICWALL)
     local hasWildGrowth = tile:getItemById(ITEM_WILDGROWTH)
 
-    if hasMagicWall or hasWildGrowth then
-        if doorConfig.allowPushThroughMagicWalls then
-            return true
-        else
-            return false
-        end
+    if (hasMagicWall or hasWildGrowth) and not doorConfig.allowPushThroughMagicWalls then
+        return false
     end
 
     if not doorConfig.allowPushOntoMagicFields then
@@ -238,13 +235,13 @@ function canPushToPosition(position, round, doorPosition)
         end
     end
 
-    if tile:hasFlag(TILESTATE_BLOCKSOLID) then return false end
+    if tile:hasFlag(TILESTATE_BLOCKSOLID) and not ((hasMagicWall or hasWildGrowth) and doorConfig.allowPushThroughMagicWalls) then return false end
     if tile:hasFlag(TILESTATE_FLOORCHANGE) then return false end
 
-    local targetInPZ = tile:hasFlag(TILESTATE_PROTECTIONZONE)
+    local targetInPZ = Zones.hasWorldFlag(position, "protection")
     if doorPosition then
         local doorTile = Tile(doorPosition)
-        local doorInPZ = doorTile and doorTile:hasFlag(TILESTATE_PROTECTIONZONE) or false
+        local doorInPZ = doorTile and Zones.hasWorldFlag(doorPosition, "protection") or false
 
         if targetInPZ and not doorInPZ then
             if not doorConfig.allowPushIntoProtectionZone then
@@ -285,7 +282,7 @@ function canPushToPosition(position, round, doorPosition)
         return true
     end
 
-    if round == 2 and creatureCount > 0 then
+    if creatureCount > 0 then
 
         for _, creature in ipairs(activeCreatures) do
             if creature:isPlayer() and not doorConfig.allowPushOntoPlayers then
@@ -308,7 +305,9 @@ function canPushToPosition(position, round, doorPosition)
             return false
         end
 
-        return true
+        if round == 2 then
+            return true
+        end
     end
 
     if round == 3 then
@@ -339,8 +338,7 @@ function pushCreatureFromDoor(creature, doorPosition)
         local entryPos = getCreatureEntryPosition(creature)
         if entryPos then
             for round = 1, 3 do
-                if canPushToPosition(entryPos, round, doorPosition) then
-                    creature:teleportTo(entryPos, true)
+                if canPushToPosition(entryPos, round, doorPosition, creature) and creature:teleportTo(entryPos, true) then
                     clearCreatureEntryPosition(creature)
                     return true
                 end
@@ -367,8 +365,7 @@ function pushCreatureFromDoor(creature, doorPosition)
                 doorPosition.y + dir.y,
                 doorPosition.z
             )
-            if canPushToPosition(targetPos, round, doorPosition) then
-                creature:teleportTo(targetPos, true)
+            if canPushToPosition(targetPos, round, doorPosition, creature) and creature:teleportTo(targetPos, true) then
                 clearCreatureEntryPosition(creature)
                 return true
             end
@@ -398,8 +395,7 @@ function pushItemFromDoor(item, doorPosition)
                 doorPosition.y + dir.y,
                 doorPosition.z
             )
-            if canPushToPosition(targetPos, round, doorPosition) then
-                item:moveTo(targetPos)
+            if canPushToPosition(targetPos, round, doorPosition) and item:moveTo(targetPos) then
                 return true
             end
         end
@@ -462,9 +458,15 @@ function closeDoor(doorPosition, doorItem)
     return doorItem:transform(closedId)
 end
 
+local lockedDoorPairs = {[14634] = 14633}
+local unlockedDoorPairs = {}
 lockedDoorsSet = {}
 for _, id in ipairs(lockedDoors.ids) do
     lockedDoorsSet[id] = true
+    local unlockedId = lockedDoorPairs[id] or id + 1
+    assert(normalDoors[unlockedId], "Missing unlocked door for " .. id)
+    lockedDoorPairs[id] = unlockedId
+    unlockedDoorPairs[unlockedId] = id
 end
 
 function isLockedDoor(doorId)
@@ -472,19 +474,11 @@ function isLockedDoor(doorId)
 end
 
 function getUnlockedDoorId(lockedDoorId)
-    local unlockedId = lockedDoorId + 1
-    if normalDoors[unlockedId] then
-        return unlockedId
-    end
-    return nil
+    return lockedDoorPairs[lockedDoorId]
 end
 
 function getLockedDoorId(unlockedDoorId)
-    local lockedId = unlockedDoorId - 1
-    if isLockedDoor(lockedId) then
-        return lockedId
-    end
-    return nil
+    return unlockedDoorPairs[unlockedDoorId]
 end
 
 function findDoorOnTile(position)

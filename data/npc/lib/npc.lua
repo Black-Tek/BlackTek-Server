@@ -56,15 +56,15 @@ function doNpcSellItem(cid, itemid, amount, subType, ignoreCap, inBackpacks, bac
 end
 
 local func = function(cid, text, type, e, pcid)
-	if Player(pcid):isPlayer() then
-		local creature = Creature(cid)
+	local player, creature = Player(pcid), Creature(cid)
+	if player and creature then
 		creature:say(text, type, false, pcid, creature:getPosition())
 		e.done = true
 	end
 end
 
 function doCreatureSayWithDelay(cid, text, type, delay, e, pcid)
-	if Player(pcid):isPlayer() then
+	if Player(pcid) and Creature(cid) then
 		e.done = false
 		e.event = addEvent(func, delay < 1 and 1000 or delay, cid, text, type, e, pcid)
 	end
@@ -102,24 +102,17 @@ end
 
 function getCount(string)
 	local b, e = string:find("%d+")
+	if not b then return -1 end
 	local count = tonumber(string:sub(b, e))
-	if count > 2 ^ 32 - 1 then
-		print("Warning: Casting value to 32bit to prevent crash\n"..debug.traceback())
-	end
-	return b and e and math.min(2 ^ 32 - 1, count) or -1
+	return count and count <= 2 ^ 32 - 1 and count or -1
 end
 
 function isValidMoney(money)
-	return isNumber(money) and money > 0
+	return type(money) == "number" and money > 0 and money <= 2 ^ 32 - 1 and money == math.floor(money)
 end
 
 function getMoneyCount(string)
-	local b, e = string:find("%d+")
-	local count = tonumber(string:sub(b, e))
-	if count > 2 ^ 32 - 1 then
-		print("Warning: Casting value to 32bit to prevent crash\n"..debug.traceback())
-	end
-	local money = b and e and math.min(2 ^ 32 - 1, count) or -1
+	local money = getCount(string)
 	if isValidMoney(money) then
 		return money
 	end

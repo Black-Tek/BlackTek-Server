@@ -5,6 +5,15 @@ NpcSystem.parseParameters(npcHandler)
 local count = {}
 local transfer = {}
 
+-- Bound the number of output stacks as well as the native integer arguments.
+-- This prevents integer overflow and huge allocations from one exchange.
+local maxExchangeOutput = 10000
+local function exchangeCount(message, outputMultiplier)
+	local value = getMoneyCount(message)
+	if value > math.floor(maxExchangeOutput / outputMultiplier) then return -1 end
+	return value
+end
+
 function onCreatureAppear(cid)              npcHandler:onCreatureAppear(cid)            end
 function onCreatureDisappear(cid)           npcHandler:onCreatureDisappear(cid)         end
 function onCreatureSay(cid, type, msg)      npcHandler:onCreatureSay(cid, type, msg)    end
@@ -208,6 +217,11 @@ local function creatureSayCallback(cid, type, msg)
 			if isValidMoney(count[cid]) then
 				-- Immediate topicList.TRANSFER_PLAYER_WHO simulation
 				transfer[cid] = getPlayerDatabaseInfo(receiver)
+				if not transfer[cid] then
+					npcHandler:say("This player does not exist.", cid)
+					npcHandler.topic[cid] = topicList.NONE
+					return true
+				end
 				if player:getName() == transfer[cid].name then
 					npcHandler:say("Why would you want to transfer money to yourself? You already have it!", cid)
 					npcHandler.topic[cid] = topicList.NONE
@@ -215,7 +229,7 @@ local function creatureSayCallback(cid, type, msg)
 				end
 
 				if transfer[cid] then
-					if transfer[cid].vocation == VOCATION_NONE and Player(cid):getVocation() ~= 0 then
+					if transfer[cid].vocation == VOCATION_NONE and player:getVocation():getId() ~= VOCATION_NONE then
 						npcHandler:say("I'm afraid this character only holds a junior account at our bank. Do not worry, though. Once he has chosen his vocation, his account will be upgraded.", cid)
 						npcHandler.topic[cid] = topicList.NONE
 						return true
@@ -253,12 +267,12 @@ local function creatureSayCallback(cid, type, msg)
 			npcHandler.topic[cid] = topicList.NONE
 		end
 	elseif npcHandler.topic[cid] == topicList.TRANSFER_PLAYER_WHO then
+		transfer[cid] = getPlayerDatabaseInfo(msg)
 		if not transfer[cid] then
 			npcHandler:say("Hmm, my ledgers have no records of anyone with the name "..msg..". Please ensure the name is correct.", cid)
 			npcHandler.topic[cid] = topicList.TRANSFER_PLAYER_WHO
 			return true
 		end
-		transfer[cid] = getPlayerDatabaseInfo(msg)
 		if player:getName() == transfer[cid].name then
 			npcHandler:say("Fill in this field with person who receives your gold!", cid)
 			npcHandler.topic[cid] = topicList.NONE
@@ -266,7 +280,7 @@ local function creatureSayCallback(cid, type, msg)
 		end
 
 		if transfer[cid] then
-			if transfer[cid].vocation == VOCATION_NONE and Player(cid):getVocation() ~= 0 then
+			if transfer[cid].vocation == VOCATION_NONE and player:getVocation():getId() ~= VOCATION_NONE then
 				npcHandler:say("I'm afraid this character only holds a junior account at our bank. Do not worry, though. Once he has chosen his vocation, his account will be upgraded.", cid)
 				npcHandler.topic[cid] = topicList.NONE
 				return true
@@ -316,11 +330,11 @@ local function creatureSayCallback(cid, type, msg)
 		npcHandler:say("How many crystal coins would you like to change into platinum?", cid)
 		npcHandler.topic[cid] = topicList.CHANGE_CRYSTAL_PLATINUM
 	elseif npcHandler.topic[cid] == topicList.CHANGE_GOLD_PLATINUM then
-		if getMoneyCount(msg) < 1 then
-			npcHandler:say("Sorry, you do not have enough gold coins.", cid)
+		count[cid] = exchangeCount(msg, 1)
+		if count[cid] < 1 then
+			npcHandler:say("Please request between 1 and 10000 platinum coins per exchange.", cid)
 			npcHandler.topic[cid] = topicList.NONE
 		else
-			count[cid] = getMoneyCount(msg)
 			npcHandler:say("So you would like me to change " .. count[cid] * 100 .. " of your gold coins into " .. count[cid] .. " platinum coins?", cid)
 			npcHandler.topic[cid] = topicList.CHANGE_GOLD_PLATINUM_CONSENT
 		end
@@ -348,11 +362,11 @@ local function creatureSayCallback(cid, type, msg)
 			npcHandler.topic[cid] = topicList.NONE
 		end
 	elseif npcHandler.topic[cid] == topicList.CHANGE_PLATINUM_GOLD then
-		if getMoneyCount(msg) < 1 then
-			npcHandler:say("Sorry, you do not have enough platinum coins.", cid)
+		count[cid] = exchangeCount(msg, 100)
+		if count[cid] < 1 then
+			npcHandler:say("Please change between 1 and 100 platinum coins per exchange.", cid)
 			npcHandler.topic[cid] = topicList.NONE
 		else
-			count[cid] = getMoneyCount(msg)
 			npcHandler:say("So you would like me to change " .. count[cid] .. " of your platinum coins into " .. count[cid] * 100 .. " gold coins for you?", cid)
 			npcHandler.topic[cid] = topicList.CHANGE_PLATINUM_GOLD_CONSENT
 		end
@@ -373,11 +387,11 @@ local function creatureSayCallback(cid, type, msg)
 		end
 		npcHandler.topic[cid] = topicList.NONE
 	elseif npcHandler.topic[cid] == topicList.CHANGE_PLATINUM_CRYSTAL then
-		if getMoneyCount(msg) < 1 then
-			npcHandler:say("Sorry, you do not have enough platinum coins.", cid)
+		count[cid] = exchangeCount(msg, 1)
+		if count[cid] < 1 then
+			npcHandler:say("Please request between 1 and 10000 crystal coins per exchange.", cid)
 			npcHandler.topic[cid] = topicList.NONE
 		else
-			count[cid] = getMoneyCount(msg)
 			npcHandler:say("So you would like me to change " .. count[cid] * 100 .. " of your platinum coins into " .. count[cid] .. " crystal coins for you?", cid)
 			npcHandler.topic[cid] = topicList.CHANGE_PLATINUM_CRYSTAL_CONSENT
 		end
@@ -394,11 +408,11 @@ local function creatureSayCallback(cid, type, msg)
 		end
 		npcHandler.topic[cid] = topicList.NONE
 	elseif npcHandler.topic[cid] == topicList.CHANGE_CRYSTAL_PLATINUM then
-		if getMoneyCount(msg) < 1 then
-			npcHandler:say("Sorry, you do not have enough crystal coins.", cid)
+		count[cid] = exchangeCount(msg, 100)
+		if count[cid] < 1 then
+			npcHandler:say("Please change between 1 and 100 crystal coins per exchange.", cid)
 			npcHandler.topic[cid] = topicList.NONE
 		else
-			count[cid] = getMoneyCount(msg)
 			npcHandler:say("So you would like me to change " .. count[cid] .. " of your crystal coins into " .. count[cid] * 100 .. " platinum coins for you?", cid)
 			npcHandler.topic[cid] = topicList.CHANGE_CRYSTAL_PLATINUM_CONSENT
 		end
@@ -451,5 +465,6 @@ keywordHandler:addKeyword({"market"}, StdModule.say, {
 
 npcHandler:setMessage(MESSAGE_GREET, "Welcome to the bank, |PLAYERNAME|! Need some help with your {bank account}?")
 npcHandler:setCallback(CALLBACK_GREET, greetCallback)
+npcHandler:setCallback(CALLBACK_ONRELEASEFOCUS, greetCallback)
 npcHandler:setCallback(CALLBACK_MESSAGE_DEFAULT, creatureSayCallback)
 npcHandler:addModule(FocusModule:new())

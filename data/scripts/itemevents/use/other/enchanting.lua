@@ -87,16 +87,9 @@ local items = {
 		},
 		[24718] = { -- werewolf helmet
 			[Combat.DamageType.None] = {
-				id = {
-					[SKILL_CLUB] = {id = 24783},
-					[SKILL_SWORD] = {id = 24783},
-					[SKILL_AXE] = {id = 24783},
-					[SKILL_DISTANCE] = {id = 24783},
-					[SKILL_MAGLEVEL] = {id = 24783}
-				},
+				id = 24783,
 				effects = {failure = CONST_ME_POFF, success = CONST_ME_THUNDER},
-				message = {text = "The helmet cannot be enchanted while worn."},
-				usesStorage = true
+				message = {text = "The helmet cannot be enchanted while worn."}
 			},
 			slot = {type = CONST_SLOT_HEAD, check = true}
 		},
@@ -175,25 +168,8 @@ itemEnchantment.onUse = function(player, item, fromPosition, target, toPosition,
 				item:decay()
 				target:remove(1)
 			else
-				if targetItem.usesStorage then
-					local vocationId = player:getVocation():getDemotion():getId()
-					local storage = storages[itemId] and storages[itemId][targetId] and storages[itemId][targetId][vocationId]
-					if not storage then
-						return false
-					end
-
-					local storageValue = player:getStorageValue(storage.key)
-					if storageValue == -1 then
-						return false
-					end
-
-					local transform = targetItem.id and targetItem.id[storageValue]
-					if not transform then
-						return false
-					end
-					target:transform(transform.id)
-				else
-					target:transform(targetItem.id)
+				if not target:transform(targetItem.id) then
+					return false
 				end
 
 				if target:hasAttribute(ITEM_ATTRIBUTE_DURATION) then

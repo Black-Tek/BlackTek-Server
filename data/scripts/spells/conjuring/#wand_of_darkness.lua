@@ -1,3 +1,4 @@
+-- Disabled until item 28416 and its client assets are available in this datapack.
 local spell = Spell(SPELL_INSTANT)
 
 function spell.onCastSpell(creature, variant)

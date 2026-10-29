@@ -80,10 +80,7 @@ monster.immunities = {
     {type = "paralyze", condition = true},
     {type = "invisible", condition = true},
 }
-monster.maxSummons = 7
-monster.summons = {
-    {name = "Minion of Vesperoth", interval = 2000, chance = 16, max = 4},
-}
+-- Minion of Vesperoth summoning is disabled until its monster definition is available.
 monster.voices = {
     interval = 2500,
     chance = 10,

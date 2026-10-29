@@ -1,0 +1,77 @@
+Data audit resolution
+Baseline: 8eb6337c3923ab63c4a5ef2d4a2fa54a132f7b1b
+
+The matrix in data-audit-resolution.json accounts for all 49 original findings.
+The original audit targeted the 3dcffcd release snapshot. Current upstream uses
+different item and monster APIs and has removed the legacy imbuement shrine.
+Findings removed or already corrected upstream are recorded without reviving old code.
+
+Missing content decisions
+The unavailable wand, missing minion and off-map raid examples remain disabled.
+Three door IDs lack open counterparts and are not registered as keyed doors.
+One exceptional keyed door is corrected explicitly. Five broken teleport nodes
+were removed, changing only 55 bytes of map data. Their coordinates are listed
+in tests/data/README.txt. Restoring these features requires intended content or
+destinations from a map/content author.
+
+Verification
+Run python tests/data/run.py with Lua 5.3+ and Python 3.11+. The suites compile
+and parse the data tree, exercise real Lua callbacks through engine mocks, and
+check content and map references. Native compilation, live database behavior
+and multiplayer/client tests are separate from these isolated checks.
+
+Deployment
+Deploy a rebuilt engine together with the data. Tile:queryAdd and
+Player:forgetModalWindow are new bindings; old executables lack them.
+Existing player damage from previous bugs is not automatically reversed.
+
+Finding dispositions
+F01 [fixed] Door closing can bypass protection-zone and house-entry restrictions
+F02 [fixed] Already harvested roots produce unlimited rewards
+F03 [fixed] Escape confirms paid imbuement operations instead of cancelling
+F04 [not_applicable] Imbuement choices are shared across players and bypass item restrictions
+F05 [fixed] Abandoned modal windows retain disconnected players and inventories
+F06 [fixed] House wrapping permission accepts part of another player's name
+F07 [not_applicable] Old imbuement confirmations can modify an item after ownership changes
+F08 [fixed] Monster storage records survive non-death removal
+F09 [fixed] Door movement callbacks call player/monster-only storage APIs on NPCs
+F10 [mitigated_missing_content] Four registered locked door IDs can never unlock
+F11 [mitigated_missing_content] Five map teleports point to missing tiles
+F12 [mitigated_missing_content] All three shipped raids spawn outside the supplied map
+F13 [fixed] Roping another player bypasses protection-zone lock
+F14 [fixed] Rope destination occupancy check is always false
+F15 [fixed] Fresh characters skip the gravedigger taming sequence
+F16 [fixed] Potion restrictions validate the user instead of the recipient
+F17 [fixed] Demonic blood fails when held directly in an equipment slot
+F18 [fixed] Rust remover crashes on six configured rusty item types
+F19 [fixed] Every marble-sculpting attempt destroys the marble
+F20 [fixed] Werewolf helmet enchanting always reaches missing configuration
+F21 [fixed] Plague bell uses an undefined storage key
+F22 [fixed] Beak Doctor achievement checks an undefined outfit ID
+F23 [fixed] Death-list command cannot accept a player name
+F24 [fixed] Public sendtext command sends a malformed text packet
+F25 [fixed] Buying premium exceeds the configured 365-day cap
+F26 [fixed] Registered post horn has no instrument configuration
+F27 [fixed] Glooth food rewards have no usable food action
+F28 [fixed] Empty crate rolls bypass the search cooldown
+F29 [fixed] Summon Creature calls a nonexistent ManaCost method
+F30 [fixed] Animate Dead bypasses the two-summon limit
+F31 [fixed] Eleven item definitions refer to missing augment names
+F32 [fixed] Ornate legs resist every damage type because of a misspelled damage filter
+F33 [fixed] Conjure Wand of Darkness references an unavailable item
+F34 [fixed] Three monster summon definitions reference nonexistent monster names
+F35 [fixed] Migration advances the database version even when its SQL fails
+F36 [not_applicable] Failed imbuement application still charges and reports success
+F37 [not_applicable] Expired imbuements leave Lua-added critical and leech chance behind
+F38 [fixed] Staged bank transfers reject every recipient before looking them up
+F39 [fixed] Unknown recipients raise a Lua error in one-line bank transfers
+F40 [fixed] Bank amount parsing errors on ordinary nonnumeric replies
+F41 [fixed] Scheduled server save performs no save when close and shutdown are disabled
+F42 [fixed] Trekolt's random ship destination is chosen once at script load
+F43 [fixed] Door item pushing reports success after a failed move
+F44 [fixed] Malformed looktype parameter raises a Lua error
+F45 [fixed] Multispawn and multisummon accept invalid range indexes
+F46 [fixed] Death-list dates use incorrect ordinal suffixes after day nine
+F47 [already_fixed] Monster spell helper functions overwrite one another in the shared Lua state
+F48 [fixed] Quoted chance values make Warden's Calling effects trigger every time
+F49 [fixed] Varak travel charges more than the quoted fare

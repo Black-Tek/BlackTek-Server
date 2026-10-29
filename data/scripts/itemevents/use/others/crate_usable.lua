@@ -19,13 +19,13 @@ usableCrate.onUse = function(player, item, fromPosition, target, toPosition, isH
 		for i = 1, #rewards do
 			local reward = rewards[i]
 			if totalChance >= reward[1] and totalChance <= reward[2] then
+				player:setStorageValue(PlayerStorageKeys.crateUsable, os.time() + 60 * 60)
 				if reward[3] then
 					local rewardItemType = ItemType(reward[3])
 					local count = reward[4] or 1
 					player:addItem(reward[3], count)
 					local str = ("You found %s %s!"):format(count > 1 and count or rewardItemType:getArticle(), count > 1 and rewardItemType:getPluralName() or rewardItemType:getName())
 					player:say(str, TALKTYPE_MONSTER_SAY, false, player, toPosition)
-					player:setStorageValue(PlayerStorageKeys.crateUsable, os.time() + 1 * 60 * 60)
 					player:addAchievementProgress("Free Items!", 50)
 				else
 					player:say("You found nothing useful.", TALKTYPE_MONSTER_SAY, false, player, toPosition)

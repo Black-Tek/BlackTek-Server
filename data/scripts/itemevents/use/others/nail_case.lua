@@ -33,7 +33,7 @@ nailCase.onUse = function(player, item, fromPosition, target, toPosition, isHotk
 		return true
 	end
 
-	player:setStorageValue(PlayerStorageKeys.nailCaseUseCount, player:getStorageValue(PlayerStorageKeys.nailCaseUseCount) + 1)
+	player:setStorageValue(PlayerStorageKeys.nailCaseUseCount, math.max(0, player:getStorageValue(PlayerStorageKeys.nailCaseUseCount)) + 1)
 	local count = player:getStorageValue(PlayerStorageKeys.nailCaseUseCount)
 	local message = messages[count]
 	if message then

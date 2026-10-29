@@ -127,12 +127,16 @@ local potions = {
 local potionItem = ItemEvent()
 
 potionItem.onUse = function(player, item, fromPosition, target, toPosition, isHotkey)
-	if type(target) == "userdata" and not target:isPlayer() then
+	local potion = potions[item:getId()]
+	if not potion then
 		return false
 	end
 
-	local potion = potions[item:getId()]
-	if potion.level and player:getLevel() < potion.level or potion.vocations and not table.contains(potion.vocations, player:getVocation():getId()) then
+	local recipient = potion.condition and player or target
+	if not potion.transform and (not recipient or not recipient.isPlayer or not recipient:isPlayer()) then
+		return false
+	end
+	if potion.level and recipient:getLevel() < potion.level or potion.vocations and not table.contains(potion.vocations, recipient:getVocation():getId()) then
 		player:say(potion.description, TALKTYPE_MONSTER_SAY)
 		return true
 	end
@@ -143,14 +147,27 @@ potionItem.onUse = function(player, item, fromPosition, target, toPosition, isHo
 		player:getPosition():sendMagicEffect(potion.effect)
 	elseif potion.transform then
 		local reward = potion.transform[math.random(#potion.transform)]
+		local position = item:getPosition()
+		local rewardItem
 		if fromPosition.x == CONTAINER_POSITION then
-			local targetContainer = Container(item:getParent().uid)
-			targetContainer:addItem(reward, 1)
+			local parent = item:getParent()
+			if parent and parent:isContainer() then
+				rewardItem = parent:addItem(reward, 1)
+			else
+				rewardItem = player:addItem(reward, 1, false)
+			end
 		else
-			Game.createItem(reward, 1, fromPosition)
+			rewardItem = Game.createItem(reward, 1, fromPosition)
 		end
-		item:getPosition():sendMagicEffect(potion.effect)
-		item:remove(1)
+		if not rewardItem then
+			player:sendCancelMessage(RETURNVALUE_NOTENOUGHROOM)
+			return true
+		end
+		if not item:remove(1) then
+			rewardItem:remove(1)
+			return true
+		end
+		position:sendMagicEffect(potion.effect)
 		return true
 	else
 		if potion.health then

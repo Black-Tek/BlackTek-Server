@@ -1,17 +1,11 @@
 local talk = TalkAction("/sendtext")
 
 function talk.onSay(player, words, param)
-
-    local packet = NetworkMessage()
-    local pos = Position(92, 123, 7)
-
-    packet:addByte(0xB4)
-    packet:addPosition(pos)
-    packet:addU32(100)
-    packet:addByte(TEXTCOLOR_WHITE_EXP)
-    packet:addString("you gaining")
-    packet:sendToPlayer(player)
-
+    if not player:getGroup():getAccess() then
+        return true
+    end
+    player:sendTextMessage(MESSAGE_EXPERIENCE, "Experience display test.", player:getPosition(), 100, TEXTCOLOR_WHITE_EXP)
+    return false
 end
 
 talk:separator(" ")
