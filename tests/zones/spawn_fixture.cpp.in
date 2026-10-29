@@ -1,0 +1,573 @@
+// Test doubles cover only clock, placement, creature identity and zone lookup.
+// All marked source sections are inserted verbatim by run_spawn_tests.py, apart
+// from TimerQueue's explicit clock alias. No spawn policy is reimplemented here.
+
+#include <algorithm>
+#include <array>
+#include <bitset>
+#include <chrono>
+#include <coroutine>
+#include <cstddef>
+#include <cstdint>
+#include <deque>
+#include <functional>
+#include <memory>
+#include <memory_resource>
+#include <optional>
+#include <ostream>
+#include <queue>
+#include <random>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+@HANDLE@
+@POSITION@
+
+namespace BlackTek::Tests
+{
+    struct FakeClock
+    {
+        using rep        = int64_t;
+        using period     = std::milli;
+        using duration   = std::chrono::milliseconds;
+        using time_point = std::chrono::time_point<FakeClock>;
+        static constexpr bool is_steady = true;
+        inline static int64_t NowMs = 0;
+        [[nodiscard]] static time_point now() noexcept { return time_point{duration{NowMs}}; }
+    };
+
+    void Expect(bool condition)
+    {
+        if (not condition)
+            throw std::runtime_error("spawn regression expectation failed");
+    }
+}
+
+class Creature;
+class Player;
+class Monster;
+class MonsterType {};
+using CreaturePtr = std::shared_ptr<Creature>;
+using PlayerPtr = std::shared_ptr<Player>;
+using MonsterPtr = std::shared_ptr<Monster>;
+enum MagicEffectClasses { CONST_ME_TELEPORT };
+
+class Creature : public std::enable_shared_from_this<Creature>
+{
+public:
+    inline static uint32_t NextId = 0;
+    uint32_t id = ++NextId;
+    Position position{100, 100, 7};
+    virtual ~Creature() = default;
+    [[nodiscard]] virtual PlayerPtr getPlayer() { return {}; }
+    [[nodiscard]] virtual MonsterPtr getMonster() { return {}; }
+    [[nodiscard]] uint32_t getID() const noexcept { return id; }
+    [[nodiscard]] const Position& getPosition() const noexcept { return position; }
+    [[nodiscard]] Direction getDirection() const noexcept { return DIRECTION_NORTH; }
+    void setDirection(Direction) noexcept {}
+    void setSpawn(int) noexcept {}
+    void setMasterPos(Position value) noexcept { position = value; }
+};
+
+class Player : public Creature
+{
+public:
+    [[nodiscard]] PlayerPtr getPlayer() override { return std::static_pointer_cast<Player>(shared_from_this()); }
+};
+
+class Monster : public Creature
+{
+public:
+    explicit Monster(MonsterType*) noexcept {}
+    [[nodiscard]] MonsterPtr getMonster() override { return std::static_pointer_cast<Monster>(shared_from_this()); }
+};
+
+class Npc : public Creature
+{
+public:
+    [[nodiscard]] static std::shared_ptr<Npc> createNpc(const std::string&) { return std::make_shared<Npc>(); }
+};
+
+struct Monsters
+{
+    MonsterType type;
+    [[nodiscard]] MonsterType* getMonsterType(const std::string&) noexcept { return &type; }
+} g_monsters;
+
+struct Game
+{
+    struct Placement
+    {
+        int64_t time;
+        CreaturePtr creature;
+    };
+    std::vector<Placement> placements;
+    std::unordered_map<uint32_t, CreaturePtr> creatures;
+    uint32_t failures = 0;
+
+    bool placeCreature(CreaturePtr creature, Position position, bool, bool, MagicEffectClasses = CONST_ME_TELEPORT)
+    {
+        if (failures > 0)
+        {
+            --failures;
+            return false;
+        }
+        creature->position = position;
+        creatures[creature->getID()] = creature;
+        placements.push_back({BlackTek::Tests::FakeClock::NowMs, creature});
+        return true;
+    }
+    bool internalPlaceCreature(CreaturePtr creature, Position position, bool)
+    {
+        return placeCreature(creature, position, false, true);
+    }
+    [[nodiscard]] CreaturePtr getCreatureByID(uint32_t id)
+    {
+        auto found = creatures.find(id);
+        return found == creatures.end() ? nullptr : found->second;
+    }
+    bool removeCreature(CreaturePtr creature, bool) { return creatures.erase(creature->getID()) != 0; }
+} g_game;
+
+struct Events
+{
+    [[nodiscard]] bool eventMonsterOnSpawn(MonsterPtr, Position, bool, bool) const noexcept { return true; }
+};
+Events TestEvents;
+Events* g_events = &TestEvents;
+[[nodiscard]] int32_t normal_random(int32_t low, int32_t) noexcept { return low; }
+[[nodiscard]] int32_t uniform_random(int32_t low, int32_t) noexcept { return low; }
+
+namespace Zones
+{
+@ZONE_TYPES@
+
+    class ZoneManager
+    {
+    public:
+        inline static Zone* Current = nullptr;
+        [[nodiscard]] static bool Alive(ZoneHandle handle) noexcept
+        {
+            return Current and Current->self == handle;
+        }
+        [[nodiscard]] static Zone* TryGetMutable(ZoneHandle handle) noexcept
+        {
+            return Alive(handle) ? Current : nullptr;
+        }
+        static void BeginResume(std::coroutine_handle<>) noexcept {}
+        static void EndResume() noexcept {}
+        static void RegisterSpawnPosition(Position&, ZoneHandle) noexcept {}
+    };
+}
+
+@TIMERS@
+
+namespace Zones
+{
+@SELECTION@
+@COROUTINES@
+}
+
+namespace BlackTek::Tests
+{
+    void Advance(uint32_t milliseconds)
+    {
+        const auto target = FakeClock::now() + std::chrono::milliseconds(milliseconds);
+        size_t resumes = 0;
+        while (not g_timer_queue.queue.empty() and g_timer_queue.queue.top().wake <= target)
+        {
+            Expect(++resumes < 10000);
+            FakeClock::NowMs = g_timer_queue.queue.top().wake.time_since_epoch().count();
+            g_timer_queue.tick();
+        }
+        FakeClock::NowMs = target.time_since_epoch().count();
+        g_timer_queue.tick();
+    }
+
+    class Fixture
+    {
+    public:
+        Zones::Zone zone;
+        Zones::ZoneOverlay overlay;
+        PlayerPtr player = std::make_shared<Player>();
+        Zones::SpawnCreaturePtr entry = std::make_shared<Zones::SpawnCreature>();
+
+        explicit Fixture(Zones::Policy policy = Zones::Policy::Fixed, bool passive = false,
+                         bool forced = false, bool boss = false)
+        {
+            zone.id = 1;
+            zone.self = {1, 1};
+            Zones::ZoneManager::Current = &zone;
+            zone.entity_type = boss ? Zones::SpawnType::Boss : Zones::SpawnType::Monster;
+            zone.policy = policy;
+            zone.startpos = {100, 100, 7};
+            zone.cooldown = 5000;
+            if (passive) zone.Passivize();
+            if (forced) zone.config.set(static_cast<size_t>(Zones::ConfigFlag::Forced));
+            zone.configured_trigger = Zones::SpawnTrigger::Use;
+            entry->creatures = "Rat:100;";
+            entry->interval = 30000;
+            if (boss) entry->link_type = Zones::LinkType::Master;
+            zone.creature_list.push_back(entry);
+            overlay.AddZone(zone.self);
+        }
+
+        ~Fixture()
+        {
+            zone.Deactivate();
+            zone.onTrigger = {};
+            Zones::ZoneManager::Current = nullptr;
+            while (not zone.liveFrames.empty())
+                zone.liveFrames.back().destroy();
+            g_timer_queue = {};
+        }
+
+        void Start() { zone.Run(); }
+        void Enter() { Trigger(player, Zones::SpawnTrigger::Enter); }
+        void Leave() { Trigger(player, Zones::SpawnTrigger::Leave); }
+        void Trigger(CreaturePtr creature, Zones::SpawnTrigger trigger) { overlay.Trigger(creature, trigger); }
+        void Kill(Zones::SpawnTrigger trigger = Zones::SpawnTrigger::Death)
+        {
+            Expect(zone.active_creatures.size() == 1);
+            auto creature = g_game.getCreatureByID(zone.active_creatures.begin()->first);
+            Expect(creature != nullptr);
+            Trigger(creature, trigger);
+            g_game.creatures.erase(creature->getID());
+        }
+        [[nodiscard]] size_t Count() const noexcept { return g_game.placements.size(); }
+        void ExpectCount(size_t count) const { Expect(Count() == count); }
+    };
+
+    void Stay(Zones::Policy policy, Zones::SpawnTrigger trigger = Zones::SpawnTrigger::Death)
+    {
+        Fixture fixture(policy);
+        fixture.Start(); fixture.Enter(); fixture.ExpectCount(1); fixture.Kill(trigger);
+        Advance(29999); fixture.ExpectCount(1);
+        Advance(1); fixture.ExpectCount(2);
+        Expect(g_game.placements.back().time == 30000);
+    }
+
+    void Reenter(Zones::Policy policy, bool afterDeadline)
+    {
+        Fixture fixture(policy);
+        fixture.Start(); fixture.Enter(); fixture.Kill(); fixture.Leave();
+        if (afterDeadline)
+        {
+            Advance(40000); fixture.ExpectCount(1);
+            fixture.Enter(); fixture.ExpectCount(2);
+            Expect(not fixture.zone.Paused());
+        }
+        else
+        {
+            for (int i = 0; i < 3; ++i)
+            {
+                Advance(5000); fixture.Enter(); fixture.ExpectCount(1); fixture.Leave();
+            }
+            fixture.Enter();
+            Advance(14999); fixture.ExpectCount(1);
+            Advance(1); fixture.ExpectCount(2);
+        }
+    }
+
+    void PassiveOccupied(Zones::SpawnTrigger trigger, bool afterDeadline)
+    {
+        Fixture fixture(Zones::Policy::Fixed, true);
+        fixture.Start(); fixture.ExpectCount(1); fixture.Enter(); fixture.Kill(trigger);
+        Advance(afterDeadline ? 40000 : 10000); fixture.ExpectCount(1);
+        fixture.Leave();
+        if (afterDeadline)
+            fixture.ExpectCount(2);
+        else
+        {
+            fixture.ExpectCount(1);
+            Advance(19999); fixture.ExpectCount(1);
+            Advance(1); fixture.ExpectCount(2);
+        }
+    }
+
+    void Boss(Zones::Policy policy, const std::string& mode)
+    {
+        Fixture fixture(policy, false, false, true);
+        fixture.Start(); fixture.Enter();
+        if (policy == Zones::Policy::Triggered)
+            fixture.Trigger(fixture.player, Zones::SpawnTrigger::Use);
+        fixture.ExpectCount(1); fixture.Kill();
+        if (mode == "reentry" or mode == "empty")
+        {
+            fixture.Leave(); Advance(10000);
+            if (mode == "reentry") fixture.Enter();
+            fixture.ExpectCount(1); Advance(19999); fixture.ExpectCount(1);
+        }
+        else
+        {
+            if (policy == Zones::Policy::Triggered)
+                fixture.Trigger(fixture.player, Zones::SpawnTrigger::Use);
+            Advance(29999); fixture.ExpectCount(1);
+        }
+        Advance(1);
+        if (mode == "empty")
+        {
+            fixture.ExpectCount(1); fixture.Enter();
+        }
+        if (policy == Zones::Policy::Triggered)
+        {
+            fixture.ExpectCount(1);
+            fixture.Trigger(fixture.player, Zones::SpawnTrigger::Use);
+        }
+        fixture.ExpectCount(2);
+        Expect(g_game.placements.back().time == 30000);
+    }
+
+    void Run(const std::string& name)
+    {
+        using Zones::Policy;
+        using Zones::SpawnTrigger;
+        if (name == "fixed-stay") Stay(Policy::Fixed);
+        else if (name == "relative-stay") Stay(Policy::Relative);
+        else if (name == "fixed-despawn") Stay(Policy::Fixed, SpawnTrigger::Despawn);
+        else if (name == "relative-despawn") Stay(Policy::Relative, SpawnTrigger::Despawn);
+        else if (name == "fixed-reenter-before") Reenter(Policy::Fixed, false);
+        else if (name == "relative-reenter-before") Reenter(Policy::Relative, false);
+        else if (name == "fixed-reenter-after") Reenter(Policy::Fixed, true);
+        else if (name == "relative-reenter-after") Reenter(Policy::Relative, true);
+        else if (name == "passive-death-occupied") PassiveOccupied(SpawnTrigger::Death, false);
+        else if (name == "passive-despawn-occupied") PassiveOccupied(SpawnTrigger::Despawn, false);
+        else if (name == "passive-after-deadline") PassiveOccupied(SpawnTrigger::Death, true);
+        else if (name == "passive-player-death-before-deadline")
+        {
+            Fixture fixture(Policy::Fixed, true);
+            fixture.Start(); fixture.Enter(); fixture.Kill();
+            Expect(fixture.zone.creature_list.empty());
+            Advance(10000); fixture.Trigger(fixture.player, SpawnTrigger::Death);
+            Expect(fixture.zone.players.empty() and not fixture.zone.Paused());
+            Advance(19999); fixture.ExpectCount(1); Advance(1); fixture.ExpectCount(2);
+        }
+        else if (name == "forced-occupied" or name == "forced-last-player-leaves")
+        {
+            Fixture fixture(Policy::Fixed, true, true);
+            fixture.Start(); fixture.Enter(); fixture.Kill();
+            if (name == "forced-last-player-leaves") fixture.Leave();
+            Advance(29999); fixture.ExpectCount(1); Advance(1);
+            if (name == "forced-occupied")
+            {
+                fixture.ExpectCount(1); Advance(24999); fixture.ExpectCount(1); Advance(1);
+            }
+            fixture.ExpectCount(2);
+        }
+        else if (name == "fallback-zero")
+        {
+            Fixture fixture; fixture.entry->interval = 0;
+            fixture.Start(); fixture.Enter(); fixture.Kill();
+            Advance(4999); fixture.ExpectCount(1); Advance(1); fixture.ExpectCount(2);
+        }
+        else if (name == "initial-startup")
+        {
+            Fixture fixture(Policy::Fixed, true);
+            fixture.Start(); fixture.ExpectCount(1); Expect(FakeClock::NowMs == 0);
+        }
+        else if (name == "manual-pause-queue")
+        {
+            Fixture fixture; fixture.Start(); fixture.Enter(); fixture.Kill(); fixture.zone.Pause();
+            Advance(30000); fixture.ExpectCount(1);
+            Expect(fixture.zone.creature_list.size() == 1);
+            fixture.zone.ProcessCreatures(); fixture.ExpectCount(1);
+            Expect(fixture.zone.creature_list.size() == 1);
+            fixture.zone.Unpause(); fixture.zone.ProcessCreatures(); fixture.ExpectCount(2);
+        }
+        else if (name == "player-death-reentry")
+        {
+            Fixture fixture; fixture.Start(); fixture.Enter(); fixture.Kill();
+            fixture.Trigger(fixture.player, SpawnTrigger::Death);
+            Expect(fixture.zone.players.empty() and fixture.zone.Paused());
+            Advance(30000); fixture.ExpectCount(1);
+            fixture.Enter(); fixture.ExpectCount(2);
+        }
+        else if (name == "duplicate-enter" or name == "duplicate-forced-enter")
+        {
+            Fixture fixture(Policy::Fixed, true, name == "duplicate-forced-enter");
+            fixture.Start(); fixture.Enter(); fixture.Enter();
+            fixture.Trigger(fixture.player, SpawnTrigger::Login);
+            Expect(fixture.zone.players.size() == 1);
+        }
+        else if (name == "second-player-stays")
+        {
+            Fixture fixture;
+            auto secondPlayer = std::make_shared<Player>();
+            fixture.Start(); fixture.Enter(); fixture.Trigger(secondPlayer, SpawnTrigger::Enter);
+            fixture.Kill(); fixture.Leave();
+            Expect(fixture.zone.players.size() == 1 and not fixture.zone.Paused());
+            Advance(29999); fixture.ExpectCount(1); Advance(1); fixture.ExpectCount(2);
+        }
+        else if (name == "failed-placement")
+        {
+            Fixture fixture; g_game.failures = 1;
+            fixture.Start(); fixture.Enter(); fixture.ExpectCount(0);
+            Advance(29999); fixture.ExpectCount(0); Advance(1); fixture.ExpectCount(1);
+        }
+        else if (name == "boss-fixed-stay") Boss(Policy::Fixed, "stay");
+        else if (name == "boss-relative-stay") Boss(Policy::Relative, "stay");
+        else if (name == "boss-staged-stay") Boss(Policy::Staged, "stay");
+        else if (name == "boss-fixed-reentry") Boss(Policy::Fixed, "reentry");
+        else if (name == "boss-relative-reentry") Boss(Policy::Relative, "reentry");
+        else if (name == "boss-staged-reentry") Boss(Policy::Staged, "reentry");
+        else if (name == "boss-fixed-empty") Boss(Policy::Fixed, "empty");
+        else if (name == "boss-relative-empty") Boss(Policy::Relative, "empty");
+        else if (name == "boss-triggered-cooldown") Boss(Policy::Triggered, "stay");
+        else if (name == "boss-placement-retry")
+        {
+            Fixture fixture(Policy::Fixed, false, false, true); g_game.failures = 1;
+            fixture.Start(); fixture.Enter(); fixture.ExpectCount(0);
+            Advance(30000); fixture.ExpectCount(1);
+            Expect(fixture.zone.master_creature_id != 0);
+            fixture.Kill(); Advance(29999); fixture.ExpectCount(1); Advance(1); fixture.ExpectCount(2);
+        }
+        else if (name == "boss-relative-retry-empty")
+        {
+            Fixture fixture(Policy::Relative, false, false, true); g_game.failures = 1;
+            fixture.Start(); fixture.Enter(); fixture.ExpectCount(0); fixture.Leave();
+            Advance(30000); fixture.ExpectCount(0);
+            fixture.Enter(); fixture.ExpectCount(1);
+            Expect(fixture.zone.master_creature_id != 0);
+            fixture.Kill(); Advance(29999); fixture.ExpectCount(1); Advance(1); fixture.ExpectCount(2);
+        }
+        else if (name == "boss-minion-reentry")
+        {
+            Fixture fixture(Policy::Relative, false, false, true);
+            auto minion = std::make_shared<Zones::SpawnCreature>(*fixture.entry);
+            minion->link_type = Zones::LinkType::Minion;
+            fixture.zone.creature_list.push_back(minion);
+            fixture.Start(); fixture.Enter(); fixture.ExpectCount(2);
+            auto found = std::find_if(fixture.zone.active_creatures.begin(), fixture.zone.active_creatures.end(),
+                [&](const auto& pair) { return pair.second == minion; });
+            Expect(found != fixture.zone.active_creatures.end());
+            auto creature = g_game.getCreatureByID(found->first);
+            fixture.Trigger(creature, SpawnTrigger::Death);
+            g_game.creatures.erase(creature->getID());
+            fixture.Leave(); fixture.Enter(); fixture.ExpectCount(2);
+            Expect(fixture.zone.active_creatures.size() == 1);
+            fixture.Kill(); Advance(29999); fixture.ExpectCount(2); Advance(1); fixture.ExpectCount(4);
+        }
+        else if (name == "boss-fixed-death-despawn" or name == "boss-relative-death-despawn"
+                 or name == "boss-staged-death-despawn")
+        {
+            auto policy = name == "boss-relative-death-despawn" ? Policy::Relative
+                : (name == "boss-staged-death-despawn" ? Policy::Staged : Policy::Fixed);
+            Fixture fixture(policy, false, false, true);
+            fixture.Start(); fixture.Enter();
+            auto creature = g_game.getCreatureByID(fixture.zone.active_creatures.begin()->first);
+            fixture.Kill(); fixture.Trigger(creature, SpawnTrigger::Despawn);
+            Advance(29999); fixture.ExpectCount(1); Advance(1); fixture.ExpectCount(2);
+            Expect(g_timer_queue.queue.empty());
+        }
+        else if (name == "boss-deferred-minion-next-cycle")
+        {
+            Fixture fixture(Policy::Relative, false, false, true);
+            auto minion = std::make_shared<Zones::SpawnCreature>(*fixture.entry);
+            minion->link_type = Zones::LinkType::Minion;
+            minion->delay = 1000;
+            fixture.zone.creature_list.push_back(minion);
+            fixture.Start(); fixture.Enter(); fixture.ExpectCount(1); fixture.Leave();
+            Advance(1000); fixture.ExpectCount(1);
+            fixture.Kill(); Advance(30000); fixture.ExpectCount(1);
+            fixture.Enter(); fixture.ExpectCount(2);
+            Advance(1000); fixture.ExpectCount(3);
+            Expect(fixture.zone.active_creatures.size() == 2);
+            Expect(g_timer_queue.queue.empty());
+        }
+        else if (name == "boss-repeat-movement")
+        {
+            Fixture fixture(Policy::Fixed, false, false, true);
+            fixture.Start(); fixture.Enter(); fixture.ExpectCount(1);
+            for (size_t cycle = 0; cycle < 100; ++cycle)
+            {
+                auto creature = g_game.getCreatureByID(fixture.zone.active_creatures.begin()->first);
+                fixture.Kill(); fixture.Trigger(creature, SpawnTrigger::Despawn);
+                for (int movement = 0; movement < 3; ++movement)
+                {
+                    fixture.Leave(); Advance(5000); fixture.Enter();
+                    fixture.ExpectCount(cycle + 1);
+                }
+                Advance(14999); fixture.ExpectCount(cycle + 1);
+                Advance(1); fixture.ExpectCount(cycle + 2);
+                Expect(fixture.zone.active_creatures.size() == 1 and fixture.zone.players.size() == 1);
+                Expect(fixture.zone.liveFrames.size() == 1 and g_timer_queue.queue.empty());
+                Expect(g_game.creatures.size() == 1);
+            }
+        }
+        else if (name == "boss-late-deferred-minion" or name == "boss-late-minion-player-stays"
+                 or name == "boss-late-minion-player-returns")
+        {
+            Fixture fixture(Policy::Relative, false, false, true);
+            auto minion = std::make_shared<Zones::SpawnCreature>(*fixture.entry);
+            minion->link_type = Zones::LinkType::Minion;
+            minion->delay = 10000;
+            fixture.zone.creature_list.push_back(minion);
+            fixture.Start(); fixture.Enter(); fixture.ExpectCount(1);
+            fixture.Kill();
+            if (name == "boss-late-deferred-minion")
+            {
+                fixture.Leave(); Advance(15000); fixture.ExpectCount(1); fixture.Enter();
+            }
+            else if (name == "boss-late-minion-player-returns")
+            {
+                fixture.Leave(); Advance(5000); fixture.Enter(); Advance(10000); fixture.ExpectCount(1);
+            }
+            else
+            {
+                Advance(15000); fixture.ExpectCount(1);
+            }
+            Advance(14999); fixture.ExpectCount(1); Advance(1); fixture.ExpectCount(2);
+            Advance(9999); fixture.ExpectCount(2); Advance(1); fixture.ExpectCount(3);
+            Expect(fixture.zone.active_creatures.size() == 2 and g_timer_queue.queue.empty());
+        }
+        else if (name == "boss-fixed-pending-master" or name == "boss-relative-pending-master")
+        {
+            const bool relative = name == "boss-relative-pending-master";
+            Fixture fixture(relative ? Policy::Relative : Policy::Fixed, false, false, true);
+            auto minion = std::make_shared<Zones::SpawnCreature>(*fixture.entry);
+            minion->link_type = Zones::LinkType::Minion;
+            fixture.zone.creature_list.push_back(minion);
+            g_game.failures = 1;
+            fixture.Start(); fixture.Enter(); fixture.ExpectCount(1);
+            Expect(fixture.zone.master_creature_id == 0);
+            fixture.Kill(); fixture.Leave();
+            Advance(29999); fixture.ExpectCount(1); Advance(1);
+            fixture.ExpectCount(relative ? 1 : 2);
+            fixture.Enter(); fixture.ExpectCount(2);
+            Expect(fixture.zone.active_creatures.size() == 1 and fixture.zone.master_creature_id != 0);
+            fixture.Kill(); Advance(29999); fixture.ExpectCount(2); Advance(1); fixture.ExpectCount(4);
+            Expect(g_timer_queue.queue.empty());
+        }
+        else if (name == "deleted-zone-timer")
+        {
+            {
+                Fixture fixture; fixture.Start(); fixture.Enter(); fixture.Kill();
+                Expect(not g_timer_queue.queue.empty());
+                Zones::ZoneManager::Current = nullptr;
+                Advance(30000); fixture.ExpectCount(1);
+            }
+            Expect(g_timer_queue.queue.empty());
+        }
+        else
+            throw std::runtime_error("unknown case");
+    }
+}
+
+int main(int argc, char** argv)
+{
+    if (argc != 2)
+        return 2;
+    try
+    {
+        BlackTek::Tests::Run(argv[1]);
+        return 0;
+    }
+    catch (const std::exception&)
+    {
+        return 1;
+    }
+}

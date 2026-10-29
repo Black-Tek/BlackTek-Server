@@ -371,10 +371,13 @@ namespace Zones
         }
     }
 
-    void EventAwaiter::await_suspend(std::coroutine_handle<> h) const
+    void EventAwaiter::await_suspend(std::coroutine_handle<SpawnCoroTask::promise_type> h) const
     {
         registerCallback([h]() mutable
         {
+            // This subscription belongs to one event wait, not a later timer wait.
+            // ZoneOverlay keeps the currently executing callback alive by value.
+            h.promise().owner->onTrigger = {};
             ZoneManager::BeginResume(h);
             h.resume();
             ZoneManager::EndResume();
@@ -421,14 +424,39 @@ namespace Zones
         }
     }
 
-    void Zone::ProcessCreatures()
+    void Zone::ProcessCreatures(bool startup)
     {
-        if (not creature_list.empty())
+        // Spawn can synchronously requeue an entry when its zone is paused.
+        auto pending = std::exchange(creature_list, {});
+        for (const auto& entry : pending)
+            Spawn(entry, startup);
+    }
+
+    void Zone::ProcessDeferredSpawns()
+    {
+        auto pending = std::exchange(deferred_relative_spawns, {});
+        for (const auto& entry : pending)
+            Spawn(entry);
+    }
+
+    void Zone::TrackPlayersDuringCooldown()
+    {
+        // Keep occupancy current without resuming the coroutine's timer wait.
+        onTrigger = [this](CreaturePtr creature, SpawnTrigger trigger)
         {
-            for (const auto& entry : creature_list)
-                Spawn(entry);
-            creature_list.clear();
-        }
+            if (const auto& player = creature->getPlayer())
+            {
+                if (trigger == SpawnTrigger::Enter or trigger == SpawnTrigger::Login)
+                {
+                    if (std::find(players.begin(), players.end(), player) == players.end())
+                        players.push_back(player);
+                }
+                else if (trigger == SpawnTrigger::Leave or trigger == SpawnTrigger::Logout or trigger == SpawnTrigger::Death)
+                {
+                    std::erase(players, player);
+                }
+            }
+        };
     }
 
     SpawnCoroTask Zone::DelaySpawn(uint32_t milliseconds, SpawnCreaturePtr entry, bool startup)
@@ -692,6 +720,8 @@ namespace Zones
         if (TryMonsterSpawn(monster, spawnPos, DIRECTION_NORTH, CONST_ME_TELEPORT, startup, false))
         {
             active_creatures.insert({ monster->getID(), entry });
+            if (entry->link_type == LinkType::Master)
+                master_creature_id = monster->getID();
             co_return;
         }
         else
@@ -704,9 +734,9 @@ namespace Zones
     SpawnCoroTask Zone::SpawnBossRelative(SpawnCreaturePtr entry, bool startup)
     {
 
-        if (players.empty())
+        if (relative_boss_cooling_down or players.empty())
         {
-            creature_list.push_back(entry);
+            deferred_relative_spawns.push_back(entry);
             co_return;
         }
 
@@ -739,6 +769,8 @@ namespace Zones
         if (TryMonsterSpawn(monster, spawnPos, DIRECTION_NORTH, CONST_ME_TELEPORT, startup, false))
         {
             active_creatures.insert({ monster->getID(), entry });
+            if (entry->link_type == LinkType::Master)
+                master_creature_id = monster->getID();
             co_return;
         }
         else
@@ -890,10 +922,7 @@ namespace Zones
             {
                 startup = false;
 
-                for (const auto& entry : creature_list)
-                    Spawn(entry, true);
-
-                creature_list.clear();
+                ProcessCreatures(true);
             }
 
             co_await EventAwaiter
@@ -916,6 +945,7 @@ namespace Zones
                                             if (players.empty())
                                             {
                                                 players.push_back(player);
+                                                Unpause();
                                                 ProcessCreatures();
                                             }
                                             else
@@ -927,17 +957,20 @@ namespace Zones
                                     else if (not Forced())
                                     {
                                         Pause();
-                                        players.push_back(player);
+                                        if (std::find(players.begin(), players.end(), player) == players.end())
+                                            players.push_back(player);
                                     }
                                     else
                                     {
-                                        players.push_back(player);
+                                        if (std::find(players.begin(), players.end(), player) == players.end())
+                                            players.push_back(player);
                                     }
                                     break;
                                 }
 
                                 case SpawnTrigger::Leave:
                                 case SpawnTrigger::Logout:
+                                case SpawnTrigger::Death:
                                 {
                                     players.erase(std::remove(players.begin(), players.end(), player), players.end());
 
@@ -951,18 +984,6 @@ namespace Zones
                                         Unpause();
                                         if (not creature_list.empty())
                                             ProcessCreatures();
-                                    }
-                                    break;
-                                }
-
-                                case SpawnTrigger::Death:
-                                {
-                                    players.erase(std::remove(players.begin(), players.end(), player), players.end());
-
-                                    if (Passive() and players.empty() and not creature_list.empty())
-                                    {
-                                        Unpause();
-                                        ProcessCreatures();
                                     }
                                     break;
                                 }
@@ -981,10 +1002,7 @@ namespace Zones
                                     auto entry = it->second;
                                     active_creatures.erase(it);
 
-                                    if ((not Passive() and not players.empty()) or (Passive() and players.empty()))
-                                        DelaySpawn(entry->interval > 0 ? entry->interval : cooldown, entry);
-                                    else
-                                        creature_list.push_back(entry);
+                                    DelaySpawn(entry->interval > 0 ? entry->interval : cooldown, entry);
                                 }
                             }
                         }
@@ -1019,6 +1037,7 @@ namespace Zones
                                         if (players.empty())
                                         {
                                             players.push_back(player);
+                                            Unpause();
                                             ProcessCreatures();
                                         }
                                         else
@@ -1054,10 +1073,7 @@ namespace Zones
                                     auto entry = it->second;
                                     active_creatures.erase(it);
 
-                                    if (not players.empty())
-                                        Spawn(entry);
-                                    else
-                                        creature_list.push_back(entry);
+                                    DelaySpawn(entry->interval > 0 ? entry->interval : cooldown, entry);
                                 }
                             }
                         }
@@ -1224,7 +1240,7 @@ namespace Zones
 
         while (Active())
         {
-            bool bossStarted = false;
+            bool bossStarted = not players.empty();
 
             while (Active() and not bossStarted)
             {
@@ -1273,15 +1289,6 @@ namespace Zones
             if (masterEntry)
             {
                 Spawn(masterEntry, false);
-
-                for (const auto& [id, e] : active_creatures)
-                {
-                    if (e == masterEntry)
-                    {
-                        master_creature_id = id;
-                        break;
-                    }
-                }
             }
 
             for (const auto& minion : minionEntries)
@@ -1327,7 +1334,7 @@ namespace Zones
                                         else if (not bossCycleEnded)
                                             creature_list.push_back(entry);
 
-                                        if (active_creatures.empty() and not bossCycleEnded)
+                                        if (not masterEntry and active_creatures.empty() and not bossCycleEnded)
                                             bossCycleEnded = true;
                                     }
                                 }
@@ -1338,7 +1345,7 @@ namespace Zones
                 };
             }
 
-            players.clear();
+            TrackPlayersDuringCooldown();
             uint32_t respawnCooldown = masterEntry ? (masterEntry->interval > 0 ? masterEntry->interval : cooldown) : cooldown;
             co_await SleepFor { respawnCooldown, [handle = self] { return ZoneManager::Alive(handle); } };
         }
@@ -1350,7 +1357,7 @@ namespace Zones
 
         while (Active())
         {
-            bool bossStarted = false;
+            bool bossStarted = not players.empty();
 
             while (Active() and not bossStarted)
             {
@@ -1384,6 +1391,12 @@ namespace Zones
             if (not Active())
                 co_return;
 
+            // Include unplaced entries from the previous encounter, even when
+            // their delay elapsed while the zone was cooling down.
+            relative_boss_cooling_down = false;
+            creature_list.insert(creature_list.end(), deferred_relative_spawns.begin(), deferred_relative_spawns.end());
+            deferred_relative_spawns.clear();
+
             SpawnCreaturePtr masterEntry;
             std::vector<SpawnCreaturePtr> minionEntries;
 
@@ -1399,15 +1412,6 @@ namespace Zones
             if (masterEntry)
             {
                 Spawn(masterEntry, false);
-
-                for (const auto& [id, e] : active_creatures)
-                {
-                    if (e == masterEntry)
-                    {
-                        master_creature_id = id;
-                        break;
-                    }
-                }
             }
 
             for (const auto& minion : minionEntries)
@@ -1428,7 +1432,12 @@ namespace Zones
                                 if (trigger == SpawnTrigger::Enter or trigger == SpawnTrigger::Login)
                                 {
                                     if (std::find(players.begin(), players.end(), player) == players.end())
+                                    {
+                                        bool wasEmpty = players.empty();
                                         players.push_back(player);
+                                        if (wasEmpty)
+                                            ProcessDeferredSpawns();
+                                    }
                                 }
                                 else if (trigger == SpawnTrigger::Leave or trigger == SpawnTrigger::Logout
                                          or trigger == SpawnTrigger::Death)
@@ -1453,7 +1462,7 @@ namespace Zones
                                         else if (not bossCycleEnded)
                                             creature_list.push_back(entry);
 
-                                        if (active_creatures.empty() and not bossCycleEnded)
+                                        if (not masterEntry and active_creatures.empty() and not bossCycleEnded)
                                             bossCycleEnded = true;
                                     }
                                 }
@@ -1464,7 +1473,8 @@ namespace Zones
                 };
             }
 
-            players.clear();
+            relative_boss_cooling_down = true;
+            TrackPlayersDuringCooldown();
             uint32_t respawnCooldown = masterEntry ? (masterEntry->interval > 0 ? masterEntry->interval : cooldown) : cooldown;
             co_await SleepFor { respawnCooldown, [handle = self] { return ZoneManager::Alive(handle); } };
         }
@@ -1476,7 +1486,7 @@ namespace Zones
 
         while (Active())
         {
-            bool bossStarted = false;
+            bool bossStarted = not players.empty();
 
             while (Active() and not bossStarted)
             {
@@ -1524,10 +1534,6 @@ namespace Zones
             if (masterEntry)
             {
                 Spawn(masterEntry, false);
-                for (const auto& [id, e] : active_creatures)
-                {
-                    if (e == masterEntry) { master_creature_id = id; break; }
-                }
             }
 
             auto waveIt = waves.find(current_wave);
@@ -1598,7 +1604,7 @@ namespace Zones
                 };
             }
 
-            players.clear();
+            TrackPlayersDuringCooldown();
             current_wave = 1;
             uint32_t respawnCooldown = masterEntry ? (masterEntry->interval > 0 ? masterEntry->interval : cooldown) : cooldown;
             co_await SleepFor { respawnCooldown, [handle = self] { return ZoneManager::Alive(handle); } };
@@ -1660,15 +1666,6 @@ namespace Zones
             if (masterEntry)
             {
                 Spawn(masterEntry, false);
-
-                for (const auto& [id, e] : active_creatures)
-                {
-                    if (e == masterEntry)
-                    {
-                        master_creature_id = id;
-                        break;
-                    }
-                }
             }
 
             for (const auto& minion : minionEntries)
@@ -1714,7 +1711,7 @@ namespace Zones
                                         else if (not bossCycleEnded)
                                             creature_list.push_back(entry);
 
-                                        if (active_creatures.empty() and not bossCycleEnded)
+                                        if (not masterEntry and active_creatures.empty() and not bossCycleEnded)
                                             bossCycleEnded = true;
                                     }
                                 }
@@ -1725,7 +1722,7 @@ namespace Zones
                 };
             }
 
-            players.clear();
+            TrackPlayersDuringCooldown();
             uint32_t respawnCooldown = masterEntry ? (masterEntry->interval > 0 ? masterEntry->interval : cooldown) : cooldown;
             co_await SleepFor { respawnCooldown, [handle = self] { return ZoneManager::Alive(handle); } };
         }
