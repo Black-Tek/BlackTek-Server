@@ -25,6 +25,7 @@ on:
 
 jobs:
   BuildForWindows:
+    needs: unit_tests
     name: ${{ matrix.os }}-${{ matrix.buildtype }}
     runs-on: ${{ matrix.os }}
     permissions:

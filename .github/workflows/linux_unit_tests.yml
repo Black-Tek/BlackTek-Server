@@ -113,6 +113,12 @@ jobs:
         ./Black-Tek-Server --gtest_output=xml:test-results/combat.xml
         echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
+    - name: Check database failures and callback reentrancy
+      run: |
+        python3 tests/persistence/run_house_standalone.py --compiler g++-15 --output-directory "$RUNNER_TEMP/house-regressions"
+        python3 tests/world/run_trade_standalone.py --compiler g++-15 --output-directory "$RUNNER_TEMP/trade-regressions"
+        python3 tests/world/run_zone_registry_standalone.py --compiler g++-15 --output-directory "$RUNNER_TEMP/zone-regressions"
+
     - name: Publish Test Report
       uses: dorny/test-reporter@v1
       if: always()
