@@ -303,7 +303,7 @@ namespace Zones
         bool ready = false;
 
         bool await_ready() const noexcept { return ready; }
-        void await_suspend(std::coroutine_handle<> h) const;
+        void await_suspend(std::coroutine_handle<SpawnCoroTask::promise_type> h) const;
         void await_resume() const noexcept {}
     };
 
@@ -407,7 +407,7 @@ namespace Zones
         bool TryMonsterSpawn(MonsterPtr creature, Position position, Direction direction, MagicEffectClasses magic_effect, bool startup, bool artificial);
 
         void SetRange(Position start, Position end);
-        void ProcessCreatures();
+        void ProcessCreatures(bool startup = false);
 
         SpawnCoroTask Run();
         SpawnCoroTask Spawn(SpawnCreaturePtr entry, bool startup = false);
@@ -416,6 +416,12 @@ namespace Zones
         void HandleMasterDeath(const SpawnCreaturePtr& masterEntry, bool& bossCycleEnded);
 
     private:
+
+        std::vector<SpawnCreaturePtr> deferred_relative_spawns;
+        bool relative_boss_cooling_down = false;
+
+        void ProcessDeferredSpawns();
+        void TrackPlayersDuringCooldown();
 
         SpawnCoroTask RunMonsterFixed();
         SpawnCoroTask RunMonsterRelative();

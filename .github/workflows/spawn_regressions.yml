@@ -1,0 +1,32 @@
+name: Spawn coroutine regressions
+
+on:
+  pull_request:
+    paths:
+      - 'src/zones.*'
+      - 'src/game.h'
+      - 'src/handle.h'
+      - 'src/position.h'
+      - 'tests/zones/**'
+      - '.github/workflows/spawn_regressions.yml'
+  push:
+    paths:
+      - 'src/zones.*'
+      - 'src/game.h'
+      - 'src/handle.h'
+      - 'src/position.h'
+      - 'tests/zones/**'
+      - '.github/workflows/spawn_regressions.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  spawn-regressions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run actual-source coroutine tests with sanitizers
+        run: python3 tests/zones/run_spawn_tests.py --cxx g++ --sanitize
