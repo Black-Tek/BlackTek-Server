@@ -120,17 +120,17 @@ jobs:
 
       - name: Publish Test Report
         uses: dorny/test-reporter@v1
-        if: always()
+        if: ${{ !cancelled() && steps.run_tests.outcome != 'skipped' && hashFiles('test-results/*.xml') != '' }}
         with:
           name: Combat Unit Tests (Windows)
-          path: 'D:/a/BlackTek-Server/BlackTek-Server/test-results/*.xml'
+          path: 'test-results/*.xml'
           reporter: java-junit
           fail-on-error: false
           list-suites: all
           list-tests: all
 
       - name: Fail job if unit tests failed
-        if: steps.run_tests.outputs.exit_code != '0'
+        if: ${{ !cancelled() && steps.run_tests.outcome != 'skipped' && steps.run_tests.outputs.exit_code != '0' }}
         run: |
           Write-Host "Unit tests failed (gtest exit code ${{ steps.run_tests.outputs.exit_code }}). See the 'Combat Unit Tests (Windows)' check for details."
           exit 1

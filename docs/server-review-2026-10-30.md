@@ -54,7 +54,13 @@ The repository's existing public sample map is unchanged.
 Both the normal server and complete engine test executable built with GCC 16.2
 on Windows, using external temporary CMake orchestration for the existing source
 set. No CMake project or downloaded dependency was added to this repository.
-Native Premake/MSVC and Linux CI execution still need confirmation.
+Native Linux build, unit-test and data workflows subsequently passed on
+`b6c8bdb`. The Windows MSVC build exposed an unsupported constant-evaluation call
+to `std::isnan` in `CustomSkill::safeRound`. The helper now runs normally, with
+the same NaN/overflow checks and rounding. Its in-class definition remains inline.
+The Windows workflow publishes a test report only when one exists, while build
+and test failures still fail the job. The corrected MSVC run is tracked in
+[PR #272](https://github.com/Black-Tek/BlackTek-Server/pull/272/checks).
 
 | Check | Result |
 | --- | --- |

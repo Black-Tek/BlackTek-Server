@@ -389,7 +389,7 @@ namespace Components {
             FormulaType _formula = FormulaType::EXPONENTIAL;
 
             [[nodiscard]]
-            constexpr uint64_t safeRound(double value) const
+            uint64_t safeRound(double value) const
             {
                 if (std::isnan(value))
                 {
