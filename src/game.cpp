@@ -6662,7 +6662,7 @@ void Game::internalDecayItem(const ItemPtr& item)
     else if (decayTo == 0)
 	{
         const auto location = item->getLocation();
-        if (not (location.tile or location.player))
+        if (not location)
 		{
 			BlackTek::Console::Error("Game::internalDecayItem ~ Item has decayTo of 0 but no parent, item id: {}", item->getID());
             return;
