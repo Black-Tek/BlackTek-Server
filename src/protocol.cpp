@@ -62,19 +62,20 @@ void XTEA_encrypt(OutputMessage& msg, const xtea::round_keys& key)
 
 bool XTEA_decrypt(NetworkMessage& msg, const xtea::round_keys& key)
 {
-	if (((msg.getLength() - 6) & 7) != 0) {
+	const int32_t encryptedLength = static_cast<int32_t>(msg.getLength()) - msg.getBufferPosition();
+	if (encryptedLength < NetworkMessage::XTEA_MULTIPLE or (encryptedLength & 7) != 0) {
 		return false;
 	}
 
 	uint8_t* buffer = msg.getBuffer() + msg.getBufferPosition();
-	xtea::decrypt(buffer, msg.getLength() - 6, key);
+	xtea::decrypt(buffer, static_cast<size_t>(encryptedLength), key);
 
 	uint16_t innerLength = msg.get<uint16_t>();
-	if (innerLength + 8 > msg.getLength()) {
+	if (innerLength > encryptedLength - static_cast<int32_t>(sizeof(uint16_t))) {
 		return false;
 	}
 
-	msg.setLength(innerLength);
+	msg.setLength(innerLength, msg.getBufferPosition());
 	return true;
 }
 
@@ -115,7 +116,7 @@ OutputMessage_ptr Protocol::getOutputBuffer(int32_t size)
 
 bool Protocol::RSA_decrypt(NetworkMessage& msg)
 {
-	if ((msg.getLength() - msg.getBufferPosition()) < 128) {
+	if (msg.isOverrun() or (msg.getLength() - msg.getBufferPosition()) < 128) {
 		return false;
 	}
 

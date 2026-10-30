@@ -59,6 +59,7 @@
 #include <bitset>
 #include <memory_resource>
 #include <array>
+#include <cmath>
 
 class Condition;
 class Item;
@@ -541,7 +542,7 @@ namespace BlackTek
 		void strike_target(const MonsterPtr& attacker, const PlayerPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const MonsterPtr& attacker, const MonsterPtr& victim, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		void strike_target(const CreaturePtr& attacker, const CreaturePtr& defender, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
-		void apply_healing_modifiers(const PlayerPtr& caster, const auto& target);
+		void apply_healing_modifiers(const PlayerPtr& caster, const CreaturePtr& target, uint32_t& healAmount) const noexcept;
 		void heal_target(const CreaturePtr& caster, const CreaturePtr& target, bool skip_validation = false, const std::optional<std::span<const CreaturePtr>> spectators = std::nullopt) noexcept;
 		[[nodiscard]] ValidatedArea buildValidatedArea(const Position& caster_position, const Position& center, const uint32_t flag_reject, const bool config_ignore_barriers, const bool reject_protection_zone = false) const noexcept;
 		void execute(const CreaturePtr& caster, const Position& center) noexcept;
@@ -633,7 +634,14 @@ namespace BlackTek
 				}
 
 				case ResistanceFormula::Percent:
-					return (stat * 100) / (stat + static_cast<int32_t>(factors.constant));
+				{
+					if (not std::isfinite(factors.constant))
+						return 0;
+					const double denominator = static_cast<double>(stat) + std::trunc(static_cast<double>(factors.constant));
+					if (denominator <= 0.0)
+						return 0;
+					return static_cast<int32_t>(std::min(static_cast<double>(INT32_MAX), static_cast<double>(stat) * 100.0 / denominator));
+				}
 
 				default: [[unlikely]]
 					return 0;

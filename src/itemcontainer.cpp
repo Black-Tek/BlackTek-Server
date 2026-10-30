@@ -526,10 +526,17 @@ ReturnValue ItemContainer::canAddItemStandard(int32_t index, const ItemPtr& item
 {
 	bool childIsOwner = hasBitSet(FLAG_CHILDISOWNER, flags);
 
-	//a child container is querying, since we are the top container (not carried by a player)
-	//just return with no error.
+	// A child container already checked its own slots, but a carried top-level
+	// container must still enforce its player's capacity.
 	if (childIsOwner)
+	{
+		if (const auto ownerItem = getOwner())
+		{
+			if (const auto player = ownerItem->getLocation().player)
+				return player->canAddItem(INDEX_ANYWHERE, item, count, flags, actor);
+		}
 		return RETURNVALUE_NOERROR;
+	}
 
 	if (not unlocked)
 		return RETURNVALUE_NOTPOSSIBLE;

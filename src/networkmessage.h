@@ -80,6 +80,11 @@ class NetworkMessage
 		}
 
 		uint8_t getPreviousByte() {
+			if (info.position == 0)
+			{
+				info.overrun = true;
+				return 0;
+			}
 			return buffer[--info.position];
 		}
 
@@ -100,7 +105,13 @@ class NetworkMessage
 
 		// skips count unknown/unused bytes in an incoming message
 		void skipBytes(int16_t count) {
-			info.position += count;
+			const int32_t position = static_cast<int32_t>(info.position) + count;
+			if (position < 0 or position > NETWORKMESSAGE_MAXSIZE)
+			{
+				info.overrun = true;
+				return;
+			}
+			info.position = static_cast<MsgSize_t>(position);
 		}
 
 		// simply write functions for outgoing message
@@ -141,8 +152,9 @@ class NetworkMessage
 			return info.length;
 		}
 
-		void setLength(MsgSize_t newLength) {
+		void setLength(MsgSize_t newLength, MsgSize_t readOffset = 0) {
 			info.length = newLength;
+			info.read_offset = readOffset;
 		}
 
 		MsgSize_t getBufferPosition() const {
@@ -182,6 +194,9 @@ class NetworkMessage
 		struct NetworkMessageInfo {
 			MsgSize_t length = 0;
 			MsgSize_t position = INITIAL_BUFFER_POSITION;
+			// Outgoing payloads start at byte eight. Received lengths include
+			// their headers until the protocol sets the decrypted payload offset.
+			MsgSize_t read_offset = INITIAL_BUFFER_POSITION;
 			bool overrun = false;
 		};
 
@@ -190,11 +205,12 @@ class NetworkMessage
 
 	private:
 		bool canAdd(size_t size) const {
-			return (size + info.position) < MAX_BODY_LENGTH;
+			return info.position < MAX_BODY_LENGTH and size < static_cast<size_t>(MAX_BODY_LENGTH - info.position);
 		}
 
 		bool canRead(int32_t size) {
-			if ((info.position + size) > (info.length + 8) || size >= (NETWORKMESSAGE_MAXSIZE - info.position)) {
+			if (size < 0 or (info.position + size) > (info.length + info.read_offset)
+				or (info.position + size) > NETWORKMESSAGE_MAXSIZE) {
 				info.overrun = true;
 				return false;
 			}

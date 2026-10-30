@@ -269,7 +269,10 @@ class LuaScriptInterface
 		}
 
 		static bool reserveScriptEnv() {
-			return ++scriptEnvIndex < 16;
+			if (scriptEnvIndex >= 15)
+				return false;
+			++scriptEnvIndex;
+			return true;
 		}
 
 		static void resetScriptEnv() {
@@ -348,7 +351,7 @@ class LuaScriptInterface
 				{
 					auto* cached = static_cast<T*>(lua_touserdata(L, -1));
 
-					if (cached and cached->get() != nullptr)
+					if (cached and cached->get() == key)
 					{
 						lua_remove(L, -2);
 						return;
@@ -473,7 +476,7 @@ class LuaScriptInterface
 	
 		static bool getBoolean(lua_State* L, int32_t arg, bool defaultValue)
 		{
-			return lua_toboolean(L, arg) != 0 or defaultValue;
+			return lua_isnoneornil(L, arg) ? defaultValue : lua_toboolean(L, arg) != 0;
 		}
 
 		static std::string getString(lua_State* L, int32_t arg);
@@ -1504,6 +1507,7 @@ class LuaScriptInterface
 		static int luaHouseSave(lua_State* L);
 
 		static int luaZoneCreate(lua_State* L);
+		static int luaZoneDelete(lua_State* L);
 
 		static int luaZoneEq(lua_State* L);
 

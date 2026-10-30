@@ -40,10 +40,20 @@
 #include "otpch.h"
 
 #include "combat.h"
+#include "creaturecontainer.h"
+#include "events.h"
+#include "game.h"
+#include "itemevents.h"
+#include "monster.h"
+#include "player.h"
 
 #include <gtest/gtest.h>
 
 using BlackTek::Combat;
+
+extern Events* g_events;
+extern Game g_game;
+extern ItemEvents* g_itemEvents;
 
 namespace
 {
@@ -580,4 +590,248 @@ TEST(CombatArea, HasAreaIsFalseUntilAnAreaIsSet)
 
 	EXPECT_TRUE(handle->hasArea());
 	EXPECT_TRUE(handle->GetConfig(Combat::Config::HasArea));
+}
+
+TEST(CombatArea, ReleasingACombatReleasesItsArea)
+{
+	const auto initialSize = BlackTek::combat_area_pair_map.size();
+	{
+		auto handle = BlackTek::g_combat_registry.Create();
+		auto area = std::make_unique<BlackTek::AreaCombat>();
+		area->setupArea(1);
+		handle->setArea(std::move(area));
+		EXPECT_EQ(BlackTek::combat_area_pair_map.size(), initialSize + 1);
+	}
+	EXPECT_EQ(BlackTek::combat_area_pair_map.size(), initialSize);
+}
+
+TEST(CombatArea, StackCombatsOwnIndependentAreas)
+{
+	Combat first;
+	Combat second;
+	auto firstArea = std::make_unique<BlackTek::AreaCombat>();
+	firstArea->setupArea(1);
+	auto secondArea = std::make_unique<BlackTek::AreaCombat>();
+	secondArea->setupArea(2);
+	first.setArea(std::move(firstArea));
+	second.setArea(std::move(secondArea));
+	ASSERT_NE(first.id(), second.id());
+	EXPECT_NE(BlackTek::combat_area_pair_map.at(first.id()).area.count(DIRECTION_NORTH),
+		BlackTek::combat_area_pair_map.at(second.id()).area.count(DIRECTION_NORTH));
+}
+
+TEST(CombatArea, ReplacingAreaRemovesPreviousDiagonalShape)
+{
+	Combat combat;
+	auto diagonal = std::make_unique<BlackTek::AreaCombat>();
+	diagonal->setupExtArea({3, 1, 0, 1}, 2);
+	combat.setArea(std::move(diagonal));
+	ASSERT_TRUE(combat.GetConfig(Combat::Config::HasExtArea));
+	auto cardinal = std::make_unique<BlackTek::AreaCombat>();
+	cardinal->setupArea(1);
+	combat.setArea(std::move(cardinal));
+	EXPECT_FALSE(combat.GetConfig(Combat::Config::HasExtArea));
+	combat.setArea(std::make_unique<BlackTek::AreaCombat>());
+	EXPECT_FALSE(combat.hasArea());
+	EXPECT_FALSE(BlackTek::combat_area_pair_map.contains(combat.id()));
+}
+
+TEST(CombatDamageModifiers, CriticalBonusSaturatesWithoutWrapping)
+{
+	Combat combat;
+	EXPECT_EQ(combat.applyCrit(100000000u, 50, 10), 150000010u);
+	EXPECT_EQ(combat.applyCrit(UINT32_MAX, UINT32_MAX, UINT32_MAX), UINT32_MAX);
+}
+
+TEST(CombatDamageModifiers, LargePenetrationIsClampedBeforeNarrowing)
+{
+	Combat combat;
+	auto [handle, remaining] = combat.penetrateDamage(UINT32_MAX, 100, 0);
+	EXPECT_EQ(handle->GetDamage(), UINT32_MAX);
+	EXPECT_EQ(remaining, 0u);
+}
+
+TEST(CombatResistanceFormula, PercentHandlesLargeStatAndInvalidDenominator)
+{
+	Combat::ResistanceFactors factors{};
+	factors.formula_type = Combat::ResistanceFormula::Percent;
+	factors.constant = 100.0f;
+	EXPECT_EQ(Combat::calculate_resistance(factors, INT32_MAX), 99);
+	factors.constant = -100.0f;
+	EXPECT_EQ(Combat::calculate_resistance(factors, 100), 0);
+}
+
+TEST(CombatBatch, DisabledMitigationDoesNotApplyResolution)
+{
+	MonsterType monsterType;
+	auto target = std::make_shared<Monster>(&monsterType);
+	Combat combat;
+	combat.SetDamage(100);
+	BlackTek::SituationFormulas formulas;
+	formulas.resolution.formula_type = Combat::ResolutionFormula::ScaledDivision;
+	formulas.resolution.multiplier = 2;
+	combat.SetSituationFormulas(2, BlackTek::SituationFormulas(formulas));
+	combat.SetSituationFormulas(3, std::move(formulas));
+	const std::array<CreaturePtr, 2> targets{target, target};
+	std::array<uint32_t, 2> damage{};
+	std::array<Combat::BlockType, 2> blocked{};
+	combat.block_batch(nullptr, targets, damage, blocked);
+	EXPECT_EQ(damage[0], 100u);
+	EXPECT_EQ(damage[1], 100u);
+	EXPECT_EQ(blocked[0], Combat::BlockType::NoBlock);
+}
+
+TEST(CombatBatch, MonsterUsesMonsterSituation)
+{
+	MonsterType monsterType;
+	monsterType.info.armor = 10;
+	auto target = std::make_shared<Monster>(&monsterType);
+	Combat combat;
+	combat.SetDamage(100);
+	combat.setBlockedByArmor(true);
+	BlackTek::SituationFormulas formulas;
+	formulas.armor.formula_type = Combat::ResistanceFormula::Identity;
+	combat.SetSituationFormulas(3, std::move(formulas));
+	const std::array<CreaturePtr, 1> targets{target};
+	std::array<uint32_t, 1> damage{};
+	std::array<Combat::BlockType, 1> blocked{};
+	combat.block_batch(nullptr, targets, damage, blocked);
+	EXPECT_EQ(damage[0], 90u);
+}
+
+TEST(CombatBatch, OutputSpansBoundProcessing)
+{
+	Combat combat;
+	combat.setTrueDamage(true);
+	combat.SetDamage(123);
+	MonsterType monsterType;
+	auto target = std::make_shared<Monster>(&monsterType);
+	const std::array<CreaturePtr, 1> targets{target};
+	std::array<uint32_t, 2> damage{0, 987};
+	std::array<Combat::BlockType, 1> blocked{};
+	combat.block_batch(nullptr, targets, damage, blocked);
+	EXPECT_EQ(damage[0], 123u);
+	EXPECT_EQ(damage[1], 987u);
+}
+
+TEST(CombatHealing, BonusAppliesToCurrentCastWithoutChangingBase)
+{
+	Events events;
+	struct RestoreEvents
+	{
+		Events* previous;
+		~RestoreEvents() { g_events = previous; }
+	} restore{g_events};
+	g_events = &events;
+	auto caster = std::make_shared<Player>(nullptr);
+	auto augment = BlackTek::Augment::MakeAugment("Healing test", "");
+	using Modifier = BlackTek::DamageModifier;
+	augment->addModifier(Modifier(std::to_underlying(Modifier::Stance::Attack),
+		std::to_underlying(Modifier::AttackType::Regeneration), 50,
+		std::to_underlying(Modifier::Factor::Percent), 0));
+	ASSERT_TRUE(caster->addAugment(augment));
+	MonsterType monsterType;
+	monsterType.info.health = 1;
+	monsterType.info.healthMax = 1000;
+	auto target = std::make_shared<Monster>(&monsterType);
+	Combat combat;
+	combat.SetDamageType(Combat::DamageType::Healing);
+	combat.SetConfig(Combat::Config::HealthTarget);
+	combat.SetDamage(100);
+	combat.heal_target(caster, target, true, std::span<const CreaturePtr>{});
+	EXPECT_EQ(target->getHealth(), 151);
+	EXPECT_EQ(combat.GetDamage(), 100u);
+	combat.heal_target(caster, target, true, std::span<const CreaturePtr>{});
+	EXPECT_EQ(target->getHealth(), 301);
+	EXPECT_EQ(combat.GetDamage(), 100u);
+}
+
+TEST(CombatHealing, OwnerlessHealthHealingHasNoCasterDereference)
+{
+	MonsterType monsterType;
+	monsterType.info.health = 1;
+	monsterType.info.healthMax = 1000;
+	auto target = std::make_shared<Monster>(&monsterType);
+	Combat combat;
+	combat.SetDamageType(Combat::DamageType::Healing);
+	combat.SetConfig(Combat::Config::HealthTarget);
+	combat.SetDamage(10);
+	combat.heal_target(nullptr, target, true, std::span<const CreaturePtr>{});
+	EXPECT_EQ(target->getHealth(), 11);
+}
+
+TEST(CombatArea, ConvertedStrikeUsesItsOwnDamageAndPreservesRemainingTargets)
+{
+	Events events;
+	ItemEvents itemEvents;
+	struct RestoreEvents
+	{
+		Events* previousEvents;
+		ItemEvents* previousItemEvents;
+		~RestoreEvents()
+		{
+			g_events = previousEvents;
+			g_itemEvents = previousItemEvents;
+		}
+	} restore{g_events, g_itemEvents};
+	g_events = &events;
+	g_itemEvents = &itemEvents;
+	Group group{};
+	group.flags = PlayerFlag_NotGainInFight;
+	const auto caster = std::make_shared<Player>(nullptr);
+	caster->setGroup(&group);
+	auto augment = BlackTek::Augment::MakeAugment("Conversion test", "");
+	using Modifier = BlackTek::DamageModifier;
+	Modifier conversion(std::to_underlying(Modifier::Stance::Attack),
+		std::to_underlying(Modifier::AttackType::Conversion), 50,
+		std::to_underlying(Modifier::Factor::Percent), 0);
+	conversion.setTransformDamageType(Combat::DamageType::Energy);
+	augment->addModifier(std::move(conversion));
+	ASSERT_TRUE(caster->addAugment(augment));
+	MonsterType monsterType;
+	monsterType.info.health = 1000;
+	monsterType.info.healthMax = 1000;
+	const auto first = std::make_shared<Monster>(&monsterType);
+	const auto second = std::make_shared<Monster>(&monsterType);
+	const Position position(42000, 42000, 7);
+	// Map::removeTile clears contents but retains the empty tile between test runs.
+	TilePtr tile = g_game.map.getTile(position);
+	if (not tile)
+	{
+		tile = std::make_shared<Tile>(position.x, position.y, position.z);
+		g_game.map.setTile(position, tile);
+	}
+	ASSERT_EQ(tile->getCreatureCount(), 0u);
+	ASSERT_EQ(tile->getItemCount(), 0u);
+	ASSERT_FALSE(tile->getGround());
+	struct ClearTile
+	{
+		Position position;
+		~ClearTile() { g_game.map.removeTile(position.x, position.y, position.z); }
+	} clearTile{position};
+	tile->ensureCreatures().addCreatureSilently(second);
+	tile->ensureCreatures().addCreatureSilently(first);
+	auto* chunk = g_game.map.getChunk(position.x, position.y);
+	ASSERT_NE(chunk, nullptr);
+	chunk->AddCreature(first);
+	chunk->AddCreature(second);
+	struct RemoveCreatures
+	{
+		BlackTek::World::Chunk* chunk;
+		CreaturePtr first;
+		CreaturePtr second;
+		~RemoveCreatures()
+		{
+			chunk->RemoveCreature(first);
+			chunk->RemoveCreature(second);
+			first->getTile()->ensureCreatures().removeCreature(first);
+			second->getTile()->ensureCreatures().removeCreature(second);
+		}
+	} removeCreatures{chunk, first, second};
+	Combat combat;
+	combat.SetDamageType(Combat::DamageType::Fire);
+	combat.SetDamage(100);
+	combat.execute(caster, position);
+	EXPECT_EQ(first->getHealth(), 900);
+	EXPECT_EQ(second->getHealth(), 900);
 }

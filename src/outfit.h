@@ -78,6 +78,11 @@ class Outfits
 		const Outfit* getOutfitByLookType(PlayerSex_t sex, uint16_t lookType) const;
 		const Outfit* getOutfitByLookType(uint16_t lookType) const;
 		const std::vector<Outfit>& getOutfits(PlayerSex_t sex) const {
+			if (static_cast<size_t>(sex) > PLAYERSEX_LAST)
+			{
+				static const std::vector<Outfit> empty;
+				return empty;
+			}
 			return outfits[sex];
 		}
 

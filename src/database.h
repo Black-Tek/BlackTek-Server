@@ -41,6 +41,7 @@
 #define FS_DATABASE_H
 
 #include "pugicast.h"
+#include "console.h"
 
 #include <mysql/mysql.h>
 #include <span>
@@ -175,10 +176,11 @@ class DBResult
 		{
 			auto it = listNames.find(column);
 			if (it == listNames.end()) {
-				std::cout << "[Error - DBResult::getNumber] Column '" << column << "' doesn't exist in the result set" << std::endl;
+				BlackTek::Console::Database::Error("DBResult::getNumber: column '{}' does not exist in the result set", column);
+				return {};
 			}
 
-			if (row[it->second] == nullptr) {
+			if (row == nullptr or row[it->second] == nullptr) {
 				return {};
 			}
 
@@ -232,8 +234,11 @@ class DBTransaction
 		DBTransaction& operator=(const DBTransaction&) = delete;
 
 		bool begin() {
+			if (state != STATE_NO_START or not Database::getInstance().beginTransaction())
+				return false;
+
 			state = STATE_START;
-			return Database::getInstance().beginTransaction();
+			return true;
 		}
 
 		bool commit() {

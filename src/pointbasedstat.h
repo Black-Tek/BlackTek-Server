@@ -180,6 +180,7 @@ namespace Components
             void addModifier(value_type modifier)
             {
                 NumberType old_max = max_;
+                const NumberType oldCurrent = current_;
 
                 // The way we accumulate modifiers here is not intuitive or standard
                 // I do it this way because I feel this makes more sense logically, to me.
@@ -212,7 +213,7 @@ namespace Components
 
                 if (getProportionalScaling() and old_max > 0)
                 {
-                    double ratio = static_cast<double>(current_) / old_max;
+                    double ratio = static_cast<double>(oldCurrent) / old_max;
                     current_ = static_cast<NumberType>(ratio * max_);
 
                     if (current_ == 0 && ratio > 0)
@@ -246,6 +247,7 @@ namespace Components
                 if (it != modifiers_.end())
                 {
                     NumberType old_max = max_;
+                    const NumberType oldCurrent = current_;
 
                     switch ((*it).getType())
                     {
@@ -296,7 +298,7 @@ namespace Components
 
                     if (getProportionalScaling() and old_max > 0)
                     {
-                        double ratio = static_cast<double>(current_) / old_max;
+                        double ratio = static_cast<double>(oldCurrent) / old_max;
                         current_ = static_cast<NumberType>(ratio * max_);
 
                         // Todo : allow user to decide if becomes 0 or 1
@@ -401,7 +403,7 @@ namespace Components
                 }
                 else [[likely]]
                 {
-                    current_ += new_value;
+                    current_ = new_value;
                     return true;
                 }
                 return false;
@@ -438,7 +440,7 @@ namespace Components
                 base_max_ += points;
 
                 if (scale_points or proportional_scaling_)
-                    current_ += points;
+                    current_ += std::min<NumberType>(points, std::numeric_limits<NumberType>::max() - current_);
 
                 recalculateValues();
                 return true;
@@ -447,7 +449,7 @@ namespace Components
             bool decreaseMax(NumberType points, bool scale_points = true)
             {
                 [[unlikely]]
-                if (points > base_max_)
+                if (points >= base_max_)
                     return false;
 
                 NumberType new_base = base_max_ - points;
@@ -462,7 +464,7 @@ namespace Components
                 }
 
                 if (scale_points)
-                    current_ -= points;
+                    current_ = points < current_ ? current_ - points : 0;
 
                 recalculateValues();
                 return true;

@@ -67,23 +67,25 @@ void House::addTile(const TilePtr& tile)
 
 void House::setOwner(uint32_t guid, bool updateDatabase/* = true*/, const PlayerPtr& player)
 {
-	if (updateDatabase && owner != guid) {
+	if (updateDatabase and owner != guid) {
 		Database& db = Database::getInstance();
-		db.executeQuery(fmt::format("UPDATE `houses` SET `owner` = {:d}, `bid` = 0, `bid_end` = 0, `last_bid` = 0, `highest_bidder` = 0  WHERE `id` = {:d}", guid, id));
+		if (not db.executeQuery(fmt::format("UPDATE `houses` SET `owner` = {:d}, `bid` = 0, `bid_end` = 0, `last_bid` = 0, `highest_bidder` = 0  WHERE `id` = {:d}", guid, id)))
+		{
+			BlackTek::Console::Database::Error("House::setOwner: failed to update owner of house {}", id);
+			return;
+		}
 	}
 
 	if (isLoaded && owner == guid) {
 		return;
 	}
 
-	isLoaded = true;
-
 	if (owner != 0) {
 		//send items to depot
-		if (player) {
-			transferToDepot(player);
-		} else {
-			transferToDepot();
+		if (not (player ? transferToDepot(player) : transferToDepot()))
+		{
+			BlackTek::Console::Database::Error("House::setOwner: failed to transfer possessions for house {}; in-memory ownership retained", id);
+			return;
 		}
 
 		for (const auto tile : houseTiles) {
@@ -128,6 +130,7 @@ void House::setOwner(uint32_t guid, bool updateDatabase/* = true*/, const Player
 		paidUntil = currentTime;
 	}
 
+	isLoaded = true;
 	rentWarnings = 0;
 
 	if (guid != 0) {
@@ -237,22 +240,22 @@ bool House::transferToDepot() const
 	}
 
 	if (const auto player = g_game.getPlayerByGUID(owner)) {
-		transferToDepot(player);
+		return transferToDepot(player);
 	} else {
 		const PlayerPtr tmpPlayer = std::make_shared<Player>(nullptr);
 		if (!IOLoginData::loadPlayerById(tmpPlayer, owner)) {
 			return false;
 		}
 
-		transferToDepot(tmpPlayer);
-		IOLoginData::savePlayer(tmpPlayer);
+		if (not transferToDepot(tmpPlayer))
+			return false;
+		return IOLoginData::savePlayer(tmpPlayer);
 	}
-	return true;
 }
 
 bool House::transferToDepot(const PlayerPtr& player) const
 {
-	if (townId == 0 || owner == 0) {
+	if (not player or townId == 0 or owner == 0) {
 		return false;
 	}
 
@@ -275,7 +278,8 @@ bool House::transferToDepot(const PlayerPtr& player) const
 	
 	ItemPtr inbox = player->getInbox()->getOwner();
 	for (const auto item : moveItemList) {
-		g_game.internalMoveItem(item->getLocation(), { .containerItem = inbox }, INDEX_ANYWHERE, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT);
+		if (g_game.internalMoveItem(item->getLocation(), { .containerItem = inbox }, INDEX_ANYWHERE, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT) != RETURNVALUE_NOERROR)
+			return false;
 	}
 	return true;
 }
@@ -385,6 +389,8 @@ bool House::executeTransfer(const HouseTransferItemPtr& item, const PlayerPtr& n
 	}
 
 	setOwner(newOwner->getGUID());
+	if (owner != newOwner->getGUID())
+		return false;
 	transferItem = nullptr;
 	return true;
 }
@@ -581,9 +587,9 @@ void Houses::payHouses(const RentPeriod_t rentPeriod) const
 		}
 
 		PlayerPtr player = std::make_shared<Player>(nullptr);
-		if (!IOLoginData::loadPlayerById(player, ownerId)) {
-			// Player doesn't exist, reset house owner
-			house->setOwner(0);
+		if (not IOLoginData::loadPlayerById(player, ownerId)) {
+			// A failed query or invalid player data is not proof that the owner was deleted.
+			BlackTek::Console::Database::Error("Houses::payHouses: unable to load owner {} of house {}; rent deferred", ownerId, house->getId());
 			continue;
 		}
 

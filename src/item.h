@@ -936,7 +936,7 @@ class Item : public SharedObject
 
 		// uint32 declarations
 		uint32_t getWeight() const;
-		uint32_t getWorth() const;
+		uint64_t getWorth() const;
 
 		// uint32 inline
 		uint32_t getDoorId() const	{ return getIntAttr(ITEM_ATTRIBUTE_DOORID); }
@@ -1229,8 +1229,8 @@ class Item : public SharedObject
 			if (not c_stats.get())
 				return false;
 
-			auto& stat = c_stats.get()->find(id)->second;
-			return stat->add(amount);
+			const auto it = c_stats->find(id);
+			return it != c_stats->end() and it->second and it->second->add(amount);
 		}
 
 		// move to cpp
@@ -1239,8 +1239,8 @@ class Item : public SharedObject
 			if (not c_stats.get())
 				return false;
 
-			auto& stat = c_stats.get()->find(id)->second;
-			return stat->remove(amount);
+			const auto it = c_stats->find(id);
+			return it != c_stats->end() and it->second and it->second->remove(amount);
 		}
 
 		bool hasCustomStats() { return c_stats.get() != nullptr; }
@@ -1408,7 +1408,6 @@ class Item : public SharedObject
 		ItemWeakPtr containerParent;
 		bool scriptDetached = false;
 		std::unique_ptr<ItemContainer> container;
-		ContainerPtr containerAlias;
 
 	private:
         static inline uint64_t s_loadedItemCount = 0;

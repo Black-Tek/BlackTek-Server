@@ -124,10 +124,10 @@ class Guild
 			this->motd = motd;
 		}
 
-		uint32_t getGuildBankBalance() const {
+		uint64_t getGuildBankBalance() const {
 			return guildBankBalance;
 		}
-		void setGuildBankBalance(uint32_t balance) {
+		void setGuildBankBalance(uint64_t balance) {
 			guildBankBalance = balance;
 		}
 

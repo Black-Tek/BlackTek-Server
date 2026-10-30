@@ -94,6 +94,10 @@ namespace Components {
                         for (const auto& [index, entry] : toml_file) 
                         {
 
+                            if (not entry.is_table())
+                            {
+                                return false;
+                            }
                             toml::table skill_data = *entry.as_table();
                             std::string name = skill_data["name"].value_or("unknown");
                             if (name == "unknown")
@@ -106,15 +110,17 @@ namespace Components {
                             
                             std::string_view formula_name = skill_data["formula"].value_or("none");
                             FormulaType formula = ParseFormula(formula_name);
-                            skill_registry.try_emplace(name, formula, max_level);
+                            skill_registry.try_emplace(name, 1, formula, max_level);
                         }
                     }
                     catch (const toml::parse_error& err) 
                     {
                         std::cerr << "Error parsing file " << file.path() << ": " << err << "\n";
+                        return false;
                     }
                 }
             }
+            return true;
         }
     }
 }

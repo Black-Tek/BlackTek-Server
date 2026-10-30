@@ -561,8 +561,8 @@ class Creature : public SharedObject
 			if (not c_stats.get())
 				return false;
 
-			auto& stat = c_stats.get()->find(id)->second;
-			return stat->add(amount);
+			const auto stat = c_stats->find(id);
+			return stat != c_stats->end() and stat->second and stat->second->add(amount);
 		}
 
 		bool decreaseCustomStat(uint32_t id, uint32_t amount)
@@ -570,8 +570,8 @@ class Creature : public SharedObject
 			if (not c_stats.get())
 				return false;
 
-			auto& stat = c_stats.get()->find(id)->second;
-			return stat->remove(amount);
+			const auto stat = c_stats->find(id);
+			return stat != c_stats->end() and stat->second and stat->second->remove(amount);
 		}
 
 		bool hasCustomStats()

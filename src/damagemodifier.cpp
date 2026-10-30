@@ -217,12 +217,14 @@ void DamageModifier::setChance(uint8_t amount)						{ chance = amount; }
 void DamageModifier::setFactor(uint8_t value)						{ factor = value; }
 const bool DamageModifier::isPercent() const noexcept				{ return factor == std::to_underlying(Factor::Percent); }
 const bool DamageModifier::isFlatValue() const noexcept				{ return factor == std::to_underlying(Factor::Flat); }
-void DamageModifier::setCreatureName(std::string_view creatureName) const noexcept
+void DamageModifier::setCreatureName(std::string_view creatureName)
 {
-	modifier_monster_names.insert_or_assign(guid, std::string(creatureName));
-	const size_t len = std::min(creatureName.size(), sizeof(name_buf) - 1);
-	std::memcpy(name_buf, creatureName.data(), len);
+	const auto [entry, inserted] = modifier_monster_names.insert_or_assign(guid, std::string(creatureName));
+	const auto& name = entry->second;
+	const size_t len = std::min(name.size(), sizeof(name_buf) - 1);
+	std::memcpy(name_buf, name.data(), len);
 	name_buf[len] = '\0';
+	filter_index |= Flag::Named;
 }
 
 void DamageModifier::setCombatType(uint16_t combatType)
@@ -322,9 +324,6 @@ const bool DamageModifier::appliesByName(const std::string_view creatureName) co
 	{
 		if (filter_index & DamageModifier::Flag::Named)
 		{
-			if (name_buf[0] != '\0' and std::string_view(name_buf) != creatureName)
-				return false;
-
 			auto it = modifier_monster_names.find(guid);
 			if (it != modifier_monster_names.end())
 				return creatureName == it->second;

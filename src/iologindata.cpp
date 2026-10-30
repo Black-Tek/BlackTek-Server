@@ -491,12 +491,14 @@ void IOLoginData::setAccountType(uint32_t accountId, AccountType_t accountType)
 
 std::pair<uint32_t, uint32_t> IOLoginData::getAccountIdByAccountName(std::string_view accountName,
 	std::string_view password,
-	std::string_view characterName)
+	std::string_view characterName,
+	std::string_view token,
+	uint32_t tokenTime)
 {
 	Database& db = Database::getInstance();
 
 	DBResult_ptr result = db.storeQuery(
-		fmt::format("SELECT `id`, `password` FROM `accounts` WHERE `name` = {:s}", db.escapeString(accountName)));
+		fmt::format("SELECT `id`, `password`, `secret` FROM `accounts` WHERE `name` = {:s}", db.escapeString(accountName)));
 	if (!result) {
 		return {};
 	}
@@ -504,6 +506,11 @@ std::pair<uint32_t, uint32_t> IOLoginData::getAccountIdByAccountName(std::string
 	if (transformToSHA1(password) != result->getString("password")) {
 		return {};
 	}
+
+	const auto secret = decodeSecret(result->getString("secret"));
+	if (not secret.empty() and (token.empty() or
+		(token != generateToken(secret, tokenTime) and token != generateToken(secret, tokenTime - 1) and token != generateToken(secret, tokenTime + 1))))
+		return {};
 
 	uint32_t accountId = result->getNumber<uint32_t>("id");
 
@@ -625,7 +632,8 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::
 		{
 			if (outConditions)
 				outConditions->push_back(std::move(condition));
-			// else: condition falls out of scope and auto-releases
+			else
+				player->conditions.push_back(std::move(condition));
 		}
 		// on unserialize failure: condition falls out of scope and auto-releases
 	}
@@ -1599,12 +1607,17 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 	DBInsert skill_query("INSERT INTO `player_custom_skills` (`player_id`, `skills`) VALUES ");
 	PropWriteStream skills_stream;
 
-	savePlayerCustomSkills(player, skill_query, skills_stream);
+	if (not savePlayerCustomSkills(player, skill_query, skills_stream))
+		return false;
+
+	if (not db.executeQuery(fmt::format("DELETE FROM `player_custom_stats` WHERE `player_id` = {:d}", player->getGUID())))
+		return false;
 
 	DBInsert stats_query("INSERT INTO `player_custom_stats` (`player_id`, `stats`) VALUES ");
 	PropWriteStream stats_stream;
 
-	savePlayerCustomStats(player, stats_query, stats_stream);
+	if (not savePlayerCustomStats(player, stats_query, stats_stream))
+		return false;
 
 
 	//End the transaction

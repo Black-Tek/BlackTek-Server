@@ -974,7 +974,7 @@ void Monster::onThink(const uint32_t interval)
 		lua_State* L = scriptInterface->getLuaState();
 		env->setScriptId(mType->info.thinkEvent, scriptInterface);
 		scriptInterface->pushFunction(mType->info.thinkEvent);
-		LuaScriptInterface::pushUserdata<Monster>(L, this);
+		LuaScriptInterface::pushSharedPtr(L, getMonster());
 		LuaScriptInterface::setMetatable(L, -1, "Monster");
 		lua_pushinteger(L, interval);
 		scriptInterface->callFunction(2);
@@ -2261,11 +2261,9 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
         if (caller == owner)
             return CREATURETYPE_SUMMON_OWN;
 
-		auto caller_type = caller->getCreatureSubType();
-
-        if (auto isPlayer = caller_type == CreatureSubType::Player; auto calling_player = std::static_pointer_cast<Player>(caller))
+        if (const auto calling_player = caller->getPlayer())
         {
-            if (auto alsoPlayer = owner->getCreatureSubType() == CreatureSubType::Player; auto player = std::static_pointer_cast<Player>(owner))
+            if (const auto player = owner->getPlayer())
             {
                 // Todo : we could set priority in config for party of guild, or allow as aditional param
                 auto owner_guild = player->getGuild();
@@ -2283,7 +2281,7 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
                 return CREATURETYPE_SUMMON_OTHER;
             }
 
-			if (auto isMonster = owner->getCreatureSubType() == CreatureSubType::Monster; auto monster = std::static_pointer_cast<Monster>(owner))
+			if (const auto monster = owner->getMonster())
             {
                 for (const auto& weakPtr : monster->getTargetList())
                 {
@@ -2293,7 +2291,7 @@ CreatureType_t Monster::getType(CreaturePtr caller) const
             }
         }
 
-        if (auto isMonster = caller_type == CreatureSubType::Monster; auto calling_monster = std::static_pointer_cast<Monster>(caller))
+        if (const auto calling_monster = caller->getMonster())
         {
             if (auto player = owner->getPlayer(); player)
             {

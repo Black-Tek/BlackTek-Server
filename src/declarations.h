@@ -53,6 +53,7 @@ using MonsterConstPtr = std::shared_ptr<const Monster>;
 class Npc;
 using NpcPtr = std::shared_ptr<Npc>;
 using NpcConstPtr = std::shared_ptr<const Npc>;
+using NpcWeakPtr = std::weak_ptr<Npc>;
 
 class Tile;
 using TilePtr = std::shared_ptr<Tile>;

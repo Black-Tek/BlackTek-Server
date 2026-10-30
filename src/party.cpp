@@ -51,7 +51,17 @@ extern ConfigManager g_config;
 extern Events* g_events;
 
 uint32_t _total_parties_created = 0;
-std::unordered_map<uint32_t, PartyPtr> _game_parties;
+
+namespace
+{
+	using PartyRegistry = std::unordered_map<uint32_t, PartyPtr>;
+
+	PartyRegistry& GetPartyRegistry()
+	{
+		static PartyRegistry parties;
+		return parties;
+	}
+}
 
 Party::Party() : id(0)
 {
@@ -65,9 +75,10 @@ Party::Party(const PlayerPtr& leader) :  leader(leader), id(++_total_parties_cre
 
 PartyPtr Party::get(uint32_t id)
 {
-	auto it = _game_parties.find(id);
+	auto& parties = GetPartyRegistry();
+	auto it = parties.find(id);
 
-	if (it != _game_parties.end())
+	if (it != parties.end())
 		return it->second;
 
 	return nullptr;
@@ -76,16 +87,36 @@ PartyPtr Party::get(uint32_t id)
 PartyPtr Party::make(const PlayerPtr& player)
 {
 	auto new_party = std::make_shared<Party>(player);
-	_game_parties.try_emplace(new_party->getId(), new_party);
+	GetPartyRegistry().try_emplace(new_party->getId(), new_party);
 	return new_party;
+}
+
+bool Party::discardEmpty()
+{
+	if (not leader or disbanding or not empty())
+		return false;
+
+	const auto self = shared_from_this();
+	if (leader->getPartyId() == id)
+		leader->setParty(0);
+	leader.reset();
+	ticksMap.clear();
+	GetPartyRegistry().erase(id);
+	return true;
 }
 
 void Party::disband()
 {
+	if (not leader or disbanding)
+	{
+		return;
+	}
 	const auto& self = shared_from_this();
+	disbanding = true;
 
 	if (not g_events->eventPartyOnDisband(self))
 	{
+		disbanding = false;
 		return;
 	}
 
@@ -124,16 +155,24 @@ void Party::disband()
 	leader->sendCreatureSkull(leader);
 	leader->sendTextMessage(MESSAGE_INFO_DESCR, "Your party has been disbanded.");
 	leader = nullptr;
+	memberList.clear();
+	inviteList.clear();
+	ticksMap.clear();
+	sharedExpActive = false;
+	sharedExpEnabled = false;
+	GetPartyRegistry().erase(id);
 }
 
 bool Party::leaveParty(const PlayerPtr player, bool forceRemove /* = false */)
 {
-	if (not player or player->getPartyId() == 0)
+	if (not player or not leader or disbanding or player->getPartyId() != id)
 		return false;
 
 	bool canRemove = g_events->eventPartyOnLeave(shared_from_this(), player);
 
 	if (not forceRemove and not canRemove)
+		return false;
+	if (not leader or disbanding or player->getPartyId() != id)
 		return false;
 
 	bool missingLeader = false;
@@ -157,6 +196,8 @@ bool Party::leaveParty(const PlayerPtr player, bool forceRemove /* = false */)
 	}
 
 	//since we already passed the leadership, we remove the player from the list
+	if (not leader or disbanding or player->getPartyId() != id)
+		return false;
 	if (const auto it = std::ranges::find(memberList, player); it != memberList.end())
 		memberList.erase(it);
 
@@ -192,10 +233,14 @@ bool Party::leaveParty(const PlayerPtr player, bool forceRemove /* = false */)
 
 bool Party::passPartyLeadership(const PlayerPtr player, bool forceRemove /* = false*/)
 {
-	if (not player or not leader or leader == player or player->getPartyId() == 0) 
+	if (not player or not leader or disbanding or leader == player or player->getPartyId() != id
+		or std::ranges::find(memberList, player) == memberList.end())
 		return false;
 
 	if (not g_events->eventPartyOnPassLeadership(shared_from_this(), player) and not forceRemove)
+		return false;
+	if (not leader or disbanding or leader == player or player->getPartyId() != id
+		or std::ranges::find(memberList, player) == memberList.end())
 		return false;
 
 	// Remove it before to broadcast the message correctly
@@ -234,7 +279,7 @@ bool Party::passPartyLeadership(const PlayerPtr player, bool forceRemove /* = fa
 
 bool Party::joinParty(const PlayerPtr player)
 {
-	if (not player or player->getPartyId() != 0)	
+	if (not player or not leader or disbanding or player->getPartyId() != 0)
         return false;
 
 	auto max_party_size = g_config.GetNumber(ConfigManager::MAXIMUM_PARTY_SIZE);
@@ -243,6 +288,8 @@ bool Party::joinParty(const PlayerPtr player)
 		return false;
 
 	if (not g_events->eventPartyOnJoin(shared_from_this(), player))
+		return false;
+	if (not leader or disbanding or player->getPartyId() != 0 or memberList.size() >= max_party_size)
 		return false;
 
 	const auto it = std::find(inviteList.begin(), inviteList.end(), player);
@@ -282,6 +329,10 @@ bool Party::joinParty(const PlayerPtr player)
 
 bool Party::removeInvite(const PlayerPtr player, bool removeFromPlayer/* = true*/)
 {
+	if (not player or not leader or disbanding)
+	{
+		return false;
+	}
 	const auto it = std::find(inviteList.begin(), inviteList.end(), player);
 
 	if (it == inviteList.end())
@@ -316,10 +367,16 @@ bool Party::removeInvite(const PlayerPtr player, bool removeFromPlayer/* = true*
 
 void Party::revokeInvitation(const PlayerPtr& player)
 {
+	if (not player or not leader or disbanding or not isPlayerInvited(player))
+	{
+		return;
+	}
 	if (not g_events->eventPartyOnRevokeInvitation(shared_from_this(), player))
 	{
 		return;
 	}
+	if (not leader or disbanding or not isPlayerInvited(player))
+		return;
 	player->sendTextMessage(MESSAGE_INFO_DESCR, fmt::format("{:s} has revoked {:s} invitation.", leader->getName(), leader->getSex() == PLAYERSEX_FEMALE ? "her" : "his"));
 	leader->sendTextMessage(MESSAGE_INFO_DESCR, fmt::format("Invitation for {:s} has been revoked.", player->getName()));
 	removeInvite(player);
@@ -327,13 +384,14 @@ void Party::revokeInvitation(const PlayerPtr& player)
 
 bool Party::invitePlayer(const PlayerPtr& player)
 {
-	if (not player)
+	if (not player or not leader or disbanding or player == leader)
         return false;
 
 	if (auto party = player->getParty();
 		party and party->id != 0)
 	{
 		leader->sendTextMessage(MESSAGE_INFO_DESCR, fmt::format("{:s} is already in a party.", player->getName()));
+		return false;
 	}
 
 	if (isPlayerInvited(player))
@@ -387,6 +445,10 @@ bool Party::isPlayerInvited(const PlayerConstPtr& player) const
 
 void Party::updateAllPartyIcons()
 {
+	if (not leader)
+	{
+		return;
+	}
 	for (const auto& member : memberList)
 	{
 		for (const auto& otherMember : memberList)
@@ -402,6 +464,10 @@ void Party::updateAllPartyIcons()
 
 void Party::broadcastPartyMessage(MessageClasses msgClass, const std::string& msg, bool sendToInvitations /*= false*/) const
 {
+	if (not leader)
+	{
+		return;
+	}
 	for (const auto& member : memberList)
 	{
 		member->sendTextMessage(msgClass, msg);
@@ -478,14 +544,24 @@ bool Party::setSharedExperience(const PlayerPtr& player, bool sharedExpActive)
 
 void Party::shareExperience(const uint64_t experience, const CreaturePtr& source/* = nullptr*/)
 {
-	uint64_t shareExperience = experience;
-	g_events->eventPartyOnShareExperience(shared_from_this(), shareExperience);
-
-	for (const auto& member : memberList)
+	if (not leader or disbanding)
 	{
-		member->onGainSharedExperience(shareExperience, source);
+		return;
 	}
-	leader->onGainSharedExperience(shareExperience, source);
+	uint64_t shareExperience = experience / (memberList.size() + 1);
+	g_events->eventPartyOnShareExperience(shared_from_this(), experience, shareExperience);
+	if (not leader or disbanding)
+		return;
+
+	const auto members = memberList;
+	const auto currentLeader = leader;
+	for (const auto& member : members)
+	{
+		if (member->getPartyId() == id)
+			member->onGainSharedExperience(shareExperience, source);
+	}
+	if (currentLeader->getPartyId() == id)
+		currentLeader->onGainSharedExperience(shareExperience, source);
 }
 
 bool Party::canUseSharedExperience(const PlayerConstPtr& player) const
@@ -495,7 +571,7 @@ bool Party::canUseSharedExperience(const PlayerConstPtr& player) const
 
 SharedExpStatus_t Party::getMemberSharedExperienceStatus(const PlayerConstPtr& player) const
 {
-	if (memberList.empty())
+	if (not player or not leader or memberList.empty())
 		return SHAREDEXP_EMPTYPARTY;
 
 	uint32_t highestLevel = leader->getLevel();
@@ -507,7 +583,7 @@ SharedExpStatus_t Party::getMemberSharedExperienceStatus(const PlayerConstPtr& p
 		}
 	}
 
-	uint32_t minLevel = static_cast<uint32_t>(std::ceil((static_cast<float>(highestLevel) * 2) / 3));
+	const uint32_t minLevel = highestLevel - highestLevel / 3;
 
 	if (player->getLevel() < minLevel)
 		return SHAREDEXP_LEVELDIFFTOOLARGE;
@@ -557,7 +633,7 @@ SharedExpStatus_t Party::getSharedExperienceStatus() const
 
 void Party::updatePlayerTicks(const PlayerPtr& player, const uint32_t points)
 {
-	if (not player or player->getPartyId() == 0)
+	if (not player or not leader or disbanding or player->getPartyId() != id)
         return;
 
 	if (points != 0 and not player->hasFlag(PlayerFlag_NotGainInFight))
@@ -569,7 +645,7 @@ void Party::updatePlayerTicks(const PlayerPtr& player, const uint32_t points)
 
 void Party::clearPlayerPoints(const PlayerPtr& player)
 {
-	if (not player or player->getPartyId() == 0)
+	if (not player)
         return;
 
 	if (const auto it = ticksMap.find(player->getID()); it != ticksMap.end())
@@ -581,6 +657,10 @@ void Party::clearPlayerPoints(const PlayerPtr& player)
 
 bool Party::canOpenCorpse(const uint32_t ownerId) const
 {
+	if (not leader)
+	{
+		return false;
+	}
 
 	if (const auto& player = g_game.getPlayerByID(ownerId))
 	{

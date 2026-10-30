@@ -60,13 +60,21 @@ namespace BlackTek::World
 
         if (creature->is_player())
         {
-            std::swap(creature_ptrs[lastIndex], creature_ptrs[player_count]);
-            std::swap(creature_x[lastIndex], creature_x[player_count]);
-            std::swap(creature_y[lastIndex], creature_y[player_count]);
-            std::swap(creature_z[lastIndex], creature_z[player_count]);
+            const uint32_t monsterEnd = player_count + monster_count;
+            // Move past the NPC partition before inserting ahead of the monsters.
+            std::swap(creature_ptrs[lastIndex], creature_ptrs[monsterEnd]);
+            std::swap(creature_x[lastIndex], creature_x[monsterEnd]);
+            std::swap(creature_y[lastIndex], creature_y[monsterEnd]);
+            std::swap(creature_z[lastIndex], creature_z[monsterEnd]);
+            creature_ptrs[lastIndex]->setChunkSlot(lastIndex);
+
+            std::swap(creature_ptrs[monsterEnd], creature_ptrs[player_count]);
+            std::swap(creature_x[monsterEnd], creature_x[player_count]);
+            std::swap(creature_y[monsterEnd], creature_y[player_count]);
+            std::swap(creature_z[monsterEnd], creature_z[player_count]);
+            creature_ptrs[monsterEnd]->setChunkSlot(monsterEnd);
 
             slot = player_count;
-            creature_ptrs[lastIndex]->setChunkSlot(lastIndex);
             ++player_count;
         }
         else if (creature->is_monster())

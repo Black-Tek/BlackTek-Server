@@ -665,7 +665,7 @@ bool InstantSpell::playerCastInstant(const PlayerPtr& player, std::string& param
 
 		if (hasParam) {
 			PlayerPtr playerTarget = nullptr;
-			ReturnValue ret = g_game.getPlayerByNameWildcard(param);
+			ReturnValue ret = g_game.getPlayerByNameWildcard(param, playerTarget);
 
 			if (playerTarget && playerTarget->isAccessPlayer() && !player->isAccessPlayer()) {
 				playerTarget = nullptr;
@@ -718,7 +718,7 @@ bool InstantSpell::playerCastInstant(const PlayerPtr& player, std::string& param
 	} else if (hasParam) {
 		if (getHasPlayerNameParam()) {
 			PlayerPtr playerTarget = nullptr;
-			ReturnValue ret = g_game.getPlayerByNameWildcard(param);
+			ReturnValue ret = g_game.getPlayerByNameWildcard(param, playerTarget);
 
 			if (ret != RETURNVALUE_NOERROR) {
 				addCooldowns(player);

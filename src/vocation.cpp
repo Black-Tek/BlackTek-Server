@@ -122,12 +122,24 @@ uint16_t Vocations::getPromotedVocation(uint16_t id) const
 
 static const uint32_t skillBase[SKILL_LAST + 1] = {50, 50, 50, 50, 30, 100, 20};
 
+namespace
+{
+uint64_t BoundedRequirement(double value)
+{
+	if (not std::isfinite(value) or value >= static_cast<double>(std::numeric_limits<uint64_t>::max()))
+	{
+		return std::numeric_limits<uint64_t>::max();
+	}
+	return value <= 0 ? 0 : static_cast<uint64_t>(value);
+}
+}
+
 uint64_t Vocation::getReqSkillTries(uint8_t skill, uint16_t level) const
 {
 	if (skill > SKILL_LAST) {
 		return 0;
 	}
-	return skillBase[skill] * std::pow(skillMultipliers[skill], static_cast<int32_t>(level - (MINIMUM_SKILL_LEVEL + 1)));
+	return BoundedRequirement(skillBase[skill] * std::pow(skillMultipliers[skill], static_cast<int32_t>(level) - (MINIMUM_SKILL_LEVEL + 1)));
 }
 
 uint64_t Vocation::getReqMana(uint32_t magLevel) const
@@ -135,7 +147,7 @@ uint64_t Vocation::getReqMana(uint32_t magLevel) const
 	if (magLevel == 0) {
 		return 0;
 	}
-	return 1600 * std::pow(manaMultiplier, static_cast<int32_t>(magLevel - 1));
+	return BoundedRequirement(1600 * std::pow(manaMultiplier, static_cast<double>(magLevel) - 1));
 }
 
 bool Vocations::loadFromToml() {
@@ -158,7 +170,12 @@ bool Vocations::loadFromToml() {
 					}
 
 					toml::table vocation_data = *entry.as_table();
-					const auto vocId = vocation_data["id"].value_or(0);
+					const auto vocId = vocation_data["id"].value_or(-1);
+					if (vocId < 0 or vocId > std::numeric_limits<uint16_t>::max())
+					{
+						BlackTek::Console::Error("Vocations::loadFromToml: invalid vocation ID in {}", file.path().string());
+						return false;
+					}
 					// to-do: I hate adding directly to the map here as a practice, it's technically slowing down the IO
 					// would be best practice to take non-blocking approach for IO's
 					auto res = vocationsMap.emplace(std::piecewise_construct, std::forward_as_tuple(vocId), std::forward_as_tuple(vocId));
@@ -298,11 +315,11 @@ bool Vocations::loadFromToml() {
 									if (skill_name != "none")
 									{
 										uint16_t max = s["maxlevel"].value_or(0.0f);
-										float multiplier = s["mutiplier"].value_or(1.1f);
+										float multiplier = s["multiplier"].value_or(s["mutiplier"].value_or(1.1f));
 										float threshold = s["threshold"].value_or(10.0f);
 										float difficulty = s["difficulty"].value_or(50.0f);
 										FormulaType formula = Components::Skills::ParseFormula(s["formula"].value_or("default"));
-										auto custom_skill = Components::Skills::CustomSkill::make_skill(1, formula, max, multiplier, threshold, difficulty);
+										auto custom_skill = Components::Skills::CustomSkill::make_skill(1, formula, max, multiplier, difficulty, threshold);
 										Vocations::addVocationSkill(vocId, skill_name, std::move(custom_skill));
 									}
 								}

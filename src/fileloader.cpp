@@ -134,12 +134,7 @@ bool Loader::getProps(const Node& node, PropStream& props)
         return false;
     }
 
-    if (static_cast<ptrdiff_t>(propBuffer.capacity()) < size)
-    {
-        propBuffer.reserve(static_cast<size_t>(size));
-    }
-
-    propBuffer.clear();
+    propBuffer.resize(static_cast<size_t>(size));
     auto* dst = propBuffer.data();
 
     while (src < srcEnd)
@@ -159,7 +154,8 @@ bool Loader::getProps(const Node& node, PropStream& props)
         }
     }
 
-    props.init(propBuffer.data(), static_cast<size_t>(dst - propBuffer.data()));
+    propBuffer.resize(static_cast<size_t>(dst - propBuffer.data()));
+    props.init(propBuffer.data(), propBuffer.size());
     return true;
 }
 

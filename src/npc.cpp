@@ -1410,7 +1410,7 @@ NpcEventsHandler::NpcEventsHandler(const std::string& file, NpcPtr og) :
 		return;
 	}
 
-	loaded = scriptInterface->loadFile("data/npc/scripts/" + file, npc) == 0;
+	loaded = scriptInterface->loadFile("data/npc/scripts/" + file, og) == 0;
 
 	if (not loaded)
 	{
@@ -1450,7 +1450,7 @@ void NpcEventsHandler::onCreatureAppear(const CreaturePtr& creature)
 
 	ScriptEnvironment* env = scriptInterface->getScriptEnv();
 	env->setScriptId(creatureAppearEvent, scriptInterface.get());
-	env->setNpc(npc);
+	env->setNpc(npc.lock());
 
 	lua_State* L = scriptInterface->getLuaState();
 	scriptInterface->pushFunction(creatureAppearEvent);
@@ -1475,7 +1475,7 @@ void NpcEventsHandler::onCreatureDisappear(const CreaturePtr& creature)
 
 	ScriptEnvironment* env = scriptInterface->getScriptEnv();
 	env->setScriptId(creatureDisappearEvent, scriptInterface.get());
-	env->setNpc(npc);
+	env->setNpc(npc.lock());
 
 	lua_State* L = scriptInterface->getLuaState();
 	scriptInterface->pushFunction(creatureDisappearEvent);
@@ -1500,7 +1500,7 @@ void NpcEventsHandler::onCreatureMove(const CreaturePtr& creature, const Positio
 
 	ScriptEnvironment* env = scriptInterface->getScriptEnv();
 	env->setScriptId(creatureMoveEvent, scriptInterface.get());
-	env->setNpc(npc);
+	env->setNpc(npc.lock());
 
 	lua_State* L = scriptInterface->getLuaState();
 	scriptInterface->pushFunction(creatureMoveEvent);
@@ -1527,7 +1527,7 @@ void NpcEventsHandler::onCreatureSay(const CreaturePtr& creature, SpeakClasses t
 
 	ScriptEnvironment* env = scriptInterface->getScriptEnv();
 	env->setScriptId(creatureSayEvent, scriptInterface.get());
-	env->setNpc(npc);
+	env->setNpc(npc.lock());
 
 	lua_State* L = scriptInterface->getLuaState();
 	scriptInterface->pushFunction(creatureSayEvent);
@@ -1555,7 +1555,7 @@ void NpcEventsHandler::onPlayerTrade(const PlayerPtr& player, int32_t callback, 
 
 	ScriptEnvironment* env = scriptInterface->getScriptEnv();
 	env->setScriptId(-1, scriptInterface.get());
-	env->setNpc(npc);
+	env->setNpc(npc.lock());
 
 	lua_State* L = scriptInterface->getLuaState();
 	LuaScriptInterface::pushCallback(L, callback);
@@ -1585,7 +1585,7 @@ void NpcEventsHandler::onPlayerCloseChannel(const PlayerPtr& player)
 
 	ScriptEnvironment* env = scriptInterface->getScriptEnv();
 	env->setScriptId(playerCloseChannelEvent, scriptInterface.get());
-	env->setNpc(npc);
+	env->setNpc(npc.lock());
 
 	lua_State* L = scriptInterface->getLuaState();
 	scriptInterface->pushFunction(playerCloseChannelEvent);
@@ -1610,7 +1610,7 @@ void NpcEventsHandler::onPlayerEndTrade(const PlayerPtr& player)
 
 	ScriptEnvironment* env = scriptInterface->getScriptEnv();
 	env->setScriptId(playerEndTradeEvent, scriptInterface.get());
-	env->setNpc(npc);
+	env->setNpc(npc.lock());
 
 	lua_State* L = scriptInterface->getLuaState();
 	scriptInterface->pushFunction(playerEndTradeEvent);
@@ -1635,7 +1635,7 @@ void NpcEventsHandler::onThink()
 
 	ScriptEnvironment* env = scriptInterface->getScriptEnv();
 	env->setScriptId(thinkEvent, scriptInterface.get());
-	env->setNpc(npc);
+	env->setNpc(npc.lock());
 
 	scriptInterface->pushFunction(thinkEvent);
 	scriptInterface->callFunction(0);

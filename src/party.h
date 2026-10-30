@@ -97,6 +97,7 @@ class Party : public std::enable_shared_from_this<Party>
 		static std::shared_ptr<Party> make(const PlayerPtr& player);
 
 		void disband();
+		bool discardEmpty();
 		bool invitePlayer(const PlayerPtr& player);
 		bool joinParty(const PlayerPtr player);
 		void revokeInvitation(const PlayerPtr& player);
@@ -146,6 +147,7 @@ class Party : public std::enable_shared_from_this<Party>
 		uint32_t id = 0;
 		bool sharedExpActive = false;
 		bool sharedExpEnabled = false;
+		bool disbanding = false;
 };
 
 using PartyPtr = std::shared_ptr<Party>;

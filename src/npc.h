@@ -116,7 +116,7 @@ class NpcEventsHandler
 
 	private:
 
-		NpcPtr npc;
+		NpcWeakPtr npc;
 		int32_t creatureAppearEvent = -1;
 		int32_t creatureDisappearEvent = -1;
 		int32_t creatureMoveEvent = -1;

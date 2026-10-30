@@ -123,6 +123,7 @@ static constexpr size_t MaxCreatureThinkSlots = 20;
 #include <chrono>
 #include <functional>
 #include <optional>
+#include <type_traits>
 
 struct CoroTask
 {
@@ -151,6 +152,7 @@ struct TimerQueue
         std::coroutine_handle<> handle;
 
         std::function<bool()> stillValid;
+        bool owns_frame = false;
 
         bool operator>(const Entry& other) const { return wake > other.wake; }
     };
@@ -159,9 +161,26 @@ struct TimerQueue
 
     std::optional<std::coroutine_handle<>> currentlyResuming;
 
-    void add(TimePoint when, std::coroutine_handle<> handle, std::function<bool()> stillValid = nullptr)
+    TimerQueue() = default;
+    TimerQueue(const TimerQueue&) = delete;
+    TimerQueue& operator=(const TimerQueue&) = delete;
+    ~TimerQueue() { clear(); }
+
+    void clear() noexcept
+    {
+        while (not queue.empty())
+        {
+            const auto handle = queue.top().handle;
+            const bool ownsFrame = queue.top().owns_frame;
+            queue.pop();
+            if (ownsFrame)
+                handle.destroy();
+        }
+    }
+
+    void add(TimePoint when, std::coroutine_handle<> handle, std::function<bool()> stillValid = nullptr, bool ownsFrame = false)
 	{
-        queue.push({when, handle, std::move(stillValid)});
+        queue.push({when, handle, std::move(stillValid), ownsFrame});
     }
 
     void tick() {
@@ -177,6 +196,8 @@ struct TimerQueue
                 entry.handle.resume();
                 currentlyResuming.reset();
             }
+            else if (entry.owns_frame)
+                entry.handle.destroy();
         }
     }
 };
@@ -188,18 +209,20 @@ struct SleepFor
     uint32_t ms;
     std::function<bool()> stillValid = nullptr;
     bool await_ready() const noexcept { return ms == 0; }
-    void await_suspend(std::coroutine_handle<> handle) const
+    template <typename Promise>
+    void await_suspend(std::coroutine_handle<Promise> handle) const
 	{
-        g_timer_queue.add(TimerQueue::Clock::now() + std::chrono::milliseconds(ms), handle, stillValid);
+        constexpr bool ownsFrame = std::is_same_v<Promise, CoroTask::promise_type>;
+        g_timer_queue.add(TimerQueue::Clock::now() + std::chrono::milliseconds(ms), handle, stillValid, ownsFrame);
     }
     void await_resume() const noexcept {}
 };
 
 struct Expirable 
 {
-    Expirable(ItemPtr _item, uint32_t expire_time, uint32_t creation = 0) :  item(_item), expiration(expire_time), created(creation) {}
+    Expirable(ItemPtr _item, uint64_t expire_time, uint64_t creation = 0) :  item(_item), expiration(expire_time), created(creation) {}
 
-    uint32_t getExpiration() const { return expiration; }
+    uint64_t getExpiration() const { return expiration; }
     ItemPtr getItem() const { return item; }
 
     bool operator==(const Expirable& other) const noexcept 
@@ -208,8 +231,8 @@ struct Expirable
     }
 
 	ItemPtr item;
-    uint32_t expiration;
-	uint32_t created;
+    uint64_t expiration;
+	uint64_t created;
 };
 
 struct CreatureRoster
@@ -358,6 +381,7 @@ class Game
 		  * \return "RETURNVALUE_PLAYERWITHTHISNAMEISNOTONLINE" or "RETURNVALUE_NAMEISTOOAMBIGIOUS"
 		  */
 		ReturnValue getPlayerByNameWildcard(const std::string& s);
+		ReturnValue getPlayerByNameWildcard(const std::string& s, PlayerPtr& player);
 
 		/**
 		  * Returns a player based on an account number identifier
@@ -692,8 +716,6 @@ class Game
 		void addMonster(MonsterPtr monster);
 		void removeMonster(const MonsterPtr& monster);
 
-		gtl::node_hash_map<TilePtr, ContainerPtr> browseFields;
-
 		void internalRemoveItems(const std::vector<ItemPtr>& itemList, uint32_t amount, bool stackable);
 
 		BedItemPtr getBedBySleeper(uint32_t guid) const;
@@ -711,8 +733,18 @@ class Game
 		std::pmr::monotonic_buffer_resource game_block;
 
 		std::pmr::unsynchronized_pool_resource item_pool;
+		// Allocators must outlive the map and every container holding pooled objects.
+		std::vector<std::byte> raw_map_block;
+		std::optional<std::pmr::monotonic_buffer_resource> map_block;
+		std::pmr::unsynchronized_pool_resource player_pool;
+		std::pmr::unsynchronized_pool_resource monster_pool;
+		std::pmr::unsynchronized_pool_resource npc_pool;
+		std::pmr::unsynchronized_pool_resource creature_pointer_pool;
+		std::pmr::unsynchronized_pool_resource item_pointer_pool;
+		std::pmr::unsynchronized_pool_resource spawn_pool;
 
 	public:
+		gtl::node_hash_map<TilePtr, ContainerPtr> browseFields;
 		Groups groups;
 		Map map;
 		Mounts mounts;
@@ -775,7 +807,6 @@ class Game
 			doAccountManagerLogin(player);
 		}
 
-		CURL* curl;
 		std::unordered_set<Expirable> decaying_eq;
 
 		PlayerPtr MakePlayer(ProtocolGame_ptr client);
@@ -795,16 +826,6 @@ class Game
 		bool playerSpeakTo(const PlayerPtr& player, SpeakClasses type, const std::string& receiver, const std::string& text);
 		void playerSpeakToNpc(const PlayerPtr& player, const std::string& text);
 		void internalDecayItem(const ItemPtr& item);
-
-		// Todo : the entire game class's memory layout needs rearranged
-        std::vector<std::byte> raw_map_block;
-        std::optional<std::pmr::monotonic_buffer_resource> map_block;
-		std::pmr::unsynchronized_pool_resource player_pool;
-		std::pmr::unsynchronized_pool_resource monster_pool;
-		std::pmr::unsynchronized_pool_resource npc_pool;
-		std::pmr::unsynchronized_pool_resource creature_pointer_pool;
-		std::pmr::unsynchronized_pool_resource item_pointer_pool;
-		std::pmr::unsynchronized_pool_resource spawn_pool;
 
 		std::unordered_map<uint32_t, Guild_ptr> guilds;
 

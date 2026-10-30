@@ -42,6 +42,7 @@
 #include <boost/range/adaptor/reversed.hpp>
 
 #include "protocolgame.h"
+#include "loginqueue.h"
 
 #include "outputmessage.h"
 
@@ -60,6 +61,7 @@
 
 #include <fmt/format.h>
 #include <gtl/btree.hpp>
+#include <charconv>
 
 extern ConfigManager g_config;
 extern CreatureEvents* g_creatureEvents;
@@ -70,110 +72,16 @@ using namespace BlackTek::Store;
 
 namespace
 {
-	std::deque<std::pair<int64_t, uint32_t>> waitList; // (timeout, player guid)
-	auto priorityEnd = waitList.end();
-
-	auto findClient(uint32_t guid) 
-	{
-		std::size_t slot = 1;
-		for (auto it = waitList.begin(), end = waitList.end(); it != end; ++it, ++slot) 
-		{
-			if (it->second == guid) 
-			{
-				return std::make_pair(it, slot);
-			}
-		}
-
-		return std::make_pair(waitList.end(), slot);
-	}
-
-	constexpr int64_t getWaitTime(std::size_t slot)
-	{
-		if (slot < 5) 
-		{
-			return 5;
-		} 
-		else if (slot < 10) 
-		{
-			return 10;
-		} 
-		else if (slot < 20) 
-		{
-			return 20;
-		} 
-		else if (slot < 50) 
-		{
-			return 60;
-		} 
-		else 
-		{
-			return 120;
-		}
-	}
-
-	constexpr int64_t getTimeout(std::size_t slot)
-	{
-		// timeout is set to 15 seconds longer than expected retry attempt
-		return getWaitTime(slot) + 15; // todo: turn magic number into config option
-	}
+	BlackTek::Net::LoginQueue WaitList;
 
 	std::size_t clientLogin(const PlayerConstPtr& player)
 	{
-		if (player->hasFlag(PlayerFlag_CanAlwaysLogin) or player->getAccountType() >= ACCOUNT_TYPE_GAMEMASTER) 
-		{
+		if (player->hasFlag(PlayerFlag_CanAlwaysLogin) or player->getAccountType() >= ACCOUNT_TYPE_GAMEMASTER)
 			return 0;
-		}
 
-		uint32_t maxPlayers = static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MAX_PLAYERS));
-
-		if (maxPlayers == 0 or (waitList.empty() and g_game.getPlayersOnline() < maxPlayers)) 
-		{
-			return 0;
-		}
-
-		int64_t time = OTSYS_TIME();
-
-		auto it = waitList.begin();
-		while (it != waitList.end()) 
-		{
-			if ((it->first - time) <= 0) 
-			{
-				it = waitList.erase(it);
-			}
-			else 
-			{
-				++it;
-			}
-		}
-
-		std::size_t slot;
-		std::tie(it, slot) = findClient(player->getGUID());
-
-		if (it != waitList.end()) 
-		{
-			// If server has capacity for this client, let him in even though his current slot might be higher than 0.
-			if ((g_game.getPlayersOnline() + slot) <= maxPlayers) 
-			{
-				waitList.erase(it);
-				return 0;
-			}
-
-			//let them wait a bit longer
-			it->first = time + (getTimeout(slot) * 1000);
-			return slot;
-		}
-
-
-		if (player->isPremium()) 
-		{
-			priorityEnd = waitList.emplace(priorityEnd, time + (getTimeout(slot + 1) * 1000), player->getGUID());
-			return std::distance(waitList.begin(), priorityEnd);
-		}
-		waitList.emplace_back(time + (getTimeout(waitList.size() + 1) * 1000), player->getGUID());
-		return waitList.size();
+		return WaitList.Login(player->getGUID(), player->isPremium(), g_game.getPlayersOnline(),
+			static_cast<uint32_t>(g_config.GetNumber(ConfigManager::MAX_PLAYERS)), OTSYS_TIME());
 	}
-
-
 }
 
 void ProtocolGame::release()
@@ -259,7 +167,7 @@ void ProtocolGame::login(uint32_t characterId, uint32_t accountId, OperatingSyst
 
 		if (std::size_t currentSlot = clientLogin(player))
 		{
-			uint8_t retryTime = getWaitTime(currentSlot);
+			uint8_t retryTime = BlackTek::Net::LoginQueue::GetWaitTime(currentSlot);
 			auto output = OutputMessagePool::getOutputMessage();
 			output->add(ServerCode::LoginQueue);
 			output->addString(fmt::format("Too many players online.\nYou are at place {:d} on the waiting list.", currentSlot));
@@ -483,17 +391,11 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 	std::string token{ sessionArgs[2] };
 	uint32_t tokenTime = 0;
 
-	try
+	const auto tokenText = sessionArgs[3];
+	const auto tokenResult = std::from_chars(tokenText.data(), tokenText.data() + tokenText.size(), tokenTime);
+	if (tokenResult.ec != std::errc{} or tokenResult.ptr != tokenText.data() + tokenText.size())
 	{
-		tokenTime = std::stoul(sessionArgs[3].data());
-	}
-	catch (const std::invalid_argument&) {
 		disconnectClient("Malformed token packet.");
-		return;
-	}
-	catch (const std::out_of_range&)
-	{
-		disconnectClient("Token time is too long.");
 		return;
 	}
 
@@ -501,7 +403,7 @@ void ProtocolGame::onRecvFirstMessage(NetworkMessage& msg)
 	uint32_t timeStamp = msg.get<uint32_t>();
 	uint8_t randNumber = msg.getByte();
 
-	if (challengeTimestamp != timeStamp or challengeRandom != randNumber)
+	if (msg.isOverrun() or challengeTimestamp != timeStamp or challengeRandom != randNumber)
 	{
 		disconnect();
 		return;
@@ -560,7 +462,7 @@ void ProtocolGame::authenticateAndLogin(std::string accountName, std::string pas
 	{
 		if (accountId == 0)
 		{
-			std::tie(accountId, characterId) = IOLoginData::getAccountIdByAccountName(accountName, password, characterName);
+			std::tie(accountId, characterId) = IOLoginData::getAccountIdByAccountName(accountName, password, characterName, token, tokenTime);
 		}
 	}
 
@@ -1481,7 +1383,7 @@ void ProtocolGame::parseStoreSelectCategory(NetworkMessage& msg)
 	msg.getByte(); // reserved byte
 	auto categoryName = std::string{ msg.getString() };
 
-	auto* window = g_storeManager.getWindowForAccountType(player->getAccountType());
+	const auto window = g_storeManager.getWindowForAccountType(player->getAccountType());
 	if (not window)
 	{
 		return;
@@ -2570,9 +2472,9 @@ void ProtocolGame::sendUnjustifiedStats()
 	uint8_t killsToBlack = static_cast<uint8_t>(g_config.GetNumber(ConfigManager::KILLS_TO_BLACK));
 	
 	// Calculate progress percentages (0-100)
-	uint8_t dayProgress = killsDay > 0 ? static_cast<uint8_t>(std::min<int64_t>((killsDay * 100) / killsToRed, 100)) : 0;
-	uint8_t weekProgress = killsWeek > 0 ? static_cast<uint8_t>(std::min<int64_t>((killsWeek * 100) / killsToRed, 100)) : 0;
-	uint8_t monthProgress = killsMonth > 0 ? static_cast<uint8_t>(std::min<int64_t>((killsMonth * 100) / killsToBlack, 100)) : 0;
+	uint8_t dayProgress = killsDay > 0 and killsToRed > 0 ? static_cast<uint8_t>(std::min<int64_t>((killsDay * 100) / killsToRed, 100)) : 0;
+	uint8_t weekProgress = killsWeek > 0 and killsToRed > 0 ? static_cast<uint8_t>(std::min<int64_t>((killsWeek * 100) / killsToRed, 100)) : 0;
+	uint8_t monthProgress = killsMonth > 0 and killsToBlack > 0 ? static_cast<uint8_t>(std::min<int64_t>((killsMonth * 100) / killsToBlack, 100)) : 0;
 
 	// Calculate remaining kills until red skull
 	uint8_t dayRemaining = killsDay < killsToRed ? (killsToRed - killsDay) : 0;
@@ -4010,7 +3912,7 @@ void ProtocolGame::parseExtendedOpcode(NetworkMessage& msg)
 
 void ProtocolGame::sendOpenStore(const PlayerPtr& storePlayer)
 {
-	auto* window = g_storeManager.getWindowForAccountType(player->getAccountType());
+	const auto window = g_storeManager.getWindowForAccountType(player->getAccountType());
 	if (not window)
 	{
 		BlackTek::Console::Error("[Store] No store window for account type {} - ensure store.lua loaded without errors and called store:register().",

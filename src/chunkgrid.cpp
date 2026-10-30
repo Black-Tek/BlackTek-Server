@@ -45,6 +45,10 @@ namespace BlackTek::World
 {
     void ChunkGrid::Reserve(uint16_t mapWidth, uint16_t mapHeight)
     {
+        // Additional map loads must retain the directory for existing tiles.
+        if (not chunk_slots.empty())
+            return;
+
         const int32_t chunksWide = (static_cast<int32_t>(mapWidth) + Floor::Mask) >> Floor::Bits;
         const int32_t chunksHigh = (static_cast<int32_t>(mapHeight) + Floor::Mask) >> Floor::Bits;
         const size_t cellCount = static_cast<size_t>(chunksWide) * static_cast<size_t>(chunksHigh);

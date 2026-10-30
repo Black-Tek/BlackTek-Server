@@ -46,21 +46,6 @@
 #include <atomic>
 #include <new>
 
-#ifndef __cpp_lib_start_lifetime_as
-// libstdc++ (GCC) has not implemented std::start_lifetime_as despite it being C++23.
-// This shim uses std::launder to approximate the same effect for trivially copyable types.
-namespace std {
-	template<class T>
-	[[nodiscard]] T* start_lifetime_as(void* p) noexcept {
-		return launder(reinterpret_cast<T*>(p));
-	}
-	template<class T>
-	[[nodiscard]] const T* start_lifetime_as(const void* p) noexcept {
-		return launder(reinterpret_cast<const T*>(p));
-	}
-}
-#endif
-
 namespace BlackTek
 {
 	struct [[nodiscard]] DamageModifier
@@ -211,8 +196,7 @@ namespace BlackTek
 
 		static DamageModifier deserialize(std::span<const std::byte> data)
 		{
-			// DamageModifier has user-defined ctor/dtor so start_lifetime_as is invalid.
-			// Read through a trivially-copyable mirror with identical field layout.
+			// Copy unaligned input into a trivially-copyable wire layout first.
 			struct Layout {
 				uint64_t guid;
 				uint16_t damage_type;
@@ -226,28 +210,33 @@ namespace BlackTek
 				uint8_t  origin_type;
 				uint8_t  creature_type;
 				uint8_t  race_type;
-				bool     true_leech;
+				uint8_t  true_leech;
 				char     name_buf[32];
 			};
 			static_assert(sizeof(Layout) == sizeof(DamageModifier),
 				"DamageModifier/Layout size mismatch — update both structs together");
 
-			const Layout* raw = std::start_lifetime_as<Layout>(data.data());
 			DamageModifier mod;
-			mod.damage_type    = raw->damage_type;
-			mod.to_damage_type = raw->to_damage_type;
-			mod.value          = raw->value;
-			mod.filter_index   = raw->filter_index;
-			mod.mod_stance     = raw->mod_stance;
-			mod.mod_type       = raw->mod_type;
-			mod.factor         = raw->factor;
-			mod.chance         = raw->chance;
-			mod.origin_type    = raw->origin_type;
-			mod.creature_type  = raw->creature_type;
-			mod.race_type      = raw->race_type;
-			mod.true_leech     = raw->true_leech;
-			std::memcpy(mod.name_buf, raw->name_buf, sizeof(mod.name_buf));
-			if ((mod.filter_index & Flag::Named) && mod.name_buf[0] != '\0')
+			if (data.size() < sizeof(Layout))
+				return mod;
+
+			Layout raw;
+			std::memcpy(&raw, data.data(), sizeof(raw));
+			mod.damage_type    = raw.damage_type;
+			mod.to_damage_type = raw.to_damage_type;
+			mod.value          = raw.value;
+			mod.filter_index   = raw.filter_index;
+			mod.mod_stance     = raw.mod_stance;
+			mod.mod_type       = raw.mod_type;
+			mod.factor         = raw.factor;
+			mod.chance         = raw.chance;
+			mod.origin_type    = raw.origin_type;
+			mod.creature_type  = raw.creature_type;
+			mod.race_type      = raw.race_type;
+			mod.true_leech     = raw.true_leech != 0;
+			std::memcpy(mod.name_buf, raw.name_buf, sizeof(mod.name_buf));
+			mod.name_buf[sizeof(mod.name_buf) - 1] = '\0';
+			if ((mod.filter_index & Flag::Named) and mod.name_buf[0] != '\0')
 				mod.setCreatureName(std::string_view(mod.name_buf));
 			return mod;
 		}
@@ -291,7 +280,7 @@ namespace BlackTek
 		void increaseValue(uint16_t amount);
 		void decreaseValue(uint16_t amount);
 		void setTransformDamageType(uint16_t damageType);
-		void setCreatureName(std::string_view creatureName) const noexcept;
+		void setCreatureName(std::string_view creatureName);
 
 		bool operator==(const DamageModifier& other) const { return guid == other.guid; }
 

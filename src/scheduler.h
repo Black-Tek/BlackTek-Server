@@ -105,8 +105,8 @@ class Scheduler : public ThreadHolder<Scheduler>
 		void threadMain() { io_context.run(); }
 	private:
 		std::atomic<uint32_t> lastEventId{0};
-		gtl::node_hash_map<uint32_t, boost::asio::steady_timer> eventIdTimerMap;
 		boost::asio::io_context io_context;
+		gtl::node_hash_map<uint32_t, boost::asio::steady_timer> eventIdTimerMap;
 		boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work{ io_context.get_executor() };
 };
 

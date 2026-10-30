@@ -108,15 +108,21 @@ bool StoreCategory::executeCanPurchase(
     uint32_t            productId,
     std::string&        outReason) const
 {
-    if (canPurchaseScriptId == -1 or not scriptInterface)
+    if (canPurchaseScriptId == -1)
     {
         return true;
+    }
+    if (not scriptInterface)
+    {
+        outReason = "This purchase is temporarily unavailable.";
+        return false;
     }
 
     if (not scriptInterface->reserveScriptEnv())
     {
         BlackTek::Console::Error("[StoreCategory::executeCanPurchase] Call stack overflow");
-        return true;
+        outReason = "This purchase is temporarily unavailable.";
+        return false;
     }
 
     ScriptEnvironment* env = scriptInterface->getScriptEnv();
@@ -134,10 +140,11 @@ bool StoreCategory::executeCanPurchase(
         LuaScriptInterface::reportError(nullptr, LuaScriptInterface::getString(L, -1));
         lua_pop(L, 1);
         scriptInterface->resetScriptEnv();
-        return true;
+        outReason = "This purchase is temporarily unavailable.";
+        return false;
     }
 
-    bool allowed = LuaScriptInterface::getBoolean(L, -2, true);
+    const bool allowed = lua_isboolean(L, -2) and lua_toboolean(L, -2);
     if (not allowed)
     {
         outReason = LuaScriptInterface::getString(L, -1);
@@ -212,18 +219,20 @@ StoreManager& StoreManager::getInstance()
     return instance;
 }
 
-bool StoreManager::registerWindow(StoreWindow* window)
+bool StoreManager::registerWindow(const StoreWindowPtr& window)
 {
     if (not window)
     {
         return false;
     }
+    const std::scoped_lock lock(windows_mutex);
     windows[static_cast<uint8_t>(window->getRequiredAccountType())] = window;
     return true;
 }
 
-StoreWindow* StoreManager::getWindowForAccountType(AccountType_t type) const
+StoreWindowPtr StoreManager::getWindowForAccountType(AccountType_t type) const
 {
+    const std::scoped_lock lock(windows_mutex);
     auto it = windows.find(static_cast<uint8_t>(type));
     if (it != windows.end())
     {
@@ -242,10 +251,7 @@ StoreWindow* StoreManager::getWindowForAccountType(AccountType_t type) const
 
 void StoreManager::clear()
 {
-    for (auto& [key, window] : windows)
-    {
-        delete window;
-    }
+    const std::scoped_lock lock(windows_mutex);
     windows.clear();
 }
 

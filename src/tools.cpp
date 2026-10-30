@@ -45,6 +45,8 @@
 #include <fmt/chrono.h>
 #include <gtl/phmap.hpp>
 #include <zlib.h>
+#include <cryptopp/hmac.h>
+#include <cryptopp/sha.h>
 
 #include <regex>
 
@@ -221,51 +223,34 @@ std::string transformToSHA1(std::string_view input)
 
 std::string generateToken(const std::string& key, uint32_t ticks)
 {
-	// generate message from ticks
-	std::string message(8, 0);
-	for (uint8_t i = 8; --i; ticks >>= 8) {
-		message[i] = static_cast<char>(ticks & 0xFF);
+	std::array<CryptoPP::byte, 8> counter{};
+	for (size_t index = counter.size(); index > 0; ticks >>= 8)
+	{
+		counter[--index] = static_cast<CryptoPP::byte>(ticks);
 	}
-
-	// hmac key pad generation
-	std::string iKeyPad(64, 0x36), oKeyPad(64, 0x5C);
-	for (uint8_t i = 0; i < key.length(); ++i) {
-		iKeyPad[i] ^= key[i];
-		oKeyPad[i] ^= key[i];
+	std::array<CryptoPP::byte, CryptoPP::SHA1::DIGESTSIZE> digest{};
+	CryptoPP::HMAC<CryptoPP::SHA1> hmac(reinterpret_cast<const CryptoPP::byte*>(key.data()), key.size());
+	hmac.CalculateDigest(digest.data(), counter.data(), counter.size());
+	const size_t offset = digest.back() bitand 0x0F;
+	const uint32_t truncated = (static_cast<uint32_t>(digest[offset] bitand 0x7F) << 24)
+		bitor (static_cast<uint32_t>(digest[offset + 1]) << 16)
+		bitor (static_cast<uint32_t>(digest[offset + 2]) << 8)
+		bitor digest[offset + 3];
+	std::string token = std::to_string(truncated);
+	if (token.size() > AUTHENTICATOR_DIGITS)
+	{
+		token.erase(0, token.size() - AUTHENTICATOR_DIGITS);
 	}
-
-	oKeyPad.reserve(84);
-
-	// hmac concat inner pad with message
-	iKeyPad.append(message);
-
-	// hmac first pass
-	message.assign(transformToSHA1(iKeyPad));
-
-	// hmac concat outer pad with message, conversion from hex to int needed
-	for (uint8_t i = 0; i < message.length(); i += 2) {
-		oKeyPad.push_back(static_cast<char>(std::strtoul(message.substr(i, 2).c_str(), nullptr, 16)));
-	}
-
-	// hmac second pass
-	message.assign(transformToSHA1(oKeyPad));
-
-	// calculate hmac offset
-	uint32_t offset = static_cast<uint32_t>(std::strtoul(message.substr(39, 1).c_str(), nullptr, 16) & 0xF);
-
-	// get truncated hash
-	uint32_t truncHash = static_cast<uint32_t>(std::strtoul(message.substr(2 * offset, 8).c_str(), nullptr, 16)) & 0x7FFFFFFF;
-	message.assign(std::to_string(truncHash));
-
-	// return only last AUTHENTICATOR_DIGITS (default 6) digits, also asserts exactly 6 digits
-	uint32_t hashLen = message.length();
-	message.assign(message.substr(hashLen - std::min(hashLen, AUTHENTICATOR_DIGITS)));
-	message.insert(0, AUTHENTICATOR_DIGITS - std::min(hashLen, AUTHENTICATOR_DIGITS), '0');
-	return message;
+	token.insert(0, AUTHENTICATOR_DIGITS - token.size(), '0');
+	return token;
 }
 
 void replaceString(std::string& str, const std::string& sought, const std::string& replacement)
 {
+	if (sought.empty())
+	{
+		return;
+	}
 	size_t pos = 0;
 	size_t start = 0;
 	size_t soughtLen = sought.length();
@@ -289,7 +274,7 @@ void trim_left(std::string& source, char t)
 
 void toLowerCaseString(std::string& source)
 {
-	std::transform(source.begin(), source.end(), source.begin(), tolower);
+	std::transform(source.begin(), source.end(), source.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
 }
 
 std::string asLowerCaseString(std::string source)
@@ -300,32 +285,40 @@ std::string asLowerCaseString(std::string source)
 
 std::string asUpperCaseString(std::string source)
 {
-	std::transform(source.begin(), source.end(), source.begin(), toupper);
+	std::transform(source.begin(), source.end(), source.begin(), [](unsigned char ch) { return static_cast<char>(std::toupper(ch)); });
 	return source;
 }
 
 bool caseInsensitiveEqual(std::string_view str1, std::string_view str2)
 {
 	return str1.size() == str2.size() && std::equal(str1.begin(), str1.end(), str2.begin(), [](char a, char b) {
-		return tolower(a) == tolower(b);
+		return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
 		});
 }
 
 bool caseInsensitiveStartsWith(std::string_view str, std::string_view prefix)
 {
 	return str.size() >= prefix.size() && std::equal(prefix.begin(), prefix.end(), str.begin(), [](char a, char b) {
-		return tolower(a) == tolower(b);
+		return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
 		});
 }
 
 std::vector<std::string_view> explodeString(std::string_view inString, const std::string& separator, int32_t limit /* = -1*/)
 {
 	std::vector<std::string_view> returnVector;
+	if (separator.empty())
+	{
+		return {inString};
+	}
 	std::string_view::size_type start = 0, end = 0;
 
-		while (--limit != -1 && (end = inString.find(separator, start)) != std::string_view::npos) {
+	while (limit != 0 and (end = inString.find(separator, start)) != std::string_view::npos) {
 		returnVector.push_back(inString.substr(start, end - start));
 		start = end + separator.size();
+		if (limit > 0)
+		{
+			--limit;
+		}
 	}
 
 	returnVector.push_back(inString.substr(start));
@@ -336,7 +329,7 @@ IntegerVector vectorAtoi(const std::vector<std::string_view>& stringVector)
 {
 	IntegerVector returnVector;
 	for (const auto& string : stringVector) {
-		returnVector.push_back(std::stoi(string.data()));
+		returnVector.push_back(std::stoi(std::string(string)));
 	}
 	return returnVector;
 }
@@ -847,7 +840,7 @@ std::string ucfirst(std::string str)
 {
 	for (char& i : str) {
 		if (i != ' ') {
-			i = toupper(i);
+			i = static_cast<char>(std::toupper(static_cast<unsigned char>(i)));
 			break;
 		}
 	}
@@ -861,10 +854,10 @@ std::string ucwords(std::string str)
 		return str;
 	}
 
-	str[0] = toupper(str.front());
+	str[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(str.front())));
 	for (size_t i = 1; i < strLength; ++i) {
 		if (str[i - 1] == ' ') {
-			str[i] = toupper(str[i]);
+			str[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(str[i])));
 		}
 	}
 
@@ -877,7 +870,7 @@ bool booleanString(std::string_view str)
 		return false;
 	}
 
-	char ch = tolower(str.front());
+	const int ch = std::tolower(static_cast<unsigned char>(str.front()));
 	return ch != 'f' && ch != 'n' && ch != '0';
 }
 

@@ -281,12 +281,14 @@ static std::optional<ItemBuff> getItemDebuff(uint32_t item_id)
 Items::Items()
 {
 	items.reserve(30000);
+	items.emplace_back();
 	nameToItems.reserve(30000);
 }
 
 void Items::clear()
 {
 	items.clear();
+	items.emplace_back();
 	nameToItems.clear();
 	currencyItems.clear();
 	inventory.clear();
@@ -294,8 +296,11 @@ void Items::clear()
 
 bool Items::reload()
 {
-	clear();
-	loadFromDat(g_config.GetString(ConfigManager::ASSETS_DAT_PATH));
+	if (not loadFromDat(g_config.GetString(ConfigManager::ASSETS_DAT_PATH)))
+		return false;
+	nameToItems.clear();
+	currencyItems.clear();
+	inventory.clear();
 
 	if (!loadFromToml()) {
 		return false;
@@ -313,8 +318,13 @@ bool Items::loadFromDat(const std::string& file)
         return false;
     }
 
-    // Skip signature
-    fin.seekg(4, std::ios::cur);
+    fin.seekg(0, std::ios::end);
+    const std::streamoff fileSize = fin.tellg();
+    if (fileSize < 12)
+        return false;
+
+    // Skip signature.
+    fin.seekg(4, std::ios::beg);
 
     // Read item count
     uint16_t m_loadedItemsCount = 0;
@@ -322,17 +332,23 @@ bool Items::loadFromDat(const std::string& file)
 
     // Skip the outfit count, effect count, missiles count (distance effects)
     fin.seekg(6, std::ios::cur); // uint16_t * 3
+    if (not fin)
+        return false;
 
-    // Resize items vector
-    items.resize(m_loadedItemsCount + 1);
+    // Keep the existing definitions intact if any item is malformed.
+    std::vector<ItemType> loadedItems(static_cast<size_t>(m_loadedItemsCount) + 1);
 
-    for (uint16_t id = 100; id < items.size(); ++id) {
-        ItemType& iType = items[id];
-        iType.setID(id);
-        unserializeDatItem(iType, fin);
+    for (size_t id = 100; id < loadedItems.size(); ++id) {
+        ItemType& iType = loadedItems[id];
+        iType.setID(static_cast<uint16_t>(id));
+        if (not unserializeDatItem(iType, fin, fileSize))
+        {
+            BlackTek::Console::Error("Items::loadFromDat: invalid or truncated item {} in {}", id, file);
+            return false;
+        }
     }
 
-	items.shrink_to_fit();
+	items = std::move(loadedItems);
 	return true;
 }
 
@@ -367,17 +383,24 @@ bool Items::loadFromToml()
 
                 const toml::table& itemTable = *item.as_table();
                 if (auto idNode = itemTable["id"]) {
-                    uint16_t id = static_cast<uint16_t>(idNode.as_integer()->get());
-                    parseItemToml(itemTable, id);
-                } else if (auto fromIdNode = itemTable["fromid"], toIdNode = itemTable["toid"]; fromIdNode && toIdNode) {
-                    uint16_t fromId = static_cast<uint16_t>(fromIdNode.as_integer()->get());
-                    uint16_t toId = static_cast<uint16_t>(toIdNode.as_integer()->get());
-                    if (fromId > toId) {
-                        std::cout << "[Warning - Items::loadFromToml] fromid (" << fromId << ") > toid (" << toId << ") in " << entry.path() << std::endl;
+                    const auto id = idNode.value<int64_t>();
+                    if (not id or *id < 0 or *id > UINT16_MAX)
+                    {
+                        BlackTek::Console::Error("Items::loadFromToml: invalid item id in {}", entry.path().string());
+                        success = false;
                         continue;
                     }
-                    for (uint16_t id = fromId; id <= toId; ++id) {
-                        parseItemToml(itemTable, id);
+                    parseItemToml(itemTable, static_cast<uint16_t>(*id));
+                } else if (auto fromIdNode = itemTable["fromid"], toIdNode = itemTable["toid"]; fromIdNode && toIdNode) {
+                    const auto fromId = fromIdNode.value<int64_t>();
+                    const auto toId = toIdNode.value<int64_t>();
+                    if (not fromId or not toId or *fromId < 0 or *toId > UINT16_MAX or *fromId > *toId) {
+                        BlackTek::Console::Error("Items::loadFromToml: invalid item id range in {}", entry.path().string());
+                        success = false;
+                        continue;
+                    }
+                    for (uint32_t id = static_cast<uint32_t>(*fromId); id <= static_cast<uint32_t>(*toId); ++id) {
+                        parseItemToml(itemTable, static_cast<uint16_t>(id));
                     }
                 } else {
                     std::cout << "[Warning - Items::loadFromToml] Missing id or fromid/toid in " << entry.path() << std::endl;
@@ -465,13 +488,13 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
                     if (skillEntry.is_table()) {
                         const toml::table& skillTable = *skillEntry.as_table();
 
-                        std::string name = skillTable["name"] ? skillTable["name"].as_string()->get() : "";
-                        int level = skillTable["level"] ? static_cast<int>(skillTable["level"].as_integer()->get()) : 1;
-                        int max = skillTable["max"] ? static_cast<int>(skillTable["max"].as_integer()->get()) : 10;
-                        std::string formula_type = skillTable["formula"] ? skillTable["formula"].as_string()->get() : "default";
-                        int threshold = skillTable["threshold"] ? static_cast<int>(skillTable["threshold"].as_integer()->get()) : 10;
-                        int difficulty = skillTable["difficulty"] ? static_cast<int>(skillTable["difficulty"].as_integer()->get()) : 50;
-                        double multiplier = skillTable["multiplier"] ? skillTable["multiplier"].as_floating_point()->get() : 1.0;
+                        std::string name = skillTable["name"].value_or(std::string{});
+                        int level = skillTable["level"].value_or(1);
+                        int max = skillTable["max"].value_or(10);
+                        std::string formula_type = skillTable["formula"].value_or(std::string("default"));
+                        int threshold = skillTable["threshold"].value_or(10);
+                        int difficulty = skillTable["difficulty"].value_or(50);
+                        double multiplier = skillTable["multiplier"].value_or(1.0);
 
                         FormulaType formula = Components::Skills::ParseFormula(formula_type);
 
@@ -490,7 +513,7 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
                 for (const auto& traitEntry : *value.as_array()) {
                     if (traitEntry.is_table()) {
                         const toml::table& buffs = *traitEntry.as_table();
-                        std::string name = buffs["name"] ? buffs["name"].as_string()->get() : "none";
+                        std::string name = buffs["name"].value_or(std::string("none"));
 
                         if (name == "none")
                         {
@@ -498,9 +521,9 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
                             continue;
                         }
 
-                        int value = buffs["value"] ? static_cast<int>(buffs["value"].as_integer()->get()) : 0;
+                        int value = buffs["value"].value_or(0);
 
-                        if (auto buff_type = buffs["type"].as_string()->get() == "debuff")
+                        if (auto buff_type = buffs["type"].value_or(std::string("buff")) == "debuff")
                         {
                             addItemDebuff(id, { name, value });
                             continue;
@@ -903,7 +926,7 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
                 it.group = ITEM_GROUP_MAGICFIELD;
                 it.type = ITEM_TYPE_MAGICFIELD;
 
-                std::string fieldType = fieldTable["type"] ? asLowerCaseString(fieldTable["type"].as_string()->get()) : "";
+                std::string fieldType = asLowerCaseString(fieldTable["type"].value_or(std::string{}));
                 CombatType_t combatType = COMBAT_NONE;
                 std::unique_ptr<ConditionDamage> conditionDamage;
 
@@ -917,11 +940,11 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
                     it.combatType = combatType;
                     it.conditionDamage = std::move(conditionDamage);
 
-                    uint32_t ticks = fieldTable["ticks"] ? static_cast<uint32_t>(fieldTable["ticks"].as_integer()->get()) : 0;
-                    int32_t start = fieldTable["start"] ? std::max<int32_t>(0, static_cast<int32_t>(fieldTable["start"].as_integer()->get())) : 0;
-                    int32_t count = fieldTable["count"] ? std::max<int32_t>(1, static_cast<int32_t>(fieldTable["count"].as_integer()->get())) : 1;
-                    int32_t initDamage = fieldTable["initdamage"] ? static_cast<int32_t>(fieldTable["initdamage"].as_integer()->get()) : -1;
-                    int32_t damage = fieldTable["damage"] ? -static_cast<int32_t>(fieldTable["damage"].as_integer()->get()) : 0;
+                    uint32_t ticks = fieldTable["ticks"].value_or(uint32_t{0});
+                    int32_t start = std::max<int32_t>(0, fieldTable["start"].value_or(int32_t{0}));
+                    int32_t count = std::max<int32_t>(1, fieldTable["count"].value_or(int32_t{1}));
+                    int32_t initDamage = static_cast<int32_t>(std::clamp<int64_t>(fieldTable["initdamage"].value_or(int64_t{-1}), -INT32_MAX, INT32_MAX));
+                    int32_t damage = static_cast<int32_t>(-std::clamp<int64_t>(fieldTable["damage"].value_or(int64_t{0}), -INT32_MAX, INT32_MAX));
 
                     if (damage != 0) {
                         if (start > 0) {
@@ -1031,7 +1054,13 @@ void Items::parseItemToml(const toml::table& itemTable, uint16_t id)
 
         case ITEM_PARSE_WORTH:
             if (value.is_integer()) {
-                uint64_t worth = static_cast<uint64_t>(value.as_integer()->get());
+                const int64_t configuredWorth = value.as_integer()->get();
+                if (configuredWorth <= 0)
+                {
+                    BlackTek::Console::Warn("Items::parseItemToml: currency worth must be positive for item {}", id);
+                    break;
+                }
+                const uint64_t worth = static_cast<uint64_t>(configuredWorth);
                 if (currencyItems.emplace(worth, id).second) {
                     it.worth = worth;
                 }
@@ -1096,20 +1125,23 @@ uint16_t Items::getItemIdByName(const std::string& name)
 	return result->second;
 }
 
-bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
+bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin, std::streamoff fileSize)
 {
 	// read the options until we find the termination flag
 	std::optional<ItemDatFlag> prevFlag;
 	ItemDatFlag flag;
 	do
 	{
-		flag = static_cast<ItemDatFlag>(fin.get());
+		const auto rawFlag = fin.get();
+		if (rawFlag == std::char_traits<char>::eof())
+			return false;
+		flag = static_cast<ItemDatFlag>(rawFlag);
 
 		switch (flag)
 		{
 			case ItemDatFlag::Ground: {
 				iType.group = ITEM_GROUP_GROUND;
-				uint16_t groundSpeed;
+				uint16_t groundSpeed = 0;
 				fin.read(reinterpret_cast<char*>(&groundSpeed), sizeof(groundSpeed));
 				iType.speed = groundSpeed;
 				break;
@@ -1150,7 +1182,7 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 			case ItemDatFlag::Writable: {
 				iType.canWriteText = true;
 				iType.canReadText = true;
-				uint16_t maxTextLen;
+				uint16_t maxTextLen = 0;
 				fin.read(reinterpret_cast<char*>(&maxTextLen), sizeof(maxTextLen));
 				iType.maxTextLen = maxTextLen;
 				break;
@@ -1158,7 +1190,7 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 
 			case ItemDatFlag::WritableOnce: {
 				iType.canReadText = true;
-				uint16_t maxTextLen;
+				uint16_t maxTextLen = 0;
 				fin.read(reinterpret_cast<char*>(&maxTextLen), sizeof(maxTextLen));
 				iType.maxTextLen = maxTextLen;
 				break;
@@ -1212,8 +1244,8 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				break;
 
 			case ItemDatFlag::HasLight: {
-				uint16_t lightLevel;
-				uint16_t lightColor;
+				uint16_t lightLevel = 0;
+				uint16_t lightColor = 0;
 				fin.read(reinterpret_cast<char*>(&lightLevel), sizeof(lightLevel));
 				fin.read(reinterpret_cast<char*>(&lightColor), sizeof(lightColor));
 				iType.lightLevel = lightLevel;
@@ -1248,7 +1280,7 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 				break;
 
 			case ItemDatFlag::LensHelp: {
-				uint16_t lensHelp;
+				uint16_t lensHelp = 0;
 				fin.read(reinterpret_cast<char*>(&lensHelp), sizeof(lensHelp));
 				// 1100 + index
 				// Indexes: ladders, sewerGrates, dungeonFloor, levers, doors, specialDoors, stairs, mailboxes, depotBoxes, dustbins, stonePiles, signs, booksAndScrolls
@@ -1274,12 +1306,12 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 			case ItemDatFlag::Market: {
 				fin.seekg(2, std::ios::cur); // category
 
-				uint16_t wareId; // trade as
+				uint16_t wareId = 0; // trade as
 				fin.read(reinterpret_cast<char*>(&wareId), sizeof(wareId));
 				iType.wareId = wareId;
 
 				fin.seekg(2, std::ios::cur); // show as
-				uint16_t nameLength;
+				uint16_t nameLength = 0;
 				fin.read(reinterpret_cast<char*>(&nameLength), sizeof(nameLength));
 				fin.seekg(nameLength, std::ios::cur); // name
 				// Skip profession (2 bytes) and level (2 bytes)
@@ -1317,12 +1349,14 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 			}
 		}
 
+        if (not fin or fin.tellg() > fileSize)
+            return false;
         prevFlag = flag;
 	} while (flag != ItemDatFlag::LastFlag);
 
 	// Skip texture/spriteId information
-	uint8_t _width;
-	uint8_t _height;
+	uint8_t _width = 0;
+	uint8_t _height = 0;
 	fin.read(reinterpret_cast<char*>(&_width), sizeof(_width));
 	fin.read(reinterpret_cast<char*>(&_height), sizeof(_height));
 	if (_width > 1 || _height > 1)
@@ -1331,22 +1365,22 @@ bool Items::unserializeDatItem(ItemType& iType, std::ifstream& fin)
 		fin.seekg(1, std::ios::cur);
 	}
 	
-	uint8_t _layers, _patternX, _patternY, _patternZ, _frames;
+	uint8_t _layers = 0, _patternX = 0, _patternY = 0, _patternZ = 0, _frames = 0;
 	fin.read(reinterpret_cast<char*>(&_layers), sizeof(_layers));
 	fin.read(reinterpret_cast<char*>(&_patternX), sizeof(_patternX));
 	fin.read(reinterpret_cast<char*>(&_patternY), sizeof(_patternY));
 	fin.read(reinterpret_cast<char*>(&_patternZ), sizeof(_patternZ));
 	fin.read(reinterpret_cast<char*>(&_frames), sizeof(_frames));
+	if (not fin or _width == 0 or _height == 0 or _layers == 0 or _patternX == 0
+		or _patternY == 0 or _patternZ == 0 or _frames == 0)
+		return false;
 	iType.isAnimation = (_frames > 1);
 
-	uint32_t numSprites = static_cast<uint32_t>(_width * _height * _layers * _patternX * _patternY * _patternZ * _frames);
-	if(_frames > 1) { // && frameDurations == true, which is true for 10.98 protocol
-		// Skipping frames durations info.
-		fin.seekg(6 + 8 * _frames, std::ios::cur);
-	}
-
-	// Skip uint32_t sprite Ids
-	fin.seekg(4 * numSprites, std::ios::cur);
-
-	return true;
+	const uint64_t numSprites = static_cast<uint64_t>(_width) * _height * _layers * _patternX * _patternY * _patternZ * _frames;
+	const uint64_t bytesToSkip = 4 * numSprites + (_frames > 1 ? 6 + 8 * _frames : 0);
+	const std::streamoff position = fin.tellg();
+	if (position < 0 or position > fileSize or bytesToSkip > static_cast<uint64_t>(fileSize - position))
+		return false;
+	fin.seekg(static_cast<std::streamoff>(bytesToSkip), std::ios::cur);
+	return static_cast<bool>(fin);
 }

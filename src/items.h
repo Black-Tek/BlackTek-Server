@@ -499,6 +499,6 @@ class Items
 		std::vector<ItemType> items;
 		InventoryVector inventory;
 
-		bool unserializeDatItem(ItemType& itemType, std::ifstream& fin);
+		bool unserializeDatItem(ItemType& itemType, std::ifstream& fin, std::streamoff fileSize);
 };
 #endif

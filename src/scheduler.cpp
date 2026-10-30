@@ -45,31 +45,38 @@
 
 uint32_t Scheduler::addEvent(SchedulerTask* task)
 {
+	std::unique_ptr<SchedulerTask> ownedTask(task);
+	if (getState() != THREAD_STATE_RUNNING)
+		return 0;
+
 	// check if the event has a valid id
 	if (task->getEventId() == 0) {
 		task->setEventId(++lastEventId);
 	}
 
-	boost::asio::post(io_context, [this, task]() {
+	const uint32_t eventId = task->getEventId();
+	boost::asio::post(io_context, [this, task = std::move(ownedTask)]() mutable {
+		if (getState() != THREAD_STATE_RUNNING)
+			return;
+
 		// insert the event id in the list of active events
 		auto it = eventIdTimerMap.emplace(task->getEventId(), boost::asio::steady_timer{io_context});
 		auto& timer = it.first->second;
 
 		timer.expires_after(std::chrono::milliseconds(task->getDelay()));
-		timer.async_wait([this, task](const boost::system::error_code& error) {
+		timer.async_wait([this, task = std::move(task)](const boost::system::error_code& error) mutable {
 			eventIdTimerMap.erase(task->getEventId());
 
-			if (error == boost::asio::error::operation_aborted || getState() == THREAD_STATE_TERMINATED) {
+			if (error or getState() == THREAD_STATE_TERMINATED) {
 				// the timer has been manually canceled(timer->cancel()) or Scheduler::shutdown has been called
-				delete task;
 				return;
 			}
 
-			g_dispatcher.addTask(task);
+			g_dispatcher.addTask(task.release());
 		});
 	});
 
-	return task->getEventId();
+	return eventId;
 }
 
 void Scheduler::stopEvent(uint32_t eventId)

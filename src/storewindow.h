@@ -39,6 +39,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -46,6 +47,9 @@
 class LuaScriptInterface;
 
 namespace BlackTek {
+
+class StoreWindow;
+using StoreWindowPtr = std::shared_ptr<StoreWindow>;
 
 struct StoreProduct
 {
@@ -118,13 +122,14 @@ class StoreManager
 public:
     static StoreManager& getInstance();
 
-    bool          registerWindow(StoreWindow* window);
-    StoreWindow*  getWindowForAccountType(AccountType_t type) const;
+    bool          registerWindow(const StoreWindowPtr& window);
+    StoreWindowPtr getWindowForAccountType(AccountType_t type) const;
     void         clear();
 
 private:
     StoreManager() = default;
-    std::unordered_map<uint8_t, StoreWindow*> windows;
+    std::unordered_map<uint8_t, StoreWindowPtr> windows;
+    mutable std::mutex windows_mutex;
 };
 
 } // namespace BlackTek

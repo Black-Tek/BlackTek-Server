@@ -264,10 +264,6 @@ Item::~Item()
 
 	if (getID() == ITEM_BROWSEFIELD)
 	{
-		if (auto directParent = tileParent.lock())
-		{
-			g_game.browseFields.erase(directParent);
-		}
 		for (const auto& child : container->getItemList())
 		{
 			child->setTileParent(tileParent);
@@ -286,7 +282,6 @@ void Item::attachContainer(uint16_t size, bool unlocked, bool pagination, Contai
 {
 	container = std::make_unique<ItemContainer>(size, unlocked, pagination, subtype);
 	container->owner = static_shared_this<Item>();
-	containerAlias = ContainerPtr(static_shared_this<Item>(), container.get());
 }
 
 bool Item::canRemove() const
@@ -309,12 +304,12 @@ bool Item::canTransform() const
 
 ContainerPtr Item::getContainer()
 {
-	return containerAlias;
+	return container ? ContainerPtr(static_shared_this<Item>(), container.get()) : nullptr;
 }
 
 ContainerConstPtr Item::getContainer() const
 {
-	return containerAlias;
+	return container ? ContainerConstPtr(static_shared_this<Item>(), container.get()) : nullptr;
 }
 
 TeleportPtr Item::getTeleport()
@@ -392,8 +387,8 @@ ItemPtr Item::clone() const
 			item->setDecaying(DECAYING_TRUE);
 			const auto& item_type = Item::items[id];
 			const int64_t duration = item->getDuration();
-			const int64_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-			const int64_t expiration = duration + call_time;
+			const uint64_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+			const uint64_t expiration = duration + call_time;
 			auto expirable_data = Expirable(item, expiration, call_time);
 
 			// Equippable expirable
@@ -872,7 +867,7 @@ bool Item::canBedBeUsed(const PlayerConstPtr& player) const
 	if (house->getHouseAccessLevel(player) == HOUSE_OWNER)
 		return true;
 
-	PlayerPtr sleeper(nullptr);
+	auto sleeper = std::make_shared<Player>(nullptr);
 
 	if (not IOLoginData::loadPlayerById(sleeper, sleeperGUID))
 		return false;
@@ -940,7 +935,7 @@ void Item::wakeUp(const PlayerPtr& player)
 	{
 		if (not player)
 		{
-			PlayerPtr regenPlayer(nullptr);
+			auto regenPlayer = std::make_shared<Player>(nullptr);
 
 			if (IOLoginData::loadPlayerById(regenPlayer, sleeperGUID))
 			{
@@ -1090,10 +1085,10 @@ void Item::setID(uint16_t newid)
 
 	auto fake_proxy = Expirable(getItem(), 0, 0);
     if (auto it = g_game.decaying_eq.find(fake_proxy); it != g_game.decaying_eq.end() and getDecaying()) {
-        const uint32_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        const uint32_t diff = it->expiration - now;
+        const uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        const uint64_t diff = it->expiration > now ? it->expiration - now : 0;
 		setDecaying(DECAYING_FALSE);
-        setDuration(static_cast<int32_t>(diff));
+        setDuration(static_cast<int32_t>(std::min<uint64_t>(diff, std::numeric_limits<int32_t>::max())));
 		g_game.decaying_eq.erase(it);
     }
 
@@ -2135,9 +2130,9 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 					{
 						auto fake_proxy = Expirable(item->getItem(), 0, 0);
 						if (auto it = g_game.decaying_eq.find(fake_proxy); it != g_game.decaying_eq.end() and item->getDecaying()) {
-							const uint32_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-							const uint32_t diff = it->expiration - now;
-							duration = (static_cast<int32_t>(diff) / 1000);
+							const uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+							const uint64_t diff = it->expiration > now ? it->expiration - now : 0;
+							duration = static_cast<uint32_t>(std::min<uint64_t>(diff / 1000, std::numeric_limits<uint32_t>::max()));
 							break;
 						}
 					}
@@ -2368,9 +2363,12 @@ bool Item::canDecay()
 	return true;
 }
 
-uint32_t Item::getWorth() const
+uint64_t Item::getWorth() const
 {
-	return items[id].worth * count;
+	const uint64_t worth = items[id].worth;
+	if (count != 0 and worth > std::numeric_limits<uint64_t>::max() / count)
+		return 0;
+	return worth * count;
 }
 
 LightInfo Item::getLightInfo() const
@@ -2670,38 +2668,20 @@ const bool Item::removeAugment(std::shared_ptr<BlackTek::Augment>& augment)
 	return removed;
 }
 
-const bool Item::removeAugment(std::string_view name) 
+const bool Item::removeAugment(std::string_view name)
 {
-    if (not isAugmented()) 
-	{
-        return false;
-    }
+	if (not isAugmented())
+		return false;
 
-	auto originalSize = augments->size();
-    
-	std::erase_if(*augments,
-    [this, &name](const std::shared_ptr<BlackTek::Augment>& augment)
-	{
-        const auto match = augment->getName() == name;
-        if (match)
-		{
-			attack_modifier_count -= augment->attack_mod_count();
-			defense_modifier_count -= augment->defense_mod_count();
-			conversion_modifier_count -= augment->conversion_count();
-			reform_modifier_count -= augment->reform_count();
-			damage_modifiers_count -= augment->damage_triggers();
-			origin_modifiers_count -= augment->origin_triggers();
-			creature_modifiers_count -= augment->creature_triggers();
-			race_modifiers_count -= augment->race_triggers();
-			named_modifiers_count -= augment->name_count();
-	        g_itemEvents->fireRemoveAugment(std::static_pointer_cast<Item>(shared_from_this()), augment);
-        }
-        return match;
-    });
-        
-	return augments->size() < originalSize;
+	std::vector<std::shared_ptr<BlackTek::Augment>> removedAugments;
+	for (const auto& augment : *augments | std::views::filter([name](const auto& entry) { return entry->getName() == name; }))
+		removedAugments.push_back(augment);
+
+	for (auto& augment : removedAugments)
+		removeAugment(augment);
+
+	return not removedAugments.empty();
 }
-
 // To-do: Move to const inline next three methods at least.
 bool Item::isAugmented() const
 {

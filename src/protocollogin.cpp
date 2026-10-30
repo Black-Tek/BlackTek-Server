@@ -244,6 +244,11 @@ void ProtocolLogin::onRecvFirstMessage(NetworkMessage& msg)
 	}
 
 	auto authToken = msg.getString();
+	if (msg.isOverrun())
+	{
+		disconnect();
+		return;
+	}
 
 	g_dispatcher.addTask(createTask(
 		[=, thisPtr = std::static_pointer_cast<ProtocolLogin>(shared_from_this()), accountName = std::string{ accountName }, password = std::string{ password }, authToken = std::string{ authToken }]() {

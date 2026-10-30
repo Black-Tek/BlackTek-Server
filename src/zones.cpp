@@ -58,6 +58,8 @@
 #include <chrono>
 #include <numeric>
 #include <cstdlib>
+#include <limits>
+#include <stdexcept>
 
 extern ConfigManager g_config;
 extern Monsters      g_monsters;
@@ -309,6 +311,10 @@ namespace Zones
 
         bool ownFrameIsRunning =
             zone.dispatching
+            or std::any_of(zone.liveFrames.begin(), zone.liveFrames.end(), [](std::coroutine_handle<> frameHandle)
+            {
+                return std::coroutine_handle<SpawnCoroTask::promise_type>::from_address(frameHandle.address()).promise().running;
+            })
             or std::any_of(resumeStack.begin(), resumeStack.end(), [&zone](std::coroutine_handle<> frameHandle)
             {
                 return std::find(zone.liveFrames.begin(), zone.liveFrames.end(), frameHandle) != zone.liveFrames.end();
@@ -335,10 +341,16 @@ namespace Zones
 
     void ZonePool::Clear()
     {
-        slots.clear();
-        freelist.clear();
-        resumeStack.clear();
-        graveyard.clear();
+        // Keep generations and active resume scopes intact while invalidating old work.
+        for (uint32_t index = 0; index < slots.size(); ++index)
+        {
+            Slot& slot = slots[index];
+            if (slot.occupied)
+            {
+                slot.zone->Deactivate();
+                Destroy({ index, slot.generation });
+            }
+        }
     }
 
     void ZonePool::DrainGraveyard()
@@ -1869,6 +1881,12 @@ namespace Zones
 
     std::optional<ZoneHandle> ZoneManager::RegisterZone(Zone&& zone)
     {
+        if (zone.id < 0)
+        {
+            BlackTek::Console::Warn("ZoneManager::RegisterZone: Invalid negative zone id {}", zone.id);
+            return std::nullopt;
+        }
+
         if (not zone.name.empty() and name_registry.contains(zone.name))
         {
             BlackTek::Console::Warn("[ZoneManager::RegisterZone] Duplicate zone name '{}'", zone.name);
@@ -1876,7 +1894,11 @@ namespace Zones
         }
 
         if (zone.id == 0)
+        {
+            if (zone_id_counter >= static_cast<uint32_t>(std::numeric_limits<int>::max()))
+                return std::nullopt;
             zone.id = static_cast<int>(++zone_id_counter);
+        }
 
         if (zone.id < static_cast<int>(zone_registry.size()) and zone_registry[zone.id].IsValid())
         {
@@ -1904,6 +1926,7 @@ namespace Zones
             name_registry[registered.name] = handle;
 
         zone_registry[id] = handle;
+        zone_id_counter = std::max(zone_id_counter, static_cast<uint32_t>(id));
         return handle;
     }
 
@@ -1991,6 +2014,9 @@ namespace Zones
 
     Zone& ZoneManager::CreateZone(int id, std::vector<Position> positions)
     {
+        if (id < 0)
+            throw std::invalid_argument("ZoneManager::CreateZone: Zone id must not be negative");
+
         if (id < static_cast<int>(zone_registry.size()) and zone_registry[id].IsValid())
         {
             if (Zone* existing = zone_pool.TryGetMutable(zone_registry[id]))
@@ -2008,6 +2034,7 @@ namespace Zones
 
         ZoneHandle handle = zone_pool.Emplace(std::move(newZone));
         zone_registry[id] = handle;
+        zone_id_counter = std::max(zone_id_counter, static_cast<uint32_t>(id));
         return *zone_pool.TryGetMutable(handle);
     }
 
@@ -2319,6 +2346,7 @@ namespace Zones
     {
         Clear();
         LoadZones();
+        ActivateAll();
     }
 
     void ZoneManager::RegisterSpawnPosition(Position& position, ZoneHandle zone)
@@ -2474,7 +2502,8 @@ namespace Zones
 
     void ZoneManager::ActivateAll()
     {
-        for (ZoneHandle handle : zone_registry)
+        const auto handles = zone_registry;
+        for (ZoneHandle handle : handles)
         {
             Zone* zone = zone_pool.TryGetMutable(handle);
 
@@ -2491,7 +2520,8 @@ namespace Zones
             auto today = std::chrono::floor<std::chrono::days>(now);
             std::chrono::weekday wd { today };
 
-            for (ZoneHandle handle : zone_registry)
+            const auto handles = zone_registry;
+            for (ZoneHandle handle : handles)
             {
                 Zone* zone = zone_pool.TryGetMutable(handle);
 
@@ -2790,13 +2820,24 @@ namespace Zones
             generatedToml += "]\n\n";
         }
 
+        if (createdCount != buckets.size())
+        {
+            BlackTek::Console::Error("ZoneManager::SmartConvertLegacyZoneFlags: Could not register every converted region; map flags were preserved.");
+            return;
+        }
+
         if (createdCount > 0)
         {
             auto outputPath = ConvertedZonesFolder() / "legacy-flags.toml";
             std::ofstream outputFile(outputPath, std::ios::trunc);
 
-            if (outputFile.is_open())
-                outputFile << generatedToml;
+            outputFile << generatedToml;
+            outputFile.flush();
+            if (not outputFile)
+            {
+                BlackTek::Console::Error("ZoneManager::SmartConvertLegacyZoneFlags: Failed to write {}; map flags were preserved.", outputPath.string());
+                return;
+            }
 
             BlackTek::Console::Info("[Zones] Smart-converted {} legacy zone-flag region(s) from map binary to {}", createdCount, outputPath.string());
         }
@@ -2836,6 +2877,11 @@ namespace Zones
         }
 
         otbmFile.flush();
+        if (not otbmFile)
+        {
+            BlackTek::Console::Error("ZoneManager::SmartConvertLegacyZoneFlags: Failed to patch converted map {}.", mapCopyPath.string());
+            return;
+        }
 
         BlackTek::Console::Info("[Zones] Patched {} tile(s) in {} to remove converted legacy zone flag bits (source map untouched).", patchedCount, mapCopyPath.string());
     }
@@ -3121,11 +3167,18 @@ namespace Zones
             auto outputPath = zonesDir / fmt::format("floor-{}.toml", floor);
             std::ofstream outputFile(outputPath, std::ios::trunc);
 
-            if (outputFile.is_open())
-                outputFile << floorToml;
+            outputFile << floorToml;
+            outputFile.flush();
+            if (not outputFile)
+            {
+                BlackTek::Console::Error("ZoneManager::ConvertLegacySpawns: Failed to write {}; legacy spawn file was preserved.", outputPath.string());
+                return;
+            }
         }
 
         auto mapCopyPath = EnsureConvertedMapCopy(otbmFilePath, ConvertedOutputRoot());
+        if (not otbmFilePath.empty() and mapCopyPath.empty())
+            return;
 
         std::ofstream marker(markerPath);
         marker << "Converted to " << zonesDir.string();
@@ -3135,6 +3188,13 @@ namespace Zones
 
         marker << "\n";
         marker.close();
+        if (not marker)
+        {
+            std::error_code removeError;
+            std::filesystem::remove(markerPath, removeError);
+            BlackTek::Console::Error("ZoneManager::ConvertLegacySpawns: Failed to write conversion marker {}; legacy spawn file was preserved.", markerPath.string());
+            return;
+        }
 
         BlackTek::Console::Info("[Zones] Smart converted {} legacy <spawn> block(s) into {} Zones across {} floor files ({} cluster(s) batched) from {} to {}",
             units.size(), convertedSpawnCount, tomlByFloor.size(), batchedClusterCount, legacyXmlPath.string(), zonesDir.string());

@@ -159,8 +159,10 @@ MonsterType* Monsters::getMonsterType(const std::string& name, bool loadFromFile
 bool Monsters::reload()
 {
 	loaded = false;
-	monsters.clear();
-	return g_scripts->loadScripts("monster", false, true);
+	// Live monsters and Lua userdata retain pointers to these map entries.
+	// Game.createMonsterType updates existing entries without invalidating them.
+	loaded = g_scripts->loadScripts("monster", false, true);
+	return loaded;
 }
 
 static RaceType_t parseRaceType(std::string_view str)

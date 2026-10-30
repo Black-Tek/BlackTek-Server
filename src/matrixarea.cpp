@@ -87,7 +87,7 @@ namespace BlackTek
 
     MatrixArea CreateArea(const std::vector<uint32_t>& vec, const uint32_t rows)
     {
-        if (rows == 0 or vec.empty())
+        if (rows == 0 or vec.empty() or vec.size() % rows != 0)
         {
             return MatrixArea{};
         }

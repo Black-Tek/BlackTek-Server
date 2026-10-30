@@ -37,6 +37,8 @@
 #include <cstddef>
 #include <cstring>
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <immintrin.h>
 #include "simd_dispatch.h"
 
@@ -453,7 +455,10 @@ namespace detail
 				for (size_t index = 0; index < count; ++index)
 				{
 					const CombatStat statValue = stats[index];
-					out[index] = statValue <= 0 ? 0 : (statValue * 100) / (statValue + static_cast<CombatStat>(f.constant));
+					const double denominator = static_cast<double>(statValue) + std::trunc(static_cast<double>(f.constant));
+					out[index] = statValue <= 0 or not std::isfinite(f.constant) or denominator <= 0.0 ? 0
+						: static_cast<CombatStat>(std::min(static_cast<double>(std::numeric_limits<CombatStat>::max()),
+							static_cast<double>(statValue) * 100.0 / denominator));
 				}
 				return;
 
@@ -531,23 +536,10 @@ namespace detail
 			}
 
 			case RF::Percent:
-			{
-				const Vec128Float vecOneHundred = _mm_set1_ps(100.0f);
-				const Vec128Float vecConstant   = _mm_set1_ps(f.constant);
-				const Vec128Float vecZero       = _mm_setzero_ps();
-				size_t index = 0;
-
-				for (; index + 4 <= count; index += 4)
-				{
-					Vec128Float floatStats = _mm_cvtepi32_ps(_mm_loadu_si128(reinterpret_cast<const Vec128Int*>(stats + index)));
-					floatStats = _mm_max_ps(floatStats, vecZero);
-					Vec128Float resultFloat = _mm_div_ps(_mm_mul_ps(floatStats, vecOneHundred), _mm_add_ps(floatStats, vecConstant));
-					_mm_storeu_si128(reinterpret_cast<Vec128Int*>(out + index), _mm_cvttps_epi32(resultFloat));
-				}
-
-				scalar_batch_resistance(stats + index, count - index, f, rng_vals ? rng_vals + index : nullptr, out + index);
+				// Use the same wide calculation for every lane, including the scalar tail.
+				// Float lanes round large integer stats differently and can divide by zero.
+				scalar_batch_resistance(stats, count, f, rng_vals, out);
 				return;
-			}
 
 			case RF::LinearRandom:
 			{
@@ -641,23 +633,10 @@ namespace detail
 			}
 
 			case RF::Percent:
-			{
-				const Vec256Float vecOneHundred = _mm256_set1_ps(100.0f);
-				const Vec256Float vecConstant   = _mm256_set1_ps(f.constant);
-				const Vec256Float vecZero       = _mm256_setzero_ps();
-				size_t index = 0;
-
-				for (; index + 8 <= count; index += 8)
-				{
-					Vec256Float floatStats = _mm256_cvtepi32_ps(_mm256_loadu_si256(reinterpret_cast<const Vec256Int*>(stats + index)));
-					floatStats             = _mm256_max_ps(floatStats, vecZero);
-					Vec256Float resultFloat = _mm256_div_ps(_mm256_mul_ps(floatStats, vecOneHundred), _mm256_add_ps(floatStats, vecConstant));
-					_mm256_storeu_si256(reinterpret_cast<Vec256Int*>(out + index), _mm256_cvttps_epi32(resultFloat));
-				}
-
-				sse2_batch_resistance(stats + index, count - index, f, rng_vals ? rng_vals + index : nullptr, out + index);
+				// Use the same wide calculation for every lane, including the scalar tail.
+				// Float lanes round large integer stats differently and can divide by zero.
+				scalar_batch_resistance(stats, count, f, rng_vals, out);
 				return;
-			}
 
 			case RF::LinearRandom:
 			{

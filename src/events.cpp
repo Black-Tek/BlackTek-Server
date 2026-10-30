@@ -44,6 +44,7 @@
 #include "item.h"
 #include "player.h"
 
+#include <cmath>
 #include <set>
 
 using BlackTek::GameModel;
@@ -498,7 +499,7 @@ bool Events::eventPartyOnDisband(PartyPtr party)
 	return scriptInterface.callFunction(1);
 }
 
-void Events::eventPartyOnShareExperience(PartyPtr party, uint64_t& exp)
+void Events::eventPartyOnShareExperience(PartyPtr party, uint64_t totalExp, uint64_t& shareExp)
 {
 	// Party:onShareExperience(exp) or Party.onShareExperience(self, exp)
 	if (info.partyOnShareExperience == -1) {
@@ -519,12 +520,21 @@ void Events::eventPartyOnShareExperience(PartyPtr party, uint64_t& exp)
 	LuaScriptInterface::pushSharedPtr(L, party);
 	LuaScriptInterface::setMetatable(L, -1, "Party");
 
-	lua_pushinteger(L, exp);
+	lua_pushnumber(L, static_cast<lua_Number>(totalExp));
 
 	if (scriptInterface.protectedCall(L, 2, 1) != 0) {
 		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
 	} else {
-		exp = LuaScriptInterface::getNumber<uint64_t>(L, -1);
+		if (lua_type(L, -1) == LUA_TNUMBER)
+		{
+			const lua_Number result = lua_tonumber(L, -1);
+			// The exclusive upper bound remains exact even when lua_Number is double.
+			if (std::isfinite(result) and result >= 0 and
+				result < std::ldexp(static_cast<lua_Number>(1), 64) and std::trunc(result) == result)
+			{
+				shareExp = static_cast<uint64_t>(result);
+			}
+		}
 		lua_pop(L, 1);
 	}
 
@@ -1275,6 +1285,7 @@ bool Events::eventPlayerOnSpellTry(const PlayerPtr& player, const Spell* spell, 
 	LuaScriptInterface::setMetatable(L, -1, "Player");
 
 	LuaScriptInterface::pushSpell(L, *spell);
+	lua_pushinteger(L, spellType);
 
 	return scriptInterface.callFunction(3);
 }

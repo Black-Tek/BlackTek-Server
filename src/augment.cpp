@@ -278,10 +278,14 @@ namespace BlackTek
 		if (not propReadStream.read<uint32_t>(defenseCount))
 			return std::nullopt;
 
-		auto augment = Augment::MakeAugment(name, desc);
-		augment->m_modifiers.reserve(attackCount + defenseCount);
+		const uint64_t modifierCount = static_cast<uint64_t>(attackCount) + defenseCount;
+		if (modifierCount > propReadStream.size() / sizeof(DamageModifier))
+			return std::nullopt;
 
-		for (uint32_t i = 0; i < attackCount + defenseCount; ++i)
+		auto augment = Augment::MakeAugment(name, desc);
+		augment->m_modifiers.reserve(static_cast<size_t>(modifierCount));
+
+		for (uint64_t i = 0; i < modifierCount; ++i)
 		{
 			// Todo: feels like this should be a thread_local buffer, 
 			// investigate if clearing it in a loop as a thread_local buffer,

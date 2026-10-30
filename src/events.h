@@ -128,7 +128,7 @@ class Events
 		bool eventPartyOnJoin(PartyPtr party, const PlayerPtr& player);
 		bool eventPartyOnLeave(PartyPtr party, const PlayerPtr& player);
 		bool eventPartyOnDisband(PartyPtr party);
-		void eventPartyOnShareExperience(PartyPtr party, uint64_t& exp);
+		void eventPartyOnShareExperience(PartyPtr party, uint64_t totalExp, uint64_t& shareExp);
 		bool eventPartyOnInvite(PartyPtr party, const PlayerPtr& player);
 		bool eventPartyOnRevokeInvitation(PartyPtr party, const PlayerPtr& player);
 		bool eventPartyOnPassLeadership(PartyPtr party, const PlayerPtr& player);

@@ -1199,8 +1199,8 @@ void Player::addSkillAdvance(skills_t skill, uint64_t count)
 	}
 
 	bool sendUpdateSkills = false;
-	while ((skills[skill].tries + count) >= nextReqTries) {
-		count -= nextReqTries - skills[skill].tries;
+	while (count >= nextReqTries - std::min(skills[skill].tries, nextReqTries)) {
+		count -= nextReqTries - std::min(skills[skill].tries, nextReqTries);
 		skills[skill].level++;
 		skills[skill].tries = 0;
 		skills[skill].percent = 0;
@@ -1256,7 +1256,7 @@ void Player::removeSkillTries(const skills_t skill, uint64_t count, const bool n
 		skills[skill].level--;
 	}
 
-	skills[skill].tries = std::max<int32_t>(0, skills[skill].tries - count);
+	skills[skill].tries -= std::min(count, skills[skill].tries);
 	skills[skill].percent = Player::getPercentLevel(skills[skill].tries, vocation->getReqSkillTries(skill, skills[skill].level));
 
 	if (notify) {
@@ -1387,6 +1387,9 @@ int8_t Player::getContainerID(const ContainerConstPtr& container) const
 
 uint16_t Player::getContainerIndex(const uint8_t cid) const
 {
+	if (not openContainers)
+		return 0;
+
 	const auto& it = openContainers->find(cid);
 
 	if (it == openContainers->end())
@@ -2331,8 +2334,7 @@ void Player::setNextWalkActionTask(SchedulerTask* task)
 		walkTaskEvent = 0;
 	}
 
-	delete walkTask;
-	walkTask = task;
+	walkTask.reset(task);
 }
 
 void Player::setNextActionTask(SchedulerTask* task, bool resetIdleTime /*= true */)
@@ -2563,8 +2565,8 @@ void Player::addManaSpent(uint64_t amount)
 	}
 
 	bool sendUpdateStats = false;
-	while ((manaSpent + amount) >= nextReqMana) {
-		amount -= nextReqMana - manaSpent;
+	while (amount >= nextReqMana - std::min(manaSpent, nextReqMana)) {
+		amount -= nextReqMana - std::min(manaSpent, nextReqMana);
 
 		magLevel++;
 		manaSpent = 0;
@@ -2614,7 +2616,7 @@ void Player::removeManaSpent(uint64_t amount, const bool notify/* = false*/)
 		magLevel--;
 	}
 
-	manaSpent -= amount;
+	manaSpent -= std::min(amount, manaSpent);
 
 	uint64_t nextReqMana = vocation->getReqMana(magLevel + 1);
 	if (nextReqMana > vocation->getReqMana(magLevel)) {
@@ -2653,7 +2655,7 @@ void Player::addExperience(const CreaturePtr& source, uint64_t exp, bool sendTex
 		return;
 	}
 
-	experience += exp;
+	experience += std::min(exp, std::numeric_limits<uint64_t>::max() - experience);
 
 	if (sendText) {
 		const std::string expString = std::to_string(exp) + (exp != 1 ? " experience points." : " experience point.");
@@ -2738,7 +2740,7 @@ void Player::removeExperience(uint64_t exp, const bool sendText/* = false*/)
 	}
 
 	uint64_t lostExp = experience;
-	experience = std::max<int64_t>(0, experience - exp);
+	experience -= std::min(exp, experience);
 
 	if (sendText) {
 		lostExp -= experience;
@@ -2809,15 +2811,24 @@ void Player::removeExperience(uint64_t exp, const bool sendText/* = false*/)
 
 uint8_t Player::getPercentLevel(const uint64_t count, uint64_t nextLevelCount)
 {
-	if (nextLevelCount == 0) {
+	if (nextLevelCount == 0 or count > nextLevelCount) {
 		return 0;
 	}
 
-	uint8_t result = (count * 100) / nextLevelCount;
-	if (result > 100) {
-		return 0;
+	// Find the largest percentage whose rounded-up threshold has been reached.
+	// Splitting the divisor keeps every intermediate within uint64_t.
+	uint8_t low = 0;
+	uint8_t high = 100;
+	while (low < high) {
+		const uint8_t middle = (low + high + 1) / 2;
+		const uint64_t threshold = (nextLevelCount / 100) * middle
+			+ ((nextLevelCount % 100) * middle + 99) / 100;
+		if (count >= threshold)
+			low = middle;
+		else
+			high = middle - 1;
 	}
-	return result;
+	return low;
 }
 
 void Player::onBlockHit()
@@ -2956,7 +2967,7 @@ void Player::death(const CreaturePtr& lastHitCreature)
 			uint32_t oldLevel = level;
 
 			if (vocation->getId() == VOCATION_NONE || level > 7) {
-				experience -= expLoss;
+				experience -= std::min(expLoss, experience);
 			}
 
 			while (level > 1 && experience < Player::getExpForLevel(level)) {
@@ -3527,8 +3538,8 @@ BlackTek::ItemLocation Player::resolveItemDestination(int32_t& index, const Item
 		const bool autoStack = not (flags & FLAG_IGNOREAUTOSTACK);
 		const bool isStackable = item->isStackable();
 
-		thread_local std::vector<ContainerPtr> containers;
-		containers.clear();
+		std::vector<ContainerPtr> containers;
+		containers.reserve(CONST_SLOT_LAST);
 
 		for (uint32_t slotIndex = CONST_SLOT_FIRST; slotIndex <= CONST_SLOT_LAST; ++slotIndex)
 		{
@@ -4449,8 +4460,7 @@ void Player::onWalkAborted()
 void Player::onWalkComplete()
 {
 	if (walkTask) {
-		walkTaskEvent = g_scheduler.addEvent(walkTask);
-		walkTask = nullptr;
+		walkTaskEvent = g_scheduler.addEvent(walkTask.release());
 	}
 }
 
@@ -5592,13 +5602,13 @@ bool Player::addOfflineTrainingTries(skills_t skill, uint64_t tries)
 		}
 
 		oldSkillValue = magLevel;
-		oldPercentToNextLevel = static_cast<long double>(manaSpent * 100) / nextReqMana;
+		oldPercentToNextLevel = static_cast<long double>(manaSpent) * 100 / nextReqMana;
 
 		g_events->eventPlayerOnGainSkillTries(this->getPlayer(), SKILL_MAGLEVEL, tries);
 		uint32_t currMagLevel = magLevel;
 
-		while ((manaSpent + tries) >= nextReqMana) {
-			tries -= nextReqMana - manaSpent;
+		while (tries >= nextReqMana - std::min(manaSpent, nextReqMana)) {
+			tries -= nextReqMana - std::min(manaSpent, nextReqMana);
 
 			magLevel++;
 			manaSpent = 0;
@@ -5624,7 +5634,7 @@ bool Player::addOfflineTrainingTries(skills_t skill, uint64_t tries)
 		uint8_t newPercent;
 		if (nextReqMana > currReqMana) {
 			newPercent = Player::getPercentLevel(manaSpent, nextReqMana);
-			newPercentToNextLevel = static_cast<long double>(manaSpent * 100) / nextReqMana;
+			newPercentToNextLevel = static_cast<long double>(manaSpent) * 100 / nextReqMana;
 		} else {
 			newPercent = 0;
 			newPercentToNextLevel = 0;
@@ -5644,13 +5654,13 @@ bool Player::addOfflineTrainingTries(skills_t skill, uint64_t tries)
 		}
 
 		oldSkillValue = skills[skill].level;
-		oldPercentToNextLevel = static_cast<long double>(skills[skill].tries * 100) / nextReqTries;
+		oldPercentToNextLevel = static_cast<long double>(skills[skill].tries) * 100 / nextReqTries;
 
 		g_events->eventPlayerOnGainSkillTries(this->getPlayer(), skill, tries);
 		uint32_t currSkillLevel = skills[skill].level;
 
-		while ((skills[skill].tries + tries) >= nextReqTries) {
-			tries -= nextReqTries - skills[skill].tries;
+		while (tries >= nextReqTries - std::min(skills[skill].tries, nextReqTries)) {
+			tries -= nextReqTries - std::min(skills[skill].tries, nextReqTries);
 
 			skills[skill].level++;
 			skills[skill].tries = 0;
@@ -5677,7 +5687,7 @@ bool Player::addOfflineTrainingTries(skills_t skill, uint64_t tries)
 		uint8_t newPercent;
 		if (nextReqTries > currReqTries) {
 			newPercent = Player::getPercentLevel(skills[skill].tries, nextReqTries);
-			newPercentToNextLevel = static_cast<long double>(skills[skill].tries * 100) / nextReqTries;
+			newPercentToNextLevel = static_cast<long double>(skills[skill].tries) * 100 / nextReqTries;
 		} else {
 			newPercent = 0;
 			newPercentToNextLevel = 0;
@@ -5781,18 +5791,24 @@ uint64_t Player::getMoney() const
 		if (const auto& container = item->getContainer()) {
 			containers.push_back(container);
 		} else {
-			moneyCount += item->getWorth();
+			const uint64_t worth = item->getWorth();
+			if (worth > std::numeric_limits<uint64_t>::max() - moneyCount)
+				return 0;
+			moneyCount += worth;
 		}
 	}
 
 	size_t i = 0;
 	while (i < containers.size()) {
-		const auto& container = containers[i++];
+		const auto container = containers[i++];
 		for (const auto& item : container->getItemList()) {
 			if (auto tmpContainer = item->getContainer()) {
 				containers.push_back(tmpContainer);
 			} else {
-				moneyCount += item->getWorth();
+				const uint64_t worth = item->getWorth();
+				if (worth > std::numeric_limits<uint64_t>::max() - moneyCount)
+					return 0;
+				moneyCount += worth;
 			}
 		}
 	}
@@ -5839,6 +5855,9 @@ void Player::clearSlotCombatHookMask(slots_t slot) noexcept
 
 void Player::cacheModifier(const BlackTek::DamageModifier& modifier) noexcept
 {
+	if (modifier.getType() >= (modifier.isAttackStance() ? BlackTek::ModifierCache::AttackMods : BlackTek::ModifierCache::DefenseMods))
+		return;
+
 	if (not m_modifier_cache)
 		m_modifier_cache = std::make_unique<BlackTek::ModifierCache>();
 
@@ -5911,6 +5930,9 @@ void Player::cacheModifier(const BlackTek::DamageModifier& modifier) noexcept
 
 void Player::uncacheModifier(const BlackTek::DamageModifier& modifier) noexcept
 {
+	if (modifier.getType() >= (modifier.isAttackStance() ? BlackTek::ModifierCache::AttackMods : BlackTek::ModifierCache::DefenseMods))
+		return;
+
 	if (not m_modifier_cache)
 		return;
 
@@ -6042,28 +6064,29 @@ const bool Player::addAugment(const std::string_view augmentName)
 
 const bool Player::removeAugment(const std::shared_ptr<BlackTek::Augment>& augment)
 {
+	const auto removedAugment = augment;
 	if (not augments)
 		return false;
 	
-	if (const auto it = std::ranges::find(*augments, augment); it != augments->end())
+	if (const auto it = std::ranges::find(*augments, removedAugment); it != augments->end())
 	{
 		augment_count -= 1;
-		attack_modifier_count -= augment->attack_mod_count();
-		defense_modifier_count -= augment->defense_mod_count();
-		conversion_modifier_count -= augment->conversion_count();
-		reform_modifier_count -= augment->reform_count();
-		healing_modifier_count -= augment->healing_mod_count();
-		damage_modifiers_count -= augment->damage_triggers();
-		origin_modifiers_count -= augment->origin_triggers();
-		creature_modifiers_count -= augment->creature_triggers();
-		race_modifiers_count -= augment->race_triggers();
-		named_modifiers_count -= augment->name_count();
+		attack_modifier_count -= removedAugment->attack_mod_count();
+		defense_modifier_count -= removedAugment->defense_mod_count();
+		conversion_modifier_count -= removedAugment->conversion_count();
+		reform_modifier_count -= removedAugment->reform_count();
+		healing_modifier_count -= removedAugment->healing_mod_count();
+		damage_modifiers_count -= removedAugment->damage_triggers();
+		origin_modifiers_count -= removedAugment->origin_triggers();
+		creature_modifiers_count -= removedAugment->creature_triggers();
+		race_modifiers_count -= removedAugment->race_triggers();
+		named_modifiers_count -= removedAugment->name_count();
 
-		for (const auto& modifier : augment->getModifiers())
+		for (const auto& modifier : removedAugment->getModifiers())
 			uncacheModifier(modifier);
 
-		g_events->eventPlayerOnRemoveAugment(this->getPlayer(), augment);
 		augments->erase(it);
+		g_events->eventPlayerOnRemoveAugment(this->getPlayer(), removedAugment);
 		return true;
 	}
 	return false;
@@ -6159,33 +6182,17 @@ const bool Player::removeAugment(std::string_view augmentName)
 	if (not augments)
 		return false;
 
-	const auto originalSize = augments->size();
-
-	std::erase_if(*augments, [&](const std::shared_ptr<BlackTek::Augment>& augment)
+	std::vector<std::shared_ptr<BlackTek::Augment>> removedAugments;
+	for (const auto& augment : *augments)
 	{
-		if (augment->getName() != augmentName)
-			return false;
+		if (augment->getName() == augmentName)
+			removedAugments.push_back(augment);
+	}
 
-		augment_count -= 1;
-		attack_modifier_count -= augment->attack_mod_count();
-		defense_modifier_count -= augment->defense_mod_count();
-		conversion_modifier_count -= augment->conversion_count();
-		reform_modifier_count -= augment->reform_count();
-		healing_modifier_count -= augment->healing_mod_count();
-		damage_modifiers_count -= augment->damage_triggers();
-		origin_modifiers_count -= augment->origin_triggers();
-		creature_modifiers_count -= augment->creature_triggers();
-		race_modifiers_count -= augment->race_triggers();
-		named_modifiers_count -= augment->name_count();
-
-		for (const auto& modifier : augment->getModifiers())
-			uncacheModifier(modifier);
-
-		g_events->eventPlayerOnRemoveAugment(this->getPlayer(), augment);
-		return true;
-	});
-
-	return augments->size() < originalSize;
+	bool removed = false;
+	for (const auto& augment : removedAugments)
+		removed = removeAugment(augment) or removed;
+	return removed;
 }
 
 
@@ -6336,7 +6343,7 @@ void Player::getEquipment(std::vector<ItemPtr>& out, bool validateSlot) const
 
 Position Player::generateAttackPosition(std::optional<CreaturePtr> attacker, Position& defensePosition, uint8_t origin) {
 
-	const Direction attackDirection = (attacker.has_value())
+	const Direction attackDirection = (attacker and *attacker)
 		? getDirectionTo(defensePosition, attacker.value()->getPosition())
 		: getOppositeDirection(this->getDirection());
 	
@@ -6397,7 +6404,8 @@ std::unique_ptr<BlackTek::AreaCombat> Player::generateDeflectArea(std::optional<
 	auto combatArea = std::make_unique<BlackTek::AreaCombat>();
 	const auto& defendersPosition = this->getPosition();
 
-	switch (const auto direction = (attacker.has_value()) ? getDirectionTo(defendersPosition, attacker.value()->getPosition()) : getOppositeDirection(this->getDirection())) {
+	targetCount = std::clamp(targetCount, 1, 6);
+	switch (const auto direction = (attacker and *attacker) ? getDirectionTo(defendersPosition, attacker.value()->getPosition()) : getOppositeDirection(this->getDirection())) {
 	case DIRECTION_NORTH:
 	case DIRECTION_EAST:
 	case DIRECTION_SOUTH:

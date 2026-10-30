@@ -74,7 +74,7 @@ namespace Components {
 
             static std::shared_ptr<CustomSkill> make_skill(const std::shared_ptr<CustomSkill>& skill)
             {
-                return std::make_shared<CustomSkill>(*skill.get());
+				return skill ? std::make_shared<CustomSkill>(*skill) : nullptr;
             }
 
             static std::shared_ptr<CustomSkill> make_skill(uint16_t level = 1, uint8_t form = FormulaType::EXPONENTIAL, uint16_t max = 0, float x = 1.0, float y = 50, float z = 10)
@@ -179,7 +179,7 @@ namespace Components {
 
                 while (true) 
                 {
-                    if (max_level and temp_level >= max_level) 
+                    if (temp_level >= (max_level ? max_level : LevelMax))
                     {
                         temp_current_points = 0;
                         break;
@@ -188,11 +188,11 @@ namespace Components {
                     uint64_t points_required = pointsRequired(temp_level + 1);
                     if (points_required == std::numeric_limits<uint64_t>::max() or points_required == 0)
                     {
-                        temp_current_points += points;
+                        temp_current_points += std::min<uint64_t>(points, PointMax - temp_current_points);
                         break;
                     }
 
-                    uint64_t excess_points = points_required - temp_current_points;
+                    uint64_t excess_points = points_required - std::min(points_required, temp_current_points);
                     if (points >= excess_points)
                     {
                         points -= excess_points;
@@ -235,13 +235,13 @@ namespace Components {
                     points_to_remove = 0;
                 }
 
-                while (points_to_remove > 0 and temp_level > 0) 
+                while (points_to_remove > 0 and temp_level > 1)
                 {
                     auto required_points = pointsRequired(temp_level);
+                    --temp_level;
                     if (points_to_remove >= required_points)
                     {
                         points_to_remove -= required_points;
-                        temp_level--; 
                         temp_points = 0;
                     }
                     else 
@@ -265,10 +265,11 @@ namespace Components {
                     return false;
                 }
 
-                uint64_t required = pointsRequired(current_level);
+                uint64_t required = needed();
                 double percent = save_progress and required > 0 ? static_cast<double>(current_points) / required : 0.0;
-                current_level = max_level and (levels + current_level) >= max_level ? max_level : levels + current_level;
-                current_points = save_progress ? static_cast<uint64_t>(pointsRequired(current_level) * percent) : 0;
+                current_level = static_cast<uint16_t>(std::min<uint32_t>(max_level ? max_level : LevelMax,
+                    static_cast<uint32_t>(current_level) + levels));
+                current_points = save_progress ? safeRound(needed() * std::min(percent, 1.0)) : 0;
                 return true;
             }
 
@@ -280,10 +281,10 @@ namespace Components {
                 {
                     return false;
                 }
-                uint64_t required = pointsRequired(current_level);
+                uint64_t required = needed();
                 double percent = save_progress and required > 0 ? static_cast<double>(current_points) / required : 0.0;
-                current_level = std::max<uint16_t>(1, current_level - levels);
-                current_points = save_progress ? static_cast<uint64_t>(pointsRequired(current_level) * percent) : 0;
+                current_level = levels >= current_level ? 1 : static_cast<uint16_t>(current_level - levels);
+                current_points = save_progress ? safeRound(needed() * std::min(percent, 1.0)) : 0;
                 return true;
             }
 
@@ -297,7 +298,7 @@ namespace Components {
                 [[likely]] 
                 if (current_points and required)
                 {
-                    auto raw_percent = (current_points * 100ULL) / required;
+                    const auto raw_percent = std::min(100.0L, static_cast<long double>(current_points) * 100.0L / required);
                     return static_cast<Number>(raw_percent);
                 }
                 [[unlikely]]
@@ -390,6 +391,10 @@ namespace Components {
             [[nodiscard]]
             constexpr uint64_t safeRound(double value) const
             {
+                if (std::isnan(value))
+                {
+                    return PointMax;
+                }
                 if (value >= static_cast<double>(PointMax)) {
                     return PointMax;
                 }
@@ -425,7 +430,11 @@ namespace Components {
 
             static constexpr uint64_t integerSqrt(uint64_t n)
             {
-                uint64_t left = 0, right = n, ans = 0;
+                if (n == 0)
+                {
+                    return 0;
+                }
+                uint64_t left = 1, right = n, ans = 0;
                 while (left <= right) 
                 {
                     uint64_t mid = left + (right - left) / 2;
@@ -444,6 +453,10 @@ namespace Components {
 
             static constexpr uint64_t integerPow(uint64_t base, uint64_t exp)
             {
+                if (base == 0)
+                {
+                    return exp == 0 ? 1 : 0;
+                }
                 uint64_t result = 1;
                 while (exp) 
                 {

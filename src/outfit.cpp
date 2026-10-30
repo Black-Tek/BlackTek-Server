@@ -49,7 +49,7 @@
 
 bool Outfits::load()
 {
-
+	std::vector<Outfit> loadedOutfits[PLAYERSEX_LAST + 1];
 	const auto file = std::filesystem::current_path().generic_string() + "/config/outfits.toml";
 	try 
 	{
@@ -78,7 +78,7 @@ bool Outfits::load()
 			}
 			else if (auto sexType = outfit_data["sex"].as_integer()) 
 			{
-				sex = sexType->get();
+				sex = outfit_data["sex"].value_or(-1);
 			}
 			else
 			{
@@ -89,12 +89,18 @@ bool Outfits::load()
 			const auto& name = outfit_data["name"].value_or("none");
 			bool premium = outfit_data["premium"].value_or(false);
 			bool locked = outfit_data["locked"].value_or(false);
+			if (sex < PLAYERSEX_FEMALE or sex > PLAYERSEX_LAST
+				or id <= 0 or id > std::numeric_limits<uint16_t>::max())
+			{
+				BlackTek::Console::Warn("Outfits::load: invalid sex or look type for '{}'", index.str());
+				return false;
+			}
 
 			// todo, encapsulate entry parsing inside the below branch
 			// because if it's not enabled we are wasting resources
 			if (outfit_data["enabled"].value_or(true))
 			{
-				outfits[sex].emplace_back(name, id, premium, locked);
+				loadedOutfits[sex].emplace_back(name, static_cast<uint16_t>(id), premium, locked);
 			}
 		}
 		// todo - trade out exceptions for parse errors to remove overheard of try-catch.
@@ -102,13 +108,19 @@ bool Outfits::load()
 	catch (const std::exception& e) 
 	{
 		std::cerr << "Failed to load outfits.toml - " << e.what() << std::endl;
+		return false;
 	}
+	std::swap(outfits, loadedOutfits);
 	return true;
 }
 
 
 const Outfit* Outfits::getOutfitByLookType(PlayerSex_t sex, uint16_t lookType) const
 {
+	if (static_cast<size_t>(sex) > PLAYERSEX_LAST)
+	{
+		return nullptr;
+	}
 	for (const Outfit& outfit : outfits[sex]) {
 		if (outfit.lookType == lookType) {
 			return &outfit;

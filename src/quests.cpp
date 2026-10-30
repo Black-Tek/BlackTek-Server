@@ -55,23 +55,23 @@ std::string Mission::getDescription(const PlayerPtr& player) const
 		return desc;
 	}
 
-	if (ignoreEndValue) {
-		for (int32_t current = endValue; current >= startValue; current--) {
-			if (value >= current) {
-				auto sit = descriptions.find(current);
-				if (sit != descriptions.end()) {
-					return sit->second;
-				}
+	if (ignoreEndValue)
+	{
+		auto description = descriptions.upper_bound(std::min(value, endValue));
+		if (description != descriptions.begin())
+		{
+			--description;
+			if (description->first >= startValue)
+			{
+				return description->second;
 			}
 		}
-	} else {
-		for (int32_t current = endValue; current >= startValue; current--) {
-			if (value == current) {
-				auto sit = descriptions.find(current);
-				if (sit != descriptions.end()) {
-					return sit->second;
-				}
-			}
+	}
+	else if (value >= startValue and value <= endValue)
+	{
+		if (auto description = descriptions.find(value); description != descriptions.end())
+		{
+			return description->second;
 		}
 	}
 	return "An error has occurred, please contact a gamemaster.";
@@ -168,13 +168,13 @@ bool Quests::reload()
 
 bool Quests::loadFromToml()
 {
+	uint32_t id = quests.size();
 	for (const auto& entry : std::filesystem::recursive_directory_iterator("data/quests/"))
 	{
 		if (entry.is_regular_file() && entry.path().extension() == ".toml")
 		{
 			try {
 				auto tbl = toml::parse_file(entry.path().string());
-				uint16_t id = 0;
 
 				// Iterate over each top-level table (each represents a quest)
 				for (const auto& [key, value] : tbl) {
@@ -185,7 +185,12 @@ bool Quests::loadFromToml()
 						int32_t startstorage = static_cast<int32_t>((*quest_table)["startstorage"].value<int64_t>().value_or(0));
 						int32_t startvalue = static_cast<int32_t>((*quest_table)["startvalue"].value<int64_t>().value_or(0));
 
-						quests.emplace_back(name, ++id, startstorage, startvalue);
+						if (id == std::numeric_limits<uint16_t>::max())
+						{
+							BlackTek::Console::Error("Quests::loadFromToml: quest IDs exceed the protocol range");
+							return false;
+						}
+						quests.emplace_back(name, static_cast<uint16_t>(++id), startstorage, startvalue);
 						Quest& quest = quests.back();
 
 						if (auto missions_node = (*quest_table)["missions"]; missions_node.is_array()) {

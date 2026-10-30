@@ -87,11 +87,12 @@ bool Database::connect()
 
 bool Database::beginTransaction()
 {
-	if (!executeQuery("BEGIN")) {
+	databaseLock.lock();
+	if (not executeQuery("BEGIN")) {
+		databaseLock.unlock();
 		return false;
 	}
 
-	databaseLock.lock();
 	return true;
 }
 
@@ -239,7 +240,7 @@ std::string_view DBResult::getString(std::string_view column) const
 		return {};
 	}
 
-	if (row[it->second] == nullptr) {
+	if (row == nullptr or row[it->second] == nullptr) {
 		return {};
 	}
 

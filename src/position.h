@@ -132,7 +132,7 @@ struct Position
 	}
 
 	bool operator>(const Position& p) const {
-		return ! (*this < p);
+		return p < *this;
 	}
 
 	bool operator==(const Position& p) const {

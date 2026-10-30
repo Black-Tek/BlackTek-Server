@@ -138,14 +138,15 @@ void IOMarket::processExpiredOffers(const DBResult_ptr& result, bool)
 	}
 
 	do {
-		if (!IOMarket::moveOfferToHistory(result->getNumber<uint32_t>("id"), OFFERSTATE_EXPIRED)) {
+		MarketOfferEx offer{};
+		if (not IOMarket::moveOfferToHistory(result->getNumber<uint32_t>("id"), OFFERSTATE_EXPIRED, &offer)) {
 			continue;
 		}
 
-		const uint32_t playerId = result->getNumber<uint32_t>("player_id");
-		const uint16_t amount = result->getNumber<uint16_t>("amount");
-		if (result->getNumber<uint16_t>("sale") == 1) {
-			const ItemType& itemType = Item::items[result->getNumber<uint16_t>("itemtype")];
+		const uint32_t playerId = offer.playerId;
+		const uint16_t amount = offer.amount;
+		if (offer.type == MARKETACTION_SELL) {
+			const ItemType& itemType = Item::items[offer.itemId];
 			if (itemType.getID() == 0) {
 				continue;
 			}
@@ -191,7 +192,7 @@ void IOMarket::processExpiredOffers(const DBResult_ptr& result, bool)
 				IOLoginData::savePlayer(player);
 			}
 		} else {
-			uint64_t totalPrice = result->getNumber<uint64_t>("price") * amount;
+			uint64_t totalPrice = static_cast<uint64_t>(offer.price) * amount;
 
 			if (const auto player = g_game.getPlayerByGUID(playerId)) {
 				player->setBankBalance(player->getBankBalance() + totalPrice);
@@ -255,33 +256,64 @@ MarketOfferEx IOMarket::getOfferByCounter(uint32_t timestamp, uint16_t counter)
 	return offer;
 }
 
-void IOMarket::createOffer(uint32_t playerId, MarketAction_t action, uint32_t itemId, uint16_t amount, uint32_t price, bool anonymous)
+bool IOMarket::createOffer(uint32_t playerId, MarketAction_t action, uint32_t itemId, uint16_t amount, uint32_t price, bool anonymous)
 {
-	Database::getInstance().executeQuery(fmt::format("INSERT INTO `market_offers` (`player_id`, `sale`, `itemtype`, `amount`, `price`, `created`, `anonymous`) VALUES ({:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d})", playerId, Titan::to_underlying(action), itemId, amount, price, time(nullptr), anonymous));
+	return Database::getInstance().executeQuery(fmt::format("INSERT INTO `market_offers` (`player_id`, `sale`, `itemtype`, `amount`, `price`, `created`, `anonymous`) VALUES ({:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d})", playerId, Titan::to_underlying(action), itemId, amount, price, time(nullptr), anonymous));
 }
 
-void IOMarket::acceptOffer(uint32_t offerId, uint16_t amount)
+bool IOMarket::acceptOffer(const MarketOfferEx& offer, uint16_t amount, uint32_t acceptorId, bool creditOfflineSeller)
 {
-	Database::getInstance().executeQuery(fmt::format("UPDATE `market_offers` SET `amount` = `amount` - {:d} WHERE `id` = {:d}", amount, offerId));
+	Database& db = Database::getInstance();
+	DBTransaction transaction;
+	if (not transaction.begin())
+		return false;
+
+	const auto current = db.storeQuery(fmt::format("SELECT `player_id`, `sale`, `itemtype`, `amount`, `price`, `created` FROM `market_offers` WHERE `id` = {:d} FOR UPDATE", offer.id));
+	if (not current or amount == 0 or amount > current->getNumber<uint16_t>("amount")
+		or current->getNumber<uint16_t>("amount") != offer.amount
+		or current->getNumber<uint32_t>("player_id") != offer.playerId
+		or current->getNumber<uint16_t>("sale") != static_cast<uint16_t>(offer.type)
+		or current->getNumber<uint16_t>("itemtype") != offer.itemId
+		or current->getNumber<uint32_t>("price") != offer.price)
+		return false;
+
+	const bool changed = amount == offer.amount ? deleteOffer(offer.id)
+		: db.executeQuery(fmt::format("UPDATE `market_offers` SET `amount` = `amount` - {:d} WHERE `id` = {:d}", amount, offer.id));
+	if (not changed)
+		return false;
+
+	const time_t expires = current->getNumber<uint32_t>("created") + g_config.GetNumber(ConfigManager::MARKET_OFFER_DURATION);
+	if (not appendHistory(acceptorId, offer.type == MARKETACTION_BUY ? MARKETACTION_SELL : MARKETACTION_BUY, offer.itemId, amount, offer.price, expires, OFFERSTATE_ACCEPTEDEX)
+		or not appendHistory(offer.playerId, offer.type, offer.itemId, amount, offer.price, expires, OFFERSTATE_ACCEPTED))
+		return false;
+
+	if (creditOfflineSeller and offer.type == MARKETACTION_SELL
+		and not db.executeQuery(fmt::format("UPDATE `players` SET `balance` = `balance` + {:d} WHERE `id` = {:d}", static_cast<uint64_t>(offer.price) * amount, offer.playerId)))
+		return false;
+
+	return transaction.commit();
 }
 
-void IOMarket::deleteOffer(uint32_t offerId)
+bool IOMarket::deleteOffer(uint32_t offerId)
 {
-	Database::getInstance().executeQuery(fmt::format("DELETE FROM `market_offers` WHERE `id` = {:d}", offerId));
+	return Database::getInstance().executeQuery(fmt::format("DELETE FROM `market_offers` WHERE `id` = {:d}", offerId));
 }
 
-void IOMarket::appendHistory(uint32_t playerId, MarketAction_t action, uint16_t itemId, uint16_t amount, uint32_t price, time_t timestamp, MarketOfferState_t state)
+bool IOMarket::appendHistory(uint32_t playerId, MarketAction_t action, uint16_t itemId, uint16_t amount, uint32_t price, time_t timestamp, MarketOfferState_t state)
 {
-	g_databaseTasks.addTask(fmt::format("INSERT INTO `market_history` (`player_id`, `sale`, `itemtype`, `amount`, `price`, `expires_at`, `inserted`, `state`) VALUES ({:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d})", playerId, Titan::to_underlying(action), itemId, amount, price, timestamp, time(nullptr), Titan::to_underlying(state)));
+	return Database::getInstance().executeQuery(fmt::format("INSERT INTO `market_history` (`player_id`, `sale`, `itemtype`, `amount`, `price`, `expires_at`, `inserted`, `state`) VALUES ({:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d})", playerId, Titan::to_underlying(action), itemId, amount, price, timestamp, time(nullptr), Titan::to_underlying(state)));
 }
 
-bool IOMarket::moveOfferToHistory(uint32_t offerId, MarketOfferState_t state)
+bool IOMarket::moveOfferToHistory(uint32_t offerId, MarketOfferState_t state, MarketOfferEx* movedOffer)
 {
 	const int32_t marketOfferDuration = g_config.GetNumber(ConfigManager::MARKET_OFFER_DURATION);
 
 	Database& db = Database::getInstance();
+	DBTransaction transaction;
+	if (not transaction.begin())
+		return false;
 
-	DBResult_ptr result = db.storeQuery(fmt::format("SELECT `player_id`, `sale`, `itemtype`, `amount`, `price`, `created` FROM `market_offers` WHERE `id` = {:d}", offerId));
+	DBResult_ptr result = db.storeQuery(fmt::format("SELECT `player_id`, `sale`, `itemtype`, `amount`, `price`, `created` FROM `market_offers` WHERE `id` = {:d} FOR UPDATE", offerId));
 	if (!result) {
 		return false;
 	}
@@ -290,7 +322,30 @@ bool IOMarket::moveOfferToHistory(uint32_t offerId, MarketOfferState_t state)
 		return false;
 	}
 
-	appendHistory(result->getNumber<uint32_t>("player_id"), static_cast<MarketAction_t>(result->getNumber<uint16_t>("sale")), result->getNumber<uint16_t>("itemtype"), result->getNumber<uint16_t>("amount"), result->getNumber<uint32_t>("price"), result->getNumber<uint32_t>("created") + marketOfferDuration, state);
+	MarketOfferEx offer{};
+	offer.id = offerId;
+	offer.counter = offerId & 0xFFFF;
+	offer.playerId = result->getNumber<uint32_t>("player_id");
+	offer.type = static_cast<MarketAction_t>(result->getNumber<uint16_t>("sale"));
+	offer.itemId = result->getNumber<uint16_t>("itemtype");
+	offer.amount = result->getNumber<uint16_t>("amount");
+	offer.price = result->getNumber<uint32_t>("price");
+	offer.timestamp = result->getNumber<uint32_t>("created");
+	if (not appendHistory(offer.playerId, offer.type, offer.itemId, offer.amount, offer.price, offer.timestamp + marketOfferDuration, state)
+		or not transaction.commit())
+		return false;
+
+	if (movedOffer)
+	{
+		movedOffer->id = offer.id;
+		movedOffer->counter = offer.counter;
+		movedOffer->playerId = offer.playerId;
+		movedOffer->type = offer.type;
+		movedOffer->itemId = offer.itemId;
+		movedOffer->amount = offer.amount;
+		movedOffer->price = offer.price;
+		movedOffer->timestamp = offer.timestamp;
+	}
 	return true;
 }
 

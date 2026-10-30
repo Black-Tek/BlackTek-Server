@@ -56,6 +56,7 @@
 #include "databasetasks.h"
 #include "script.h"
 #include <fstream>
+#include <charconv>
 #include <fmt/color.h>
 #include "augments.h"
 #include "zones.h"
@@ -78,11 +79,21 @@ ConfigManager g_config;
 Monsters g_monsters;
 Vocations g_vocations;
 extern Scripts* g_scripts;
+extern LuaEnvironment g_luaEnvironment;
 RSA g_RSA;
 
 std::mutex g_loaderLock;
 std::condition_variable g_loaderSignal;
-std::unique_lock<std::mutex> g_loaderUniqueLock(g_loaderLock);
+bool g_loaderFinished = false;
+
+static void notifyLoaderFinished()
+{
+	{
+		std::lock_guard<std::mutex> lock(g_loaderLock);
+		g_loaderFinished = true;
+	}
+	g_loaderSignal.notify_all();
+}
 
 // ============================================================================
 // BLACKTEK HOLOGRAPHIC CONSOLE - Color Definitions
@@ -216,7 +227,7 @@ namespace Console {
 		std::string onlineText = "◆ " + serverName + " SERVER ONLINE ◆";
 		int totalWidth = 68;
 		auto textLen = static_cast<int>(onlineText.length());
-		int padding = (totalWidth - textLen) / 2;
+		int padding = std::max(0, (totalWidth - textLen) / 2);
 
 		std::string out;
 		out += "\n";
@@ -227,7 +238,7 @@ namespace Console {
 		out += fmt::format(fg(white) | fmt::emphasis::bold,       " {} ", serverName);
 		out += fmt::format(fg(green) | fmt::emphasis::bold,       "| ONLINE | ");
 		out += fmt::format(fg(cyan)  | fmt::emphasis::bold,       "{}", DIAMOND);
-		out += fmt::format(fg(cyan),                              "{:<{}}", "", padding - 2);
+		out += fmt::format(fg(cyan),                              "{:<{}}", "", std::max(0, padding - 2));
 		out += fmt::format(fg(dark_gray), "       ║\n");
 		out += fmt::format(fg(dark_gray), "    ╚══════════════════════════════════════════════════════════════════╝\n\n");
 		BlackTek::Console::LogAndPrint(std::move(out));
@@ -261,7 +272,7 @@ void startupErrorMessage(const std::string& errorStr)
 		Console::printWarning("Full details logged to " + *logPath);
 	}
 
-	g_loaderSignal.notify_all();
+	notifyLoaderFinished();
 }
 
 void mainLoader(int argc, char* argv[], ServiceManager* services);
@@ -282,15 +293,18 @@ void badAllocationHandler()
 #ifndef BLACKTEK_UNIT_TESTS
 int main(int argc, char* argv[])
 {
+	BlackTek::Console::Initialize();
 	StringVector args = StringVector(argv, argv + argc);
 	if(argc > 1 && !argumentsHandler(args))
 	{
-		return 0;
+		BlackTek::Console::Shutdown();
+		const bool informational = std::ranges::find(args, "--help") != args.end() or
+			std::ranges::find(args, "--version") != args.end();
+		return informational ? 0 : 1;
 	}
 
 	// Setup bad allocation handler
 	std::set_new_handler(badAllocationHandler);
-	BlackTek::Console::Initialize();
 	ServiceManager serviceManager;
 
 	g_dispatcher.start();
@@ -299,7 +313,10 @@ int main(int argc, char* argv[])
 
 	g_dispatcher.addTask(createTask([=, services = &serviceManager]() { mainLoader(argc, argv, services); }));
 
-	g_loaderSignal.wait(g_loaderUniqueLock);
+	{
+		std::unique_lock<std::mutex> lock(g_loaderLock);
+		g_loaderSignal.wait(lock, [] { return g_loaderFinished; });
+	}
 
 	if (serviceManager.is_running())
 	{
@@ -329,6 +346,9 @@ int main(int argc, char* argv[])
 	g_databaseTasks.join();
 	g_dispatcher.join();
 	g_utility_boss.join();
+	// Lua userdata may retain pooled creatures and items. Release it before
+	// static destruction tears down the game's memory resources.
+	g_luaEnvironment.closeState();
 
 	return 0;
 }
@@ -351,7 +371,7 @@ void printServerVersion()
 	Console::printInfo("Website", "black-tek.github.io/blacktek/welcome/");
 }
 
-void mainLoader(int, char*[], ServiceManager* services)
+void mainLoader(int argc, char* argv[], ServiceManager* services)
 {
 	// dispatcher thread
 	g_game.setGameState(GAME_STATE_STARTUP);
@@ -387,6 +407,12 @@ void mainLoader(int, char*[], ServiceManager* services)
 	if (not g_config.Load())
 	{
 		startupErrorMessage("Unable to load configuration files from the config/ directory!");
+		return;
+	}
+	// Configuration loading must not overwrite explicit command-line options.
+	if (not argumentsHandler(StringVector(argv, argv + argc)))
+	{
+		notifyLoaderFinished();
 		return;
 	}
 
@@ -628,7 +654,7 @@ void mainLoader(int, char*[], ServiceManager* services)
 
 	g_game.start(services);
 	g_game.setGameState(GAME_STATE_NORMAL);
-	g_loaderSignal.notify_all();
+	notifyLoaderFinished();
 }
 
 bool argumentsHandler(const StringVector& args)
@@ -647,14 +673,31 @@ bool argumentsHandler(const StringVector& args)
 			return false;
 		}
 
-		auto tmp = explodeString(arg, "=");
-
-		if (tmp[0] == "--ip")
-			g_config.SetString(ConfigManager::IP, tmp[1]);
-		else if (tmp[0] == "--login-port")
-			g_config.SetNumber(ConfigManager::LOGIN_PORT, std::stoi(tmp[1].data()));
-		else if (tmp[0] == "--game-port")
-			g_config.SetNumber(ConfigManager::GAME_PORT, std::stoi(tmp[1].data()));
+		auto parts = explodeString(arg, "=", 1);
+		const auto name = parts.front();
+		if (name != "--ip" and name != "--login-port" and name != "--game-port")
+		{
+			continue;
+		}
+		if (parts.size() != 2 or parts[1].empty())
+		{
+			Console::printError("Missing value for " + std::string(name));
+			return false;
+		}
+		if (name == "--ip")
+		{
+			g_config.SetString(ConfigManager::IP, parts[1]);
+			continue;
+		}
+		uint32_t port = 0;
+		const auto value = parts[1];
+		const auto result = std::from_chars(value.data(), value.data() + value.size(), port);
+		if (result.ec != std::errc{} or result.ptr != value.data() + value.size() or port == 0 or port > 65535)
+		{
+			Console::printError("Invalid port for " + std::string(name));
+			return false;
+		}
+		g_config.SetNumber(name == "--login-port" ? ConfigManager::LOGIN_PORT : ConfigManager::GAME_PORT, port);
 	}
 
 	return true;

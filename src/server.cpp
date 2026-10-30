@@ -127,6 +127,7 @@ void ServicePort::onAccept(const Connection_ptr& connection, const boost::system
 {
 	if (!error) {
 		if (services.empty()) {
+			connection->close(Connection::FORCE_CLOSE);
 			return;
 		}
 
@@ -146,8 +147,9 @@ void ServicePort::onAccept(const Connection_ptr& connection, const boost::system
 		}
 
 		accept();
-	} else if (error != boost::asio::error::operation_aborted) {
-		if (!pendingStart) {
+	} else {
+		connection->close(Connection::FORCE_CLOSE);
+		if (error != boost::asio::error::operation_aborted and not pendingStart) {
 			close();
 			pendingStart = true;
 			g_scheduler.addEvent(createSchedulerTask(15000, [=, thisPtr = std::weak_ptr<ServicePort>(shared_from_this())]() { ServicePort::openAcceptor(thisPtr, serverPort); }));

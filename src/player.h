@@ -160,6 +160,7 @@ static constexpr int32_t NOTIFY_DEPOT_BOX_RANGE = 1;
 
 namespace BlackTek 
 {
+    namespace World::Tests { class PlayerAccess; }
 	struct ModifierCache
 	{
 		constexpr static auto		AttackMods		= std::to_underlying(DamageModifier::AttackType::Last) + 1u;
@@ -949,7 +950,7 @@ class Player final : public Creature
 
 		Group* group = nullptr;
 		House* editHouse = nullptr;
-		SchedulerTask* walkTask = nullptr;
+		std::unique_ptr<SchedulerTask> walkTask;
 		Town* town = nullptr;
 		Vocation* vocation = nullptr;
 
@@ -1169,6 +1170,9 @@ class Player final : public Creature
 		friend class IOLoginData;
 		friend class ProtocolGame;
 		friend class ItemContainer;
+#if defined(BLACKTEK_UNIT_TESTS)
+		friend class BlackTek::World::Tests::PlayerAccess;
+#endif
 };
 
 #endif

@@ -85,6 +85,8 @@ void Connection::close(bool force)
 	{
 		if (closed)
 		{
+			if (force)
+				closeSocket();
 			return;
 		}
 		closed = true;
@@ -253,8 +255,10 @@ void Connection::parsePacket(const boost::system::error_code& error)
 		checksum = 0;
 	}
 
-	uint32_t recvChecksum = msg->get<uint32_t>();
-	if (recvChecksum != checksum)
+	const bool canReadChecksum = len >= 0;
+	const uint32_t recvChecksum = canReadChecksum ? msg->get<uint32_t>() : 0;
+	const bool hasChecksum = canReadChecksum and recvChecksum == checksum;
+	if (canReadChecksum and not hasChecksum)
 	{
 		msg->skipBytes(-NetworkMessage::CHECKSUM_LENGTH);
 	}
@@ -265,7 +269,7 @@ void Connection::parsePacket(const boost::system::error_code& error)
 
 		if (not protocol)
 		{
-			protocol = service_port->make_protocol(recvChecksum == checksum, *msg, shared_from_this());
+			protocol = service_port->make_protocol(hasChecksum, *msg, shared_from_this());
 			if (not protocol)
 			{
 				close(FORCE_CLOSE);
@@ -374,7 +378,23 @@ uint32_t Connection::getIP()
 		return 0;
 	}
 
-	const uint32_t ip = htonl(endpoint.address().to_v4().to_uint());
+	const auto address = endpoint.address();
+	uint32_t ip;
+	if (address.is_v4())
+	{
+		ip = htonl(address.to_v4().to_uint());
+	}
+	else
+	{
+		const auto addressV6 = address.to_v6();
+		if (not addressV6.is_v4_mapped())
+			return 0; // Account storage and IP bans currently require an IPv4 address.
+
+		const auto bytes = addressV6.to_bytes();
+		ip = htonl((static_cast<uint32_t>(bytes[12]) << 24) |
+			(static_cast<uint32_t>(bytes[13]) << 16) |
+			(static_cast<uint32_t>(bytes[14]) << 8) | bytes[15]);
+	}
 	cachedIP.store(ip, std::memory_order_relaxed);
 	return ip;
 }

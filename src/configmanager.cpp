@@ -372,7 +372,7 @@ static std::string dummy_str;
 
 const std::string& ConfigManager::GetString(StringConfig what) const
 {
-    if (what >= LAST_STRING_CONFIG)
+    if (static_cast<size_t>(what) >= LAST_STRING_CONFIG)
     {
         std::cout << "[Warning - ConfigManager::GetString] Accessing invalid index: " << what << "\n";
         return dummy_str;
@@ -382,7 +382,7 @@ const std::string& ConfigManager::GetString(StringConfig what) const
 
 int32_t ConfigManager::GetNumber(IntegerConfig what) const
 {
-    if (what >= LAST_INTEGER_CONFIG)
+    if (static_cast<size_t>(what) >= LAST_INTEGER_CONFIG)
     {
         std::cout << "[Warning - ConfigManager::GetNumber] Accessing invalid index: " << what << "\n";
         return 0;
@@ -392,7 +392,7 @@ int32_t ConfigManager::GetNumber(IntegerConfig what) const
 
 bool ConfigManager::GetBoolean(BooleanConfig what) const
 {
-    if (what >= LAST_BOOLEAN_CONFIG)
+    if (static_cast<size_t>(what) >= LAST_BOOLEAN_CONFIG)
     {
         std::cout << "[Warning - ConfigManager::GetBoolean] Accessing invalid index: " << what << "\n";
         return false;
@@ -418,7 +418,7 @@ float ConfigManager::GetExperienceStage(uint32_t level) const
 
 float ConfigManager::GetFloat(FloatConfig what) const
 {
-    if (what >= LAST_FLOAT_CONFIG)
+    if (static_cast<size_t>(what) >= LAST_FLOAT_CONFIG)
     {
         std::cout << "[Warning - ConfigManager::GetFloat] Accessing invalid index: " << what << "\n";
         return 0.0f;
@@ -428,7 +428,7 @@ float ConfigManager::GetFloat(FloatConfig what) const
 
 bool ConfigManager::SetString(StringConfig what, std::string_view value)
 {
-    if (what >= LAST_STRING_CONFIG)
+    if (static_cast<size_t>(what) >= LAST_STRING_CONFIG)
     {
         std::cout << "[Warning - ConfigManager::SetString] Accessing invalid index: " << what << "\n";
         return false;
@@ -439,7 +439,7 @@ bool ConfigManager::SetString(StringConfig what, std::string_view value)
 
 bool ConfigManager::SetNumber(IntegerConfig what, int32_t value)
 {
-    if (what >= LAST_INTEGER_CONFIG)
+    if (static_cast<size_t>(what) >= LAST_INTEGER_CONFIG)
     {
         std::cout << "[Warning - ConfigManager::SetNumber] Accessing invalid index: " << what << "\n";
         return false;
@@ -450,7 +450,7 @@ bool ConfigManager::SetNumber(IntegerConfig what, int32_t value)
 
 bool ConfigManager::SetBoolean(BooleanConfig what, bool value)
 {
-    if (what >= LAST_BOOLEAN_CONFIG)
+    if (static_cast<size_t>(what) >= LAST_BOOLEAN_CONFIG)
     {
         std::cout << "[Warning - ConfigManager::SetBoolean] Accessing invalid index: " << what << "\n";
         return false;
@@ -461,7 +461,7 @@ bool ConfigManager::SetBoolean(BooleanConfig what, bool value)
 
 bool ConfigManager::SetFloat(FloatConfig what, float value)
 {
-    if (what >= LAST_FLOAT_CONFIG)
+    if (static_cast<size_t>(what) >= LAST_FLOAT_CONFIG)
     {
         std::cout << "[Warning - ConfigManager::SetFloat] Accessing invalid index: " << what << "\n";
         return false;

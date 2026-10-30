@@ -465,14 +465,25 @@ void ConditionAttributes::addCondition(const CreaturePtr creature, const Conditi
 
 bool ConditionAttributes::unserializeProp(ConditionAttr_t attr, PropStream& propStream)
 {
-	if (attr == CONDITIONATTR_SKILLS) {
-		return propStream.read<int32_t>(skills[currentSkill++]);
-	} else if (attr == CONDITIONATTR_SPECIALSKILLS) {
-		return propStream.read<int32_t>(specialSkills[currentSpecialSkill++]);
-	} else if (attr == CONDITIONATTR_STATS) {
-		return propStream.read<int32_t>(stats[currentStat++]);
-	} else if (attr == CONDITIONATTR_DISABLEDEFENSE) {
-		return propStream.read<bool>(disableDefense);
+	if (attr == CONDITIONATTR_SKILLS)
+	{
+		return currentSkill <= SKILL_LAST and propStream.read<int32_t>(skills[currentSkill++]);
+	}
+	else if (attr == CONDITIONATTR_SPECIALSKILLS)
+	{
+		return currentSpecialSkill <= SPECIALSKILL_LAST and propStream.read<int32_t>(specialSkills[currentSpecialSkill++]);
+	}
+	else if (attr == CONDITIONATTR_STATS)
+	{
+		return currentStat <= STAT_LAST and propStream.read<int32_t>(stats[currentStat++]);
+	}
+	else if (attr == CONDITIONATTR_DISABLEDEFENSE)
+	{
+		uint8_t value;
+		if (not propStream.read<uint8_t>(value))
+			return false;
+		disableDefense = value != 0;
+		return true;
 	}
 	return Condition::unserializeProp(attr, propStream);
 }
@@ -1836,7 +1847,7 @@ bool ConditionLight::startCondition(const CreaturePtr creature)
 	}
 
 	internalLightTicks = 0;
-	lightChangeInterval = ticks / lightInfo.level;
+	lightChangeInterval = lightInfo.level != 0 ? ticks / lightInfo.level : 0;
 	creature->setCreatureLight(lightInfo);
 	g_game.changeLight(creature);
 	return true;
@@ -1874,7 +1885,7 @@ void ConditionLight::addCondition(const CreaturePtr creature, const Condition* c
 		const auto& conditionLight = static_cast<const ConditionLight&>(*condition);
 		lightInfo.level = conditionLight.lightInfo.level;
 		lightInfo.color = conditionLight.lightInfo.color;
-		lightChangeInterval = ticks / lightInfo.level;
+		lightChangeInterval = lightInfo.level != 0 ? ticks / lightInfo.level : 0;
 		internalLightTicks = 0;
 		creature->setCreatureLight(lightInfo);
 		g_game.changeLight(creature);

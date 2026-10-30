@@ -54,9 +54,6 @@ namespace
 {
     // Shared sentinel so tile lookups can return by const reference without refcount traffic on misses.
     const TilePtr null_tile = nullptr;
-
-    thread_local BlackTek::World::ChunkCoord last_chunk_coord{};
-    thread_local const BlackTek::World::Chunk* last_chunk = nullptr;
 }
 
 bool Map::loadMap(const std::string& identifier, bool loadHouses)
@@ -120,20 +117,8 @@ const TilePtr& Map::getTile(const uint16_t x, const uint16_t y, const uint8_t z)
     if (z >= MaxLayers)
         return null_tile;
 
-    const ChunkCoord chunkCoord = ToChunkCoord(x, y);
-    const Chunk* chunk = last_chunk;
-
-    if (not chunk or chunkCoord != last_chunk_coord)
-    {
-        const auto chunkHandle = chunk_grid.FindChunk(chunkCoord);
-        chunk = chunk_grid.GetChunk(chunkHandle);
-
-        if (chunk)
-        {
-            last_chunk_coord = chunkCoord;
-            last_chunk = chunk;
-        }
-    }
+    const auto chunkHandle = chunk_grid.FindChunk(ToChunkCoord(x, y));
+    const Chunk* chunk = chunk_grid.GetChunk(chunkHandle);
 
     if (not chunk)
         return null_tile;
@@ -234,19 +219,21 @@ void Map::removeTile(const uint16_t x, const uint16_t y, const uint8_t z) const
     {
 		if (const auto& creatures = tile->getCreatures())
         {
-			for (int32_t i = creatures->size(); --i >= 0;)
+			const CreatureVector creaturesToRemove = creatures->getList();
+			for (const auto& creature : creaturesToRemove | std::views::reverse)
             {
-				if (const auto& player = creatures->getList()[i]->getPlayer())
+				if (const auto& player = creature->getPlayer())
 					g_game.internalTeleport(player, player->getTown()->getTemplePosition(), false, FLAG_NOLIMIT);
 				else 
-					g_game.removeCreature(creatures->getList()[i]);
+					g_game.removeCreature(creature);
 			}
 		}
 
 		if (const auto& items = tile->getItemList()) 
         {
-			for (auto it = items->begin(), end = items->end(); it != end; ++it)
-				g_game.internalRemoveItem(*it);
+			const ItemVector itemsToRemove(items->begin(), items->end());
+			for (const auto& item : itemsToRemove)
+				g_game.internalRemoveItem(item);
 		}
 
 		if (const auto& ground = tile->getGround())
@@ -690,20 +677,8 @@ bool Map::isTileClear(const uint16_t x, const uint16_t y, const uint8_t z, const
 
     if (not blockFloor and z < MaxLayers)
     {
-        const ChunkCoord chunkCoord = ToChunkCoord(x, y);
-        const Chunk* chunk = last_chunk;
-
-        if (not chunk or chunkCoord != last_chunk_coord)
-        {
-            const auto chunkHandle = chunk_grid.FindChunk(chunkCoord);
-            chunk = chunk_grid.GetChunk(chunkHandle);
-
-            if (chunk)
-            {
-                last_chunk_coord = chunkCoord;
-                last_chunk = chunk;
-            }
-        }
+        const auto chunkHandle = chunk_grid.FindChunk(ToChunkCoord(x, y));
+        const Chunk* chunk = chunk_grid.GetChunk(chunkHandle);
 
         if (not chunk)
             return true;

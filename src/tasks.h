@@ -40,9 +40,11 @@
 #ifndef FS_TASKS_H
 #define FS_TASKS_H
 
-#include <condition_variable>
 #include "thread_holder_base.h"
 #include "enums.h"
+
+#include <condition_variable>
+#include <memory>
 
 using TaskFunc = std::function<void(void)>;
 const int DISPATCHER_TASK_EXPIRATION = 2000;
@@ -106,7 +108,8 @@ class Dispatcher : public ThreadHolder<Dispatcher> {
 		std::mutex taskLock;
 		std::condition_variable taskSignal;
 
-		std::vector<Task*> taskList;
+		using TaskList = std::vector<std::unique_ptr<Task>>;
+		TaskList taskList;
 		uint64_t dispatcherCycle = 0;
 };
 

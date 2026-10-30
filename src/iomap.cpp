@@ -123,8 +123,8 @@ std::expected<MapLoadStats, MapErrorCode> IOMap::loadMap(Map* map, const std::fi
 		// in the header of the map, and then compare them here. Or if now majorVersionItems/minorVersionItems will be unused, those bytes will be able to be used.
 		// First RME has to be edited though.
 
-		map->width = root_header.width;
-		map->height = root_header.height;
+		map->width = std::max<uint32_t>(map->width, root_header.width);
+		map->height = std::max<uint32_t>(map->height, root_header.height);
 
 		map->chunk_grid.Reserve(root_header.width, root_header.height);
 
@@ -152,11 +152,16 @@ std::expected<MapLoadStats, MapErrorCode> IOMap::loadMap(Map* map, const std::fi
 
 		try
         {
-			constexpr size_t per_tile_bytes = sizeof(Tile) + 64;
-			buffer.resize(tile_count * per_tile_bytes);
-            block.emplace(buffer.data(), buffer.size());
+			// Existing tiles and their shared_ptr control blocks retain this resource.
+			// Later map loads use its upstream allocations once the initial buffer fills.
+			if (not block)
+			{
+				constexpr size_t perTileBytes = sizeof(Tile) + 64;
+				buffer.resize(static_cast<size_t>(tile_count) * perTileBytes);
+				block.emplace(buffer.data(), buffer.size());
+			}
 		}
-        catch (std::bad_alloc&)
+        catch (const std::bad_alloc&)
 		{
 			setLastErrorString("Not enough memory to load the map.");
 			return std::unexpected(Error::InvalidFormat); // make an OOM option

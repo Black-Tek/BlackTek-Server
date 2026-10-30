@@ -307,6 +307,27 @@ TEST_F(SimdKernelsTest, BatchResistanceIdentityAndPercentMatchCalculateResistanc
 	}
 }
 
+TEST_F(SimdKernelsTest, PercentResistanceEdgesMatchAcrossEveryLane)
+{
+	Combat::ResistanceFactors factors{};
+	factors.formula_type = Combat::ResistanceFormula::Percent;
+	const std::array<CombatStat, 9> stats{INT32_MAX, 100, 0, -1, 100, INT32_MAX, 1, 99, INT32_MAX};
+	std::array<CombatStat, 9> actual{};
+	for (const float constant : {100.0f, -100.0f, 0.0f, 100.9f, std::numeric_limits<float>::infinity()})
+	{
+		factors.constant = constant;
+		for (const Level level : {Level::Scalar, Level::SSE2, Level::AVX2})
+		{
+			if (level == Level::AVX2 and not g_hasAvx2)
+				continue;
+			ScopedSimdLevel scope(level);
+			batch_resistance(stats.data(), stats.size(), factors, nullptr, actual.data());
+			for (size_t index = 0; index < stats.size(); ++index)
+				EXPECT_EQ(actual[index], Combat::calculate_resistance(factors, stats[index]));
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // batch_resistance LinearRandom/Parity: roll-to-range mapping bounds check.
 //

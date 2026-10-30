@@ -133,13 +133,17 @@ Game::Game()
 	offlineTrainingWindow.priority = true;
 
 	curl_global_init(CURL_GLOBAL_ALL);
-	curl = curl_easy_init();
 }
 
 Game::~Game()
 {
+	if (this == &g_game)
+	{
+		Zones::ZoneManager::Clear();
+		Zones::ZoneManager::DrainGraveyard();
+		g_timer_queue.clear();
+	}
 	curl_global_cleanup();
-	curl_easy_cleanup(curl);
 }
 
 void Game::start(ServiceManager* manager)
@@ -412,7 +416,7 @@ ItemPtr Game::resolveItem(const PlayerPtr& player, const Position& pos, int32_t 
 		}
 
 		int32_t subType;
-		if (it.isFluidContainer() && index < static_cast<int32_t>(sizeof(reverseFluidMap) / sizeof(uint8_t))) {
+		if (it.isFluidContainer() and index >= 0 and index < static_cast<int32_t>(sizeof(reverseFluidMap) / sizeof(uint8_t))) {
 			subType = reverseFluidMap[index];
 		} else {
 			subType = -1;
@@ -581,7 +585,13 @@ PlayerPtr Game::getPlayerByGUID(const uint32_t& guid)
 
 ReturnValue Game::getPlayerByNameWildcard(const std::string& s)
 {
-	bool found = false;
+	PlayerPtr player;
+	return getPlayerByNameWildcard(s, player);
+}
+
+ReturnValue Game::getPlayerByNameWildcard(const std::string& s, PlayerPtr& player)
+{
+	player.reset();
 	size_t strlen = s.length();
 	if (strlen == 0 || strlen > PLAYER_NAME_LENGTH) {
 		return RETURNVALUE_PLAYERWITHTHISNAMEISNOTONLINE;
@@ -594,12 +604,12 @@ ReturnValue Game::getPlayerByNameWildcard(const std::string& s)
 			return ret;
 		}
 
-		found = getPlayerByName(result) ? true : false;
+		player = getPlayerByName(result);
 	} else {
-		found = getPlayerByName(s) ? true : false;
+		player = getPlayerByName(s);
 	}
 
-	if (!found) {
+	if (not player) {
 		return RETURNVALUE_PLAYERWITHTHISNAMEISNOTONLINE;
 	}
 
@@ -1410,6 +1420,9 @@ ReturnValue Game::internalMoveItem(BlackTek::ItemLocation fromLocation,
 									const Position* fromPos		/* = nullptr*/,
 									const Position* toPos		/* = nullptr*/)
 {
+	if (not item or not fromLocation or not toLocation)
+		return RETURNVALUE_NOTPOSSIBLE;
+
 	PlayerPtr actorPlayer = actor ? actor->getPlayer() : nullptr;
 	if (actorPlayer and fromPos and toPos)
 	{
@@ -1487,6 +1500,9 @@ ReturnValue Game::internalMoveItem(BlackTek::ItemLocation fromLocation,
 
 	ContainerPtr fromContainer = fromLocation.containerItem ? fromLocation.containerItem->getContainer() : nullptr;
 	ContainerPtr toContainer = toLocation.containerItem ? toLocation.containerItem->getContainer() : nullptr;
+	if ((not fromContainer and not fromLocation.tile and not fromLocation.player)
+		or (not toContainer and not toLocation.tile and not toLocation.player))
+		return RETURNVALUE_NOTPOSSIBLE;
 
 	if (toContainer)
 	{
@@ -1997,8 +2013,8 @@ ReturnValue Game::internalMoveItem(BlackTek::ItemLocation fromLocation,
 	{
 		const auto& item_type = Item::items[item->getID()];
 		const uint32_t duration = item->getDuration();
-		const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-		const uint32_t expiration = duration + call_time;
+		const uint64_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+		const uint64_t expiration = duration + call_time;
 		auto expirable_data = Expirable(item, expiration, call_time);
 		bool toIsPlayer = toLocation.player != nullptr;
 		if (moveItem->getDecaying() != DECAYING_TRUE)
@@ -2069,6 +2085,8 @@ ReturnValue Game::internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr ite
 	}
 
 	ContainerPtr toContainer = toLocation.containerItem ? toLocation.containerItem->getContainer() : nullptr;
+	if (not toContainer and not toLocation.tile and not toLocation.player)
+		return RETURNVALUE_NOTPOSSIBLE;
 
 	//check if we can add this item
 	ReturnValue ret;
@@ -2300,8 +2318,8 @@ ReturnValue Game::internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr ite
 
 		const auto& item_type = Item::items[item->getID()];
 		const uint32_t duration = item->getDuration();
-		const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-		const uint32_t expiration = duration + call_time;
+		const uint64_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+		const uint64_t expiration = duration + call_time;
 		auto expirable_data = Expirable(item, expiration, call_time);
 
 		// Equippable expirable
@@ -2317,6 +2335,9 @@ ReturnValue Game::internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr ite
 
 ReturnValue Game::internalRemoveItem(ItemPtr item, int32_t count /*= -1*/, bool test /*= false*/, uint32_t flags /*= 0*/)
 {
+	if (not item)
+		return RETURNVALUE_NOTPOSSIBLE;
+
 	auto location = item->getLocation();
 
 	if (not location)
@@ -2341,6 +2362,8 @@ ReturnValue Game::internalRemoveItem(ItemPtr item, int32_t count /*= -1*/, bool 
 	}
 
 	ContainerPtr container = location.containerItem ? location.containerItem->getContainer() : nullptr;
+	if (not container and not location.tile and not location.player)
+		return RETURNVALUE_NOTPOSSIBLE;
 
 	//check if we can remove this item
 	ReturnValue ret;
@@ -2531,6 +2554,12 @@ ItemPtr Game::findItemOfType(const BlackTek::ItemLocation& location, uint16_t it
 		}
 	}
 
+	else if (location.containerItem)
+	{
+		if (auto container = location.containerItem->getContainer())
+			containers.push_back(container);
+	}
+
 	size_t i = 0;
 	while (i < containers.size())
 	{
@@ -2541,7 +2570,7 @@ ItemPtr Game::findItemOfType(const BlackTek::ItemLocation& location, uint16_t it
 				return item;
 			}
 
-			if (auto subContainer = item->getContainer())
+			if (auto subContainer = item->getContainer(); depthSearch and subContainer)
 			{
 				containers.push_back(subContainer);
 			}
@@ -2564,7 +2593,7 @@ bool Game::removeMoney(const BlackTek::ItemLocation& location, uint64_t money, u
 
 	std::vector<ContainerPtr> containers;
 
-	std::multimap<uint32_t, ItemPtr> moneyMap;
+	std::multimap<uint64_t, ItemPtr> moneyMap;
 	uint64_t moneyCount = 0;
 
 	auto collectCurrency = [&](const ItemPtr& item)
@@ -2575,10 +2604,10 @@ bool Game::removeMoney(const BlackTek::ItemLocation& location, uint64_t money, u
 		}
 		else
 		{
-			const uint32_t worth = item->getWorth();
+			const uint64_t worth = item->getWorth();
 			if (worth != 0)
 			{
-				moneyCount += worth;
+				moneyCount += std::min(worth, money - moneyCount);
 				moneyMap.emplace(worth, item);
 			}
 		}
@@ -2615,6 +2644,12 @@ bool Game::removeMoney(const BlackTek::ItemLocation& location, uint64_t money, u
 		}
 	}
 
+	else if (location.containerItem)
+	{
+		if (auto container = location.containerItem->getContainer())
+			containers.push_back(container);
+	}
+
 	size_t i = 0;
 	while (i < containers.size())
 	{
@@ -2639,8 +2674,8 @@ bool Game::removeMoney(const BlackTek::ItemLocation& location, uint64_t money, u
 		}
 		else if (moneyEntry.first > money)
 		{
-			const uint32_t worth = moneyEntry.first / item->getItemCount();
-			const uint32_t removeCount = std::ceil(money / static_cast<double>(worth));
+			const uint64_t worth = moneyEntry.first / item->getItemCount();
+			const uint32_t removeCount = money / worth + (money % worth != 0);
 
 			addMoney(location, (worth * removeCount) - money, flags);
 			internalRemoveItem(item, removeCount);
@@ -2657,7 +2692,7 @@ bool Game::removeMoney(const BlackTek::ItemLocation& location, uint64_t money, u
 
 void Game::addMoney(const BlackTek::ItemLocation& location, uint64_t money, const uint32_t flags /*= 0*/)
 {
-	if (money == 0)
+	if (not location or money == 0)
 	{
 		return;
 	}
@@ -2665,8 +2700,10 @@ void Game::addMoney(const BlackTek::ItemLocation& location, uint64_t money, cons
 	for (const auto& it : Item::items.currencyItems)
 	{
 		const uint64_t worth = it.first;
+		if (worth == 0)
+			return;
 
-		uint32_t currencyCoins = money / worth;
+		uint64_t currencyCoins = money / worth;
 		if (currencyCoins <= 0)
 		{
 			continue;
@@ -2675,7 +2712,7 @@ void Game::addMoney(const BlackTek::ItemLocation& location, uint64_t money, cons
 		money -= currencyCoins * worth;
 		while (currencyCoins > 0)
 		{
-			const uint16_t count = std::min<uint32_t>(100, currencyCoins);
+			const uint16_t count = std::min<uint64_t>(100, currencyCoins);
 
 			auto remaindItem = Item::CreateItem(it.second, count);
 
@@ -2807,6 +2844,10 @@ ItemPtr Game::transformItem(const ItemPtr& item, const uint16_t newId, const int
 		else if (location.tile)
 		{
 			location.tile->addItem(item);
+		}
+		else
+		{
+			location.player->addInventoryItem(itemIndex, item);
 		}
 
 		auto newLocation = item->getLocation();
@@ -2994,8 +3035,8 @@ ItemPtr Game::transformItem(const ItemPtr& item, const uint16_t newId, const int
 			newItem->setDecaying(DECAYING_TRUE);
             const auto& item_type = Item::items[newItem->getID()];
 			const uint32_t duration = newItem->getDuration();
-			const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-			const uint32_t expiration = duration + call_time;
+			const uint64_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+			const uint64_t expiration = duration + call_time;
 			auto expirable_data = Expirable(newItem, expiration, call_time);
 
 			// Equippable expirable
@@ -3858,7 +3899,7 @@ void Game::playerSeekInContainer(const uint32_t playerId, uint8_t containerId, u
 		return;
 	}
 
-	if ((index % container->capacity()) != 0 || index >= container->size()) {
+	if (container->capacity() == 0 or (index % container->capacity()) != 0 or index >= container->size()) {
 		return;
 	}
 
@@ -4090,7 +4131,7 @@ void Game::playerAcceptTrade(const uint32_t playerId)
 	}
 
 	const auto tradePartner = player->tradePartner;
-	if (!tradePartner) {
+	if (not tradePartner or tradePartner->tradePartner != player or not player->tradeItem or not tradePartner->tradeItem) {
 		return;
 	}
 	player->setTradeState(TRADE_ACCEPT);
@@ -4107,6 +4148,14 @@ void Game::playerAcceptTrade(const uint32_t playerId)
 		const auto partnerTradeItem = tradePartner->tradeItem;
 
 		if (!g_events->eventPlayerOnTradeAccept(player, tradePartner, playerTradeItem, partnerTradeItem)) {
+			internalCloseTrade(player, false);
+			return;
+		}
+		if (player->tradePartner != tradePartner or tradePartner->tradePartner != player
+			or player->tradeItem != playerTradeItem or tradePartner->tradeItem != partnerTradeItem
+			or player->getTradeState() != TRADE_ACCEPT or tradePartner->getTradeState() != TRADE_ACCEPT
+			or playerTradeItem->isRemoved() or partnerTradeItem->isRemoved())
+		{
 			internalCloseTrade(player, false);
 			return;
 		}
@@ -4152,12 +4201,39 @@ void Game::playerAcceptTrade(const uint32_t playerId)
 				playerRet = internalRemoveItem(playerTradeItem, playerTradeItem->getItemCount(), true);
 				tradePartnerRet = internalRemoveItem(partnerTradeItem, partnerTradeItem->getItemCount(), true);
 				if (tradePartnerRet == RETURNVALUE_NOERROR && playerRet == RETURNVALUE_NOERROR) {
-					tradePartnerRet = internalMoveItem(playerTradeItem->getLocation(), { .player = tradePartner }, INDEX_ANYWHERE, playerTradeItem, playerTradeItem->getItemCount(), std::nullopt, FLAG_IGNOREAUTOSTACK, nullptr, partnerTradeItem);
+					const auto originalLocation = playerTradeItem->getLocation();
+					int32_t originalIndex = INDEX_ANYWHERE;
+					if (originalLocation.player)
+						originalIndex = originalLocation.player->getItemSlotIndex(playerTradeItem);
+					else if (originalLocation.containerItem)
+						originalIndex = originalLocation.containerItem->getContainer()->getItemIndex(playerTradeItem);
+					ItemPtr transferredItem;
+					tradePartnerRet = internalMoveItem(originalLocation, { .player = tradePartner }, INDEX_ANYWHERE, playerTradeItem, playerTradeItem->getItemCount(), std::ref(transferredItem), FLAG_IGNOREAUTOSTACK, nullptr, partnerTradeItem);
 					if (tradePartnerRet == RETURNVALUE_NOERROR) {
-						internalMoveItem(partnerTradeItem->getLocation(), { .player = player }, INDEX_ANYWHERE, partnerTradeItem, partnerTradeItem->getItemCount(), std::nullopt, FLAG_IGNOREAUTOSTACK);
-						playerTradeItem->onTradeEvent(ON_TRADE_TRANSFER, tradePartner);
-						partnerTradeItem->onTradeEvent(ON_TRADE_TRANSFER, player);
-						isSuccess = true;
+						playerRet = internalMoveItem(partnerTradeItem->getLocation(), { .player = player }, INDEX_ANYWHERE, partnerTradeItem, partnerTradeItem->getItemCount(), std::nullopt, FLAG_IGNOREAUTOSTACK);
+						if (playerRet == RETURNVALUE_NOERROR)
+						{
+							playerTradeItem->onTradeEvent(ON_TRADE_TRANSFER, tradePartner);
+							partnerTradeItem->onTradeEvent(ON_TRADE_TRANSFER, player);
+							isSuccess = true;
+						}
+						else if (transferredItem and not transferredItem->isRemoved())
+						{
+							constexpr uint32_t recoveryFlags = FLAG_NOLIMIT | FLAG_IGNOREAUTOSTACK | FLAG_IGNORENOTMOVEABLE;
+							const auto rollback = internalMoveItem(transferredItem->getLocation(), originalLocation, originalIndex,
+								transferredItem, transferredItem->getItemCount(), std::nullopt, recoveryFlags);
+							if (rollback != RETURNVALUE_NOERROR)
+							{
+								const auto recovered = internalMoveItem(transferredItem->getLocation(),
+									{ .containerItem = player->getInbox()->getOwner() }, INDEX_ANYWHERE, transferredItem,
+									transferredItem->getItemCount(), std::nullopt, recoveryFlags);
+								if (recovered != RETURNVALUE_NOERROR)
+									BlackTek::Console::Error("Game::playerAcceptTrade: could not return item {} to player {} after failed trade, error {}",
+										transferredItem->getID(), player->getGUID(), static_cast<int>(recovered));
+								else
+									player->sendTextMessage(MESSAGE_EVENT_ADVANCE, "The trade failed. Your item was returned to your inbox.");
+							}
+						}
 					}
 				}
 			}
@@ -4925,12 +5001,16 @@ ModalWindow Game::CreatePrivateAccountManagerWindow(const uint32_t modalWindowId
 
 		case AccountManager::PRIVATE_CHARACTER_TOWN: // asks for town
 		{
+			if (optionId >= character_options.size())
+				return CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION, player);
+
 			window.message = "Ahhh, yes. A good fit for ye indeed!\n\nNow choose where to begin:";
 
 			for (const auto& town_id : character_options[optionId].town_list)
 			{
 				const auto& town = map.towns.getTown(town_id);
-				window.choices.emplace_back(town->getName(), town_id);
+				if (town and town_id >= 0 and town_id <= std::numeric_limits<uint8_t>::max())
+					window.choices.emplace_back(town->getName(), town_id);
 			}
 
 			window.buttons.emplace_back("Select", ButtonID::PRIMARY);
@@ -5163,7 +5243,15 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 		{	// this window should only be sent if the choice has towns and there is more than 1.
 			if (button == ButtonID::PRIMARY)
 			{
+				const auto optionId = player->getTempCharacterChoice();
+				if (optionId >= character_options.size()
+					or std::ranges::find(character_options[optionId].town_list, choice) == character_options[optionId].town_list.end())
+					return;
+
 				const auto& town = map.towns.getTown(choice);
+				if (not town)
+					return;
+
 				const auto& spawn_pos = town->getTemplePosition();
 				player->setTempPosition(spawn_pos);
 				player->setTempTownId(choice);
@@ -5194,7 +5282,7 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 			}
 			if (button == ButtonID::SECONDARY)
 			{
-				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_TOWN, player->getTempVocation()));
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_TOWN, player->getTempCharacterChoice()));
 				break;
 			}
 			if (button == ButtonID::TERTIARY)
@@ -5508,14 +5596,19 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 
 		case AccountManager::CONFIRMATION_TEXT_BOX: // Recieved Confirmation Password
 		{
-			if (text == player->getTempPassword())
+			if (isAllowedRegistration(text) and isAllowedRegistration(player->getTempAccountName())
+				and text == player->getTempPassword())
 			{
 				Database& db = Database::getInstance();
 
-				db.executeQuery(fmt::format("INSERT INTO `accounts` (`name`, `password`, `secret`, `type`, `premium_ends_at`, `email`, `creation`) "
+				if (not db.executeQuery(fmt::format("INSERT INTO `accounts` (`name`, `password`, `secret`, `type`, `premium_ends_at`, `email`, `creation`) "
 					"VALUES ({:s}, {:s}, NULL, 1, 0, '', UNIX_TIMESTAMP())",
 					db.escapeString(player->getTempAccountName()),
-					db.escapeString(transformToSHA1(text))));
+					db.escapeString(transformToSHA1(text)))))
+				{
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_ACCOUNT_FAILED));
+					return;
+				}
 
 				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_PASSWORD_SUCCESS));
 				player->setTempAccountName("");
@@ -5529,6 +5622,12 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 
 		case AccountManager::CHARACTER_NAME_TEXT_BOX:
 		{
+			if (text.empty() or text.size() > PLAYER_NAME_LENGTH or text.find_first_not_of(' ') == std::string::npos)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_FAILED));
+				return;
+			}
+
 			for (char ch : text) {
 				if (!std::isalnum(static_cast<unsigned char>(ch)) && ch != ' ') {
 					// invalid name, contains symbols
@@ -5551,14 +5650,28 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 				break;
 			}
 			const auto& vocation = g_vocations.getVocation(config.vocation);
-			const auto& startingPos = player->getTempPosition();
+			const auto townId = player->getTempTownId();
+			const auto town = map.towns.getTown(townId);
+			if (not vocation or config.level == 0 or not town
+				or std::ranges::find(config.town_list, townId) == config.town_list.end())
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_FAILED));
+				return;
+			}
+			const auto& startingPos = town->getTemplePosition();
 			const auto sex = config.sex ? 1 : 0;
 			const auto level = config.level;
-			const auto health = config.baseHealth + vocation->getHPGain() * (level - 1);
+			const auto health = config.baseHealth + static_cast<uint64_t>(vocation->getHPGain()) * (level - 1);
 			const auto healthmax = health;
-			const auto mana = config.baseMana + vocation->getManaGain() * (level - 1);
+			const auto mana = config.baseMana + static_cast<uint64_t>(vocation->getManaGain()) * (level - 1);
 			const auto manamax = mana;
-			const auto cap = config.baseCapacity + (vocation->getCapGain() / 100) * (level - 1);
+			const auto cap = config.baseCapacity + static_cast<uint64_t>(vocation->getCapGain() / 100) * (level - 1);
+			if (health > std::numeric_limits<int32_t>::max() or mana > std::numeric_limits<int32_t>::max()
+				or cap > std::numeric_limits<uint32_t>::max() / 100)
+			{
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_FAILED));
+				return;
+			}
 
 			std::string query = fmt::format(fmt::runtime(
 				"INSERT INTO `players` ("
@@ -5654,7 +5767,7 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 
 		case AccountManager::PASSWORD_RESET_CONFIRM:
 		{
-			if (text == player->getTempPassword())
+			if (isAllowedRegistration(text) and text == player->getTempPassword())
 			{
 				Database& db = Database::getInstance();
 				Account account = IOLoginData::loadAccount(player->getAccount());
@@ -5816,14 +5929,19 @@ void Game::onAccountManagerRecieveText(const uint32_t player_id, uint32_t window
 
 		case AccountManager::CONFIRMATION_TEXT_BOX: // Recieved Confirmation Password
 		{
-			if (text == player->getTempPassword())
+			if (isAllowedRegistration(text) and isAllowedRegistration(player->getTempAccountName())
+				and text == player->getTempPassword())
 			{
 				Database& db = Database::getInstance();
 
-				db.executeQuery(fmt::format("INSERT INTO `accounts` (`name`, `password`, `secret`, `type`, `premium_ends_at`, `email`, `creation`) "
+				if (not db.executeQuery(fmt::format("INSERT INTO `accounts` (`name`, `password`, `secret`, `type`, `premium_ends_at`, `email`, `creation`) "
 					"VALUES ({:s}, {:s}, NULL, 1, 0, '', UNIX_TIMESTAMP())",
 					db.escapeString(player->getTempAccountName()),
-					db.escapeString(transformToSHA1(text))));
+					db.escapeString(transformToSHA1(text)))))
+				{
+					player->sendModalWindow(CreateAccountManagerWindow(AccountManager::COMMON_ACCOUNT_FAILED));
+					return;
+				}
 
 				player->sendModalWindow(CreateAccountManagerWindow(AccountManager::COMMON_SUCCESS));
 				player->setTempAccountName("");
@@ -6635,8 +6753,8 @@ void Game::startDecay(const ItemPtr& item)
 		item->setDecaying(DECAYING_TRUE);
 		const auto& item_type = Item::items[item->getID()];
 		const uint32_t duration = item->getDuration();
-		const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-		const uint32_t expiration = duration + call_time;
+		const uint64_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+		const uint64_t expiration = duration + call_time;
 		auto expirable_data = Expirable(item, expiration, call_time);
 
 		// Equippable expirable
@@ -6662,7 +6780,7 @@ void Game::internalDecayItem(const ItemPtr& item)
     else if (decayTo == 0)
 	{
         const auto location = item->getLocation();
-        if (not (location.tile or location.player))
+        if (not location)
 		{
 			BlackTek::Console::Error("Game::internalDecayItem ~ Item has decayTo of 0 but no parent, item id: {}", item->getID());
             return;
@@ -6681,6 +6799,7 @@ void Game::internalDecayItem(const ItemPtr& item)
 
 void Game::addEquippedItemDecay(Expirable entry) noexcept
 {
+    decaying_eq.erase(entry);
     decaying_eq.insert(entry);
     equipped_expirables.push(std::move(entry));
 }
@@ -6694,24 +6813,27 @@ CoroTask Game::equipment_decay_cycle() noexcept
 {
     while (true) 
     {
-        uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        uint64_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
         while (not equipped_expirables.empty() and equipped_expirables.top().getExpiration() <= call_time)
         {
             Expirable expired_data = equipped_expirables.top();
             equipped_expirables.pop();
 
-            if (auto it = decaying_eq.find(expired_data); it != decaying_eq.end()) 
+            if (auto it = decaying_eq.find(expired_data); it != decaying_eq.end()
+                and it->expiration == expired_data.expiration and it->created == expired_data.created)
             {
                 decaying_eq.erase(it);
-                internalDecayItem(expired_data.getItem());
+                const auto item = expired_data.getItem();
+                if (item and not item->isRemoved() and item->getDecaying() == DECAYING_TRUE)
+                    internalDecayItem(item);
             }
         }
 
         uint32_t next_time = EquipmentDecayMaxInterval;
         if (not equipped_expirables.empty()) 
         {
-            uint32_t next_expiration_time = equipped_expirables.top().getExpiration();
-            next_time = std::min<uint32_t>((next_expiration_time - call_time), EquipmentDecayMaxInterval);
+            uint64_t next_expiration_time = equipped_expirables.top().getExpiration();
+            next_time = std::min<uint64_t>((next_expiration_time - call_time), EquipmentDecayMaxInterval);
         }
         co_await SleepFor{next_time};
     }
@@ -6721,7 +6843,7 @@ CoroTask Game::item_decay_cycle() noexcept
 {
     while (true) 
 	{
-        uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        uint64_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
        while (not map_expirables.empty() and map_expirables.top().getExpiration() <= call_time)
 		{
 			auto item = map_expirables.top().getItem();
@@ -6736,8 +6858,8 @@ CoroTask Game::item_decay_cycle() noexcept
         uint32_t next_time = MapDecayMaxInterval;
         if (not map_expirables.empty()) 
 		{
-            uint32_t next_expiration_time = map_expirables.top().getExpiration();
-            next_time = std::min<uint32_t>((next_expiration_time - call_time), MapDecayMaxInterval);
+            uint64_t next_expiration_time = map_expirables.top().getExpiration();
+            next_time = std::min<uint64_t>((next_expiration_time - call_time), MapDecayMaxInterval);
         }
         co_await SleepFor{next_time};
     }
@@ -6804,13 +6926,14 @@ void Game::removeGuild(uint32_t guildId) {
 
 void Game::shutdown()
 {
-	std::cout << "Shutting down..." << std::flush;
+	BlackTek::Console::Info("Game::shutdown: shutting down");
 
 	g_scheduler.shutdown();
 	g_databaseTasks.shutdown();
 	g_dispatcher.shutdown();
 	g_utility_boss.shutdown();
 	Zones::ZoneManager::Clear();
+	g_timer_queue.clear();
 	raids.clear();
 
 	decay_clean_cycle();
@@ -6821,9 +6944,8 @@ void Game::shutdown()
 
 	ConnectionManager::getInstance().closeAll();
 
+	BlackTek::Console::Info("Game::shutdown: done");
 	BlackTek::Console::Shutdown();
-
-	std::cout << " done!" << std::endl;
 }
 
 void Game::coro_timer_cycle()
@@ -7044,6 +7166,7 @@ void Game::playerInviteToParty(const uint32_t playerId, const uint32_t invitedId
 	}
 
 	auto party = player->getParty();
+	const bool createdParty = not party;
 	if (not party) 
 	{
 		party = Party::make(player);
@@ -7056,12 +7179,17 @@ void Game::playerInviteToParty(const uint32_t playerId, const uint32_t invitedId
 
 	if (not g_events->eventPartyOnInvite(party, invitedPlayer))
 	{
-		if (party->empty())
-			player->setParty(0);
+		if (createdParty)
+			party->discardEmpty();
 		return;
 	}
 
-	party->invitePlayer(invitedPlayer);
+	if (party->getLeader() != player or player->getPartyId() != party->getId()
+		or not party->invitePlayer(invitedPlayer))
+	{
+		if (createdParty)
+			party->discardEmpty();
+	}
 }
 
 void Game::playerJoinParty(const uint32_t playerId, const uint32_t leaderId)
@@ -7199,7 +7327,7 @@ void Game::playerTransferCoins(const uint32_t playerId, const std::string& recip
 		return;
 	}
 
-	auto* window = g_storeManager.getWindowForAccountType(player->getAccountType());
+	const auto window = g_storeManager.getWindowForAccountType(player->getAccountType());
 	const uint32_t currentCoins             = window ? window->getCoins()             : 0;
 	const uint32_t currentTransferableCoins = window ? window->getTransferableCoins() : 0;
 	player->sendStorePurchaseResult(false, "Coin transfers are not currently available.", currentCoins, currentTransferableCoins);
@@ -7217,14 +7345,15 @@ void Game::playerPurchaseStoreOffer(
 		return;
 	}
 
-	auto* window = g_storeManager.getWindowForAccountType(player->getAccountType());
+	const auto window = g_storeManager.getWindowForAccountType(player->getAccountType());
 	if (not window)
 	{
 		return;
 	}
 
-	for (const auto& category : window->getCategories())
+	for (const auto& categoryEntry : window->getCategories())
 	{
+		const auto* category = categoryEntry.get();
 		const auto* product = category->getProductById(offerId);
 		if (not product)
 		{
@@ -7244,7 +7373,7 @@ void Game::playerPurchaseStoreOffer(
 			return;
 		}
 
-		bool purchased = true;
+		bool purchased = false;
 		if (category->onPurchaseScriptId != -1)
 		{
 			purchased = category->executePurchase(player, offerId, offerType, param);
@@ -7443,6 +7572,20 @@ void Game::playerCreateMarketOffer(const uint32_t playerId, uint8_t type, const 
 		if (itemList.empty()) {
 			return;
 		}
+		uint16_t remaining = amount;
+		for (const auto& item : itemList)
+		{
+			const uint16_t count = it.stackable ? std::min<uint16_t>(remaining, item->getItemCount()) : 1;
+			if (internalRemoveItem(item, count, true) != RETURNVALUE_NOERROR)
+				return;
+			remaining -= count;
+			if (remaining == 0)
+				break;
+		}
+		if (remaining != 0)
+			return;
+		if (not IOMarket::createOffer(player->getGUID(), static_cast<MarketAction_t>(type), it.getID(), amount, price, anonymous))
+			return;
 
 		if (it.stackable) {
 			uint16_t tmpAmount = amount;
@@ -7471,14 +7614,14 @@ void Game::playerCreateMarketOffer(const uint32_t playerId, uint8_t type, const 
 		if (totalPrice > (playerMoney + player->bankBalance)) {
 			return;
 		}
+		if (not IOMarket::createOffer(player->getGUID(), static_cast<MarketAction_t>(type), it.getID(), amount, price, anonymous))
+			return;
 
 		const auto debitCash = std::min(playerMoney, totalPrice);
 		const auto debitBank = totalPrice - debitCash;
 		removeMoney({ .player = player }, debitCash);
 		player->bankBalance -= debitBank;
 	}
-
-	IOMarket::createOffer(player->getGUID(), static_cast<MarketAction_t>(type), it.getID(), amount, price, anonymous);
 
 	player->sendMarketEnter();
 	const MarketOfferList& buyOffers = IOMarket::getActiveOffers(MARKETACTION_BUY, it.getID());
@@ -7501,6 +7644,10 @@ void Game::playerCancelMarketOffer(const uint32_t playerId, const uint32_t times
 	if (offer.id == 0 || offer.playerId != player->getGUID()) {
 		return;
 	}
+	if (offer.type == MARKETACTION_SELL and Item::items[offer.itemId].getID() == 0)
+		return;
+	if (not IOMarket::moveOfferToHistory(offer.id, OFFERSTATE_CANCELLED, &offer))
+		return;
 
 	if (offer.type == MARKETACTION_BUY) {
 		player->bankBalance += static_cast<uint64_t>(offer.price) * offer.amount;
@@ -7544,7 +7691,6 @@ void Game::playerCancelMarketOffer(const uint32_t playerId, const uint32_t times
 		}
 	}
 
-	IOMarket::moveOfferToHistory(offer.id, OFFERSTATE_CANCELLED);
 	offer.amount = 0;
 	offer.timestamp += g_config.GetNumber(ConfigManager::MARKET_OFFER_DURATION);
 	player->sendMarketCancelOffer(offer);
@@ -7575,7 +7721,7 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 	}
 
 	uint32_t offerAccountId = IOLoginData::getAccountIdByPlayerId(offer.playerId);
-	if (offerAccountId == player->getAccount()) {
+	if (offerAccountId == 0 or offerAccountId == player->getAccount()) {
 		return;
 	}
 
@@ -7598,10 +7744,25 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 
 		auto buyerPlayer = getPlayerByGUID(offer.playerId);
 		if (!buyerPlayer) {
+			buyerPlayer = std::make_shared<Player>(nullptr);
 			if (!IOLoginData::loadPlayerById(buyerPlayer, offer.playerId)) {
 				return;
 			}
 		}
+		uint16_t remaining = amount;
+		for (const auto& item : itemList)
+		{
+			const uint16_t count = it.stackable ? std::min<uint16_t>(remaining, item->getItemCount()) : 1;
+			if (internalRemoveItem(item, count, true) != RETURNVALUE_NOERROR)
+				return;
+			remaining -= count;
+			if (remaining == 0)
+				break;
+		}
+		if (remaining != 0)
+			return;
+		if (not IOMarket::acceptOffer(offer, amount, player->getGUID()))
+			return;
 
 		if (it.stackable) {
 			uint16_t tmpAmount = amount;
@@ -7622,7 +7783,7 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 
 		player->bankBalance += totalPrice;
 
-		const ItemPtr inbox = player->getInbox()->getOwner();
+		const ItemPtr inbox = buyerPlayer->getInbox()->getOwner();
 		if (it.stackable) {
 			uint16_t tmpAmount = amount;
 			while (tmpAmount > 0) {
@@ -7661,6 +7822,9 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 		if (totalPrice > (player->getMoney() + player->bankBalance)) {
 			return;
 		}
+		const auto sellerPlayer = getPlayerByGUID(offer.playerId);
+		if (not IOMarket::acceptOffer(offer, amount, player->getGUID(), not sellerPlayer))
+			return;
 
 		const auto debitCash = std::min(player->getMoney(), totalPrice);
 		const auto debitBank = totalPrice - debitCash;
@@ -7699,10 +7863,8 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 			}
 		}
 
-		if (const auto& sellerPlayer = getPlayerByGUID(offer.playerId)) {
+		if (sellerPlayer) {
 			sellerPlayer->bankBalance += totalPrice;
-		} else {
-			IOLoginData::increaseBankBalance(offer.playerId, totalPrice);
 		}
 
 		player->onReceiveMail();
@@ -7710,17 +7872,7 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 
 	const int32_t marketOfferDuration = g_config.GetNumber(ConfigManager::MARKET_OFFER_DURATION);
 
-	IOMarket::appendHistory(player->getGUID(), (offer.type == MARKETACTION_BUY ? MARKETACTION_SELL : MARKETACTION_BUY), offer.itemId, amount, offer.price, offer.timestamp + marketOfferDuration, OFFERSTATE_ACCEPTEDEX);
-
-	IOMarket::appendHistory(offer.playerId, offer.type, offer.itemId, amount, offer.price, offer.timestamp + marketOfferDuration, OFFERSTATE_ACCEPTED);
-
 	offer.amount -= amount;
-
-	if (offer.amount == 0) {
-		IOMarket::deleteOffer(offer.id);
-	} else {
-		IOMarket::acceptOffer(offer.id, amount);
-	}
 
 	player->sendMarketEnter();
 	offer.timestamp += marketOfferDuration;

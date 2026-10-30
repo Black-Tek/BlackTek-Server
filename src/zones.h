@@ -53,6 +53,8 @@
 #include <filesystem>
 #include <optional>
 #include <coroutine>
+#include <type_traits>
+#include <utility>
 #include <gtl/phmap.hpp>
 
 class MonsterType;
@@ -263,6 +265,7 @@ namespace Zones
         struct promise_type
         {
             Zone* owner = nullptr;
+            bool running = true;
 
             promise_type() : owner(nullptr) {}
             template <typename... Args>
@@ -271,9 +274,42 @@ namespace Zones
 
             SpawnCoroTask get_return_object() noexcept { return {}; }
             std::suspend_never initial_suspend() noexcept { return {}; }
-            std::suspend_never final_suspend()   noexcept { return {}; }
+            std::suspend_never final_suspend()   noexcept { running = false; return {}; }
             void return_void()        noexcept {}
             void unhandled_exception() noexcept {}
+
+            template <typename Awaiter>
+            struct TrackedAwaiter
+            {
+                promise_type& promise;
+                Awaiter awaiter;
+
+                bool await_ready() { return awaiter.await_ready(); }
+                decltype(auto) await_suspend(std::coroutine_handle<promise_type> handle)
+                {
+                    promise.running = false;
+                    if constexpr (std::is_void_v<decltype(awaiter.await_suspend(handle))>)
+                        awaiter.await_suspend(handle);
+                    else
+                    {
+                        auto result = awaiter.await_suspend(handle);
+                        if constexpr (std::is_same_v<decltype(result), bool>)
+                            promise.running = not result;
+                        return result;
+                    }
+                }
+                decltype(auto) await_resume()
+                {
+                    promise.running = true;
+                    return awaiter.await_resume();
+                }
+            };
+
+            template <typename Awaiter>
+            auto await_transform(Awaiter&& awaiter)
+            {
+                return TrackedAwaiter<std::decay_t<Awaiter>>{*this, std::forward<Awaiter>(awaiter)};
+            }
 
             static void* operator new(std::size_t size)
             {

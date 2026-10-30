@@ -72,6 +72,8 @@
 #include "metrics_format.h"
 #include "storewindow.h"
 
+#include <charconv>
+
 using BlackTek::Augment;
 using BlackTek::DamageModifier;
 using BlackTek::GameModel;
@@ -745,11 +747,12 @@ void LuaScriptInterface::setMetatable(lua_State* L, int32_t index, const std::st
 
 void LuaScriptInterface::setWeakMetatable(lua_State* L, int32_t index, const std::string& name)
 {
-	static std::set<std::string> weakObjectTypes;
 	const std::string& weakName = name + "_weak";
 
-	auto result = weakObjectTypes.emplace(name);
-	if (result.second) {
+	luaL_getmetatable(L, weakName.c_str());
+	if (lua_isnil(L, -1))
+	{
+		lua_pop(L, 1);
 		luaL_getmetatable(L, name.c_str());
 		int childMetatable = lua_gettop(L);
 
@@ -772,8 +775,6 @@ void LuaScriptInterface::setWeakMetatable(lua_State* L, int32_t index, const std
 		lua_setfield(L, metatable, "__gc");
 
 		lua_remove(L, childMetatable);
-	} else {
-		luaL_getmetatable(L, weakName.c_str());
 	}
 	lua_setmetatable(L, index - 1);
 }
@@ -2437,6 +2438,7 @@ void LuaScriptInterface::registerFunctions()
 
 	// StoreWindow
 	registerClass("StoreWindow", "", luaStoreWindowCreate);
+	registerMetaMethod("StoreWindow", "__gc", destroySharedUserData<BlackTek::StoreWindow>);
 	registerMetaMethod("StoreWindow", "__eq", luaUserdataCompare);
 	registerMethod("StoreWindow", "accountType",  luaStoreWindowAccountType);
 	registerMethod("StoreWindow", "coins",        luaStoreWindowCoins);
@@ -2447,6 +2449,7 @@ void LuaScriptInterface::registerFunctions()
 
 	// StoreCategory (not directly constructable from Lua)
 	registerClass("StoreCategory", "", nullptr);
+	registerMetaMethod("StoreCategory", "__gc", destroySharedUserData<BlackTek::StoreCategory>);
 	registerMetaMethod("StoreCategory", "__eq", luaUserdataCompare);
 	registerMethod("StoreCategory", "product",     luaStoreCategoryProduct);
 	registerMethod("StoreCategory", "onPurchase",  luaStoreCategoryOnPurchase);
@@ -2579,7 +2582,7 @@ void LuaScriptInterface::registerFunctions()
 	// Container
 	registerClass("Container", "Item", luaContainerCreate);
 	registerMetaMethod("Container", "__eq", luaUserdataCompare);
-	registerMetaMethod("Container", "__gc", destroySharedUserData<ItemContainer>);
+	registerMetaMethod("Container", "__gc", destroySharedUserData<Item>);
 
 	registerMethod("Container", "getSize", luaContainerGetSize);
 	registerMethod("Container", "getCapacity", luaContainerGetCapacity);
@@ -2598,6 +2601,7 @@ void LuaScriptInterface::registerFunctions()
 	// Teleport
 	registerClass("Teleport", "Item", luaTeleportCreate);
 	registerMetaMethod("Teleport", "__eq", luaUserdataCompare);
+	registerMetaMethod("Teleport", "__gc", destroySharedUserData<Item>);
 
 	registerMethod("Teleport", "getDestination", luaTeleportGetDestination);
 	registerMethod("Teleport", "setDestination", luaTeleportSetDestination);
@@ -2972,6 +2976,7 @@ void LuaScriptInterface::registerFunctions()
 
 	// Guild
 	registerClass("Guild", "", luaGuildCreate);
+	registerMetaMethod("Guild", "__gc", destroySharedUserData<Guild>);
 	registerMetaMethod("Guild", "__eq", luaUserdataCompare);
 
 	registerMethod("Guild", "getId", luaGuildGetId);
@@ -3080,6 +3085,7 @@ void LuaScriptInterface::registerFunctions()
 
 	registerClass("Zone", "", luaZoneCreate);
 	registerMetaMethod("Zone", "__eq", luaZoneEq);
+	registerMetaMethod("Zone", "__gc", luaZoneDelete);
 
 	registerMethod("Zone", "getId", luaZoneGetId);
 	registerMethod("Zone", "getName", luaZoneGetName);
@@ -3679,6 +3685,7 @@ void LuaScriptInterface::registerFunctions()
 	// Party
 	registerClass("Party", "", luaPartyCreate);
 	registerMetaMethod("Party", "__eq", luaUserdataCompare);
+	registerMetaMethod("Party", "__gc", destroySharedUserData<Party>);
 
 	registerMethod("Party", "disband", luaPartyDisband);
 
@@ -4361,40 +4368,47 @@ int LuaScriptInterface::luaCreateCombatArea(lua_State* L)
 
 int LuaScriptInterface::luaDoAreaCombat(lua_State* L)
 {
-	//doAreaCombat(cid, type, pos, area, min, max, effect[, origin = ORIGIN_SPELL[, blockArmor = false[, blockShield = false[, ignoreResistances = false]]]])
-	//auto creature = getCreature(L, 1);
-	//if (!creature && (!isNumber(L, 1) || getNumber<uint32_t>(L, 1) != 0)) {
-	//	reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
-	//	pushBoolean(L, false);
-	//	return 1;
-	//}
+	// doAreaCombat(cid, type, pos, area, min, max, effect[, origin[, blockArmor[, blockShield[, ignoreResistances]]]])
+	const auto creature = getCreature(L, 1);
+	if (not creature and (not isNumber(L, 1) or getNumber<uint32_t>(L, 1) != 0))
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_CREATURE_NOT_FOUND));
+		pushBoolean(L, false);
+		return 1;
+	}
 
-	//uint32_t areaId = getNumber<uint32_t>(L, 4);
-	//const AreaCombat* area = g_luaEnvironment.getAreaObject(areaId);
-	//if (area || areaId == 0) {
-	//	CombatType_t combatType = getNumber<CombatType_t>(L, 2);
+	const uint32_t areaId = getNumber<uint32_t>(L, 4);
+	const auto* area = g_luaEnvironment.getAreaObject(areaId);
+	if (not area and areaId != 0)
+	{
+		reportErrorFunc(L, getErrorDesc(LUA_ERROR_AREA_NOT_FOUND));
+		pushBoolean(L, false);
+		return 1;
+	}
+	if (getBoolean(L, 11, false))
+	{
+		reportErrorFunc(L, "doAreaCombat: ignoreResistances is not supported by the combat engine");
+		pushBoolean(L, false);
+		return 1;
+	}
 
-	//	Combat params;
-	//	params.setParam(COMBAT_PARAM_TYPE, static_cast<uint32_t>(combatType));
-	//	params.setParam(COMBAT_PARAM_EFFECT, getNumber<uint8_t>(L, 7));
-	//	params.setParam(COMBAT_PARAM_BLOCKARMOR, getBoolean(L, 9, false) ? 1 : 0);
-	//	params.setParam(COMBAT_PARAM_BLOCKSHIELD, getBoolean(L, 10, false) ? 1 : 0);
-	//	params.setParam(COMBAT_PARAM_IGNORERESISTANCES, getBoolean(L, 11, false) ? 1 : 0);
+	const auto type = getNumber<uint16_t>(L, 2);
+	const auto damage = normal_random(getNumber<int32_t>(L, 5), getNumber<int32_t>(L, 6));
+	auto combat = BlackTek::g_combat_registry.Create(type, static_cast<uint32_t>(std::abs(static_cast<int64_t>(damage))));
+	combat->SetImpactEffect(getNumber<uint8_t>(L, 7, CONST_ME_NONE));
+	combat->setOrigin(getNumber<BlackTek::Combat::Origin>(L, 8, BlackTek::Combat::Origin::Spell));
+	const bool healing = type == BlackTek::Combat::DamageType::Healing;
+	combat->SetConfig(BlackTek::Combat::Config::Aggressive, not healing);
+	combat->SetConfig(BlackTek::Combat::Config::HealthTarget, healing);
+	combat->SetConfig(BlackTek::Combat::Config::BlockedByArmor, getBoolean(L, 9, false));
+	combat->SetConfig(BlackTek::Combat::Config::BlockedByDefense, getBoolean(L, 10, false));
+	if (area)
+		combat->setArea(std::make_unique<BlackTek::AreaCombat>(*area));
 
-	//	CombatDamage damage;
-	//	damage.origin = getNumber<CombatOrigin>(L, 8, ORIGIN_SPELL);
-	//	damage.primary.type = combatType;
-	//	damage.primary.value = normal_random(getNumber<int32_t>(L, 5), getNumber<int32_t>(L, 6));
-
-	//	Combat::doAreaCombat(creature, getPosition(L, 3), area, damage, params);
-	//	pushBoolean(L, true);
-	//} else {
-	//	reportErrorFunc(L, getErrorDesc(LUA_ERROR_AREA_NOT_FOUND));
-	//	pushBoolean(L, false);
-	//}
+	combat->execute(creature, getPosition(L, 3));
+	pushBoolean(L, true);
 	return 1;
 }
-
 int LuaScriptInterface::luaDoTargetCombat(lua_State* L)
 {
 	// doTargetCombat(cid, target, type, min, max, effect[, origin = ORIGIN_SPELL[, blockArmor = false[, blockShield = false]]])
@@ -4423,10 +4437,13 @@ int LuaScriptInterface::luaDoTargetCombat(lua_State* L)
 
 	auto strike = BlackTek::g_combat_registry.Create(
 		combatType,
-		static_cast<uint32_t>(std::abs(normal_random(minDmg, maxDmg)))
+		static_cast<uint32_t>(std::abs(static_cast<int64_t>(normal_random(minDmg, maxDmg))))
 	);
 	strike->SetImpactEffect(effect);
-	strike->SetConfig(BlackTek::Combat::Config::Aggressive);
+	strike->setOrigin(getNumber<BlackTek::Combat::Origin>(L, 7, BlackTek::Combat::Origin::Spell));
+	const bool healing = combatType == BlackTek::Combat::DamageType::Healing;
+	strike->SetConfig(BlackTek::Combat::Config::Aggressive, not healing);
+	strike->SetConfig(BlackTek::Combat::Config::HealthTarget, healing);
 	if (blockArmor)
 		strike->SetConfig(BlackTek::Combat::Config::BlockedByArmor);
 	if (blockShield)
@@ -4947,8 +4964,14 @@ int LuaScriptInterface::luaDatabaseEscapeString(lua_State* L)
 
 int LuaScriptInterface::luaDatabaseEscapeBlob(lua_State* L)
 {
-	uint32_t length = getNumber<uint32_t>(L, 2);
-	pushString(L, Database::getInstance().escapeBlob(getString(L, 1).c_str(), length));
+	const std::string blob = getString(L, 1);
+	const uint32_t length = getNumber<uint32_t>(L, 2);
+	if (length > blob.size())
+	{
+		pushBoolean(L, false);
+		return 1;
+	}
+	pushString(L, Database::getInstance().escapeBlob(blob.data(), length));
 	return 1;
 }
 
@@ -5043,26 +5066,43 @@ int LuaScriptInterface::luaUserdataCompare(lua_State* L)
 int LuaScriptInterface::luaIsType(lua_State* L)
 {
 	// isType(derived, base)
-	lua_getmetatable(L, -2);
-	lua_getmetatable(L, -2);
-
-	lua_rawgeti(L, -2, 'p');
-	uint_fast8_t parentsB = getNumber<uint_fast8_t>(L, 1);
-
-	lua_rawgeti(L, -3, 'h');
-	size_t hashB = getNumber<size_t>(L, 1);
-
-	lua_rawgeti(L, -3, 'p');
-	uint_fast8_t parentsA = getNumber<uint_fast8_t>(L, 1);
-	for (uint_fast8_t i = parentsA; i < parentsB; ++i) {
-		lua_getfield(L, -3, "__index");
-		lua_replace(L, -4);
+	for (int arg = 1; arg <= 2; ++arg)
+	{
+		if (lua_isuserdata(L, arg) and lua_getmetatable(L, arg))
+		{
+			lua_getfield(L, -1, "__index");
+			lua_remove(L, -2);
+		}
+		else
+		{
+			lua_pushvalue(L, arg);
+		}
+		if (not lua_istable(L, -1))
+		{
+			pushBoolean(L, false);
+			return 1;
+		}
 	}
 
-	lua_rawgeti(L, -4, 'h');
-	size_t hashA = getNumber<size_t>(L, 1);
+	// Compare class tables directly, then follow the registered inheritance chain.
+	for (uint32_t depth = 0; depth < 256; ++depth)
+	{
+		if (lua_rawequal(L, -2, -1))
+		{
+			pushBoolean(L, true);
+			return 1;
+		}
+		if (not lua_getmetatable(L, -2))
+			break;
 
-	pushBoolean(L, hashA == hashB);
+		lua_getfield(L, -1, "__index");
+		lua_remove(L, -2);
+		if (not lua_istable(L, -1))
+			break;
+
+		lua_replace(L, -3);
+	}
+	pushBoolean(L, false);
 	return 1;
 }
 
@@ -5770,85 +5810,71 @@ int LuaScriptInterface::luaGameSaveAccountStorageValues(lua_State* L)
 
 int LuaScriptInterface::luaGameSendDiscordWebhook(lua_State* L)
 {
-	// Game.sendDiscordMessage(token, message_type, message)
-
-	std::string token;
-	DiscordMessageType messageType;
-	std::string msg;
-
-	if (isString(L, 1))
-		token = getString(L, 1);
-	if (isNumber(L, 2))
-		messageType = getNumber<DiscordMessageType>(L, 2);
-	if (isString(L, 3))
-		msg = getString(L, 3);
-
-	if (token.length() > 0 && msg.length() > 0 && messageType >= 0) {
-		// "{\"content\": null,\"embeds\":[{\"title\": \"testing\",\"description\": \"tetsign\",\"color\": 4062976}],\"attachments\": []}"
-		std::string field;
-		struct curl_slist* headers = nullptr;
-		headers = curl_slist_append(headers, "Content-Type: application/json");
-
-		switch (messageType) {
-		case DiscordMessageType::MESSAGE_NORMAL:
-			field = R"({
-				"content": null,
-				"embeds" : [{
-					"title": "~MESSAGE~",
-					"description" : ")" + msg + R"(",
-					"color" : 1815333
-				}]
-			})";
-			break;
-		case DiscordMessageType::MESSAGE_ERROR:
-			field = R"({
-				"content": null,
-				"embeds" : [{
-					"title": "~ERROR~",
-					"description" : ")" + msg + R"(",
-					"color" : 16711680
-				}]
-			})";
-			break;
-		case DiscordMessageType::MESSAGE_LOG:
-			field = R"({
-				"content": null,
-				"embeds" : [{
-					"title": "~LOG~",
-					"description" : ")" + msg + R"(",
-					"color" : 41727
-				}]
-			})";
-			break;
-		case DiscordMessageType::MESSAGE_INFO:
-			field = R"({
-				"content": null,
-				"embeds" : [{
-					"title": "~INFO~",
-					"description" : ")" + msg + R"(",
-					"color" : 16762880
-				}]
-			})";
-			break;
-
-		default:
-			return 1;
-		}
-
-		auto curl = g_game.curl;
-
-		g_utility_boss.addTask(createTask([curl, token, field, headers]() {
-			curl_easy_setopt(curl, CURLOPT_URL, token.data());
-			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, field.data());
-			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-			auto response = curl_easy_perform(curl);
-
-			if (response != CURLE_OK)
-				std::cout << "Curl failed - reason: " << curl_easy_strerror(response) << std::endl;
-		}));
+	// Game.sendDiscordMessage(url, messageType, message)
+	if (not isString(L, 1) or not isNumber(L, 2) or not isString(L, 3))
+	{
+		pushBoolean(L, false);
+		return 1;
 	}
 
+	const std::string url = getString(L, 1);
+	const std::string message = getString(L, 3);
+	const auto messageType = getNumber<DiscordMessageType>(L, 2);
+	std::string_view title;
+	uint32_t color;
+	switch (messageType)
+	{
+		case DiscordMessageType::MESSAGE_NORMAL: title = "~MESSAGE~"; color = 1815333; break;
+		case DiscordMessageType::MESSAGE_ERROR: title = "~ERROR~"; color = 16711680; break;
+		case DiscordMessageType::MESSAGE_LOG: title = "~LOG~"; color = 41727; break;
+		case DiscordMessageType::MESSAGE_INFO: title = "~INFO~"; color = 16762880; break;
+		default:
+			pushBoolean(L, false);
+			return 1;
+	}
+	if (url.empty() or message.empty())
+	{
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	std::string escaped;
+	for (const unsigned char character : message)
+	{
+		switch (character)
+		{
+			case '"': escaped += "\\\""; break;
+			case '\\': escaped += "\\\\"; break;
+			default:
+				if (character < 0x20)
+					escaped += fmt::format("\\u{:04x}", character);
+				else
+					escaped += static_cast<char>(character);
+		}
+	}
+	const std::string payload = fmt::format(
+		"{{\"content\":null,\"embeds\":[{{\"title\":\"{}\",\"description\":\"{}\",\"color\":{}}}]}}",
+		title, escaped, color);
+
+	g_utility_boss.addTask(createTask([url, payload]()
+	{
+		using CurlHandle = std::unique_ptr<CURL, decltype(&curl_easy_cleanup)>;
+		using CurlHeaders = std::unique_ptr<curl_slist, decltype(&curl_slist_free_all)>;
+		CurlHandle handle(curl_easy_init(), curl_easy_cleanup);
+		CurlHeaders headers(curl_slist_append(nullptr, "Content-Type: application/json"), curl_slist_free_all);
+		if (not handle or not headers)
+			return;
+
+		curl_easy_setopt(handle.get(), CURLOPT_URL, url.c_str());
+		curl_easy_setopt(handle.get(), CURLOPT_POSTFIELDS, payload.c_str());
+		curl_easy_setopt(handle.get(), CURLOPT_HTTPHEADER, headers.get());
+		curl_easy_setopt(handle.get(), CURLOPT_CONNECTTIMEOUT, 10L);
+		curl_easy_setopt(handle.get(), CURLOPT_TIMEOUT, 30L);
+		const auto response = curl_easy_perform(handle.get());
+		if (response != CURLE_OK)
+			BlackTek::Console::Net::Warn("LuaScriptInterface::luaGameSendDiscordWebhook: request failed: {}", curl_easy_strerror(response));
+	}));
+	pushBoolean(L, true);
 	return 1;
 }
 
@@ -7334,9 +7360,9 @@ int LuaScriptInterface::luaStoreWindowCreate(lua_State* L)
 {
 	// StoreWindow(title)
 	auto title = getString(L, 2);
-	auto* window = new BlackTek::StoreWindow(std::string{ title });
+	auto window = std::make_shared<BlackTek::StoreWindow>(std::string{ title });
 	window->fromLua = true;
-	pushUserdata<BlackTek::StoreWindow>(L, window);
+	pushSharedPtr(L, window);
 	setMetatable(L, -1, "StoreWindow");
 	return 1;
 }
@@ -7344,7 +7370,7 @@ int LuaScriptInterface::luaStoreWindowCreate(lua_State* L)
 int LuaScriptInterface::luaStoreWindowAccountType(lua_State* L)
 {
 	// window:accountType(type)
-	auto* window = getUserdata<BlackTek::StoreWindow>(L, 1);
+	const auto window = getSharedPtr<BlackTek::StoreWindow>(L, 1);
 	if (not window)
 	{
 		lua_pushnil(L);
@@ -7358,7 +7384,7 @@ int LuaScriptInterface::luaStoreWindowAccountType(lua_State* L)
 int LuaScriptInterface::luaStoreWindowCoins(lua_State* L)
 {
 	// window:coins(balance, transferable)
-	auto* window = getUserdata<BlackTek::StoreWindow>(L, 1);
+	const auto window = getSharedPtr<BlackTek::StoreWindow>(L, 1);
 	if (not window)
 	{
 		lua_pushnil(L);
@@ -7372,7 +7398,7 @@ int LuaScriptInterface::luaStoreWindowCoins(lua_State* L)
 int LuaScriptInterface::luaStoreWindowSetCoins(lua_State* L)
 {
 	// window:setCoins(balance, transferable)
-	auto* window = getUserdata<BlackTek::StoreWindow>(L, 1);
+	const auto window = getSharedPtr<BlackTek::StoreWindow>(L, 1);
 	if (not window)
 	{
 		lua_pushnil(L);
@@ -7386,7 +7412,7 @@ int LuaScriptInterface::luaStoreWindowSetCoins(lua_State* L)
 int LuaScriptInterface::luaStoreWindowOnOpen(lua_State* L)
 {
 	// window:onOpen(callback)
-	auto* window = getUserdata<BlackTek::StoreWindow>(L, 1);
+	const auto window = getSharedPtr<BlackTek::StoreWindow>(L, 1);
 	if (not window)
 	{
 		lua_pushnil(L);
@@ -7408,7 +7434,7 @@ int LuaScriptInterface::luaStoreWindowOnOpen(lua_State* L)
 int LuaScriptInterface::luaStoreWindowCategory(lua_State* L)
 {
 	// window:category(name, icon)
-	auto* window = getUserdata<BlackTek::StoreWindow>(L, 1);
+	const auto window = getSharedPtr<BlackTek::StoreWindow>(L, 1);
 	if (not window)
 	{
 		lua_pushnil(L);
@@ -7417,7 +7443,7 @@ int LuaScriptInterface::luaStoreWindowCategory(lua_State* L)
 	auto name = std::string{ getString(L, 2) };
 	auto icon = std::string{ getString(L, 3) };
 	auto* category = window->addCategory(name, icon);
-	pushUserdata<BlackTek::StoreCategory>(L, category);
+	pushSharedPtr(L, std::shared_ptr<BlackTek::StoreCategory>(window, category));
 	setMetatable(L, -1, "StoreCategory");
 	return 1;
 }
@@ -7425,7 +7451,7 @@ int LuaScriptInterface::luaStoreWindowCategory(lua_State* L)
 int LuaScriptInterface::luaStoreWindowRegister(lua_State* L)
 {
 	// window:register()
-	auto* window = getUserdata<BlackTek::StoreWindow>(L, 1);
+	const auto window = getSharedPtr<BlackTek::StoreWindow>(L, 1);
 	if (not window)
 	{
 		lua_pushnil(L);
@@ -7439,7 +7465,7 @@ int LuaScriptInterface::luaStoreWindowRegister(lua_State* L)
 int LuaScriptInterface::luaStoreCategoryProduct(lua_State* L)
 {
 	// category:product(id, name, price, icon[, description])
-	auto* category = getUserdata<BlackTek::StoreCategory>(L, 1);
+	const auto category = getSharedPtr<BlackTek::StoreCategory>(L, 1);
 	if (not category)
 	{
 		lua_pushnil(L);
@@ -7458,7 +7484,7 @@ int LuaScriptInterface::luaStoreCategoryProduct(lua_State* L)
 int LuaScriptInterface::luaStoreCategoryOnPurchase(lua_State* L)
 {
 	// category:onPurchase(callback)
-	auto* category = getUserdata<BlackTek::StoreCategory>(L, 1);
+	const auto category = getSharedPtr<BlackTek::StoreCategory>(L, 1);
 	if (not category)
 	{
 		lua_pushnil(L);
@@ -7480,7 +7506,7 @@ int LuaScriptInterface::luaStoreCategoryOnPurchase(lua_State* L)
 int LuaScriptInterface::luaStoreCategoryCanPurchase(lua_State* L)
 {
 	// category:canPurchase(callback)
-	auto* category = getUserdata<BlackTek::StoreCategory>(L, 1);
+	const auto category = getSharedPtr<BlackTek::StoreCategory>(L, 1);
 	if (not category)
 	{
 		lua_pushnil(L);
@@ -7687,7 +7713,7 @@ int LuaScriptInterface::luaItemSplit(lua_State* L)
 		env->insertItem(uid, newItem);
 	}
 
-	itemPtr.reset(newItem.get());
+	itemPtr = newItem;
 	
 	splitItem->setScriptDetached();
 	env->addTempItem(splitItem);
@@ -8198,7 +8224,7 @@ int LuaScriptInterface::luaItemTransform(lua_State* L)
 		env->insertItem(uid, newItem);
 	}
 
-	item = newItem;
+	itemPtr = newItem;
 	pushBoolean(L, true);
 	return 1;
 }
@@ -8809,7 +8835,7 @@ int LuaScriptInterface::luaItemGetCustomSkillUserData(lua_State* L)
 			if (auto skill = item->getCustomSkill(skill_name))
 			{
 				pushSharedPtr(L, skill);
-				setMetatable(L, -1, "CustomSkill");
+				setMetatable(L, -1, "Skill");
 				return 1;
 			}
 			else
@@ -9564,8 +9590,8 @@ int LuaScriptInterface::luaContainerHasItem(lua_State* L)
 {
 	// container:hasItem(item)
 	const auto selfItem = getSharedPtr<Item>(L, 1);
-	if (const auto container = selfItem ? selfItem->getContainer() : nullptr;
-		const auto item = getSharedPtr<Item>(L, 2)) {
+	const auto container = selfItem ? selfItem->getContainer() : nullptr;
+	if (const auto item = getSharedPtr<Item>(L, 2); container and item) {
 		pushBoolean(L, container->isHoldingItem(item));
 	} else {
 		lua_pushnil(L);
@@ -10351,7 +10377,7 @@ int LuaScriptInterface::luaCreatureAddHealth(lua_State* L)
 	{
 		auto dmg = BlackTek::g_combat_registry.Create(
 		    static_cast<uint16_t>(BlackTek::Combat::DamageType::Undefined),
-		    static_cast<uint32_t>(-healthChange));
+		    static_cast<uint32_t>(-static_cast<int64_t>(healthChange)));
 		dmg->SetConfig(BlackTek::Combat::Config::TrueDamage);
 		dmg->strike_target(creature, creature, true);
 	}
@@ -10855,7 +10881,7 @@ int LuaScriptInterface::luaCreatureGiveCustomSkill(lua_State* L)
 				}
 				// Skill name not found but "make_new" is true
 				auto new_skill = Components::Skills::CustomSkill::make_skill();
-				pushBoolean(L, player->giveCustomSkill(skill_name, std::move(new_skill)));
+				pushBoolean(L, npc->giveCustomSkill(skill_name, std::move(new_skill)));
 				return 1;
 			}
 			else if (const auto& monster = creature->getMonster())
@@ -10872,7 +10898,7 @@ int LuaScriptInterface::luaCreatureGiveCustomSkill(lua_State* L)
 				}
 				// Skill name not found but "make_new" is true
 				auto new_skill = Components::Skills::CustomSkill::make_skill();
-				pushBoolean(L, player->giveCustomSkill(skill_name, std::move(new_skill)));
+				pushBoolean(L, monster->giveCustomSkill(skill_name, std::move(new_skill)));
 				return 1;
 			}
 			BlackTek::Console::Script::Error("{}: creature is not a player, npc, or monster", __FUNCTION__);
@@ -11447,55 +11473,39 @@ int LuaScriptInterface::luaCreatureGetStats(lua_State* L)
 // todo : add support for raw table as param for consructor (this and all classes in lua I can)
 int LuaScriptInterface::luaStatCreate(lua_State* L)
 {
-	// Stat(number: id, number: max_points, [number: current_points, bool: proportional_scaling ])
-	// Stat(number: id, userdata: stat) -- this allows for handling deep copy in source instead of lua
-
-	if (const auto& stat_id = getNumber<uint32_t>(L, 2))
+	// Stat(id, maxPoints[, currentPoints = 0[, proportionalScaling = true]])
+	// Stat(id, otherStat)
+	const uint32_t statId = getNumber<uint32_t>(L, 2);
+	if (statId == 0)
 	{
-		if (const auto& other_stat = getSharedPtr<StandardStat>(L, 3))
-		{
-			const auto& stat = std::make_shared<StandardStat>(stat_id, other_stat.get()->current(), other_stat.get()->max());
-			pushSharedPtr(L, stat);
-			setMetatable(L, -1, "Stat");
-			return 1;
-		}
-		else
-		{
-			const auto max_points = getNumber<uint32_t>(L, 3);
-			if (not max_points)
-			{
-				BlackTek::Console::Script::Warn("{}: invalid or missing 'max_points' argument", __FUNCTION__);
-				reportErrorFunc(L, "Stat(): invalid or missing 'max_points' argument");
-				lua_pushnil(L);
-				return 1;
-			}
-
-			if (const auto current_points = getNumber<uint32_t>(L, 4))
-			{
-				const bool scale = getBoolean(L, 4, true);
-				const auto& stat = std::make_shared<StandardStat>(stat_id, max_points, current_points, scale);
-				pushSharedPtr(L, stat);
-				setMetatable(L, -1, "Stat");
-				return 1;
-			}
-			else
-			{
-				BlackTek::Console::Script::Warn("{}: invalid or missing 'current_points' argument", __FUNCTION__);
-				reportErrorFunc(L, "Stat(): invalid or missing 'current_points' argument");
-				lua_pushnil(L);
-				return 1;
-			}
-		}
-	}
-	else
-	{
-		BlackTek::Console::Script::Warn("{}: invalid or missing 'id' argument", __FUNCTION__);
-		reportErrorFunc(L, "Stat(): invalid or missing 'id' argument");
 		lua_pushnil(L);
 		return 1;
 	}
 
-	return 0;
+	std::shared_ptr<StandardStat> stat;
+	if (isUserdata(L, 3))
+	{
+		const auto otherStat = getSharedPtr<StandardStat>(L, 3);
+		if (otherStat)
+			stat = std::make_shared<StandardStat>(statId, otherStat->current(), otherStat->max());
+	}
+	else
+	{
+		const uint32_t maxPoints = getNumber<uint32_t>(L, 3);
+		if (maxPoints > 0)
+		{
+			const uint32_t currentPoints = getNumber<uint32_t>(L, 4, 0);
+			stat = std::make_shared<StandardStat>(statId, currentPoints, maxPoints, getBoolean(L, 5, true));
+		}
+	}
+	if (not stat)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+	pushSharedPtr(L, stat);
+	setMetatable(L, -1, "Stat");
+	return 1;
 }
 
 int LuaScriptInterface::luaStatDestroy(lua_State* L)
@@ -11655,95 +11665,63 @@ int LuaScriptInterface::luaStatValue(lua_State* L)
 
 int LuaScriptInterface::luaStatAddModifier(lua_State* L)
 {
-	// stat:addModifier(modifier: mod)
-	// stat:addModifier(enum: type, number: value)
-	if (const auto& stat = getSharedPtr<StandardStat>(L, 1))
+	// stat:addModifier(modifier) or stat:addModifier(type, value)
+	const auto stat = getSharedPtr<StandardStat>(L, 1);
+	if (not stat)
 	{
-		if (const auto& modifier = getSharedPtr<StandardStatMod>(L, 2))
-		{
-
-		}
-		else if (const auto mod_number = getNumber<uint32_t>(L, 3))
-		{
-			const auto mod_type = static_cast<StatModifierType>(mod_number);
-			if (const auto amount = getNumber<uint32_t>(L, 4))
-			{
-				stat->addModifier(mod_type, amount);
-				pushBoolean(L, true);
-				return 1;
-			}
-			else
-			{
-				BlackTek::Console::Script::Warn("{}: invalid or missing 'value' argument", __FUNCTION__);
-				reportErrorFunc(L, "Stat:addModifier(): invalid or missing 'value' argument");
-				lua_pushnil(L);
-				return 1;
-			}
-		}
-		else
-		{
-			BlackTek::Console::Script::Warn("{}: expected a StatModifier or (type, value) pair", __FUNCTION__);
-			reportErrorFunc(L, "Stat:addModifier(): expected a StatModifier or (type, value) pair");
-			lua_pushnil(L);
-			return 1;
-		}
-	}
-	else
-	{
-		BlackTek::Console::Script::Warn("{}: invalid stat userdata", __FUNCTION__);
-		reportErrorFunc(L, "Stat:addModifier(): invalid stat userdata");
 		lua_pushnil(L);
 		return 1;
 	}
-	return 0;
+	if (isUserdata(L, 2))
+	{
+		const auto modifier = getSharedPtr<StandardStatMod>(L, 2);
+		if (not modifier)
+		{
+			pushBoolean(L, false);
+			return 1;
+		}
+		stat->addModifier(*modifier);
+	}
+	else
+	{
+		const auto type = getNumber<StatModifierType>(L, 2);
+		if (type <= StatModifierType::None or type > StatModifierType::Subtract)
+		{
+			pushBoolean(L, false);
+			return 1;
+		}
+		stat->addModifier(type, getNumber<uint32_t>(L, 3));
+	}
+	pushBoolean(L, true);
+	return 1;
 }
 
 int LuaScriptInterface::luaStatRemoveModifier(lua_State* L)
 {
-	// stat:removeModifier(modifier: mod)
-	// stat:removeModifier(enum: type, number: value)
-	if (const auto& stat = getSharedPtr<StandardStat>(L, 1))
+	// stat:removeModifier(modifier) or stat:removeModifier(type, value)
+	const auto stat = getSharedPtr<StandardStat>(L, 1);
+	if (not stat)
 	{
-		if (const auto& modifier = getSharedPtr<StandardStatMod>(L, 2))
-		{
-			pushBoolean(L, stat->removeModifier(*modifier));
-			return 1;
-		}
-		else
-		{
-			if (const auto mod_number = getNumber<uint32_t>(L, 2))
-			{
-				auto mod_type = static_cast<StatModifierType>(mod_number);
-				const auto amount = getNumber<uint32_t>(L, 3);
-
-				if (not amount)
-				{
-					BlackTek::Console::Script::Warn("{}: invalid or missing 'value' argument", __FUNCTION__);
-					reportErrorFunc(L, "Stat:removeModifier(): invalid or missing 'value' argument");
-					lua_pushnil(L);
-					return 1;
-				}
-
-				pushBoolean(L, stat->removeModifier(mod_type, amount));
-				return 1;
-			}
-
-			BlackTek::Console::Script::Warn("{}: expected a StatModifier or (type, value) pair", __FUNCTION__);
-			reportErrorFunc(L, "Stat:removeModifier(): expected a StatModifier or (type, value) pair");
-			lua_pushnil(L);
-			return 1;
-		}
-	}
-	else
-	{
-		BlackTek::Console::Script::Warn("{}: invalid stat userdata", __FUNCTION__);
-		reportErrorFunc(L, "Stat:removeModifier(): invalid stat userdata");
 		lua_pushnil(L);
 		return 1;
 	}
-	return 0;
+	if (isUserdata(L, 2))
+	{
+		const auto modifier = getSharedPtr<StandardStatMod>(L, 2);
+		pushBoolean(L, modifier and stat->removeModifier(*modifier));
+	}
+	else
+	{
+		const auto type = getNumber<StatModifierType>(L, 2);
+		if (type <= StatModifierType::None or type > StatModifierType::Subtract)
+		{
+			pushBoolean(L, false);
+			return 1;
+		}
+		pushBoolean(L, stat->removeModifier(type, getNumber<uint32_t>(L, 3)));
+	}
+	return 1;
 }
-
 int LuaScriptInterface::luaStatId(lua_State* L)
 {
 	// stat:id() -- returns stat id
@@ -11877,12 +11855,11 @@ int LuaScriptInterface::luaPlayerCreate(lua_State* L)
 			player = g_game.getPlayerByGUID(id);
 		}
 	} else if (isString(L, 2)) {
-		if (const ReturnValue ret = g_game.getPlayerByNameWildcard(getString(L, 2)); ret != RETURNVALUE_NOERROR) {
+		if (const ReturnValue ret = g_game.getPlayerByNameWildcard(getString(L, 2), player); ret != RETURNVALUE_NOERROR) {
 			lua_pushnil(L);
 			lua_pushinteger(L, ret);
 			return 2;
 		}
-		player = g_game.getPlayerByName(getString(L, 2));
 	} else if (isUserdata(L, 2)) {
 		if (getUserdataType(L, 2) != LuaData_Player) {
 			lua_pushnil(L);
@@ -12250,7 +12227,7 @@ int LuaScriptInterface::luaPlayerAddMana(lua_State* L)
 	{
 		auto drain = BlackTek::g_combat_registry.Create(
 		    static_cast<uint16_t>(BlackTek::Combat::DamageType::ManaDrain),
-		    static_cast<uint32_t>(-manaChange));
+		    static_cast<uint32_t>(-static_cast<int64_t>(manaChange)));
 		drain->SetConfig(BlackTek::Combat::Config::TrueDamage);
 		drain->setOrigin(BlackTek::Combat::Origin::None);
 		drain->strike_target(player, player, true);
@@ -16195,6 +16172,11 @@ int LuaScriptInterface::luaZoneCreate(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaZoneDelete(lua_State* L)
+{
+	return destroySharedUserData<LuaZoneRef>(L);
+}
+
 int LuaScriptInterface::luaZoneEq(lua_State* L)
 {
 	const auto a = getSharedPtr<LuaZoneRef>(L, 1);
@@ -17029,6 +17011,11 @@ int LuaScriptInterface::luaZoneIsPaused(lua_State* L)
 int LuaScriptInterface::luaZoneActivate(lua_State* L)
 {
 	const auto zoneRef = getSharedPtr<LuaZoneRef>(L, 1);
+	if (zoneRef and not zoneRef->IsRegistered() and not zoneRef->Register(false))
+	{
+		pushBoolean(L, false);
+		return 1;
+	}
 	Zones::Zone* zone = zoneRef ? zoneRef->Get() : nullptr;
 
 	if (not zone)
@@ -18116,7 +18103,7 @@ int LuaScriptInterface::luaCombatCreate(lua_State* L)
 	lua_getfield(L, 2, "damage");
 	if (lua_isnumber(L, -1))
 	{
-		combat->SetDamage(static_cast<uint32_t>(std::abs(static_cast<int32_t>(lua_tointeger(L, -1)))));
+		combat->SetDamage(static_cast<uint32_t>(std::abs(static_cast<int64_t>(getNumber<int32_t>(L, -1)))));
 	}
 	lua_pop(L, 1);
 
@@ -18332,6 +18319,7 @@ int LuaScriptInterface::luaCombatSetDamageType(lua_State* L)
 	const bool is_utility = (type == DT::Unknown or type == DT::Healing);
 	combat->SetConfig(BlackTek::Combat::Config::Aggressive, not is_utility);
 	combat->SetConfig(BlackTek::Combat::Config::IsUtility, is_utility);
+	combat->SetConfig(BlackTek::Combat::Config::HealthTarget, type == DT::Healing);
 	pushBoolean(L, true);
 	return 1;
 }
@@ -18731,7 +18719,7 @@ int LuaScriptInterface::luaCombatSetDamage(lua_State* L)
 		return 1;
 	}
 
-	combat->SetDamage(static_cast<uint32_t>(std::abs(getNumber<int32_t>(L, 2))));
+	combat->SetDamage(static_cast<uint32_t>(std::abs(static_cast<int64_t>(getNumber<int32_t>(L, 2)))));
 	pushBoolean(L, true);
 	return 1;
 }
@@ -21655,12 +21643,14 @@ int32_t LuaScriptInterface::luaPartyCreate(lua_State* L)
 int LuaScriptInterface::luaPartyDisband(lua_State* L)
 {
 	// party:disband()
-	Party** partyPtr = getRawUserdata<Party>(L, 1);
-	if (partyPtr && *partyPtr) {
-		Party*& party = *partyPtr;
-		party->disband();
-		party = nullptr;
-		pushBoolean(L, true);
+	auto& party = getSharedPtr<Party>(L, 1);
+	if (party) {
+		const auto currentParty = party;
+		currentParty->disband();
+		const bool disbanded = not currentParty->getLeader();
+		if (disbanded)
+			party.reset();
+		pushBoolean(L, disbanded);
 	} else {
 		lua_pushnil(L);
 	}
@@ -23029,60 +23019,60 @@ int LuaScriptInterface::luaGlobalEventOnCallback(lua_State* L)
 int LuaScriptInterface::luaGlobalEventTime(lua_State* L)
 {
 	// globalevent:time(time)
-	GlobalEvent* globalevent = getUserdata<GlobalEvent>(L, 1);
-	if (globalevent) {
-		std::string timer = getString(L, 2);
-		std::vector<int32_t> params = vectorAtoi(explodeString(timer, ":"));
-
-		int32_t hour = params.front();
-		if (hour < 0 || hour > 23) {
-			std::cout << "[Error - GlobalEvent::configureEvent] Invalid hour \"" << timer << "\" for globalevent with name: " << globalevent->getName() << std::endl;
+	auto* globalEvent = getUserdata<GlobalEvent>(L, 1);
+	if (not globalEvent)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+	const std::string timer = getString(L, 2);
+	std::array<int32_t, 3> parts{};
+	size_t start = 0;
+	size_t count = 0;
+	do
+	{
+		const size_t end = timer.find(':', start);
+		const size_t length = (end == std::string::npos ? timer.size() : end) - start;
+		if (count == parts.size() or length == 0)
+		{
 			pushBoolean(L, false);
 			return 1;
 		}
-
-		globalevent->setInterval(hour << 16);
-
-		int32_t min = 0;
-		int32_t sec = 0;
-		if (params.size() > 1) {
-			min = params[1];
-			if (min < 0 || min > 59) {
-				std::cout << "[Error - GlobalEvent::configureEvent] Invalid minute \"" << timer << "\" for globalevent with name: " << globalevent->getName() << std::endl;
-				pushBoolean(L, false);
-				return 1;
-			}
-
-			if (params.size() > 2) {
-				sec = params[2];
-				if (sec < 0 || sec > 59) {
-					std::cout << "[Error - GlobalEvent::configureEvent] Invalid second \"" << timer << "\" for globalevent with name: " << globalevent->getName() << std::endl;
-					pushBoolean(L, false);
-					return 1;
-				}
-			}
+		const char* first = timer.data() + start;
+		const auto parsed = std::from_chars(first, first + length, parts[count]);
+		const int32_t maximum = count == 0 ? 23 : 59;
+		if (parsed.ec != std::errc{} or parsed.ptr != first + length or parts[count] < 0 or parts[count] > maximum)
+		{
+			pushBoolean(L, false);
+			return 1;
 		}
+		++count;
+		if (end == std::string::npos)
+			break;
+		start = end + 1;
+	} while (true);
 
-		time_t current_time = time(nullptr);
-		tm* timeinfo = localtime(&current_time);
-		timeinfo->tm_hour = hour;
-		timeinfo->tm_min = min;
-		timeinfo->tm_sec = sec;
-
-		time_t difference = static_cast<time_t>(difftime(mktime(timeinfo), current_time));
-		if (difference < 0) {
-			difference += 86400;
-		}
-
-		globalevent->setNextExecution(current_time + difference);
-		globalevent->setEventType(GLOBALEVENT_TIMER);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
+	const time_t currentTime = time(nullptr);
+	const tm* local = localtime(&currentTime);
+	if (not local)
+	{
+		pushBoolean(L, false);
+		return 1;
 	}
+	tm executionTime = *local;
+	executionTime.tm_hour = parts[0];
+	executionTime.tm_min = parts[1];
+	executionTime.tm_sec = parts[2];
+	time_t difference = static_cast<time_t>(difftime(mktime(&executionTime), currentTime));
+	if (difference < 0)
+		difference += 86400;
+
+	globalEvent->setInterval(parts[0] << 16);
+	globalEvent->setNextExecution(currentTime + difference);
+	globalEvent->setEventType(GLOBALEVENT_TIMER);
+	pushBoolean(L, true);
 	return 1;
 }
-
 int LuaScriptInterface::luaGlobalEventInterval(lua_State* L)
 {
 	// globalevent:interval(interval)
@@ -23767,6 +23757,7 @@ namespace
 
 		for (const auto& [key, hookType] : callbackFields)
 		{
+			const int stackTop = lua_gettop(L);
 			lua_getfield(L, tableArg, key);
 
 			if (lua_isfunction(L, -1))
@@ -23779,7 +23770,8 @@ namespace
 				BlackTek::Console::Script::Warn("LuaScriptInterface::luaCreateItemEvent: {} must be a function", key);
 			}
 
-			lua_pop(L, 1);
+			// A successful loadCallback consumes the function; failures leave it.
+			lua_settop(L, stackTop);
 		}
 
 		lua_getfield(L, tableArg, "nativeFunction");
@@ -24771,6 +24763,17 @@ int LuaScriptInterface::luaItemEventExtraElement(lua_State* L)
 }
 
 // XML
+namespace BlackTek::Script
+{
+	struct XmlNode : pugi::xml_node
+	{
+		XmlNode(std::shared_ptr<pugi::xml_document> document, pugi::xml_node node) :
+			pugi::xml_node(node), document(std::move(document)) {}
+
+		std::shared_ptr<pugi::xml_document> document;
+	};
+}
+
 int LuaScriptInterface::luaCreateXmlDocument(lua_State* L)
 {
 	// XMLDocument(filename)
@@ -24780,9 +24783,9 @@ int LuaScriptInterface::luaCreateXmlDocument(lua_State* L)
 		return 1;
 	}
 
-	auto doc = std::make_unique<pugi::xml_document>();
+	auto doc = std::make_shared<pugi::xml_document>();
 	if (auto result = doc->load_file(filename.c_str())) {
-		pushUserdata<pugi::xml_document>(L, doc.release());
+		pushSharedPtr(L, doc);
 		setMetatable(L, -1, "XMLDocument");
 	}
 	else {
@@ -24795,18 +24798,14 @@ int LuaScriptInterface::luaCreateXmlDocument(lua_State* L)
 int LuaScriptInterface::luaDeleteXmlDocument(lua_State* L)
 {
 	// doc:delete() or doc:__gc()
-	pugi::xml_document** document = getRawUserdata<pugi::xml_document>(L, 1);
-	if (document && *document) {
-		delete* document;
-		*document = nullptr;
-	}
-	return 1;
+	getSharedPtr<pugi::xml_document>(L, 1).reset();
+	return 0;
 }
 
 int LuaScriptInterface::luaXmlDocumentChild(lua_State* L)
 {
 	// doc:child(name)
-	pugi::xml_document* document = getUserdata<pugi::xml_document>(L, 1);
+	const auto document = getSharedPtr<pugi::xml_document>(L, 1);
 	if (!document) {
 		lua_pushnil(L);
 		return 1;
@@ -24818,8 +24817,8 @@ int LuaScriptInterface::luaXmlDocumentChild(lua_State* L)
 		return 1;
 	}
 
-	auto node = std::make_unique<pugi::xml_node>(document->child(name.c_str()));
-	pushUserdata<pugi::xml_node>(L, node.release());
+	auto node = std::make_shared<BlackTek::Script::XmlNode>(document, document->child(name.c_str()));
+	pushSharedPtr(L, node);
 	setMetatable(L, -1, "XMLNode");
 	return 1;
 }
@@ -24827,18 +24826,14 @@ int LuaScriptInterface::luaXmlDocumentChild(lua_State* L)
 int LuaScriptInterface::luaDeleteXmlNode(lua_State* L)
 {
 	// node:delete() or node:__gc()
-	pugi::xml_node** node = getRawUserdata<pugi::xml_node>(L, 1);
-	if (node && *node) {
-		delete* node;
-		*node = nullptr;
-	}
-	return 1;
+	getSharedPtr<BlackTek::Script::XmlNode>(L, 1).reset();
+	return 0;
 }
 
 int LuaScriptInterface::luaXmlNodeAttribute(lua_State* L)
 {
 	// node:attribute(name)
-	pugi::xml_node* node = getUserdata<pugi::xml_node>(L, 1);
+	const auto node = getSharedPtr<BlackTek::Script::XmlNode>(L, 1);
 	if (!node) {
 		lua_pushnil(L);
 		return 1;
@@ -24863,7 +24858,7 @@ int LuaScriptInterface::luaXmlNodeAttribute(lua_State* L)
 int LuaScriptInterface::luaXmlNodeName(lua_State* L)
 {
 	// node:name()
-	pugi::xml_node* node = getUserdata<pugi::xml_node>(L, 1);
+	const auto node = getSharedPtr<BlackTek::Script::XmlNode>(L, 1);
 	if (!node) {
 		lua_pushnil(L);
 		return 1;
@@ -24876,7 +24871,7 @@ int LuaScriptInterface::luaXmlNodeName(lua_State* L)
 int LuaScriptInterface::luaXmlNodeFirstChild(lua_State* L)
 {
 	// node:firstChild()
-	pugi::xml_node* node = getUserdata<pugi::xml_node>(L, 1);
+	const auto node = getSharedPtr<BlackTek::Script::XmlNode>(L, 1);
 	if (!node) {
 		lua_pushnil(L);
 		return 1;
@@ -24888,8 +24883,8 @@ int LuaScriptInterface::luaXmlNodeFirstChild(lua_State* L)
 		return 1;
 	}
 
-	auto newNode = std::make_unique<pugi::xml_node>(std::move(firstChild));
-	pushUserdata<pugi::xml_node>(L, newNode.release());
+	auto newNode = std::make_shared<BlackTek::Script::XmlNode>(node->document, firstChild);
+	pushSharedPtr(L, newNode);
 	setMetatable(L, -1, "XMLNode");
 	return 1;
 }
@@ -24897,7 +24892,7 @@ int LuaScriptInterface::luaXmlNodeFirstChild(lua_State* L)
 int LuaScriptInterface::luaXmlNodeNextSibling(lua_State* L)
 {
 	// node:nextSibling()
-	pugi::xml_node* node = getUserdata<pugi::xml_node>(L, 1);
+	const auto node = getSharedPtr<BlackTek::Script::XmlNode>(L, 1);
 	if (!node) {
 		lua_pushnil(L);
 		return 1;
@@ -24909,8 +24904,8 @@ int LuaScriptInterface::luaXmlNodeNextSibling(lua_State* L)
 		return 1;
 	}
 
-	auto newNode = std::make_unique<pugi::xml_node>(std::move(nextSibling));
-	pushUserdata<pugi::xml_node>(L, newNode.release());
+	auto newNode = std::make_shared<BlackTek::Script::XmlNode>(node->document, nextSibling);
+	pushSharedPtr(L, newNode);
 	setMetatable(L, -1, "XMLNode");
 	return 1;
 }
@@ -25061,6 +25056,7 @@ void LuaEnvironment::executeTimerEvent(uint32_t eventIndex)
 
 	LuaTimerEventDesc timerEventDesc = std::move(it->second);
 	timerEvents.erase(it);
+	const int stackTop = lua_gettop(luaState);
 
 	//push function
 	lua_rawgeti(luaState, LUA_REGISTRYINDEX, timerEventDesc.function);
@@ -25077,7 +25073,8 @@ void LuaEnvironment::executeTimerEvent(uint32_t eventIndex)
 		env->setScriptId(timerEventDesc.scriptId, this);
 		callFunction(timerEventDesc.parameters.size());
 	} else {
-		std::cout << "[Error - LuaScriptInterface::executeTimerEvent] Call stack overflow" << std::endl;
+		lua_settop(luaState, stackTop);
+		BlackTek::Console::Script::Error("LuaEnvironment::executeTimerEvent: Call stack overflow");
 	}
 
 	//free resources
