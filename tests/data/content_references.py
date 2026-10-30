@@ -76,6 +76,30 @@ class ContentReferences(unittest.TestCase):
                     with self.subTest(file=path.name, summon=name):
                         self.assertTrue(name.lower() in names, f"Unknown summon {name!r} in {path.name}")
 
+    def test_monster_type_registrations_do_not_overwrite_variants(self):
+        registrations = {}
+        for path in (DATA / "scripts/monsters").rglob("*.lua"):
+            if "#" in path.name:
+                continue
+            for name in re.findall(r'Game\.createMonsterType\("([^\"]+)"\)', path.read_text(encoding="utf-8")):
+                with self.subTest(file=path.name, monster=name):
+                    self.assertFalse(name.lower() in registrations,
+                                     f"{path.name} overwrites {registrations.get(name.lower())}")
+                registrations[name.lower()] = path.name
+
+    def test_zone_monster_names_resolve(self):
+        names = {
+            name.lower()
+            for path in (DATA / "scripts/monsters").rglob("*.lua") if "#" not in path.name
+            for name in re.findall(r'Game\.createMonsterType\("([^\"]+)"\)', path.read_text(encoding="utf-8"))
+        }
+        for path in (DATA / "world/forgotten-zones").rglob("*.toml"):
+            for zone in read_toml(path).values():
+                for monster in zone.get("monsters", []):
+                    with self.subTest(file=path.name, monster=monster["name"]):
+                        self.assertTrue(monster["name"].lower() in names,
+                                        f"Unknown zone monster {monster['name']!r}")
+
     def test_enabled_conjuring_spells_create_defined_items(self):
         for path in (DATA / "scripts/spells").rglob("*.lua"):
             if "#" in path.name:

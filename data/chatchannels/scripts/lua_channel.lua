@@ -66,6 +66,11 @@ end
 
 local consoles = { }
 
+function onLeave(player)
+    consoles[player:getId()] = nil
+    return true
+end
+
 function onSpeak(player, type, message)
     if player:getAccountType() < ACCOUNT_TYPE_GOD then
         return false

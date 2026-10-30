@@ -14,7 +14,7 @@ function spell.onCastSpell(creature, variant, isHotkey)
 		local items = tile:getItems()
 		if items then
 			for i, item in ipairs(items) do
-				if item:getType():isMovable() and item:getUniqueId() > 65535 and item:getActionId() == 0 and not table.contains(corpseIds, item:getId()) and not item:isPodium() and not item:isStoreItem() then
+				if item:getType():isMovable() and item:getUniqueId() > 65535 and item:getActionId() == 0 and not table.contains(corpseIds, item:getId()) and not (item.isPodium and item:isPodium()) and not item:isStoreItem() then
 					item:remove()
 				end
 

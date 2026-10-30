@@ -1,4 +1,4 @@
-local mtype = Game.createMonsterType("Nomad")
+local mtype = Game.createMonsterType("Nomad Female")
 local monster = {}
 
 monster.name = "Nomad"

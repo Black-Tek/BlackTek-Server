@@ -21,25 +21,13 @@ blessings:product(4200, "Death Redemption",    100, "Death_Redemption.png",    "
 blessings:product(4201, "Adventurer's Blessing", 80, "Adv_Blessings.png",       "A bundle of the five standard blessings.")
 
 blessings:canPurchase(function(player, productId)
-    -- Example gate: block re-purchase of Death Redemption if already owned.
-    if productId == 4200 and player:hasBlessing(5) then
-        return false, "You already have Death Redemption."
-    end
-    return true
+    -- Product prices are display metadata. The purchase callbacks must check
+    -- and debit a real currency balance before this example can accept orders.
+    return false, "Store purchases are not configured. Please contact the server administrator."
 end)
 
 blessings:onPurchase(function(player, productId, offerType, param)
-    if productId == 4200 then
-        player:addBlessing(5)
-        player:sendTextMessage(MESSAGE_EVENT_ADVANCE, "You received Death Redemption.")
-        return true
-    elseif productId == 4201 then
-        for i = 1, 5 do
-            player:addBlessing(i)
-        end
-        player:sendTextMessage(MESSAGE_EVENT_ADVANCE, "You received the Adventurer's Blessing.")
-        return true
-    end
+    -- Keep reward delivery disabled until payment is implemented as well.
     return false
 end)
 
