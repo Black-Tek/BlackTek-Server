@@ -236,18 +236,19 @@ bool House::transferToDepot() const
 		return false;
 	}
 
+	bool transferred = false;
 	if (const auto player = g_game.getPlayerByGUID(owner)) {
-		transferToDepot(player);
+		transferred = transferToDepot(player);
 	} else {
 		const PlayerPtr tmpPlayer = std::make_shared<Player>(nullptr);
 		if (!IOLoginData::loadPlayerById(tmpPlayer, owner)) {
 			return false;
 		}
 
-		transferToDepot(tmpPlayer);
+		transferred = transferToDepot(tmpPlayer);
 		IOLoginData::savePlayer(tmpPlayer);
 	}
-	return true;
+	return transferred;
 }
 
 bool House::transferToDepot(const PlayerPtr& player) const
@@ -274,10 +275,18 @@ bool House::transferToDepot(const PlayerPtr& player) const
 	}
 	
 	ItemPtr inbox = player->getInbox()->getOwner();
-	for (const auto item : moveItemList) {
-		g_game.internalMoveItem(item->getLocation(), { .containerItem = inbox }, INDEX_ANYWHERE, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT);
+	bool transferredAll = true;
+	for (const auto item : moveItemList)
+	{
+		const ReturnValue ret = g_game.internalMoveItem(item->getLocation(), { .containerItem = inbox }, INDEX_ANYWHERE, item, item->getItemCount(), std::nullopt, FLAG_NOLIMIT);
+
+		if (ret != RETURNVALUE_NOERROR)
+		{
+			BlackTek::Console::Warn("House::transferToDepot: failed to move item {} out of house {} for owner {}: {}", item->getID(), id, owner, getReturnMessage(ret));
+			transferredAll = false;
+		}
 	}
-	return true;
+	return transferredAll;
 }
 
 bool House::getAccessList(const uint32_t listId, std::string& list) const
