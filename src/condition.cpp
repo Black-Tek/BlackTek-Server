@@ -1831,6 +1831,9 @@ void ConditionOutfit::addCondition(const CreaturePtr creature, const Condition* 
 
 bool ConditionLight::startCondition(const CreaturePtr creature)
 {
+	if (lightInfo.level == 0)
+		return false;
+
 	if (!Condition::startCondition(creature)) {
 		return false;
 	}
@@ -1869,9 +1872,13 @@ void ConditionLight::endCondition(const CreaturePtr creature)
 void ConditionLight::addCondition(const CreaturePtr creature, const Condition* condition)
 {
 	if (updateCondition(condition)) {
+		const auto& conditionLight = static_cast<const ConditionLight&>(*condition);
+
+		if (conditionLight.lightInfo.level == 0)
+			return;
+
 		setTicks(condition->getTicks());
 
-		const auto& conditionLight = static_cast<const ConditionLight&>(*condition);
 		lightInfo.level = conditionLight.lightInfo.level;
 		lightInfo.color = conditionLight.lightInfo.color;
 		lightChangeInterval = ticks / lightInfo.level;
