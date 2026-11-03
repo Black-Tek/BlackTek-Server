@@ -465,13 +465,29 @@ void ConditionAttributes::addCondition(const CreaturePtr creature, const Conditi
 
 bool ConditionAttributes::unserializeProp(ConditionAttr_t attr, PropStream& propStream)
 {
-	if (attr == CONDITIONATTR_SKILLS) {
+	if (attr == CONDITIONATTR_SKILLS)
+	{
+		if (currentSkill > SKILL_LAST)
+			return false;
+
 		return propStream.read<int32_t>(skills[currentSkill++]);
-	} else if (attr == CONDITIONATTR_SPECIALSKILLS) {
+	}
+	else if (attr == CONDITIONATTR_SPECIALSKILLS)
+	{
+		if (currentSpecialSkill > SPECIALSKILL_LAST)
+			return false;
+
 		return propStream.read<int32_t>(specialSkills[currentSpecialSkill++]);
-	} else if (attr == CONDITIONATTR_STATS) {
+	}
+	else if (attr == CONDITIONATTR_STATS)
+	{
+		if (currentStat > STAT_LAST)
+			return false;
+
 		return propStream.read<int32_t>(stats[currentStat++]);
-	} else if (attr == CONDITIONATTR_DISABLEDEFENSE) {
+	}
+	else if (attr == CONDITIONATTR_DISABLEDEFENSE)
+	{
 		return propStream.read<bool>(disableDefense);
 	}
 	return Condition::unserializeProp(attr, propStream);
