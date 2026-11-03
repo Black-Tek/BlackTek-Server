@@ -63,6 +63,9 @@
 #include "metrics.h"
 #include "simd_dispatch.h"
 #include <memory>
+#include <charconv>
+#include <optional>
+#include <string_view>
 
 #if __has_include("gitmetadata.h")
 	#include "gitmetadata.h"
@@ -265,9 +268,9 @@ void startupErrorMessage(const std::string& errorStr)
 }
 
 void mainLoader(int argc, char* argv[], ServiceManager* services);
-bool argumentsHandler(const StringVector& args);
+std::optional<int> argumentsHandler(const StringVector& args);
 
-[[noreturn]] 
+[[noreturn]]
 void badAllocationHandler()
 {
 	// Use functions that only use stack allocation
@@ -283,9 +286,12 @@ void badAllocationHandler()
 int main(int argc, char* argv[])
 {
 	StringVector args = StringVector(argv, argv + argc);
-	if(argc > 1 && !argumentsHandler(args))
+	if (argc > 1)
 	{
-		return 0;
+		if (const auto exitCode = argumentsHandler(args))
+		{
+			return *exitCode;
+		}
 	}
 
 	// Setup bad allocation handler
@@ -631,7 +637,29 @@ void mainLoader(int, char*[], ServiceManager* services)
 	g_loaderSignal.notify_all();
 }
 
-bool argumentsHandler(const StringVector& args)
+namespace BlackTek::Startup
+{
+	[[nodiscard]] std::optional<uint16_t> ParsePort(std::string_view text) noexcept
+	{
+		uint16_t port = 0;
+		const char* const last = text.data() + text.size();
+		const auto [end, error] = std::from_chars(text.data(), last, port);
+
+		if (error != std::errc{} or end != last or port == 0)
+			return std::nullopt;
+
+		return port;
+	}
+
+	std::optional<int> RejectArgument(std::string_view argument, std::string_view name, std::string_view requirement)
+	{
+		std::clog << "Invalid argument '" << argument << "': " << name << " requires " << requirement << ".\n"
+		          << "Use --help to see the supported arguments.\n";
+		return 1;
+	}
+}
+
+std::optional<int> argumentsHandler(const StringVector& args)
 {
 	for (const auto& arg : args) {
 		if (arg == "--help") {
@@ -641,21 +669,34 @@ bool argumentsHandler(const StringVector& args)
 			"\t\t\t\tShould be equal to the global IP.\n"
 			"\t--login-port=$1\tPort for login server to listen on.\n"
 			"\t--game-port=$1\tPort for game server to listen on.\n";
-			return false;
+			return 0;
 		} else if (arg == "--version") {
 			printServerVersion();
-			return false;
+			return 0;
 		}
 
-		auto tmp = explodeString(arg, "=");
+		const std::string_view argument = arg;
+		const auto separator = argument.find('=');
+		const auto name = argument.substr(0, separator);
+		const auto value = separator == std::string_view::npos ? std::string_view{} : argument.substr(separator + 1);
 
-		if (tmp[0] == "--ip")
-			g_config.SetString(ConfigManager::IP, tmp[1]);
-		else if (tmp[0] == "--login-port")
-			g_config.SetNumber(ConfigManager::LOGIN_PORT, std::stoi(tmp[1].data()));
-		else if (tmp[0] == "--game-port")
-			g_config.SetNumber(ConfigManager::GAME_PORT, std::stoi(tmp[1].data()));
+		if (name == "--ip")
+		{
+			if (value.empty())
+				return BlackTek::Startup::RejectArgument(argument, name, "a non-empty value, e.g. --ip=127.0.0.1");
+
+			g_config.SetString(ConfigManager::IP, value);
+		}
+		else if (name == "--login-port" or name == "--game-port")
+		{
+			const auto port = BlackTek::Startup::ParsePort(value);
+
+			if (not port)
+				return BlackTek::Startup::RejectArgument(argument, name, "an integer between 1 and 65535, e.g. " + std::string(name) + "=7171");
+
+			g_config.SetNumber(name == "--login-port" ? ConfigManager::LOGIN_PORT : ConfigManager::GAME_PORT, *port);
+		}
 	}
 
-	return true;
+	return std::nullopt;
 }
