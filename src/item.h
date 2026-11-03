@@ -1229,8 +1229,11 @@ class Item : public SharedObject
 			if (not c_stats.get())
 				return false;
 
-			auto& stat = c_stats.get()->find(id)->second;
-			return stat->add(amount);
+			auto it = c_stats.get()->find(id);
+			if (it == c_stats.get()->end())
+				return false;
+
+			return it->second->add(amount);
 		}
 
 		// move to cpp
@@ -1239,8 +1242,11 @@ class Item : public SharedObject
 			if (not c_stats.get())
 				return false;
 
-			auto& stat = c_stats.get()->find(id)->second;
-			return stat->remove(amount);
+			auto it = c_stats.get()->find(id);
+			if (it == c_stats.get()->end())
+				return false;
+
+			return it->second->remove(amount);
 		}
 
 		bool hasCustomStats() { return c_stats.get() != nullptr; }
