@@ -5163,9 +5163,29 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 		{	// this window should only be sent if the choice has towns and there is more than 1.
 			if (button == ButtonID::PRIMARY)
 			{
-				const auto& town = map.towns.getTown(choice);
-				const auto& spawn_pos = town->getTemplePosition();
-				player->setTempPosition(spawn_pos);
+				const auto optionId = player->getTempCharacterChoice();
+				if (optionId >= character_options.size())
+				{
+					player->onModalWindowHandled(modalWindowId);
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_VOCATION, player));
+					return;
+				}
+
+				const Town* town = nullptr;
+				const auto& townList = character_options[optionId].town_list;
+				if (std::ranges::find(townList, static_cast<int32_t>(choice)) != townList.end())
+				{
+					town = map.towns.getTown(choice);
+				}
+
+				if (not town)
+				{
+					player->onModalWindowHandled(modalWindowId);
+					player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_TOWN, optionId));
+					return;
+				}
+
+				player->setTempPosition(town->getTemplePosition());
 				player->setTempTownId(choice);
 				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER));
 				break;
