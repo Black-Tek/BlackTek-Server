@@ -1414,7 +1414,7 @@ class Item : public SharedObject
 		ItemWeakPtr containerParent;
 		bool scriptDetached = false;
 		std::unique_ptr<ItemContainer> container;
-		ContainerPtr containerAlias;
+		ContainerWeakPtr containerAlias;
 
 	private:
         static inline uint64_t s_loadedItemCount = 0;

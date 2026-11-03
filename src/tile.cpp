@@ -380,10 +380,11 @@ GameModel Tile::getTopVisibleGameModel(const CreaturePtr& creature)
 void Tile::onAddTileItem(const ItemPtr& item, std::span<const CreaturePtr> spectators)
 {
 	if (item->hasProperty(CONST_PROP_MOVEABLE) || item->getContainer()) {
-		if (const auto it = g_game.browseFields.find(getTile()); it != g_game.browseFields.end()) {
+		if (const auto browseContainer = g_game.GetBrowseContainer(getTile()))
+		{
 			ItemPtr addedItem = item;
-			it->second->addItemBack(addedItem);
-			item->setContainerParent(it->second->getOwner());
+			browseContainer->addItemBack(addedItem);
+			item->setContainerParent(browseContainer->getOwner());
 		}
 	}
 
@@ -409,17 +410,18 @@ void Tile::onAddTileItem(const ItemPtr& item, std::span<const CreaturePtr> spect
 void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, const ItemPtr& newItem, const ItemType& newType, std::span<const CreaturePtr> spectators)
 {
 	if (newItem->hasProperty(CONST_PROP_MOVEABLE) || newItem->getContainer()) {
-		if (const auto it = g_game.browseFields.find(getTile()); it != g_game.browseFields.end()) {
-			if (int32_t index = it->second->getItemIndex(oldItem); index != -1)
+		if (const auto browseContainer = g_game.GetBrowseContainer(getTile()))
+		{
+			if (int32_t index = browseContainer->getItemIndex(oldItem); index != -1)
 			{
-				it->second->replaceItem(index, newItem);
-				newItem->setContainerParent(it->second->getOwner());
+				browseContainer->replaceItem(index, newItem);
+				newItem->setContainerParent(browseContainer->getOwner());
 			}
 		}
 	} else if (oldItem->hasProperty(CONST_PROP_MOVEABLE) || oldItem->getContainer()) {
-		auto it = g_game.browseFields.find(getTile());
-		if (it != g_game.browseFields.end()) {
-			it->second->removeItem(oldItem, oldItem->getItemCount());
+		if (const auto browseContainer = g_game.GetBrowseContainer(getTile()))
+		{
+			browseContainer->removeItem(oldItem, oldItem->getItemCount());
 			auto oldItemLocation = oldItem->getLocation();
 			if (oldItemLocation.tile)
 			{
@@ -451,8 +453,9 @@ void Tile::onUpdateTileItem(const ItemPtr& oldItem, const ItemType& oldType, con
 void Tile::onRemoveTileItem(std::span<const CreaturePtr> spectators, const std::vector<int32_t>& oldStackPosVector, const ItemPtr& item)
 {
 	if (item->hasProperty(CONST_PROP_MOVEABLE) || item->getContainer()) {
-		if (const auto it = g_game.browseFields.find(getTile()); it != g_game.browseFields.end()) {
-			it->second->removeItem(item, item->getItemCount());
+		if (const auto browseContainer = g_game.GetBrowseContainer(getTile()))
+		{
+			browseContainer->removeItem(item, item->getItemCount());
 		}
 	}
 

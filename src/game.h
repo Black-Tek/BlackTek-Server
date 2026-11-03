@@ -692,7 +692,9 @@ class Game
 		void addMonster(MonsterPtr monster);
 		void removeMonster(const MonsterPtr& monster);
 
-		gtl::node_hash_map<TilePtr, ContainerPtr> browseFields;
+		gtl::node_hash_map<TilePtr, ContainerWeakPtr> browseFields;
+
+		[[nodiscard]] ContainerPtr GetBrowseContainer(const TilePtr& tile) const noexcept;
 
 		void internalRemoveItems(const std::vector<ItemPtr>& itemList, uint32_t amount, bool stackable);
 

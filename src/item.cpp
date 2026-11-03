@@ -309,12 +309,12 @@ bool Item::canTransform() const
 
 ContainerPtr Item::getContainer()
 {
-	return containerAlias;
+	return containerAlias.lock();
 }
 
 ContainerConstPtr Item::getContainer() const
 {
-	return containerAlias;
+	return containerAlias.lock();
 }
 
 TeleportPtr Item::getTeleport()

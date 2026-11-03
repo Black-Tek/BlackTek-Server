@@ -69,6 +69,7 @@ using ItemWeakPtr = std::weak_ptr<Item>;
 class ItemContainer;
 using ContainerPtr = std::shared_ptr<ItemContainer>;
 using ContainerConstPtr = std::shared_ptr<const ItemContainer>;
+using ContainerWeakPtr = std::weak_ptr<ItemContainer>;
 
 class Depot;
 using DepotPtr = std::shared_ptr<Depot>;

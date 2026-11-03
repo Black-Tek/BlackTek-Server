@@ -1424,7 +1424,7 @@ ReturnValue Game::internalMoveItem(BlackTek::ItemLocation fromLocation,
 	{
 		if (const auto fromTile = fromLocation.containerItem->getTile())
 		{
-			if (const auto it = browseFields.find(fromTile); it != browseFields.end() and it->second->getOwner() == fromLocation.containerItem)
+			if (const auto browseContainer = GetBrowseContainer(fromTile); browseContainer and browseContainer->getOwner() == fromLocation.containerItem)
 			{
 				fromLocation = { .tile = fromTile };
 			}
@@ -2328,7 +2328,7 @@ ReturnValue Game::internalRemoveItem(ItemPtr item, int32_t count /*= -1*/, bool 
 	{
 		if (auto fromTile = location.containerItem->getTile())
 		{
-			if (auto it = browseFields.find(fromTile); it != browseFields.end() and it->second == location.containerItem->getContainer())
+			if (const auto browseContainer = GetBrowseContainer(fromTile); browseContainer and browseContainer == location.containerItem->getContainer())
 			{
 				location = { .tile = fromTile };
 			}
@@ -2728,7 +2728,7 @@ ItemPtr Game::transformItem(const ItemPtr& item, const uint16_t newId, const int
 	{
 		if (auto fromTile = location.containerItem->getTile())
 		{
-			if (auto it = browseFields.find(fromTile); it != browseFields.end() and it->second == location.containerItem->getContainer())
+			if (const auto browseContainer = GetBrowseContainer(fromTile); browseContainer and browseContainer == location.containerItem->getContainer())
 			{
 				location = { .tile = fromTile };
 			}
@@ -3635,6 +3635,16 @@ void Game::playerCloseContainer(const uint32_t playerId, const uint8_t cid)
 	player->sendCloseContainer(cid);
 }
 
+ContainerPtr Game::GetBrowseContainer(const TilePtr& tile) const noexcept
+{
+	if (const auto it = browseFields.find(tile); it != browseFields.end())
+	{
+		return it->second.lock();
+	}
+
+	return nullptr;
+}
+
 void Game::playerMoveUpContainer(const uint32_t playerId, uint8_t cid)
 {
 	const auto player = getPlayerByID(playerId);
@@ -3666,15 +3676,16 @@ void Game::playerMoveUpContainer(const uint32_t playerId, uint8_t cid)
 			return;
 		}
 
-		if (const auto it = browseFields.find(tile); it == browseFields.end()) {
+		parentContainer = GetBrowseContainer(tile);
+
+		if (not parentContainer)
+		{
 			auto browseItem = std::make_shared<Item>(ITEM_BROWSEFIELD);
 			browseItem->attachContainer(30, false, true);
 			browseItem->setTileParent(tile);
 			parentContainer = browseItem->getContainer();
 			browseFields[tile] = parentContainer;
 			parentContainer->setParentToTileItems(tile);
-		} else {
-			parentContainer = it->second;
 		}
 	}
 
@@ -3823,17 +3834,16 @@ void Game::playerBrowseField(const uint32_t playerId, const Position& pos)
 		return;
 	}
 
-	ContainerPtr container;
+	ContainerPtr container = GetBrowseContainer(tile);
 
-	if (const auto it = browseFields.find(tile); it == browseFields.end()) {
+	if (not container)
+	{
 		auto browseItem = std::make_shared<Item>(ITEM_BROWSEFIELD);
 		browseItem->attachContainer(30, false, true);
 		browseItem->setTileParent(tile);
 		container = browseItem->getContainer();
 		browseFields[tile] = container;
 		container->setParentToTileItems(tile);
-	} else {
-		container = it->second;
 	}
 
 	const uint8_t dummyContainerId = 0xF - ((pos.x % 3) * 3 + (pos.y % 3));
