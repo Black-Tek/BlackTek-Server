@@ -974,7 +974,7 @@ void Monster::onThink(const uint32_t interval)
 		lua_State* L = scriptInterface->getLuaState();
 		env->setScriptId(mType->info.thinkEvent, scriptInterface);
 		scriptInterface->pushFunction(mType->info.thinkEvent);
-		LuaScriptInterface::pushUserdata<Monster>(L, this);
+		LuaScriptInterface::pushSharedPtr(L, getMonster());
 		LuaScriptInterface::setMetatable(L, -1, "Monster");
 		lua_pushinteger(L, interval);
 		scriptInterface->callFunction(2);

@@ -5171,12 +5171,11 @@ void Game::onPrivateAccountManagerInput(const PlayerPtr& player, const uint32_t 
 					return;
 				}
 
-				const Town* town = nullptr;
+				Town* town = nullptr;
 				const auto& townList = character_options[optionId].town_list;
+
 				if (std::ranges::find(townList, static_cast<int32_t>(choice)) != townList.end())
-				{
 					town = map.towns.getTown(choice);
-				}
 
 				if (not town)
 				{
