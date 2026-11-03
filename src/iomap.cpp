@@ -150,19 +150,26 @@ std::expected<MapLoadStats, MapErrorCode> IOMap::loadMap(Map* map, const std::fi
                 tile_count += static_cast<uint32_t>(node_data.children.size());
         }
 
-		try
-        {
-			constexpr size_t per_tile_bytes = sizeof(Tile) + 64;
-			buffer.resize(tile_count * per_tile_bytes);
-            block.emplace(buffer.data(), buffer.size());
-		}
-        catch (std::bad_alloc&)
+		std::pmr::memory_resource* resource = std::pmr::new_delete_resource();
+
+		if (not block.has_value())
 		{
-			setLastErrorString("Not enough memory to load the map.");
-			return std::unexpected(Error::InvalidFormat); // make an OOM option
+			try
+			{
+				constexpr size_t per_tile_bytes = sizeof(Tile) + 64;
+				buffer.resize(tile_count * per_tile_bytes);
+				block.emplace(buffer.data(), buffer.size());
+			}
+			catch (std::bad_alloc&)
+			{
+				setLastErrorString("Not enough memory to load the map.");
+				return std::unexpected(Error::InvalidFormat); // make an OOM option
+			}
+
+			resource = &block.value();
 		}
 
-        std::pmr::polymorphic_allocator<Tile> allocator(&block.value());
+		std::pmr::polymorphic_allocator<Tile> allocator(resource);
 
 		for (const auto& mapDataNode : mapNode.children)
 		{
