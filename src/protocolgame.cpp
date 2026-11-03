@@ -2570,13 +2570,13 @@ void ProtocolGame::sendUnjustifiedStats()
 		killsMonth = static_cast<uint8_t>(std::min<int64_t>(totalKills, 255));
 	}
 
-	uint8_t killsToRed = static_cast<uint8_t>(g_config.GetNumber(ConfigManager::KILLS_TO_RED));
-	uint8_t killsToBlack = static_cast<uint8_t>(g_config.GetNumber(ConfigManager::KILLS_TO_BLACK));
-	
+	uint8_t killsToRed = static_cast<uint8_t>(std::clamp<int32_t>(g_config.GetNumber(ConfigManager::KILLS_TO_RED), 0, 255));
+	uint8_t killsToBlack = static_cast<uint8_t>(std::clamp<int32_t>(g_config.GetNumber(ConfigManager::KILLS_TO_BLACK), 0, 255));
+
 	// Calculate progress percentages (0-100)
-	uint8_t dayProgress = killsDay > 0 ? static_cast<uint8_t>(std::min<int64_t>((killsDay * 100) / killsToRed, 100)) : 0;
-	uint8_t weekProgress = killsWeek > 0 ? static_cast<uint8_t>(std::min<int64_t>((killsWeek * 100) / killsToRed, 100)) : 0;
-	uint8_t monthProgress = killsMonth > 0 ? static_cast<uint8_t>(std::min<int64_t>((killsMonth * 100) / killsToBlack, 100)) : 0;
+	uint8_t dayProgress = (killsDay > 0 and killsToRed > 0) ? static_cast<uint8_t>(std::min<int64_t>((killsDay * 100) / killsToRed, 100)) : 0;
+	uint8_t weekProgress = (killsWeek > 0 and killsToRed > 0) ? static_cast<uint8_t>(std::min<int64_t>((killsWeek * 100) / killsToRed, 100)) : 0;
+	uint8_t monthProgress = (killsMonth > 0 and killsToBlack > 0) ? static_cast<uint8_t>(std::min<int64_t>((killsMonth * 100) / killsToBlack, 100)) : 0;
 
 	// Calculate remaining kills until red skull
 	uint8_t dayRemaining = killsDay < killsToRed ? (killsToRed - killsDay) : 0;
