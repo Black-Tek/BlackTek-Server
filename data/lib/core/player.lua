@@ -154,7 +154,9 @@ function Player.transferMoneyTo(self, target, amount)
 	if targetPlayer then
 		targetPlayer:setBankBalance(targetPlayer:getBankBalance() + amount)
 	else
-		db.query("UPDATE `players` SET `balance` = `balance` + " .. amount .. " WHERE `id` = '" .. target.guid .. "'")
+		if not db.query("UPDATE `players` SET `balance` = `balance` + " .. amount .. " WHERE `id` = '" .. target.guid .. "'") then
+			return false
+		end
 	end
 
 	self:setBankBalance(self:getBankBalance() - amount)
