@@ -564,7 +564,7 @@ void ProtocolGame::authenticateAndLogin(std::string accountName, std::string pas
 	{
 		if (accountId == 0)
 		{
-			std::tie(accountId, characterId) = IOLoginData::getAccountIdByAccountName(accountName, password, characterName);
+			std::tie(accountId, characterId) = IOLoginData::getAccountIdByAccountName(accountName, password, characterName, token, tokenTime);
 		}
 	}
 

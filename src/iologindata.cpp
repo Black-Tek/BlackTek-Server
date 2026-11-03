@@ -103,6 +103,22 @@ std::string decodeSecret(const std::string_view secret)
 	return key;
 }
 
+namespace
+{
+	[[nodiscard]] bool IsTokenAccepted(const std::string& secret, std::string_view token, uint32_t tokenTime)
+	{
+		if (secret.empty())
+			return true;
+
+		if (token.empty())
+			return false;
+
+		return token == generateToken(secret, tokenTime)
+			or token == generateToken(secret, tokenTime - 1)
+			or token == generateToken(secret, tokenTime + 1);
+	}
+}
+
 bool IOLoginData::loginserverAuthentication(const std::string& name, const std::string& password, Account& account)
 {
 	Database& db = Database::getInstance();
@@ -146,17 +162,8 @@ std::pair<uint32_t, uint32_t> IOLoginData::gameworldAuthentication(std::string_v
 		return {};
 	}
 
-	std::string secret = decodeSecret(result->getString("secret"));
-	if (!secret.empty()) {
-		if (token.empty()) {
-			return {};
-		}
-
-		bool tokenValid = token == generateToken(secret, tokenTime) || token == generateToken(secret, tokenTime - 1) || token == generateToken(secret, tokenTime + 1);
-		if (!tokenValid) {
-			return {};
-		}
-	}
+	if (not IsTokenAccepted(decodeSecret(result->getString("secret")), token, tokenTime))
+		return {};
 
 	if (transformToSHA1(password) != result->getString("password")) {
 		return {};
@@ -491,12 +498,14 @@ void IOLoginData::setAccountType(uint32_t accountId, AccountType_t accountType)
 
 std::pair<uint32_t, uint32_t> IOLoginData::getAccountIdByAccountName(std::string_view accountName,
 	std::string_view password,
-	std::string_view characterName)
+	std::string_view characterName,
+	std::string_view token,
+	uint32_t tokenTime)
 {
 	Database& db = Database::getInstance();
 
 	DBResult_ptr result = db.storeQuery(
-		fmt::format("SELECT `id`, `password` FROM `accounts` WHERE `name` = {:s}", db.escapeString(accountName)));
+		fmt::format("SELECT `id`, `password`, `secret` FROM `accounts` WHERE `name` = {:s}", db.escapeString(accountName)));
 	if (!result) {
 		return {};
 	}
@@ -504,6 +513,9 @@ std::pair<uint32_t, uint32_t> IOLoginData::getAccountIdByAccountName(std::string
 	if (transformToSHA1(password) != result->getString("password")) {
 		return {};
 	}
+
+	if (not IsTokenAccepted(decodeSecret(result->getString("secret")), token, tokenTime))
+		return {};
 
 	uint32_t accountId = result->getNumber<uint32_t>("id");
 
