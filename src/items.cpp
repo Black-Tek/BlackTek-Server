@@ -294,12 +294,24 @@ void Items::clear()
 
 bool Items::reload()
 {
-	clear();
-	loadFromDat(g_config.GetString(ConfigManager::ASSETS_DAT_PATH));
+	Items reloaded;
 
-	if (!loadFromToml()) {
+	if (not reloaded.loadFromDat(g_config.GetString(ConfigManager::ASSETS_DAT_PATH)))
+	{
+		BlackTek::Console::Error("Items::reload: unable to load the item DAT file, keeping the current item definitions");
 		return false;
 	}
+
+	if (not reloaded.loadFromToml())
+	{
+		BlackTek::Console::Error("Items::reload: unable to load the item TOML files, keeping the current item definitions");
+		return false;
+	}
+
+	items			= std::move(reloaded.items);
+	nameToItems		= std::move(reloaded.nameToItems);
+	currencyItems	= std::move(reloaded.currencyItems);
+	inventory		= std::move(reloaded.inventory);
 
 	g_itemEvents->reload();
 	return true;
