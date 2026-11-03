@@ -392,7 +392,7 @@ ItemPtr Item::clone() const
 			item->setDecaying(DECAYING_TRUE);
 			const auto& item_type = Item::items[id];
 			const int64_t duration = item->getDuration();
-			const int64_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+			const int64_t call_time = Expirable::Now();
 			const int64_t expiration = duration + call_time;
 			auto expirable_data = Expirable(item, expiration, call_time);
 
@@ -1090,8 +1090,8 @@ void Item::setID(uint16_t newid)
 
 	auto fake_proxy = Expirable(getItem(), 0, 0);
     if (auto it = g_game.decaying_eq.find(fake_proxy); it != g_game.decaying_eq.end() and getDecaying()) {
-        const uint32_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        const uint32_t diff = it->expiration - now;
+        const int64_t now = Expirable::Now();
+        const int64_t diff = it->expiration - now;
 		setDecaying(DECAYING_FALSE);
         setDuration(static_cast<int32_t>(diff));
 		g_game.decaying_eq.erase(it);
@@ -2135,8 +2135,8 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 					{
 						auto fake_proxy = Expirable(item->getItem(), 0, 0);
 						if (auto it = g_game.decaying_eq.find(fake_proxy); it != g_game.decaying_eq.end() and item->getDecaying()) {
-							const uint32_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-							const uint32_t diff = it->expiration - now;
+							const int64_t now = Expirable::Now();
+							const int64_t diff = it->expiration - now;
 							duration = (static_cast<int32_t>(diff) / 1000);
 							break;
 						}

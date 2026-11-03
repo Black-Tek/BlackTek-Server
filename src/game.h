@@ -197,19 +197,24 @@ struct SleepFor
 
 struct Expirable 
 {
-    Expirable(ItemPtr _item, uint32_t expire_time, uint32_t creation = 0) :  item(_item), expiration(expire_time), created(creation) {}
+    Expirable(ItemPtr _item, int64_t expire_time, int64_t creation = 0) :  item(_item), expiration(expire_time), created(creation) {}
 
-    uint32_t getExpiration() const { return expiration; }
+    [[nodiscard]] static int64_t Now() noexcept
+	{
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    }
+
+    int64_t getExpiration() const { return expiration; }
     ItemPtr getItem() const { return item; }
 
-    bool operator==(const Expirable& other) const noexcept 
+    bool operator==(const Expirable& other) const noexcept
 	{
         return item.get() == other.item.get();
     }
 
 	ItemPtr item;
-    uint32_t expiration;
-	uint32_t created;
+    int64_t expiration;
+	int64_t created;
 };
 
 struct CreatureRoster

@@ -1997,8 +1997,8 @@ ReturnValue Game::internalMoveItem(BlackTek::ItemLocation fromLocation,
 	{
 		const auto& item_type = Item::items[item->getID()];
 		const uint32_t duration = item->getDuration();
-		const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-		const uint32_t expiration = duration + call_time;
+		const int64_t call_time = Expirable::Now();
+		const int64_t expiration = duration + call_time;
 		auto expirable_data = Expirable(item, expiration, call_time);
 		bool toIsPlayer = toLocation.player != nullptr;
 		if (moveItem->getDecaying() != DECAYING_TRUE)
@@ -2300,8 +2300,8 @@ ReturnValue Game::internalAddItem(BlackTek::ItemLocation toLocation, ItemPtr ite
 
 		const auto& item_type = Item::items[item->getID()];
 		const uint32_t duration = item->getDuration();
-		const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-		const uint32_t expiration = duration + call_time;
+		const int64_t call_time = Expirable::Now();
+		const int64_t expiration = duration + call_time;
 		auto expirable_data = Expirable(item, expiration, call_time);
 
 		// Equippable expirable
@@ -2994,8 +2994,8 @@ ItemPtr Game::transformItem(const ItemPtr& item, const uint16_t newId, const int
 			newItem->setDecaying(DECAYING_TRUE);
             const auto& item_type = Item::items[newItem->getID()];
 			const uint32_t duration = newItem->getDuration();
-			const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-			const uint32_t expiration = duration + call_time;
+			const int64_t call_time = Expirable::Now();
+			const int64_t expiration = duration + call_time;
 			auto expirable_data = Expirable(newItem, expiration, call_time);
 
 			// Equippable expirable
@@ -6679,12 +6679,12 @@ void Game::startDecay(const ItemPtr& item)
 		item->setDecaying(DECAYING_TRUE);
 		const auto& item_type = Item::items[item->getID()];
 		const uint32_t duration = item->getDuration();
-		const uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-		const uint32_t expiration = duration + call_time;
+		const int64_t call_time = Expirable::Now();
+		const int64_t expiration = duration + call_time;
 		auto expirable_data = Expirable(item, expiration, call_time);
 
 		// Equippable expirable
-        if (item_type.resumable) 
+        if (item_type.resumable)
 		{
             g_game.equipped_decay_precache.push_back(std::move(expirable_data));
 			return;
@@ -6738,7 +6738,7 @@ CoroTask Game::equipment_decay_cycle() noexcept
 {
     while (true) 
     {
-        uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        const int64_t call_time = Expirable::Now();
         while (not equipped_expirables.empty() and equipped_expirables.top().getExpiration() <= call_time)
         {
             Expirable expired_data = equipped_expirables.top();
@@ -6754,8 +6754,8 @@ CoroTask Game::equipment_decay_cycle() noexcept
         uint32_t next_time = EquipmentDecayMaxInterval;
         if (not equipped_expirables.empty()) 
         {
-            uint32_t next_expiration_time = equipped_expirables.top().getExpiration();
-            next_time = std::min<uint32_t>((next_expiration_time - call_time), EquipmentDecayMaxInterval);
+            const int64_t next_expiration_time = equipped_expirables.top().getExpiration();
+            next_time = static_cast<uint32_t>(std::min<int64_t>((next_expiration_time - call_time), EquipmentDecayMaxInterval));
         }
         co_await SleepFor{next_time};
     }
@@ -6765,7 +6765,7 @@ CoroTask Game::item_decay_cycle() noexcept
 {
     while (true) 
 	{
-        uint32_t call_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        const int64_t call_time = Expirable::Now();
        while (not map_expirables.empty() and map_expirables.top().getExpiration() <= call_time)
 		{
 			auto item = map_expirables.top().getItem();
@@ -6780,8 +6780,8 @@ CoroTask Game::item_decay_cycle() noexcept
         uint32_t next_time = MapDecayMaxInterval;
         if (not map_expirables.empty()) 
 		{
-            uint32_t next_expiration_time = map_expirables.top().getExpiration();
-            next_time = std::min<uint32_t>((next_expiration_time - call_time), MapDecayMaxInterval);
+            const int64_t next_expiration_time = map_expirables.top().getExpiration();
+            next_time = static_cast<uint32_t>(std::min<int64_t>((next_expiration_time - call_time), MapDecayMaxInterval));
         }
         co_await SleepFor{next_time};
     }
