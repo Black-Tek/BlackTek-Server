@@ -7642,7 +7642,7 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 
 		player->bankBalance += totalPrice;
 
-		const ItemPtr inbox = player->getInbox()->getOwner();
+		const ItemPtr inbox = buyerPlayer->getInbox()->getOwner();
 		if (it.stackable) {
 			uint16_t tmpAmount = amount;
 			while (tmpAmount > 0) {
