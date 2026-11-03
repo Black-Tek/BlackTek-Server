@@ -7598,6 +7598,7 @@ void Game::playerAcceptMarketOffer(const uint32_t playerId, const uint32_t times
 
 		auto buyerPlayer = getPlayerByGUID(offer.playerId);
 		if (!buyerPlayer) {
+			buyerPlayer = std::make_shared<Player>(nullptr);
 			if (!IOLoginData::loadPlayerById(buyerPlayer, offer.playerId)) {
 				return;
 			}
