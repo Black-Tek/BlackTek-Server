@@ -7687,8 +7687,8 @@ int LuaScriptInterface::luaItemSplit(lua_State* L)
 		env->insertItem(uid, newItem);
 	}
 
-	itemPtr.reset(newItem.get());
-	
+	itemPtr = newItem;
+
 	splitItem->setScriptDetached();
 	env->addTempItem(splitItem);
 
