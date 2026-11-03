@@ -5886,7 +5886,7 @@ void Player::cacheModifier(const BlackTek::DamageModifier& modifier) noexcept
 			post ? cache.post_filtered_attack.push_back(modifier)
 			     : cache.during_filtered_attack.push_back(modifier);
 		}
-		else
+		else if (modifier.getType() < BlackTek::ModifierCache::AttackMods)
 		{
 			post ? cache.post_main_attack[modifier.getType()].add(modifier)
 			     : cache.during_main_attack[modifier.getType()].add(modifier);
@@ -5902,7 +5902,7 @@ void Player::cacheModifier(const BlackTek::DamageModifier& modifier) noexcept
 		{
 			cache.filted_defense.push_back(modifier);
 		}
-		else
+		else if (modifier.getType() < BlackTek::ModifierCache::DefenseMods)
 		{
 			cache.main_defense[modifier.getType()].add(modifier);
 		}
@@ -5959,7 +5959,7 @@ void Player::uncacheModifier(const BlackTek::DamageModifier& modifier) noexcept
 			auto& vec = post ? cache.post_filtered_attack : cache.during_filtered_attack;
 			std::erase_if(vec, [guid](const auto& m) { return m.getGUID() == guid; });
 		}
-		else
+		else if (modifier.getType() < BlackTek::ModifierCache::AttackMods)
 		{
 			post ? cache.post_main_attack[modifier.getType()].subtract(modifier)
 			     : cache.during_main_attack[modifier.getType()].subtract(modifier);
@@ -5975,7 +5975,7 @@ void Player::uncacheModifier(const BlackTek::DamageModifier& modifier) noexcept
 		{
 			std::erase_if(cache.filted_defense, [guid](const auto& m) { return m.getGUID() == guid; });
 		}
-		else
+		else if (modifier.getType() < BlackTek::ModifierCache::DefenseMods)
 		{
 			cache.main_defense[modifier.getType()].subtract(modifier);
 		}
