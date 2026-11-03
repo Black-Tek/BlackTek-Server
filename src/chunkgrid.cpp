@@ -36,6 +36,10 @@
 
 #include "chunkgrid.h"
 
+#include <algorithm>
+#include <cstddef>
+#include <utility>
+
 namespace
 {
     constexpr size_t MaxDenseCells = 4'000'000;
@@ -45,16 +49,47 @@ namespace BlackTek::World
 {
     void ChunkGrid::Reserve(uint16_t mapWidth, uint16_t mapHeight)
     {
-        const int32_t chunksWide = (static_cast<int32_t>(mapWidth) + Floor::Mask) >> Floor::Bits;
-        const int32_t chunksHigh = (static_cast<int32_t>(mapHeight) + Floor::Mask) >> Floor::Bits;
-        const size_t cellCount = static_cast<size_t>(chunksWide) * static_cast<size_t>(chunksHigh);
+        const int32_t requestedWide = (static_cast<int32_t>(mapWidth) + Floor::Mask) >> Floor::Bits;
+        const int32_t requestedHigh = (static_cast<int32_t>(mapHeight) + Floor::Mask) >> Floor::Bits;
+        const size_t requestedCells = static_cast<size_t>(requestedWide) * static_cast<size_t>(requestedHigh);
 
-        if (cellCount == 0 or cellCount > MaxDenseCells)
+        if (requestedCells == 0 or requestedCells > MaxDenseCells)
             return;
 
+        const int32_t chunksWide = std::max(requestedWide, dense_chunks_wide);
+        const int32_t chunksHigh = std::max(requestedHigh, dense_chunks_high);
+        const size_t cellCount = static_cast<size_t>(chunksWide) * static_cast<size_t>(chunksHigh);
+
+        if (cellCount > MaxDenseCells)
+            return;
+
+        if (chunksWide == dense_chunks_wide and chunksHigh == dense_chunks_high)
+            return;
+
+        std::vector<ChunkHandle> grownGrid(cellCount, ChunkHandle{});
+
+        for (int32_t row = 0; row < dense_chunks_high; ++row)
+        {
+            const auto sourceRow = dense_grid.begin() + static_cast<std::ptrdiff_t>(row) * dense_chunks_wide;
+            const auto targetRow = grownGrid.begin() + static_cast<std::ptrdiff_t>(row) * chunksWide;
+            std::copy_n(sourceRow, dense_chunks_wide, targetRow);
+        }
+
+        dense_grid = std::move(grownGrid);
         dense_chunks_wide = chunksWide;
         dense_chunks_high = chunksHigh;
-        dense_grid.assign(cellCount, ChunkHandle{});
+
+        decltype(overflow_directory) remainingOverflow;
+
+        for (const auto& [coord, handle] : overflow_directory)
+        {
+            if (InDenseRange(coord))
+                dense_grid[DenseIndex(coord)] = handle;
+            else
+                remainingOverflow.emplace(coord, handle);
+        }
+
+        overflow_directory = std::move(remainingOverflow);
     }
 
     bool ChunkGrid::InDenseRange(ChunkCoord coord) const noexcept
