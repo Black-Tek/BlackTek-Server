@@ -4156,18 +4156,33 @@ void Game::playerAcceptTrade(const uint32_t playerId)
 		}
 		
 		if (tradePartnerRet == RETURNVALUE_NOERROR && playerRet == RETURNVALUE_NOERROR) {
-			tradePartnerRet = internalAddItem({ .player = tradePartner }, playerTradeItem, INDEX_ANYWHERE, 0, true);
-			playerRet = internalAddItem({ .player = player }, partnerTradeItem, INDEX_ANYWHERE, 0, true);
+			tradePartnerRet = internalAddItem({ .player = tradePartner }, playerTradeItem, INDEX_ANYWHERE, FLAG_IGNOREAUTOSTACK, true);
+			playerRet = internalAddItem({ .player = player }, partnerTradeItem, INDEX_ANYWHERE, FLAG_IGNOREAUTOSTACK, true);
 			if (tradePartnerRet == RETURNVALUE_NOERROR && playerRet == RETURNVALUE_NOERROR) {
 				playerRet = internalRemoveItem(playerTradeItem, playerTradeItem->getItemCount(), true);
 				tradePartnerRet = internalRemoveItem(partnerTradeItem, partnerTradeItem->getItemCount(), true);
 				if (tradePartnerRet == RETURNVALUE_NOERROR && playerRet == RETURNVALUE_NOERROR) {
-					tradePartnerRet = internalMoveItem(playerTradeItem->getLocation(), { .player = tradePartner }, INDEX_ANYWHERE, playerTradeItem, playerTradeItem->getItemCount(), std::nullopt, FLAG_IGNOREAUTOSTACK, nullptr, partnerTradeItem);
-					if (tradePartnerRet == RETURNVALUE_NOERROR) {
-						internalMoveItem(partnerTradeItem->getLocation(), { .player = player }, INDEX_ANYWHERE, partnerTradeItem, partnerTradeItem->getItemCount(), std::nullopt, FLAG_IGNOREAUTOSTACK);
-						playerTradeItem->onTradeEvent(ON_TRADE_TRANSFER, tradePartner);
-						partnerTradeItem->onTradeEvent(ON_TRADE_TRANSFER, player);
-						isSuccess = true;
+					const auto playerTradeItemOrigin = playerTradeItem->getLocation();
+					ItemPtr transferredItem;
+
+					tradePartnerRet = internalMoveItem(playerTradeItemOrigin, { .player = tradePartner }, INDEX_ANYWHERE, playerTradeItem, playerTradeItem->getItemCount(), std::ref(transferredItem), FLAG_IGNOREAUTOSTACK, nullptr, partnerTradeItem);
+					if (tradePartnerRet == RETURNVALUE_NOERROR)
+					{
+						playerRet = internalMoveItem(partnerTradeItem->getLocation(), { .player = player }, INDEX_ANYWHERE, partnerTradeItem, partnerTradeItem->getItemCount(), std::nullopt, FLAG_IGNOREAUTOSTACK);
+						if (playerRet == RETURNVALUE_NOERROR)
+						{
+							playerTradeItem->onTradeEvent(ON_TRADE_TRANSFER, tradePartner);
+							partnerTradeItem->onTradeEvent(ON_TRADE_TRANSFER, player);
+							isSuccess = true;
+						}
+						else if (transferredItem and transferredItem->getLocation())
+						{
+							const ReturnValue restoreRet = internalMoveItem(transferredItem->getLocation(), playerTradeItemOrigin, INDEX_ANYWHERE, transferredItem, transferredItem->getItemCount(), std::nullopt, FLAG_IGNOREAUTOSTACK);
+							if (restoreRet != RETURNVALUE_NOERROR)
+							{
+								BlackTek::Console::Error("Game::playerAcceptTrade: failed to restore item {} to its owner after the trade partner's item could not be delivered, error: {}", transferredItem->getID(), static_cast<int>(restoreRet));
+							}
+						}
 					}
 				}
 			}
