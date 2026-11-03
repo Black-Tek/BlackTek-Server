@@ -70,15 +70,21 @@ using namespace BlackTek::Store;
 
 namespace
 {
-	std::deque<std::pair<int64_t, uint32_t>> waitList; // (timeout, player guid)
-	auto priorityEnd = waitList.end();
+	struct WaitEntry
+	{
+		int64_t		timeout;
+		uint32_t	guid;
+		bool		premium;
+	};
 
-	auto findClient(uint32_t guid) 
+	std::deque<WaitEntry> waitList;
+
+	auto findClient(uint32_t guid)
 	{
 		std::size_t slot = 1;
-		for (auto it = waitList.begin(), end = waitList.end(); it != end; ++it, ++slot) 
+		for (auto it = waitList.begin(), end = waitList.end(); it != end; ++it, ++slot)
 		{
-			if (it->second == guid) 
+			if (it->guid == guid)
 			{
 				return std::make_pair(it, slot);
 			}
@@ -136,7 +142,7 @@ namespace
 		auto it = waitList.begin();
 		while (it != waitList.end()) 
 		{
-			if ((it->first - time) <= 0) 
+			if ((it->timeout - time) <= 0)
 			{
 				it = waitList.erase(it);
 			}
@@ -159,18 +165,16 @@ namespace
 			}
 
 			//let them wait a bit longer
-			it->first = time + (getTimeout(slot) * 1000);
+			it->timeout = time + (getTimeout(slot) * 1000);
 			return slot;
 		}
 
+		const bool premium = player->isPremium();
+		const auto insertPosition = premium ? std::ranges::find(waitList, false, &WaitEntry::premium) : waitList.end();
+		const std::size_t position = static_cast<std::size_t>(std::distance(waitList.begin(), insertPosition)) + 1;
 
-		if (player->isPremium()) 
-		{
-			priorityEnd = waitList.emplace(priorityEnd, time + (getTimeout(slot + 1) * 1000), player->getGUID());
-			return std::distance(waitList.begin(), priorityEnd);
-		}
-		waitList.emplace_back(time + (getTimeout(waitList.size() + 1) * 1000), player->getGUID());
-		return waitList.size();
+		waitList.insert(insertPosition, WaitEntry{ .timeout = time + (getTimeout(position) * 1000), .guid = player->getGUID(), .premium = premium });
+		return position;
 	}
 
 
