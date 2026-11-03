@@ -401,7 +401,7 @@ namespace Components
                 }
                 else [[likely]]
                 {
-                    current_ += new_value;
+                    current_ = new_value;
                     return true;
                 }
                 return false;
