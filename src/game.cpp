@@ -7556,15 +7556,17 @@ void Game::playerCancelMarketOffer(const uint32_t playerId, const uint32_t times
 		return;
 	}
 
+	const ItemType& it = Item::items[offer.itemId];
+	if (offer.type != MARKETACTION_BUY and it.getID() == 0)
+		return;
+
+	if (not IOMarket::moveOfferToHistory(offer.id, OFFERSTATE_CANCELLED))
+		return;
+
 	if (offer.type == MARKETACTION_BUY) {
 		player->bankBalance += static_cast<uint64_t>(offer.price) * offer.amount;
 		player->sendMarketEnter();
 	} else {
-		const ItemType& it = Item::items[offer.itemId];
-		if (it.getID() == 0) {
-			return;
-		}
-
 		const ItemPtr inbox = player->getInbox()->getOwner();
 		if (it.stackable) {
 			uint16_t tmpAmount = offer.amount;
@@ -7598,7 +7600,6 @@ void Game::playerCancelMarketOffer(const uint32_t playerId, const uint32_t times
 		}
 	}
 
-	IOMarket::moveOfferToHistory(offer.id, OFFERSTATE_CANCELLED);
 	offer.amount = 0;
 	offer.timestamp += g_config.GetNumber(ConfigManager::MARKET_OFFER_DURATION);
 	player->sendMarketCancelOffer(offer);
