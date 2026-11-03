@@ -60,13 +60,25 @@ namespace BlackTek::World
 
         if (creature->is_player())
         {
-            std::swap(creature_ptrs[lastIndex], creature_ptrs[player_count]);
-            std::swap(creature_x[lastIndex], creature_x[player_count]);
-            std::swap(creature_y[lastIndex], creature_y[player_count]);
-            std::swap(creature_z[lastIndex], creature_z[player_count]);
+            const uint32_t monsterEnd = static_cast<uint32_t>(player_count) + monster_count;
+
+            const auto swapEntries = [this](const uint32_t first, const uint32_t second)
+            {
+                if (first == second)
+                    return;
+
+                std::swap(creature_ptrs[first], creature_ptrs[second]);
+                std::swap(creature_x[first], creature_x[second]);
+                std::swap(creature_y[first], creature_y[second]);
+                std::swap(creature_z[first], creature_z[second]);
+            };
+
+            swapEntries(lastIndex, monsterEnd);
+            swapEntries(monsterEnd, player_count);
 
             slot = player_count;
             creature_ptrs[lastIndex]->setChunkSlot(lastIndex);
+            creature_ptrs[monsterEnd]->setChunkSlot(monsterEnd);
             ++player_count;
         }
         else if (creature->is_monster())
