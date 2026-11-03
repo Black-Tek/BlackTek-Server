@@ -220,17 +220,19 @@ namespace Console {
 		int totalWidth = 68;
 		auto textLen = static_cast<int>(onlineText.length());
 		int padding = (totalWidth - textLen) / 2;
+		int leftPadding = std::max(padding, 0);
+		int rightPadding = std::max(padding - 2, 0);
 
 		std::string out;
 		out += "\n";
 		out += fmt::format(fg(dark_gray), "    ╔══════════════════════════════════════════════════════════════════╗\n");
 		out += fmt::format(fg(dark_gray), "    ║");
-		out += fmt::format(fg(cyan),                              "{:>{}}", "", padding);
+		out += fmt::format(fg(cyan),                              "{:>{}}", "", leftPadding);
 		out += fmt::format(fg(cyan)  | fmt::emphasis::bold,       "{}", DIAMOND);
 		out += fmt::format(fg(white) | fmt::emphasis::bold,       " {} ", serverName);
 		out += fmt::format(fg(green) | fmt::emphasis::bold,       "| ONLINE | ");
 		out += fmt::format(fg(cyan)  | fmt::emphasis::bold,       "{}", DIAMOND);
-		out += fmt::format(fg(cyan),                              "{:<{}}", "", padding - 2);
+		out += fmt::format(fg(cyan),                              "{:<{}}", "", rightPadding);
 		out += fmt::format(fg(dark_gray), "       ║\n");
 		out += fmt::format(fg(dark_gray), "    ╚══════════════════════════════════════════════════════════════════╝\n\n");
 		BlackTek::Console::LogAndPrint(std::move(out));
