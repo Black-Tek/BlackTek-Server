@@ -48,6 +48,8 @@
 #include "monster.h"
 #include "simd_kernels.h"
 
+#include <ranges>
+
 extern Game g_game;
 
 namespace
@@ -234,19 +236,27 @@ void Map::removeTile(const uint16_t x, const uint16_t y, const uint8_t z) const
     {
 		if (const auto& creatures = tile->getCreatures())
         {
-			for (int32_t i = creatures->size(); --i >= 0;)
+			const CreatureVector tileCreatures = creatures->getList();
+
+			for (const auto& creature : tileCreatures | std::views::reverse)
             {
-				if (const auto& player = creatures->getList()[i]->getPlayer())
-					g_game.internalTeleport(player, player->getTown()->getTemplePosition(), false, FLAG_NOLIMIT);
-				else 
-					g_game.removeCreature(creatures->getList()[i]);
+				if (not creature->isRemoved() and creature->getTile() == tile)
+                {
+					if (const auto& player = creature->getPlayer())
+						g_game.internalTeleport(player, player->getTown()->getTemplePosition(), false, FLAG_NOLIMIT);
+
+					else
+						g_game.removeCreature(creature);
+				}
 			}
 		}
 
 		if (const auto& items = tile->getItemList()) 
         {
-			for (auto it = items->begin(), end = items->end(); it != end; ++it)
-				g_game.internalRemoveItem(*it);
+			const ItemVector tileItems(items->begin(), items->end());
+
+			for (const auto& item : tileItems)
+				g_game.internalRemoveItem(item);
 		}
 
 		if (const auto& ground = tile->getGround())
