@@ -7484,16 +7484,33 @@ void Game::playerCreateMarketOffer(const uint32_t playerId, uint8_t type, const 
 	}
 
 	uint64_t playerMoney = player->getMoney();
+	uint64_t totalDebit = fee;
+	std::vector<ItemPtr> itemList;
 	if (type == MARKETACTION_SELL) {
 		if (fee > (playerMoney + player->bankBalance)) {
 			return;
 		}
 
-		const auto& itemList = getMarketItemList(it.wareId, amount, player);
+		itemList = getMarketItemList(it.wareId, amount, player);
 		if (itemList.empty()) {
 			return;
 		}
+	} else {
+		totalDebit += static_cast<uint64_t>(price) * amount;
+		if (totalDebit > (playerMoney + player->bankBalance)) {
+			return;
+		}
+	}
 
+	if (not IOMarket::createOffer(player->getGUID(), static_cast<MarketAction_t>(type), it.getID(), amount, price, anonymous))
+	{
+		BlackTek::Console::Database::Error("Game::playerCreateMarketOffer: failed to insert market offer for player {}, no items or money were taken", player->getGUID());
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return;
+	}
+
+	if (type == MARKETACTION_SELL)
+	{
 		if (it.stackable) {
 			uint16_t tmpAmount = amount;
 			for (const auto item : itemList) {
@@ -7510,25 +7527,12 @@ void Game::playerCreateMarketOffer(const uint32_t playerId, uint8_t type, const 
 				internalRemoveItem(item);
 			}
 		}
-
-		const auto debitCash = std::min(playerMoney, fee);
-		const auto debitBank = fee - debitCash;
-		removeMoney({ .player = player }, debitCash);
-		player->bankBalance -= debitBank;
-	} else {
-		uint64_t totalPrice = static_cast<uint64_t>(price) * amount;
-		totalPrice += fee;
-		if (totalPrice > (playerMoney + player->bankBalance)) {
-			return;
-		}
-
-		const auto debitCash = std::min(playerMoney, totalPrice);
-		const auto debitBank = totalPrice - debitCash;
-		removeMoney({ .player = player }, debitCash);
-		player->bankBalance -= debitBank;
 	}
 
-	IOMarket::createOffer(player->getGUID(), static_cast<MarketAction_t>(type), it.getID(), amount, price, anonymous);
+	const auto debitCash = std::min(playerMoney, totalDebit);
+	const auto debitBank = totalDebit - debitCash;
+	removeMoney({ .player = player }, debitCash);
+	player->bankBalance -= debitBank;
 
 	player->sendMarketEnter();
 	const MarketOfferList& buyOffers = IOMarket::getActiveOffers(MARKETACTION_BUY, it.getID());
