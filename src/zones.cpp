@@ -309,6 +309,7 @@ namespace Zones
 
         bool ownFrameIsRunning =
             zone.dispatching
+            or zone.HasRunningFrame()
             or std::any_of(resumeStack.begin(), resumeStack.end(), [&zone](std::coroutine_handle<> frameHandle)
             {
                 return std::find(zone.liveFrames.begin(), zone.liveFrames.end(), frameHandle) != zone.liveFrames.end();

@@ -53,6 +53,7 @@
 #include <filesystem>
 #include <optional>
 #include <coroutine>
+#include <type_traits>
 #include <gtl/phmap.hpp>
 
 class MonsterType;
@@ -258,11 +259,35 @@ namespace Zones
 
     using SpawnCreaturePtr = std::shared_ptr<SpawnCreature>;
 
+    template <typename Awaitable>
+    struct TrackedAwaiter
+    {
+        Awaitable& awaitable;
+        bool&      running;
+
+        [[nodiscard]] bool await_ready() const noexcept(noexcept(awaitable.await_ready())) { return awaitable.await_ready(); }
+
+        void await_suspend(std::coroutine_handle<> handle) const
+        {
+            static_assert(std::is_void_v<decltype(awaitable.await_suspend(handle))>, "TrackedAwaiter requires a void await_suspend");
+
+            running = false;
+            awaitable.await_suspend(handle);
+        }
+
+        decltype(auto) await_resume() const noexcept(noexcept(awaitable.await_resume()))
+        {
+            running = true;
+            return awaitable.await_resume();
+        }
+    };
+
     struct SpawnCoroTask
     {
         struct promise_type
         {
             Zone* owner = nullptr;
+            bool  running = true;
 
             promise_type() : owner(nullptr) {}
             template <typename... Args>
@@ -274,6 +299,12 @@ namespace Zones
             std::suspend_never final_suspend()   noexcept { return {}; }
             void return_void()        noexcept {}
             void unhandled_exception() noexcept {}
+
+            template <typename Awaitable>
+            TrackedAwaiter<std::remove_reference_t<Awaitable>> await_transform(Awaitable&& awaitable) noexcept
+            {
+                return { awaitable, running };
+            }
 
             static void* operator new(std::size_t size)
             {
@@ -403,6 +434,14 @@ namespace Zones
         }
 
         void Deactivate() { config.reset(static_cast<size_t>(ConfigFlag::Active)); }
+
+        [[nodiscard]] bool HasRunningFrame() const noexcept
+        {
+            return std::ranges::any_of(liveFrames, [](std::coroutine_handle<> frame)
+            {
+                return std::coroutine_handle<SpawnCoroTask::promise_type>::from_address(frame.address()).promise().running;
+            });
+        }
 
         bool TryMonsterSpawn(MonsterPtr creature, Position position, Direction direction, MagicEffectClasses magic_effect, bool startup, bool artificial);
 
