@@ -872,7 +872,7 @@ bool Item::canBedBeUsed(const PlayerConstPtr& player) const
 	if (house->getHouseAccessLevel(player) == HOUSE_OWNER)
 		return true;
 
-	PlayerPtr sleeper(nullptr);
+	const PlayerPtr sleeper = std::make_shared<Player>(nullptr);
 
 	if (not IOLoginData::loadPlayerById(sleeper, sleeperGUID))
 		return false;
@@ -940,7 +940,7 @@ void Item::wakeUp(const PlayerPtr& player)
 	{
 		if (not player)
 		{
-			PlayerPtr regenPlayer(nullptr);
+			const PlayerPtr regenPlayer = std::make_shared<Player>(nullptr);
 
 			if (IOLoginData::loadPlayerById(regenPlayer, sleeperGUID))
 			{
