@@ -85,6 +85,9 @@ void Connection::close(bool force)
 	{
 		if (closed)
 		{
+			if (force)
+				closeSocket();
+			
 			return;
 		}
 		closed = true;
@@ -92,14 +95,14 @@ void Connection::close(bool force)
 		ConnectionManager::getInstance().releaseConnection(self);
 
 		if (protocol)
-		{
 			g_dispatcher.addTask(createTask([protocol = protocol]() { protocol->release(); }));
-		}
 
 		if (messageQueue.empty() or force)
-		{
 			closeSocket();
-		}
+
+		else
+			readTimer.cancel();
+
 		// else closeSocket() called from onWriteOperation once queue drains
 	});
 }
