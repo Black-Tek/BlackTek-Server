@@ -7256,6 +7256,12 @@ void Game::playerPurchaseStoreOffer(
 			return;
 		}
 
+		if (product->price > 0)
+		{
+			player->sendStorePurchaseResult(false, "This offer cannot be purchased because no coin balance is available.", window->getCoins(), window->getTransferableCoins());
+			return;
+		}
+
 		std::string reason;
 		if (category->canPurchaseScriptId != -1 and not category->executeCanPurchase(player, offerId, reason))
 		{
