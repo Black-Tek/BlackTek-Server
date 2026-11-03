@@ -10860,7 +10860,7 @@ int LuaScriptInterface::luaCreatureGiveCustomSkill(lua_State* L)
 				}
 				// Skill name not found but "make_new" is true
 				auto new_skill = Components::Skills::CustomSkill::make_skill();
-				pushBoolean(L, player->giveCustomSkill(skill_name, std::move(new_skill)));
+				pushBoolean(L, npc->giveCustomSkill(skill_name, std::move(new_skill)));
 				return 1;
 			}
 			else if (const auto& monster = creature->getMonster())
@@ -10877,7 +10877,7 @@ int LuaScriptInterface::luaCreatureGiveCustomSkill(lua_State* L)
 				}
 				// Skill name not found but "make_new" is true
 				auto new_skill = Components::Skills::CustomSkill::make_skill();
-				pushBoolean(L, player->giveCustomSkill(skill_name, std::move(new_skill)));
+				pushBoolean(L, monster->giveCustomSkill(skill_name, std::move(new_skill)));
 				return 1;
 			}
 			BlackTek::Console::Script::Error("{}: creature is not a player, npc, or monster", __FUNCTION__);
