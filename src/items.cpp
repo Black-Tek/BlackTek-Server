@@ -379,11 +379,26 @@ bool Items::loadFromToml()
 
                 const toml::table& itemTable = *item.as_table();
                 if (auto idNode = itemTable["id"]) {
-                    uint16_t id = static_cast<uint16_t>(idNode.as_integer()->get());
+                    const auto* idValue = idNode.as_integer();
+                    if (not idValue)
+                    {
+                        BlackTek::Console::Warn("Items::loadFromToml: 'id' is not an integer in {}", entry.path().string());
+                        continue;
+                    }
+
+                    uint16_t id = static_cast<uint16_t>(idValue->get());
                     parseItemToml(itemTable, id);
                 } else if (auto fromIdNode = itemTable["fromid"], toIdNode = itemTable["toid"]; fromIdNode && toIdNode) {
-                    uint16_t fromId = static_cast<uint16_t>(fromIdNode.as_integer()->get());
-                    uint16_t toId = static_cast<uint16_t>(toIdNode.as_integer()->get());
+                    const auto* fromIdValue = fromIdNode.as_integer();
+                    const auto* toIdValue = toIdNode.as_integer();
+                    if (not fromIdValue or not toIdValue)
+                    {
+                        BlackTek::Console::Warn("Items::loadFromToml: 'fromid' and 'toid' must both be integers in {}", entry.path().string());
+                        continue;
+                    }
+
+                    uint16_t fromId = static_cast<uint16_t>(fromIdValue->get());
+                    uint16_t toId = static_cast<uint16_t>(toIdValue->get());
                     if (fromId > toId) {
                         std::cout << "[Warning - Items::loadFromToml] fromid (" << fromId << ") > toid (" << toId << ") in " << entry.path() << std::endl;
                         continue;
