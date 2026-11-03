@@ -24786,6 +24786,37 @@ int LuaScriptInterface::luaItemEventExtraElement(lua_State* L)
 }
 
 // XML
+namespace
+{
+	constexpr int XmlOwnerValue = 1;
+
+	pugi::xml_document* LuaXmlGetDocument(lua_State* L, int32_t arg)
+	{
+		auto** document = static_cast<pugi::xml_document**>(luaL_testudata(L, arg, "XMLDocument"));
+		if (not document)
+			return nullptr;
+
+		return *document;
+	}
+
+	pugi::xml_node* LuaXmlGetNode(lua_State* L, int32_t arg)
+	{
+		auto** node = static_cast<pugi::xml_node**>(luaL_testudata(L, arg, "XMLNode"));
+		if (not node or not *node)
+			return nullptr;
+
+		lua_getiuservalue(L, arg, XmlOwnerValue);
+		auto** owner = static_cast<pugi::xml_document**>(lua_touserdata(L, -1));
+		const bool ownerAlive = owner and *owner;
+		lua_pop(L, 1);
+
+		if (not ownerAlive)
+			return nullptr;
+
+		return *node;
+	}
+}
+
 int LuaScriptInterface::luaCreateXmlDocument(lua_State* L)
 {
 	// XMLDocument(filename)
@@ -24821,7 +24852,7 @@ int LuaScriptInterface::luaDeleteXmlDocument(lua_State* L)
 int LuaScriptInterface::luaXmlDocumentChild(lua_State* L)
 {
 	// doc:child(name)
-	pugi::xml_document* document = getUserdata<pugi::xml_document>(L, 1);
+	pugi::xml_document* document = LuaXmlGetDocument(L, 1);
 	if (!document) {
 		lua_pushnil(L);
 		return 1;
@@ -24836,6 +24867,8 @@ int LuaScriptInterface::luaXmlDocumentChild(lua_State* L)
 	auto node = std::make_unique<pugi::xml_node>(document->child(name.c_str()));
 	pushUserdata<pugi::xml_node>(L, node.release());
 	setMetatable(L, -1, "XMLNode");
+	lua_pushvalue(L, 1);
+	lua_setiuservalue(L, -2, XmlOwnerValue);
 	return 1;
 }
 
@@ -24853,7 +24886,7 @@ int LuaScriptInterface::luaDeleteXmlNode(lua_State* L)
 int LuaScriptInterface::luaXmlNodeAttribute(lua_State* L)
 {
 	// node:attribute(name)
-	pugi::xml_node* node = getUserdata<pugi::xml_node>(L, 1);
+	pugi::xml_node* node = LuaXmlGetNode(L, 1);
 	if (!node) {
 		lua_pushnil(L);
 		return 1;
@@ -24878,7 +24911,7 @@ int LuaScriptInterface::luaXmlNodeAttribute(lua_State* L)
 int LuaScriptInterface::luaXmlNodeName(lua_State* L)
 {
 	// node:name()
-	pugi::xml_node* node = getUserdata<pugi::xml_node>(L, 1);
+	pugi::xml_node* node = LuaXmlGetNode(L, 1);
 	if (!node) {
 		lua_pushnil(L);
 		return 1;
@@ -24891,7 +24924,7 @@ int LuaScriptInterface::luaXmlNodeName(lua_State* L)
 int LuaScriptInterface::luaXmlNodeFirstChild(lua_State* L)
 {
 	// node:firstChild()
-	pugi::xml_node* node = getUserdata<pugi::xml_node>(L, 1);
+	pugi::xml_node* node = LuaXmlGetNode(L, 1);
 	if (!node) {
 		lua_pushnil(L);
 		return 1;
@@ -24906,13 +24939,15 @@ int LuaScriptInterface::luaXmlNodeFirstChild(lua_State* L)
 	auto newNode = std::make_unique<pugi::xml_node>(std::move(firstChild));
 	pushUserdata<pugi::xml_node>(L, newNode.release());
 	setMetatable(L, -1, "XMLNode");
+	lua_getiuservalue(L, 1, XmlOwnerValue);
+	lua_setiuservalue(L, -2, XmlOwnerValue);
 	return 1;
 }
 
 int LuaScriptInterface::luaXmlNodeNextSibling(lua_State* L)
 {
 	// node:nextSibling()
-	pugi::xml_node* node = getUserdata<pugi::xml_node>(L, 1);
+	pugi::xml_node* node = LuaXmlGetNode(L, 1);
 	if (!node) {
 		lua_pushnil(L);
 		return 1;
@@ -24927,6 +24962,8 @@ int LuaScriptInterface::luaXmlNodeNextSibling(lua_State* L)
 	auto newNode = std::make_unique<pugi::xml_node>(std::move(nextSibling));
 	pushUserdata<pugi::xml_node>(L, newNode.release());
 	setMetatable(L, -1, "XMLNode");
+	lua_getiuservalue(L, 1, XmlOwnerValue);
+	lua_setiuservalue(L, -2, XmlOwnerValue);
 	return 1;
 }
 
