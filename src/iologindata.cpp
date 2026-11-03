@@ -1003,12 +1003,12 @@ bool IOLoginData::loadPlayer(const PlayerPtr& player, DBResult_ptr result, std::
 				}
 
 				uint32_t player_id = result->getNumber<uint32_t>("player_id");
-				auto stat_data = result->getString("stats");
+				std::string stat_data;
 
-				if (stat_data.empty()) 
-				{
+				do stat_data = result->getString("stats"); while (result->next());
+
+				if (stat_data.empty())
 					return;
-				}
 				
 				PropStream binary_stream;
 				binary_stream.init(stat_data.data(), stat_data.size());
@@ -1613,10 +1613,14 @@ bool IOLoginData::savePlayer(const PlayerPtr& player)
 
 	savePlayerCustomSkills(player, skill_query, skills_stream);
 
+	if (not db.executeQuery(fmt::format("DELETE FROM `player_custom_stats` WHERE `player_id` = {:d}", player->getGUID())))
+		return false;
+
 	DBInsert stats_query("INSERT INTO `player_custom_stats` (`player_id`, `stats`) VALUES ");
 	PropWriteStream stats_stream;
 
-	savePlayerCustomStats(player, stats_query, stats_stream);
+	if (not savePlayerCustomStats(player, stats_query, stats_stream))
+		return false;
 
 
 	//End the transaction
