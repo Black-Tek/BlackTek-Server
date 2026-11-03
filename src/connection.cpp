@@ -377,7 +377,24 @@ uint32_t Connection::getIP()
 		return 0;
 	}
 
-	const uint32_t ip = htonl(endpoint.address().to_v4().to_uint());
+	const boost::asio::ip::address address = endpoint.address();
+	boost::asio::ip::address_v4 v4Address;
+
+	if (address.is_v4())
+	{
+		v4Address = address.to_v4();
+	}
+	else
+	{
+		const boost::asio::ip::address_v6 v6Address = address.to_v6();
+
+		if (not v6Address.is_v4_mapped())
+			return 0;
+
+		v4Address = boost::asio::ip::make_address_v4(boost::asio::ip::v4_mapped, v6Address);
+	}
+
+	const uint32_t ip = htonl(v4Address.to_uint());
 	cachedIP.store(ip, std::memory_order_relaxed);
 	return ip;
 }
