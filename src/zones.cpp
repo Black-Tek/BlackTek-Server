@@ -2320,6 +2320,9 @@ namespace Zones
     {
         Clear();
         LoadZones();
+
+        auto today = std::chrono::floor<std::chrono::days>(std::chrono::system_clock::now());
+        ApplySchedule(std::chrono::weekday { today });
     }
 
     void ZoneManager::RegisterSpawnPosition(Position& position, ZoneHandle zone)
@@ -2484,22 +2487,15 @@ namespace Zones
         }
     }
 
-    CoroTask ZoneManager::Supervise()
+    void ZoneManager::ApplySchedule(std::chrono::weekday today)
     {
-        while (true)
+        for (ZoneHandle handle : zone_registry)
         {
-            auto now   = std::chrono::system_clock::now();
-            auto today = std::chrono::floor<std::chrono::days>(now);
-            std::chrono::weekday wd { today };
+            Zone* zone = zone_pool.TryGetMutable(handle);
 
-            for (ZoneHandle handle : zone_registry)
+            if (zone and zone->entity_type != SpawnType::None)
             {
-                Zone* zone = zone_pool.TryGetMutable(handle);
-
-                if (not zone or zone->entity_type == SpawnType::None)
-                    continue;
-
-                if (zone->ActiveToday(wd))
+                if (zone->ActiveToday(today))
                 {
                     if (not zone->Active())
                         zone->Activate();
@@ -2510,6 +2506,18 @@ namespace Zones
                         zone->Deactivate();
                 }
             }
+        }
+    }
+
+    CoroTask ZoneManager::Supervise()
+    {
+        while (true)
+        {
+            auto now   = std::chrono::system_clock::now();
+            auto today = std::chrono::floor<std::chrono::days>(now);
+            std::chrono::weekday wd { today };
+
+            ApplySchedule(wd);
 
             auto tomorrow       = today + std::chrono::days(1);
             auto msUntilMidnight = static_cast<uint32_t>(

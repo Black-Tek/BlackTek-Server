@@ -672,6 +672,7 @@ namespace Zones
         static void Initialize();
 
         static void ActivateAll();
+        static void ApplySchedule(std::chrono::weekday today);
 
         static void SetSpawnPool(std::pmr::memory_resource* pool)
         {
