@@ -3280,7 +3280,7 @@ namespace BlackTek
 				return;
 			}
 
-			if (caster->is_player())
+			if (caster_player)
 				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), target);
 
 			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(maxHeal));
@@ -3303,7 +3303,7 @@ namespace BlackTek
 				return;
 			}
 
-			if (caster->is_player())
+			if (caster_player)
 				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player);
 
 			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(maxMana));
@@ -3327,7 +3327,7 @@ namespace BlackTek
 				return;
 			}
 
-			if (caster->is_player())
+			if (caster_player)
 				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player);
 
 			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(remaining));
@@ -3350,7 +3350,7 @@ namespace BlackTek
 				return;
 			}
 
-			if (caster->is_player())
+			if (caster_player)
 				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player);
 
 			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(maxSoul));
@@ -4649,13 +4649,15 @@ namespace BlackTek
 		if (amount == 0)
 			return;
 
+		const bool caster_player = caster and caster->is_player();
+
 		SpectatorVec owned;
 
 		if (not spectators)
 		{
 			owned = g_game.map.fetchSpectators(target->getPosition(), true, true);
 
-			if (owned.empty() and not target->is_player() and not caster->is_player())
+			if (owned.empty() and not target->is_player() and not caster_player)
 				return;
 
 			spectators.emplace(owned.begin(), owned.end());
@@ -4676,7 +4678,7 @@ namespace BlackTek
 		const bool	is_defense_conversion	= (origin == Origin::Absorb or origin == Origin::Restore or origin == Origin::Replenish or origin == Origin::Revive);
 		const bool	is_drain_gain			= (origin == Origin::LifeSteal or origin == Origin::ManaSteal or origin == Origin::StaminaSteal or origin == Origin::SoulSteal);
 
-		const bool anyRecipients = target->is_player() or (not self_target and caster->is_player()) or has_observers;
+		const bool anyRecipients = target->is_player() or (not self_target and caster_player) or has_observers;
 
 		if (not anyRecipients)
 			return;
@@ -4729,7 +4731,7 @@ namespace BlackTek
 			player->sendStats();
 		}
 
-		if (not self_target and caster->is_player())
+		if (not self_target and caster_player)
 		{
 			const std::string amount_str	= std::to_string(amount);
 			const std::string stat_str		= std::string(notice.stat_name);
@@ -4761,7 +4763,7 @@ namespace BlackTek
 			const std::string stat_str			= std::string(notice.stat_name);
 			const std::string origin_verb		= std::string(origin_notice.verb);
 			const auto& target_name				= target->getName();
-			const auto& caster_name				= caster->getNameDescription();
+			const auto& caster_name				= caster ? caster->getNameDescription() : target_name;
 
 			const std::string observer_text =
 				is_defense_conversion
