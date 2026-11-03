@@ -581,9 +581,9 @@ void Houses::payHouses(const RentPeriod_t rentPeriod) const
 		}
 
 		PlayerPtr player = std::make_shared<Player>(nullptr);
-		if (!IOLoginData::loadPlayerById(player, ownerId)) {
-			// Player doesn't exist, reset house owner
-			house->setOwner(0);
+		if (not IOLoginData::loadPlayerById(player, ownerId))
+		{
+			BlackTek::Console::Error("Houses::payHouses: failed to load owner {} of house {} ({}), rent not collected and ownership left unchanged", ownerId, house->getId(), house->getName());
 			continue;
 		}
 
