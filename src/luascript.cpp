@@ -4947,8 +4947,18 @@ int LuaScriptInterface::luaDatabaseEscapeString(lua_State* L)
 
 int LuaScriptInterface::luaDatabaseEscapeBlob(lua_State* L)
 {
-	uint32_t length = getNumber<uint32_t>(L, 2);
-	pushString(L, Database::getInstance().escapeBlob(getString(L, 1).c_str(), length));
+	const std::string data = getString(L, 1);
+	const double requestedLength = lua_tonumber(L, 2);
+	const size_t maxLength = std::min<size_t>(data.size(), std::numeric_limits<uint32_t>::max());
+
+	if (not (requestedLength >= 0.0 and requestedLength <= static_cast<double>(maxLength)))
+	{
+		reportErrorFunc(L, fmt::format("Argument 2 ({}) is outside the valid length range [0, {}] for the given string.", requestedLength, maxLength));
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	pushString(L, Database::getInstance().escapeBlob(data.data(), static_cast<uint32_t>(requestedLength)));
 	return 1;
 }
 

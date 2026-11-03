@@ -190,7 +190,7 @@ DBResult_ptr Database::storeQuery(const std::string& query)
 std::string Database::escapeBlob(const char* s, uint32_t length) const
 {
 	// the worst case is 2n + 1
-	size_t maxLength = (length * 2) + 1;
+	size_t maxLength = (static_cast<size_t>(length) * 2) + 1;
 
 	std::string escaped;
 	escaped.reserve(maxLength + 2);
