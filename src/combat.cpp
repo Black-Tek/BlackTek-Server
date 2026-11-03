@@ -3157,10 +3157,10 @@ namespace BlackTek
 		}
 	}
 
-	void Combat::apply_healing_modifiers(const PlayerPtr& caster, const auto& target)
+	uint32_t Combat::apply_healing_modifiers(const PlayerPtr& caster, const auto& target, uint32_t amount) const noexcept
 	{
 		if (not caster->hasHealingModifiers())
-			return;
+			return amount;
 
 		const auto heal_type =
 			config.test(Config::HealthTarget)   ? DamageModifier::AttackType::Regeneration  :
@@ -3170,7 +3170,7 @@ namespace BlackTek
 			                                      DamageModifier::AttackType::None;
 
 		if (heal_type == DamageModifier::AttackType::None)
-			return;
+			return amount;
 
 		const auto& main_sum    = caster->getMainHealingModSum(heal_type);
 		const auto target_type  = target->getType();
@@ -3207,8 +3207,10 @@ namespace BlackTek
 			}
 		}
 
-		if (percent_boost) damage += damage * percent_boost / 100;
-		damage += flat_boost;
+		const uint64_t percent_bonus = static_cast<uint64_t>(amount) * percent_boost / 100;
+		const uint64_t boosted = static_cast<uint64_t>(amount) + percent_bonus + flat_boost;
+
+		return static_cast<uint32_t>(std::min<uint64_t>(boosted, std::numeric_limits<uint32_t>::max()));
 	}
 
 	void Combat::heal_target(const CreaturePtr& caster, const CreaturePtr& target, bool skip_validation, const std::optional<std::span<const CreaturePtr>> spectators) noexcept
@@ -3281,7 +3283,7 @@ namespace BlackTek
 			}
 
 			if (caster_player)
-				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), target);
+				heal_amount = apply_healing_modifiers(std::static_pointer_cast<Player>(caster), target, heal_amount);
 
 			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(maxHeal));
 			target->changeHealth(static_cast<int32_t>(healed), true, spectators);
@@ -3304,7 +3306,7 @@ namespace BlackTek
 			}
 
 			if (caster_player)
-				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player);
+				heal_amount = apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player, heal_amount);
 
 			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(maxMana));
 			player->changeMana(static_cast<int32_t>(healed));
@@ -3328,7 +3330,7 @@ namespace BlackTek
 			}
 
 			if (caster_player)
-				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player);
+				heal_amount = apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player, heal_amount);
 
 			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(remaining));
 			player->changeStamina(static_cast<int32_t>(healed));
@@ -3351,7 +3353,7 @@ namespace BlackTek
 			}
 
 			if (caster_player)
-				apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player);
+				heal_amount = apply_healing_modifiers(std::static_pointer_cast<Player>(caster), player, heal_amount);
 
 			const uint32_t healed = std::min<uint32_t>(heal_amount, static_cast<uint32_t>(maxSoul));
 			player->changeSoul(static_cast<int32_t>(healed));
