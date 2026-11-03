@@ -222,32 +222,37 @@ class DBTransaction
 	public:
 		constexpr DBTransaction() = default;
 
-		~DBTransaction() {
-			if (state == STATE_START) {
+		~DBTransaction()
+		{
+			if (state == STATE_START)
 				Database::getInstance().rollback();
-			}
 		}
 
 		// non-copyable
 		DBTransaction(const DBTransaction&) = delete;
 		DBTransaction& operator=(const DBTransaction&) = delete;
 
-		bool begin() {
+		bool begin()
+		{
+			if (not Database::getInstance().beginTransaction())
+				return false;
+
 			state = STATE_START;
-			return Database::getInstance().beginTransaction();
+			return true;
 		}
 
-		bool commit() {
-			if (state != STATE_START) {
+		bool commit()
+		{
+			if (state != STATE_START)
 				return false;
-			}
 
 			state = STATE_COMMIT;
 			return Database::getInstance().commit();
 		}
 
 	private:
-		enum TransactionStates_t {
+		enum TransactionStates_t
+		{
 			STATE_NO_START,
 			STATE_START,
 			STATE_COMMIT,
