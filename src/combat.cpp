@@ -354,12 +354,70 @@ namespace BlackTek
 
 	struct BatchStrikeContext
 	{
-		const uint32_t*          damages     = nullptr;
-		const Combat::BlockType* block_types = nullptr;
-		size_t                   index       = 0;
-		bool                     active      = false;
+		const Combat*					owner	= nullptr;
+		std::span<const CreaturePtr>	targets;
+		size_t							base	= 0;
+		size_t							index	= 0;
+		bool							active	= false;
 	};
 	thread_local BatchStrikeContext g_batch_context;
+
+	struct BatchSlot
+	{
+		uint32_t			damage;
+		Combat::BlockType	block_type;
+	};
+
+	[[nodiscard]] std::optional<BatchSlot> ClaimBatchSlot(const Combat* combat, const Creature* target) noexcept
+	{
+		if (not g_batch_context.active or g_batch_context.owner != combat)
+			return std::nullopt;
+
+		const auto remaining = g_batch_context.targets.subspan(g_batch_context.index);
+		const auto found = std::ranges::find_if(remaining, [target](const CreaturePtr& candidate) { return candidate.get() == target; });
+
+		if (found == remaining.end())
+			return std::nullopt;
+
+		const size_t offset = g_batch_context.index + static_cast<size_t>(found - remaining.begin());
+		const size_t slot = g_batch_context.base + offset;
+		g_batch_context.index = offset + 1;
+
+		return BatchSlot{ batch_damage_scratch[slot], batch_block_type_scratch[slot] };
+	}
+
+	class BatchStrikeScope
+	{
+	public:
+		BatchStrikeScope(const Combat* combat, std::span<const CreaturePtr> targets) noexcept
+			: saved(g_batch_context)
+			, base(saved.base + saved.targets.size())
+			, count(targets.size())
+		{
+			if (batch_damage_scratch.size() < base + count)
+				batch_damage_scratch.resize(base + count);
+
+			if (batch_block_type_scratch.size() < base + count)
+				batch_block_type_scratch.resize(base + count);
+
+			g_batch_context = BatchStrikeContext{ .owner = combat, .targets = targets, .base = base };
+		}
+
+		~BatchStrikeScope() { g_batch_context = saved; }
+
+		BatchStrikeScope(const BatchStrikeScope&) = delete;
+		BatchStrikeScope& operator=(const BatchStrikeScope&) = delete;
+
+		[[nodiscard]] std::span<uint32_t>			Damages() noexcept		{ return { batch_damage_scratch.data() + base, count }; }
+		[[nodiscard]] std::span<Combat::BlockType>	BlockTypes() noexcept	{ return { batch_block_type_scratch.data() + base, count }; }
+
+		void Activate() noexcept { g_batch_context.active = true; }
+
+	private:
+		BatchStrikeContext	saved;
+		size_t				base;
+		size_t				count;
+	};
 
 	template<typename T>
 	concept ByteLike = std::is_integral_v<T> or std::is_enum_v<T>;
@@ -3632,25 +3690,18 @@ namespace BlackTek
 			and not config.test(Config::TrueDamage)
 			and not config.test(Config::HasCompiledFormula);
 
+		std::optional<BatchStrikeScope> batchScope;
+
 		if (use_batch)
 		{
-			batch_damage_scratch.resize(strike_n);
-			batch_block_type_scratch.resize(strike_n);
-			block_batch(caster,
-				{ toDamageCreatures.data(), strike_n },
-				{ batch_damage_scratch.data(), strike_n },
-				{ batch_block_type_scratch.data(), strike_n });
-
-			g_batch_context.damages     = batch_damage_scratch.data();
-			g_batch_context.block_types = batch_block_type_scratch.data();
-			g_batch_context.index       = 0;
-			g_batch_context.active      = true;
+			const std::span<const CreaturePtr> batchTargets{ toDamageCreatures.data(), strike_n };
+			batchScope.emplace(this, batchTargets);
+			block_batch(caster, batchTargets, batchScope->Damages(), batchScope->BlockTypes());
+			batchScope->Activate();
 		}
 
 		for (const auto& target_creature : toDamageCreatures)
 			strike_target(caster, target_creature, true, spectators_span);
-
-		g_batch_context.active = false;
 	}
 
 	void AreaCombat::setupArea(const std::vector<uint32_t>& area_data, uint32_t rows)
@@ -3923,12 +3974,13 @@ namespace BlackTek
 
 		uint32_t computed_damage = damage;
 
-		if (g_batch_context.active)
+		const auto batchSlot = ClaimBatchSlot(this, target.get());
+
+		if (batchSlot)
 		{
 			// Batch path: formula already computed by block_batch; apply charges + side-effects
-			computed_damage = g_batch_context.damages[g_batch_context.index];
-			blockType       = g_batch_context.block_types[g_batch_context.index];
-			++g_batch_context.index;
+			computed_damage = batchSlot->damage;
+			blockType       = batchSlot->block_type;
 
 			if (apply_defense_reduction and target->can_use_defense()
 			    and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
@@ -4125,7 +4177,7 @@ namespace BlackTek
 		if constexpr (Metrics::ENABLED)
 		{
 			metrics_cap.block_type = static_cast<uint8_t>(blockType);
-			if (g_batch_context.active)
+			if (batchSlot)
 				metrics_cap.flags |= static_cast<uint8_t>(Metrics::StrikeFlag::WasBatched);
 		}
 
@@ -4168,12 +4220,13 @@ namespace BlackTek
 
 		uint32_t computed_damage = damage;
 
-		if (g_batch_context.active)
+		const auto batchSlot = ClaimBatchSlot(this, target.get());
+
+		if (batchSlot)
 		{
 			// Batch path: formula already computed by block_batch; apply charges + side-effects
-			computed_damage = g_batch_context.damages[g_batch_context.index];
-			blockType       = g_batch_context.block_types[g_batch_context.index];
-			++g_batch_context.index;
+			computed_damage = batchSlot->damage;
+			blockType       = batchSlot->block_type;
 
 			if (apply_defense_reduction and target->can_use_defense()
 			    and (defense_cost == 0 or target->get_defense_charges() >= defense_cost))
@@ -4321,7 +4374,7 @@ namespace BlackTek
 		if constexpr (Metrics::ENABLED)
 		{
 			metrics_cap.block_type = static_cast<uint8_t>(blockType);
-			if (g_batch_context.active)
+			if (batchSlot)
 				metrics_cap.flags |= static_cast<uint8_t>(Metrics::StrikeFlag::WasBatched);
 		}
 
