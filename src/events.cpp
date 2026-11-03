@@ -1276,6 +1276,8 @@ bool Events::eventPlayerOnSpellTry(const PlayerPtr& player, const Spell* spell, 
 
 	LuaScriptInterface::pushSpell(L, *spell);
 
+	lua_pushinteger(L, spellType);
+
 	return scriptInterface.callFunction(3);
 }
 
