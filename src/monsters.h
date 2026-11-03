@@ -213,7 +213,10 @@ class MonsterType
 
 		MonsterInfo info;
 
+		uint32_t load_epoch = 0;
+
 		void loadLoot(LootBlock lootBlock);
+		void Reset(const std::string& typeName);
 };
 
 class MonsterSpell
@@ -280,6 +283,9 @@ class Monsters
 		}
 		bool reload();
 
+		void					BeginReload() noexcept				{ ++reload_epoch; }
+		[[nodiscard]] uint32_t	GetReloadEpoch() const noexcept		{ return reload_epoch; }
+
 		MonsterType* getMonsterType(const std::string& name, bool loadFromFile = true);
 		bool deserializeSpell(MonsterSpell* spell, spellBlock_t& sb, const std::string& description = "");
 
@@ -296,6 +302,7 @@ class Monsters
 		                                   int32_t maxDamage, int32_t minDamage, int32_t startDamage, uint32_t tickInterval);
 
 		bool loaded = false;
+		uint32_t reload_epoch = 0;
 };
 
 #endif

@@ -144,6 +144,13 @@ void MonsterType::loadLoot(LootBlock lootBlock)
 	}
 }
 
+void MonsterType::Reset(const std::string& typeName)
+{
+	info = MonsterInfo{};
+	name = typeName;
+	nameDescription = "a " + typeName;
+}
+
 MonsterType* Monsters::getMonsterType(const std::string& name, bool loadFromFile /*= true */)
 {
 	std::string lowerCaseName = asLowerCaseString(name);
@@ -159,7 +166,7 @@ MonsterType* Monsters::getMonsterType(const std::string& name, bool loadFromFile
 bool Monsters::reload()
 {
 	loaded = false;
-	monsters.clear();
+	BeginReload();
 	return g_scripts->loadScripts("monster", false, true);
 }
 

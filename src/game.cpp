@@ -8057,6 +8057,7 @@ bool Game::reload(const ReloadTypes_t reloadType)
             g_globalEvents->clear(true);
             g_spells->clear(true);
             g_storeManager.clear();
+            g_monsters.BeginReload();
             g_scripts->loadScripts("scripts", false, true);
 
             for (CreatureEvent* invalidEvent : g_creatureEvents->getInvalidEvents())

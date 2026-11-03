@@ -5673,6 +5673,9 @@ int LuaScriptInterface::luaGameCreateMonsterType(lua_State* L)
 		monsterType->name = name;
 		monsterType->nameDescription = "a " + name;
 	} else {
+		if (monsterType->load_epoch != g_monsters.GetReloadEpoch())
+			monsterType->Reset(name);
+
 		monsterType->info.lootItems.clear();
 		monsterType->info.attackSpells.clear();
 		monsterType->info.defenseSpells.clear();
@@ -5683,6 +5686,8 @@ int LuaScriptInterface::luaGameCreateMonsterType(lua_State* L)
 		monsterType->info.creatureMoveEvent = -1;
 		monsterType->info.creatureSayEvent = -1;
 	}
+
+	monsterType->load_epoch = g_monsters.GetReloadEpoch();
 
 	pushUserdata<MonsterType>(L, monsterType);
 	setMetatable(L, -1, "MonsterType");
