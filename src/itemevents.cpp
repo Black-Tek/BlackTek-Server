@@ -580,7 +580,7 @@ void ItemEvent::executeAttack(const ItemPtr& item, const PlayerPtr& holder, cons
 	}
 
 	lua_pushinteger(L, static_cast<uint8_t>(blockType));
-	lua_pushinteger(L, static_cast<uint8_t>(combatType));
+	lua_pushinteger(L, static_cast<uint16_t>(combatType));
 	lua_pushinteger(L, std::to_underlying(origin));
 
 	LuaScriptInterface::pushBoolean(L, criticalDamage);
