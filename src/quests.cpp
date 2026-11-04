@@ -168,14 +168,15 @@ bool Quests::reload()
 
 bool Quests::loadFromToml()
 {
+	uint16_t id = 0;
+
 	for (const auto& entry : std::filesystem::recursive_directory_iterator("data/quests/"))
 	{
 		if (entry.is_regular_file() && entry.path().extension() == ".toml")
 		{
 			try {
 				auto tbl = toml::parse_file(entry.path().string());
-				uint16_t id = 0;
-
+				
 				// Iterate over each top-level table (each represents a quest)
 				for (const auto& [key, value] : tbl) {
 					if (value.is_table()) {
