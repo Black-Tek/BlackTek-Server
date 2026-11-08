@@ -226,11 +226,12 @@ function Player.removeTotalMoney(self, amount)
 	local moneyCount = self:getMoney()
 	local bankCount = self:getBankBalance()
 	if amount <= moneyCount then
-		self:removeMoney(amount)
-		return true
+		return self:removeMoney(amount)
 	elseif amount <= (moneyCount + bankCount) then
 		if moneyCount ~= 0 then
-			self:removeMoney(moneyCount)
+			if not self:removeMoney(moneyCount) then
+				return false
+			end
 			local remains = amount - moneyCount
 			self:setBankBalance(bankCount - remains)
 			self:sendTextMessage(MESSAGE_INFO_DESCR, ("Paid %d from inventory and %d gold from bank account. Your account balance is now %d gold."):format(moneyCount, amount - moneyCount, self:getBankBalance()))
