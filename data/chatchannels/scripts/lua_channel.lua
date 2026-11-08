@@ -109,3 +109,7 @@ function onSpeak(player, type, message)
     console(message)
     return false
 end
+
+function onLeave(player)
+    consoles[player:getId()] = nil
+end
