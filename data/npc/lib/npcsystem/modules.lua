@@ -441,10 +441,10 @@ if Modules == nil then
 
 		local player = Player(cid)
 		if player:isPremium() or not shop_premium[cid] then
-			if not player:removeTotalMoney(cost) then
-				npcHandler:say("You do not have enough money!", cid)
-			elseif player:isPzLocked() then
+			if player:isPzLocked() then
 				npcHandler:say("Get out of there with this blood.", cid)
+			elseif not player:removeTotalMoney(cost) then
+				npcHandler:say("You do not have enough money!", cid)
 			else
 				npcHandler:say("It was a pleasure doing business with you.", cid)
 				npcHandler:releaseFocus(cid)
@@ -488,7 +488,9 @@ if Modules == nil then
 
 		local player = Player(cid)
 		if player:isPremium() or not parameters.premium then
-			if player:removeTotalMoney(cost) then
+			if player:isPzLocked() then
+				module.npcHandler:say("Get out of there with this blood.", cid)
+			elseif player:removeTotalMoney(cost) then
 				local position = player:getPosition()
 				player:teleportTo(destination)
 
