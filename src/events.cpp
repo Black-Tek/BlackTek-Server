@@ -43,7 +43,9 @@
 #include "tools.h"
 #include "item.h"
 #include "player.h"
+#include "console.h"
 
+#include <limits>
 #include <set>
 
 using BlackTek::GameModel;
@@ -498,16 +500,16 @@ bool Events::eventPartyOnDisband(PartyPtr party)
 	return scriptInterface.callFunction(1);
 }
 
-void Events::eventPartyOnShareExperience(PartyPtr party, uint64_t& exp)
+bool Events::eventPartyOnShareExperience(PartyPtr party, uint64_t& exp)
 {
 	// Party:onShareExperience(exp) or Party.onShareExperience(self, exp)
 	if (info.partyOnShareExperience == -1) {
-		return;
+		return false;
 	}
 
 	if (!scriptInterface.reserveScriptEnv()) {
-		std::cout << "[Error - Events::eventPartyOnShareExperience] Call stack overflow" << std::endl;
-		return;
+		BlackTek::Console::Error("Events::eventPartyOnShareExperience: call stack overflow");
+		return false;
 	}
 
 	ScriptEnvironment* env = scriptInterface.getScriptEnv();
@@ -521,14 +523,19 @@ void Events::eventPartyOnShareExperience(PartyPtr party, uint64_t& exp)
 
 	lua_pushinteger(L, exp);
 
+	bool validResult = false;
 	if (scriptInterface.protectedCall(L, 2, 1) != 0) {
 		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
 	} else {
-		exp = LuaScriptInterface::getNumber<uint64_t>(L, -1);
+		const double value = lua_tonumber(L, -1);
+		validResult = lua_type(L, -1) == LUA_TNUMBER and value >= 0.0 and value < static_cast<double>(std::numeric_limits<uint64_t>::max());
+		if (validResult)
+			exp = static_cast<uint64_t>(value);
 		lua_pop(L, 1);
 	}
 
 	scriptInterface.resetScriptEnv();
+	return validResult;
 }
 
 bool Events::eventPartyOnInvite(PartyPtr party, const PlayerPtr& player)

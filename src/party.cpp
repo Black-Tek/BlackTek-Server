@@ -479,7 +479,8 @@ bool Party::setSharedExperience(const PlayerPtr& player, bool sharedExpActive)
 void Party::shareExperience(const uint64_t experience, const CreaturePtr& source/* = nullptr*/)
 {
 	uint64_t shareExperience = experience;
-	g_events->eventPartyOnShareExperience(shared_from_this(), shareExperience);
+	if (not g_events->eventPartyOnShareExperience(shared_from_this(), shareExperience))
+		shareExperience = experience / (memberList.size() + 1);
 
 	for (const auto& member : memberList)
 	{
