@@ -456,6 +456,7 @@ namespace Zones
 
     private:
 
+        void TrackCooldownEvents();
         SpawnCoroTask RunMonsterFixed();
         SpawnCoroTask RunMonsterRelative();
         SpawnCoroTask RunMonsterStaged();
