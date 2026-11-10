@@ -64,6 +64,7 @@
 #include "script.h"
 
 #include <fmt/format.h>
+#include <limits>
 
 extern ConfigManager g_config;
 extern ItemEvents* g_itemEvents;
@@ -5595,14 +5596,26 @@ void Game::onPrivateAccountManagerRecieveText(const uint32_t player_id, uint32_t
 				break;
 			}
 			const auto& vocation = g_vocations.getVocation(config.vocation);
+			if (not vocation or config.level == 0)
+			{
+				BlackTek::Console::Error("Game::onPrivateAccountManagerRecieveText: invalid starting vocation or level");
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_FAILED));
+				return;
+			}
 			const auto& startingPos = player->getTempPosition();
 			const auto sex = config.sex ? 1 : 0;
 			const auto level = config.level;
-			const auto health = config.baseHealth + vocation->getHPGain() * (level - 1);
+			const auto health = static_cast<uint64_t>(config.baseHealth) + static_cast<uint64_t>(vocation->getHPGain()) * (level - 1);
 			const auto healthmax = health;
-			const auto mana = config.baseMana + vocation->getManaGain() * (level - 1);
+			const auto mana = static_cast<uint64_t>(config.baseMana) + static_cast<uint64_t>(vocation->getManaGain()) * (level - 1);
 			const auto manamax = mana;
-			const auto cap = config.baseCapacity + (vocation->getCapGain() / 100) * (level - 1);
+			const auto cap = static_cast<uint64_t>(config.baseCapacity) + static_cast<uint64_t>(vocation->getCapGain() / 100) * (level - 1);
+			if (health > std::numeric_limits<int32_t>::max() or mana > std::numeric_limits<int32_t>::max() or cap > std::numeric_limits<int32_t>::max())
+			{
+				BlackTek::Console::Error("Game::onPrivateAccountManagerRecieveText: starting stats exceed player column limits");
+				player->sendModalWindow(CreatePrivateAccountManagerWindow(AccountManager::PRIVATE_CHARACTER_FAILED));
+				return;
+			}
 
 			std::string query = fmt::format(fmt::runtime(
 				"INSERT INTO `players` ("
