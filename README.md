@@ -6,7 +6,7 @@ __________________
 
 ## What is BlackTek Server?
 __________________
-**BlackTek Server** is an open source **2D Top Down MMORPG Game Server**, with tailor-made gameplay and tile based movement,  developed in modern C++. 
+**BlackTek Server** is an open source **2D Top Down MMORPG Authoritative Game Server**, with tailor-made gameplay and tile based movement,  developed in modern C++. 
 
 ## What is the point of BlackTek Server?
 _______________
